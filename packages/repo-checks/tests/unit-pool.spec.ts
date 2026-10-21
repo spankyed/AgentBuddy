@@ -20,7 +20,7 @@ import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/ch
 import { coresFor } from '../../../scripts/lib/core-budget.ts';
 import { poolDurationLines } from '../../../scripts/lib/unit-pool.ts';
 import { writeDurations } from '../../../scripts/lib/spec-durations.ts';
-import { CONFIG_BY_HALF } from '../../../scripts/lib/spec-halves.ts';
+import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-halves.ts';
 import { CHAIN_RUN_ENV, PROVENANCES, provenanceOf } from '../../../scripts/lib/unit-pool.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -500,7 +500,7 @@ describe('the pools', () => {
   it('count their own stamps live and nothing else', () => {
     const live = livePoolStamps();
     expect(live.size).toBe(entries.length);
-    const shape = new RegExp(`\\.(fast|integration)\\.(${PROVENANCES.join('|')})\\.json$`);
+    const shape = new RegExp(`\\.(${HALVES.join('|')})\\.(${PROVENANCES.join('|')})\\.json$`);
     expect([...live].filter((file) => !shape.test(file)),
       'a stamp keyed by less than the suite, half and provenance is an earlier shape, which prune must drop')
       .toEqual([]);

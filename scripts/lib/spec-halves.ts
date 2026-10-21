@@ -1,10 +1,10 @@
 /**
  * Which half a spec runs in, and which vitest config that half is.
  *
- * A spec's half is a decision, declared by its filename: `.integration.spec.ts` or not. It picks the config
+ * A spec's half is a decision, declared by its filename: `.native.spec.ts`, `.integration.spec.ts` or neither. It picks the config
  * that runs the file, and `sizeOf` (`test-timeouts.ts`) derives a timeout budget from it, so this is
- * load-bearing well beyond any one command — `chain-steps.ts`' `INTEGRATION_SUITES` is
- * `UNIT_SUITES.filter(hasSplit)`, which is the whole chain's view of which suites have an expensive half.
+ * load-bearing well beyond any one command — `chain-steps.ts`' `INTEGRATION_SUITES` and `NATIVE_SUITES` are
+ * the suites with that half's config (`hasHalf`), which is the whole chain's view of which suites have one.
  *
  * **It used to be derived from a measured cost, and is not any more.** `spec-cost.json` recorded what every
  * spec cost in milliseconds and a gate moved a file across an edge; that went because the quantity is not
@@ -17,6 +17,13 @@ import * as path from 'node:path';
 export const INTEGRATION_SUFFIX = '.integration.spec.ts';
 
 /**
+ * Specs that execute a native compiler runtime or hold live filesystem watchers. They need a disposable runner
+ * (the CLI's runner guard), and their cost is process and native work rather than input capture, so they are
+ * their own half: selectable on their own, and runnable in parallel with the rest of integration.
+ */
+export const NATIVE_SUFFIX = '.native.spec.ts';
+
+/**
  * The two halves, as one declaration: the list is the definition and the type is derived from it.
  *
  * Written twice, a consumer that iterates the halves and a consumer that switches on them disagree the day a
@@ -24,10 +31,11 @@ export const INTEGRATION_SUFFIX = '.integration.spec.ts';
  * `CONFIG_BY_HALF` below is keyed by the type, so a half with no config is a compile error rather than a
  * lookup that returns undefined.
  */
-export const HALVES = ['fast', 'integration'] as const;
+export const HALVES = ['fast', 'integration', 'native'] as const;
 export type Half = (typeof HALVES)[number];
 
-export const halfOfPath = (file: string): Half => (file.endsWith(INTEGRATION_SUFFIX) ? 'integration' : 'fast');
+export const halfOfPath = (file: string): Half =>
+  (file.endsWith(NATIVE_SUFFIX) ? 'native' : file.endsWith(INTEGRATION_SUFFIX) ? 'integration' : 'fast');
 
 /**
  * Which config runs each half, as one declaration rather than two lists that can disagree.
@@ -38,13 +46,13 @@ export const halfOfPath = (file: string): Half => (file.endsWith(INTEGRATION_SUF
 export const CONFIG_BY_HALF: Readonly<Record<Half, string>> = {
   fast: 'vitest.config.ts',
   integration: 'vitest.integration.config.ts',
+  native: 'vitest.native.config.ts',
 };
 
 /**
  * The vitest configs a package runs its specs under, read from the package rather than assumed.
  *
- * Three packages have two — `@apackdev/cli`, `@app/repo-checks`, `@app/publish-checks` — and the other nine
- * have one.
+ * `@apackdev/cli` has three; `@app/repo-checks` and `@app/publish-checks` have two; the other nine have one.
  */
 export function configsFor(packageDir: string): string[] {
   return Object.values(CONFIG_BY_HALF).filter((file) => fs.existsSync(path.join(packageDir, file)));
@@ -54,10 +62,12 @@ export function configsFor(packageDir: string): string[] {
  * Whether a package has a second half at all.
  *
  * A package with one config has nowhere to move a spec to, which is why nine of the twelve could never act
- * on the placement finding the deleted cost record used to raise. It is still the question
- * `chain-steps.ts` asks to build `INTEGRATION_SUITES`.
+ * on the placement finding the deleted cost record used to raise. Which halves it has is `hasHalf`.
  */
 export const hasSplit = (packageDir: string): boolean => configsFor(packageDir).length > 1;
+
+/** Whether a package runs a given half, which is whether its config for that half exists */
+export const hasHalf = (packageDir: string, half: Half): boolean => fs.existsSync(path.join(packageDir, CONFIG_BY_HALF[half]));
 
 /**
  * Every spec a package owns, relative to the package.

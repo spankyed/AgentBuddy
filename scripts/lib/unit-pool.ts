@@ -13,7 +13,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { holdExclusiveLock, type ExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@apackdev/host/build/packages-built';
-import { INTEGRATION_SUITES, poolStepName, suiteInputs } from './chain-steps.ts';
+import { INTEGRATION_SUITES, NATIVE_SUITES, poolStepName, suiteInputs } from './chain-steps.ts';
 import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-halves.ts';
 import { coresFor } from './core-budget.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
@@ -164,7 +164,7 @@ function workerArgs(workers?: number): string[] {
 }
 
 /**
- * The three pools: which half each one runs, which suites belong to it, and how it runs them.
+ * The pools: which half each one runs, which suites belong to it, and how it runs them.
  *
  * A pool is a resolution and a half, not a kind of test. `host` and `pack` split on resolution — Node
  * conditions are per process, so those two cannot share one — and `integration` splits on the half, which is
@@ -200,11 +200,17 @@ export const POOLS = {
     // each project; a root-only test.bail setting is not inherited by project configs.
     run: (stale: readonly UnitSuite[], workers?: number) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--bail=1', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale), ...workerArgs(workers), ...reporterArgs()] }],
   },
+  native: {
+    half: 'native' as Half,
+    suites: () => NATIVE_SUITES,
+    // The same shape as integration, over the native half's root config
+    run: (stale: readonly UnitSuite[], workers?: number) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--bail=1', '--config', CONFIG_BY_HALF.native, ...projectArgs(stale), ...workerArgs(workers), ...reporterArgs()] }],
+  },
 } as const;
 
 export type Pool = keyof typeof POOLS;
 
-/** The three pools by the chain step each one is, so a step name can be asked which pool it is */
+/** The pools by the chain step each one is, so a step name can be asked which pool it is */
 const POOL_BY_STEP: ReadonlyMap<string, Pool> =
   new Map((Object.keys(POOLS) as Pool[]).map((pool) => [poolStepName(pool), pool]));
 

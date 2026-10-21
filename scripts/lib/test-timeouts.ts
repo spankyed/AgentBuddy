@@ -14,7 +14,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
-import { INTEGRATION_SUITES } from './chain-steps.ts';
+import { INTEGRATION_SUITES, NATIVE_SUITES } from './chain-steps.ts';
 import { CONFIG_BY_HALF, halfOfPath } from './spec-halves.ts';
 import type { Size } from './unit-suites.ts';
 
@@ -196,14 +196,14 @@ export function bareWaits(absFile: string, repoRoot: string): BareWait[] {
 export function sizeOf(file: string): Size {
   // The E2E suite is its own target and belongs to no package
   if (file.endsWith('playwright.config.ts')) return 'large';
-  // Integration first: the two names are read from `CONFIG_BY_HALF`, which is where the convention lives
-  if (file.endsWith(CONFIG_BY_HALF.integration)) return 'large';
+  // The expensive halves first: the names are read from `CONFIG_BY_HALF`, which is where the convention lives
+  if (file.endsWith(CONFIG_BY_HALF.integration) || file.endsWith(CONFIG_BY_HALF.native)) return 'large';
   if (file.endsWith(CONFIG_BY_HALF.fast)) return 'small';
   if (file.endsWith('.spec.ts')) {
     const dir = file.split('/')[1];
-    return halfOfPath(file) === 'integration' && INTEGRATION_SUITES.some((suite) => suite.dir === dir)
-      ? 'large'
-      : 'small';
+    const half = halfOfPath(file);
+    const suites = half === 'integration' ? INTEGRATION_SUITES : half === 'native' ? NATIVE_SUITES : [];
+    return suites.some((suite) => suite.dir === dir) ? 'large' : 'small';
   }
   // Refused rather than answered. Every other file would get `small` — a confident wrong answer, and the
   // budget is a ceiling, so the confident wrong answer is the permissive one.

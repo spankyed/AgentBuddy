@@ -70,6 +70,8 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   'test:unit:host': UNCAPPED,
   'test:unit:pack': UNCAPPED,
   'test:integration': { share: 0.5 },
+  // Each native scenario spawns compilers and watchers of its own, so it takes no more than integration
+  'test:native': { share: 0.5 },
   // Cold vue-tsc, 2026-10-18: 24.72s CPU / 14.66s wall and 24.95s / 14.65s.
   // One compiler uses about 1.7 cores; reserve two without widening its quick deadline.
   'typecheck:pack': { cores: 2 },

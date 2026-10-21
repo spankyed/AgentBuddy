@@ -387,7 +387,9 @@ describe('every spawn an orchestrator makes is bounded', () => {
         + 'and owned temporary-tree cleanup; a single bundle deadline does not cover these serial operations',
       'test:integration': 'complete compiler/runtime acceptance includes repeated cold builds, watchers '
         + 'and lifecycle combinations across projects; generic fan-out facts cannot distinguish that '
-        + 'workload from an ordinary unit suite. Only this pool uses the acceptance aggregate bound',
+        + 'workload from an ordinary unit suite. Only this pool and the native one use the acceptance aggregate bound',
+      'test:native': 'native runtime and live-watcher scenarios: cold compiler captures, watcher rebuild cycles and '
+        + 'native loader probes across one pooled run, the same acceptance aggregate the integration pool takes',
       'test:external-pack:app': 'drives the built app once per fixture pack, where `test:smoke` also launches '
         + 'an app and is a suite — no fact in the table separates them, so this is a judgement rather than a '
         + 'rule to widen',

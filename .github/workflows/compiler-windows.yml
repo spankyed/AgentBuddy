@@ -72,8 +72,8 @@ jobs:
         env:
           APACK_TEST_NAME: ${{ inputs.test_name || '.' }}
         run: >-
-          node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
-          packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts
+          node node_modules/vitest/vitest.mjs run --config vitest.native.config.ts --project @apackdev/cli
+          packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts
           --testNamePattern "$env:APACK_TEST_NAME"
           --reporter=default --reporter=json --outputFile="$env:RUNNER_TEMP/apack-compiler-native-tests.json"
           --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
@@ -114,8 +114,8 @@ jobs:
       - name: Retained Vite process ownership
         if: ${{ !inputs.test_name }}
         run: >-
-          node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
-          packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts
+          node node_modules/vitest/vitest.mjs run --config vitest.native.config.ts --project @apackdev/cli
+          packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts
           --testNamePattern='retains independent captured Vite owners'
           --reporter=default --reporter=json --outputFile="$env:RUNNER_TEMP/compiler-vite-ownership.json"
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
@@ -123,8 +123,8 @@ jobs:
       - name: Build worker platform baseline
         if: ${{ !inputs.test_name }}
         run: >-
-          node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
-          packages/apack-cli/tests/build/build-worker.integration.spec.ts
+          node node_modules/vitest/vitest.mjs run --config vitest.native.config.ts --project @apackdev/cli
+          packages/apack-cli/tests/build/build-worker.native.spec.ts
           --testNamePattern='captures native launch identity|uses the captured compiler'
           --reporter=default --reporter=json --outputFile="$env:RUNNER_TEMP/compiler-worker-baseline.json"
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1

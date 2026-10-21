@@ -267,6 +267,7 @@ describe('every pool runs at the width core-budget.ts says it does', () => {
     host: 'test:unit:host',
     pack: 'test:unit:pack',
     integration: 'test:integration',
+    native: 'test:native',
   };
 
   /** The config a pool's own command loads, so each case asks about the file that pool really reads */

@@ -5,7 +5,7 @@ import { PUBLISH_TREE } from '@apackdev/host/build/published-manifest';
 import { coresFor } from './core-budget.ts';
 import type { TimeoutClass } from './step-timeouts.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
-import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-halves.ts';
+import { CONFIG_BY_HALF, hasHalf, type Half } from './spec-halves.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
 import { LEG_TIMEOUT, scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
 import { API_CHECK_TIMEOUT } from './api-report-packages.ts';
@@ -428,7 +428,7 @@ const ROOT = ['package-lock.json'];
 /**
  * The root vitest config a run of one half uses — which projects it pools is an input to every suite in it.
  *
- * `CONFIG_BY_HALF` is the one record of which file runs which half, and it is the one `hasSplit` and so
+ * `CONFIG_BY_HALF` is the one record of which file runs which half, and it is the one `hasHalf` and so
  * `INTEGRATION_SUITES` already derive from. The same two names stood here as a `Record<Half, string>` of
  * their own until 2026-10-02 — a second copy one line from a use of its own derivative. The names are a
  * convention rather than a computation, and they are the same convention at both levels: the root config
@@ -730,7 +730,7 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
  * rather than the code is the reason that is a judgement rather than a rewrite — `driftedSteps` reports both
  * directions and neither is self-evidently the code's.
  */
-export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 34, pack: 19, integration: 60 };
+export const POOL_SECONDS: Record<'host' | 'pack' | 'integration' | 'native', number> = { host: 34, pack: 19, integration: 60, native: 60 };
 
 /**
  * The files a chain step is declared in — the two tables, as one list, repo-relative.
@@ -781,7 +781,7 @@ export function suiteInputs(suite: UnitSuite, half: Half): string[] {
     ...suiteWorkspace(suite.dir),
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
     ...(reads.inputs ?? []),
-    ...(half === 'integration' ? reads.integrationInputs ?? [] : []),
+    ...(half !== 'fast' ? reads.integrationInputs ?? [] : []),
     ...(reads.packages ? PACKAGE_BUILD_READS : []),
     ...(reads.pack ? PACK_OUTPUTS : []),
     ...(reads.repo ? EVERY_SOURCE : []),
@@ -796,7 +796,10 @@ export function suiteInputs(suite: UnitSuite, half: Half): string[] {
  * by the first automatically, and `chain-inputs.spec.ts` fails the second until it names the package too —
  * which is the half a derivation cannot do for itself, an npm script being text.
  */
-export const INTEGRATION_SUITES = UNIT_SUITES.filter((suite) => hasSplit(path.join(REPO_ROOT, 'packages', suite.dir)));
+export const INTEGRATION_SUITES = UNIT_SUITES.filter((suite) => hasHalf(path.join(REPO_ROOT, 'packages', suite.dir), 'integration'));
+
+/** The suites with a native half (`NATIVE_SUFFIX`), derived the same way: one step runs them, `npm run test:native` */
+export const NATIVE_SUITES = UNIT_SUITES.filter((suite) => hasHalf(path.join(REPO_ROOT, 'packages', suite.dir), 'native'));
 
 /**
  * The cache key of a step that runs suites: the union of what each of them reads, and nothing else.
@@ -814,7 +817,7 @@ function inputsForSuites(suites: readonly UnitSuite[], half: Half): Pick<ChainSt
   return {
     inputs: [...new Set(suites.flatMap((suite) => suiteInputs(suite, half)))].sort(),
     ...(suites.some((suite) => SUITE_READS[suite.dir]?.repo)
-      ? { excludes: [...(half === 'integration' ? [] : FIXTURE_OUTPUTS), ...FIXTURE_TEST_OUTPUT] }
+      ? { excludes: [...(half !== 'fast' ? [] : FIXTURE_OUTPUTS), ...FIXTURE_TEST_OUTPUT] }
       : {}),
   };
 }
@@ -910,8 +913,8 @@ const TYPECHECK_STEPS: readonly ChainStep[] = TYPECHECK_LEGS
  * literals; this is the reverse lookup, and `unit-pool.spec.ts` holds the two to each other so neither can
  * be renamed alone.
  */
-export const poolStepName = (pool: 'host' | 'pack' | 'integration'): string =>
-  (pool === 'integration' ? 'test:integration' : `test:unit:${pool}`);
+export const poolStepName = (pool: 'host' | 'pack' | 'integration' | 'native'): string =>
+  (pool === 'integration' || pool === 'native' ? `test:${pool}` : `test:unit:${pool}`);
 
 const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) => {
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
@@ -1107,6 +1110,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
+  // Native runtime and live-watcher scenarios, beside integration rather than inside it: same reads, and a
+  // run of its own so it can be scheduled, selected and sharded apart from the ordinary integration specs.
+  // Its cost is declared like the integration pool's, until a completed run refreshes it
+  { name: 'test:native', timeout: 'acceptance', stretches: 1.94, seconds: POOL_SECONDS.native,
+    forceArgs: ['--all'],
+    ...inputsForSuites(NATIVE_SUITES, 'native') },
   // build:default-setup owns pack outputs; build:runtime only builds the four app workspaces.
   // **No pack's `src` here, and that is a property of the build rather than an omission.** Nothing compiles a
   // pack into the app any more: a pack's backend is loaded at run time from its own `dist/runtime/index.cjs`

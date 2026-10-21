@@ -2,14 +2,17 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { inputFiles, REPO_ROOT } from '@apackdev/host/build/packages-built';
-import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, INTEGRATION_SUITES, NATIVE_SUITES, suiteInputs } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, unitStepName, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
 import type { Half } from '../../../scripts/lib/spec-halves.ts';
 
-/** The halves a suite runs in: every suite has a fast one, and only a suite with a second config has the other */
-const halvesOf = (suite: UnitSuite): Half[] =>
-  (INTEGRATION_SUITES.some((other) => other.dir === suite.dir) ? ['fast', 'integration'] : ['fast']);
+/** The halves a suite runs in: every suite has a fast one, and the others where it has their config */
+const halvesOf = (suite: UnitSuite): Half[] => [
+  'fast',
+  ...(INTEGRATION_SUITES.some((other) => other.dir === suite.dir) ? ['integration' as const] : []),
+  ...(NATIVE_SUITES.some((other) => other.dir === suite.dir) ? ['native' as const] : []),
+];
 import { population } from '@apackdev/sdk/testing';
 
 /**

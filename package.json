@@ -76,6 +76,7 @@
     "test:unit:host": "tsx scripts/test-unit-pool.ts host",
     "test:unit:pack": "tsx scripts/test-unit-pool.ts pack",
     "test:integration": "tsx scripts/test-unit-pool.ts integration",
+    "test:native": "tsx scripts/test-unit-pool.ts native",
     "test:smoke": "npm run packages:ensure && node scripts/with-source.mjs playwright test tests/e2e/smoke",
     "test:headed": "npm run packages:ensure && PLAYWRIGHT_VISIBLE=1 node scripts/with-source.mjs playwright test",
     "test:explorer": "npm run packages:ensure && node scripts/with-source.mjs playwright test --ui",

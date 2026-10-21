@@ -260,7 +260,7 @@ fixtures, repeated captured-runtime execution and startup/cancellation batches. 
 immediately if unrelated apps stop launching; preserve
 evidence without changing macOS security settings. Cause remains unproven in the
 [launch incident](docs/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
-The CLI integration config refuses macOS runs outside GitHub-hosted runners before loading test
+The CLI integration and native configs refuse macOS runs outside GitHub-hosted runners before loading test
 modules. Do not bypass that guard with fabricated runner variables; use disposable CI. This also applies
 when the root integration project or chain selects the CLI suite. Live watcher cases share this boundary
 even inside a unit suite; use the runner guard before opening their watchers. Pure unit checks remain local.
@@ -610,6 +610,8 @@ npm run test:unit        # Vitest, as two pools: the host suites as one root run
                          # @apackdev/source condition, and the pack suite on its own resolving the published
                          # dist. Serial, measured — a second lane buys 3% for 87% more work.
                          # The list is scripts/lib/unit-suites.ts, which the chain reads too
+npm run test:native      # The native half (*.native.spec.ts): native compiler runtime and live-watcher specs,
+                         # one vitest run over vitest.native.config.ts, beside integration rather than in it
 npm run test:integration # The expensive half of every suite that has one (@apackdev/cli, @app/repo-checks,
                          # @app/publish-checks), as **one vitest run** over vitest.integration.config.ts's
                          # projects rather than three `npm -w` invocations in series: measured 2026-09-29,

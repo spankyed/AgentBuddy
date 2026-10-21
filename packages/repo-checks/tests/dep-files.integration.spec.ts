@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUILD_UNITS, bundleReadsOf, inputFiles, REPO_ROOT, type BuildUnit } from '@apackdev/host/build/packages-built';
-import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
 import { ENSURE, namedByScript, scopeOf, TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES, unitStepName } from '../../../scripts/lib/unit-suites.ts';
@@ -542,7 +542,7 @@ describe('what has looked at a step at all', () => {
       .filter((leg) => { const scope = scopeOf(leg); return scope === 'repo' || scope.some((dir) => owners.has(dir)); })
       .map((leg) => leg.name));
     // A pool's specs are walked by `suite-reads`, which is the other kind of evidence
-    const byGraph = new Set([...new Set(UNIT_SUITES.map(unitStepName)), 'test:integration']);
+    const byGraph = new Set([...new Set(UNIT_SUITES.map(unitStepName)), poolStepName('integration'), poolStepName('native')]);
     const named = (take: (name: string) => boolean): string[] =>
       CHAIN_STEPS.filter((step) => take(step.name)).map((step) => step.name).sort();
     return {

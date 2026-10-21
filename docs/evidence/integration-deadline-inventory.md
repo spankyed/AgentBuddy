@@ -50,14 +50,14 @@ operations and declarations; completed console case counts are the execution evi
 |---|---|---|
 | [packages/apack-cli/tests/build/build-output-swap.integration.spec.ts](../../packages/apack-cli/tests/build/build-output-swap.integration.spec.ts) | 12 passed, 2 failed, 0 pending; 561.752s. | 1 |
 | [packages/apack-cli/tests/build/build-registry.integration.spec.ts](../../packages/apack-cli/tests/build/build-registry.integration.spec.ts) | 1 passed, 1 failed, 0 pending; 82.811s. | 4 |
-| [packages/apack-cli/tests/build/build-worker.integration.spec.ts](../../packages/apack-cli/tests/build/build-worker.integration.spec.ts) | 16 passed; 574.740s. | — |
+| [packages/apack-cli/tests/build/build-worker.native.spec.ts](../../packages/apack-cli/tests/build/build-worker.native.spec.ts) | 16 passed; 574.740s. | — |
 | [packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts) | 6 passed, 3 failed, 0 pending; 90.714s. | 6 |
 | [packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 31.078s. | 1 |
-| [packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 4 |
+| [packages/apack-cli/tests/build/compiler-elf-libraries.native.spec.ts](../../packages/apack-cli/tests/build/compiler-elf-libraries.native.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 4 |
 | [packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts) | 15 passed; 232.409s. | — |
 | [packages/apack-cli/tests/build/compiler-file-reads.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-file-reads.integration.spec.ts) | 12 passed; 243.862s. | — |
-| [packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts) | 25 passed; 906.983s. | — |
-| [packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts) | 26 Windows-only cases skipped; retain the owning goal’s Windows evidence. | — |
+| [packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts](../../packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts) | 25 passed; 906.983s. | — |
+| [packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts](../../packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts) | 26 Windows-only cases skipped; retain the owning goal’s Windows evidence. | — |
 | [packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts](../../packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 1.592s. | 2 |
 | [packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts) | 3 passed, 0 failed, 0 pending; 3.631s. | 2 |
 | [packages/apack-cli/tests/build/dependency-graph.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-graph.integration.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 1 |
@@ -73,20 +73,20 @@ operations and declarations; completed console case counts are the execution evi
 | [packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 0.094s. | 5 |
 | [packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts) | 20 passed, 0 failed, 0 pending; 27.754s. | 4 |
 | [packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts) | 3 passed, 0 failed, 0 pending; 0.534s. | 6 |
-| [packages/apack-cli/tests/build/frontend-generation.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-generation.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 125.561s. | 5 |
+| [packages/apack-cli/tests/build/frontend-generation.native.spec.ts](../../packages/apack-cli/tests/build/frontend-generation.native.spec.ts) | 0 passed, 1 failed, 0 pending; 125.561s. | 5 |
 | [packages/apack-cli/tests/build/frontend-globs.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-globs.integration.spec.ts) | 7 passed, 0 failed, 0 pending; 6.573s. | 6 |
 | [packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 0.646s. | 2 |
 | [packages/apack-cli/tests/build/frontend-resources.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-resources.integration.spec.ts) | 6 passed, 5 failed, 0 pending; 354.313s. | 3 |
-| [packages/apack-cli/tests/build/frontend-workers.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-workers.integration.spec.ts) | 3 passed, 1 failed, 0 pending; 88.360s. | 2 |
+| [packages/apack-cli/tests/build/frontend-workers.native.spec.ts](../../packages/apack-cli/tests/build/frontend-workers.native.spec.ts) | 3 passed, 1 failed, 0 pending; 88.360s. | 2 |
 | [packages/apack-cli/tests/build/own-declarations.integration.spec.ts](../../packages/apack-cli/tests/build/own-declarations.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 42.247s. | 2 |
 | [packages/apack-cli/tests/build/package-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/package-inputs.integration.spec.ts) | 5 passed, 4 failed, 0 pending; 290.747s. | 4 |
 | [packages/apack-cli/tests/build/staged-dsl.integration.spec.ts](../../packages/apack-cli/tests/build/staged-dsl.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 146.979s. | 5 |
 | [packages/apack-cli/tests/build/tool-identity.integration.spec.ts](../../packages/apack-cli/tests/build/tool-identity.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 38.718s. | 5 |
 | [packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts](../../packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 102.867s. | 1 |
-| [packages/apack-cli/tests/build/watch-external-types.integration.spec.ts](../../packages/apack-cli/tests/build/watch-external-types.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 89.473s. | 3 |
-| [packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts](../../packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts) | 0 passed, 2 failed, 0 pending; 120.017s. | 2 |
-| [packages/apack-cli/tests/build/watch-publication.integration.spec.ts](../../packages/apack-cli/tests/build/watch-publication.integration.spec.ts) | 0 passed, 2 failed, 0 pending; 120.047s. | 6 |
-| [packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 120.082s. | 4 |
+| [packages/apack-cli/tests/build/watch-external-types.native.spec.ts](../../packages/apack-cli/tests/build/watch-external-types.native.spec.ts) | 0 passed, 1 failed, 0 pending; 89.473s. | 3 |
+| [packages/apack-cli/tests/build/watch-module-freshness.native.spec.ts](../../packages/apack-cli/tests/build/watch-module-freshness.native.spec.ts) | 0 passed, 2 failed, 0 pending; 120.017s. | 2 |
+| [packages/apack-cli/tests/build/watch-publication.native.spec.ts](../../packages/apack-cli/tests/build/watch-publication.native.spec.ts) | 0 passed, 2 failed, 0 pending; 120.047s. | 6 |
+| [packages/apack-cli/tests/build/watch-worker-inputs.native.spec.ts](../../packages/apack-cli/tests/build/watch-worker-inputs.native.spec.ts) | 0 passed, 1 failed, 0 pending; 120.082s. | 4 |
 | [packages/apack-cli/tests/commands/add-extensions.integration.spec.ts](../../packages/apack-cli/tests/commands/add-extensions.integration.spec.ts) | 15 passed, 3 failed, 0 pending; 484.585s. | 5 |
 | [packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts](../../packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts) | 13 passed, 0 failed, 0 pending; 128.273s. | 1 |
 | [packages/apack-cli/tests/commands/app-install.integration.spec.ts](../../packages/apack-cli/tests/commands/app-install.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 0.224s. | 1 |
@@ -162,15 +162,15 @@ when prior timeout leakage is a plausible cause. No event, operation or cleanup 
 | 2 | `apack-cli/tests/commands/scaffold.integration.spec.ts` | apack pack init → add feature → build → tsc → pack regenerates entries when a source file codegen reads changes, not only the manifest | Whole-scenario timeout | 78.388s |
 | 2 | `apack-cli/tests/commands/scaffold.integration.spec.ts` | apack pack init → add feature → build → tsc → pack fails the build on an unresolvable dependency | Assertion failure | 321.866s |
 | 2 | `apack-cli/tests/build/dependency-inputs.integration.spec.ts` | retains the consumer build when a content compiler changes accepted dependency bytes | Whole-scenario timeout | 71.279s |
-| 2 | `apack-cli/tests/build/frontend-workers.integration.spec.ts` | retains the accepted build after a worker error and publishes its repair | Whole-scenario timeout | 66.786s |
-| 2 | `apack-cli/tests/build/watch-module-freshness.integration.spec.ts` | refreshes flow modules loaded through ordinary imports on the next watched build | Whole-scenario timeout | 60.013s |
-| 2 | `apack-cli/tests/build/watch-module-freshness.integration.spec.ts` | recompiles changed transitive content modules and retains the accepted build on failure | Whole-scenario timeout | 60.004s |
+| 2 | `apack-cli/tests/build/frontend-workers.native.spec.ts` | retains the accepted build after a worker error and publishes its repair | Whole-scenario timeout | 66.786s |
+| 2 | `apack-cli/tests/build/watch-module-freshness.native.spec.ts` | refreshes flow modules loaded through ordinary imports on the next watched build | Whole-scenario timeout | 60.013s |
+| 2 | `apack-cli/tests/build/watch-module-freshness.native.spec.ts` | recompiles changed transitive content modules and retains the accepted build on failure | Whole-scenario timeout | 60.004s |
 | 3 | `apack-cli/tests/build/frontend-resources.integration.spec.ts` | rebuilds Vue styles after only an external stylesheet changes | Whole-scenario timeout | 62.615s |
 | 3 | `apack-cli/tests/build/frontend-resources.integration.spec.ts` | CSS dependency watching recovers a missing nested stylesheet while retaining the accepted build | Individual-operation timeout (20s rebuild wait) | 76.251s |
 | 3 | `apack-cli/tests/build/frontend-resources.integration.spec.ts` | watches an external css-url asset in a separate directory | Whole-scenario timeout | 60.025s |
 | 3 | `apack-cli/tests/build/frontend-resources.integration.spec.ts` | watches an external template asset in a separate directory | Whole-scenario timeout | 60.026s |
 | 3 | `apack-cli/tests/build/frontend-resources.integration.spec.ts` | watches initially empty external Tailwind content through nested directory links | Individual-operation timeout (20s rebuild wait) | 54.304s |
-| 3 | `apack-cli/tests/build/watch-external-types.integration.spec.ts` | rebuilds external contracts and recovers a retargeted missing input without an authored edit | Individual-operation timeout (20s rebuild wait) | 89.473s |
+| 3 | `apack-cli/tests/build/watch-external-types.native.spec.ts` | rebuilds external contracts and recovers a retargeted missing input without an authored edit | Individual-operation timeout (20s rebuild wait) | 89.473s |
 | 3 | `repo-checks/tests/dev-pack-hmr.integration.spec.ts` | a pack whose source this machine has has 'a pack outside the workspace' in the renderer's own module graph, accepting its own updates | Assertion failure | 0.006s |
 | 4 | `apack-cli/tests/build/build-registry.integration.spec.ts` | a build compiles flows against the steps it loaded, and leaves the bound registry untouched | Whole-scenario timeout | 63.860s |
 | 4 | `apack-cli/tests/build/editor-declarations.integration.spec.ts` | builds declared editor members and step presentation, then discovers a copied source-free build | Whole-scenario timeout | 60.067s |
@@ -178,9 +178,9 @@ when prior timeout leakage is a plausible cause. No event, operation or cleanup 
 | 4 | `apack-cli/tests/build/package-inputs.integration.spec.ts` | automatically rebuilds an undeclared runtime imported by 'TypeScript state' without a type or authored edit | Whole-scenario timeout | 60.014s |
 | 4 | `apack-cli/tests/build/package-inputs.integration.spec.ts` | automatically rebuilds an undeclared runtime imported by 'Vue canvas' without a type or authored edit | Assertion failure | 42.740s |
 | 4 | `apack-cli/tests/build/package-inputs.integration.spec.ts` | keeps a captured build current after standalone generation with unchanged generated code | Whole-scenario timeout | 63.753s |
-| 4 | `apack-cli/tests/build/watch-worker-inputs.integration.spec.ts` | rebuilds for worker inputs and repairs missing external reads without authored edits | Whole-scenario timeout | 120.082s |
+| 4 | `apack-cli/tests/build/watch-worker-inputs.native.spec.ts` | rebuilds for worker inputs and repairs missing external reads without authored edits | Whole-scenario timeout | 120.082s |
 | 4 | `apack-cli/tests/commands/info.integration.spec.ts` | external pack offline inspection reports authentic compiled content and cached dependency provenance after producer source removal | Whole-scenario timeout | 60.195s |
-| 5 | `apack-cli/tests/build/frontend-generation.integration.spec.ts` | refreshes backend and live frontend together, retains failed incumbents and awaits retirement | Whole-scenario timeout | 125.561s |
+| 5 | `apack-cli/tests/build/frontend-generation.native.spec.ts` | refreshes backend and live frontend together, retains failed incumbents and awaits retirement | Whole-scenario timeout | 125.561s |
 | 5 | `apack-cli/tests/build/staged-dsl.integration.spec.ts` | staged DSL definitions preserves a verified build on a later failure, then publishes and reuses the current definitions with its frontend | Whole-scenario timeout | 146.979s |
 | 5 | `apack-cli/tests/commands/add-extensions.integration.spec.ts` | apack pack add artifact and block scaffolds an artifact viewer taking artifact, declared with its icon and viewer | Whole-scenario timeout | 63.446s |
 | 5 | `apack-cli/tests/commands/add-extensions.integration.spec.ts` | apack pack add artifact and block scaffolds display blocks taking their props and input blocks taking disabled/response, emitting submit/cancel | Whole-scenario timeout | 78.690s |
@@ -189,8 +189,8 @@ when prior timeout leakage is a plausible cause. No event, operation or cleanup 
 | 6 | `apack-cli/tests/build/compilation-inputs.integration.spec.ts` | captures runtime export conditions as well as package bytes | Assertion failure | 4.132s |
 | 6 | `apack-cli/tests/build/compilation-inputs.integration.spec.ts` | invalidates cached compilation when preload order changes with identical file inputs | Assertion failure | 3.427s |
 | 6 | `apack-cli/tests/build/compilation-inputs.integration.spec.ts` | invalidates compilation when native execution flags change | Assertion failure | 4.137s |
-| 6 | `apack-cli/tests/build/watch-publication.integration.spec.ts` | publishes source and manifest edits together and retains the incumbent after refusal | Whole-scenario timeout (setup hook) | 60.034s |
-| 6 | `apack-cli/tests/build/watch-publication.integration.spec.ts` | follows retargeted manifest links through refusal, repair and atomic replacement | Whole-scenario timeout (setup hook) | 60.013s |
+| 6 | `apack-cli/tests/build/watch-publication.native.spec.ts` | publishes source and manifest edits together and retains the incumbent after refusal | Whole-scenario timeout (setup hook) | 60.034s |
+| 6 | `apack-cli/tests/build/watch-publication.native.spec.ts` | follows retargeted manifest links through refusal, repair and atomic replacement | Whole-scenario timeout (setup hook) | 60.013s |
 
 Additional failures outside individual case results:
 
@@ -356,12 +356,12 @@ the retained console confirms their unchanged 60s scenario deadline. Event waits
 | `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
 | `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution bundler | Assertion failure |
 | `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
-| `build/watch-publication.integration.spec.ts` | publishes source and manifest edits together and retains the incumbent after refusal | Individual event-wait timeout |
-| `build/watch-publication.integration.spec.ts` | follows retargeted manifest links through refusal, repair and atomic replacement | Individual event-wait timeout |
+| `build/watch-publication.native.spec.ts` | publishes source and manifest edits together and retains the incumbent after refusal | Individual event-wait timeout |
+| `build/watch-publication.native.spec.ts` | follows retargeted manifest links through refusal, repair and atomic replacement | Individual event-wait timeout |
 | `build/dependency-graph.integration.spec.ts` | still fails when two independent packs declare the same entity | Whole-scenario timeout |
 | `build/facade-typing.integration.spec.ts` | typechecks own and dependency types under moduleResolution bundler | Assertion failure |
 | `build/facade-typing.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
-| `build/frontend-workers.integration.spec.ts` | retains the accepted build after a worker error and publishes its repair | Individual event-wait timeout |
+| `build/frontend-workers.native.spec.ts` | retains the accepted build after a worker error and publishes its repair | Individual event-wait timeout |
 | `build/package-inputs.integration.spec.ts` | automatically rebuilds an undeclared runtime imported by 'TypeScript state' without a type or authored edit | Individual event-wait timeout |
 | `build/package-inputs.integration.spec.ts` | automatically rebuilds an undeclared runtime imported by 'Vue canvas' without a type or authored edit | Individual event-wait timeout |
 | `commands/scaffold.integration.spec.ts` | fails the build on an unresolvable dependency | Whole-scenario timeout |
@@ -371,9 +371,9 @@ the retained console confirms their unchanged 60s scenario deadline. Event waits
 | `build/frontend-resources.integration.spec.ts` | watches an external css-url asset in a separate directory | Individual event-wait timeout |
 | `build/frontend-resources.integration.spec.ts` | watches an external template asset in a separate directory | Individual event-wait timeout |
 | `build/frontend-resources.integration.spec.ts` | watches initially empty external Tailwind content through nested directory links | Individual event-wait timeout |
-| `build/watch-external-types.integration.spec.ts` | rebuilds external contracts and recovers a retargeted missing input without an authored edit | Individual event-wait timeout |
-| `build/watch-module-freshness.integration.spec.ts` | refreshes flow modules loaded through ordinary imports on the next watched build | Individual event-wait timeout |
-| `build/watch-module-freshness.integration.spec.ts` | recompiles changed transitive content modules and retains the accepted build on failure | Individual event-wait timeout |
+| `build/watch-external-types.native.spec.ts` | rebuilds external contracts and recovers a retargeted missing input without an authored edit | Individual event-wait timeout |
+| `build/watch-module-freshness.native.spec.ts` | refreshes flow modules loaded through ordinary imports on the next watched build | Individual event-wait timeout |
+| `build/watch-module-freshness.native.spec.ts` | recompiles changed transitive content modules and retains the accepted build on failure | Individual event-wait timeout |
 
 Additional failures: one `frontend-resources` afterAll cleanup refuses `ENOTEMPTY`; two Vitest
 `onTaskUpdate` reporting-operation timeouts occur in groups 1 and 3. No batch aggregate cutoff or failed
@@ -1098,7 +1098,7 @@ under the later successful toolchain phases.
 
 Correction: this boundary runs the **full public CLI**, not the inner backend build. Reuse the existing
 full-command composition from the actual Electron authoring proof in
-`compiler-native-libraries.integration.spec.ts`: **180s captured backend + 120s cold frontend**.
+`compiler-native-libraries.native.spec.ts`: **180s captured backend + 120s cold frontend**.
 Apply it to all three successful public build calls and compose their enclosing case budgets once.
 Other CLI operations stay at 60s; cancellation grace remains 2s and cleanup 20s. No assertion, global
 suite limit or compiler implementation changes. The original 120s selection in `7c24806e7` was a
@@ -1161,7 +1161,7 @@ Failure classification:
 
 | Boundary | Evidence | Classification |
 |---|---|---|
-| Flow-module freshness | `watch-module-freshness.integration.spec.ts`, first case, 156.668s; helper attributes an abort to its 60,000ms rebuild signal | Individual-operation timeout |
+| Flow-module freshness | `watch-module-freshness.native.spec.ts`, first case, 156.668s; helper attributes an abort to its 60,000ms rebuild signal | Individual-operation timeout |
 | Vitest reporting, twice | Final error summary says `Timeout calling "onTaskUpdate"`; no file attribution in the log | Reporting failure; event-loop starvation remains a hypothesis |
 | Assertions, scenario and cleanup | No independent value assertion, whole-scenario timeout or cleanup error reported | No demonstrated failure in these categories |
 

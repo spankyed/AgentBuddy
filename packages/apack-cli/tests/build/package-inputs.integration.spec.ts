@@ -1,14 +1,13 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import * as sdkBuild from '@apackdev/sdk/build';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { callCli, preparePack, packageJson, tsconfig } from '../_support/pack-builds.ts';
 import { assertGeneratedCurrent } from '../../src/commands/generate-entries.ts';
 import { dependencyTypes } from '../../src/commands/generate.ts';
-import { startTestPackBuildWatcher, WATCH_REBUILD_BUDGET_MS, type TestPackBuildWatcher } from '../_support/watch-builds.ts';
-import { runtimePack, vueRuntimePack } from '../_support/frontend-pack.ts';
+import { vueRuntimePack } from '../_support/frontend-pack.ts';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import { bundlePackFE } from '../../src/build/fe-bundler.ts';
 import { runPackBuild } from '../../src/build/build-process.ts';
@@ -16,22 +15,11 @@ import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/hos
 import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 
 let root: string | undefined;
-let signal: AbortSignal;
-let starting: ReturnType<typeof startTestPackBuildWatcher> | undefined;
-beforeEach(context => { signal = context.signal; });
-afterEach(async () => {
-  const pending = starting;
-  starting = undefined;
-  try { await pending?.then(watcher => watcher.close(), () => {}); }
-  finally { vi.restoreAllMocks(); }
+afterEach(() => {
+  vi.restoreAllMocks();
   if (root) fs.rmSync(root, { recursive: true, force: true });
   root = undefined;
 });
-
-function runtimeConsumer() {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-imported-runtime-'));
-  return runtimePack(root);
-}
 
 function vueRuntimeConsumer(kind: 'inline' | 'external' | 'linked' = 'inline') {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-imported-runtime-'));
@@ -56,30 +44,6 @@ it.each(['inline', 'external', 'linked'] as const)('invalidates compiler inputs 
   expect(fs.readFileSync(frontend, 'utf8')).toContain('AFTERX');
   expect(fs.readFileSync(frontend, 'utf8')).not.toContain('BEFORE');
 });
-
-it.each([
-  { name: 'TypeScript state', create: runtimeConsumer },
-  { name: 'Vue canvas', create: vueRuntimeConsumer },
-])('automatically rebuilds an undeclared runtime imported by $name without a type or authored edit', async ({ create }) => {
-  const { pack, helper, frontend } = create();
-  let watcher: TestPackBuildWatcher | undefined;
-  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-  let publications = 0;
-  try {
-    starting = startTestPackBuildWatcher(pack, {
-      signal,
-      place: { env: 'test', userDataDir: path.join(root!, 'profile') },
-      onBuilt: async () => { publications++; },
-    });
-    watcher = await starting;
-    expect(fs.readFileSync(frontend, 'utf8')).toContain('BEFORE');
-    await watcher.rebuildAfter(() => { fs.writeFileSync(helper, "export const marker = 'AFTERX';"); });
-    await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
-    expect(errors.mock.calls).toEqual([]);
-    expect(fs.readFileSync(frontend, 'utf8')).toContain('AFTERX');
-    expect(fs.readFileSync(frontend, 'utf8')).not.toContain('BEFORE');
-  } finally { await watcher?.close(); }
-}, 120_000 + WATCH_REBUILD_BUDGET_MS + 20_000);
 
 async function consumer() {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-installed-types-'));
