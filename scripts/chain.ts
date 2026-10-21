@@ -375,7 +375,10 @@ async function main(): Promise<void> {
   // than halfway through a six-minute run
   let steps = orderedSteps(chainSteps(e2e ? ['test:e2e'] : []));
   const budget = budgetFrom(args.values.cores);
-  if (job !== undefined) only = strictJobSteps(steps, job as StrictJob, TYPECHECK_LEGS.map((leg) => leg.name));
+  if (job !== undefined) {
+    only = strictJobSteps(steps, job as StrictJob, TYPECHECK_LEGS.map((leg) => leg.name),
+      (name) => steps.some((step) => step.name === name && needsApp(step)));
+  }
   if (shard !== undefined && (only === undefined || only.some((name) => poolForStep(name) === undefined))) {
     return refuse('--shard splits a pool\'s specs, so it needs --only or --job naming pool steps and nothing else');
   }

@@ -49,9 +49,11 @@ export function selectOnly<T extends Selectable>(steps: readonly T[], names: rea
  *
  * Derived from the graph rather than listed, so a step added to the table lands in a job without an edit to
  * the workflow: `producers` is everything the two expensive pools transitively read, `integration` and
- * `native` are those pools, and `rest` is the remainder, which reads the producers' outputs as well.
+ * `native` are those pools, `app` is every step that reads the built app together with what it needs that
+ * the producers do not make (the app build itself, and the halves that prepare for an app run), and `rest` is
+ * the remainder, which reads the producers' outputs as well.
  */
-export const STRICT_JOBS = ['producers', 'integration', 'native', 'rest'] as const;
+export const STRICT_JOBS = ['producers', 'integration', 'native', 'app', 'rest'] as const;
 export type StrictJob = (typeof STRICT_JOBS)[number];
 
 export const POOL_JOBS: Readonly<Record<'integration' | 'native', string>> = {
@@ -62,22 +64,32 @@ export const POOL_JOBS: Readonly<Record<'integration' | 'native', string>> = {
 /**
  * `typecheckLegs` joins the producers because `dep-files.integration.spec.ts` reads the build infos those legs
  * write, and no step declares them as outputs, so the graph alone cannot place them before the pool.
+ * `readsApp` is `needsApp` (`chain-steps.ts`), passed in so this module stays a function of the graph.
  */
-export function strictJobSteps(steps: readonly Selectable[], job: StrictJob, typecheckLegs: readonly string[]): string[] {
+export function strictJobSteps(steps: readonly Selectable[], job: StrictJob, typecheckLegs: readonly string[],
+  readsApp: (step: string) => boolean): string[] {
   const byName = new Map(steps.map((step) => [step.name, step]));
-  const legs = typecheckLegs.filter((name) => byName.has(name));
-  const producers = new Set<string>(legs);
-  const visit = (name: string): void => {
-    for (const need of byName.get(name)?.dependsOn ?? []) {
-      if (producers.has(need)) continue;
-      producers.add(need);
-      visit(need);
-    }
+  const closure = (roots: readonly string[], stop: ReadonlySet<string> = new Set()): Set<string> => {
+    const found = new Set<string>();
+    const visit = (name: string): void => {
+      if (found.has(name) || stop.has(name)) return;
+      found.add(name);
+      for (const need of byName.get(name)?.dependsOn ?? []) visit(need);
+    };
+    for (const root of roots) visit(root);
+    return found;
   };
-  for (const leg of legs) visit(leg);
-  for (const pool of Object.values(POOL_JOBS)) visit(pool);
+  const legs = typecheckLegs.filter((name) => byName.has(name));
   const pools = new Set(Object.values(POOL_JOBS));
-  if (job === 'producers') return steps.map((step) => step.name).filter((name) => producers.has(name));
-  if (job === 'integration' || job === 'native') return [POOL_JOBS[job]];
-  return steps.map((step) => step.name).filter((name) => !producers.has(name) && !pools.has(name));
+  // A pool's own name is a root rather than a member: the producers are what the pools read
+  const producers = closure([...legs, ...[...pools].flatMap((pool) => byName.get(pool)?.dependsOn ?? [])]);
+  const app = closure(steps.map((step) => step.name).filter(readsApp), producers);
+  const members: Record<StrictJob, (name: string) => boolean> = {
+    producers: (name) => producers.has(name),
+    integration: (name) => name === POOL_JOBS.integration,
+    native: (name) => name === POOL_JOBS.native,
+    app: (name) => app.has(name),
+    rest: (name) => !producers.has(name) && !pools.has(name) && !app.has(name),
+  };
+  return steps.map((step) => step.name).filter(members[job]);
 }
