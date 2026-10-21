@@ -9,7 +9,7 @@ props {
   editorClass?: string | undefined;
   entityId?: string | undefined;
   inHistoryMode?: boolean | undefined;
-  mode: TiptapMode;
+  mode: import("components/tiptap/extensions").TiptapMode;
   modelValue?: string | undefined;
   onClearInput?: (() => any) | undefined;
   onFocusTitle?: (() => any) | undefined;

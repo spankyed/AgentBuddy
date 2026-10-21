@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onBeforeUnmount } from 'vue'
+import { ref, nextTick, watch } from 'vue'
 import { ChevronUp, ChevronDown, X } from 'lucide-vue-next'
 import type { Editor } from '@tiptap/core'
 import { searchPluginKey } from './extensions/search-plugin.ts'
@@ -141,10 +141,15 @@ function onTransaction({ transaction }: { transaction: import('@tiptap/pm/state'
   }
 }
 
-props.editor.on('transaction', onTransaction)
-onBeforeUnmount(() => {
-  props.editor.off('transaction', onTransaction)
-})
+// Followed rather than attached once, because the editor is replaced when a pack's tiptap extensions arrive
+// or leave (`TiptapEditor.vue`). A listener attached at setup would stay on the destroyed editor, whose
+// `destroy()` has already dropped every listener — so Ctrl+F inside the editor would stop opening this bar,
+// with nothing to say so. The `v-if="editorRef?.editor"` at the call site does not catch it: the replacement
+// is in place before the parent re-renders, so the guard never sees the gap.
+watch(() => props.editor, (editor, _previous, onCleanup) => {
+  editor.on('transaction', onTransaction)
+  onCleanup(() => editor.off('transaction', onTransaction))
+}, { immediate: true })
 
 defineExpose({ open })
 </script>

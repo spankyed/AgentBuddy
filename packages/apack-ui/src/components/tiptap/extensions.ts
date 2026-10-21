@@ -120,6 +120,10 @@ export function createExtensions({ mode, variant = 'full', placeholder, injected
     }),
     CustomCode.configure({ HTMLAttributes: { spellcheck: 'false' } }),
     EmptyLinePreserver,
+    // Packs' extensions: after every core one, before every mode-conditional one below. Tiptap sorts by each
+    // extension's own `priority` and keeps array order for a tie, so this position is what decides a pack's
+    // extension against a core extension that declares none — moving it changes whose `handleKeyDown` wins.
+    // `docs/public-facing/extensions.md` states it to pack authors, who set `priority` rather than rely on it.
     ...injectedExtensions,
   ]
 

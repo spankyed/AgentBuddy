@@ -519,13 +519,21 @@ The block answers with a `ButtonGroupResponse` — `{ buttonId, state }`. Respon
 
 ### Tiptap plugins
 
-`fe.tiptapPlugins` in the manifest names a module exporting `tiptapPlugins: TiptapPlugin[]` (`@apackdev/sdk/fe`). Every `TiptapEditor` created afterwards uses them:
+`fe.tiptapPlugins` in the manifest names a module exporting `tiptapPlugins: TiptapPlugin[]` (`@apackdev/sdk/fe`). Every `TiptapEditor` uses them, including any already on screen when your pack's frontend loads: a ProseMirror schema is fixed when the editor is created, so the app rebuilds each editor rather than trying to add to it. A rebuild keeps the document and drops the selection and the undo history.
 
 | Field | Description |
 |---|---|
 | `extensions?` | Tiptap extensions added to the editor |
 | `popups?` | Components rendered with the editor (suggestion popups) |
 | `isSuggestionActive?(state)` | Return `true` while a popup is open, so Escape goes to the popup |
+
+**Where your extension sits.** Contributed extensions are added after the app's own and before the ones it adds per editor mode, and packs' are in the order their frontends registered. Tiptap resolves the rest by each extension's own `priority` (its default is 100, and higher goes first), which is what decides whose `handleKeyDown` wins — so declare one on your extension rather than relying on that position:
+
+```ts
+import { Extension } from '@tiptap/core'
+
+export const tiptapPlugins = [{ extensions: [Extension.create({ name: 'my-keys', priority: 200, /* … */ })] }]
+```
 
 ### App extensions
 

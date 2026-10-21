@@ -63,6 +63,7 @@ export interface FePackRegistryView extends PackExtensionsView {
     appExtension(slot: string): Component | undefined;
     defaultPlugin(): Plugin_2 | undefined;
     dslTypes(): ReadonlyMap<string, DslTypeConfig>;
+    onRegisteredPacksChanged(listener: () => void): () => void;
     plugins(): Plugin_2[];
     references(): PackReferences;
     // (undocumented)

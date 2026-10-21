@@ -2,7 +2,7 @@
 // lookup sees the pack once it registers and loses it when it unregisters.
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Plugin, PluginDefinition, PackFERegistration, TiptapPlugin } from '@apackdev/sdk/fe';
-import { getDslTypes, tiptapPluginRegistry } from '@apackdev/sdk/fe';
+import { getDslTypes, onRegisteredPacksChanged, tiptapPluginRegistry } from '@apackdev/sdk/fe';
 import { referenceRegistry, type PackReferences, type ReferenceTypeConfig } from '@apackdev/sdk/fe/references';
 import { bindFeHost } from '@apackdev/sdk/runtime';
 import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
@@ -209,5 +209,95 @@ describe('reference types, which have two identities', () => {
     expect(referenceRegistry.type('memo')).toBeUndefined();
     expect(referenceRegistry.type('card')).toBeDefined();
     expect(referenceRegistry.protocols()).toEqual(['card']);
+  });
+});
+
+/**
+ * Every lookup above is a pull, and every pack's frontend — the app's own included — loads after the window is
+ * up. So a consumer that answers at setup holds that answer for as long as it lives, and this is how it learns
+ * to ask again: the editor rebuilds on it, and the welcome slot re-reads on it.
+ */
+describe('learning that the registered packs changed', () => {
+  function heard() {
+    let calls = 0;
+    const stop = onRegisteredPacksChanged(() => { calls += 1; });
+    return { count: () => calls, stop };
+  }
+
+  /** Past the microtask the notification is deferred to */
+  const settle = () => Promise.resolve();
+
+  it('tells a listener when a pack registers and when it unregisters', async () => {
+    const { count, stop } = heard();
+
+    add('notebook-pack', { features: { main: { plugin: plugin('Notebook') } } });
+    await settle();
+    expect(count()).toBe(1);
+
+    remove('notebook-pack');
+    await settle();
+    expect(count()).toBe(2);
+
+    stop();
+  });
+
+  /**
+   * Not during the registration, which is the whole of why it is deferred: the shell spawns a pack's plugin
+   * actors after `registerPackFE` hands back its plugins, so a listener that redraws from inside it mounts a
+   * component whose `usePluginState` finds its own plugin registered and not running — which that helper
+   * throws over rather than renders.
+   */
+  it('does not tell a listener from inside the registration itself', async () => {
+    const { count, stop } = heard();
+
+    add('notebook-pack', { features: { main: { plugin: plugin('Notebook') } } });
+    expect(count()).toBe(0);
+
+    await settle();
+    expect(count()).toBe(1);
+
+    stop();
+  });
+
+  // What the pack loader does: it registers each pack in turn, and a listener redraws, so one notification
+  // for a run of them is the difference between one rebuild of an editor and one per pack.
+  it('tells a listener once for several packs registered in a row', async () => {
+    const { count, stop } = heard();
+
+    add('first-pack', { features: { main: { plugin: plugin('First') } } });
+    add('second-pack', { features: { main: { plugin: plugin('Second') } } });
+    add('third-pack', { features: { main: { plugin: plugin('Third') } } });
+    await settle();
+
+    expect(count()).toBe(1);
+
+    stop();
+  });
+
+  /**
+   * The reason the signal is the registry's and not the shell's. The shell publishes its plugin list, which a
+   * consumer could have watched instead — but a pack contributing only an editor extension registers no
+   * plugin, so that list never moves and the editor would never hear of the extension it just gained.
+   */
+  it('tells a listener about a pack that registers no plugin at all', async () => {
+    const { count, stop } = heard();
+
+    add('editor-only-pack', { tiptapPlugins: [{ extensions: [] }] });
+    await settle();
+
+    expect(count()).toBe(1);
+    expect(plugins()).toEqual([]);
+
+    stop();
+  });
+
+  it('stops telling a listener that unsubscribed', async () => {
+    const { count, stop } = heard();
+
+    stop();
+    add('notebook-pack', { features: { main: { plugin: plugin('Notebook') } } });
+    await settle();
+
+    expect(count()).toBe(0);
   });
 });

@@ -62,6 +62,7 @@ function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView)
     appExtension: (slot) => frontend.appExtension(slot),
     dslTypes: () => frontend.dslTypes(),
     references: () => frontend.references(),
+    onRegisteredPacksChanged: (listener) => frontend.onRegisteredPacksChanged(listener),
     designation: (role) => backend.designation(role) ?? frontend.designation(role),
     step: (type) => backend.step(type) ?? frontend.step(type),
     steps: () => byType(backend.steps(), frontend.steps()),

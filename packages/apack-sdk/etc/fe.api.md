@@ -507,6 +507,9 @@ export interface NavHistory<T> {
 export function onMenuOpenChange(open: boolean): void;
 
 // @public
+export function onRegisteredPacksChanged(listener: () => void): () => void;
+
+// @public
 export function openHelp(target?: HelpTarget): void;
 
 // @public

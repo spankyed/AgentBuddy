@@ -6,10 +6,10 @@
 
 import { ComponentOptionsMixin } from 'vue';
 import { ComponentProvideOptions } from 'vue';
+import { ComputedRef } from 'vue';
 import { DefineComponent } from 'vue';
 import { Editor } from '@tiptap/vue-3';
 import { PublicProps } from 'vue';
-import { ShallowRef } from 'vue';
 
 // @public (undocumented)
 const _default: typeof __VLS_export;

@@ -29,6 +29,46 @@ export interface FePackRegistry extends FePackRegistryView {
 }
 
 /**
+ * Who to tell when the registered pack frontends change, and the one call that tells them.
+ *
+ * One signal for the whole registry rather than one per contribution kind: every kind has the same cause, a
+ * pack's frontend arriving or leaving, so per-kind signals would be several things nothing checks agree.
+ * There is no revision number beside it, because every reader answers by asking the registry again.
+ */
+function createChangeListeners() {
+  const listeners = new Set<() => void>();
+  let scheduled = false;
+  return {
+    add(listener: () => void): () => void {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    /**
+     * Told after this turn, never during the registration.
+     *
+     * A listener redraws, and the shell spawns the pack's plugin actors *after* `registerPackFE` has handed
+     * back its plugins — so a component mounted from inside it reads a plugin that is registered and not yet
+     * running, which a pack's own `usePluginState` throws over rather than renders. The app shows that as
+     * "No plugin is running at <ref>, which is this pack's own".
+     *
+     * Deferring also collapses a run of registrations into one notification, which is what the pack loader
+     * does: it registers each pack in turn, and every listener would otherwise redraw once per pack.
+     */
+    notify(): void {
+      if (scheduled) return;
+      scheduled = true;
+      queueMicrotask(() => {
+        scheduled = false;
+        // The copy is the point: a listener added while these run belongs to the next notification, not this
+        // one, and one that unsubscribes must not shorten the set being walked.
+        // eslint-disable-next-line no-useless-spread
+        for (const listener of [...listeners]) listener();
+      });
+    },
+  };
+}
+
+/**
  * A registration addressed once: each plugin at its feature's ref, with its default claim, and each role at the ref of
  * the feature that plays it, that feature's plugin or not
  */
@@ -151,6 +191,7 @@ export function createFePackRegistry(): FePackRegistry {
   const appExtensions = createAppExtensionSlots();
   const dslTypes = createOwnedStore<DslTypeConfig>();
   const references = createReferenceStore();
+  const changes = createChangeListeners();
 
   /** What a pack's frontend contributes, each kind recording how to take it back out (as the backend registry does) */
   const contributions: ReadonlyArray<Contribution<AddressedRegistration>> = [
@@ -208,6 +249,8 @@ export function createFePackRegistry(): FePackRegistry {
     const undos = addContributions(reg, contributions);
     const plugins = reg.addressed.map(({ plugin }) => plugin);
     packExtensions.set(packId, { plugins, undo: undos.undoAll });
+    // After the registration is in, so a listener that reads the registry sees this pack's contributions
+    changes.notify();
     return plugins;
   }
 
@@ -217,6 +260,7 @@ export function createFePackRegistry(): FePackRegistry {
 
     contrib.undo();
     packExtensions.delete(packId);
+    changes.notify();
     return contrib.plugins;
   }
 
@@ -243,5 +287,6 @@ export function createFePackRegistry(): FePackRegistry {
     appExtension: appExtensions.get,
     dslTypes: () => dslTypes.entries(),
     references: references.all,
+    onRegisteredPacksChanged: changes.add,
   };
 }

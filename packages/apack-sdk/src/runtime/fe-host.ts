@@ -32,6 +32,14 @@ export interface FePackRegistryView extends PackExtensionsView {
   dslTypes(): ReadonlyMap<string, DslTypeConfig>;
   /** Every pack's reference types, categories and item providers, folded into one */
   references(): PackReferences;
+  /**
+   * Calls `listener` whenever a pack's frontend is registered or unregistered, and hands back the unsubscribe.
+   *
+   * Every lookup above is a pull, so a consumer that reads one at setup holds that answer for as long as it
+   * lives — and every pack's frontend, the app's own included, loads after the window is up. This is how such a
+   * consumer learns to ask again. It says only that something changed: what changed is read from the lookups.
+   */
+  onRegisteredPacksChanged(listener: () => void): () => void;
 }
 
 /** The running app, as the SDK reaches it in the renderer */

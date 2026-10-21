@@ -20,6 +20,8 @@ const noFrontends: FePackRegistryView = {
   appExtension: () => undefined,
   dslTypes: () => new Map(),
   references: () => ({ types: {}, categories: [], itemsProviders: [] }),
+  // Nothing registers against this stand-in, so nothing can change: the unsubscribe is all a caller needs back
+  onRegisteredPacksChanged: () => () => {},
 };
 
 /**
