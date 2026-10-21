@@ -1,6 +1,3 @@
-> **Deferred.** Retained for future prioritization; this document does not schedule or authorize
-> implementation.
-
 # Goal: rename the frontend plugin to a surface
 
 ```text
@@ -38,7 +35,8 @@ Surveyed 2026-10-21 at `507b3b747`.
 
 ## Current handoff
 
-Not started. Phase 1 is the next deliverable and depends on nothing.
+**Active, unstarted.** On `master`; nothing implemented. Phase 1 is the next deliverable and depends
+on nothing.
 
 ## What this touches
 
