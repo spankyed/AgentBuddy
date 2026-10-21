@@ -68,6 +68,8 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
     "Test scaffolding and the pack's nested Vitest process each retain a 60s operation bound; compose those with 20s verification/cleanup.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > refuses to build, pack or generate entries for a manifest the installer would reject":
     "Three distinct CLI refusals each retain a 60s operation bound; compose them with 20s verification/cleanup rather than timing their sum as one operation.",
+  "packages/apack-cli/tests/build/tool-identity.integration.spec.ts > refuses skipped generation after a packaged helper chunk changes at the same CLI version":
+    "Two generations, a refused build and a regeneration from a copied packaged CLI are sequential, each a cold CLI start with its own 60s bound; compose them with 20s verification/cleanup. Strict run 39585955406 measured the four at 62.6s together, past the half's 60s.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > regenerates entries when a source file codegen reads changes, not only the manifest":
     "Two separate CLI generation commands prove invalidation and subsequent unchanged reuse.",
   "packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts > publishes and reuses editor definitions without globals or frontend activation, readable from an installed copy without source":
