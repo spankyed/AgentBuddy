@@ -49,10 +49,10 @@ import { timeoutMsFor, timedOutBecause, type TimeoutClass } from './lib/step-tim
 import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine } from './lib/core-budget.ts';
 import { asCount, idleNow, parseFlags } from './lib/measure.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { driftedSteps, measurementsFrom, outgrownRungs, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { driftedSteps, measurementsFrom, willNotCache } from './lib/step-timing.ts';
+import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
-import { CHAIN_RUN_ENV, CHAIN_CORES_ENV, DIAGNOSTIC_RUN_ENV, poolWorkerLimit, measureCommandFor, poolForStep, poolDurationLines } from './lib/unit-pool.ts';
+import { CHAIN_RUN_ENV, CHAIN_CORES_ENV, DIAGNOSTIC_RUN_ENV, poolWorkerLimit, poolForStep, poolDurationLines } from './lib/unit-pool.ts';
 import { parseShard, selectOnly, shardArg, STRICT_JOBS, strictJobSteps, type Shard, type StrictJob } from './lib/chain-only.ts';
 import { TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -713,24 +713,6 @@ async function main(): Promise<void> {
   const report = driftReport(driftedSteps(steps, measuredMs, outcome.peers), budget, MEASURED_ON, all,
     thisMachine(), { idle: idleAtStart, comparable });
   if (report !== '') console.log(report);
-
-  // **The bound asked of the measurement.** `declaredShare` gates on what a step declares, and the band above
-  // watches declarations at half-to-double — looser than the bound's own margin for four steps, so a step can
-  // outgrow its rung and pass. A run is the one place both numbers exist, which is `criticalPath`'s reason for
-  // reading measured seconds too.
-  //
-  // The schedule goes in because the answer depends on it, not to decide what to print: `declaredShare`
-  // projects onto a machine `stretches` times slower, so a reading from a slower box counts the slowdown
-  // twice and every number it produces is about a machine nothing sized a rung for. `outgrownRungs` has the
-  // measurement. That is the difference from `driftReport` above, which prints its rows anywhere because a
-  // cost is true wherever it was taken, and gates only the sentence telling a reader to record it.
-  // The command comes from how the step is run rather than from its name, because the three pool steps cache
-  // inside themselves and so cannot be measured by their npm script (`measureCommandFor`)
-  // `all` goes in so the report can say the reading is an upper bound rather than a comparison; it is the
-  // one comparability condition this reader skips, and `outgrownRungs` has why
-  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON, thisMachine(), all, outcome.peers)
-    .map((row) => ({ ...row, measureWith: measureCommandFor(row.name, budget) })));
-  if (outgrown !== '') console.log(outgrown);
 
   console.log(`\n${verdictText()} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
   // After the verdict, so it is the last thing on screen and a reader who scrolled past everything else

@@ -214,27 +214,6 @@ export const scheduleMismatch = (
 };
 
 /**
- * How much slower a smaller machine is, for anything that has to reason about one.
- *
- * **Measured, and about one kind of work.** A vitest pool dropping from nine workers to about two on a hosted
- * runner is three to four times slower (`docs/archive/plans/costs-across-machines.md`). That is a *pool*
- * losing workers and nothing else: serial work stretches less and a single compiler less again, neither has
- * been measured, so four is the worst case rather than the typical one.
- *
- * **Which means it describes one rung of the timeout ladder.** `TIMEOUT_MS`' `suite` cites this as its own
- * factor; the other two borrow it and say so, so that an assumption stays visible as one. Until 2026-10-03
- * there was no per-rung factor and this one number was answering three questions, with nothing at any call
- * site saying which it had been measured for — so a figure about pools was bounding eighteen single
- * compilers while reading as a property of machines.
- *
- * **Here rather than beside the ladder it sizes**, because it is a fact about machines and this module is
- * where those live. Filed under timeouts it was unfindable from the other question that needs it: `spec-cost`
- * reasons about a box three times slower in its own prose, and nothing tied the two figures together.
- */
-export const SLOWER_MACHINE = 4;
-
-
-/**
  * The machine the chain's `seconds` (`chain-steps.ts`) were measured on, and the budget they were
  * measured under.
  *

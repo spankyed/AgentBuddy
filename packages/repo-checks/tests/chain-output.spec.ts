@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, classifyLine, criticalPathLine, pathSavingsLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, classifyLine, criticalPathLine, pathSavingsLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -627,132 +627,6 @@ describe('shouldClassify', () => {
     expect(shouldClassify({ ...under, optedOut: true })).toBe(false);
   });
 });
-
-/**
- * What a run says when a step's *measured* cost has outgrown the rung it declares.
- *
- * The bound (`declaredShare`) reads the declaration, and the band watching declarations is half-to-double — so
- * a step can pass the bound while its real cost has outgrown it. `outgrownRungs` finds those; this words them.
- *
- * **It is a report, so what it must not do is read like a failure**, and what it must do is hand the reader
- * something proportionate to the question. The thing that would make it a false alarm is a crowded run, and
- * the instrument that settles that is the step's own command under `measure`, which refuses a busy box — so
- * that is what it leads with. It led with `chain --all --cores 1` instead until 2026-10-07, which spent all
- * thirty steps to answer about one and still produced a single ungated observation; both times it fired,
- * the step turned out not to have grown.
- */
-describe('outgrownReport', () => {
-  const found = [{
-    name: 'test:integration', declared: 60, measured: 80, at: 80 * 4 / 300,
-    measureWith: 'npx vitest run --config vitest.integration.config.ts', wholeTable: true, peers: 0,
-  }];
-
-  /**
-   * How contended the reading was, which is the one thing the two numbers cannot say.
-   *
-   * `seconds` is the cost under the chain's own admission, so a reading taken beside peers is the right
-   * quantity — what a reader cannot tell from `60s -> 101s` is which admission produced it.
-   * `test:integration` read 77s, 88s, 96s and 101s across four runs of an unchanged step, and the spread is
-   * this number. A spread nothing explains is how a true row comes to be ignored, which is what happened.
-   */
-  it('says how many peers the reading was taken beside', () => {
-    const contended = found.map((row) => ({ ...row, peers: 9 }));
-
-    expect(outgrownReport(contended)).toContain('(9 peers)');
-  });
-
-  // Said rather than left blank: "alone" is the reading a budget can be compared against, so it is the
-  // case worth naming, and an empty suffix would read as a report that forgot to say
-  it('says a step had the box to itself, rather than saying nothing', () => {
-    expect(outgrownReport(found)).toContain('(alone)');
-  });
-
-  it('says nothing when no step outgrew its rung', () => {
-    expect(outgrownReport([])).toBe('');
-  });
-
-  it('names both numbers, the share and the rung it is a share of', () => {
-    const said = outgrownReport(found);
-
-    expect(said, 'what it cost').toContain('80s');
-    expect(said, 'against what it declares').toContain('60s');
-    expect(said, 'and where that lands').toContain('107%');
-  });
-
-  /**
-   * The cheap check first, because it is the one a reader can act on at once and the one that ends the
-   * question most often. It carries the step's *own* command, so the advice measures the thing reported
-   * rather than the chain around it.
-   */
-  it("leads with measure over the step's own command", () => {
-    const said = outgrownReport(found);
-
-    expect(said).toContain('npm run measure -- "npx vitest run --config vitest.integration.config.ts"');
-    expect(said.indexOf('npm run measure'), 'before the serial chain, not after it')
-      .toBeLessThan(said.indexOf('--all --cores 1'));
-  });
-
-  // One command per step, or a reader with two reported steps measures whichever the report happened to name
-  it('names a command for each step it reports', () => {
-    const said = outgrownReport([
-      ...found,
-      {
-        name: 'build:runtime', declared: 39, measured: 90, at: 90 * 4 / 300,
-        measureWith: 'npm run build:runtime', wholeTable: true, peers: 0,
-      },
-    ]);
-
-    expect(said).toContain('npm run measure -- "npx vitest run --config vitest.integration.config.ts"');
-    expect(said).toContain('npm run measure -- "npm run build:runtime"');
-  });
-
-  it('still names the serial run, for the question measure cannot answer', () => {
-    // Whether the *schedule* changed is a different question from whether the step did, and the serial chain
-    // is the only thing that answers it — so it stays, below the cheap check rather than instead of it
-    expect(outgrownReport(found)).toContain('--all --cores 1');
-  });
-
-  it('asks for --all with it, since a step it reported has passed and is stamped', () => {
-    // A plain `--cores 1` re-run finds the step cached and measures nothing, which is advice that cannot be
-    // taken — `driftReport`'s doc draws the same distinction from the other side. Asserted as the bad
-    // spelling rather than as "no bare --cores", which the good spelling contains
-    expect(outgrownReport(found)).not.toContain('chain -- --cores 1');
-  });
-
-  it('asks for the declaration rather than the rung, since the declaration moves first', () => {
-    // The pipeline: report, then edit `seconds`, then `chain-graph` fails on the new declaration, then the
-    // step moves. Telling a reader to move the rung first skips the step that proves it needs moving
-    expect(outgrownReport(found)).toContain('edit the cost it declares');
-  });
-
-  /**
-   * **The one comparability condition this report skips, said rather than left out.** The table is
-   * written only under `--all`, so a partial run's reading is an upper bound and not a comparison — worth
-   * printing with that caveat, which is the difference between a report and a finding.
-   */
-  it('says a partial run is an upper bound, and says nothing of the sort for --all', () => {
-    const partial = outgrownReport(found.map((row) => ({ ...row, wholeTable: false })));
-
-    expect(partial).toContain('upper bound');
-    expect(partial, 'and what that buys the reader').toContain('cannot convict');
-    expect(outgrownReport(found), 'an --all run is the schedule the table describes')
-      .not.toContain('upper bound');
-  });
-
-  // Once for the run, not once per row: every row of one run shares the condition
-  it('says it once however many steps it names', () => {
-    const said = outgrownReport([
-      ...found.map((row) => ({ ...row, wholeTable: false })),
-      {
-        name: 'build:runtime', declared: 39, measured: 90, at: 90 * 4 / 300,
-        measureWith: 'npm run build:runtime', wholeTable: false, peers: 0,
-      },
-    ]);
-
-    expect(said.split('upper bound').length - 1).toBe(1);
-  });
-});
-
 describe('classifyLine', () => {
   /**
    * The dangerous output. A reader skimming a failing run must not take this for the chain being fine, so the

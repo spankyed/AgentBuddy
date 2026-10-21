@@ -16,7 +16,7 @@ import { reachableText, rootScripts, withoutComments } from '../../../scripts/li
 import { population } from '@apackdev/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
-import { declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
+import { rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
 import { DEFAULT_FORK_BUDGET_MS } from '../../../tests/scripts/prepare-default-pack-fork.ts';
 import { timeoutMsFor } from '../../../scripts/lib/step-timeouts.ts';
 import e2eConfig from '../../../playwright.config.ts';
@@ -329,48 +329,6 @@ describe('every spawn an orchestrator makes is bounded', () => {
   });
 
   /**
-   * And no step has outgrown the rung it declares.
-   *
-   * **A bound, not a fit, and the difference is the whole reason this is allowed to exist.** The case above
-   * about `budgetFor(` refuses *deriving* a class from a cost, and its comment names "the edit to watch" as
-   * the one that gives a step its class by comparing `seconds` — that is still refused, and this is not it.
-   * `goal-measured-placement.md` says it from the other side, quoted in `suite-split.spec.ts`: *a bound is
-   * not a fit; deriving one from the measurement it bounds is how a timeout stops catching anything.* A
-   * deadline here is still chosen by kind; this only notices when a step's cost has grown until its chosen
-   * rung no longer has room, which is a question nothing else in the repo asks.
-   *
-   * **The fraction is derived, not picked, and since 2026-10-03 it is derived per rung.** A rung declares how
-   * much its kind of work stretches on a smaller box, so a step at a fraction `f` of its class here sits at
-   * `f × stretches` there; `declaredShare` is that product and 1 is exactly on the deadline. One global
-   * fraction cannot describe both a pool losing workers and a single compiler losing CPU share.
-   * `ASSUMED_RUNGS` makes borrowed factors explicit rather than treating them as measurements.
-   *
-   * **It is a creep detector and it found nothing the day it was written, which is worth being honest
-   * about.** A rung's own factor still permits a step to reach its deadline *exactly* on the machine that
-   * rung is sized for, so this is the loosest useful bound rather than a comfortable one. It cannot be
-   * tightened on assumed rows without first measuring them, and a margin on top of today's figures
-   * fails five steps, most of them single compilers the pool measurement does not describe.
-   *
-   * So the two steps that were genuinely tight — `packages:ensure` at 93% of its deadline four times slower,
-   * `build:default-setup` at 87% — were found by reading the table, not by this, and moved because they are *bundles*
-   * (`suite` is the rung that says "a test suite or a bundle") rather than the single compilers `quick`
-   * describes. What this catches is the next one, as a declared cost grows.
-   *
-   * No exception list. At these factors nothing needs one, and the day something does, the answer is to move
-   * the step or add a rung — not to write down that one step is allowed to be tight.
-   */
-  it('leaves every step room inside the class it declares, on the smaller machine that rung is sized for', () => {
-    const tight = CHAIN_STEPS
-      .map((step) => ({ step, at: declaredShare(step.seconds ?? 0, step.timeout, step.stretches) }))
-      .filter(({ at }) => at > 1)
-      .map(({ step, at }) => `${step.name} declares ${step.seconds}s, which is `
-        + `${Math.round(at * 100)}% of ${step.timeout} (${TIMEOUT_MS[step.timeout].ms / 1000}s) on a machine `
-        + `${TIMEOUT_MS[step.timeout].stretches} times slower`);
-    expect(tight, 'move these to a longer class — a step past 100% of its rung on the machine that rung is'
-      + ' sized for is one whose deadline is no longer a ceiling there').toEqual([]);
-  });
-
-  /**
    * And the rung a step declares is the one its *kind of work* puts it on.
    *
    * **The case above bounds; this one classifies, and nothing asked this until 2026-10-05.** Every other
@@ -482,48 +440,6 @@ describe('every spawn an orchestrator makes is bounded', () => {
     });
   });
 
-  /**
-   * And the same bound asked of a measurement lives in the chain, not here.
-   *
-   * This case can only ever see the declaration — a spec has no run to read. So a step whose *recorded* cost
-   * has gone stale passes here while its real cost has outgrown the rung, and the band watching that record
-   * (`driftedSteps`) is looser than this bound's own margin: `test:integration` could reach twice its declared
-   * 60s, which is 1.60 of its rung, before anything said a word. `outgrownRungs` is the other half, asked of
-   * what a run measured, and it is a report rather than a gate because a crowded measurement is noisy where a
-   * declaration is not.
-   *
-   * Cross-referenced rather than duplicated: a reader who finds one needs to know the other exists, and the
-   * two cannot be one check because neither has the other's input.
-   */
-
-  it('names the measured counterpart of this bound, which only a run can ask', () => {
-    const timing = read('scripts/lib/step-timing.ts');
-    expect(timing, 'the measured half of the bound').toContain('export function outgrownRungs');
-    expect(timing, 'weighed by the same rule, so the two cannot disagree about what "over" means')
-      .toContain('declaredShare(');
-    expect(read('scripts/chain.ts'), 'and a run reports it').toContain('outgrownRungs(');
-  });
-
-  /**
-   * Which rungs' factors are measured, and that every one of them says which it is.
-   *
-   * **Exactly one of `measured` and `until`**, because the pair is an either/or written as two fields: a
-   * measured rung still carrying a condition is a stale one, and an assumed rung without a condition is a
-   * guess nobody wrote the terms of. Both were the state of the whole ladder until 2026-10-03, when one
-   * global `SLOWER_MACHINE` stood for three rungs and nothing at any call site said which of the three it had
-   * been measured for.
-   *
-   * What it catches is a row with neither answer or both. It does not assert that any rung is still a
-   * borrow — that claim belongs to the cases that index the population, and `assumedRungs` makes it there.
-   */
-  it('says of every rung whether its stretch factor was measured, and what would settle it if not', () => {
-    for (const className of population('the ladder', TIMEOUT_CLASSES)) {
-      const { measured, until } = TIMEOUT_MS[className];
-      expect([measured, until].filter((what) => what !== undefined), `${className} must record either what `
-        + 'measured its stretch factor or what would, and never both').toHaveLength(1);
-    }
-  });
-
   describe('what a timed-out step reports', () => {
     const HERE = thisMachine();
     const SMALLER = { cpu: 'Some Smaller CPU', cores: 4 };
@@ -548,19 +464,10 @@ describe('every spawn an orchestrator makes is bounded', () => {
   });
 
   /**
-   * Which rungs a *direct* run can reach, which is the second path into the ladder and the one a claim about
-   * reachability keeps forgetting.
-   *
-   * `scripts/bounded.ts` takes a class on its command line, and four npm scripts invoke it — so a rung is
-   * reachable without `npm run chain` and without any chain step at all. A rung's `until` said the opposite
-   * about `scenario` ("reached only through `npm run chain`, which CI does not run") while CI's
-   * `external-pack-e2e` job bounds two steps at it through exactly this path.
-   *
-   * **An inventory, not a gate**, in `subprocess-inventory`'s sense: it fails on a *change* rather than on a
-   * hit, because the useful moment is when the set moves and the prose describing it has to be revisited. The
-   * two halves either side of that are ordinary gates — every class named here is on the ladder, which
-   * `timeoutMsFor` otherwise only refuses at runtime, and the set is not empty, since a regex that matched
-   * nothing would pass all three.
+   * `scripts/bounded.ts` takes a class on its command line, so a rung is reachable from a direct npm run
+   * without any chain step at all. Every class those scripts name must be on the ladder, which `timeoutMsFor`
+   * otherwise only refuses at runtime — and the set must not be empty, since a regex that matched nothing
+   * would pass.
    */
   it('reaches a rung from a direct npm run too, and the ladder knows every class those name', () => {
     const bounded = boundedIn((JSON.parse(read('package.json')) as Scripts).scripts);
@@ -570,14 +477,10 @@ describe('every spawn an orchestrator makes is bounded', () => {
       expect(TIMEOUT_CLASSES, `${name} bounds at ${className}, which is no rung on the ladder`)
         .toContain(className);
     }
-    expect([...new Set(bounded.map(({ className }) => className))].sort(),
-      'the rungs a direct run reaches have changed — re-read every `until` that describes how a rung is '
-      + 'exercised before updating this').toEqual(['scenario', 'suite']);
   });
 
   // The mutation, over data rather than the real manifest: a regex that matched nothing would satisfy every
-  // assertion above, which is what the emptiness guard alone cannot tell you. Both halves that can fail are
-  // exercised here — a class the ladder has not got, and a rung the recorded set does not name
+  // assertion above, which is what the emptiness guard alone cannot tell you
   it('finds a class a script bounds at, which is what the case above rests on', () => {
     expect(boundedIn({ 'x': 'npm run packages:ensure && tsx scripts/bounded.ts quick bash tests/scripts/x.sh' }))
       .toEqual([{ name: 'x', className: 'quick' }]);

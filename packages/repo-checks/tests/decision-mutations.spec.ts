@@ -206,10 +206,9 @@ const MUTATIONS: readonly Mutation[] = [
     },
   },
   /**
-   * `step-timeouts.ts` has no spec of its own. `chain-graph` reaches three of its exports directly — the
-   * bound through `declaredShare`, each rung's provenance, and what a kill reports through `timedOutBecause`
-   * — but nothing there pins a rung's *deadline*, so changing `quick` to six seconds still leaves every case
-   * in the repo green. These four are what observes the rest.
+   * `step-timeouts.ts` has no spec of its own. `chain-graph` reaches what a kill reports through
+   * `timedOutBecause`, but nothing there pins a rung's *deadline*, so changing `quick` to six seconds still
+   * leaves every case in the repo green. These three are what observes the rest.
    */
   {
     // The mutation is the *permissive* answer rather than a crash, because that is the decision: "a budget is
@@ -228,23 +227,12 @@ const MUTATIONS: readonly Mutation[] = [
     // meaningful thing to give a step. `suite` dropping under `quick` breaks it.
     why: 'the ladder climbs, so a class is slower than the one below it',
     in: 'step-timeouts',
-    from: '    ms: 600_000,',
-    to: '    ms: 30_000,',
+    from: '  suite: { ms: 600_000 },',
+    to: '  suite: { ms: 30_000 },',
     call: (lib) => {
       const ms = lib.TIMEOUT_CLASSES.map((className) => lib.TIMEOUT_MS[className].ms);
       return ms.every((value, at) => at === 0 || value > ms[at - 1]!) ? 'climbs' : 'does not climb';
     },
-  },
-  {
-    // The bound's whole subject: a share that forgets to weigh the rung's factor is a bound against *this*
-    // machine, which is the coupling the ladder was built to remove. 60s declared against `suite`'s 300s is
-    // 20% here and 80% four times slower, so dropping the factor takes a passing step from 0.8 to 0.2 — and
-    // every step in the table would pass a bound that had stopped asking the question
-    why: 'declaredShare weighs a cost by its rung\'s stretch factor, not against the deadline alone',
-    in: 'step-timeouts',
-    from: '  (seconds * 1000 * (stretches ?? TIMEOUT_MS[className].stretches)) / TIMEOUT_MS[className].ms;',
-    to: '  (seconds * 1000) / TIMEOUT_MS[className].ms;',
-    call: (lib) => lib.declaredShare(60, 'suite'),
   },
   {
     why: 'timeoutText says a class in seconds, not milliseconds',
@@ -255,14 +243,8 @@ const MUTATIONS: readonly Mutation[] = [
   },
   {
     /**
-     * The half of the bound that reads the measurement. Dropping the guard makes it report a step whose
-     * *declaration* is already over, which is `chain-graph.spec.ts`' failure and not this report's — so the
-     * run would say the same thing twice, in the weaker place, and a reader would not know which to act on.
-     */
-    /**
      * Dropping the filter hands every reader a killed step's deadline as its cost — the drift report offers
-     * it as an edit, and `declaredShare` makes a wedged `suite` step four times its rung. The number is right
-     * and it is not a measurement.
+     * it as an edit. The number is right and it is not a measurement.
      */
     why: 'measurementsFrom leaves out a step whose time is the deadline it was killed at',
     in: 'step-timing',
@@ -272,43 +254,6 @@ const MUTATIONS: readonly Mutation[] = [
       { step: 'build:default-setup', ms: 13_000 },
       { step: 'test:integration', ms: 300_400, timedOut: true },
     ])],
-  },
-  {
-    why: 'outgrownRungs leaves a declaration that is already over to the spec that gates on it',
-    in: 'step-timing',
-    from: '    if (declaredShare(step.seconds, step.timeout, step.stretches) > 1) continue;',
-    to: '',
-    call: (lib) => lib.outgrownRungs(
-      [{ name: 'greedy', dependsOn: [], seconds: 20, timeout: 'quick' }],
-      new Map([['greedy', 20_000]]),
-      10,
-      { cpu: 'Apple M1 Pro', cores: 10 },
-      { cpu: 'Apple M1 Pro', cores: 10 },
-    ),
-  },
-  {
-    /**
-     * The gate that makes the number mean anything. `declaredShare` projects onto a machine `stretches`
-     * times slower, so a reading from a slower box counts the slowdown twice — measured, a green run on the
-     * 4x-slower runner puts 17 of 29 steps past rungs their declarations sit well inside. Without this the
-     * report fires hardest on the machines whose readings cannot describe the table at all.
-     */
-    why: 'outgrownRungs answers only on the schedule the table was measured on',
-    in: 'step-timing',
-    // The schedule and not the whole run: a partial run is reported with a caveat, since contention can only
-    // make a step slower and so its reading is an upper bound (`outgrownRungs`' doc, and
-    // `step-timing.spec.ts`'s partial-run cases). This entry is about the half that gates
-    from: '  if (scheduleMismatch(budget, measuredOn, machine) !== undefined) return [];',
-    to: '',
-    // 60s declared is 0.80 of `suite`; the reading is that same cost on a box four times slower, so the only
-    // thing that could report it is the double count
-    call: (lib) => lib.outgrownRungs(
-      [{ name: 'test:integration', dependsOn: [], seconds: 60, timeout: 'suite' }],
-      new Map([['test:integration', 240_000]]),
-      4,
-      { cpu: 'Apple M1 Pro', cores: 10 },
-      { cpu: 'Some Smaller CPU', cores: 4 },
-    ),
   },
   /**
    * `core-budget.ts`'s eight. What a step takes of the machine is the chain's admission weight, so a wrong

@@ -4,8 +4,6 @@
  * and separate from `scripts/chain.ts` because that module runs the chain when imported.
  */
 import type { SchedulableStep } from './chain-schedule.ts';
-import { type Machine, scheduleMismatch, thisMachine } from './core-budget.ts';
-import { declaredShare, type TimeoutClass } from './step-timeouts.ts';
 
 /**
  * The longest chain of steps by `seconds`: the floor on wall time however many lanes there are. Reported so
@@ -70,9 +68,8 @@ export const SECONDS_FLOOR = 1;
  *
  * **A killed step's time is its deadline, not its cost.** `boundedSpawn` returns when the budget runs out, so a
  * wedged `test:integration` reports ~300s — and every reader of this map takes what it holds for a measurement:
- * the drift report offers it as an edit, `declaredShare` makes 300s four times its `suite` rung, `outgrownRungs`
- * then names it as outgrown by construction, and `criticalPath` puts the deadline on the floor. Not one of them
- * is wrong about the number. The number is not a measurement.
+ * the drift report offers it as an edit and `criticalPath` puts the deadline on the floor. Neither is wrong
+ * about the number. The number is not a measurement.
  *
  * `SECONDS_FLOOR` draws this line at the other end, for the same reason: under a second is not a measurement
  * of the step's work — `packages:ensure` returns in 0.3s fresh and takes 14s when it builds. A
@@ -82,15 +79,14 @@ export const SECONDS_FLOOR = 1;
  * **A step that failed without being killed is kept.** It ran and stopped early, so its time is real and under,
  * which `driftedSteps`' lower band exists for — and a failure's own output is what a reader goes to anyway.
  *
- * One function rather than a filter at each reader: the four of them share this map, and the one that forgot
+ * One function rather than a filter at each reader: they share this map, and the one that forgot
  * would be the one writing a deadline into source.
  *
  * **Exercised against a real kill 2026-10-04, because no case can reach the composition.** `check:tiers` was
  * pointed at a hang and the chain run with `--all`: it was killed at 62.0s against its 60s `quick`
  * deadline, and the report — reached, not refused — said *"every step cost what the table says, within the
  * band — nothing recorded"*. That sentence is only possible with the step excluded: against a declared 0.3s,
- * 62s is 61.7s outside a 1s band, so it would have been written as the cost. `outgrownRungs` said nothing
- * either, where 62s is 4.13 of that rung. One run, both readers.
+ * 62s is 61.7s outside a 1s band, so it would have been written as the cost.
  *
  * The note is here because `scripts/chain.ts` cannot be imported, which is `recordTheCosts`' reason for
  * carrying the same kind of record: a command is how that composition is checked, and a dated note is the only
@@ -101,120 +97,6 @@ export const measurementsFrom = (
   results: readonly { readonly step: string; readonly ms: number; readonly timedOut?: true }[],
 ): Map<string, number> =>
   new Map(results.filter((result) => result.timedOut !== true).map((result) => [result.step, result.ms]));
-
-/**
- * Steps whose **measured** cost puts them past the rung they declare.
- *
- * **`declaredShare` is a bound on a declared number, and the band watching that number is looser than the
- * bound itself.** `driftedSteps` below speaks at twice the declared cost; the bound's own margin is smaller
- * than that for four steps, so a step can outgrow its rung in silence. Measured 2026-10-04:
- * `test:integration` declares 60s, which is 0.80 of its `suite` rung, and could reach 120s — 1.60 of the
- * rung — without a word. It read 67.3s in a chain run the same day while the table reported 0.80.
- *
- * The cause was two changes on one day: the band was loosened on the grounds that a deadline is a declared
- * class and `seconds` is "only a report", and `MAX_DECLARED_SHARE` made `seconds` a gate input. Both shipped.
- *
- * **Asked of the measurement, which is what `criticalPath` above already does and for the same reason** — its
- * floor was reported from `seconds` and was wrong by the table's drift. A run is the one place both numbers
- * exist: `chain-graph.spec.ts` can only ever see the declaration.
- *
- * **A report and not a gate.** A measurement at this threshold is noisy upward in a way the 2x band is not —
- * `driftReport` records 0 over-band events in 40 step runs, which says nothing about a 25% overrun — and
- * failing a run for it would manufacture the flake the ladder exists to prevent. What it feeds is the chain's
- * own pipeline: the report, then the edit, then `chain-graph` failing on the new declaration, then the
- * step moving rung. Only the first was missing.
- *
- * A step already over on its *declaration* is left out: that is `chain-graph`'s to fail, and a run reaching
- * this report has a table that passed it.
- *
- * **It answers nothing off the schedule the table was measured on, which is not a politeness.**
- * `declaredShare` projects a cost onto a machine `stretches` times slower, so its input has to be a cost from
- * the machine the rungs were sized against. Hand it a reading from a slower box and the slowdown is counted
- * twice: measured 2026-10-04, a green run on the 4x-slower runner `suite`'s `stretches` cites puts **17 of 29
- * steps** past their rung, and at 2x it is 5 of 29 — every one of them a step whose declared cost is inside
- * its rung with room to spare. The percentage would be its share of a machine 16x the reference, which no
- * rung is sized for and nothing measured.
- *
- * So the gate is the machine and the budget — the schedule conditions that a comparison with the table
- * refuses on — and that is what keeps this report's advice followable: it says to re-measure and record, and
- * it only speaks where recording is accepted. `driftReport` splits the two — its rows are true wherever
- * they ran, so it prints them anywhere and gates only the sentence. Neither of these two survives that
- * split, because the number itself is the projection.
- *
- * **It gates on the schedule and not on the whole run, and that is a decision.** The table
- * is written only under `--all`, so a partial run's timings are not the quantity the table holds — the
- * chain admits steps in parallel, and nine stale steps are a different schedule from thirty. The reason to
- * report anyway is an inequality: **contention can only make a step slower**, so a measurement is an upper
- * bound on the step's true cost. Read it off that:
- *
- * - `measured < threshold` proves `true < threshold` — a crowded run can **exonerate** a step.
- * - `measured > threshold` proves nothing on its own — a crowded run cannot **convict** one.
- *
- * Which means this report fires exactly where its evidence is one-sided, and no gate fixes that: silencing
- * it on partial runs would reopen the gap it exists to close, and for a narrow band that matters —
- * `test:integration` passes its rung at 75s (300s / 4) while `driftedSteps` says nothing until 120s, so
- * growth in between would surface only on the rare `--all` run. What the one-sidedness does constrain is
- * the *claim*: the row is this run's reading, the report leads with a quiet re-measurement that settles it
- * (`outgrownReport`), and a partial run says so in the row rather than being dropped or trusted.
- *
- * It was none of that until 2026-10-07, when it fired twice in one session against a step that had not
- * moved — 83s and then 100s in two crowded runs, against 47.7s median of 5 at 93% idle and 60s declared.
- *
- * **How to watch it fire, since no case can reach the composition.** Put a sleep in the npm script of a
- * step that declares a fraction of a second, long enough to pass its rung's `ms / stretches` — that keeps the
- * declared share far inside the bound while the measurement lands outside it, which is the one shape this
- * reports. Run the chain plainly, then lengthen the sleep so the step goes stale again and run it at a
- * `--cores` the table was not measured at. The first prints a row here beside `driftReport`'s; the second
- * prints `driftReport`'s alone.
- *
- * That second run is the gate, and it is what stops being true if the `blocking` line goes: the same
- * measurement that printed nothing starts naming a step, and no case below can say so. Restore the
- * script afterwards and check `git status` rather than remembering — and rebuild the published packages,
- * which a run stamps against whatever `package.json` held at the time.
- *
- * The recipe is here for `measurementsFrom`'s reason: `scripts/chain.ts` cannot be imported, so the cases
- * below and the `decision-mutations` entry cover this function, while only a command covers the line that
- * hands it a budget and a machine.
- */
-export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: TimeoutClass; readonly stretches?: number }>(
-  steps: readonly S[],
-  measuredMs: ReadonlyMap<string, number>,
-  /** The run's core budget, which with the two machines is what says this is the schedule the table describes */
-  budget: number,
-  /**
-   * The machine the table's costs were taken on (`MEASURED_ON`). Passed rather than imported, as
-   * `driftReport` takes it and for the same reason: it keeps this module testable about a machine it is not
-   * running on.
-   */
-  measuredOn: Machine,
-  /** The box this is running on; `thisMachine()` where a caller has no reason to say */
-  machine: Machine = thisMachine(),
-  /**
-   * Whether every step ran (`--all`), so the schedule is the one the table describes. Reported rather than
-   * gated on — the doc above has the inequality that makes a partial run's reading worth printing — and
-   * carried on each row so the report can say which kind of run produced it.
-   */
-  wholeTable = true,
-  /** Which steps ran beside each one, for the row to report — see `driftedSteps` */
-  peers: ReadonlyMap<string, ReadonlySet<string>> = new Map(),
-): Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean; peers: number }> {
-  // The schedule only, and a partial run is reported rather than refused: contention can make a step look
-  // slower and never faster, so a partial reading is an upper bound that can exonerate a step and cannot
-  // convict one — which is worth printing with the caveat each row carries. Another machine or another
-  // budget makes the number meaningless instead, and that is what this refuses on.
-  if (scheduleMismatch(budget, measuredOn, machine) !== undefined) return [];
-  const found: Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean; peers: number }> = [];
-  for (const step of steps) {
-    const ms = measuredMs.get(step.name);
-    // A cached step cost no time, so it is evidence of nothing — `criticalPath` skips it for the same reason
-    if (ms === undefined || step.timeout === undefined || step.seconds === undefined) continue;
-    if (declaredShare(step.seconds, step.timeout, step.stretches) > 1) continue;
-    const measured = Math.round(ms / 1000);
-    const at = declaredShare(measured, step.timeout, step.stretches);
-    if (at > 1) found.push({ name: step.name, declared: step.seconds, measured, at, wholeTable, peers: peers.get(step.name)?.size ?? 0 });
-  }
-  return found;
-}
 
 /**
  * Declared `seconds` that a run has contradicted.

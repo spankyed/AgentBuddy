@@ -143,20 +143,6 @@ export interface ChainStep {
    */
   readonly timeout: TimeoutClass;
   /**
-   * What this step loses on a machine a fraction the size of this one, where it has been measured — the
-   * rung's own `stretches` otherwise.
-   *
-   * **Only for a step that caps its own width.** A rung's figure is measured end to end on a pool that takes
-   * the whole box, so a member that holds back workers loses fewer of them and stretches less. Charging it
-   * the class figure is pessimism, which is safe in a *ceiling* and noise in a *report*: `declaredShare` is
-   * both, so a capped member read past its rung on every run while costing what its row says.
-   *
-   * **It does not reach the deadline.** `TIMEOUT_MS[timeout].ms` is what `boundedSpawn` is given, untouched,
-   * so nothing here re-couples when a step is killed to what it was measured at — the trap `step-timeouts.ts`
-   * opens with. This corrects the bound and the report, and leaves the kill alone.
-   */
-  readonly stretches?: number;
-  /**
    * What this step costs **when it does its work**, in seconds, measured under the chain's own default
    * admission. Not what it costs when it is cached: `packages:ensure` returns in 0.3s with nothing
    * stale and takes 14s when it builds, and recording the 0.3 gave a step that builds a budget sized for a
@@ -935,7 +921,7 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   return {
     name: `test:unit:${kind}`,
-    // A pool fans out across workers, so it is the rung that stretches most on a smaller box
+    // A pool fans out across workers
     timeout: 'suite' as const,
     // Measured on the pool, not summed from its suites. Summing gave the host pool 50s for a step that
     // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
@@ -1118,16 +1104,14 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // in this table, which `orderedSteps` never promised.
   // `POOL_SECONDS`, not a literal: one cost declared twice drifts the moment somebody edits whichever copy
   // they found first
-  // 1.94x, measured 2026-10-04: five workers to two is 42.5s -> 82.5s, median of 3 (`suite`'s own note).
-  // It caps itself at half the cores, so it loses far fewer workers than the pool the rung's 4x was taken on
-  { name: 'test:integration', timeout: 'acceptance', stretches: 1.94, seconds: POOL_SECONDS.integration,
+  { name: 'test:integration', timeout: 'acceptance', seconds: POOL_SECONDS.integration,
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
   // Native runtime and live-watcher scenarios, beside integration rather than inside it: same reads, and a
   // run of its own so it can be scheduled, selected and sharded apart from the ordinary integration specs.
   // Its cost is declared like the integration pool's, until a completed run refreshes it
-  { name: 'test:native', timeout: 'acceptance', stretches: 1.94, seconds: POOL_SECONDS.native,
+  { name: 'test:native', timeout: 'acceptance', seconds: POOL_SECONDS.native,
     forceArgs: ['--all'],
     ...inputsForSuites(NATIVE_SUITES, 'native') },
   // build:default-setup owns pack outputs; build:runtime only builds the four app workspaces.
