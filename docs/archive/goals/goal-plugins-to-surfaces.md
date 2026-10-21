@@ -58,9 +58,9 @@ poll a deadline matched to what a restore costs is the fix; raising it to obtain
 
 | Phase | Commit | Evidence for its "Done when" |
 |---|---|---|
-| 1 — the guard | `99540ead9` | Live in `@app/repo-checks`. Mutation: unparked it reported 2128 violations with the manifest key firing; adding `TiptapPlugin` to a group failed the kept-spellings case; a stale `ALLOWED` entry was named |
+| 1 — the guard | `99540ead9` | Live in `@app/repo-checks`. Each of the five names its condition lists was planted on its own and fails the scan alone: `pluginId`, `usePlugin`, `sendToPlugin`, `getRegisteredPlugins` as a one-line module, `features[].plugin` as an `apack.json`. Also: unparked it reported 2128 violations; adding `TiptapPlugin` to a group failed the kept-spellings case; a stale `ALLOWED` entry was named |
 | 2 — the concept | `7f495e0ff` | `typecheck` 17/17, `api:check`, `schema:check`, `test:unit` 5689, `build:default-setup`, and `npm run test:external-pack` run directly, exit 0 — `:contract` 38 tests over 11 files, `:fork`, `:app` 27 + 5 specs |
-| 3 — the wire | `260a96801` | `npm test -w @apackdev/host` 1746 passed / 135 files, including `tests/bus/outgoing-events.spec.ts` and `tests/packs/event-validation-map.spec.ts`; `test:smoke` 16.1s in the chain. Mutation: a half-applied rename in the bus's lookup (the map keyed by ref, the lookup building the old spelling) failed **23** specs across both files, so no new spec was needed |
+| 3 — the wire | `260a96801` | `npm test -w @apackdev/host` 1746 passed / 135 files, including `tests/bus/outgoing-events.spec.ts` and `tests/packs/event-validation-map.spec.ts`; `test:smoke` 16.1s in the chain. Mutation, at the site the condition names — a `pluginId` left in the **renderer's** routing (`features/application/fe/connection.ts`, looking the surface up by the field the transport used to stamp): **5 of 110** renderer routing specs fail, in `plugin-reply` and `send-scope`. Smoke still passes, so of the condition's two candidates only the event specs catch it. The bus's own lookup was mutated too and failed **23** specs across `outgoing-events` and `event-validation-map` |
 | 4 — stored state | `824df0b92` | `tests/migrations/surface-state-0.4.0.spec.ts`. Mutation: dropping the removal, guarding on `undefined`, and guarding the row instead of each attribute each failed a different case |
 | 5 — docs, guard live | `afedfa064` | Scan unparked and green; `welcome.md` re-recorded; `doc-links` passing |
 | 6 — the prose read | `dc57c0504`, `32f1b07cf`, `313a2092c` | 19 inversions. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader. Its "no comment or guide sentence" condition rests on a **complete enumeration** — all 241 remaining occurrences classified, not a sampled grep — which found eight concept names that four passes had missed, `setPluginVisible` among them, published. All four memory files now name only things that exist |
@@ -69,10 +69,14 @@ poll a deadline matched to what a restore costs is the fix; raising it to obtain
 `npm run test:external-pack` (exit 0, all three halves) are each run directly, as their phases name
 them, rather than only as chain steps.
 
-**Phase 2's exit grep leaves two sources, both correct**: `CHANGELOG.md`, where a 2024 entry reads
-"rename usePlugin to useState composable" and is released history, and the guard's own retired list,
-which has to spell the names it retires. Read literally the grep also matches `TiptapPluginDeclaration`
-as a substring of `PluginDeclaration`, so the condition is only meaningful word-bounded.
+**Phase 2's exit grep contradicts Decision 2 of this same document, and the grep is the one that is
+wrong.** As written it searches for `PluginDeclaration` as a substring, and in
+`packages/apack-sdk/src/framework/` all **5** occurrences of that string are `TiptapPluginDeclaration` —
+5 and 5 — which is published API that Decision 2 forbids moving. So the condition is unsatisfiable
+without breaking the constraint beside it; it can only be met word-bounded. Word-bounded it leaves two
+sources, both correct: `CHANGELOG.md`, where a 2024 entry reads "rename usePlugin to useState
+composable" and is released history, and the guard's own retired list, which has to spell the names it
+retires. A future goal writing an exit grep should anchor it, or name the kept compound it will hit.
 
 **Phase 1 took the first of the two options its condition offered**: the guard landed parked as
 `it.fails` in `99540ead9` and was flipped in `afedfa064`, rather than being ordered last in the phase's
