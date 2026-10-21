@@ -411,7 +411,7 @@ What opening an app's database needs, shared by the API's boot and `apack db`, s
 - Related suites elsewhere:
   - `packages/api/tests/runtime/` (`secrets`, `bus-client-connected`, `bound-runtime`, `host-data-services` (current-format restore), `restart-persistence`, and `app-reset`: a reset on the built-in packs)
   - `packages/apack-ears/tests/lmdb/` (the LMDB adapter, sharded router, query layer and `openLmdbStore`)
-  - `packages/apack-cli/tests/commands/init-install-load.spec.ts`
+  - `packages/apack-cli/tests/commands/init-install-load.integration.spec.ts`
   - `packages/apack-cli/tests/commands/{install-host-version,dev-install,pack-cli}.spec.ts` (the CLI's installs checked against `host.json`)
   - `packages/apack-cli/tests/commands/installed-app-deps.spec.ts`
 
