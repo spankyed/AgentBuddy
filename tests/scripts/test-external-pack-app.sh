@@ -18,17 +18,37 @@ source "$ROOT/tests/scripts/lib/fixture-packs.sh"
 "$ROOT/node_modules/.bin/tsx" "$ROOT/tests/scripts/prepare-default-pack-fork.ts" --check
 
 for PACK in "${FIXTURE_PACKS[@]}"; do
-  cd "$PACK"
   if [ ! -d "$PACK/dist" ]; then
     echo "$PACK is not built. Run npm run test:external-pack:contract first." >&2
     exit 1
   fi
-  "$APACK" pack test --host "$ROOT" --prebuilt "$@"
 done
 
-
 # Normal launches over repository-owned temporary storage verify fork preservation, removal and restoration.
-# The public CLI's test isolation policy is retained; this runner owns its explicit fixture environment.
+# The public CLI's test isolation policy is retained; this runner owns its explicit fixture environment. It
+# runs beside the fixture suites, on its own data dir and output directory, and its first launch is the fork
+# test itself, so the fixture suite leaves that test to it rather than running it twice.
+fork_pid=""
+exclude=()
 if [ "$#" -eq 0 ]; then
-  "$ROOT/node_modules/.bin/tsx" "$ROOT/tests/scripts/test-default-pack-fork.ts"
+  fork_log="$(mktemp)"
+  "$ROOT/node_modules/.bin/tsx" "$ROOT/tests/scripts/test-default-pack-fork.ts" >"$fork_log" 2>&1 &
+  fork_pid=$!
+  exclude=(--grep-invert 'externally built default fork')
 fi
+
+status=0
+for PACK in "${FIXTURE_PACKS[@]}"; do
+  cd "$PACK"
+  "$APACK" pack test --host "$ROOT" --prebuilt ${exclude[@]+"${exclude[@]}"} "$@" || { status=$?; break; }
+done
+
+if [ -n "$fork_pid" ]; then
+  fork_status=0
+  wait "$fork_pid" || fork_status=$?
+  echo "--- default fork lifecycle (exit $fork_status) ---"
+  cat "$fork_log"
+  rm -f "$fork_log"
+  if [ "$status" -eq 0 ]; then status=$fork_status; fi
+fi
+exit "$status"

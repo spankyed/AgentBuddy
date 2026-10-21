@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   defineDriveConfig,
   definePackE2EConfig,
+  e2eWorkers,
 } from '../src/playwright.ts';
 
 /**
@@ -17,9 +18,16 @@ describe("a pack's E2E config", () => {
     expect(definePackE2EConfig()).toMatchObject({
       testDir: 'tests/e2e',
       timeout: 60_000,
-      workers: 1,
+      workers: e2eWorkers(),
       outputDir: '.apack/tests/results',
     });
+  });
+
+  it('runs an app per three cores, each on its own data dir, and one when the data dir is pinned', () => {
+    expect(e2eWorkers({}, 10)).toBe(3);
+    expect(e2eWorkers({}, 3)).toBe(1);
+    expect(e2eWorkers({}, 2), 'never none').toBe(1);
+    expect(e2eWorkers({ E2E_DATA_DIR: '/tmp/profile' }, 10), 'one pinned dir is one app').toBe(1);
   });
 
   it("takes the pack's own word last, so a suite can add to it", () => {

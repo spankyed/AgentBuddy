@@ -7,7 +7,18 @@
 // configs restated these settings, and the repo's own had already drifted to a `use` block the three packs'
 // lacked. A setting held here reaches a pack on its next update; one copied into a pack's own config does
 // not — which is how a `testIgnore` became unaddable and the engine's session got an extension instead.
+import { availableParallelism } from 'node:os';
 import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
+
+/**
+ * How many apps a pack's suite runs at once. Each worker launches its own app on its own temporary data dir,
+ * and the app's single-instance lock is scoped by data dir, so workers do not contend for one. An app is three
+ * processes (main, renderer and the API), so one worker per three cores. A data dir the caller pins
+ * (`E2E_DATA_DIR`) is one dir, so a run with one takes one worker.
+ */
+export function e2eWorkers(env: NodeJS.ProcessEnv = process.env, cores = availableParallelism()): number {
+  return env.E2E_DATA_DIR ? 1 : Math.max(1, Math.floor(cores / 3));
+}
 
 /** A pack's driving config, which collects the scripts beside it */
 const DRIVE_CONFIG_FILE = 'playwright.config.ts';
@@ -26,8 +37,7 @@ export function definePackE2EConfig(options: PlaywrightTestConfig = {}): Playwri
     testDir: 'tests/e2e',
     // The large budget: an E2E test that takes longer is hung, not slow
     timeout: 60_000,
-    // One app at a time — two workers would fight over one data dir, which Electron locks per dir
-    workers: 1,
+    workers: e2eWorkers(),
     // Generated run output stays outside the authored input scope.
     outputDir: '.apack/tests/results',
     ...options,
