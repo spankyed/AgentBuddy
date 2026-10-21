@@ -115,7 +115,7 @@ jobs:
         if: ${{ !inputs.test_name }}
         run: >-
           node node_modules/vitest/vitest.mjs run --config vitest.native.config.ts --project @apackdev/cli
-          packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts
+          packages/apack-cli/tests/build/compiler-native-vite.native.spec.ts
           --testNamePattern='retains independent captured Vite owners'
           --reporter=default --reporter=json --outputFile="$env:RUNNER_TEMP/compiler-vite-ownership.json"
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1

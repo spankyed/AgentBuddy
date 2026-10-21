@@ -148,7 +148,10 @@ jobs:
           APACK_TEST_NAME: ${{ inputs.test_name || (inputs.sign_runtime && 'uses the strictly signed captured Electron runtime') || '.' }}
         run: >-
           node node_modules/vitest/vitest.mjs run --config vitest.native.config.ts --project @apackdev/cli
+          packages/apack-cli/tests/build/compiler-native-runtime.native.spec.ts
+          packages/apack-cli/tests/build/compiler-native-vite.native.spec.ts
           packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts
+          packages/apack-cli/tests/build/compiler-native-launch.native.spec.ts
           --testNamePattern "$APACK_TEST_NAME"
           --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/apack-native-tests.json"
           --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
