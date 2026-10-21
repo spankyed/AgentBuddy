@@ -66,7 +66,7 @@ authority audit. Re-audit the implementation before choosing a mechanism.
 | Frontend fault containment | [Fault-isolation plan](../plans/pack-fault-isolation.md) records implemented pane/form boundaries and retired-instance checks. These contain failures, not hostile JavaScript or renderer access. |
 | Pack replacement and provenance | [Installer](../../packages/apack-host/src/packs/installer.ts) supports a user replacement at an app-default pack ID. Install ownership, verified bytes and build/runtime identity are inputs to policy, not security grants or proof of a trusted publisher. |
 | Shared execution and preload | [Backend bridge](../../packages/apack-host/src/packs/runtime/bridge.ts) shares host modules; frontend pack code shares the renderer realm. [Preload](../../packages/preload/src/index.ts) still exposes the API token at runtime; omitting it from [pack-facing types](../../packages/apack-sdk/src/fe/electron-api.ts) does not hide it. |
-| Bus addressing | [Client transport](../../packages/api/src/transport/bus.ts) binds the connection identity and checks sender addressability. It does not prove that the caller owns a named pack/plugin. `resolveName` resolves names; event membership checks describe supported messages. Neither is authorization. |
+| Bus addressing | [Client transport](../../packages/api/src/transport/bus.ts) binds the connection identity and checks sender addressability. It does not prove that the caller owns a named pack/surface. `resolveName` resolves names; event membership checks describe supported messages. Neither is authorization. |
 
 Owned compiler/input snapshots and sealed builds address coherence and provenance. They do not confine
 compiler code, install hooks or runtime Node access. Keep that distinction in the build/install audit.
@@ -83,7 +83,7 @@ in this goal's design and acceptance:
 - Broker identity comes from the host-created execution context/connection. Resolve addresses, check
   supported message/payload shapes and authorize operations as separate steps. Pack-supplied `from`,
   `sender`, IDs, dependency claims or settings credentials must not establish broker identity.
-- Decide how plugins, custom settings forms, step forms/layout, block/artifact viewers, editor extensions
+- Decide how surfaces, custom settings forms, step forms/layout, block/artifact viewers, editor extensions
   and app slots cross the boundary. Record the strategy and tests for every supported contribution kind.
   Removing a supported kind requires an explicit product decision, not an implicit prototype exclusion.
 - Preserve authoring/testing, styles and UI integration, dev/HMR, reload, multiple windows and teardown
@@ -186,7 +186,7 @@ Prove these representative cases together:
 2. A real EARS query, transaction and subscription work across the boundary with specified atomicity,
    ownership and lifecycle semantics. Prototype the required async/API change rather than assuming
    synchronous RPC preserves the current model.
-3. A plugin and custom settings form, plus a representative step/block/editor contribution, integrate
+3. A surface and custom settings form, plus a representative step/block/editor contribution, integrate
    through the proposed frontend boundary. They retain useful interaction and state without sharing
    executable pack objects with privileged host code contrary to the selected guarantee.
 4. Malicious fixtures attempt access to denied file/network/process targets, preload/token/host-DOM access,

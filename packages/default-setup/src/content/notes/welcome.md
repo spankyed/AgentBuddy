@@ -26,10 +26,10 @@ apack is an AI-development environment and work platform. It features persistent
 
 The interface has four areas:
 
-- **Toolbar** (left) — switch between plugins: Threads, Notes, Code, Library, Flows, and more
-- **Canvas** (top) — the main content area, changes based on the active plugin
+- **Toolbar** (left) — switch between surfaces: Threads, Notes, Code, Library, Flows, and more
+- **Canvas** (top) — the main content area, changes based on the active surface
 - **Chat** (bottom) — where you send messages and respond to permission requests
-- **Inspection panel** (right, toggleable) — contextual details for the active plugin
+- **Inspection panel** (right, toggleable) — contextual details for the active surface
 - **Recent bar** (bottom edge) — quick-switch between recent threads
 
 ---
@@ -59,4 +59,4 @@ The interface has four areas:
 - **Resize the chat** by dragging the divider between canvas and chat. Right-click the divider to maximize chat.
 - **Use commands** like `/cc-resume`, `/cc-fork`, `/cc-compact`, and `/cc-context` directly in chat.
 - **Fork a conversation** from any message to explore a different approach without losing your original thread.
-- **Check the Brain plugin** to see how flows execute in real time — useful for understanding and debugging automation.
+- **Check the Brain surface** to see how flows execute in real time — useful for understanding and debugging automation.

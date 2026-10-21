@@ -89,9 +89,9 @@ Every pack's frontend is loaded at runtime, the ones the app ships included. A d
 2. For each external pack, the shell loads its frontend (`createPackFrontends(io, packs).load` in `@apackdev/host/fe`, over the window's `importModule` and stylesheet I/O):
    - loads `pack://<id>/builds/<revision>/runtime/fe.css` as a `<link>` when the pack has styles;
    - imports `pack://<id>/builds/<revision>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@apackdev/host/fe`, bound with `bindFeHost`);
-   - returns the plugins it exports, `[]` when the load failed, or `null` for a pack without frontend code.
-3. When it returns plugins (even none), the shell handles `PACK_FRONTEND_LOADED`, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
-4. `packClientReady` sends the pack's systems `CLIENT_CONNECTED` and asks them to publish, so they send their startup data once the plugin actors exist.
+   - returns the surfaces it exports, `[]` when the load failed, or `null` for a pack without frontend code.
+3. When it returns surfaces (even none), the shell handles `PACK_FRONTEND_LOADED`, which spawns the surfaces whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
+4. `packClientReady` sends the pack's systems `CLIENT_CONNECTED` and asks them to publish, so they send their startup data once the surface actors exist.
 
 A connection's own `CLIENT_CONNECTED` skips the systems of external packs with frontend code (the bus asks `getPacksWithClientLoadedFrontends()`). When the renderer's bus subscription (re)connects, `BUS_SUBSCRIBED` calls `packClientReady` again for every pack whose frontend it loaded. Systems of packs without frontend code are told and asked directly.
 
@@ -100,7 +100,7 @@ A connection's own `CLIENT_CONNECTED` skips the systems of external packs with f
 The `packs` system handles install, uninstall, enable/disable and update from the Packs view:
 
 - **Activate** (after install or update, or on enable): reads the pack's manifest, loads and registers it, registers `onShutdown`, runs `onInit`, then the pack's pending migrations and its content (skipped when its compiled content are unchanged), sends the bus `PACK_CHANGED` so running systems refresh what they read from packs, then `ACTIVATE_PACK` to spawn its systems. The renderer hears `PACK_ACTIVATED` and asks the application actor to load the frontends it hasn't, the new pack's included. The bus asks a pack's systems to publish right away only for a pack without frontend code; otherwise it waits for `packClientReady`. An install or update that activated but failed to apply reports the content error.
-- **Teardown** (before uninstall or update, or on disable): runs the pack's shutdown hooks, unregisters it (registration keeps the event types `bus.send` accepts current), clears its modules from the require cache, and sends the bus `TEARDOWN_PACK` to stop its systems. The renderer hears `PACK_DEACTIVATED`, unregisters the pack's FE extensions, removes its stylesheets and unloads its plugins.
+- **Teardown** (before uninstall or update, or on disable): runs the pack's shutdown hooks, unregisters it (registration keeps the event types `bus.send` accepts current), clears its modules from the require cache, and sends the bus `TEARDOWN_PACK` to stop its systems. The renderer hears `PACK_DEACTIVATED`, unregisters the pack's FE extensions, removes its stylesheets and unloads its surfaces.
 - **Reload** (development, `POST /dev/reload` on the API from `apack pack dev` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadPackById` in `@apackdev/host/packs/runtime`, which asks the registry which directory the pack came from): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-apply, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
 
 An external pack's migrations run at boot, on activation and on reload, each against the pack's own version; the app's run at boot and after a reset or backup import.
@@ -114,7 +114,7 @@ Your `__generated__/pack-entry.ts` exports a registration object (`@apackdev/sdk
 ```typescript
 export const registration: PackRegistration = {
   id: string;
-  features?: Record<string, PackFeature>;  // by feature id: { designation?, system?: { machine, receives, early? }, plugin?: { receives }, services?, settings? }
+  features?: Record<string, PackFeature>;  // by feature id: { designation?, system?: { machine, receives, early? }, surface?: { receives }, services?, settings? }
   services?: Record<string, unknown>;
   ears?: PackEARS;                 // entities, relKinds
   lifecycle?: PackLifecycleHooks;            // onInit/onShutdown (lifecycle.onInit / lifecycle.onShutdown)
@@ -129,7 +129,7 @@ export const registration: PackRegistration = {
 };
 ```
 
-The app runs each feature at `<packId>/<featureId>`. Its declared contract supplies system inputs and outputs and plugin inboxes; the build writes those event names into static snapshot data and generates matching runtime bindings. Explicit `system.events.incoming` entries add routing names. Shared SDK lifecycle events remain implicit. Discovery reads the catalog without activating the pack; the bus uses the captured contracts of endpoints that actually bound. A machine's private handlers do not add public inbox entries.
+The app runs each feature at `<packId>/<featureId>`. Its declared contract supplies system inputs and outputs and surface inboxes; the build writes those event names into static snapshot data and generates matching runtime bindings. Explicit `system.events.incoming` entries add routing names. Shared SDK lifecycle events remain implicit. Discovery reads the catalog without activating the pack; the bus uses the captured contracts of endpoints that actually bound. A machine's private handlers do not add public inbox entries.
 
 The runtime bundle also exports `setCompiledDir(dir)`, which the host calls with the directory of the pack's compiled content.
 
@@ -146,7 +146,7 @@ export default {
   id: string;
   declarationRevision: string;
   features?: Record<string, {
-    plugin?: PluginDefinition;
+    surface?: SurfaceDefinition;
     designation?: string;
     default?: true;
     settingsForm?: Component;
@@ -296,7 +296,7 @@ secrets and filesystem require `consumes.services` declarations. Onboarding is s
 Reset clears stored data and keys, then runs `onInit`, app-line migrations, pack-line migrations and
 content application in dependency order, as startup does. Failed app-line migrations stop later stages.
 
-Sends, logging and error reports are SDK code over the bound bus: `sendToSystem` emits an incoming event, `broadcastToPlugin` (and `services.emitter.broadcastToPlugin`) goes through the bus actor, which drops it until a client connects, like a system's `emit`, and `createLogger` emits log events, which the API prints once and streams to the logs plugin (with nothing bound, as in the CLI, a logger writes to the console). In the renderer, `bindFeHost` binds the application actor, the secrets client behind `secretsClient` (the Settings → Secrets procedures) and a transport that sends to systems over the API client. Using the port with nothing bound throws, naming `bindHost` or `bindFeHost`.
+Sends, logging and error reports are SDK code over the bound bus: `sendToSystem` emits an incoming event, `broadcastToSurface` (and `services.emitter.broadcastToSurface`) goes through the bus actor, which drops it until a client connects, like a system's `emit`, and `createLogger` emits log events, which the API prints once and streams to the logs surface (with nothing bound, as in the CLI, a logger writes to the console). In the renderer, `bindFeHost` binds the application actor, the secrets client behind `secretsClient` (the Settings → Secrets procedures) and a transport that sends to systems over the API client. Using the port with nothing bound throws, naming `bindHost` or `bindFeHost`.
 
 A pack can't register a service under a host service's name.
 
@@ -335,18 +335,18 @@ The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant ove
 | File | Contents |
 |---|---|
 | `pack-entry.ts` | BE registration: systems, services, repositories, steps, artifacts, blocks, EARS, lifecycle hooks, migrations, content writers, appliers, commands, features |
-| `pack-entry-fe.ts` | FE registration: plugins keyed by feature (the host registers each at its address), the default plugin and designations by feature, step/artifact/block FE, settings forms, tiptap and app extensions. DSL definitions are discoverable snapshot data |
+| `pack-entry-fe.ts` | FE registration: surfaces keyed by feature (the host registers each at its address), the default surface and designations by feature, step/artifact/block FE, settings forms, tiptap and app extensions. DSL definitions are discoverable snapshot data |
 | `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `qx`/`find*`/`createEntity` facade |
 | `ref.ts` | `ref(name)`: the ref (`<packId>/<featureId>`) a name in this pack's code stands for, its own features by id and any other by ref, bound to the pack so its code never passes its own pack id |
-| `fe.ts` | `openPlugin(name, event?)`, taking the names pack code writes, and the `PluginName` type, which lists exactly those names (the pack's own plugins by feature id, its dependencies' by `<packId>/<featureId>`). Only packs with plugins get it |
+| `fe.ts` | `openSurface(name, event?)`, taking the names pack code writes, and the `SurfaceName` type, which lists exactly those names (the pack's own surfaces by feature id, its dependencies' by `<packId>/<featureId>`). Only packs with surfaces get it |
 | `system-specs.ts` | Type-only: `specs`, the events each system receives and sends, keyed by feature id, read from its entry's spec. `events.ts` imports it; only packs with systems get it |
-| `events.ts` | `SendablePluginEvents` (plugin ID -> the events it receives: its own feature's system's, plus the inbox that plugin's `Contract` declares), `PackSystemEvents`, and the typed `broadcastToPlugin` (backend, every window), `sendToPlugin` (renderer, this window) and `sendToSystem` |
+| `events.ts` | `SendableSurfaceEvents` (surface ID -> the events it receives: its own feature's system's, plus the inbox that surface's `Contract` declares), `PackSystemEvents`, and the typed `broadcastToSurface` (backend, every window), `sendToSurface` (renderer, this window) and `sendToSystem` |
 | `types.ts` | Type barrel: each feature's `types` and step node types |
 | `entity-destinations.json` / `event-contracts.json` | Build-checked entity destinations and event contracts, readable without executing pack modules |
 | `settings.ts` / `settings-fe.ts` | Typed, owner-bound settings handles and frontend settings binding |
 | `paths.ts` | `getDataDirPath(name)` for a directory in this pack's data namespace |
 | `runtime-services.ts` | Shared runtime service binding used by the generated facade and registration |
-| `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the host-selected `services` facade and `servicesForAction(label)` factory. `Services` types `services.emitter` as `PackEmitter`, with this pack's plugin and system events |
+| `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the host-selected `services` facade and `servicesForAction(label)` factory. `Services` types `services.emitter` as `PackEmitter`, with this pack's surface and system events |
 | `repository.ts` | `repository`, typed with the repositories declared in `features.<id>.repositories` and dependencies' |
 | `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the host registers them with the app's engine) |
 | `pack-types.ts` | The facade types `apack pack build` bundles into `dist/types/pack-types.d.ts` for dependents |
@@ -380,7 +380,7 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 
 | Capability | Available? | Reason |
 |---|---|---|
-| Systems, plugins | Yes | Core feature mechanism |
+| Systems, surfaces | Yes | Core feature mechanism |
 | Content (actions, prompts, flows) | Yes | Hash-checked per pack |
 | Steps, artifacts, blocks | Yes | Extension points |
 | Services | Yes | Stateless modules |
@@ -411,9 +411,9 @@ compilation and the test runtime refuse incompatible dependency execution before
 A dependency found on this machine or on GitHub is cached under `.apack/deps/<id>/`
 (`snapshot.json`, `facades/`, and eligible `build/`/`runtime/` files).
 
-A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `facades` (dependent-facing `.d.ts` contents, including the bundled `pack-types` facade), `entityDestinations` (entity wire name to local destination feature, compiled from plugin `Contract.opens`), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). Runtime/install readers use `PackSnapshot` with an exact execution stamp. Type-data readers use `PackDependencySnapshot`, retaining an optional recorded stamp and validating the same current fields; they do not read or convert another grammar.
+A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `facades` (dependent-facing `.d.ts` contents, including the bundled `pack-types` facade), `entityDestinations` (entity wire name to local destination feature, compiled from surface `Contract.opens`), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). Runtime/install readers use `PackSnapshot` with an exact execution stamp. Type-data readers use `PackDependencySnapshot`, retaining an optional recorded stamp and validating the same current fields; they do not read or convert another grammar.
 
-Plugin catalog entries project compiled destination claims as `opens`; unbuilt authoring previews do
+Surface catalog entries project compiled destination claims as `opens`; unbuilt authoring previews do
 not claim compiled destinations. Enabled native/installed claims must be unique per entity type, while
 disabled claims remain visible. Native composition supplies `entityDestinations` as data and its accepted
 frontend retains those claims; installed frontend eligibility uses the matching sealed build revision.

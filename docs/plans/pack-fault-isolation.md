@@ -49,7 +49,7 @@ window. That is the cheap half's evidence.
 ## Frontend boundaries
 
 **Scope the frontend blast radius to the pack.** A pack's canvas, panel and settings each render inside a
-`PluginScope` already; an error boundary at that seam turns "a pack's component threw" into "that pack's
+`SurfaceScope` already; an error boundary at that seam turns "a pack's component threw" into "that pack's
 pane shows an error and the app keeps working", with the pack named. Vue's `onErrorCaptured` is the
 mechanism and the shell is the owner.
 
@@ -65,7 +65,7 @@ This is a contained change with its own payoff, independent of any trust story: 
 
 **A process boundary for pack backends.** The shape VS Code uses, and the questions it forces here:
 
-- **The bus crosses it.** `sendToSystem`, `broadcastToPlugin` and the envelope would become cross-process
+- **The bus crosses it.** `sendToSystem`, `broadcastToSurface` and the envelope would become cross-process
   messages for pack systems. The envelope already carries `from`/`via` and the bus already routes on `to`,
   so the addressing survives; the synchronous assumptions do not.
 - **EARS does not cross it.** Packs query and transact synchronously against an in-memory engine

@@ -12,7 +12,7 @@ be one. Everything below follows from that.
 **Three kinds of test live here, and the directory a spec goes in is the question it answers.** A new one
 that fits none of them probably belongs somewhere else.
 
-- **`smoke/` — is it an app at all?** The gate: it launches, connects, has its plugins, and keeps to its
+- **`smoke/` — is it an app at all?** The gate: it launches, connects, has its surfaces, and keeps to its
   own data dir. Its own chain step, and the only part of this suite anything gates on.
 - **`ui/` — something you need to see.** Rendered behaviour, which is the founding purpose of the suite.
 - **`app-integration/` — something that needs the real process boundary.** A live port, the websocket,
@@ -26,12 +26,12 @@ into folders broke three of them at once, and the suite is what said so.
 `app-integration/` spec rests on something no harness has — a token-bearing WebSocket, an API process
 crashed and restarted, `apack db` against a live data dir, `POST /dev/reload`, `media://`, the bus
 dropping sends until a client connects, key strings absent from logs and files — and each `ui/` spec
-asserts rendered output, which is the other half: a component reaching for a plugin it is not rendered in
+asserts rendered output, which is the other half: a component reaching for a surface it is not rendered in
 (`navigation`), main accepting a ref as a window id (`popout`), a pack's compiled entries reaching the
-Settings Help reader (`settings-help`), a panel a plugin lends another actually drawing (`fallback-panel`).
+Settings Help reader (`settings-help`), a panel a surface lends another actually drawing (`fallback-panel`).
 
 **The shape that fails the second half is worth recognising, because it reads like a UI test.** A spec
-that sends a plugin an event and then asserts *shell state* — which plugin is open, what the context holds
+that sends a surface an event and then asserts *shell state* — which surface is open, what the context holds
 — needs no window: the shell's side of that is covered on fakes (`@apackdev/host`'s
 `tests/features/application/fe/`) and the pack's side is `setupPackTests` with `startFeTestRuntime`, in
 milliseconds. `packages/default-setup/tests/features/browser/fe/open-link.spec.ts` is one written that
@@ -86,7 +86,7 @@ When a test worker starts, the fixture runs this sequence:
 1. **Resolve the app** — `resolveTestHost()` (when `createTest()` runs, at import) honors the CLI's resolved `APACK_HOST_EXECUTABLE` / `APACK_HOST_ROOT`; explicit fixture options must agree. Standalone fixtures may select `appExecutable` or `appRoot`, then fall back to the checkout enclosing `@apackdev/testing`. Executables must exist; source checkouts must have `packages/entry-point.mjs`, `node_modules/electron`, and main/renderer `dist` outputs.
 
 2. **Pack setup** (only when `PACK_DIR` is set):
-   - Read `apack.json` from `PACK_DIR` to get the pack ID and plugin IDs
+   - Read `apack.json` from `PACK_DIR` to get the pack ID and surface IDs
    - Always rebuild the pack with `node <apack bin> build` (the bin is `APACK_CLI`, else the `@apackdev/cli` the pack resolves, else the checkout's)
    - Install it into the worker's temp data dir with the pack installer (stage → verify → place), passing the launched app's version (the checkout's `package.json`, or the packaged app's `Resources/app/package.json`) so a pack whose `hostVersion` excludes it fails to install
 
@@ -98,7 +98,7 @@ When a test worker starts, the fixture runs this sequence:
 
 6. **Check the pack's applying** (only when `PACK_DIR` is set) — if the pack's entry in the test data dir's `installed-packs.json` has a `lastError` (its data failed to apply), the fixture fails with it.
 
-7. **Wait for pack plugins** (only when `PACK_DIR` is set) — For each plugin ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.plugins`. If the renderer logs `[pack-loader] Failed to load FE entry pack://{packId}/…` for the pack under test, the test fails immediately. That failure, and a plugin that never registers, include the captured renderer errors and Electron/API error lines, so `DEBUG_E2E=1` is rarely needed to find the cause.
+7. **Wait for pack surfaces** (only when `PACK_DIR` is set) — For each surface ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.surfaces`. If the renderer logs `[pack-loader] Failed to load FE entry pack://{packId}/…` for the pack under test, the test fails immediately. That failure, and a surface that never registers, include the captured renderer errors and Electron/API error lines, so `DEBUG_E2E=1` is rarely needed to find the cause.
 
 8. **Provide the `appPage` and `app` fixtures** to the test.
 
@@ -121,12 +121,12 @@ Three fixtures are provided, each at a different scope:
 ```ts
 app.screenshot(name)             // Save a PNG under .apack/drive/screenshots/ when driving,
                                  // or .apack/tests/screenshots/ under `apack pack test`
-app.navigate(pluginId)           // Send SELECT_PLUGIN + wait for activePlugin match + 500ms render delay
+app.navigate(surfaceId)           // Send SELECT_SURFACE + wait for activeSurface match + 500ms render delay
 app.getState()                   // Returns snapshot.value (e.g. { running: 'connected' })
-app.getContext()                 // Returns { activePluginId, pluginIds }
+app.getContext()                 // Returns { activeSurfaceId, surfaceIds }
 app.sendEvent(event)             // Send any event to applicationState
 app.waitForState(check, ms?)     // Wait for dot-separated state path (e.g. 'running.connected')
-app.waitForPlugin(pluginId, ms?) // Wait for a plugin to appear in the plugin list (default 30s)
+app.waitForSurface(surfaceId, ms?) // Wait for a surface to appear in the surface list (default 30s)
 ```
 
 ### Direct page access
@@ -138,7 +138,7 @@ await appPage.locator('.some-selector').click();
 await appPage.waitForSelector('.loaded-indicator');
 ```
 
-## Plugin IDs
+## Surface IDs
 
 Available for `app.navigate()`: `threads` (default), `code`, `notes`, `browser`, `library`, `flows`, `actions`, `prompts`, `brain`, `database`, `logs`, `settings`.
 
@@ -212,11 +212,11 @@ Pick a unique tag so you can extract the lines whatever else is logging, and pri
 app is several processes and the interleaving is what you are usually trying to establish:
 
 ```ts
-console.error(`[DROPDBG] t=${Date.now()} plugin=${pluginId} keys=[${[...map.keys()].join('|')}]`);
+console.error(`[DROPDBG] t=${Date.now()} surface=${surfaceId} keys=[${[...map.keys()].join('|')}]`);
 ```
 
 ```bash
-npm run build:api && DEBUG_E2E=1 npm run test:e2e -- tests/e2e/app-integration/plugin-sends.spec.ts --grep "restarted pack" \
+npm run build:api && DEBUG_E2E=1 npm run test:e2e -- tests/e2e/app-integration/surface-sends.spec.ts --grep "restarted pack" \
   2>&1 | grep -oE "\[DROPDBG\] t=[0-9]+ .*" | head -20
 ```
 
@@ -245,13 +245,13 @@ touched, never the tree.
 
 ### Driving the app, not just watching it
 
-The fixture is an app driver: `app.navigate(pluginId)`, `app.sendEvent(...)`, `app.getContext()`,
+The fixture is an app driver: `app.navigate(surfaceId)`, `app.sendEvent(...)`, `app.getContext()`,
 `app.waitForState(...)`, and `appPage.evaluate()` for anything reachable from the renderer. A script in
 `drive/` (see above) that navigates to the screen, does the thing and waits is usually a faster reproducer
 than the real test you are chasing, and nothing collects it.
 
 For backend endpoints the renderer doesn't call, read the port and token from the page and `fetch`
-them from the test — `tests/e2e/app-integration/plugin-sends.spec.ts` does this for `POST /dev/reload`.
+them from the test — `tests/e2e/app-integration/surface-sends.spec.ts` does this for `POST /dev/reload`.
 
 ## Testing external packs
 
@@ -283,19 +283,19 @@ PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/smoke
 
 #### What happens when `PACK_DIR` is set
 
-1. **Read manifest** — parses `apack.json` from `PACK_DIR` to get the pack ID and plugin IDs
+1. **Read manifest** — parses `apack.json` from `PACK_DIR` to get the pack ID and surface IDs
 2. **Isolated data dir** — creates `$TMPDIR/apack-e2e-*` for the worker
 3. **Build**: always runs `apack pack build` in the pack directory (fails the run if the build fails)
 4. **Install** — installs the built pack into that data dir through the pack installer; no other packs are present
 5. **Launch Electron** — starts the app, which discovers the pack in its packs directory
 6. **Check applying** — fails if the pack's installed-packs entry has a `lastError`
-7. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Fails immediately, with the captured errors, if the pack's FE entry fails to load.
+7. **Wait for surfaces** — for each surface ID from the manifest, waits up to 30s for it to appear in `applicationState.context.surfaces`. Fails immediately, with the captured errors, if the pack's FE entry fails to load.
 
 The in-repo fixture pack at `tests/packs/external-pack` exercises this whole path from its own directory: `npm run test:external-pack`.
 
-### Finding plugin IDs
+### Finding surface IDs
 
-Plugin IDs are the keys of the pack's `apack.json` `features` entries that declare a `plugin` (the manifest's `plugin` object has no `id` of its own).
+Surface IDs are the keys of the pack's `apack.json` `features` entries that declare a `surface` (the manifest's `surface` object has no `id` of its own).
 
 ## Renderer globals
 
@@ -311,7 +311,7 @@ The renderer exposes on `window`:
 | `PLAYWRIGHT_TEST=true` | Set automatically by the fixture; crashes on uncaught errors and runs headless (no window display) |
 | `DEBUG_E2E=1` | Pipes Electron stdout/stderr to the test terminal |
 | *(always)* | The same output is written to `.apack/tests/results/app-<workerIndex>.log`, wiped each run. `DEBUG_E2E=1` is for watching it live; the file is for reading it afterwards |
-| `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
+| `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for surfaces before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
 | `APACK_HOST_ROOT=/path/to/apack` | A built apack checkout to launch (auto-detected inside the monorepo) |
 | `APACK_HOST_EXECUTABLE=/path/to/exe` | A packaged apack executable to launch (set by `apack pack test --host beta`); cannot be combined with `APACK_HOST_ROOT` |
@@ -321,8 +321,8 @@ The renderer exposes on `window`:
 ## Key events for sendEvent()
 
 ```ts
-{ type: 'SELECT_PLUGIN', plugin: string }     // Switch active plugin (its ref)
-{ type: 'OPEN_PLUGIN', plugin: string, events: object[] }  // What untypedOpenPlugin sends: open a plugin by ref and hand it events; waits for a pack still loading
+{ type: 'SELECT_SURFACE', surface: string }     // Switch active surface (its ref)
+{ type: 'OPEN_SURFACE', surface: string, events: object[] }  // What untypedOpenSurface sends: open a surface by ref and hand it events; waits for a pack still loading
 { type: 'NAVIGATE_BACK' }                     // History back
 { type: 'NAVIGATE_FORWARD' }                  // History forward
 { type: 'DEFAULT_TOGGLE', area: 'canvas' }    // Toggle canvas visibility
@@ -340,7 +340,7 @@ The renderer exposes on `window`:
 
 | File | Purpose |
 |------|---------|
-| `smoke/smoke.spec.ts` | The app launches without crashing, reaches `connected`, has its plugins, and runs in its own per-worker data dir |
+| `smoke/smoke.spec.ts` | The app launches without crashing, reaches `connected`, has its surfaces, and runs in its own per-worker data dir |
 
 **`app-integration/` — the real process boundary.** A live port, the websocket, the CLI against a real
 data dir, the pack loader: things no harness test can reach.
@@ -353,17 +353,17 @@ data dir, the pack loader: things no harness test can reach.
 | `app-integration/dev-reload.spec.ts` | `POST /dev/reload` of the pack the app ships refreshes the installed copy from what was rebuilt, re-applies the changed content data and resends startup data. The one spec in this suite that has caught a regression: a pack is loaded from the data dir, so without that refresh a rebuild reached the app only by accident, which no harness can see |
 | `app-integration/feature-addressing.spec.ts` | A name becoming an address: every path where a feature ref had to resolve and, when it didn't, the app ran on with the click or the setting silently lost |
 | `app-integration/import-pack-content.spec.ts` | Settings → Import Pack Content: compiles default-setup's notes and library entries into a compiled content directory, previews it, imports a selection, re-imports in keep-existing mode |
-| `app-integration/plugin-sends.spec.ts` | Backend sends to plugins through the bus: the code system's file watcher and terminal output, and the browser system's startup data after a pack reload, reach their plugins (recorded with `applicationState.system.inspect`) |
+| `app-integration/surface-sends.spec.ts` | Backend sends to surfaces through the bus: the code system's file watcher and terminal output, and the browser system's startup data after a pack reload, reach their surfaces (recorded with `applicationState.system.inspect`) |
 | `app-integration/secrets.spec.ts` | Settings → Secrets: adds and selects API keys, and checks the key strings reach no log, stored file or renderer state |
 
 **`ui/` — rendered behaviour.** What a person would see, and what only a real renderer shows.
 
 | File | Purpose |
 |------|---------|
-| `ui/fallback-panel.spec.ts` | A plugin offering its panel for plugins without one (`fallbackPanel`), and saying itself when it shows: the brain's inspect mode |
-| `ui/navigation.spec.ts` | Opens every plugin and every plugin's settings without a renderer error — a component reaching for a plugin it isn't rendered in fails here |
+| `ui/fallback-panel.spec.ts` | A surface offering its panel for surfaces without one (`fallbackPanel`), and saying itself when it shows: the brain's inspect mode |
+| `ui/navigation.spec.ts` | Opens every surface and every surface's settings without a renderer error — a component reaching for a surface it isn't rendered in fails here |
 | `ui/entity-reference.spec.ts` | Imports a saved thread message, reloads it, and clicks its rendered reference to open the correct note and content in another feature |
-| `ui/popout.spec.ts` | A plugin popped out into its own window: main accepts the plugin's ref as its id and the popout renders its canvas as part of that plugin |
+| `ui/popout.spec.ts` | A surface popped out into its own window: main accepts the surface's ref as its id and the popout renders its canvas as part of that surface |
 | `ui/settings-help.spec.ts` | Settings Help: bundled pack articles, search, contextual settings navigation and unavailable targets |
 
 | Elsewhere | |

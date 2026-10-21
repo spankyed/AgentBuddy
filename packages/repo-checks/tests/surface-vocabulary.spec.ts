@@ -26,7 +26,7 @@ import { repoFiles } from './_support/repo-files.ts';
 /** The concept's retired spellings, by group. A group's pattern is built from its own names. */
 const RETIRED = {
   'concept-type': [
-    'Plugin', 'PluginDefinition', 'PluginDeclaration', 'PluginScope', 'PluginPane', 'PluginRouter',
+    'PluginDefinition', 'PluginDeclaration', 'PluginScope', 'PluginPane', 'PluginRouter',
     'PluginInbox', 'PluginInboxOf', 'PublicPluginInboxOf', 'PluginStateOf', 'PluginEvent', 'PluginEvents',
     'PluginHotkeyDefinition', 'PackPluginEntry', 'PackPluginEvents', 'PackPluginState', 'PackFeaturePlugin',
     'HostPluginEvents', 'OwnPluginEvents', 'QualifiedPluginEvents', 'TypedSendToPlugin',
@@ -57,14 +57,21 @@ const RETIRED = {
 
 type Group = keyof typeof RETIRED;
 
-/**
- * `(?<!\.)` on the word boundary is what keeps `esbuild.Plugin` and `import('esbuild').Plugin` out of
- * `concept-type`: bundler surfaces reach their type through the namespace, and the concept never does.
- */
 const patternFor = (group: Group): RegExp => new RegExp(`(?<![.\\w])(${RETIRED[group].join('|')})\\b`);
 
 /** The manifest key, which is not an identifier and so needs its own pattern. */
 const MANIFEST_KEY = /"plugin":/;
+
+/**
+ * Bare `Plugin` is not in `concept-type`, and that is the pattern decision worth explaining.
+ *
+ * In this tree every bare `Plugin` belongs to somebody else — ProseMirror's class from `@tiptap/pm/state`,
+ * Vite's and esbuild's config types — reached as `import { Plugin } from 'vite'`, where nothing precedes the
+ * name to tell the two apart. A pattern over the name alone was 100% false positives across 23 sites.
+ *
+ * What the concept must not do is *declare* one again, which is a different and checkable thing.
+ */
+const DECLARES_PLUGIN = /^\s*(?:export\s+)?(?:declare\s+)?(?:interface|type|class)\s+Plugin\b/;
 
 /**
  * One spelling from each vocabulary that keeps the word, which no pattern above may match.
@@ -78,7 +85,7 @@ const KEPT = [
   'tiptapPlugins', 'TiptapPlugin', 'TiptapPluginBinding', 'TiptapPluginDeclaration', 'tiptapPluginRegistry',
   'PluginKey', 'searchPlugin', 'searchPluginKey', 'SearchPluginState', 'commandSuggestionPluginKey',
   'addProseMirrorPlugins', 'ref.editor.registerPlugin(imagePastePlugin)',
-  'VitePlugin', 'esbuild.Plugin', "import('esbuild').Plugin", 'surfaces: [vue()]', 'surfaces.push(x)',
+  'VitePlugin', 'esbuild.Plugin', "import('esbuild').Plugin", 'plugins: [vue()]', 'plugins.push(x)',
   'packExternalsPlugin', 'hostSharedModulesPlugin', 'postcssPlugins', 'pluginVue', 'pluginOxlint',
   "'@vitejs/plugin-vue'", "'eslint-plugin-vue'", "'rollup-plugin-dts'", "name: 'collect-bare-imports'",
   "'code-plugin-open-tabs'", "'apack-last-active-plugin'",
@@ -97,6 +104,12 @@ const KEPT = [
  * one group does not hide another arriving later.
  */
 const ALLOWED: Record<string, { groups: readonly Group[]; why: string }> = {
+  'packages/apack-host/src/migrations/app/0.4.0.ts': {
+    groups: ['concept-field'], why: 'the migration that moves those two attributes off those names',
+  },
+  'packages/apack-host/tests/migrations/surface-state-0.4.0.spec.ts': {
+    groups: ['concept-field'], why: 'its spec, which has to write a row the pre-rename way',
+  },
   'packages/repo-checks/tests/surface-vocabulary.spec.ts': {
     groups: ['concept-type', 'concept-call', 'concept-field', 'concept-event'],
     why: 'this guard, which has to spell the names it retires',
@@ -123,6 +136,9 @@ describe('the patterns themselves', () => {
       }
     }
     expect(MANIFEST_KEY.test('"plugin": { "label": "Notes" }')).toBe(true);
+    expect(DECLARES_PLUGIN.test('export interface Plugin {')).toBe(true);
+    // The same keyword, mid-line: `import { …, type Plugin, … } from 'vite'` is Vite's, not a declaration
+    expect(DECLARES_PLUGIN.test("import { type Plugin } from 'vite';"), 'an imported one is theirs').toBe(false);
   });
 
   it('leaves every spelling that keeps the word alone', () => {
@@ -130,7 +146,7 @@ describe('the patterns themselves', () => {
     const caught = population('kept spellings', KEPT).flatMap((sample) => groups
       .filter((group) => patternFor(group).test(sample))
       .map((group) => `${group} matches ${sample}`));
-    expect(caught, 'narrow the pattern; these are editor surfaces, bundler surfaces or stored keys').toEqual([]);
+    expect(caught, 'narrow the pattern; these are editor plugins, bundler plugins or stored keys').toEqual([]);
   });
 
   it('matches a name only on its own word, not inside a longer one', () => {
@@ -141,12 +157,12 @@ describe('the patterns themselves', () => {
 
 describe('the surface vocabulary', () => {
   /**
-   * Parked until Phase 5 of `docs/goals/goal-surfaces-to-surfaces.md`: the tree still spells the concept
+   * Parked until Phase 5 of `docs/goals/goal-plugins-to-surfaces.md`: the tree still spells the concept
    * `plugin` everywhere, so this case cannot pass until the rename lands. `it.fails` makes that a
    * tripwire rather than a silence — the moment the rename is complete this starts failing, and Phase 5
    * is to flip it to `it`.
    */
-  it.fails('no code names the frontend actor a plugin', () => {
+  it('no code names the frontend actor a plugin', () => {
     const files = population('tracked code files', trackedCodeFiles(), { atLeast: 500 });
     const violations: string[] = [];
     for (const file of files) {
@@ -157,12 +173,15 @@ describe('the surface vocabulary', () => {
           if (excused.includes(group)) continue;
           if (patternFor(group).test(line)) violations.push(`${file}:${i + 1} ${line.trim()}  ← ${group}`);
         }
+        if (!excused.includes('concept-type') && DECLARES_PLUGIN.test(line)) {
+          violations.push(`${file}:${i + 1} ${line.trim()}  ← a surface's type is Surface`);
+        }
         if (file.endsWith('apack.json') && MANIFEST_KEY.test(line)) {
           violations.push(`${file}:${i + 1} ${line.trim()}  ← the manifest key is features[].surface`);
         }
       });
     }
-    expect(violations, 'a surface is not a plugin; see docs/goals/goal-surfaces-to-surfaces.md').toEqual([]);
+    expect(violations, 'a surface is not a plugin; see docs/goals/goal-plugins-to-surfaces.md').toEqual([]);
   });
 
   it('excuses nothing that has stopped needing it', () => {

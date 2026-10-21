@@ -54,7 +54,7 @@ the bridge just called — every assertion reads an empty map.
 | `electronAPI.` | Channel(s) | Kind | Main handler |
 |---|---|---|---|
 | `windowControls.minimize/maximize/close` | `window:minimize` / `window:maximize` / `window:close` | send | `window-manager` (acts on the focused window) |
-| `plugins.popout(pluginId, title?)` | `plugin:popout` | invoke | `window-manager` |
+| `surfaces.popout(surfaceId, title?)` | `surface:popout` | invoke | `window-manager` |
 | `fileUtils.selectDirectory()` / `selectPath(opts)` | `dialog:select-directory` / `dialog:select-path` | invoke | `window-manager` |
 | `fileUtils.readFile` / `readFileBase64` | `file:read` / `file:read-base64` | invoke | `window-manager` (reads any path) |
 | `fileUtils.getPathForFile(file)` | — | local | `webUtils.getPathForFile` |

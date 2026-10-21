@@ -105,7 +105,7 @@ orchestration, `L` = lifecycle and persisted data, `G` = agent sessions.
 | **X5** | Medium | Windows: an OSC 7 URL decodes to an unusable path, which is persisted and respawned from | `be/features/terminal.ts:49,66` |
 | **X6** | Medium | Windows: the run-script path sends LF, which does not submit a line | `fe/features/terminal/state.ts:290` |
 | **X9** | Medium | Windows: `resize`/`write` have no error handling; ConPTY throws for ~1 s after exit | `be/services/terminal.ts:145-165` |
-| **X10** | Medium | Windows/Linux: the code plugin's `cmd`-based hotkeys can never match | `apack-sdk/src/fe/hotkeys.ts:31` |
+| **X10** | Medium | Windows/Linux: the code surface's `cmd`-based hotkeys can never match | `apack-sdk/src/fe/hotkeys.ts:31` |
 | **X11** | Medium | Linux: the `$SHELL`-missing fallback is a hardcoded `/bin/bash` | `be/services/terminal.ts:48` |
 | **X12** | Medium | Windows: `pwsh.exe`/`bash.exe`/`wsl.exe` are silently replaced by PowerShell 5.1 | `be/services/terminal.ts:25-37` |
 | **G2** | Medium | `ELECTRON_RUN_AS_NODE=1` is handed to every agent child and everything its Bash tool spawns | `claude-code/runner.ts:117-121` |
@@ -144,7 +144,7 @@ the last 200 MB of `main.jsonl`.
 
 `onData` fires on key presses regardless of terminal echo, so a passphrase typed at `sudo`, `ssh`, GPG or
 `npm login` — never shown on screen — is on disk in cleartext. `logger.ts:73` redacts only key-shaped
-strings the process already knows. It went unnoticed because the Logs plugin hides the `app-events` source
+strings the process already knows. It went unnoticed because the Logs surface hides the `app-events` source
 by default (`features/logs/settings.ts`, `showAppEvents: false`); the UI hides it, the file does not. These
 are long-lived files that the app's own "open log file" IPC exposes and that users attach to bug reports.
 
@@ -207,7 +207,7 @@ The deferral is correct in one direction: `restorePersistedTabs` runs in the mac
 `pendingTerminalTabIds` is set before any backend event arrives. But the fallback is a fixed 2,500 ms timer,
 and the backend answers at exactly one reliable moment. `be/features/terminal.ts:302-309` keeps
 `REFRESH_LIST`, `CREATE_TERMINAL`, `CLOSE_TERMINAL` and `OPEN_TERMINAL_TAB` in `idle` only, so both front-end
-prompts — `initializePlugin`'s `REFRESH_LIST` and `CODE_CONNECTED` — are **dropped** while
+prompts — `initializeSurface`'s `REFRESH_LIST` and `CODE_CONNECTED` — are **dropped** while
 `restoreTerminalsActor` is still spawning stored ptys. If `TERMINALS_LISTED` lands after the settle, the
 settle has already cleared `pendingTerminalTabIds` *and* called `persistCodeTabs` on an `openFiles` that
 never received the terminal tabs — so the tab layout is erased from `localStorage`. The ptys are alive and
@@ -221,7 +221,7 @@ machine, so not even F9's swallowed-error case.
 Found independently by four of the six reviews, which is why it is listed once. `createTerminal` overwrites
 `pendingTarget`/`pendingCommand` on every `terminal.CREATE` (`fe/features/terminal/state.ts:71`);
 `handleTerminalCreated` consumes whatever is there when the next `terminal.CREATED` arrives, with nothing
-tying a reply to its request — and `CREATED` is a `broadcastToPlugin` (`be/features/terminal.ts:133`), so it
+tying a reply to its request — and `CREATED` is a `broadcastToSurface` (`be/features/terminal.ts:133`), so it
 reaches every window for every creation.
 
 - One window: run "build" then "test" from the Run Script popover before the first reply → **`test` runs in
@@ -254,11 +254,11 @@ Popping out is one menu click (`renderer/src/views/WebApp.vue:144`), and the mai
 away, so "main on Code" + "popout on Code" is immediate. At most two windows can show Code
 (`WindowManager.ts:25,151`).
 
-The amplifier is broader: **every plugin's actor is spawned in every window regardless of what that window
-displays** (`apack-host/src/features/application/fe/machine.ts:416-418`), and the Code plugin's `entry`
-spawns the terminal child. So a popout of *Notes* runs a full Code plugin and terminal child that receives
+The amplifier is broader: **every surface's actor is spawned in every window regardless of what that window
+displays** (`apack-host/src/features/application/fe/machine.ts:416-418`), and the Code surface's `entry`
+spawns the terminal child. So a popout of *Notes* runs a full Code surface and terminal child that receives
 every terminal broadcast and writes every persisted key. M1, M3, M5 and M6 therefore need only a second
-window of **any** plugin.
+window of **any** surface.
 
 Nothing reconciles cross-window state: no `storage` listener, no `BroadcastChannel`, and no `partition` in
 `webPreferences`, so `localStorage` is genuinely one shared store.
@@ -360,7 +360,7 @@ Recorded so they are not re-investigated.
    about the log files already on disk — they are credential-bearing.
 2. **S1**: replace the pty env deny-list with an allow-list, and add the spec that fails when an app-owned
    variable appears in a spawned pty's env.
-3. **F9**: route terminal errors through the shell's existing `notify` rather than plugin context, so an error
+3. **F9**: route terminal errors through the shell's existing `notify` rather than surface context, so an error
    nothing renders becomes structurally impossible.
 4. **F10**: add `onContextLoss`. Three lines; `1b414d35e` proves context loss happens here.
 

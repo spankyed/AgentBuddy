@@ -298,12 +298,12 @@ step "5. @apackdev/testing's published types stand alone"
 # Its declarations may import only what a pack installs: an unpublished import (@apackdev/host) fails with lib checking
 # on, and is silently `any` under the scaffold's skipLibCheck. Errors in other packages' declarations aren't this check's.
 cat > tests/types-probe.ts <<'TS'
-import type { PluginEvent, TestApp, FlowRun } from '@apackdev/testing/harness';
+import type { SurfaceEvent, TestApp, FlowRun } from '@apackdev/testing/harness';
 import type { IsolatedDataDir } from '@apackdev/testing/vitest';
 import type { AppDriver } from '@apackdev/testing';
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
-export const typed: [IsAny<PluginEvent>, IsAny<Awaited<ReturnType<TestApp['nextEmit']>>>, IsAny<FlowRun>, IsAny<IsolatedDataDir>, IsAny<AppDriver>] = [false, false, false, false, false];
+export const typed: [IsAny<SurfaceEvent>, IsAny<Awaited<ReturnType<TestApp['nextEmit']>>>, IsAny<FlowRun>, IsAny<IsolatedDataDir>, IsAny<AppDriver>] = [false, false, false, false, false];
 TS
 TYPES_STATUS=0
 node_modules/.bin/tsc --noEmit --skipLibCheck false --listFiles --pretty false -p . > "$WORK/types-probe.log" 2>&1 || TYPES_STATUS=$?

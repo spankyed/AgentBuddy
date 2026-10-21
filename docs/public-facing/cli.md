@@ -103,7 +103,7 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 - `src/features/<name>/fe/state.ts`, `fe/contract.ts`, `fe/canvas/list.vue`, `fe/settings.vue`
 - `tests/features/<name>/be/system.spec.ts` (and `tests/setup.ts` with its devDependencies if the pack has none)
 
-and adds a keyed `features.<name>` entry with its required `description`, explicit `types` pointing at `be/types.ts`, `settings` (including the custom `form` it writes), `system.entry`, `plugin` (`state`, `canvas`, `label`, `icon`), empty `services`, and `repositories` `<name>Queries` and `<name>Commands` pointing at `be/repository/index.ts`.
+and adds a keyed `features.<name>` entry with its required `description`, explicit `types` pointing at `be/types.ts`, `settings` (including the custom `form` it writes), `system.entry`, `surface` (`state`, `canvas`, `label`, `icon`), empty `services`, and `repositories` `<name>Queries` and `<name>Commands` pointing at `be/repository/index.ts`.
 
 ### Code generation
 
@@ -142,7 +142,7 @@ The build:
 4. Compiles `content.sources` into `runtime/content/`, validating flows against dependency step build code, and bundles declared content compilers for dependents.
 5. Bundles and checks the standalone `types/pack-types.d.ts` facade. Its imports must resolve through `@apackdev/*`, SDK peers or Node built-ins; a committed facade report mismatch produces a warning (`apack pack facade-report`).
 6. Bundles flow helpers, step build facets and the content runtime used by dependents. Checks that the content runtime can load in a fresh Node process with the supported SDK dependencies.
-7. Builds declared Monaco DSL definitions, the backend runtime, and the frontend unless `--skip-fe`. The frontend entry is `src/pack-entry-fe.ts` (or `.js`) when present, otherwise the generated entry. `--skip-fe` is valid only for packs with no declared frontend bindings: plugins, designations, reference providers, custom settings forms, steps, artifacts, blocks, editor plugins or app extensions require the frontend entry. An incomplete build refuses publication and retains the existing `dist/`.
+7. Builds declared Monaco DSL definitions, the backend runtime, and the frontend unless `--skip-fe`. The frontend entry is `src/pack-entry-fe.ts` (or `.js`) when present, otherwise the generated entry. `--skip-fe` is valid only for packs with no declared frontend bindings: surfaces, designations, reference providers, custom settings forms, steps, artifacts, blocks, editor plugins or app extensions require the frontend entry. An incomplete build refuses publication and retains the existing `dist/`.
 8. Validates the snapshot and generated declaration identities, refuses inputs changed during the build, writes the manifest and integrity receipt, verifies the completed layout, and publishes staging as `dist/`.
 
 The snapshot includes declaration data, entity/relation types, facade declarations, compiled help,
@@ -283,7 +283,7 @@ With no app running it exits 3 and says so. `--spawn` starts one and keeps it, s
 one flag on the first question and an attach on every one after.
 
 **Three rules, so a verb is guessable.** A POST is a verb and a GET is a noun; one concept has one field
-name, in requests and in responses (`code` is any source the session runs, `plugin` names a plugin
+name, in requests and in responses (`code` is any source the session runs, `surface` names a surface
 whichever direction it travels); and every answer is `{ ok, value }`, or `{ ok: false, error }` when the
 operation failed — a `4xx` means nothing ran at all.
 
@@ -293,10 +293,10 @@ operation failed — a `4xx` means nothing ran at all.
 | `/send` | POST | `{ event, to? }` | sends an event to a system by ref, or to the app's root actor without `to` |
 | `/query` | POST | `{ code }` | runs query code against the live database |
 | `/transact` | POST | `{ code }` | runs transaction code against the live database |
-| `/state` | GET | — | the state value, the active `plugin` and the `plugins` list |
-| `/wait` | POST | `{ state }` or `{ plugin }`, `{ timeoutMs }` | waits for a dotted state path, or for a plugin to arrive |
-| `/navigate` | POST | `{ plugin }` | opens a plugin |
-| `/plugin` | POST | `{ plugin, path? }` | what that plugin published, or one dotted path into it |
+| `/state` | GET | — | the state value, the active `surface` and the `surfaces` list |
+| `/wait` | POST | `{ state }` or `{ surface }`, `{ timeoutMs }` | waits for a dotted state path, or for a surface to arrive |
+| `/navigate` | POST | `{ surface }` | opens a surface |
+| `/surface` | POST | `{ surface, path? }` | what that surface published, or one dotted path into it |
 | `/click` | POST | `{ selector }` | clicks what it matches |
 | `/fill` | POST | `{ selector, text }` | types into it |
 | `/press` | POST | `{ key, selector? }` | a key, to an element or to the page |
@@ -338,28 +338,28 @@ emulation inside the window: the app would draw into one corner and leave the de
 rest. A session nobody is watching gets that emulation, which is what makes a suite's layout the same
 everywhere. Either way `/viewport` answers with what the layout has, read from the window.
 
-**`/plugin` over `/eval`.** A plugin's state is what its view is showing, so reading it is the commonest
+**`/surface` over `/eval`.** A surface's state is what its view is showing, so reading it is the commonest
 question there is; doing it through `/eval` means writing the same expression, with the same ref and the
 same optional chain, every time.
 
 The three drains are POSTs because each one *clears* what it returns: draining is right for a session open
 for an hour, but a GET that answers differently on a retry is a trap.
 
-**A write does not update the UI; `/reload` is how you see it.** A plugin's state is what its system
+**A write does not update the UI; `/reload` is how you see it.** A surface's state is what its system
 sent it, so a write made outside that system — `/transact`, the database console, `apack db exec` — changes
 the database and reaches no view. That is the console being a console rather than a fault, and it is not
-staleness that time fixes: navigating between plugins does not refresh one, because the plugin's actor
+staleness that time fixes: navigating between surfaces does not refresh one, because the surface's actor
 survives. `/reload` does, because a new connection makes every system send its startup data again.
 
 `window.location.reload()` from `/eval` is not an alternative. The app blocks renderer-initiated
 navigation, so it returns having done nothing — which reads exactly like a reload that changed nothing.
 
 **`/wait` rather than re-asking `/state`.** `{"state":"running.connected"}` returns when the app gets
-there; `{"plugin":"default-setup/notes"}` returns when that plugin registers. One of the two, never both.
+there; `{"surface":"default-setup/notes"}` returns when that surface registers. One of the two, never both.
 
 **Replies come to the session, and each names the request it answers.** Both matter. The session has its
 own connection to the app and a name on it, so an answer is addressed here rather than to every window —
-a person querying in the Database plugin while you drive is no longer mistaken for you. And because three
+a person querying in the Database surface while you drive is no longer mistaken for you. And because three
 concurrent `/query` calls would otherwise be indistinguishable, each reply still names its request, so they
 may run together and one you stopped waiting for is ignored.
 
@@ -395,7 +395,7 @@ answers no value at all.
 Scripts select an executable with `--host <path>`; pack scripts also accept `--host beta`. Live questions select a source development session with `--profile`. `--host` requires `--spawn`; an existing session must belong to that host. Fresh live questions require `--spawn`. The two modes have different ownership:
 
 - **A question** joins the app `apack pack dev` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
-- **A script** launches its own app and shows its windows, in a fresh data dir thrown away afterwards, so a driving session starts clean and leaves nothing and a script's result does not depend on whatever plugin the last one left open. `--profile <name>` is how a session keeps its state for the next one.
+- **A script** launches its own app and shows its windows, in a fresh data dir thrown away afterwards, so a driving session starts clean and leaves nothing and a script's result does not depend on whatever surface the last one left open. `--profile <name>` is how a session keeps its state for the next one.
 
 Electron allows one app per data dir, which is what makes a question *join* rather than compete — and why a script, which wants an app of its own, gets a dir of its own with it. If a person wants to watch what a script is doing they watch its window; a question is headless, since nothing is watching one question.
 
@@ -463,7 +463,7 @@ the same report.
 
 Checks:
 - Manifest structure validation
-- Declared module files: feature types/contracts, systems, plugins, references and forms; entity shapes; services, repositories, steps, blocks, artifacts, DSL modules, frontend extensions, lifecycle hooks, migrations and content writers/compilers/appliers. Paths stay within the pack, including symlinks. File checks run even when dependencies are unresolved.
+- Declared module files: feature types/contracts, systems, surfaces, references and forms; entity shapes; services, repositories, steps, blocks, artifacts, DSL modules, frontend extensions, lifecycle hooks, migrations and content writers/compilers/appliers. Paths stay within the pack, including symlinks. File checks run even when dependencies are unresolved.
 - Feature designation ownership: no two features claim the same role
 - Static export and contract checks through in-memory codegen when source files and dependencies are available; modules are not activated
 - Dependency resolution (a warning when one can't be resolved)
@@ -478,11 +478,11 @@ Checks:
 | `internal-package-imports` | an `@apackdev` export named `_x`: it is `@internal`, the app's own, and an app update is free to rename it | no |
 | `host-imports` | `@apackdev/host`, which is not installed for a pack | no |
 | `lmdb-imports` | `lmdb` or `@apackdev/ears/lmdb`: your data comes through the engine the app installs | no |
-| `untyped-sends` | `untypedBroadcastToPlugin`, `untypedSendToSystem`, `registerRepository` — use the typed facades from `#generated/events` | yes |
+| `untyped-sends` | `untypedBroadcastToSurface`, `untypedSendToSystem`, `registerRepository` — use the typed facades from `#generated/events` | yes |
 | `raw-transport` | `_rootEvents`, `trpc.bus`, `@apackdev/sdk/rpc` | yes |
 | `backend-console` | `console.*` under `features/*/be/`, `migrations/` or `extensions/` — use `createLogger` from `@apackdev/sdk/logger` | yes |
-| `component-sends` | `sendToPlugin` from a feature's `.vue`. A component runs in no delivery, so the send carries no `Message.sender` and the plugin it reaches cannot answer it — emit to your own plugin with `usePlugin()` and let its machine send. An extension's component is exempt: it is rendered in no plugin scope and by no single plugin, so it addresses a plugin by ref and `sendToPlugin` is that route's send | no |
-| `cross-feature-imports` | a module of another feature's `fe/`, and a feature passing its own frontend on (`export … from './fe/state.ts'`). What a feature offers the rest is its plugin's contract, read through `#generated/fe` and `#generated/events` | yes |
+| `component-sends` | `sendToSurface` from a feature's `.vue`. A component runs in no delivery, so the send carries no `Message.sender` and the surface it reaches cannot answer it — emit to your own surface with `useSurface()` and let its machine send. An extension's component is exempt: it is rendered in no surface scope and by no single surface, so it addresses a surface by ref and `sendToSurface` is that route's send | no |
+| `cross-feature-imports` | a module of another feature's `fe/`, and a feature passing its own frontend on (`export … from './fe/state.ts'`). What a feature offers the rest is its surface's contract, read through `#generated/fe` and `#generated/events` | yes |
 | `repository-casts` | `repository as unknown as …`, reading a repository through a type its owner never declared. `repository` from `#generated/repository` is already typed with your own repositories and your dependencies' | yes |
 | `reserved-event-keys` | a property named `_call`, in `src` or `tests`. That key is the app's: a delivery door writes the call a message answers under it, so a field of yours by that name is overwritten on the way in and read as a correlation on the way out. Ask `answersCall(event, outstanding)` or `settleCall(pending, event)` from `@apackdev/sdk/events` instead of reading it, build an answer in a test with `answerTo` from `@apackdev/sdk/testing`, and rename a field of your own that collides | no |
 
@@ -542,7 +542,7 @@ Build status distinguishes unbuilt, verified, invalid and stale declarations. Co
 
 #### `apack pack init-tests`
 
-Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), a `.gitignore` entry for `.apack/`, and `@apackdev/testing` and `@playwright/test` devDependencies. Existing files are kept.
+Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a surface), a `.gitignore` entry for `.apack/`, and `@apackdev/testing` and `@playwright/test` devDependencies. Existing files are kept.
 
 #### `apack pack test [--host <path>] [--prebuilt] [playwright args...]`
 
