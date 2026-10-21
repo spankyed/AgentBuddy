@@ -1,4 +1,4 @@
-import type { ComponentTarget, PluginDeclaration } from './plugin-declaration.ts';
+import type { ComponentTarget, SurfaceDeclaration } from './surface-declaration.ts';
 import type { StepNodeConfig } from '../steps/types.ts';
 
 /** Static layout flags and the callable slots evaluated by the active flow editor. */
@@ -11,7 +11,7 @@ export interface StepLayoutDeclaration {
 
 /** Presentation data and named bindings, readable before any step code executes. */
 export interface StepFrontendDeclaration {
-  nodeConfig: Omit<StepNodeConfig, 'icon'> & { icon: NonNullable<PluginDeclaration['icon']> };
+  nodeConfig: Omit<StepNodeConfig, 'icon'> & { icon: NonNullable<SurfaceDeclaration['icon']> };
   colorKey?: string;
   components?: { node?: ComponentTarget; form?: ComponentTarget };
   layout?: StepLayoutDeclaration;

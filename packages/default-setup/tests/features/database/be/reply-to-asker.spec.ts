@@ -1,7 +1,7 @@
 // A query's result goes to the view that ran it, not to every window.
 //
-// Two windows each show the Database plugin with their own editor and their own pending request, and a
-// `broadcastToPlugin` reached both. `reply` answers the sender of the message being handled, on the connection
+// Two windows each show the Database surface with their own editor and their own pending request, and a
+// `broadcastToSurface` reached both. `reply` answers the sender of the message being handled, on the connection
 // it came from — so a person querying in one window and an agent driving in another stop seeing each other's
 // results.
 //
@@ -10,7 +10,7 @@
 // (`@apackdev/host`'s `tests/bus/reply.spec.ts` and `@app/api`'s `tests/transport/sub-scope.spec.ts`). What is
 // covered here is the pack's half: that the handler answers its sender at all.
 //
-// Every case connects first: the bus holds sends to plugins until a client does, so an answer would otherwise
+// Every case connects first: the bus holds sends to surfaces until a client does, so an answer would otherwise
 // have nowhere to go. The one case that deliberately does not is the last.
 import { describe, expect, it } from 'vitest'
 import { startApp } from '@apackdev/testing/harness'
@@ -19,14 +19,14 @@ const DATABASE = 'default-setup/database'
 /**
  * The connection the ask arrived on, which is what makes these asks a *window's*.
  *
- * `reply` routes on it: with a connection the asker is a plugin or a driver and the answer goes out to that
+ * `reply` routes on it: with a connection the asker is a surface or a driver and the answer goes out to that
  * connection, without one the ask came from the backend and the answer goes to the asking system. A real
  * client's send always carries one, stamped per socket by the API; a send made from a test carries nothing
  * unless it says so. Every case here is a view running a query, so every case names one.
  */
 const WINDOW = 'c-window'
 
-describe('a query run by a plugin', () => {
+describe('a query run by a surface', () => {
   /**
    * **The call is the ask's, and the answer names it on the envelope rather than in the payload.**
    *

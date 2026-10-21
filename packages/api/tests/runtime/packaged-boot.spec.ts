@@ -71,13 +71,13 @@ async function packagedBoot(run: (app: ReturnType<typeof openAppStore>) => Promi
   }
 }
 
-it("installs each shipped pack and loads its built runtime, with its systems and plugins", async () => {
+it("installs each shipped pack and loads its built runtime, with its systems and surfaces", async () => {
   await packagedBoot(async (app) => {
     const { loaded } = await bootPacks(app);
 
     expect(loaded.map((pack) => pack.origin.id)).toContain('default-setup');
     expect(app.packs.systemIds()).toContain('default-setup/threads');
-    expect(app.packs.pluginIds()).toContain('default-setup/threads');
+    expect(app.packs.surfaceIds()).toContain('default-setup/threads');
   });
 });
 

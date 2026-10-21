@@ -28,7 +28,7 @@ afterEach(() => { for (const dir of tmpDirs.splice(0)) fs.rmSync(dir, { recursiv
 /** One specifier from each population the host shares, and one it deliberately does not */
 const ENTRY = [
   "export { ref } from 'vue';",                                              // a third-party dep
-  "export { usePlugin } from '@apackdev/sdk/fe';",                             // an SDK frontend module
+  "export { useSurface } from '@apackdev/sdk/fe';",                             // an SDK frontend module
   "export { useDebounce } from '@apackdev/ui/composables/useDebounce';",       // a UI kit module
   "export { b64Encode } from '@apackdev/ears';",                               // NOT shared: the renderer keeps no EARS data
 ].join('\n');

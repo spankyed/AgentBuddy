@@ -67,7 +67,7 @@ const promptsState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setPluginData: assign(({ event }) => {
+    setSurfaceData: assign(({ event }) => {
       const ev = typeOf('PROMPTS_CONNECTED', event);
       return {
         prompts: ev.data.prompts,
@@ -493,7 +493,7 @@ const promptsState = setup({
     'VIEW_LIST': {
       target: '.list',
     },
-    PROMPTS_CONNECTED: { actions: 'setPluginData' },
+    PROMPTS_CONNECTED: { actions: 'setSurfaceData' },
     PROMPT_SELECTED: { guard: 'answersPendingPrompt', actions: 'loadPromptData' },
     FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     PROMPT_CREATED: {

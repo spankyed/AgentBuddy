@@ -21,7 +21,7 @@ export type DslEntry = z.infer<typeof DslEntrySchema>;
 export type PackPermission = z.infer<typeof PackPermissionSchema>;
 
 export type PackSystemEntry = NonNullable<PackFeatureEntry['system']>;
-export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
+export type PackSurfaceEntry = NonNullable<PackFeatureEntry['surface']>;
 
 /** A feature with the id it is declared under: what everything reading a manifest's features works with */
 export type PackFeature = PackFeatureEntry & { id: string };
@@ -31,7 +31,7 @@ export type PackFeature = PackFeatureEntry & { id: string };
  * id is unrepresentable and nothing has to check for one; everything that reads them wants the id beside
  * the entry, which is this one derivation rather than an id written twice.
  *
- * The order is the manifest's own. Generated code follows it — the `NodeEntity` union, the plugin list a
+ * The order is the manifest's own. Generated code follows it — the `NodeEntity` union, the surface list a
  * pack's frontend registers — so it is a declaration like any other key order in the file.
  */
 export function packFeatures(manifest: { features?: Record<string, PackFeatureEntry> }): PackFeature[] {
@@ -71,7 +71,7 @@ export interface PackSnapshot {
   types: PackTypeManifest;
   /** Dependent-facing TypeScript declaration bundles, keyed by facade name. */
   facades: Record<string, string>;
-  /** Entity type to local destination feature, materialized from declared plugin contract types. */
+  /** Entity type to local destination feature, materialized from declared surface contract types. */
   entityDestinations: Record<string, string>;
   /** Compiled names for every declared endpoint; absent only when there are no endpoints. */
   eventContracts?: import('../framework/event-contracts.ts').PackEventContracts;
@@ -92,7 +92,7 @@ export interface PackSnapshot {
    * same name — a collision that isn't one. Every pack depends on the base pack, so that is every
    * diamond.
    *
-   * Every kind — entities, relation kinds, commands, plugins — goes through one algorithm,
+   * Every kind — entities, relation kinds, commands, surfaces — goes through one algorithm,
    * `_mergeProvenance`, and `PROVENANCE_KINDS` is where a new kind costs a line rather than a
    * differently-shaped field with a reader of its own.
    */
@@ -157,9 +157,9 @@ export const PROVENANCE_KINDS = {
   referenceTypes: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.types ?? {})),
   referenceCategories: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.categories ?? {})),
   commands: (m: ProvenanceManifest) => Object.keys(m.extensions?.commands ?? {}),
-  tiptapExtensions: (m: ProvenanceManifest) => Object.values(m.extensions?.tiptapPlugins ?? {}).flatMap(plugin => Object.keys(plugin.extensions ?? {})),
+  tiptapExtensions: (m: ProvenanceManifest) => Object.values(m.extensions?.tiptapPlugins ?? {}).flatMap(surface => Object.keys(surface.extensions ?? {})),
   // Keyed by ref, so a dependent reusing one of its dependency's feature ids keeps both apart
-  plugins: (m: ProvenanceManifest, packId: string) => Object.entries(m.features ?? {}).filter(([, f]) => f.plugin).map(([id]) => resolveName(id, packId)),
+  surfaces: (m: ProvenanceManifest, packId: string) => Object.entries(m.features ?? {}).filter(([, f]) => f.surface).map(([id]) => resolveName(id, packId)),
 } as const;
 
 export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;
@@ -170,7 +170,7 @@ export type PackProvenance = Partial<Record<ProvenanceKind, Record<string, strin
 /** The parts of a manifest `PROVENANCE_KINDS` reads; a `PackManifest` satisfies it */
 export interface ProvenanceManifest extends PackDataDeclarations {
   extensions?: { commands?: Readonly<Record<string, unknown>>; tiptapPlugins?: import('../framework/frontend-declaration.ts').FrontendDeclaration['tiptapPlugins'] };
-  features?: Record<string, { entities?: Record<string, string | null>; plugin?: unknown; references?: import('../framework/reference-declaration.ts').ReferenceDeclarations }>;
+  features?: Record<string, { entities?: Record<string, string | null>; surface?: unknown; references?: import('../framework/reference-declaration.ts').ReferenceDeclarations }>;
 }
 
 /**

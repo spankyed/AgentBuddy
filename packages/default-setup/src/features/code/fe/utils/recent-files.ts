@@ -7,7 +7,7 @@ interface RecentFile {
   timestamp: number
 }
 
-const STORAGE_PREFIX = 'code-plugin-recent-files'
+const STORAGE_PREFIX = 'code-surface-recent-files'
 const MAX_RECENT_FILES = 50
 
 /**

@@ -18,13 +18,13 @@ export type _Asker =
     kind: 'bus';
     ref: string;
 }
-/** Out over one connection, where a plugin in another window or a claimed participant is */
+/** Out over one connection, where a surface in another window or a claimed participant is */
 | {
     kind: 'connection';
     ref: string;
     client: string;
 }
-/** Inside this window, where a plugin beside the answerer is */
+/** Inside this window, where a surface beside the answerer is */
 | {
     kind: 'window';
     ref: string;
@@ -53,11 +53,11 @@ export function _clientOf(delivery: _Delivery | undefined): string | undefined;
 
 // @public
 export function createSends(input?: SendBinding): {
-    broadcastToPlugin(name: string, event: {
+    broadcastToSurface(name: string, event: {
         type: string;
         [key: string]: unknown;
     }): void;
-    sendToPlugin(name: string, event: {
+    sendToSurface(name: string, event: {
         type: string;
         [key: string]: unknown;
     }): void;
@@ -75,7 +75,7 @@ export function createSends(input?: SendBinding): {
 export function _currentDelivery(): _Delivery | undefined;
 
 // @public
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
+export function defineEvents<P extends SurfaceEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
 
 // @internal
 export interface _Delivery {
@@ -109,7 +109,7 @@ export const HOST_SYSTEM_EVENT_TYPES: {
 };
 
 // @public
-export type HostPluginEvents = {
+export type HostSurfaceEvents = {
     'host/application': {
         type: 'CLIENT_CONNECTED';
         hasOnboarded: boolean;
@@ -125,7 +125,7 @@ export type HostPluginEvents = {
         type: 'ONBOARDING_COMPLETE';
     } | {
         type: 'OPEN_PLUGIN';
-        plugin: string;
+        surface: string;
         events?: Array<{
             type: string;
             [key: string]: unknown;
@@ -193,21 +193,7 @@ export type OutgoingEventsOf<C> = ContractOutgoing<C>;
 export const PLUGIN_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED", "OPEN_ENTITY"];
 
 // @public
-export type PluginEvents = {
-    [plugin: string]: {
-        type: string;
-    };
-};
-
-// @public
-export type PluginInboxOf<C> = C extends {
-    inbox: infer Audiences;
-} ? Extract<Audiences[keyof Audiences], {
-    type: string;
-}> : never;
-
-// @public
-export type PublicPluginInboxOf<C> = C extends {
+export type PublicSurfaceInboxOf<C> = C extends {
     inbox: {
         public: infer Events;
     };
@@ -248,7 +234,7 @@ export interface SendBinding {
 export function senderSuffix(input: Pick<Message, 'from' | 'via'>): string;
 
 // @internal
-export function _sendToLocalPlugin(ref: string, event: {
+export function _sendToLocalSurface(ref: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;
@@ -260,6 +246,20 @@ export const settleCall: <T>(pending: Record<string, T>, event: {
     recorded?: T;
     pending: Record<string, T>;
 };
+
+// @public
+export type SurfaceEvents = {
+    [surface: string]: {
+        type: string;
+    };
+};
+
+// @public
+export type SurfaceInboxOf<C> = C extends {
+    inbox: infer Audiences;
+} ? Extract<Audiences[keyof Audiences], {
+    type: string;
+}> : never;
 
 // @public
 export type SystemEventMap = {
@@ -274,16 +274,16 @@ export type SystemTarget = string | {
 };
 
 // @public
-export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
-    broadcastToPlugin: TypedSendToPlugin<P>;
-    sendToPlugin: TypedSendToPlugin<P>;
+export interface TypedEvents<P extends SurfaceEvents, S extends SystemEventMap> {
+    broadcastToSurface: TypedSendToSurface<P>;
+    sendToSurface: TypedSendToSurface<P>;
     // (undocumented)
     sendToSystem: TypedSendToSystem<S>;
     sendToWindow: TypedSendToWindow<P>;
 }
 
 // @public
-export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & string>(plugin: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
+export type TypedSendToSurface<M extends SurfaceEvents> = (<P extends keyof M & string>(surface: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((surface: FeatureRef, event: FeatureSettingsUpdated) => void);
 
 // @public
 export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(system: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
@@ -296,7 +296,7 @@ export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S &
 }, options?: CallOptions) => string) & ((system: FeatureRef, event: SystemEvents, options?: CallOptions) => string);
 
 // @public
-export type TypedSendToWindow<M extends PluginEvents> = (<P extends keyof M & string>(client: string, plugin: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((client: string, plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
+export type TypedSendToWindow<M extends SurfaceEvents> = (<P extends keyof M & string>(client: string, surface: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((client: string, surface: FeatureRef, event: FeatureSettingsUpdated) => void);
 
 // @public
 export type TypeOfEvent<E> = E extends {
@@ -304,7 +304,7 @@ export type TypeOfEvent<E> = E extends {
 } ? K : never;
 
 // @public
-export function untypedBroadcastToPlugin(to: string, event: {
+export function untypedBroadcastToSurface(to: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;

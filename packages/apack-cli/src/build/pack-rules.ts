@@ -115,18 +115,18 @@ export interface PackRule {
 }
 
 /** Ref-taking sends a pack gets as name-taking ones from `#generated/events`, whichever module exports them */
-const EVENT_SENDS = ['untypedBroadcastToPlugin', 'untypedSendToSystem', '_sendToLocalPlugin'];
+const EVENT_SENDS = ['untypedBroadcastToSurface', 'untypedSendToSystem', '_sendToLocalSurface'];
 
 /**
- * A feature's own component, which is where `usePlugin()` is available and so where a cross-plugin send has an
+ * A feature's own component, which is where `useSurface()` is available and so where a cross-surface send has an
  * alternative.
  *
- * **Extensions are outside it because they address a plugin differently.** A viewer, block or step form is
- * rendered by the host wherever it belongs, in no `PluginScope` and by no single plugin — the same viewer can
- * be shown by several — so `usePlugin()` has no answer for it and is not the verb it is missing. Such a
- * component reaches a plugin by its ref, which is the sanctioned route (`apack-sdk/src/fe/plugin-state.ts`
- * states it), and `sendToPlugin` is that route's send. What a by-ref send does lack is a return address, so
- * the plugin it reaches cannot answer it — which costs nothing while every one of them is a notification.
+ * **Extensions are outside it because they address a surface differently.** A viewer, block or step form is
+ * rendered by the host wherever it belongs, in no `SurfaceScope` and by no single surface — the same viewer can
+ * be shown by several — so `useSurface()` has no answer for it and is not the verb it is missing. Such a
+ * component reaches a surface by its ref, which is the sanctioned route (`apack-sdk/src/fe/surface-state.ts`
+ * states it), and `sendToSurface` is that route's send. What a by-ref send does lack is a return address, so
+ * the surface it reaches cannot answer it — which costs nothing while every one of them is a notification.
  */
 const FEATURE_COMPONENT = /^features\/[^/]+\/fe\/.*\.vue$/;
 
@@ -223,7 +223,7 @@ const RULE_LIST = [
   {
     key: 'contract-leaves',
     rule: 'A contract leaf is a leaf: no ./state or ./system, no other feature, and nothing generated but types '
-      + "and ears — codegen reads a plugin's and a system's contract without resolving its actor, and an import "
+      + "and ears — codegen reads a surface's and a system's contract without resolving its actor, and an import "
       + 'that reaches one restores the cycle',
     checkPack: contractLeafFindings,
   },
@@ -247,7 +247,7 @@ const RULE_LIST = [
   },
   {
     key: 'cross-feature-imports',
-    rule: "A feature's frontend is its own: what it offers other features is its plugin's contract, read through "
+    rule: "A feature's frontend is its own: what it offers other features is its surface's contract, read through "
       + '#generated/fe and #generated/events, never a module of its own',
     check: crossFeatureFindings,
   },
@@ -287,7 +287,7 @@ const RULE_LIST = [
   },
   {
     key: 'untyped-sends',
-    rule: 'Pack code uses the typed facades: broadcastToPlugin, sendToPlugin and sendToSystem from '
+    rule: 'Pack code uses the typed facades: broadcastToSurface, sendToSurface and sendToSystem from '
       + '#generated/events, repositories declared in apack.json',
     check(view, place) {
       if (place.generated) return [];
@@ -310,18 +310,18 @@ const RULE_LIST = [
   },
   {
     key: 'component-sends',
-    rule: "A feature's component emits to its own plugin with usePlugin() rather than sending to another "
-      + 'plugin: a component runs in no delivery, so sendToPlugin from one carries no Message.sender and the '
-      + 'plugin it reaches cannot answer it',
+    rule: "A feature's component emits to its own surface with useSurface() rather than sending to another "
+      + 'surface: a component runs in no delivery, so sendToSurface from one carries no Message.sender and the '
+      + 'surface it reaches cannot answer it',
     check(view, place) {
       if (!FEATURE_COMPONENT.test(place.inRoot)) return [];
       return view.visit((node) => (ts.isCallExpression(node) && ts.isIdentifier(node.expression)
-        && node.expression.text === 'sendToPlugin' ? ['sendToPlugin(…)'] : undefined));
+        && node.expression.text === 'sendToSurface' ? ['sendToSurface(…)'] : undefined));
     },
   },
   {
     key: 'raw-transport',
-    rule: 'Pack code sends with broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, and '
+    rule: 'Pack code sends with broadcastToSurface, sendToSurface and sendToSystem from #generated/events, and '
       + 'subscribes with onConnected and onIncoming from @apackdev/sdk/events',
     check(view, _place) {
       return view.visit((node) => {

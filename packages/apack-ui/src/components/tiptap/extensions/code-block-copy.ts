@@ -5,7 +5,7 @@ const CHECK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14
 
 /**
  * CodeBlockLowlight with a copy button rendered in a wrapper around <pre>.
- * The <code> element remains the contentDOM so the lowlight plugin's
+ * The <code> element remains the contentDOM so the lowlight surface's
  * decorations keep applying syntax highlighting as usual.
  */
 export const CodeBlockCopy = CodeBlockLowlight.extend({

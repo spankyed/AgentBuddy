@@ -4,13 +4,13 @@ import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 // window's part — the import and the stylesheet — is a fake here, so these are the rules alone.
 import { createMachine } from 'xstate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PackFERegistration, Plugin, SettingsPort } from '@apackdev/sdk/fe';
+import type { PackFERegistration, Surface, SettingsPort } from '@apackdev/sdk/fe';
 import { createPackFrontends, loadPackFEEntry, type PackFrontendIO } from '../../../../src/fe/index.ts';
 import { type FePackRegistry } from '../../../../src/fe/pack-store.ts';
 
 /** Expected backend declarations are authored independently of the imported frontend fixture. */
 const declaration = (id: string) => ({ id, name: id, version: '1.0.0',
-  ...(id === 'memo-pack' && { features: { memos: { description: 'Feature declaration fixture.', plugin: { label: 'Memos', state: 'src/plugin.ts' } } } }),
+  ...(id === 'memo-pack' && { features: { memos: { description: 'Feature declaration fixture.', surface: { label: 'Memos', state: 'src/surface.ts' } } } }),
 });
 
 /** The window's half, recorded: each import by URL, and the stylesheets a pack has */
@@ -57,18 +57,18 @@ function fakeRegistry() {
   const unregistered: string[] = [];
   const active = new Set<string>();
   const registry = {
-    registerFixture: (registration: PackFERegistration) => { registered.push(registration); active.add(registration.id); return [{ id: 'memo-pack/memos' }] as unknown as Plugin[]; },
+    registerFixture: (registration: PackFERegistration) => { registered.push(registration); active.add(registration.id); return [{ id: 'memo-pack/memos' }] as unknown as Surface[]; },
     hasPackFE: (id: string) => active.has(id),
     preparePackFE(_authority: unknown, registration: PackFERegistration, settings?: { dispose(): void }) {
       let committed = false;
       return {
-        plugins: [],
-        commit(beforePublish?: () => void) { beforePublish?.(); committed = true; registered.push(registration); active.add(registration.id); return [{ id: 'memo-pack/memos' }] as unknown as Plugin[]; },
+        surfaces: [],
+        commit(beforePublish?: () => void) { beforePublish?.(); committed = true; registered.push(registration); active.add(registration.id); return [{ id: 'memo-pack/memos' }] as unknown as Surface[]; },
         dispose() { if (!committed) { settings?.dispose(); committed = true; } },
       };
     },
-    prepareUnregisterPackFE: (id: string) => ({ plugins: [], commit(beforePublish?: () => void) { beforePublish?.(); registry.unregisterPackFE(id); return []; }, dispose() {} }),
-    unregisterPackFE: (packId: string) => { active.delete(packId); unregistered.push(packId); return [] as Plugin[]; },
+    prepareUnregisterPackFE: (id: string) => ({ surfaces: [], commit(beforePublish?: () => void) { beforePublish?.(); registry.unregisterPackFE(id); return []; }, dispose() {} }),
+    unregisterPackFE: (packId: string) => { active.delete(packId); unregistered.push(packId); return [] as Surface[]; },
   } as unknown as FePackRegistry;
   return { registry, registered, unregistered };
 }
@@ -100,7 +100,7 @@ describe('loadPackFEEntry', () => {
   });
 
   it('warns when the default export declares no registration fields', async () => {
-    const { io } = fakeIO({ 'pack://ext/fe.js': { plugin: { id: 'typo' } } });
+    const { io } = fakeIO({ 'pack://ext/fe.js': { surface: { id: 'typo' } } });
 
     await loadPackFEEntry(io, 'fe.js', 'pack://ext');
 
@@ -230,15 +230,15 @@ describe("a pack's frontend", () => {
     expect(reads).toBe(1);
   });
 
-  it('registers what its entry exports, and answers with the plugins it added', async () => {
-    const registration = { id: 'memo-pack', declarationRevision: 'current', features: { memos: { plugin: { label: 'Memos', state: createMachine({}) } } } };
+  it('registers what its entry exports, and answers with the surfaces it added', async () => {
+    const registration = { id: 'memo-pack', declarationRevision: 'current', features: { memos: { surface: { label: 'Memos', state: createMachine({}) } } } };
     const { io } = fakeIO({ [`pack://memo-pack/builds/${buildRevision}/runtime/fe.js`]: registration });
     const { registry, registered } = fakeRegistry();
 
-    const plugins = await createPackFrontends(io, registry).load({ registrationId: 'runtime', manifest: declaration('memo-pack'), id: 'memo-pack', declarationRevision: 'current', buildRevision, name: 'Memos', version: '1.0.0', feEntry: 'runtime/fe.js' });
+    const surfaces = await createPackFrontends(io, registry).load({ registrationId: 'runtime', manifest: declaration('memo-pack'), id: 'memo-pack', declarationRevision: 'current', buildRevision, name: 'Memos', version: '1.0.0', feEntry: 'runtime/fe.js' });
 
     expect(registered).toEqual([registration]);
-    expect(plugins).toEqual([{ id: 'memo-pack/memos' }]);
+    expect(surfaces).toEqual([{ id: 'memo-pack/memos' }]);
   });
 
   it('is null for a pack with no frontend code, whose systems were told already', async () => {

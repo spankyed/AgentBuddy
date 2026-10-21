@@ -190,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { useSettings } from '#generated/settings-fe.ts'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
@@ -227,7 +227,7 @@ import { codeChild } from '../children.ts';
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 
 // Actors
-const codeActor: CodeState = usePlugin()
+const codeActor: CodeState = useSurface()
 const terminalActor = codeChild(codeActor, 'terminal')!
 
 // State selectors

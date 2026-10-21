@@ -184,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed, ref, watch, nextTick } from 'vue';
 import TabItem from './tab-item.vue';
@@ -195,7 +195,7 @@ import { categorizeThreadTabs } from './tab-utils.ts';
 import { useTabDragDrop } from './useTabDragDrop.ts';
 import { type ThreadsState } from '#features/threads/fe/state.ts';
 
-const actor: ThreadsState = usePlugin();
+const actor: ThreadsState = useSurface();
 
 const props = defineProps<{
   tabs: Tab[];

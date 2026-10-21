@@ -71,18 +71,18 @@ export function packSystemIds(reg: PackRegistration): FeatureRef[] {
   return systemsOf(reg).map(({ ref }) => ref);
 }
 
-/** Role → the ref of the feature playing it: its system and its plugin share it */
+/** Role → the ref of the feature playing it: its system and its surface share it */
 function designationsOf(reg: PackRegistration): Record<string, FeatureRef> {
   return Object.fromEntries(featuresOf(reg).flatMap(({ ref, feature }) => (feature.designation ? [[feature.designation, ref]] : [])));
 }
 
-/** What the app lists of a pack's feature (the Packs plugin shows it) */
+/** What the app lists of a pack's feature (the Packs surface shows it) */
 export interface PackFeatureSummary {
   id: string;
   description: string;
   designation?: string;
   hasSystem: boolean;
-  plugin?: import('@apackdev/sdk/framework').PluginDeclaration;
+  surface?: import('@apackdev/sdk/framework').SurfaceDeclaration;
   references?: import('@apackdev/sdk/framework').ReferenceDeclarations;
   services: readonly string[];
 }
@@ -165,8 +165,8 @@ export interface PackContentOffer extends ContentOffer {
   label: string;
 }
 
-/** What a plugin's sends are checked against: the event types it receives */
-export type PluginEventTypes = Set<string>;
+/** What a surface's sends are checked against: the event types it receives */
+export type SurfaceEventTypes = Set<string>;
 
 /**
  * Where the app found a pack, and what the pack says it is. The registration says what a pack contributes;
@@ -241,12 +241,12 @@ export interface PackRegistry extends PackRegistryView {
    */
   getEventValidationMap(): Map<string, Set<string>>;
   /**
-   * Each plugin's id → the event types it receives, the outgoing counterpart of `getEventValidationMap`.
-   * A pack declares its own plugins' (`plugin.receives`, generated from its systems' outgoing unions) and the
-   * host declares its own. A plugin absent from the map is one no registered pack owns. Cached on the same
+   * Each surface's id → the event types it receives, the outgoing counterpart of `getEventValidationMap`.
+   * A pack declares its own surfaces' (`surface.receives`, generated from its systems' outgoing unions) and the
+   * host declares its own. A surface absent from the map is one no registered pack owns. Cached on the same
    * terms as the incoming map.
    */
-  getPluginEventValidationMap(): Map<string, PluginEventTypes>;
+  getSurfaceEventValidationMap(): Map<string, SurfaceEventTypes>;
   /** The SDK's entity types, the host's and the registered packs' */
   getRegisteredEntityTypes(): ReadonlySet<string>;
   /** Lifecycle hooks of the currently registered packs, in registration order. */
@@ -315,8 +315,8 @@ function admitContributions(registration: PackRegistration, { steps: declaration
     steps,
     systems: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.system
       ? [[ref, { machine: feature.system.machine, receives: [...eventContracts![featureId].system!.incoming, ...SYSTEM_EVENT_TYPES] }] as const] : [])),
-    pluginEvents: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.plugin
-      ? [[ref, [...eventContracts![featureId].plugin!.receives, ...PLUGIN_EVENT_TYPES]] as const] : [])),
+    surfaceEvents: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.surface
+      ? [[ref, [...eventContracts![featureId].surface!.receives, ...PLUGIN_EVENT_TYPES]] as const] : [])),
     designations: designationsOf(registration),
     repositories: new Map(Object.entries(registration.repositories ?? {})),
     services: new Map(Object.entries(registration.services ?? {})),
@@ -744,17 +744,17 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     return map;
   }
 
-  function buildPluginEventValidationMap(): Map<string, PluginEventTypes> {
-    const map = new Map<string, PluginEventTypes>();
-    // Each pack's plugins are under its own refs, the host's included, so no pack reaches another's entry
+  function buildSurfaceEventValidationMap(): Map<string, SurfaceEventTypes> {
+    const map = new Map<string, SurfaceEventTypes>();
+    // Each pack's surfaces are under its own refs, the host's included, so no pack reaches another's entry
     for (const pack of admitted.values()) {
-      for (const [ref, receives] of pack.pluginEvents) map.set(ref, new Set(receives));
+      for (const [ref, receives] of pack.surfaceEvents) map.set(ref, new Set(receives));
     }
     return map;
   }
 
   const eventValidationMap = derived(buildEventValidationMap);
-  const pluginEventValidationMap = derived(buildPluginEventValidationMap);
+  const surfaceEventValidationMap = derived(buildSurfaceEventValidationMap);
   const entityTypes = derived((): ReadonlySet<string> => new Set<string>([
     ...RESERVED_ENTITIES,
     ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.entities ?? {})),
@@ -813,10 +813,10 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
 
     // Both maps are keyed by the registered features' refs, the host's included
     systemIds: () => [...eventValidationMap().keys()] as FeatureRef[],
-    pluginIds: () => [...pluginEventValidationMap().keys()] as FeatureRef[],
+    surfaceIds: () => [...surfaceEventValidationMap().keys()] as FeatureRef[],
 
     getEventValidationMap: eventValidationMap,
-    getPluginEventValidationMap: pluginEventValidationMap,
+    getSurfaceEventValidationMap: surfaceEventValidationMap,
 
     earsNames() {
       const { entities, relKinds } = appEARS();
@@ -864,9 +864,9 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     appliers: key => tables.appliers.get(key),
     settingsCatalog: catalog.settings,
     onCatalogChanged: catalog.onChanged,
-    pluginDefaults: () => Object.fromEntries(catalog.plugins()
-      .filter(plugin => plugin.origin !== 'source' && plugin.enabled === true && plugin.declaration.defaultVisible !== undefined)
-      .map(plugin => [plugin.featureRef, plugin.declaration.defaultVisible!])),
+    surfaceDefaults: () => Object.fromEntries(catalog.surfaces()
+      .filter(surface => surface.origin !== 'source' && surface.enabled === true && surface.declaration.defaultVisible !== undefined)
+      .map(surface => [surface.featureRef, surface.declaration.defaultVisible!])),
     commands: () => catalog.commands().filter(command => {
       if (command.enabled === false || !admitted.has(command.packId)) return false;
       if (command.origin === 'native') {

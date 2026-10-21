@@ -10,17 +10,17 @@
       <div class="flex-1 overflow-y-auto scrollbar-hide my-2">
         <div class="flex flex-col items-center space-y-6">
           <button
-            v-for="item in pluginItems"
+            v-for="item in surfaceItems"
             :key="item.id"
-            :data-onboarding-id="`plugin-${item.id}`"
+            :data-onboarding-id="`surface-${item.id}`"
             :class="[
               'p-2 rounded-lg transition-all duration-200 ease-in-out', item.loaded ? '' : 'opacity-50',
-              activePlugin.id === item.id
+              activeSurface.id === item.id
                 ? 'bg-primary-600 text-white'
                 : 'text-neutral-400 hover:text-white hover:bg-primary-700'
             ]"
-            @click="onPluginClick($event, item)"
-            @contextmenu.stop.prevent="onPluginContextMenu($event, item)"
+            @click="onSurfaceClick($event, item)"
+            @contextmenu.stop.prevent="onSurfaceContextMenu($event, item)"
             :title="item.loaded ? item.label : `${item.label} (not loaded yet)`"
           >
             <component :is="item.icon ?? Puzzle" :size="24" />
@@ -33,15 +33,15 @@
         <button
           v-for="item in pinnedItems"
           :key="item.id"
-          :data-onboarding-id="`plugin-${item.id}`"
+          :data-onboarding-id="`surface-${item.id}`"
           :class="[
             'p-2 rounded-lg transition-all duration-200 ease-in-out', item.loaded ? '' : 'opacity-50',
-            activePlugin.id === item.id
+            activeSurface.id === item.id
               ? 'bg-primary-600 text-white'
               : 'text-neutral-400 hover:text-white hover:bg-primary-700'
           ]"
-          @click="onPluginClick($event, item)"
-          @contextmenu.stop.prevent="onPluginContextMenu($event, item)"
+          @click="onSurfaceClick($event, item)"
+          @contextmenu.stop.prevent="onSurfaceContextMenu($event, item)"
           :title="item.loaded ? item.label : `${item.label} (not loaded yet)`"
         >
           <component :is="item.icon ?? Puzzle" :size="24" />
@@ -57,64 +57,64 @@
     </div>
 
     <ContextMenuPopup :show="showMenu" :pos="menuPos" :items="visibilityMenuItems" :separator-after="separatorIndex" @close="showMenu = false" />
-    <ToolbarPluginContextMenu ref="pluginContextMenu" />
+    <ToolbarSurfaceContextMenu ref="surfaceContextMenu" />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Plugin } from '@/types';
+import type { Surface } from '@/types';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import WindowControls from './WindowControls.vue';
-import ToolbarPluginContextMenu from './ToolbarPluginContextMenu.vue';
+import ToolbarSurfaceContextMenu from './ToolbarSurfaceContextMenu.vue';
 import ContextMenuPopup from '@apackdev/ui/design/ContextMenuPopup';
-import { HOST, type PluginNavigationItem } from '@apackdev/host/fe';
+import { HOST, type SurfaceNavigationItem } from '@apackdev/host/fe';
 import { Puzzle } from 'lucide-vue-next';
 import { useContextMenu, type MenuItem } from '@apackdev/ui/composables/useContextMenu';
 import { applicationState } from '@/main';
 
-const emit = defineEmits<{ 'select-plugin': [id: string]; 'open-plugin': [id: string] }>();
+const emit = defineEmits<{ 'select-surface': [id: string]; 'open-surface': [id: string] }>();
 
 const props = defineProps<{
-  activePlugin: Plugin;
-  plugins: PluginNavigationItem[];
+  activeSurface: Surface;
+  surfaces: SurfaceNavigationItem[];
 }>();
 
-const pluginItems = computed(() => props.plugins.filter((item) => item.visible && !item.isPinned));
-const pinnedItems = computed(() => props.plugins.filter((item) => item.visible && item.isPinned));
+const surfaceItems = computed(() => props.surfaces.filter((item) => item.visible && !item.isPinned));
+const pinnedItems = computed(() => props.surfaces.filter((item) => item.visible && item.isPinned));
 
-// --- Right-click menu: toggle plugin visibility ---
+// --- Right-click menu: toggle surface visibility ---
 const { showMenu, menuPos, open } = useContextMenu();
-const pluginContextMenu = ref<InstanceType<typeof ToolbarPluginContextMenu> | null>(null);
+const surfaceContextMenu = ref<InstanceType<typeof ToolbarSurfaceContextMenu> | null>(null);
 
-const isVisible = (id: string) => props.plugins.find(plugin => plugin.id === id)?.visible ?? false;
+const isVisible = (id: string) => props.surfaces.find(surface => surface.id === id)?.visible ?? false;
 
 const togglePluginVisibility = (id: string) => {
   if (id === HOST.settings) return;
-  applicationState.send({ type: 'SET_PLUGIN_VISIBILITY', plugin: id, visible: !isVisible(id) });
+  applicationState.send({ type: 'SET_PLUGIN_VISIBILITY', surface: id, visible: !isVisible(id) });
 };
 
 const visibilityMenuItems = computed<MenuItem[]>(() =>
-  props.plugins.map((plugin) => {
-    const locked = plugin.id === HOST.settings;
-    const visible = isVisible(plugin.id);
+  props.surfaces.map((surface) => {
+    const locked = surface.id === HOST.settings;
+    const visible = isVisible(surface.id);
     const textClass = locked
       ? 'text-neutral-600 cursor-not-allowed'
       : visible
         ? 'text-neutral-200'
         : 'text-neutral-500';
     return {
-      label: plugin.label,
-      icon: plugin.icon ?? Puzzle,
+      label: surface.label,
+      icon: surface.icon ?? Puzzle,
       class: textClass,
       iconClass: textClass,
-      action: () => togglePluginVisibility(plugin.id),
+      action: () => togglePluginVisibility(surface.id),
       keepOpen: true,
     };
   }),
 );
 
 const separatorIndex = computed(() => {
-  const firstPinned = props.plugins.findIndex(plugin => plugin.isPinned);
+  const firstPinned = props.surfaces.findIndex(surface => surface.isPinned);
   return firstPinned > 0 ? firstPinned - 1 : -1;
 });
 
@@ -122,19 +122,19 @@ const onContextMenu = (e: MouseEvent) => {
   open(e, visibilityMenuItems.value.length + (separatorIndex.value >= 0 ? 1 : 0));
 };
 
-const onPluginContextMenu = (e: MouseEvent, plugin: PluginNavigationItem) => {
-  pluginContextMenu.value?.open(e, plugin);
+const onSurfaceContextMenu = (e: MouseEvent, surface: SurfaceNavigationItem) => {
+  surfaceContextMenu.value?.open(e, surface);
 };
 
-const onPluginClick = (e: MouseEvent, plugin: PluginNavigationItem) => {
+const onSurfaceClick = (e: MouseEvent, surface: SurfaceNavigationItem) => {
   if (e.metaKey) {
-    window.electronAPI?.plugins?.popout(plugin.id, plugin.label);
+    window.electronAPI?.surfaces?.popout(surface.id, surface.label);
     return;
   }
 
   // An unloaded tab opens through the shell, which waits for its pack or says why it can't
-  if (plugin.loaded) emit('select-plugin', plugin.id);
-  else emit('open-plugin', plugin.id);
+  if (surface.loaded) emit('select-surface', surface.id);
+  else emit('open-surface', surface.id);
 };
 
 const isDev = import.meta.env.DEV;

@@ -15,7 +15,7 @@ const REBUILT_DOCUMENT = 'Codex commands after a rebuild';
 
 interface LibraryRecord { entity?: string; name?: string; children?: LibraryRecord[] }
 
-/** The names in the library plugin's index, as its actor holds them */
+/** The names in the library surface's index, as its actor holds them */
 async function libraryDocuments(appPage: Page): Promise<string[]> {
   return appPage.evaluate(() => {
     const actor = (window as { applicationState?: { system?: { get(id: string): { getSnapshot(): { context: { index?: { documents: Array<{ name: string }> } } } } | undefined } } }).applicationState?.system?.get('default-setup/library');
@@ -77,6 +77,6 @@ test('a rebuilt built-in pack reloads with the content the rebuild changed', asy
   });
   expect(response.status, await response.text()).toBe(200);
 
-  // The reload re-applies, its systems get CLIENT_CONNECTED again, and the plugin's index carries the change
+  // The reload re-applies, its systems get CLIENT_CONNECTED again, and the surface's index carries the change
   await expect.poll(() => libraryDocuments(appPage), { timeout: 15_000 }).toContain(REBUILT_DOCUMENT);
 });

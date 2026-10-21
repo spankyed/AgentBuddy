@@ -15,7 +15,7 @@ import { hostRegistration } from '../../src/features/registration.ts';
 const registry = createNativePackTestRegistry();
 const { registerPack, unregisterPack } = registry;
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
-// The app's state, which the application plugin's CLIENT_CONNECTED reports
+// The app's state, which the application surface's CLIENT_CONNECTED reports
 appState.update({ hasOnboarded: true });
 
 const received: string[] = [];
@@ -41,7 +41,7 @@ beforeEach(() => {
   received.length = 0;
   outgoing.length = 0;
   stopOutgoing = testRootEvents.onOutgoing((event) => { outgoing.push(event); });
-  // The app's own plugins, as the API registers them: the application plugin gets the shell's state
+  // The app's own surfaces, as the API registers them: the application surface gets the shell's state
   registerPack(hostRegistration());
   registerRecorderPack('local-pack');
   // fe-pack is a loaded external pack whose bundle has frontend code
@@ -66,8 +66,8 @@ afterEach(() => {
 });
 
 describe('createAppBus', () => {
-  // The window opens with the shell's state: which plugins' tabs show and the plugin the user last had open
-  it("tells the application plugin, on each connection, the tabs' visibility and the plugin last open", async () => {
+  // The window opens with the shell's state: which surfaces' tabs show and the surface the user last had open
+  it("tells the application surface, on each connection, the tabs' visibility and the surface last open", async () => {
     appState.update({ pluginVisibility: { 'local-pack/feature': false }, lastActivePlugin: 'local-pack/feature' });
 
     testRootEvents.emitConnected();
@@ -97,8 +97,8 @@ describe('createAppBus', () => {
       features: {
         feature: {
           system: { machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), receives: ['PING'] },
-          // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
-          plugin: { receives: ['EARLY', 'LATE'] },
+          // The bus drops a send to a surface that declares no such event, so this case declares the two it sends
+          surface: { receives: ['EARLY', 'LATE'] },
         },
       },
     });
@@ -114,15 +114,15 @@ describe('createAppBus', () => {
     }
   });
 
-  it('routes events to systems before any client connects, and holds back sends to plugins until one does', async () => {
+  it('routes events to systems before any client connects, and holds back sends to surfaces until one does', async () => {
     const pings: string[] = [];
     registerPack({
       id: 'ping-pack',
       features: {
         feature: {
           system: { machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), receives: ['PING'] },
-          // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
-          plugin: { receives: ['EARLY', 'LATE'] },
+          // The bus drops a send to a surface that declares no such event, so this case declares the two it sends
+          surface: { receives: ['EARLY', 'LATE'] },
         },
       },
     });
@@ -131,13 +131,13 @@ describe('createAppBus', () => {
       bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
       // A schedule tick or a `fire` step at boot, with no window open yet
       testRootEvents.emitIncoming({ to: 'ping-pack/feature', event: { type: 'PING' } });
-      testRootEvents.emitPluginSend({ to: 'ping-pack/feature', event: { type: 'EARLY' } });
+      testRootEvents.emitSurfaceSend({ to: 'ping-pack/feature', event: { type: 'EARLY' } });
       await flush();
       expect(pings).toEqual(['ping']);
       expect(outgoing).toEqual([]);
 
       testRootEvents.emitConnected();
-      testRootEvents.emitPluginSend({ to: 'ping-pack/feature', event: { type: 'LATE' } });
+      testRootEvents.emitSurfaceSend({ to: 'ping-pack/feature', event: { type: 'LATE' } });
       await flush();
       expect(outgoing.map(({ event }) => event.type)).toContain('LATE');
       expect(outgoing.map(({ event }) => event.type)).not.toContain('EARLY');

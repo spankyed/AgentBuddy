@@ -22,7 +22,7 @@ it('invalidates generated metadata when external inherited path mappings change'
   const manifest = { id: 'config-consumer', name: 'Configuration Consumer', version: '1.0.0',
     features: { view: { description: 'Inherited event contract.',
       system: { entry: 'src/system.ts', contract: 'src/contract.ts#Contract' },
-      plugin: { label: 'View', state: 'src/plugin.ts' } } } };
+      surface: { label: 'View', state: 'src/surface.ts' } } } };
   const config = JSON.parse(tsconfig);
   // TypeScript replaces paths as a whole; let this fixture inherit its parent's map.
   delete config.compilerOptions.paths;
@@ -30,7 +30,7 @@ it('invalidates generated metadata when external inherited path mappings change'
     'apack.json': JSON.stringify(manifest), 'package.json': packageJson(manifest.id),
     'tsconfig.json': JSON.stringify({ ...config, extends: '../base.json' }),
     'src/contract.ts': "export type { Contract } from 'external-contract';",
-    'src/plugin.ts': "import { createMachine } from 'xstate'; export default createMachine({ id: 'view' });",
+    'src/surface.ts': "import { createMachine } from 'xstate'; export default createMachine({ id: 'view' });",
     'src/system.ts': `import { setup } from 'xstate'; import { defineSystem } from '@apackdev/sdk/framework';
 import type { Contract } from './contract.ts'; const spec = defineSystem<Contract>();
 export default { spec, machine: setup({ types: spec.types }).createMachine({ id: 'view' }) };`,

@@ -25,11 +25,11 @@ it('rebuilds external contracts and recovers a retargeted missing input without 
     packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
       id: 'external-contract', name: 'External contract', features: { view: {
         description: 'External type contract.', system: { entry: 'src/system.ts', contract: 'src/contract.ts#Contract' },
-        plugin: { label: 'View', state: 'src/plugin.ts' },
+        surface: { label: 'View', state: 'src/surface.ts' },
       } },
     }, files: {
       'src/contract.ts': "export type { Contract } from 'outside';",
-      'src/plugin.ts': "import { createMachine } from 'xstate'; export default createMachine({ id: 'view' });",
+      'src/surface.ts': "import { createMachine } from 'xstate'; export default createMachine({ id: 'view' });",
       'src/system.ts': `import { setup } from 'xstate'; import { defineSystem } from '@apackdev/sdk/framework';
 import type { Contract } from './contract.ts'; const spec = defineSystem<Contract>();
 export default { spec, machine: setup({ types: spec.types }).createMachine({ id: 'view' }) };`,

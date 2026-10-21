@@ -286,7 +286,7 @@ describe('the in-page bridge', () => {
  * is the case the last two tests here are about.
  */
 /**
- * Reloading is the one thing that makes a plugin re-read its data, so the verb has to leave the session
+ * Reloading is the one thing that makes a surface re-read its data, so the verb has to leave the session
  * usable. The port returns when the window is usable again — waiting, and dismissing the onboarding a
  * reload brings back, belong to the implementation that knows Playwright. What is left here is the half
  * the session owns: a reload that forgot the bridge would leave `/events` and every round-trip deaf for
@@ -324,17 +324,17 @@ describe('reload', () => {
  * these wrote out four times for one question.
  */
 describe('reading and using the page', () => {
-  it("answers with a plugin's published state, and says when it is not running", async () => {
+  it("answers with a surface's published state, and says when it is not running", async () => {
     const { session } = sessionWith({
       evaluateExpression: async () => ({ running: true, state: { notes: ['welcome'] } }),
     });
 
-    expect(await session.plugin('default-setup/notes')).toEqual({ ok: true, value: { running: true, state: { notes: ['welcome'] } } });
+    expect(await session.surface('default-setup/notes')).toEqual({ ok: true, value: { running: true, state: { notes: ['welcome'] } } });
   });
 
   it('reads one path into that state when asked for one', async () => {
     const { session, expressions } = sessionWith();
-    await session.plugin('default-setup/notes', 'notes.length');
+    await session.surface('default-setup/notes', 'notes.length');
 
     const read = expressions.at(-1)!;
     expect(read, 'the ref is quoted into the expression rather than interpolated raw').toContain('"default-setup/notes"');
@@ -423,7 +423,7 @@ describe('settings', () => {
 
   /**
    * The defect this round trip exists for. It resolved on the send being accepted, so a write the store
-   * refused answered `ok: true` and wrote nothing — and the refusal went to the Settings plugin, where the
+   * refused answered `ok: true` and wrote nothing — and the refusal went to the Settings surface, where the
    * session could not see it. A refusal carries `problems` rather than one `error`, because a document can
    * be wrong in more than one place.
    */
@@ -656,7 +656,7 @@ describe('a bus round-trip', () => {
     });
   });
 
-  /** Someone else's query — a person in the Database plugin while a session drives */
+  /** Someone else's query — a person in the Database surface while a session drives */
   it('ignores a reply for a request it did not make', async () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
@@ -852,9 +852,9 @@ describe('wait', () => {
     expect(waitForPlugin, 'the other wait is not the one for a state').not.toHaveBeenCalled();
   });
 
-  it('waits on a plugin arriving instead, when that is what was asked', async () => {
+  it('waits on a surface arriving instead, when that is what was asked', async () => {
     const { session, waitForState, waitForPlugin } = sessionWith();
-    await session.wait({ plugin: 'default-setup/notes' });
+    await session.wait({ surface: 'default-setup/notes' });
 
     expect(waitForPlugin).toHaveBeenCalledWith('default-setup/notes', undefined);
     expect(waitForState).not.toHaveBeenCalled();

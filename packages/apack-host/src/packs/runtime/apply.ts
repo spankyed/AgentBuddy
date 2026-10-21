@@ -92,7 +92,7 @@ const OFFER_SENTENCE: Record<ContentOffer['kind'], string> = {
  * are in the event's meta for whoever is tracing one.
  *
  * **The boot apply runs before the bus starts**, so this reaches stdout and the app's log file and not the
- * Logs plugin, which shows what `onLog` delivers from the moment the bus starts it. An apply on a reload
+ * Logs surface, which shows what `onLog` delivers from the moment the bus starts it. An apply on a reload
  * or an activation reaches both.
  */
 function reportOffers(packId: string, offers: ReadonlyMap<string, ContentOffer>): void {

@@ -1,4 +1,4 @@
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { assign, setup } from 'xstate'
 
@@ -6,11 +6,11 @@ import { FileSystemRepository } from '../services/filesystem.ts'
 import { GitWatcherService } from '../services/gitwatcher.ts'
 import type { FileChangeInfo } from '../services/gitwatcher.ts'
 
-const pluginId = 'code' as const
+const surfaceId = 'code' as const
 
 function requireRepository(context: CodeExplorerSystemContext, path: string): context is CodeExplorerSystemContext & { repository: FileSystemRepository } {
   if (!context.repository) {
-    broadcastToPlugin(pluginId, {
+    broadcastToSurface(surfaceId, {
       type: 'explorer.CODE_ERROR',
       data: {
         code: 'INVALID_PATH',
@@ -73,7 +73,7 @@ export const explorerSystem = setup({
     handleFileChange: ({ event }) => {
       const ev = event as { type: 'explorer.FILE_CHANGE_CALLBACK'; change: FileChangeInfo }
       
-      broadcastToPlugin(pluginId, {
+      broadcastToSurface(surfaceId, {
         type: 'explorer.FILE_CHANGED_EXTERNALLY',
         data: ev.change
       })
@@ -83,7 +83,7 @@ export const explorerSystem = setup({
       // Send base directory listing on connect
       if (context.baseDirectory && context.repository) {
         context.repository.listDirectory(context.baseDirectory).then(content => {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'explorer.FILES_LISTED',
             data: content,
           })
@@ -101,12 +101,12 @@ export const explorerSystem = setup({
       try {
         const path = ev.path || context.baseDirectory || ''
         const content = await context.repository.listDirectory(path)
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILES_LISTED',
           data: content,
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -124,7 +124,7 @@ export const explorerSystem = setup({
       
       try {
         const content = await context.repository.readFile(ev.path)
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILE_CONTENT',
           data: content,
         })
@@ -134,7 +134,7 @@ export const explorerSystem = setup({
           context.gitWatcher.registerOpenFile(ev.path)
         }
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -152,12 +152,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.writeFile(ev.path, ev.content)
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILE_SAVED',
           data: { path: ev.path },
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -175,12 +175,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.writeFile(ev.path, ev.content || '')
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILE_CREATED',
           data: { path: ev.path },
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -198,12 +198,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.deleteFile(ev.path)
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILE_DELETED',
           data: { path: ev.path },
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -221,12 +221,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.renameFile(ev.oldPath, ev.newPath)
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILE_RENAMED',
           data: { oldPath: ev.oldPath, newPath: ev.newPath },
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -244,12 +244,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.createDirectory(ev.path)
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.DIRECTORY_CREATED',
           data: { path: ev.path },
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -267,12 +267,12 @@ export const explorerSystem = setup({
       
       try {
         const info = await context.repository.getFileInfo(ev.path)
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILE_INFO',
           data: info,
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -328,12 +328,12 @@ export const explorerSystem = setup({
       
       try {
         const files = await context.repository.getAllFiles(ev.baseDirectory)
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.QUICK_OPEN_RESULTS',
           data: files,
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -360,12 +360,12 @@ export const explorerSystem = setup({
           }
         }
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILES_MOVED',
           data: { sourcePaths: ev.sourcePaths, targetDir: ev.targetDir, movedPaths },
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -388,12 +388,12 @@ export const explorerSystem = setup({
           copiedPaths.push(destPath)
         }
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILES_COPIED',
           data: { targetDir: ev.targetDir, copiedPaths },
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -410,12 +410,12 @@ export const explorerSystem = setup({
       try {
         const path = context.baseDirectory || ''
         const content = await context.repository.listDirectory(path)
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILES_LISTED',
           data: content,
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',

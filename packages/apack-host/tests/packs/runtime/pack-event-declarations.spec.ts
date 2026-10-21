@@ -1,8 +1,8 @@
 import { sealPack } from './build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
-// A pack declares which event types each of its plugins receives, and the bus checks every send against
+// A pack declares which event types each of its surfaces receives, and the bus checks every send against
 // that declaration. It reaches the app on the registration the pack's runtime bundle exports, so what this
-// pins is that loading a pack doesn't lose it: a plugin with no declaration is read as one whose pack was
+// pins is that loading a pack doesn't lose it: a surface with no declaration is read as one whose pack was
 // built before declarations existed, and then nothing is checked at all — silently, for the packs the app
 // controls least.
 import * as fs from 'node:fs';
@@ -16,7 +16,7 @@ import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
-/** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
+/** The events a pack's surface receives: what its pack declares, and what the app sends every surface */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
 const PACK_ID = 'declaring-pack';
@@ -25,19 +25,19 @@ const RECEIVED = ['MEMOS_CONNECTED', 'MEMO_ADDED'];
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
 
-/** An installed pack with one plugin feature, declaring what that plugin receives — what `apack pack build` emits */
+/** An installed pack with one surface feature, declaring what that surface receives — what `apack pack build` emits */
 function installDeclaringPack(received: string[]) {
   const packDir = path.join(_appDirOf(tmpDir), 'packs', PACK_ID);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({
     id: PACK_ID, name: 'Declaring Pack', version: '1.0.0',
-    features: { memos: { description: 'Feature declaration fixture.', plugin: { label: 'Fixture', state: 'fe/plugin.ts' } } },
+    features: { memos: { description: 'Feature declaration fixture.', surface: { label: 'Fixture', state: 'fe/surface.ts' } } },
   }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts: { memos: { plugin: { receives: received } } }, facades: {} }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts: { memos: { surface: { receives: received } } }, facades: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`module.exports = { registration: ${JSON.stringify({
     id: PACK_ID,
-    features: { memos: { plugin: { receives: received } } },
+    features: { memos: { surface: { receives: received } } },
   })} };`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
   fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), 'export default {};');
@@ -82,12 +82,12 @@ describe('where the registry says a pack came from', () => {
   });
 });
 
-describe('the event types an external pack declares for its plugins', () => {
+describe('the event types an external pack declares for its surfaces', () => {
   it('reach the validation map the bus checks sends against', () => {
     installDeclaringPack(RECEIVED);
 
     expect(registerExternalPacks(registry, loadExternalPacks(registry))).toHaveLength(1);
 
-    expect(registry.getPluginEventValidationMap().get(`${PACK_ID}/memos`)).toEqual(receives(...RECEIVED));
+    expect(registry.getSurfaceEventValidationMap().get(`${PACK_ID}/memos`)).toEqual(receives(...RECEIVED));
   });
 });

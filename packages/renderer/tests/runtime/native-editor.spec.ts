@@ -13,7 +13,7 @@ import { ReferenceNode } from '@apackdev/ui/components/tiptap/reference-node';
 vi.mock('@/views/packs/canvas.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/views/settings/canvas/index.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/runtime/settings', () => ({ resetApp: vi.fn() }));
-import { hostFrontend } from '@/views/packs/plugin';
+import { hostFrontend } from '@/views/packs/surface';
 
 let app: App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; stopFeTestRuntime(); document.body.replaceChildren(); vi.restoreAllMocks(); });

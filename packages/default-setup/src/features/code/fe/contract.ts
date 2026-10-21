@@ -1,10 +1,10 @@
-// The code plugin's contract: the state it publishes and what other plugins may send it.
+// The code surface's contract: the state it publishes and what other surfaces may send it.
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
 // The tab shapes live here too, because the published state holds them and the child machines that used to declare
-// them reach `#generated/events`. `apack.json` names it at `features[].plugin.contract`.
-import type { HotkeysMap, NavHistory, PluginInbox, TabGroup } from '@apackdev/sdk/fe'
+// them reach `#generated/events`. `apack.json` names it at `features[].surface.contract`.
+import type { HotkeysMap, NavHistory, SurfaceInbox, TabGroup } from '@apackdev/sdk/fe'
 import type { ActionEntity, PromptEntity } from '@apackdev/sdk'
 import type { EARS } from '#generated/ears.ts'
 import type { CodeSettings } from '#generated/types.ts'
@@ -113,7 +113,7 @@ export type CodeContext = {
 }
 
 /**
- * What other features ask of the code plugin: which panel to show, a write to its state, and a job for one of its
+ * What other features ask of the code surface: which panel to show, a write to its state, and a job for one of its
  * children. The `<child>.*` events aren't in this machine's own union — it routes them to its child actors by
  * prefix — so they are spelled out, and each names the child that handles it.
  */
@@ -126,5 +126,5 @@ export type CodeInboxEvent =
 
 export type Contract = {
   state: CodeContext
-  inbox: PluginInbox<{ pack: CodeInboxEvent }>
+  inbox: SurfaceInbox<{ pack: CodeInboxEvent }>
 }

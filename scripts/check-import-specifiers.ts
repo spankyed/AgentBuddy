@@ -145,7 +145,7 @@ export function findRawPackHelpers(dirs: readonly string[] = PACK_SOURCE_DIRS, r
   return packRule('untyped-sends', dirs, root);
 }
 
-/** `file:line: sendToPlugin(…)` for each cross-plugin send a feature's component makes. Extensions are exempt. */
+/** `file:line: sendToSurface(…)` for each cross-surface send a feature's component makes. Extensions are exempt. */
 export function findComponentSends(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
   return packRule('component-sends', dirs, root);
 }
@@ -200,7 +200,7 @@ export function findReservedEventKeys(dirs: readonly string[] = PACK_CODE_DIRS, 
  * Vite and esbuild all resolve unaided and which is private to the declaring package. `@/…` is a TypeScript
  * `compilerOptions.paths` mapping that no runtime reads — and it was not even a static one here, meaning
  * *the importer's own pack*, so four separate bundler configs each carried an implementation of it: the
- * renderer's resolveId hook, the API's esbuild plugin, the pack's `vite-tsconfig-paths`, and `apack pack build`'s
+ * renderer's resolveId hook, the API's esbuild surface, the pack's `vite-tsconfig-paths`, and `apack pack build`'s
  * own reader, which had two copies that had each missed the other's fix.
  *
  * All four are gone (`goal-one-way-to-name-your-own-modules.md`), so a single `@/` reintroduced here does not

@@ -283,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, computed, watch, onMounted } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -310,7 +310,7 @@ import { id, type DatabaseState } from '../state.ts';
 import { sendToSystem } from '#generated/events.ts';
 import ToastNotification from '@apackdev/ui/design/ToastNotification';
 
-const actor: DatabaseState = usePlugin();
+const actor: DatabaseState = useSurface();
 
 // Get backup info from state
 const storedBackupInfo = useSelector(actor, (state) => state.context.backupInfo);

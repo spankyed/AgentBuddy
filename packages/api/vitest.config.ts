@@ -9,7 +9,7 @@ import { config as dotenvConfig } from 'dotenv';
 dotenvConfig();
 
 export default defineConfig({
-  /* Vite‑level plugins -------------------------------------------------- */
+  /* Vite‑level surfaces -------------------------------------------------- */
   // Workspace @apackdev/* packages resolve to source (see their package.json exports)
   ssr: { resolve: { conditions } },
 

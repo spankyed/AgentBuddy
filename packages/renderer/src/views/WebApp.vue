@@ -1,16 +1,16 @@
 <template>
-<!-- data-active-plugin is the active plugin as rendered. Vue writes it in the same flush that swaps the
+<!-- data-active-surface is the active surface as rendered. Vue writes it in the same flush that swaps the
      canvas below, so a test can wait for a navigation to be on screen rather than sleep after it. -->
-<div class="flex flex-col h-screen" :data-active-plugin="activePlugin.id">
+<div class="flex flex-col h-screen" :data-active-surface="activeSurface.id">
     <ToastNotification ref="toast" />
     <div class="flex flex-grow overflow-hidden">
     <!-- Left Toolbar (hidden during onboarding) -->
     <Toolbar
         v-if="!isOnboarding"
-        :plugins="plugins"
-        :active-plugin="activePlugin"
-        @select-plugin="(id: string) => send({ type: 'SELECT_PLUGIN', plugin: id })"
-        @open-plugin="(id: string) => send({ type: 'OPEN_PLUGIN', plugin: id, events: [] })"
+        :surfaces="surfaces"
+        :active-surface="activeSurface"
+        @select-surface="(id: string) => send({ type: 'SELECT_PLUGIN', surface: id })"
+        @open-surface="(id: string) => send({ type: 'OPEN_PLUGIN', surface: id, events: [] })"
     />
 
     <!-- Main Area -->
@@ -29,10 +29,10 @@
                 : { height: `${panelSizes.canvasHeight}%` }"
             :breadcrumbs="isOnboarding ? [] : breadcrumbs"
             :menu-items="isOnboarding ? [] : allMenuItems"
-            :label="`${canvasPlugin.label} Canvas`"
-            :header-class="canvasPlugin.options?.headerClass">
-            <!-- Each plugin area renders as part of its plugin, which is what usePlugin() returns there -->
-            <PluginPane :plugin="canvasPlugin" area="canvas" :target="targetView" />
+            :label="`${canvasSurface.label} Canvas`"
+            :header-class="canvasSurface.options?.headerClass">
+            <!-- Each surface area renders as part of its surface, which is what useSurface() returns there -->
+            <SurfacePane :surface="canvasSurface" area="canvas" :target="targetView" />
             </CanvasArea>
 
             <!-- Vertical Resizer (hidden during onboarding) -->
@@ -54,7 +54,7 @@
                     : { height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }"
             >
                 <!-- The chat is the default pack's, so there is none until a pack has claimed the default -->
-                <PluginPane v-if="defaultPlugin" :plugin="defaultPlugin" area="chat" />
+                <SurfacePane v-if="defaultSurface" :surface="defaultSurface" area="chat" />
             </ChatArea>
         </div>
 
@@ -72,9 +72,9 @@
             v-if="canShowPanel && panelSizes.inspectionWidth > 0 && !isOnboarding"
             data-onboarding-id="inspection-panel"
 :style="{ width: `${panelSizes.inspectionWidth}px` }"
-            :label="`${activePlugin.panel ? activePlugin.label : fallbackPlugin?.label} Inspection`">
-            <PluginPane v-if="activePlugin.panel" :plugin="activePlugin" area="panel" />
-            <PluginPane v-else-if="fallbackShown && fallbackPlugin" :plugin="fallbackPlugin" area="panel" />
+            :label="`${activeSurface.panel ? activeSurface.label : fallbackSurface?.label} Inspection`">
+            <SurfacePane v-if="activeSurface.panel" :surface="activeSurface" area="panel" />
+            <SurfacePane v-else-if="fallbackShown && fallbackSurface" :surface="fallbackSurface" area="panel" />
         </InspectionPanel>
     </div>
     </div>
@@ -87,15 +87,15 @@ import { useSelector } from '@xstate/vue'
 import type { ActorRefFrom, AnyStateMachine } from 'xstate'
 import { CircleHelp, Settings as SettingsIcon, ExternalLink, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
 import Toolbar from '@/views/layout/Toolbar.vue'
-import { usePluginNavigation } from '@/views/layout/plugin-navigation';
+import { useSurfaceNavigation } from '@/views/layout/surface-navigation';
 import CanvasArea from '@/views/layout/CanvasArea.vue'
 import ChatArea from '@/views/layout/ChatArea.vue'
 import InspectionPanel from '@/views/layout/InspectionPanel.vue'
 import PanelResizer from '@apackdev/ui/layout/panel-resizer'
 import { applicationState } from '@/main'
-import { HOST, notifyPluginActor } from '@apackdev/host/fe'
-import { untypedOpenPlugin } from '@apackdev/sdk/fe'
-import PluginPane from '@/views/layout/PluginPane.vue'
+import { HOST, notifySurfaceActor } from '@apackdev/host/fe'
+import { untypedOpenSurface } from '@apackdev/sdk/fe'
+import SurfacePane from '@/views/layout/SurfacePane.vue'
 import { useContextualHelp } from '@/views/settings/contextual-help';
 const { hasHelp, openFeatureHelp } = useContextualHelp();
 import type { ContextMenuItem } from '@apackdev/sdk/fe'
@@ -108,10 +108,10 @@ const toast = ref<InstanceType<typeof ToastNotification> | null>(null)
 onMounted(() => registerGlobalToast(toast.value))
 onUnmounted(() => registerGlobalToast(null))
 
-const activePlugin = useSelector(applicationState, (state) => state.context.activePlugin)
-const defaultPlugin = useSelector(applicationState, (state) => state.context.defaultPlugin)
+const activeSurface = useSelector(applicationState, (state) => state.context.activeSurface)
+const defaultSurface = useSelector(applicationState, (state) => state.context.defaultSurface)
 const toggles = useSelector(applicationState, (state) => state.context.defaultToggles)
-const plugins = usePluginNavigation()
+const surfaces = useSurfaceNavigation()
 const breadcrumbs = useSelector(applicationState, (state) => state.context.breadcrumbs)
 const contextMenuItems = useSelector(applicationState, (state) => state.context.contextMenuItems)
 const targetView = useSelector(applicationState, (state) => state.context.targetView)
@@ -119,39 +119,39 @@ const panelSizes = useSelector(applicationState, (state) => state.context.panelS
 const chatMaximized = useSelector(applicationState, (state) => state.context.panelSizes.chatMaximized ?? false)
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'))
 
-const allPlugins = useSelector(applicationState, (state) => state.context.plugins)
-/** The plugin offering its panel for plugins without one (`fallbackPanel`), which says itself when it shows */
-const fallbackPlugin = computed(() => allPlugins.value.find((p) => p.fallbackPanel && p.panel))
-const fallbackActor = computed(() => fallbackPlugin.value && applicationState.system.get(fallbackPlugin.value.id) as ActorRefFrom<AnyStateMachine> | undefined)
+const allSurfaces = useSelector(applicationState, (state) => state.context.surfaces)
+/** The surface offering its panel for surfaces without one (`fallbackPanel`), which says itself when it shows */
+const fallbackSurface = computed(() => allSurfaces.value.find((p) => p.fallbackPanel && p.panel))
+const fallbackActor = computed(() => fallbackSurface.value && applicationState.system.get(fallbackSurface.value.id) as ActorRefFrom<AnyStateMachine> | undefined)
 const fallbackShown = useSelector(fallbackActor, (snapshot) =>
-  !!snapshot && !!fallbackPlugin.value?.fallbackPanel?.isShown(snapshot))
+  !!snapshot && !!fallbackSurface.value?.fallbackPanel?.isShown(snapshot))
 
-// The default pack's canvas when the default toggle is on, and the open plugin's otherwise. `defaultPlugin`
-// is null until a pack claims it, which is every window's first moment, so the open plugin is the fallback
-const canvasPlugin = computed(() =>
-  (toggles.value.canvas ? defaultPlugin.value : null) ?? activePlugin.value
+// The default pack's canvas when the default toggle is on, and the open surface's otherwise. `defaultSurface`
+// is null until a pack claims it, which is every window's first moment, so the open surface is the fallback
+const canvasSurface = computed(() =>
+  (toggles.value.canvas ? defaultSurface.value : null) ?? activeSurface.value
 )
 
-const currentPluginId = computed(() => canvasPlugin.value.id)
+const currentSurfaceId = computed(() => canvasSurface.value.id)
 
-const canShowPanel = computed(() => fallbackShown.value || !!activePlugin.value.panel)
+const canShowPanel = computed(() => fallbackShown.value || !!activeSurface.value.panel)
 const isPanelOpen = computed(() => panelSizes.value.inspectionWidth > 0)
 
 const allMenuItems = computed<ContextMenuItem[]>(() => {
-  const pluginItems = contextMenuItems.value
+  const surfaceItems = contextMenuItems.value
 
   const defaultItems: ContextMenuItem[] = [
-    ...(hasHelp(currentPluginId.value) ? [{ label: 'Help', icon: CircleHelp, event: { type: 'APP_OPEN_PLUGIN_HELP', pluginId: currentPluginId.value } }] : []),
+    ...(hasHelp(currentSurfaceId.value) ? [{ label: 'Help', icon: CircleHelp, event: { type: 'APP_OPEN_PLUGIN_HELP', surfaceId: currentSurfaceId.value } }] : []),
     {
-      label: 'Pop Out Plugin',
+      label: 'Pop Out Surface',
       icon: ExternalLink,
-      event: { type: 'APP_POPOUT_PLUGIN', pluginId: currentPluginId.value },
-      separator: pluginItems.length > 0,
+      event: { type: 'APP_POPOUT_PLUGIN', surfaceId: currentSurfaceId.value },
+      separator: surfaceItems.length > 0,
     },
     {
       label: 'Settings',
       icon: SettingsIcon,
-      event: { type: 'APP_OPEN_FEATURE_SETTINGS', featureId: currentPluginId.value },
+      event: { type: 'APP_OPEN_FEATURE_SETTINGS', featureId: currentSurfaceId.value },
     },
     {
       label: 'Show Canvas',
@@ -165,15 +165,15 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
       event: { type: 'APP_TOGGLE_INSPECTION_PANEL' },
       isActive: isPanelOpen.value,
     }] : []),
-    ...(fallbackPlugin.value ? [{
-      label: fallbackPlugin.value.fallbackPanel!.label,
+    ...(fallbackSurface.value ? [{
+      label: fallbackSurface.value.fallbackPanel!.label,
       icon: Terminal,
       event: { type: 'APP_TOGGLE_FALLBACK_PANEL' },
       isActive: fallbackShown.value,
     }] : []),
   ]
 
-  return [...pluginItems, ...defaultItems]
+  return [...surfaceItems, ...defaultItems]
 })
 
 const handleMenuAction = (event: ContextMenuItem['event']) => {
@@ -187,7 +187,7 @@ const handleMenuAction = (event: ContextMenuItem['event']) => {
     return
   }
 
-  // A menu item's event is whatever the plugin that raised it put there, so the payload is checked rather than
+  // A menu item's event is whatever the surface that raised it put there, so the payload is checked rather than
   // assumed: without this a menu item declaring no `text` would copy the string "undefined".
   if (event.type === 'APP_COPY_TO_CLIPBOARD' && typeof event.text === 'string') {
     navigator.clipboard.writeText(event.text)
@@ -195,15 +195,15 @@ const handleMenuAction = (event: ContextMenuItem['event']) => {
   }
 
   if (event.type === 'APP_TOGGLE_FALLBACK_PANEL') {
-    const plugin = fallbackPlugin.value
-    if (plugin?.fallbackPanel) fallbackActor.value?.send(plugin.fallbackPanel.toggle)
+    const surface = fallbackSurface.value
+    if (surface?.fallbackPanel) fallbackActor.value?.send(surface.fallbackPanel.toggle)
     return
   }
 
-  if (event.type === 'APP_OPEN_PLUGIN_HELP' && typeof event.pluginId === 'string') { openFeatureHelp(event.pluginId); return; }
+  if (event.type === 'APP_OPEN_PLUGIN_HELP' && typeof event.surfaceId === 'string') { openFeatureHelp(event.surfaceId); return; }
 
   if (event.type === 'APP_OPEN_FEATURE_SETTINGS') {
-    untypedOpenPlugin(HOST.settings, [
+    untypedOpenSurface(HOST.settings, [
       { type: 'TAB.SELECT', tab: 'features' },
       { type: 'FEATURE.SELECT', featureId: event.featureId }
     ])
@@ -211,16 +211,16 @@ const handleMenuAction = (event: ContextMenuItem['event']) => {
   }
 
   if (event.type === 'APP_POPOUT_PLUGIN') {
-    const plugin = plugins.value.find((item) => item.id === event.pluginId)
-      ?? activePlugin.value
-    window.electronAPI?.plugins?.popout(plugin.id, plugin.label)
+    const surface = surfaces.value.find((item) => item.id === event.surfaceId)
+      ?? activeSurface.value
+    window.electronAPI?.surfaces?.popout(surface.id, surface.label)
     return
   }
 
-  const pluginId = canvasPlugin.value.id
-  // Through the funnel, so the plugin is named while it handles this and a send it makes can be answered.
+  const surfaceId = canvasSurface.value.id
+  // Through the funnel, so the surface is named while it handles this and a send it makes can be answered.
   // A menu click is nobody's question, so it carries no asker.
-  notifyPluginActor(applicationState.system.get(pluginId), pluginId, event)
+  notifySurfaceActor(applicationState.system.get(surfaceId), surfaceId, event)
 }
 
 const MIN_CHAT_HEIGHT = 180 // px — enough for chat input to remain visible

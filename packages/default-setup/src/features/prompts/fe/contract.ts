@@ -1,9 +1,9 @@
-// The prompts plugin's contract: the state it publishes and what other plugins may send it.
+// The prompts surface's contract: the state it publishes and what other surfaces may send it.
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
-// `apack.json` names it at `features[].plugin.contract`.
-import type { PluginInbox } from '@apackdev/sdk/fe'
+// `apack.json` names it at `features[].surface.contract`.
+import type { SurfaceInbox } from '@apackdev/sdk/fe'
 import type { PromptEntity, TemplateInput } from '@apackdev/sdk'
 import type { EARS } from '#generated/ears.ts'
 import type { Category } from '#generated/types.ts'
@@ -19,7 +19,7 @@ export interface PromptsContext {
    * **A domain id cannot do this job, for two independent reasons.** It does not distinguish windows, so
    * another window's answer for the same prompt satisfies it; and it does not distinguish asks, so a slot
    * holding one is only ever overwritten, never emptied — which names the last ask for the life of the
-   * plugin. A call is per ask and per window, and the slot is cleared when its answer lands.
+   * surface. A call is per ask and per window, and the slot is cleared when its answer lands.
    */
   pendingPromptCall: string | null;
   prompts: PromptEntity[];
@@ -58,7 +58,7 @@ export interface PromptsContext {
   };
 }
 
-/** Paging and editing, which the code plugin's prompts panel asks of it */
+/** Paging and editing, which the code surface's prompts panel asks of it */
 export type PromptsInboxEvent =
   | { type: 'PROMPTS.LOAD_ALL' }
   | { type: 'PROMPTS.LOAD_MORE' }
@@ -71,5 +71,5 @@ export type PromptsInboxEvent =
 export type Contract = {
   opens: 'Prompt'
   state: PromptsContext
-  inbox: PluginInbox<{ pack: PromptsInboxEvent }>
+  inbox: SurfaceInbox<{ pack: PromptsInboxEvent }>
 }

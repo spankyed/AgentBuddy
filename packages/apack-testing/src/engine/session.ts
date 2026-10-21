@@ -75,9 +75,9 @@ export interface SessionPage {
   /**
    * Reloads the window and returns when it is usable again, onboarding included.
    *
-   * It is the only thing that makes every plugin re-read its data: a plugin's state is what its system sent
+   * It is the only thing that makes every surface re-read its data: a surface's state is what its system sent
    * it, so a write made outside that system — `/tx`, the database console, `apack db exec` — is invisible
-   * to the view until something asks again. Navigating between plugins does not, because the actor
+   * to the view until something asks again. Navigating between surfaces does not, because the actor
    * survives; a new connection does, because the bus sends every system `CLIENT_CONNECTED` and each one
    * answers with its startup data.
    *
@@ -94,7 +94,7 @@ export interface SessionPage {
    * avoids wherever something event-driven exists — and here it does.
    */
   waitForState: (check: string, timeoutMs?: number) => Promise<unknown>;
-  waitForPlugin: (pluginId: string, timeoutMs?: number) => Promise<unknown>;
+  waitForPlugin: (surfaceId: string, timeoutMs?: number) => Promise<unknown>;
 }
 
 /**
@@ -246,8 +246,8 @@ export const evalSource = (body: string): string => `(async () => {
 type Evaluated = { cloneable: true; value: unknown }
   | { cloneable: false; described: string; keys: readonly string[] };
 
-/** What `wait` waits for: a dotted state path, or a plugin arriving. Exactly one, never both */
-export type WaitTarget = { readonly state: string } | { readonly plugin: string };
+/** What `wait` waits for: a dotted state path, or a surface arriving. Exactly one, never both */
+export type WaitTarget = { readonly state: string } | { readonly surface: string };
 
 export interface EngineSession {
   evaluate: (body: string) => Promise<EngineResult>;
@@ -257,10 +257,10 @@ export interface EngineSession {
   tx: (code: string) => Promise<EngineResult>;
   state: () => Promise<EngineResult>;
   wait: (target: WaitTarget, timeoutMs?: number) => Promise<EngineResult>;
-  navigate: (pluginId: string) => Promise<EngineResult>;
+  navigate: (surfaceId: string) => Promise<EngineResult>;
   screenshot: (name: string) => Promise<EngineResult>;
-  /** A plugin's published state, or one dotted path into it */
-  plugin: (ref: string, path?: string) => Promise<EngineResult>;
+  /** A surface's published state, or one dotted path into it */
+  surface: (ref: string, path?: string) => Promise<EngineResult>;
   click: (selector: string) => Promise<EngineResult>;
   fill: (selector: string, text: string) => Promise<EngineResult>;
   press: (key: string, selector?: string) => Promise<EngineResult>;
@@ -322,7 +322,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
   /**
    * Sends to the window's root actor, which is all `/send` and `/navigate` each do.
    *
-   * `/navigate` does not then wait for the plugin to arrive, unlike `AppDriver.navigate`: a session has `/wait`
+   * `/navigate` does not then wait for the surface to arrive, unlike `AppDriver.navigate`: a session has `/wait`
    * for that, and pairing them here would make the cheap verb pay for the slow one.
    */
   const sendToApp = (message: Record<string, unknown>): Promise<unknown> =>
@@ -337,7 +337,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
    *
    * Addressing says which connection an answer came to; only the call says which ask it answers, so three
    * concurrent `/qx` calls can be told apart. An orphan matches nobody — an ask that timed out and then
-   * finished, or an answer to someone querying in the Database plugin while a session drives.
+   * finished, or an answer to someone querying in the Database surface while a session drives.
    *
    * The call is the envelope's, so this session asks and matches the way the app's own features do: nothing
    * in the app declares a correlation field, because every send mints a call and `reply` names the one it
@@ -463,7 +463,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
        * The session's own connection, where an addressed answer arrives.
        *
        * **Waiters hear both channels on purpose.** An answer reaches `DRIVE_REF` from an app whose system
-       * answers with `reply`; the page bridge is the only path to one delivered to a plugin in the window.
+       * answers with `reply`; the page bridge is the only path to one delivered to a surface in the window.
        * The call check makes the double delivery harmless: the first match removes the receiver and the
        * second matches nobody.
        *
@@ -546,34 +546,34 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
       const snap = window.applicationState?.getSnapshot();
       return {
         value: snap?.value,
-        plugin: snap?.context?.activePlugin?.id ?? '',
-        plugins: (snap?.context?.plugins ?? []).map((p) => p.id),
+        surface: snap?.context?.activeSurface?.id ?? '',
+        surfaces: (snap?.context?.surfaces ?? []).map((p) => p.id),
       };
     })()`)),
 
     /** The fixture's wait, so a reply arrives when the state does rather than when something asks again */
     wait: (target, timeoutMs) => attempt('wait', async () => {
       if ('state' in target) await page.waitForState(target.state, timeoutMs);
-      else await page.waitForPlugin(target.plugin, timeoutMs);
+      else await page.waitForPlugin(target.surface, timeoutMs);
       return target;
     }),
 
-    navigate: (pluginId) => attempt('navigate', () => sendToApp({ type: 'SELECT_PLUGIN', plugin: pluginId })),
+    navigate: (surfaceId) => attempt('navigate', () => sendToApp({ type: 'SELECT_PLUGIN', surface: surfaceId })),
 
     /**
-     * A plugin's published state, which is what a view is actually showing.
+     * A surface's published state, which is what a view is actually showing.
      *
      * Over `evaluateExpression` rather than a port method of its own: the shell already holds every
-     * running plugin's actor, so this is a read of the page and not a new capability. Before it existed
+     * running surface's actor, so this is a read of the page and not a new capability. Before it existed
      * the same expression was written out by hand at every call site, which is four chances to get the
      * ref or the optional chain wrong.
      */
-    plugin: (ref, at) => attempt('plugin', () => page.evaluateExpression(`(() => {
-      const plugin = window.applicationState?.getSnapshot().children?.[${JSON.stringify(ref)}];
-      if (!plugin) return { running: false };
-      const context = plugin.getSnapshot().context ?? {};
+    surface: (ref, at) => attempt('surface', () => page.evaluateExpression(`(() => {
+      const surface = window.applicationState?.getSnapshot().children?.[${JSON.stringify(ref)}];
+      if (!surface) return { running: false };
+      const context = surface.getSnapshot().context ?? {};
       const at = ${JSON.stringify(at ?? '')};
-      // No path asked for: the whole context, which is what a plugin publishes
+      // No path asked for: the whole context, which is what a surface publishes
       if (!at) return { running: true, state: context };
       const value = at.split('.').reduce((held, key) => (held == null ? held : held[key]), context);
       return { running: true, state: value ?? null };

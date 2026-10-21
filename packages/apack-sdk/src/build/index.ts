@@ -45,7 +45,7 @@ export { buildPackConfigFromManifest } from './manifest-bridge.ts';
 export type {
   PackManifest, PackTypeManifest, PackSnapshot, PackDependencySnapshot, PackFlowHelpers, PackPermission,
   PackProvenance, ProvenanceKind, ProvenanceManifest, ProvenanceSource,
-  PackSystemEntry, PackPluginEntry,
+  PackSystemEntry, PackSurfaceEntry,
   PackFeatureEntry, PackFeature, PackLifecycleConfig, PackMigrationDeclaration, ContentSourceConfig, ContentFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';

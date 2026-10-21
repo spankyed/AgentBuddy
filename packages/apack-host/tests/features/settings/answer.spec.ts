@@ -1,14 +1,14 @@
 import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // Who hears the outcome of a settings write, which is the one branch the change rests on.
 //
-// `SETTINGS_SAVED` and `SETTINGS_REFUSED` were only ever broadcast to the `settings` plugin, so a sender that
-// was not that plugin learned nothing — a drive session's `/set-setting` reported success for every refused
+// `SETTINGS_SAVED` and `SETTINGS_REFUSED` were only ever broadcast to the `settings` surface, so a sender that
+// was not that surface learned nothing — a drive session's `/set-setting` reported success for every refused
 // write, because the send had been accepted and the refusal went somewhere it could not see.
 //
 // **It takes the answer rather than finding one**, which is what the cases below are able to be so plain
 // about. While it read the delivery in scope, this could not be driven through `startApp` at all: the harness
 // resolves a `sender` against registered systems, so a driver's ref cannot be named there, and naming the
-// Settings plugin instead makes a reply and a broadcast arrive at the same place — measured, a case that drove
+// Settings surface instead makes a reply and a broadcast arrive at the same place — measured, a case that drove
 // the real system passed with the reply deleted. Passing `reply` in makes the two arms ordinary arguments.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Reply } from '@apackdev/sdk/events';
@@ -28,12 +28,12 @@ let stopListening: () => void;
 
 beforeEach(() => {
   sent = [];
-  stopListening = testRootEvents.onPluginSend((message) => { sent.push({ to: message.to, type: message.event.type }); });
+  stopListening = testRootEvents.onSurfaceSend((message) => { sent.push({ to: message.to, type: message.event.type }); });
 });
 
 afterEach(() => stopListening());
 
-/** The ref a drive session claims on its connection — a participant, which is deliberately not a plugin */
+/** The ref a drive session claims on its connection — a participant, which is deliberately not a surface */
 const DRIVER = 'host/drive';
 const catalog = createContributionCatalog(appSettingsDefinition).settings();
 const snapshot = { runId: 'test', revision: 0, status: 'ready' as const, catalog, values: compileSettingsCatalog(catalog).defaults };

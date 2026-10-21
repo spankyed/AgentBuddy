@@ -1,7 +1,7 @@
-import { usePluginState } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
 import type { ReferenceItem } from '@apackdev/sdk/fe/references'
 
-export const useItems = () => usePluginState('library', (state): ReferenceItem[] => {
+export const useItems = () => useSurfaceState('library', (state): ReferenceItem[] => {
   const index = state.index
 
   const docItems: ReferenceItem[] = index.documents.map((d: any) => ({

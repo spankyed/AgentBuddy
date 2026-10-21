@@ -555,7 +555,7 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
     EXPORT_DATABASE_ERROR: { actions: 'exportFinished' },
     IMPORT_DATABASE_SUCCESS: { actions: 'importFinished' },
     IMPORT_DATABASE_ERROR: { actions: 'importFinished' },
-    // Reset database events. The request comes from the plugin's settings, whatever view the plugin is in
+    // Reset database events. The request comes from the surface's settings, whatever view the surface is in
     'DATABASE.RESET': { actions: 'resetDatabase' },
     RESET_DATABASE_SUCCESS: { actions: 'handleResetSuccess' },
     RESET_DATABASE_ERROR: { actions: 'handleResetError' },

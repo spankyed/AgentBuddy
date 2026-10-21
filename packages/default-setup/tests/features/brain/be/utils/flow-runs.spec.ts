@@ -207,7 +207,7 @@ describe('brain start', () => {
     expect(runningRootFlow()).toBe(rootFlowId)
 
     await app.connect()
-    // The plugin learns which root flow the brain runs from the brain, not from the settings
+    // The surface learns which root flow the brain runs from the brain, not from the settings
     expect(await app.nextEmit('brain', 'BRAIN_STARTED')).toMatchObject({ rootFlowId })
     expect(featureSettings.forFeature('brain').get()).not.toHaveProperty('runningRootFlowId')
     repository.flowsCommands.revokeRootFlowRole(rootFlowId)

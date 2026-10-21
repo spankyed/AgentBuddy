@@ -1,28 +1,28 @@
 import { SDK_ENTITIES } from '@apackdev/sdk/types';
 import { _entityDestinationsProblem, _packEntityTypes } from '@apackdev/sdk/framework';
 import { resolveName } from '@apackdev/sdk/ids';
-import type { PackCatalogSnapshot, PluginCatalogEntry } from './catalog.ts';
+import type { PackCatalogSnapshot, SurfaceCatalogEntry } from './catalog.ts';
 import { referenceNameConflicts } from './catalog-references.ts';
-import type { DeclarationData, PluginDeclaration, NativePackDeclaration } from '@apackdev/sdk/framework';
+import type { DeclarationData, SurfaceDeclaration, NativePackDeclaration } from '@apackdev/sdk/framework';
 
-const collect = (packId: string, features: Record<string, { plugin?: DeclarationData<PluginDeclaration> }> | undefined,
-    origin: PluginCatalogEntry['origin'], identity: Pick<PluginCatalogEntry, 'enabled' | 'declarationRevision' | 'buildRevision'> = {},
+const collect = (packId: string, features: Record<string, { surface?: DeclarationData<SurfaceDeclaration> }> | undefined,
+    origin: SurfaceCatalogEntry['origin'], identity: Pick<SurfaceCatalogEntry, 'enabled' | 'declarationRevision' | 'buildRevision'> = {},
     destinations?: Readonly<Record<string, string>>) =>
-    Object.entries(features ?? {}).flatMap(([id, feature]) => feature.plugin
-      ? [Object.freeze({ featureRef: resolveName(id, packId), packId, origin, declaration: feature.plugin, ...identity,
+    Object.entries(features ?? {}).flatMap(([id, feature]) => feature.surface
+      ? [Object.freeze({ featureRef: resolveName(id, packId), packId, origin, declaration: feature.surface, ...identity,
         ...(destinations !== undefined && { opens: Object.freeze(Object.keys(destinations).filter(entity => destinations[entity] === id).sort()) }) })] : []);
 
 /** Local native declarations exist before any backend connection. */
-export function nativePluginCatalogEntries(declarations: readonly DeclarationData<NativePackDeclaration>[]): readonly PluginCatalogEntry[] {
+export function nativeSurfaceCatalogEntries(declarations: readonly DeclarationData<NativePackDeclaration>[]): readonly SurfaceCatalogEntry[] {
   const entries = declarations.flatMap(pack => collect(pack.id, pack.features, 'native', { enabled: true }, pack.entityDestinations ?? {}));
-  assertPluginDestinationClaims(entries);
+  assertSurfaceDestinationClaims(entries);
   return Object.freeze(entries);
 }
 
-/** Plugin metadata is independent of frontend delivery and actor readiness. */
-export function pluginCatalogEntries(snapshot: PackCatalogSnapshot): readonly PluginCatalogEntry[] {
+/** Surface metadata is independent of frontend delivery and actor readiness. */
+export function surfaceCatalogEntries(snapshot: PackCatalogSnapshot): readonly SurfaceCatalogEntry[] {
   return Object.freeze([
-    ...nativePluginCatalogEntries(snapshot.native),
+    ...nativeSurfaceCatalogEntries(snapshot.native),
     ...snapshot.packs.flatMap(pack => collect(pack.snapshot.manifest.id, pack.snapshot.manifest.features, 'installed',
       { enabled: pack.enabled, declarationRevision: pack.snapshot.declarationRevision,
         ...(pack.buildRevision !== undefined && { buildRevision: pack.buildRevision }) }, pack.snapshot.entityDestinations)),
@@ -46,7 +46,7 @@ export function assertCatalogClaims(snapshot: PackCatalogSnapshot): void {
     const problem = _entityDestinationsProblem(pack.entityDestinations ?? {}, pack.features, entities);
     if (problem) throw new Error(`Pack "${pack.id}": ${problem}`);
   }
-  assertPluginDestinationClaims(pluginCatalogEntries(snapshot));
+  assertSurfaceDestinationClaims(surfaceCatalogEntries(snapshot));
   const reference = referenceNameConflicts(snapshot).values().next().value;
   if (reference) throw new Error(reference);
 }
@@ -56,16 +56,16 @@ export function assertCatalogClaims(snapshot: PackCatalogSnapshot): void {
  * names. All competing owners are refused; discovery never chooses a winner by directory order.
  */
 export function catalogClaimConflicts(snapshot: PackCatalogSnapshot): ReadonlyMap<string, string> {
-  return new Map([...referenceNameConflicts(snapshot), ...pluginDestinationConflicts(pluginCatalogEntries(snapshot))]);
+  return new Map([...referenceNameConflicts(snapshot), ...surfaceDestinationConflicts(surfaceCatalogEntries(snapshot))]);
 }
 
-function pluginDestinationConflicts(entries: readonly PluginCatalogEntry[]): Map<string, string> {
-  const owners = new Map<string, PluginCatalogEntry[]>();
-  for (const plugin of entries) {
-    if (plugin.origin === 'source' || plugin.enabled !== true) continue;
-    for (const entity of plugin.opens ?? []) {
+function surfaceDestinationConflicts(entries: readonly SurfaceCatalogEntry[]): Map<string, string> {
+  const owners = new Map<string, SurfaceCatalogEntry[]>();
+  for (const surface of entries) {
+    if (surface.origin === 'source' || surface.enabled !== true) continue;
+    for (const entity of surface.opens ?? []) {
       const claims = owners.get(entity) ?? [];
-      claims.push(plugin);
+      claims.push(surface);
       owners.set(entity, claims);
     }
   }
@@ -78,7 +78,7 @@ function pluginDestinationConflicts(entries: readonly PluginCatalogEntry[]): Map
   return conflicts;
 }
 
-function assertPluginDestinationClaims(entries: readonly PluginCatalogEntry[]): void {
-  const problem = pluginDestinationConflicts(entries).values().next().value;
+function assertSurfaceDestinationClaims(entries: readonly SurfaceCatalogEntry[]): void {
+  const problem = surfaceDestinationConflicts(entries).values().next().value;
   if (problem) throw new Error(problem);
 }

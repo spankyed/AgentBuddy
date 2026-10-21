@@ -1,29 +1,29 @@
-// A pack's plugins join the shell when its frontend loads, and leave when the pack is
-// deactivated. Only the plugins the pack added are its own: a plugin whose id the app already has stays.
+// A pack's surfaces join the shell when its frontend loads, and leave when the pack is
+// deactivated. Only the surfaces the pack added are its own: a surface whose id the app already has stays.
 // Each pack whose frontend load finished is announced once per establishment of this window's bus
 // subscription, so its systems send their startup data.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type Actor } from 'xstate';
 import type { ShellEvent } from '../../../../src/features/application/fe/types.ts';
-import type { Plugin } from '@apackdev/sdk/fe';
+import type { Surface } from '@apackdev/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
-import { fakeShell, plugin, settle } from './fakes.ts';
+import { fakeShell, surface, settle } from './fakes.ts';
 
 let app: Actor<ShellMachine>;
-let builtInNotes: Plugin;
+let builtInNotes: Surface;
 let shell: ReturnType<typeof fakeShell>;
 // This window's pack frontend loader has nothing to load here; pack-loading.spec covers it
 let fake: ReturnType<typeof fakeShell>['client'];
 let packClientReady: typeof fake.packClientReady;
 
 beforeEach(() => {
-  builtInNotes = plugin('notes');
-  shell = fakeShell({ plugins: [builtInNotes] });
+  builtInNotes = surface('notes');
+  shell = fakeShell({ surfaces: [builtInNotes] });
   fake = shell.client;
   packClientReady = fake.packClientReady;
   app = createActor(createShellMachine(shell.options), {
     systemId: 'host/application',
-    input: { ownsLastActivePlugin: false },
+    input: { ownsLastActiveSurface: false },
   }).start();
 });
 
@@ -39,25 +39,25 @@ const connect = (hasOnboarded = true) => {
 };
 const dropConnection = () => fake.dropConnection();
 const loaded = (event: Extract<ShellEvent, { type: 'PACK_FRONTEND_LOADED' }>) => {
-  event.plugins?.forEach(shell.acceptPlugin);
+  event.surfaces?.forEach(shell.acceptSurface);
   app.send(event);
 };
 
-describe('pack plugins in the application actor', () => {
-  it("asks for a pack's startup data once its plugin actors exist, after the connection", () => {
+describe('pack surfaces in the application actor', () => {
+  it("asks for a pack's startup data once its surface actors exist, after the connection", () => {
     connect();
     let spawnedWhenAsked = false;
     packClientReady.mockImplementation(async () => { spawnedWhenAsked = app.system.get('ext/own') !== undefined; });
 
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/own')] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/own')] });
 
     expect(packClientReady).toHaveBeenCalledTimes(1);
     expect(packClientReady).toHaveBeenCalledWith('ext', 'runtime');
     expect(spawnedWhenAsked).toBe(true);
   });
 
-  it('asks once the connection comes for a pack whose plugins loaded before it', () => {
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/own')] });
+  it('asks once the connection comes for a pack whose surfaces loaded before it', () => {
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/own')] });
     expect(app.system.get('ext/own')).toBeDefined();
     expect(packClientReady).not.toHaveBeenCalled();
 
@@ -69,16 +69,16 @@ describe('pack plugins in the application actor', () => {
   it('waits for frontend reacceptance before requesting startup data on reconnect', async () => {
     connect();
     await settle();
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/own')] });
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'empty', plugins: [] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/own')] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'empty', surfaces: [] });
     packClientReady.mockClear();
 
     dropConnection();
     connect();
     await settle();
     expect(packClientReady).not.toHaveBeenCalled();
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/own')] });
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'empty', plugins: [] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/own')] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'empty', surfaces: [] });
     expect(packClientReady.mock.calls).toEqual([['ext', 'runtime'], ['empty', 'runtime']]);
   });
 
@@ -86,19 +86,19 @@ describe('pack plugins in the application actor', () => {
     connect();
     await settle();
     dropConnection();
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/own')] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/own')] });
     expect(packClientReady).not.toHaveBeenCalled();
 
     connect();
     await settle();
     expect(packClientReady).not.toHaveBeenCalled();
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/own')] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/own')] });
     expect(packClientReady).toHaveBeenCalledTimes(1);
   });
 
   it("doesn't ask again when another window's connection broadcasts CLIENT_CONNECTED", () => {
     connect();
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/own')] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/own')] });
     packClientReady.mockClear();
 
     broadcastConnected();
@@ -107,13 +107,13 @@ describe('pack plugins in the application actor', () => {
   });
 
   // Its systems are waiting for their startup data whatever its frontend turned out to hold
-  it('asks for an accepted frontend that exports no plugins', () => {
+  it('asks for an accepted frontend that exports no surfaces', () => {
     connect();
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'exported-none', plugins: [] });
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'empty', plugins: [] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'exported-none', surfaces: [] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'empty', surfaces: [] });
 
-    const { plugins, packsWithFrontend } = app.getSnapshot().context;
-    expect(plugins).toEqual([builtInNotes]);
+    const { surfaces, packsWithFrontend } = app.getSnapshot().context;
+    expect(surfaces).toEqual([builtInNotes]);
     expect(packsWithFrontend).toEqual(['exported-none', 'empty']);
     expect(packClientReady.mock.calls).toEqual([['exported-none', 'runtime'], ['empty', 'runtime']]);
 
@@ -125,7 +125,7 @@ describe('pack plugins in the application actor', () => {
     connect(false);
     await settle();
     expect(app.getSnapshot().hasTag('onboarding')).toBe(true);
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/own')] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/own')] });
     packClientReady.mockClear();
 
     // The API restarts during onboarding
@@ -133,7 +133,7 @@ describe('pack plugins in the application actor', () => {
     connect(false);
     await settle();
     expect(packClientReady).not.toHaveBeenCalled();
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/own')] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/own')] });
     expect(packClientReady).toHaveBeenCalledTimes(1);
 
     app.send({ type: 'ONBOARDING_COMPLETE' });
@@ -145,22 +145,22 @@ describe('pack plugins in the application actor', () => {
     fake.connect();
     await settle();
     expect(packClientReady).toHaveBeenCalledTimes(1);
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/own')] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/own')] });
     expect(packClientReady).toHaveBeenCalledTimes(2);
   });
 
-  // The plugins arrive under the ids they run under, so a pack with a `notes` feature of its own is a
-  // second plugin beside the built-in one rather than a clash. What this pins is that unloading the pack
+  // The surfaces arrive under the ids they run under, so a pack with a `notes` feature of its own is a
+  // second surface beside the built-in one rather than a clash. What this pins is that unloading the pack
   // takes only its own.
-  it("removes only the plugins the pack added, leaving a built-in plugin whose feature it shares", () => {
+  it("removes only the surfaces the pack added, leaving a built-in surface whose feature it shares", () => {
     connect();
     const notesActor = app.system.get('notes');
-    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', plugins: [plugin('ext/notes'), plugin('ext/pack-own')] });
+    loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/notes'), surface('ext/pack-own')] });
 
     app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'ext' });
 
-    const { plugins, packsWithFrontend } = app.getSnapshot().context;
-    expect(plugins).toEqual([builtInNotes]);
+    const { surfaces, packsWithFrontend } = app.getSnapshot().context;
+    expect(surfaces).toEqual([builtInNotes]);
     expect(packsWithFrontend).toEqual([]);
     expect(app.system.get('ext/pack-own')).toBeUndefined();
     expect(app.system.get('ext/notes')).toBeUndefined();

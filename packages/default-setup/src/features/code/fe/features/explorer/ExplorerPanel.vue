@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { useSettings } from '#generated/settings-fe.ts'
 import { ref, computed, provide, nextTick } from 'vue'
@@ -105,7 +105,7 @@ import type { FileInfo } from './state.ts'
 import { codeChild } from '../children.ts';
 
 // Get actors
-const codeActor: CodeState = usePlugin()
+const codeActor: CodeState = useSurface()
 const explorerActor = codeChild(codeActor, 'explorer')!
 const terminalActor = codeChild(codeActor, 'terminal')!
 

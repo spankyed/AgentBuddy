@@ -3,7 +3,7 @@ import { expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, onUnmounted } from 'vue';
 import { createActor, setup } from 'xstate';
 import type { AnyActorRef } from 'xstate';
-import { PluginScope, usePlugin } from '../../src/fe/actor-system.ts';
+import { SurfaceScope, useSurface } from '../../src/fe/actor-system.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 
 it('remounts cached content for a replaced actor and leaves unchanged scopes mounted', async () => {
@@ -27,12 +27,12 @@ it('remounts cached content for a replaced actor and leaves unchanged scopes mou
   } as never, secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never });
   const Content = defineComponent({ setup() {
     mounted();
-    const captured = usePlugin<AnyActorRef>();
+    const captured = useSurface<AnyActorRef>();
     onUnmounted(disposed);
     return () => h('button', { onClick: () => captured.send({ type: 'PING' }) }, captured.sessionId);
   } });
   const element = document.createElement('div');
-  const app = createApp(defineComponent({ setup: () => () => h(PluginScope, { plugin: ref }, () => h(Content)) }));
+  const app = createApp(defineComponent({ setup: () => () => h(SurfaceScope, { surface: ref }, () => h(Content)) }));
   try {
     app.mount(element);
     expect(element.textContent).toBe(first.sessionId);

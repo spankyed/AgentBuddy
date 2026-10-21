@@ -1,8 +1,8 @@
 /** A component module; loading mode changes execution, never discovery. */
 export type ComponentTarget = string | { entry: string; load?: 'lazy' };
 
-/** Plugin data known before its machine, views or predicates execute. */
-export interface PluginDeclaration {
+/** Surface data known before its machine, views or predicates execute. */
+export interface SurfaceDeclaration {
   label: string;
   state: string;
   icon?: string | { entry: string; load?: 'lazy' };
@@ -18,29 +18,29 @@ export interface PluginDeclaration {
   defaultVisible?: boolean;
 }
 
-/** @internal File/export targets named by a plugin, for validation and source freshness. */
-export function _pluginTargets(plugin: PluginDeclaration): [string, string][] {
+/** @internal File/export targets named by a surface, for validation and source freshness. */
+export function _surfaceTargets(surface: SurfaceDeclaration): [string, string][] {
   const component = (field: string, target: ComponentTarget | undefined): [string, string][] =>
     target === undefined ? [] : [[field, typeof target === 'string' ? target : target.entry]];
-  const canvas = plugin.canvas;
+  const canvas = surface.canvas;
   return [
-    ['state', plugin.state],
-    ...component('icon', typeof plugin.icon === 'object' ? plugin.icon : undefined),
+    ['state', surface.state],
+    ...component('icon', typeof surface.icon === 'object' ? surface.icon : undefined),
     ...(canvas && typeof canvas === 'object' && 'routes' in canvas
       ? Object.entries(canvas.routes).flatMap(([route, target]) => component(`canvas.routes.${route}`, target))
       : component('canvas', canvas)),
-    ...component('panel', plugin.panel), ...component('chat', plugin.chat),
-    ...(plugin.fallbackPanel ? [['fallbackPanel.isShown', plugin.fallbackPanel.isShown] as [string, string]] : []),
+    ...component('panel', surface.panel), ...component('chat', surface.chat),
+    ...(surface.fallbackPanel ? [['fallbackPanel.isShown', surface.fallbackPanel.isShown] as [string, string]] : []),
   ];
 }
 
 
 /** @internal Check compiled destination data without importing contracts or machines. */
 export function _entityDestinationsProblem(destinations: Readonly<Record<string, string>>,
-  features: Readonly<Record<string, { readonly plugin?: unknown }>> | undefined, entities?: ReadonlySet<string>): string | undefined {
+  features: Readonly<Record<string, { readonly surface?: unknown }>> | undefined, entities?: ReadonlySet<string>): string | undefined {
   for (const [entity, feature] of Object.entries(destinations)) {
-    if (!Object.hasOwn(features ?? {}, feature) || !features![feature].plugin) {
-      return `Entity destination "${entity}" names feature "${feature}" without a declared plugin`;
+    if (!Object.hasOwn(features ?? {}, feature) || !features![feature].surface) {
+      return `Entity destination "${entity}" names feature "${feature}" without a declared surface`;
     }
     if (entities && !entities.has(entity)) return `Entity destination "${entity}" names an unknown entity`;
   }

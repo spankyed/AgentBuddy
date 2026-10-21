@@ -7,7 +7,7 @@ import { stepRegistry } from '@apackdev/sdk/steps';
 import logsState from '#features/logs/fe/state.ts';
 
 it("keeps the backend's roles and steps while a shell is running", async () => {
-  await startShell({ plugins: { logs: { state: logsState } } });
+  await startShell({ surfaces: { logs: { state: logsState } } });
 
   expect(hasDesignation('brain')).toBe(true);
   expect(getDesignated('brain')).toBe('default-setup/brain');

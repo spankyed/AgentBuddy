@@ -7,13 +7,13 @@ import type { IncomingSettingsEvents, IncomingSecretsEvents, OutgoingSettingsEve
 import { APPLICATION_PLUGIN_EVENT_TYPES } from './application/events.ts';
 
 export type ApplicationClientEvent =
-  | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
-  | { type: 'SET_LAST_ACTIVE_PLUGIN'; plugin: string };
+  | { type: 'SET_PLUGIN_VISIBILITY'; surface: string; visible: boolean }
+  | { type: 'SET_LAST_ACTIVE_PLUGIN'; surface: string };
 export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('SET_PLUGIN_VISIBILITY', 'SET_LAST_ACTIVE_PLUGIN');
 export type HelpOutgoing = { type: 'HELP_CATALOG'; catalog: HelpCatalog };
 export const helpEvents = ['GET_HELP', 'CLIENT_CONNECTED'] as const;
 
-/** What the host `packs` system sends its plugin */
+/** What the host `packs` system sends its surface */
 export type OutgoingPacksEvents =
   | { type: 'PACKS_LIST'; packs: InstalledPackSummary[]; appPackSources: AppPackSourceSummary[]; appPackSourceProblems: { id: string; message: string }[] }
   | { type: 'PACK_INSTALL_STARTED'; packSlug: string }
@@ -28,8 +28,8 @@ export type OutgoingPacksEvents =
   | { type: 'PACK_UPDATE_FAILED'; packId: string; error: string };
 
 /**
- * The event types the `packs` plugin receives. Not part of `HostPluginEvents`, which is the host's published
- * inbox — what any pack may send it, as a pack's plugin publishes its own in its `Contract`. These are the
+ * The event types the `packs` surface receives. Not part of `HostSurfaceEvents`, which is the host's published
+ * inbox — what any pack may send it, as a pack's surface publishes its own in its `Contract`. These are the
  * host's to send itself, and no pack's.
  */
 export const PACKS_PLUGIN_EVENT_TYPES = eventTypes<OutgoingPacksEvents>()(
@@ -67,10 +67,10 @@ export const settingsEvents = eventTypes<IncomingSettingsEvents | IncomingSecret
   'GET_SETTINGS', 'RECOVER_SETTINGS', 'UPDATE_SETTINGS', 'RESET_SETTINGS', 'RESET_ALL_SETTINGS', 'REPLACE_SETTINGS', 'RESET_APP', 'SECRETS_CHANGED',
 );
 
-/** What the settings system sends its own plugin: everything outgoing but the shell's hotkeys */
+/** What the settings system sends its own surface: everything outgoing but the shell's hotkeys */
 export type SettingsPluginEvents = Exclude<OutgoingSettingsEvents, { type: 'APPLICATION_HOTKEYS' }>;
 
-/** The event types the `settings` plugin receives; the host's to send, and no pack's */
+/** The event types the `settings` surface receives; the host's to send, and no pack's */
 export const SETTINGS_PLUGIN_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
   'SETTINGS_RECOVERY',
   'SETTINGS_LOADED',
@@ -91,12 +91,12 @@ export const SETTINGS_PLUGIN_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
 export const hostEventContracts = {
   application: {
     system: { incoming: APPLICATION_SYSTEM_EVENTS, outgoing: ['PACK_RUNTIMES_UPDATED', 'PLUGIN_VISIBILITY_UPDATED'] },
-    plugin: { receives: [...HOST_PLUGIN_EVENT_TYPES['host/application'], ...APPLICATION_PLUGIN_EVENT_TYPES] },
+    surface: { receives: [...HOST_PLUGIN_EVENT_TYPES['host/application'], ...APPLICATION_PLUGIN_EVENT_TYPES] },
   },
   help: { system: { incoming: helpEvents, outgoing: ['HELP_CATALOG'] } },
-  packs: { system: { incoming: packsEvents, outgoing: PACKS_PLUGIN_EVENT_TYPES }, plugin: { receives: PACKS_PLUGIN_EVENT_TYPES } },
+  packs: { system: { incoming: packsEvents, outgoing: PACKS_PLUGIN_EVENT_TYPES }, surface: { receives: PACKS_PLUGIN_EVENT_TYPES } },
   settings: {
     system: { incoming: settingsEvents, outgoing: [...SETTINGS_PLUGIN_EVENT_TYPES, 'APPLICATION_HOTKEYS'] },
-    plugin: { receives: ['HELP_CATALOG', ...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] },
+    surface: { receives: ['HELP_CATALOG', ...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] },
   },
 } satisfies PackEventContracts;

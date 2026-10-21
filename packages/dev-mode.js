@@ -69,7 +69,7 @@ await rendererWatchServer.listen();
 // Wait for the first verified pack publication before the API boots
 await devBuildReady;
 
-// ── 2. Renderer watch server provider plugin ──
+// ── 2. Renderer watch server provider surface ──
 
 /** @type {import('vite').Plugin} */
 const rendererWatchServerProvider = {

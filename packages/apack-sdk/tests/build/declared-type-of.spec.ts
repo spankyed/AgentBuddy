@@ -1,6 +1,6 @@
-// `declaredTypeOf` is what lets a plugin's contract be a type rather than a value carrying phantom properties.
+// `declaredTypeOf` is what lets a surface's contract be a type rather than a value carrying phantom properties.
 // The reader it sits beside, `exportedValueType`, resolves values only, and reading that way is what forced the
-// contract into `fe/plugin.ts` — whose machine imports cycle back through the generated events module.
+// contract into `fe/surface.ts` — whose machine imports cycle back through the generated events module.
 //
 // These cover the three answers it has to give, through the public reader that uses it, and where it refuses.
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
@@ -37,7 +37,7 @@ const FIXTURES = {
   'resolves.ts': "export type Contract = { state: {}; inbox: { public: { type: 'A' } } };\n",
   // The collapse a hop away: the contract's own text is fine and the module it names is the one that cannot resolve
   'hopped.ts': "import type { Ev } from './hop.ts';\nexport type Contract = { state: {}; inbox: { public: Ev } };\n",
-  'hop.ts': "import type { PackPluginEvents } from './__generated__/events.ts';\nexport type Ev = PackPluginEvents;\n",
+  'hop.ts': "import type { PackSurfaceEvents } from './__generated__/events.ts';\nexport type Ev = PackSurfaceEvents;\n",
   // An event union that comes from the pack's own generated code: the one cause the advice cannot name
   'generated-inbox.ts': "import type { I } from '#generated/types.ts';\nexport type Contract = { state: {}; inbox: { pack: I } };\n",
   // The same collapse in the two positions no reader reads
@@ -202,7 +202,7 @@ it('resolves virtual declaration re-exports without creating their directories',
 });
 
 
-describe('plugin entity destination types', () => {
+describe('surface entity destination types', () => {
   it('reads literal aliases, inherited interfaces and re-exports without executing modules', () => {
     expect(read.openedEntityTypesOf(at('opens-alias.ts'), 'Contract')).toEqual(['Action', 'Note']);
     expect(read.openedEntityTypesOf(at('opens-interface.ts'), 'Contract')).toEqual(['Note']);

@@ -32,7 +32,7 @@ const { default: brainState } = await import('#features/brain/fe/state.ts');
 const details = (id: string) => ({ id, label: id }) as unknown as TNodeEntity;
 
 /**
- * A started plugin in `ready`, which is where node clicks are handled.
+ * A started surface in `ready`, which is where node clicks are handled.
  *
  * `RECEIVE_PLUGIN_DATA` is what moves it there, and `normalizeFlowTNodeData` tolerates a missing
  * `tNodeTree`, so nothing here has to build a tree to ask about correlation.

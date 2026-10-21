@@ -8,7 +8,7 @@ import type { OutgoingMemosEvents } from '../be/types.ts';
 export const id = 'memos' as const;
 
 type UIEvents = { type: 'MEMOS.ADD'; text: string } | { type: 'MEMOS.ADD_NOTE'; text: string };
-/** What another feature may send this plugin, which `fe/plugin.ts` declares as its inbox */
+/** What another feature may send this surface, which `fe/surface.ts` declares as its inbox */
 export type { MemosInbox } from './contract.ts';
 export type MemosEvents = OpenEntity | UIEvents | MemosInbox | OutgoingMemosEvents;
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue';
-import { usePlugin } from '@apackdev/sdk/fe';
+import { useSurface } from '@apackdev/sdk/fe';
 import type { NotesState } from '../state.ts';
 
-const actor: NotesState = usePlugin();
+const actor: NotesState = useSurface();
 const label = useSelector(actor, (state) => state.context.label);
 </script>
 

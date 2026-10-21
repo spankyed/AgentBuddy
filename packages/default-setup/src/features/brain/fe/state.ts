@@ -46,11 +46,11 @@ type UIEvent =
   // The event pulse's animation ended
   | { type: 'CLEAR_PULSE' }
 
-type PluginEvent =
+type SurfaceEvent =
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'PLUGIN_DEACTIVATED' }
 
-export type BrainEvents = UIEvent | SystemEvent | PluginEvent | TrailClickEvent
+export type BrainEvents = UIEvent | SystemEvent | SurfaceEvent | TrailClickEvent
 const typeOf = safeEvents<BrainEvents>()
 
 function normalizeFlowTNodeData(data: FlowTNodeData): {
@@ -186,7 +186,7 @@ const brainState = setup({
         currentFlowTNodeId: context.flowTNodeId,
       });
     },
-    requestPluginData: ({ context }) => {
+    requestSurfaceData: ({ context }) => {
       sendToSystem(id, {
         type: 'REQUEST_PLUGIN_DATA',
         ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId }),
@@ -472,7 +472,7 @@ const brainState = setup({
           actions: 'setStepNodeDetails'
         },
         PLUGIN_ACTIVATED: {
-          actions: 'requestPluginData'
+          actions: 'requestSurfaceData'
         },
         PLUGIN_DEACTIVATED: {
           // No action needed for deactivation

@@ -1,4 +1,4 @@
-// Tiptap editor extension points: packs contribute plugins through PackFERegistration and
+// Tiptap editor extension points: packs contribute surfaces through PackFERegistration and
 // provide extra block items. Pack FE code gets the host's copy through @apackdev/sdk/fe.
 import type { InjectionKey, Component } from 'vue'
 import type { AnyExtension, Editor } from '@tiptap/vue-3'
@@ -26,7 +26,7 @@ export interface TiptapPluginBinding {
 
 export const EXTRA_BLOCK_ITEMS_KEY: InjectionKey<BlockItem[]> = Symbol('extraBlockItems')
 
-// The tiptap plugins the renderer's registered pack frontends contribute
+// The tiptap surfaces the renderer's registered pack frontends contribute
 export const tiptapPluginRegistry = {
   getAll(): TiptapPluginBinding[] {
     return boundFeHost().packs.tiptapPlugins();

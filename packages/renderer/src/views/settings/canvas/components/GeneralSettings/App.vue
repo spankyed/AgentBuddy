@@ -178,7 +178,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -212,7 +212,7 @@ function onHotkeyUpdate(event: SettingUpdate) {
   })
 }
 
-const actor: SettingsState = usePlugin()
+const actor: SettingsState = useSurface()
 
 const packContentImport = useSelector(actor, (state) => state.context.packContentImport)
 const resetting = useSelector(actor, (state) => state.context.resetting)

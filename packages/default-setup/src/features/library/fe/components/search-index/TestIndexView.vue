@@ -207,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, computed, watch, nextTick, type Ref, type ComponentPublicInstance } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -217,7 +217,7 @@ import Button from '@apackdev/ui/design/button'
 import type { IndexSearchResult, SearchIndex } from '#generated/types.ts'
 import type { LibraryActor } from '../../state.ts'
 
-const actor = usePlugin<LibraryActor>()
+const actor = useSurface<LibraryActor>()
 
 const testingIndex = useSelector(actor, (state) => state.context.testingIndex) as Ref<SearchIndex | null>
 const testQuery = useSelector(actor, (state) => state.context.testQuery) as Ref<string>

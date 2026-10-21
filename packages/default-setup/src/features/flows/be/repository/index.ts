@@ -14,8 +14,8 @@ import type { FlowEntity } from '@apackdev/sdk';
 
 /**
  * Flow Repository: the SDK's flow repository (`flowRepository`), which owns the reads and writes of flows, nodes
- * and edges, as the flows plugin uses it. Its methods are taken as they are, not wrapped; this adds nodes typed as
- * this pack's step nodes, the connected data the plugin shows (the root flow included: the flow with the root role,
+ * and edges, as the flows surface uses it. Its methods are taken as they are, not wrapped; this adds nodes typed as
+ * this pack's step nodes, the connected data the surface shows (the root flow included: the flow with the root role,
  * which is the only record of it), and a flow created with its entry node.
  */
 

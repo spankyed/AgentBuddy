@@ -185,8 +185,8 @@ import PanelResizer from '@apackdev/ui/layout/panel-resizer'
 import ImageLightbox from '@apackdev/ui/design/ImageLightbox'
 import ConfirmationDialog from '@apackdev/ui/design/ConfirmationDialog'
 import ScrollToBottomFob from '@apackdev/ui/design/ScrollToBottomFob'
-import { usePlugin, useShell } from '@apackdev/sdk/fe'
-import { openPlugin } from '#generated/fe.ts'
+import { useSurface, useShell } from '@apackdev/sdk/fe'
+import { openSurface } from '#generated/fe.ts'
 import { useSelector } from '@xstate/vue'
 import { threadsFromStore, type ThreadsState } from '#features/threads/fe/state.ts';
 import type { MessageEntity, ThreadEntity, MessageReferences, QuickPrompt } from '#generated/types.ts'
@@ -195,7 +195,7 @@ import { useSettings } from '#generated/settings-fe.ts';
 
 const threadsSettings = useSettings('threads')
 const shell = useShell()
-const actor: ThreadsState = usePlugin();
+const actor: ThreadsState = useSurface();
 const isOnboarding = shell.isOnboarding;
 const allMessages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const visibleMessages = computed(() => allMessages.value.filter(m => !(m as any).compacted));
@@ -323,8 +323,8 @@ function forceScrollToBottom() {
 function handleStatuslineClick() {
   const cwd = statusLineCwd.value
   if (!cwd) return
-  // The code plugin routes an explorer.* event to its explorer
-  openPlugin('code', { type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
+  // The code surface routes an explorer.* event to its explorer
+  openSurface('code', { type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
 }
 
 function handleSendMessage(text: string, references?: MessageReferences) {
@@ -407,17 +407,17 @@ function handleToggleThreadSidebar() {
 }
 
 function handleViewDashboard() {
-  openPlugin('threads', { type: 'VIEW_DASHBOARD' });
+  openSurface('threads', { type: 'VIEW_DASHBOARD' });
   // If canvas is collapsed (chat dominant), give it room to show the dashboard
   if (shell.panelSizes.value.canvasHeight < 20) shell.resizeCanvas(50);
 }
 
 function handleViewArtifacts(threadId: string) {
-  openPlugin('threads', { type: 'OPEN_THREAD_CHAT', threadId });
+  openSurface('threads', { type: 'OPEN_THREAD_CHAT', threadId });
 }
 
 function handleViewDetails(threadId: string) {
-  openPlugin('threads', { type: 'VIEW_THREAD', threadId });
+  openSurface('threads', { type: 'VIEW_THREAD', threadId });
 }
 
 let pendingRestoreFiles = false

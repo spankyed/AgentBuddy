@@ -1,8 +1,8 @@
 <!--
   [GRAPH_EXPLORER_FF] PARKED — not wired into the app.
 
-  Nothing imports this file. The database plugin renders `../../canvas.vue`
-  (see database/fe/plugin.ts), so this subtree is unreachable: it contributes
+  Nothing imports this file. The database surface renders `../../canvas.vue`
+  (see database/fe/surface.ts), so this subtree is unreachable: it contributes
   zero bytes to the bundle and @antv/g6 is never bundled.
 
   It is left as real (not commented-out) code deliberately — it currently

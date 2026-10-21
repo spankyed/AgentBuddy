@@ -1,4 +1,4 @@
-// The code plugin's children: which machine each spawned id runs, and the two ways to reach one.
+// The code surface's children: which machine each spawned id runs, and the two ways to reach one.
 //
 // The id and the machine behind it are stated once, here. A caller passes the id and the type follows, so an id
 // can't be paired with the wrong actor and an id no child is spawned under doesn't compile.
@@ -11,7 +11,7 @@ import type { PullRequestActor } from './pull-request/state.ts';
 import type { SearchActor } from './search/state.ts';
 import type { TerminalActor } from './terminal/state.ts';
 
-/** Every child the code plugin spawns, by the id it is spawned under (`fe/state.ts`) */
+/** Every child the code surface spawns, by the id it is spawned under (`fe/state.ts`) */
 export interface CodeChildren {
   explorer: ExplorerActor;
   terminal: TerminalActor;
@@ -36,7 +36,7 @@ export const codeChild = <K extends keyof CodeChildren>(code: AnyActorRef, id: K
   code.getSnapshot().children[id] as CodeChildren[K] | undefined;
 
 /**
- * Forwards `event` to the child at `id` without addressing one: the routing the plugin does by an event's prefix,
+ * Forwards `event` to the child at `id` without addressing one: the routing the surface does by an event's prefix,
  * and the broadcast that hands every child whatever arrived. No one child is named, so there is no event union to
  * check against — each child ignores what it doesn't handle.
  */

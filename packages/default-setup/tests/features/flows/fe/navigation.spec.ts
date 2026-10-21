@@ -160,7 +160,7 @@ const nodesOf = (actor: ReturnType<typeof view>) => actor.getSnapshot().context.
 const withAdded = { type: 'FLOW_SELECTED' as const, flowId: 'Flow-first' as const,
   data: { nodes: [...graph('Node-first').nodes, ...graph('Node-added').nodes], edges: [] } };
 
-it.each(['double-click a node', 'reselect the shown flow', 'leave the plugin'] as const)(
+it.each(['double-click a node', 'reselect the shown flow', 'leave the surface'] as const)(
   'applies a refresh in flight after the user does %s', where => {
     const { actor, refresh } = refreshing();
     if (where === 'double-click a node') actor.send({ type: 'NODE.DOUBLE_CLICK', nodeId: 'Node-first' } as never);

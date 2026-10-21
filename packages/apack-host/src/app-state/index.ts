@@ -1,6 +1,6 @@
 // The app's own state: one AppState row the host declares and alone reads and writes. Packs never read
 // it; they learn whether the user onboarded through services.onboarding, and the renderer through the
-// application plugin's CLIENT_CONNECTED. Resetting the user's settings doesn't touch it; resetting the
+// application surface's CLIENT_CONNECTED. Resetting the user's settings doesn't touch it; resetting the
 // app (appData.reset()) empties it with everything else.
 import { untypedTx, untypedQx, type EarsQuery } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
@@ -45,11 +45,11 @@ export interface AppState {
    */
   failedAgainst: Record<string, string>;
   /**
-   * The plugins whose sidebar tab the user showed or hid, by ref. A plugin not here shows as its feature declares
+   * The surfaces whose sidebar tab the user showed or hid, by ref. A surface not here shows as its feature declares
    * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab.
    */
   pluginVisibility: Record<string, boolean>;
-  /** The plugin the user last had open, by ref; a window opens on it once it connects */
+  /** The surface the user last had open, by ref; a window opens on it once it connects */
   lastActivePlugin?: string;
 }
 

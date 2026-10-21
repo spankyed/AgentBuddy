@@ -298,7 +298,7 @@ describe('installed build reader', () => {
 
   const feature = (entry: Record<string, unknown>) => ({ features: { view: { description: 'Present a fixture contribution.', ...entry } } });
   it.each([
-    ['plugin', feature({ plugin: { label: 'View', state: 'src/state.ts' } })],
+    ['surface', feature({ surface: { label: 'View', state: 'src/state.ts' } })],
     ['designation', feature({ designation: 'home' })],
     ['feature form', feature({ settings: { schema: { type: 'object' }, defaults: {}, form: 'src/Form.vue' } })],
     ['references', feature({ references: { types: {}, categories: {} } })],

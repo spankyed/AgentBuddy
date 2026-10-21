@@ -19,7 +19,7 @@ export type HotkeysMap = {
   [action: string]: KeyboardShortcut | null | undefined;
 }
 
-export interface PluginHotkeyDefinition {
+export interface SurfaceHotkeyDefinition {
   action: string;
   global?: boolean;
 }

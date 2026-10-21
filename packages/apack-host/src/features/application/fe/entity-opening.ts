@@ -4,10 +4,10 @@ import type { EARS } from '@apackdev/sdk';
 import { newCall, type OpenEntity } from '@apackdev/sdk/events';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { isEqual } from '../../settings/document.ts';
-import { selectEntityDestination, getEligiblePlugin, type EntityDestinationSelection, type ShellPluginCatalog } from '../../../fe/plugin-selection.ts';
-import { notifyPluginActor } from '../../../fe/plugin-delivery.ts';
-import type { PluginFrontendBinding } from '../../../fe/pack-store.ts';
-import type { PluginCatalogEntry } from '../../../packs/catalog.ts';
+import { selectEntityDestination, getEligibleSurface, type EntityDestinationSelection, type ShellSurfaceCatalog } from '../../../fe/surface-selection.ts';
+import { notifySurfaceActor } from '../../../fe/surface-delivery.ts';
+import type { SurfaceFrontendBinding } from '../../../fe/pack-store.ts';
+import type { SurfaceCatalogEntry } from '../../../packs/catalog.ts';
 import type { ShellClient } from '../../../fe/client.ts';
 
 export const ENTITY_OPENING_ID = 'entity-opening';
@@ -15,7 +15,7 @@ export const ENTITY_OPENING_ID = 'entity-opening';
 interface EntityOpenRequest {
   id: EARS.EntityId;
   token: string;
-  target?: { declaration: PluginCatalogEntry; binding?: PluginFrontendBinding };
+  target?: { declaration: SurfaceCatalogEntry; binding?: SurfaceFrontendBinding };
 }
 
 type EntityOpeningEvent = OpenEntity
@@ -27,8 +27,8 @@ type EntityOpeningEvent = OpenEntity
 
 interface EntityOpeningOptions {
   client: ShellClient;
-  catalog: ShellPluginCatalog;
-  bindings(): ReadonlyMap<string, PluginFrontendBinding>;
+  catalog: ShellSurfaceCatalog;
+  bindings(): ReadonlyMap<string, SurfaceFrontendBinding>;
   refuse(title: string, detail: string): void;
 }
 
@@ -115,7 +115,7 @@ export function createEntityOpeningMachine(options: EntityOpeningOptions) {
             if (selection.status !== 'declared') throw new Error('Entity destination was not resolved');
             const declaration = selection.destination;
             return { request: { ...context.request!, target: { declaration,
-              binding: getEligiblePlugin(catalog, bindings(), declaration.featureRef) ? bindings().get(declaration.featureRef) : undefined } } };
+              binding: getEligibleSurface(catalog, bindings(), declaration.featureRef) ? bindings().get(declaration.featureRef) : undefined } } };
           }) },
         ],
       },
@@ -129,7 +129,7 @@ export function createEntityOpeningMachine(options: EntityOpeningOptions) {
               actions: ({ context }) => refuse(context.request, 'This entity no longer exists or is in the trash.') },
             { target: 'waiting', actions: enqueueActions(({ context, enqueue }) => {
               const request = context.request!;
-              enqueue.sendParent({ type: 'OPEN_PLUGIN', plugin: request.target!.declaration.featureRef,
+              enqueue.sendParent({ type: 'OPEN_PLUGIN', surface: request.target!.declaration.featureRef,
                 events: [], entityToken: request.token });
             }) },
           ],
@@ -145,13 +145,13 @@ export function createEntityOpeningMachine(options: EntityOpeningOptions) {
           ],
           DELIVER: { guard: 'currentToken', target: 'idle', actions: ({ context, system }) => {
             const request = context.request!;
-            const plugin = request.target!.declaration.featureRef;
-            const actor = system.get(plugin);
+            const surface = request.target!.declaration.featureRef;
+            const actor = system.get(surface);
             const problem = destinationProblem(options, request)
-              ?? (!getEligiblePlugin(catalog, bindings(), plugin) ? `The plugin "${plugin}" is no longer ready.` : undefined)
-              ?? (!actor ? `The destination actor "${plugin}" is no longer available.` : undefined);
+              ?? (!getEligibleSurface(catalog, bindings(), surface) ? `The surface "${surface}" is no longer ready.` : undefined)
+              ?? (!actor ? `The destination actor "${surface}" is no longer available.` : undefined);
             if (problem) refuse(request, problem);
-            else notifyPluginActor(actor, plugin, { type: 'OPEN_ENTITY', id: request.id });
+            else notifySurfaceActor(actor, surface, { type: 'OPEN_ENTITY', id: request.id });
           } },
         },
       },

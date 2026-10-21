@@ -1,27 +1,27 @@
-// The Packs plugin asks the `host/packs` system for what it shows, and tells the shell when a pack's plugins
+// The Packs surface asks the `host/packs` system for what it shows, and tells the shell when a pack's surfaces
 // are gone. It doesn't unload the pack's frontend itself: the shell loads a pack's frontend and the shell
 // unloads it, so a pack that comes back is loaded once and taken out once.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type Actor } from 'xstate';
 import { startFeTestRuntime } from '@apackdev/sdk/testing';
-import type { Plugin } from '@apackdev/sdk/fe';
+import type { Surface } from '@apackdev/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
 import packsMachine from '../../../../src/features/packs/fe/machine.ts';
-import { fakeShell, plugin } from '../../application/fe/fakes.ts';
+import { fakeShell, surface } from '../../application/fe/fakes.ts';
 
 let app: Actor<ShellMachine>;
 let stopFeRuntime: () => void;
 let shell: ReturnType<typeof fakeShell>;
 
 /** The Packs tab as the renderer registers it: the host's machine, with the view's components */
-const packsPlugin = { id: 'host/packs', label: 'Packs', icon: 'Package', state: packsMachine, canvas: {} } as unknown as Plugin;
+const packsSurface = { id: 'host/packs', label: 'Packs', icon: 'Package', state: packsMachine, canvas: {} } as unknown as Surface;
 
 beforeEach(() => {
-  shell = fakeShell({ plugins: [plugin('notes'), packsPlugin] });
+  shell = fakeShell({ surfaces: [surface('notes'), packsSurface] });
   stopFeRuntime = startFeTestRuntime({ client: shell.client.client });
   app = createActor(createShellMachine(shell.options), {
     systemId: 'host/application',
-    input: { ownsLastActivePlugin: false },
+    input: { ownsLastActiveSurface: false },
   }).start();
   shell.client.connect();
   shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
@@ -29,11 +29,11 @@ beforeEach(() => {
 
 afterEach(() => { app.stop(); stopFeRuntime(); });
 
-/** What the `host/packs` system sent its plugin */
+/** What the `host/packs` system sent its surface */
 const receive = (event: Record<string, unknown>) => shell.client.receive({ to: 'host/packs', event: event as never });
 const packsTab = () => app.system.get('host/packs') as Actor<typeof packsMachine>;
 
-describe('the Packs plugin', () => {
+describe('the Packs surface', () => {
   it("has the shell unload a deactivated pack's frontend, rather than unloading it itself", () => {
     receive({ type: 'PACK_DEACTIVATED', packId: 'memo-pack' });
 

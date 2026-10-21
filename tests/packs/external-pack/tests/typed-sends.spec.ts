@@ -1,10 +1,10 @@
 // The fixture sends to its own system by feature id and to its dependency's (default-setup) as
 // default-setup/<feature>, both through the sendToSystem its #generated/events types with every system's
-// events. Plugins are named the same way, so `nextEmit` takes this pack's own by feature id and a
-// dependency's as default-setup/<feature>, and reports the id the plugin runs under.
+// events. Surfaces are named the same way, so `nextEmit` takes this pack's own by feature id and a
+// dependency's as default-setup/<feature>, and reports the id the surface runs under.
 import { describe, expect, it } from 'vitest';
 import { startApp } from '@apackdev/testing/harness';
-import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
+import { broadcastToSurface, sendToSystem } from '#generated/events.ts';
 
 describe('typed sends to systems', () => {
   it("reaches default-setup's library system", async () => {
@@ -38,9 +38,9 @@ describe('typed sends to systems', () => {
     expect(await app.nextEmit('memos', 'MEMO_ADDED')).toMatchObject({ memo: { text: 'typed' } });
   });
 
-  // The name `emit` takes for a dependency's plugin is the one the send resolves: it arrives at that
+  // The name `emit` takes for a dependency's surface is the one the send resolves: it arrives at that
   // pack's address, not at one in this pack's namespace
-  it("reaches a dependency's plugin named <dependency>/<feature>", async () => {
+  it("reaches a dependency's surface named <dependency>/<feature>", async () => {
     const app = await startApp({ systems: ['memos'] });
     await app.connect();
 
@@ -50,19 +50,19 @@ describe('typed sends to systems', () => {
       .toMatchObject({ type: 'LOG_ADDED', log: { message: 'hello', source: 'memos' } });
   });
 
-  // A dependency's plugin publishes only the `public` half of its contract. Its `pack` half is what default-setup's
+  // A dependency's surface publishes only the `public` half of its contract. Its `pack` half is what default-setup's
   // own features send each other, and nothing here can send it — this is the only place that split is exercised
   // from outside the pack that declared it.
-  it("sends a dependency's plugin what it publishes, and nothing it keeps to its own pack", () => {
+  it("sends a dependency's surface what it publishes, and nothing it keeps to its own pack", () => {
     const sends = () => {
       // `public`: any pack may add a line to the app's log
-      broadcastToPlugin('default-setup/logs', { type: 'LOG_ADDED', log: { id: '1', timestamp: 0, level: 'info', source: 'memos', message: 'hi' } });
+      broadcastToSurface('default-setup/logs', { type: 'LOG_ADDED', log: { id: '1', timestamp: 0, level: 'info', source: 'memos', message: 'hi' } });
       // @ts-expect-error `pack`: opening a note is default-setup's own features' to ask for, not a dependent's
-      broadcastToPlugin('default-setup/notes', { type: 'NOTE.OPEN', noteId: 'Note-1' });
-      // @ts-expect-error `pack`: so is writing the code plugin's state
-      broadcastToPlugin('default-setup/code', { type: 'UPDATE_STATE', updates: { baseDirectory: '/tmp' } });
+      broadcastToSurface('default-setup/notes', { type: 'NOTE.OPEN', noteId: 'Note-1' });
+      // @ts-expect-error `pack`: so is writing the code surface's state
+      broadcastToSurface('default-setup/code', { type: 'UPDATE_STATE', updates: { baseDirectory: '/tmp' } });
       // @ts-expect-error and so is opening one of its terminals
-      broadcastToPlugin('default-setup/code', { type: 'terminal.CREATE', target: 'x', command: 'ls' });
+      broadcastToSurface('default-setup/code', { type: 'terminal.CREATE', target: 'x', command: 'ls' });
     };
     expect(sends).toBeTypeOf('function');
   });

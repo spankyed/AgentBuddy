@@ -1,10 +1,10 @@
 // Handing an event to an actor names the participant it is for — and *only* that one.
 //
 // Two claims, and the second is the one that had no case until a probe went looking. A send made while
-// handling a message carries the handler's ref, which is what the whole delivery scope is for; so a plugin
+// handling a message carries the handler's ref, which is what the whole delivery scope is for; so a surface
 // that reaches another actor's `send` directly, from inside its own delivery, hands that actor its own
-// scope. Measured 2026-10-06: the shell handling a pack unload that way saw itself as the *packs plugin*,
-// with the packs system as its asker — so a send it made there would have been stamped with a plugin that
+// scope. Measured 2026-10-06: the shell handling a pack unload that way saw itself as the *packs surface*,
+// with the packs system as its asker — so a send it made there would have been stamped with a surface that
 // did not make it, and a handler it ran would have been handed a `reply` for a question asked of somebody
 // else.
 //
@@ -17,7 +17,7 @@
 import { describe, expect, it } from 'vitest';
 import { createActor, setup } from 'xstate';
 import { _currentDelivery, _runDelivery, type _Delivery } from '@apackdev/sdk/events';
-import { notifyPluginActor, sendToPluginActor } from '../../src/fe/plugin-delivery.ts';
+import { notifySurfaceActor, sendToSurfaceActor } from '../../src/fe/surface-delivery.ts';
 
 /** An actor that records what was being handled each time it is given an event */
 function recording() {
@@ -35,7 +35,7 @@ describe('handing an actor an event nobody asked for', () => {
   it('names the receiver while it handles it, and nobody to answer', () => {
     const { seen, actor } = recording();
 
-    notifyPluginActor(actor, 'pack/receiver', { type: 'PING' });
+    notifySurfaceActor(actor, 'pack/receiver', { type: 'PING' });
 
     expect(seen).toEqual([{ receiver: 'pack/receiver', asker: undefined }]);
   });
@@ -44,13 +44,13 @@ describe('handing an actor an event nobody asked for', () => {
    * **The case the funnel exists for.** The sender is mid-delivery and owes an answer to `pack/asker`; the
    * receiver must inherit none of that, or it answers a question nobody asked it.
    *
-   * Replace the body of `notifyPluginActor` with a bare `actor.send(event)` and this is what fails.
+   * Replace the body of `notifySurfaceActor` with a bare `actor.send(event)` and this is what fails.
    */
   it('hands the receiver none of the scope the sender was in', () => {
     const { seen, actor } = recording();
 
     _runDelivery(HANDLING, () => {
-      notifyPluginActor(actor, 'pack/receiver', { type: 'PING' });
+      notifySurfaceActor(actor, 'pack/receiver', { type: 'PING' });
     });
 
     expect(seen, "the sender's ref and its asker both stop here").toEqual([
@@ -64,7 +64,7 @@ describe('handing an actor an event nobody asked for', () => {
     let after: _Delivery | undefined;
 
     _runDelivery(HANDLING, () => {
-      notifyPluginActor(actor, 'pack/receiver', { type: 'PING' });
+      notifySurfaceActor(actor, 'pack/receiver', { type: 'PING' });
       after = _currentDelivery();
     });
 
@@ -74,11 +74,11 @@ describe('handing an actor an event nobody asked for', () => {
 });
 
 describe('handing an actor an event someone is waiting on', () => {
-  // Drop `asker` from the delivery `sendToPluginActor` opens and this is what fails
+  // Drop `asker` from the delivery `sendToSurfaceActor` opens and this is what fails
   it('carries the address it was given', () => {
     const { seen, actor } = recording();
 
-    sendToPluginActor(actor, 'pack/receiver', { type: 'PING' }, { kind: 'window', ref: 'pack/curious' });
+    sendToSurfaceActor(actor, 'pack/receiver', { type: 'PING' }, { kind: 'window', ref: 'pack/curious' });
 
     expect(seen).toEqual([{ receiver: 'pack/receiver', asker: { kind: 'window', ref: 'pack/curious' } }]);
   });
@@ -92,7 +92,7 @@ describe('handing an actor an event someone is waiting on', () => {
     const { seen, actor } = recording();
 
     _runDelivery(HANDLING, () => {
-      sendToPluginActor(actor, 'pack/receiver', { type: 'PING' }, { kind: 'window', ref: 'pack/curious' });
+      sendToSurfaceActor(actor, 'pack/receiver', { type: 'PING' }, { kind: 'window', ref: 'pack/curious' });
     });
 
     expect(seen).toEqual([{ receiver: 'pack/receiver', asker: { kind: 'window', ref: 'pack/curious' } }]);
@@ -102,7 +102,7 @@ describe('handing an actor an event someone is waiting on', () => {
    * **What the split buys, and the one thing a case can say about it.** The address is not optional here, so
    * a caller with a maybe-asker cannot pass it through and leave the question of "what if nobody asked"
    * unanswered — it picks a function instead. The two call sites that have that question
-   * (`connection.ts`, and the shell's `deliverPluginEvents`) branch, and `plugin-reply.spec.ts` holds what
+   * (`connection.ts`, and the shell's `deliverSurfaceEvents`) branch, and `surface-reply.spec.ts` holds what
    * each branch does.
    *
    * The compiler is what enforces it, so the assertion here is the edit that would make it fire: widen the
@@ -113,6 +113,6 @@ describe('handing an actor an event someone is waiting on', () => {
     const maybe: _Delivery['asker'] = undefined;
 
     // @ts-expect-error — an asker that might be missing is not an address, and this is where that is refused
-    sendToPluginActor(actor, 'pack/receiver', { type: 'PING' }, maybe);
+    sendToSurfaceActor(actor, 'pack/receiver', { type: 'PING' }, maybe);
   });
 });

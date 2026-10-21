@@ -1,6 +1,6 @@
 // Every feature, any pack's, hears when its settings change: its system (with what changed in its lists) and its
-// plugin get FEATURE_SETTINGS_UPDATED, which the SDK declares for every system and plugin, whatever changed the
-// settings. A feature with no system, or no plugin, just doesn't get that half.
+// surface get FEATURE_SETTINGS_UPDATED, which the SDK declares for every system and surface, whatever changed the
+// settings. A feature with no system, or no surface, just doesn't get that half.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assign, setup } from 'xstate';
 import { getTestSettings, mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apackdev/testing/harness';
@@ -18,9 +18,9 @@ beforeEach(() => {
   registerPack({
     id: 'memo-pack',
     features: {
-      memos: { system: { machine: recorder, receives: [] }, plugin: { receives: [] }, settings: { defaults: { tags: [{ name: 'a' }] }, schema: { type: 'object' } } },
-      // Settings but no system: only its plugin hears
-      board: { plugin: { receives: [] }, settings: { defaults: { columns: 2 }, schema: { type: 'object' } } },
+      memos: { system: { machine: recorder, receives: [] }, surface: { receives: [] }, settings: { defaults: { tags: [{ name: 'a' }] }, schema: { type: 'object' } } },
+      // Settings but no system: only its surface hears
+      board: { surface: { receives: [] }, settings: { defaults: { columns: 2 }, schema: { type: 'object' } } },
     },
   });
 });
@@ -32,7 +32,7 @@ afterEach(() => {
 const heardBy = (app: Awaited<ReturnType<typeof startApp>>) => (app.system('memo-pack/memos').getSnapshot().context as { heard: any[] }).heard;
 
 describe('a feature whose settings change', () => {
-  it('tells its system, with what changed in its lists, and its plugin', async () => {
+  it('tells its system, with what changed in its lists, and its surface', async () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
@@ -261,7 +261,7 @@ describe('a feature whose settings change', () => {
   });
 
   // A bare key would be stored where nothing reads it, for good. A refusal is the user's to fix, not the system's
-  // error: the settings plugin hears it with the reasons
+  // error: the settings surface hears it with the reasons
   it('refuses replaced settings holding an unqualified feature key', async () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
@@ -307,7 +307,7 @@ describe('a feature whose settings change', () => {
     expect(app.emitted('host/settings')).toContainEqual(expect.objectContaining({ type: 'SETTINGS_SAVED', snapshot: expect.any(Object) }));
   });
 
-  // Its defaults leave with the pack, so the settings of its features change; their system and plugin are gone,
+  // Its defaults leave with the pack, so the settings of its features change; their system and surface are gone,
   // which is no mistake to report (the harness fails a test that leaves a reported drop)
   it('tells nobody, and reports nothing, when its pack leaves', async () => {
     const app = await startApp({ systems: ['host/settings'] });
@@ -351,7 +351,7 @@ describe('settings naming prototype machinery', () => {
   it.each([
     ['a path segment', { target: { kind: 'pack', packId: 'default-setup', groupId: 'assistant' }, path: [ '__proto__', 'polluted'] }],
     ['a constructor path', { target: { kind: 'pack', packId: 'default-setup', groupId: 'assistant' }, path: [ 'constructor', 'prototype', 'polluted'] }],
-    ["a plugin's path", { target: { kind: 'feature', featureRef: 'memo-pack/memos' }, path: ['__proto__', 'polluted'] }],
+    ["a surface's path", { target: { kind: 'feature', featureRef: 'memo-pack/memos' }, path: ['__proto__', 'polluted'] }],
   ])('keeps %s as data, and pollutes nothing', async (_, update) => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();

@@ -94,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { useExternalFileDrag } from '@apackdev/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
@@ -106,7 +106,7 @@ import QuickOpenPalette from '#features/code/fe/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management.ts'
 import { codeChild } from '../features/children.ts';
 
-const actor: CodeState = usePlugin()
+const actor: CodeState = useSurface()
 const explorerActor = codeChild(actor, 'explorer')
 const terminalActor = codeChild(actor, 'terminal')
 

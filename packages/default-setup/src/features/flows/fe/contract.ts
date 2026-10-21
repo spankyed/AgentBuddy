@@ -1,10 +1,10 @@
-// The flows plugin's contract: the state it publishes and what other plugins may send it.
+// The flows surface's contract: the state it publishes and what other surfaces may send it.
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears`. Its inbox used to
-// be `OutgoingActionEvents` — eleven events from the actions feature's `be/system`, where this plugin handles
+// be `OutgoingActionEvents` — eleven events from the actions feature's `be/system`, where this surface handles
 // three. Spelling those three out is what lets the contract live in a leaf at all: a leaf may not import another
-// feature. `apack.json` names it at `features[].plugin.contract`.
-import type { NavHistory, PluginInbox } from '@apackdev/sdk/fe'
+// feature. `apack.json` names it at `features[].surface.contract`.
+import type { NavHistory, SurfaceInbox } from '@apackdev/sdk/fe'
 import type { ActionEntity, FlowEntity, PromptEntity } from '@apackdev/sdk'
 import type { ModelCatalogEntry } from '@apackdev/sdk/models'
 import type { EARS } from '#generated/ears.ts'
@@ -79,5 +79,5 @@ export type FlowsInboxEvent =
 export type Contract = {
   opens: 'Flow'
   state: FlowsContext
-  inbox: PluginInbox<{ pack: FlowsInboxEvent }>
+  inbox: SurfaceInbox<{ pack: FlowsInboxEvent }>
 }

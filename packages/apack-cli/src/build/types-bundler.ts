@@ -15,7 +15,7 @@ export function isPackageSpecifier(id: string): boolean {
 }
 
 /**
- * Bundles a pack's facade types (src/__generated__/pack-types.ts: entity shapes, plugin events,
+ * Bundles a pack's facade types (src/__generated__/pack-types.ts: entity shapes, surface events,
  * services, repositories) into one declaration file that dependents import. The pack's own
  * modules and its dependencies' facade types are inlined; packages stay imports.
  */
@@ -133,7 +133,7 @@ export async function bundleDeclarations(
   }
 }
 
-/** Keep the declaration plugin's emission defaults authoritative, as with its own tsconfig reader. */
+/** Keep the declaration surface's emission defaults authoritative, as with its own tsconfig reader. */
 function declarationOptions(options: ts.CompilerOptions): ts.CompilerOptions {
   const result = { ...options };
   for (const key of ['declaration', 'noEmit', 'emitDeclarationOnly', 'noEmitOnError', 'checkJs',

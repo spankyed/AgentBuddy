@@ -1,6 +1,6 @@
 import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // The counterpart of client-events.spec.ts: a client's event is checked against what a system accepts,
-// and a system's event against what the plugin declares it receives. A send nobody declared is reported
+// and a system's event against what the surface declares it receives. A send nobody declared is reported
 // as a system error and dropped, rather than thrown — the caller is a running system.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
@@ -15,19 +15,19 @@ const registry = createNativePackTestRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 
 const machine = setup({}).createMachine({});
-/** The memos feature: a system that takes PING, and a plugin receiving what the system sends it */
+/** The memos feature: a system that takes PING, and a surface receiving what the system sends it */
 const memoFeatures = {
-  memos: { system: { machine, receives: ['PING'] }, plugin: { receives: ['MEMOS_CONNECTED', 'MEMO_ADDED'] } },
+  memos: { system: { machine, receives: ['PING'] }, surface: { receives: ['MEMOS_CONNECTED', 'MEMO_ADDED'] } },
 };
 
 let bus: AnyActorRef;
 const outgoing: Message[] = [];
-/** What reached a plugin, less the SYSTEM_ERROR events reportError sends there itself */
+/** What reached a surface, less the SYSTEM_ERROR events reportError sends there itself */
 const delivered = () => outgoing.filter(({ event }) => event.type !== 'SYSTEM_ERROR' && event.type !== 'CLIENT_CONNECTED');
 let stopOutgoing: () => void;
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-/** Sends to a plugin are dropped until a client connects, so every case connects first */
+/** Sends to a surface are dropped until a client connects, so every case connects first */
 async function connect(): Promise<void> {
   testRootEvents.emitConnected();
   await flush();
@@ -60,14 +60,14 @@ afterEach(() => {
 /**
  * What a dropped *answer* says, which is a different sentence from a dropped command.
  *
- * One path serves four senders — `untypedBroadcastToPlugin`, the generated `broadcastToPlugin`, `sendToWindow`
+ * One path serves four senders — `untypedBroadcastToSurface`, the generated `broadcastToSurface`, `sendToWindow`
  * and `reply` — and a `reply` caller named no id, so address advice sends the next reader to a call site that
  * has none.
  *
  * **`answering` is its own field on the report, not a third `operation` value.** `operation` says which verb,
  * and two readers filter on it to mean *direction*: `undeclared-incoming.spec.ts`'s helper, and
  * `@apackdev/testing`'s fixture, which collects these to fail a test on a dropped send. The first attempt made
- * it `answering ? 'reply' : 'broadcastToPlugin'` and shipped a regression — the fixture went on filtering for
+ * it `answering ? 'reply' : 'broadcastToSurface'` and shipped a regression — the fixture went on filtering for
  * one value while this sent two, so a dropped answer stopped failing any Playwright test, silently, there
  * being no case over the fixture. The case below that asserts `operation` is unchanged is what holds it.
  */
@@ -87,7 +87,7 @@ describe('a dropped answer', () => {
 
     expect(error?.answering).toBe(true);
     expect(error?.operation, 'the verb this path is, which readers filter on for direction')
-      .toBe('broadcastToPlugin');
+      .toBe('broadcastToSurface');
   });
 
   it('says why a reply can be undeclared at all, rather than giving address advice', async () => {
@@ -95,12 +95,12 @@ describe('a dropped answer', () => {
     const [error] = takeSystemErrors();
     expect(error?.message).toContain('Dropped the answer "NOT_DECLARED"');
     expect(error?.message, 'the asker cannot type-check an answer, which is the actionable part')
-      .toContain('cannot be checked against the asking plugin\'s inbox');
+      .toContain('cannot be checked against the asking surface\'s inbox');
     expect(error?.message, 'a reply names no id, so there is none to check').not.toContain('Check the id');
   });
 
-  // A plugin nothing declares at all is a race rather than a mistake: nothing holds an asker open
-  it('calls an answer to an unregistered plugin a race', async () => {
+  // A surface nothing declares at all is a race rather than a mistake: nothing holds an asker open
+  it('calls an answer to an unregistered surface a race', async () => {
     await send({ to: 'ghost-pack/ghost', event: { type: 'ANYTHING' }, answering: 'c-asked' });
     expect(takeSystemErrors()[0]?.message).toContain('most likely a race');
   });
@@ -109,7 +109,7 @@ describe('a dropped answer', () => {
   it('leaves a dropped broadcast saying what it always said', async () => {
     await send({ to: 'memo-pack/memos', event: { type: 'NOT_DECLARED' } });
     const [error] = takeSystemErrors();
-    expect(error?.operation).toBe('broadcastToPlugin');
+    expect(error?.operation).toBe('broadcastToSurface');
     expect(error?.answering, 'absent rather than false, as on the envelope').toBeUndefined();
     expect(error?.message).toContain('add it to that system\'s outgoing events');
   });
@@ -136,20 +136,20 @@ describe('a dropped answer', () => {
   });
 });
 
-describe('an event a system sends to a plugin', () => {
+describe('an event a system sends to a surface', () => {
   // Where it goes travels beside the event, so a field of the event's own is never taken for it
-  it('reaches the client exactly as sent, a pluginId field of its own included', async () => {
-    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1', pluginId: 'default-setup/notes' } });
-    expect(delivered()).toEqual([{ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1', pluginId: 'default-setup/notes' } }]);
+  it('reaches the client exactly as sent, a surfaceId field of its own included', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1', surfaceId: 'default-setup/notes' } });
+    expect(delivered()).toEqual([{ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1', surfaceId: 'default-setup/notes' } }]);
   });
 
-  it('is delivered when the plugin declares it', async () => {
+  it('is delivered when the surface declares it', async () => {
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1' } });
     expect(delivered().map(({ event }) => event.type)).toEqual(['MEMO_ADDED']);
     expect(takeSystemErrors()).toEqual([]);
   });
 
-  it('is dropped and reported when the plugin declares no such type', async () => {
+  it('is dropped and reported when the surface declares no such type', async () => {
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
     expect(delivered()).toEqual([]);
     const [error] = takeSystemErrors();
@@ -187,7 +187,7 @@ describe('an event a system sends to a plugin', () => {
     expect(error?.message).not.toMatch(/sent by|undefined/);
   });
 
-  // The drop is reported once per plugin/event pair, and two packs sending the same wrong event are two reports
+  // The drop is reported once per surface/event pair, and two packs sending the same wrong event are two reports
   it('reports each sending pack, not just the first', async () => {
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'one-pack' });
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'two-pack' });
@@ -205,15 +205,15 @@ describe('an event a system sends to a plugin', () => {
   /**
    * Still a SYSTEM_ERROR, so takeSystemErrors fails the pack test that left it — and `diagnostic`, so
    * the app doesn't raise a toast over it. The reader is whoever wrote the send, the message is already
-   * in the Logs plugin where they are looking, and the person using the app can do nothing about it.
+   * in the Logs surface where they are looking, and the person using the app can do nothing about it.
    */
   it('is reported as a diagnostic, which is recorded and logged but not shown to the user', async () => {
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
     expect(takeSystemErrors().map((e) => e.severity)).toEqual(['diagnostic']);
   });
 
-  // The case the notes bug's neighbours live in: a plugin id nothing registered declares
-  it('is dropped and reported when no pack declares that plugin at all', async () => {
+  // The case the notes bug's neighbours live in: a surface id nothing registered declares
+  it('is dropped and reported when no pack declares that surface at all', async () => {
     await send({ to: 'ghost', event: { type: 'MEMO_ADDED' } });
     expect(delivered()).toEqual([]);
     const [error] = takeSystemErrors();
@@ -221,28 +221,28 @@ describe('an event a system sends to a plugin', () => {
     expect(error?.message).toContain('no registered pack declares');
   });
 
-  it("delivers to a host plugin, whose types the host declares and no pack widens", async () => {
+  it("delivers to a host surface, whose types the host declares and no pack widens", async () => {
     await send({ to: 'host/application', event: { type: 'APPLICATION_HOTKEYS', hotkeys: {} } });
     expect(delivered().map(({ event }) => event.type)).toContain('APPLICATION_HOTKEYS');
     expect(takeSystemErrors()).toEqual([]);
   });
 
   // Onboarding's last action tells the shell to leave its onboarding layout; dropped, the shell waited for a reconnect
-  it('delivers ONBOARDING_COMPLETE to the application plugin', async () => {
+  it('delivers ONBOARDING_COMPLETE to the application surface', async () => {
     await send({ to: 'host/application', event: { type: 'ONBOARDING_COMPLETE' } });
     expect(delivered().map(({ event }) => event.type)).toContain('ONBOARDING_COMPLETE');
     expect(takeSystemErrors()).toEqual([]);
   });
 
-  it('drops an event a host plugin does not declare, so the host is checked like a pack', async () => {
+  it('drops an event a host surface does not declare, so the host is checked like a pack', async () => {
     await send({ to: 'host/application', event: { type: 'APPLICATION_EXPLODE' } });
     expect(delivered().map(({ event }) => event.type)).not.toContain('APPLICATION_EXPLODE');
     expect(takeSystemErrors()[0]?.message).toContain('APPLICATION_EXPLODE');
   });
 
   // The packs view is driven entirely by a host system's sends. Checking sends without declaring the
-  // host's own plugins dropped every one of them, and the view stopped updating.
-  it("delivers the packs system's sends to the packs plugin", async () => {
+  // host's own surfaces dropped every one of them, and the view stopped updating.
+  it("delivers the packs system's sends to the packs surface", async () => {
     await send({ to: 'host/packs', event: { type: 'PACKS_LIST', packs: [] } });
     expect(delivered().map(({ event }) => event.type)).toEqual(['PACKS_LIST']);
     expect(takeSystemErrors()).toEqual([]);
@@ -250,7 +250,7 @@ describe('an event a system sends to a plugin', () => {
 });
 
 /**
- * Reporting a drop logs it, and a log event becomes a send to the logs plugin. When that plugin is the
+ * Reporting a drop logs it, and a log event becomes a send to the logs surface. When that surface is the
  * one being dropped, reporting a drop produces another droppable send — and the send arrives as a fresh
  * OUTGOING event rather than a nested call, so the cycle grows the actor's queue instead of the call
  * stack. It stops responding rather than overflowing, which is why nothing that reasons about
@@ -258,7 +258,7 @@ describe('an event a system sends to a plugin', () => {
  */
 describe('a drop whose report produces another droppable send', () => {
   it('reports the pair once and settles, rather than feeding itself', async () => {
-    // Stands in for default-setup's logs system: every log event becomes a send to the logs plugin,
+    // Stands in for default-setup's logs system: every log event becomes a send to the logs surface,
     // which no pack here declares, so each send is dropped and reporting it logs again.
     const stopRelay = onLog(() => { bus.send({ type: 'OUTGOING', message: { to: 'default-setup/logs', event: { type: 'LOG_ADDED' } } }); });
     try {
@@ -271,10 +271,10 @@ describe('a drop whose report produces another droppable send', () => {
     }
   });
 
-  it('still reports a different plugin, so deduplication is per pair and not a global mute', async () => {
+  it('still reports a different surface, so deduplication is per pair and not a global mute', async () => {
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
     expect(takeSystemErrors().map((e) => e.message)).toHaveLength(1);
-    // The same pair again is silent; a different type on the same plugin is not
+    // The same pair again is silent; a different type on the same surface is not
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
     expect(takeSystemErrors()).toEqual([]);
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_BURNED' } });
@@ -282,7 +282,7 @@ describe('a drop whose report produces another droppable send', () => {
   });
 });
 
-describe('plugin delivery during transactional replacement', () => {
+describe('surface delivery during transactional replacement', () => {
   it('keeps delivering through the incumbent after candidate refusal', async () => {
     const previous = registry.getPackRegistration('memo-pack');
     expect(() => registry.replacePack({ id: 'memo-pack', features: {} })).toThrow();
@@ -313,9 +313,9 @@ describe('plugin delivery during transactional replacement', () => {
   });
 });
 
-describe('a plugin no pack declares', () => {
+describe('a surface no pack declares', () => {
   it('has its sends dropped and reported', async () => {
-    await send({ to: 'not-a-plugin', event: { type: 'ANYTHING_AT_ALL' } });
+    await send({ to: 'not-a-surface', event: { type: 'ANYTHING_AT_ALL' } });
     expect(delivered()).toEqual([]);
     expect(takeSystemErrors()[0]?.message).toContain('no registered pack declares');
   });

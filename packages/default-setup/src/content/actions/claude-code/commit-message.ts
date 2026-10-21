@@ -55,14 +55,14 @@ export async function action(
   const { diff, branch, repoName } = params;
 
   if (!diff?.trim()) {
-    services.emitter.broadcastToPlugin('default-setup/code', {
+    services.emitter.broadcastToSurface('default-setup/code', {
       type: 'commit.ERROR_RECEIVED',
       data: { message: 'No diff provided' },
     });
     return { success: false, error: 'Empty diff' };
   }
 
-  services.emitter.broadcastToPlugin('default-setup/code', { type: 'commit.GENERATING_MESSAGE' });
+  services.emitter.broadcastToSurface('default-setup/code', { type: 'commit.GENERATING_MESSAGE' });
 
   try {
     const fullPrompt = services.prompt.usePrompt('Commit Message', {
@@ -72,7 +72,7 @@ export async function action(
     });
 
     if (!fullPrompt) {
-      services.emitter.broadcastToPlugin('default-setup/code', {
+      services.emitter.broadcastToSurface('default-setup/code', {
         type: 'commit.ERROR_RECEIVED',
         data: { message: 'Commit Message prompt template not found. Import the pack content.' },
       });
@@ -87,14 +87,14 @@ export async function action(
     const message = postprocess(result.stdout);
 
     if (!message) {
-      services.emitter.broadcastToPlugin('default-setup/code', {
+      services.emitter.broadcastToSurface('default-setup/code', {
         type: 'commit.ERROR_RECEIVED',
         data: { message: 'Claude returned an empty response.' },
       });
       return { success: false, error: 'Empty response' };
     }
 
-    services.emitter.broadcastToPlugin('default-setup/code', {
+    services.emitter.broadcastToSurface('default-setup/code', {
       type: 'commit.MESSAGE_GENERATED',
       data: { message },
     });
@@ -102,7 +102,7 @@ export async function action(
     return { success: true };
   } catch (error: any) {
     const errorMessage = formatProviderError(error, 'Claude Code');
-    services.emitter.broadcastToPlugin('default-setup/code', {
+    services.emitter.broadcastToSurface('default-setup/code', {
       type: 'commit.ERROR_RECEIVED',
       data: { message: errorMessage },
     });

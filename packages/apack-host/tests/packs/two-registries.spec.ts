@@ -9,7 +9,7 @@ import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { getSettingsCatalog, type PackRegistration } from '@apackdev/sdk/framework';
 
-/** A pack whose feature `featureId` plays `role`, with a system and a plugin with settings */
+/** A pack whose feature `featureId` plays `role`, with a system and a surface with settings */
 const pack = (id: string, role: string, step: string, service: string, featureId: string): PackRegistration => ({
   id,
   steps: [{ type: step, kind: 'step', node: { label: step } }],
@@ -18,7 +18,7 @@ const pack = (id: string, role: string, step: string, service: string, featureId
     [featureId]: {
       designation: role,
       system: { machine: {} as never, receives: [] },
-      plugin: { receives: [] },
+      surface: { receives: [] },
       settings: { defaults: { from: id }, schema: { type: 'object' } },
     },
   },

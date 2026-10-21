@@ -104,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 import { computed } from 'vue';
 import { ExternalLink } from 'lucide-vue-next';
 import NameSaveHeader from '@apackdev/ui/design/NameSaveHeader';
@@ -114,7 +114,7 @@ import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import JsonSchemaEditor from '@apackdev/ui/components/JsonSchemaEditor';
 import { useCollapsibleState } from '@apackdev/ui/composables/useCollapsibleState';
-import { openPlugin } from '#generated/fe.ts'
+import { openSurface } from '#generated/fe.ts'
 import type { PromptsState } from '#features/prompts/fe/state.ts';
 import type { PromptEntity } from '@apackdev/sdk';
 import type { TemplateInput } from '@apackdev/sdk';
@@ -144,7 +144,7 @@ const emit = defineEmits<{
 }>();
 
 // Get the prompts state machine actor
-const actor: PromptsState = usePlugin();
+const actor: PromptsState = useSurface();
 
 // Use the composable for managing collapsible section states
 const inputsExpanded = useCollapsibleState(actor, ['formData', 'inputsExpanded'], 'TOGGLE_INPUTS_SECTION');
@@ -178,8 +178,8 @@ function formatDate(timestamp?: number) {
 function openInEditor() {
   if (!props.prompt) return;
 
-  // The code plugin routes a codePrompts.* event to its prompts panel
-  openPlugin('code', [
+  // The code surface routes a codePrompts.* event to its prompts panel
+  openSurface('code', [
     { type: 'UPDATE_STATE', updates: { selectedPanel: 'prompts' } },
     { type: 'codePrompts.OPEN_PROMPT', promptId: props.prompt.id },
   ]);

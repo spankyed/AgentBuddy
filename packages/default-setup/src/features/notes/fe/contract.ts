@@ -1,9 +1,9 @@
-// The notes plugin's contract: the state it publishes and what other plugins may send it.
+// The notes surface's contract: the state it publishes and what other surfaces may send it.
 //
 // A leaf: it imports no machine, no other feature and nothing from `#generated/*` but `types` and `ears`, which is
 // what lets codegen read the contract without resolving the machine — whose own imports cycle back through
-// `#generated/events`. `apack.json` names it at `features[].plugin.contract`.
-import type { NavHistory, PluginInbox } from '@apackdev/sdk/fe'
+// `#generated/events`. `apack.json` names it at `features[].surface.contract`.
+import type { NavHistory, SurfaceInbox } from '@apackdev/sdk/fe'
 import type { NoteDTO } from '#generated/types.ts'
 
 export interface NotesContext {
@@ -35,5 +35,5 @@ export type NotesInboxEvent = { type: 'NOTE.OPEN'; noteId: string }
 export type Contract = {
   opens: 'Note'
   state: NotesContext
-  inbox: PluginInbox<{ pack: NotesInboxEvent }>
+  inbox: SurfaceInbox<{ pack: NotesInboxEvent }>
 }

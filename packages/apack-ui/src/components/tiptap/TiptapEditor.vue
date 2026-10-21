@@ -16,7 +16,7 @@
     <editor-content v-else :editor="editor" :class="editorClass" />
     <template v-if="editor">
       <component
-        v-for="popup in pluginPopups"
+        v-for="popup in surfacePopups"
         :key="`${generation}/${popup.id}`"
         :is="popup.component"
         :editor="editor"
@@ -199,7 +199,7 @@ const { editor, groups, generation, problem, resetDocument } = useContributedEdi
   ...(cfg.subDocumentTracking && { onTransaction: subDocOnTransaction }),
 }))
 
-const pluginPopups = computed(() => groups.value.flatMap(group => Object.entries(group.binding.popups ?? {})
+const surfacePopups = computed(() => groups.value.flatMap(group => Object.entries(group.binding.popups ?? {})
   .map(([id, component]) => ({ id: `${group.packId}/${group.groupId}/${id}`, component }))))
 
 // Sync modelValue changes from parent into the editor.

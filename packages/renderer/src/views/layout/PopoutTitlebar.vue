@@ -19,7 +19,7 @@
         <DropdownMenuTrigger v-if="menuItems.length > 0" as-child>
           <button
             class="mr-1 rounded p-0.5 text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
-            title="Plugin menu"
+            title="Surface menu"
           >
             <EllipsisVertical :size="14" />
           </button>
@@ -31,7 +31,7 @@
             :side-offset="8"
             :align="'start'"
           >
-            <PluginMenuItems
+            <SurfaceMenuItems
               :items="menuItems"
               :ItemComponent="DropdownMenuItem"
               :SeparatorComponent="DropdownMenuSeparator"
@@ -70,7 +70,7 @@ import {
   DropdownMenuSeparator,
 } from 'reka-ui'
 import WindowControls from '@/views/layout/WindowControls.vue'
-import PluginMenuItems from '@/views/layout/PluginMenuItems.vue'
+import SurfaceMenuItems from '@/views/layout/SurfaceMenuItems.vue'
 import { useTrackedMenuOpen } from '@apackdev/sdk/fe'
 import type { ContextMenuItem } from '@apackdev/sdk/fe'
 import type { BreadcrumbItem } from '@apackdev/host/fe'

@@ -2,34 +2,34 @@
 // a backend `OPEN_PLUGIN` reaches every window, so a popout would have followed the main window's navigation, and
 // the event had to be renamed and guarded per window instead.
 //
-// `broadcastToPlugin` (backend, over the bus) reaches **every** window showing that plugin, because a plugin runs
-// once per window. The renderer's `sendToPlugin` reaches this window's only. Two shells over one backend is the
+// `broadcastToSurface` (backend, over the bus) reaches **every** window showing that surface, because a surface runs
+// once per window. The renderer's `sendToSurface` reaches this window's only. Two shells over one backend is the
 // cheapest faithful way to say that: each shell is a window, and the bus delivers to both subscriptions.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup } from 'xstate';
-import type { Plugin } from '@apackdev/sdk/fe';
+import type { Surface } from '@apackdev/sdk/fe';
 import { createShellMachine } from '../../../../src/fe/index.ts';
 import { _currentDelivery } from '@apackdev/sdk/events';
 import { fakeShell, settle } from './fakes.ts';
 
-/** What each window's copy of the plugin heard */
+/** What each window's copy of the surface heard */
 let heard: Array<{ window: string; type: string }>;
 
-function recording(id: string, window: string): Plugin {
+function recording(id: string, window: string): Surface {
   const state = setup({}).createMachine({
     on: { '*': { actions: ({ event }) => { if (!event.type.startsWith('PLUGIN_')) heard.push({ window, type: event.type }); } } },
   });
-  return { id, label: id, icon: 'Zap', state, canvas: {} } as unknown as Plugin;
+  return { id, label: id, icon: 'Zap', state, canvas: {} } as unknown as Surface;
 }
 
 /**
- * A window: its own shell, its own client subscription, its own copy of the plugin's actor. Each `createActor` is
- * its own XState system, so two windows' plugins can share an id — but the shell must be registered at
- * `host/application` in each, since that is the id its own code resolves plugins against.
+ * A window: its own shell, its own client subscription, its own copy of the surface's actor. Each `createActor` is
+ * its own XState system, so two windows' surfaces can share an id — but the shell must be registered at
+ * `host/application` in each, since that is the id its own code resolves surfaces against.
  */
 function windowNamed(name: string) {
-  const shell = fakeShell({ plugins: [recording('default-setup/notes', name), recording('default-setup/threads', name)] });
-  const app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActivePlugin: false } }).start();
+  const shell = fakeShell({ surfaces: [recording('default-setup/notes', name), recording('default-setup/threads', name)] });
+  const app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActiveSurface: false } }).start();
   shell.client.connect();
   return { shell, app };
 }
@@ -48,21 +48,21 @@ afterEach(() => { main.app.stop(); popout.app.stop(); });
  * The delivery scope on the shell's path, which is one of the four places a message gets named and the only one
  * that runs in a browser.
  *
- * Without it a plugin's own `sendToSystem` carries no `Message.sender`, so the system it asks has no address to
+ * Without it a surface's own `sendToSystem` carries no `Message.sender`, so the system it asks has no address to
  * answer and `reply` throws — for the commonest request in the app, a view asking its own system for data. The
  * scope is read here directly, because what this pins is whether it is set at all.
  */
-describe('a plugin handling what the shell gave it', () => {
-  /** A window whose plugin records the delivery in scope for every event it handles */
+describe('a surface handling what the shell gave it', () => {
+  /** A window whose surface records the delivery in scope for every event it handles */
   function watching() {
     const seen: Array<{ type: string; receiver: string | undefined }> = [];
     const state = setup({}).createMachine({
       on: { '*': { actions: ({ event }) => { seen.push({ type: event.type, receiver: _currentDelivery()?.receiver }); } } },
     });
     const shell = fakeShell({
-      plugins: [{ id: 'default-setup/notes', label: 'notes', icon: 'Zap', state, canvas: {} } as unknown as Plugin],
+      surfaces: [{ id: 'default-setup/notes', label: 'notes', icon: 'Zap', state, canvas: {} } as unknown as Surface],
     });
-    const app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActivePlugin: false } }).start();
+    const app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActiveSurface: false } }).start();
     shell.client.connect();
     return { seen, shell, app };
   }
@@ -93,7 +93,7 @@ describe('a plugin handling what the shell gave it', () => {
     const w = watching();
     try {
       await settle();
-      w.app.send({ type: 'SELECT_PLUGIN', plugin: 'default-setup/notes' });
+      w.app.send({ type: 'SELECT_PLUGIN', surface: 'default-setup/notes' });
       await settle();
 
       expect(receiverFor(w.seen, 'PLUGIN_ACTIVATED')).toBe('default-setup/notes');
@@ -104,8 +104,8 @@ describe('a plugin handling what the shell gave it', () => {
 });
 
 describe('how far each send reaches', () => {
-  it('delivers a backend send to that plugin in every window', async () => {
-    // What the bus does with a `broadcastToPlugin`: it goes out on every window's subscription
+  it('delivers a backend send to that surface in every window', async () => {
+    // What the bus does with a `broadcastToSurface`: it goes out on every window's subscription
     for (const w of [main, popout]) w.shell.client.receive({ to: 'default-setup/threads', event: { type: 'SELECT_ARTIFACT', artifactId: 'a1' } });
     await settle();
 
@@ -120,14 +120,14 @@ describe('how far each send reaches', () => {
    * one warning the shell has for an undeliverable one can name the sender too. This is the third of the three
    * places a sender is worth saying; the bus covers its own drops and `notify.error` covers the in-window send.
    */
-  it('names the sending pack when a backend send reaches no running plugin', async () => {
+  it('names the sending pack when a backend send reaches no running surface', async () => {
     await settle();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     main.shell.client.receive({ to: 'memo-pack/memoz', from: 'memo-pack', event: { type: 'MEMO_ADDED' } });
     await settle();
 
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('No plugin is running at memo-pack/memoz for MEMO_ADDED sent by "memo-pack"'));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('No surface is running at memo-pack/memoz for MEMO_ADDED sent by "memo-pack"'));
     warn.mockRestore();
   });
 
@@ -149,15 +149,15 @@ describe('how far each send reaches', () => {
    * shell's `SEND_TO_PLUGIN`. It is worth carrying only if something reads it: this is the one place the renderer
    * can say who sent an event it couldn't deliver, and the backend's bus already does the same for its drops.
    */
-  it('names the sending pack when the send reaches no plugin', async () => {
+  it('names the sending pack when the send reaches no surface', async () => {
     await settle();
 
-    main.app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }], from: 'memo-pack' });
+    main.app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }], from: 'memo-pack' });
     await settle();
 
     expect(main.shell.notify.error).toHaveBeenCalledWith(
       "Couldn't reach memo-pack/memoz",
-      'No plugin is declared at "memo-pack/memoz". Sent by "memo-pack".',
+      'No surface is declared at "memo-pack/memoz". Sent by "memo-pack".',
     );
   });
 
@@ -165,12 +165,12 @@ describe('how far each send reaches', () => {
   it('names the action too, for a send an action made', async () => {
     await settle();
 
-    main.app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }], from: 'memo-pack', via: 'action:Add Memo' });
+    main.app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }], from: 'memo-pack', via: 'action:Add Memo' });
     await settle();
 
     expect(main.shell.notify.error).toHaveBeenCalledWith(
       "Couldn't reach memo-pack/memoz",
-      'No plugin is declared at "memo-pack/memoz". Sent by "memo-pack" (action:Add Memo).',
+      'No surface is declared at "memo-pack/memoz". Sent by "memo-pack" (action:Add Memo).',
     );
   });
 
@@ -178,12 +178,12 @@ describe('how far each send reaches', () => {
   it('reads the same when the send carries no sender', async () => {
     await settle();
 
-    main.app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }] });
+    main.app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }] });
     await settle();
 
     expect(main.shell.notify.error).toHaveBeenCalledWith(
       "Couldn't reach memo-pack/memoz",
-      'No plugin is declared at "memo-pack/memoz".',
+      'No surface is declared at "memo-pack/memoz".',
     );
   });
 
@@ -191,8 +191,8 @@ describe('how far each send reaches', () => {
     // Both windows have finished loading pack frontends, so neither has a reason to queue
     await settle();
 
-    // What `_sendToLocalPlugin` does: one window's shell, never the bus
-    main.app.send({ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/threads', events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] });
+    // What `_sendToLocalSurface` does: one window's shell, never the bus
+    main.app.send({ type: 'SEND_TO_PLUGIN', surface: 'default-setup/threads', events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] });
     await settle();
 
     expect(heard).toEqual([{ window: 'main', type: 'SELECT_ARTIFACT' }]);

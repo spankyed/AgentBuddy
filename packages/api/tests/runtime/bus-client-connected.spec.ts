@@ -24,7 +24,7 @@ const { rootEvents } = await import('../../src/transport/emitter.ts');
 const { bindHost } = await import('@apackdev/sdk/runtime');
 const { createHostRuntime } = await import('@apackdev/host/services');
 const { createEarsEngine } = await import('@apackdev/ears');
-const { untypedBroadcastToPlugin } = await import('@apackdev/sdk/events');
+const { untypedBroadcastToSurface } = await import('@apackdev/sdk/events');
 type LmdbStore = import('@apackdev/ears/lmdb').LmdbStore;
 bindHost(createHostRuntime({ store: {} as LmdbStore, engine: createEarsEngine({ isEntityType: () => false }), transport: { rootEvents }, appVersion: '1.0.0', packs: registry }));
 const backendSystem = createAppBus(registry);
@@ -123,8 +123,8 @@ describe('CLIENT_CONNECTED on the bus', () => {
     registerPack({
       id: 'external-pack',
       features: {
-        feature: { system: { machine: recorder('with plugin'), receives: ['CLIENT_CONNECTED'] } },
-        background: { system: { machine: recorder('without plugin'), receives: ['CLIENT_CONNECTED'] } },
+        feature: { system: { machine: recorder('with surface'), receives: ['CLIENT_CONNECTED'] } },
+        background: { system: { machine: recorder('without surface'), receives: ['CLIENT_CONNECTED'] } },
       },
     }, loaded('external-pack', withFrontend, { feature: { description: 'Publish client state.', system: { entry: 'system.ts' } }, background: { description: 'Run background work.', system: { entry: 'background.ts' } } }));
     registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
@@ -134,11 +134,11 @@ describe('CLIENT_CONNECTED on the bus', () => {
     await flush();
     expect(received).toEqual(['first-pack']);
 
-    // A client announces a pack whatever its frontend load added: plugins, none, or nothing as it failed
+    // A client announces a pack whatever its frontend load added: surfaces, none, or nothing as it failed
     rootEvents.emitPackClientConnected('external-pack');
     rootEvents.emitPackClientConnected('second-pack');
     await flush();
-    expect(received).toEqual(['first-pack', 'with plugin', 'without plugin', 'second-pack']);
+    expect(received).toEqual(['first-pack', 'with surface', 'without surface', 'second-pack']);
   });
 
   it('reaches the new actors of a reloaded pack, not the stopped ones', async () => {
@@ -180,14 +180,14 @@ describe('CLIENT_CONNECTED on the bus', () => {
   });
 });
 
-// untypedBroadcastToPlugin goes through the bus, as a system's emit does: nothing reaches a client before one connects
-describe('untypedBroadcastToPlugin on the bus', () => {
-  // The plugin's own pack declares what it receives, as in the app: a send to a plugin no pack owns is
+// untypedBroadcastToSurface goes through the bus, as a system's emit does: nothing reaches a client before one connects
+describe('untypedBroadcastToSurface on the bus', () => {
+  // The surface's own pack declares what it receives, as in the app: a send to a surface no pack owns is
   // dropped, which is the check's job and not what this test is about
   beforeEach(() => {
     registerPack({
       id: 'notes-pack',
-      features: { notes: { plugin: { receives: ['BEFORE_CONNECT', 'AFTER_CONNECT'] } } },
+      features: { notes: { surface: { receives: ['BEFORE_CONNECT', 'AFTER_CONNECT'] } } },
     });
   });
 
@@ -195,13 +195,13 @@ describe('untypedBroadcastToPlugin on the bus', () => {
     const outgoing: Message[] = [];
     const stop = rootEvents.onOutgoing((message) => { outgoing.push(message); });
     try {
-      untypedBroadcastToPlugin('notes-pack/notes', { type: 'BEFORE_CONNECT' });
+      untypedBroadcastToSurface('notes-pack/notes', { type: 'BEFORE_CONNECT' });
       await flush();
       expect(outgoing).toEqual([]);
 
       rootEvents.emitConnected();
       await flush();
-      untypedBroadcastToPlugin('notes-pack/notes', { type: 'AFTER_CONNECT' });
+      untypedBroadcastToSurface('notes-pack/notes', { type: 'AFTER_CONNECT' });
       await flush();
       expect(outgoing.filter(({ event }) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ to: 'notes-pack/notes', call: expect.any(String), event: { type: 'AFTER_CONNECT' } }]);
     } finally {

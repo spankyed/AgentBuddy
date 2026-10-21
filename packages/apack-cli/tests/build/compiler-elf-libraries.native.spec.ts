@@ -111,7 +111,7 @@ it.runIf(process.platform === 'linux')('refuses outside runtime-linked libraries
   let frontend: PackFrontend | undefined;
   try {
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
-      files: { 'src/pack-entry-fe.ts': 'export const plugins = [];' } });
+      files: { 'src/pack-entry-fe.ts': 'export const surfaces = [];' } });
     const libraries = (process.report.getReport() as { sharedObjects: string[] }).sharedObjects;
     const original = libraries.find(file => isElfSystemLibrary(file)
       && parseElfLibraryCommands(fs.readFileSync(file)).soname === 'libstdc++.so.6');

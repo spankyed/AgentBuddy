@@ -38,7 +38,7 @@ import * as path from 'node:path';
  *
  * Two rules come with it. A placeholder never occupies a statement slot: it would stop the file parsing, and
  * then the rules that read it silently pass. Multi-statement variation is a second template file instead
- * (`smoke.spec.ts` and `smoke-without-plugin.spec.ts`). And there is no escape for a literal `__UPPER__` —
+ * (`smoke.spec.ts` and `smoke-without-surface.spec.ts`). And there is no escape for a literal `__UPPER__` —
  * nothing needs one, and `renderTemplate` throws rather than emitting one by accident.
  */
 const PLACEHOLDER = /__([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*)__/g;

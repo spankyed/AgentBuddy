@@ -92,7 +92,7 @@ test.describe('a connected page and a launched one', () => {
     const viaAttach = createAppDriver(attached.page, dir);
 
     // Three answers rather than one, because they read different parts of the app: the machine's state
-    // value, the plugins it registered, and an evaluate of this spec's own
+    // value, the surfaces it registered, and an evaluate of this spec's own
     expect(await viaAttach.getState()).toEqual(await viaLaunch.getState());
     expect(await viaAttach.getContext()).toEqual(await viaLaunch.getContext());
     expect(await attached.page.evaluate(() => (window as { appVersion?: string }).appVersion))

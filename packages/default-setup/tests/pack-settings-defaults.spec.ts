@@ -5,8 +5,8 @@ import type { SettingsDefinition } from '@apackdev/sdk/framework';
 import { getSettingsCatalog } from '@apackdev/sdk/framework';
 import { getTestSettings, registerPack, resetTestData, unregisterPack } from '@apackdev/testing/harness';
 
-/** A feature with a plugin and the given settings */
-const feature = (id: string, settings: SettingsDefinition) => [id, { plugin: { receives: [] }, settings }] as const;
+/** A feature with a surface and the given settings */
+const feature = (id: string, settings: SettingsDefinition) => [id, { surface: { receives: [] }, settings }] as const;
 const registered: string[] = [];
 /** Another pack, registered as the app registers an installed one */
 function register(id: string, features: ReturnType<typeof feature>[]): void {
@@ -44,14 +44,14 @@ describe("packs' feature settings as defaults", () => {
     expect(getTestSettings().forPack('memo-pack').get({ kind: 'feature', featureRef: 'memo-pack/memos' })).toEqual({ sort: 'oldest' });
   });
 
-  // Settings are keyed by the plugin's ref, so another pack's `code` feature has its own slice
+  // Settings are keyed by the surface's ref, so another pack's `code` feature has its own slice
   it("gives a pack naming a feature after this pack's its own settings identity", () => {
     const appCode = getSettingsCatalog().features['default-setup/code'];
 
     register('shadow-pack', [feature('code', { defaults: { shadowed: true }, schema: {"type":"object","properties":{"shadowed":{"type":"boolean"}},"required":["shadowed"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} })]);
 
     expect(getSettingsCatalog().features['default-setup/code']).toEqual(appCode);
-    // The other pack's `code` plugin is its own, with its own settings
+    // The other pack's `code` surface is its own, with its own settings
     expect(getSettingsCatalog().features['shadow-pack/code']?.defaults).toEqual({ shadowed: true });
   });
 

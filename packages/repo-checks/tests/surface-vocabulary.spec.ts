@@ -7,8 +7,9 @@ import { repoFiles } from './_support/repo-files.ts';
 
 /**
  * A feature's frontend half is a **surface** and its backend half a **system**. `plugin` names an
- * editor plugin (tiptap/ProseMirror) or a bundler plugin (Vite, rollup, PostCSS, esbuild), and
- * nothing else. This guard is what keeps the two vocabularies apart now that they live side by side.
+ * editor plugin (tiptap/ProseMirror), a bundler plugin (Vite, rollup, PostCSS, esbuild) or a plugin of
+ * a third-party CLI this app drives, and nothing else. This guard keeps those vocabularies apart from
+ * the concept now that they live side by side.
  *
  * Here and not in `@apackdev/host`, because its subject is every tracked file and not one package. A
  * suite's project is re-run when that project's inputs move, so a guard over the repo has to sit in a
@@ -58,7 +59,7 @@ type Group = keyof typeof RETIRED;
 
 /**
  * `(?<!\.)` on the word boundary is what keeps `esbuild.Plugin` and `import('esbuild').Plugin` out of
- * `concept-type`: bundler plugins reach their type through the namespace, and the concept never does.
+ * `concept-type`: bundler surfaces reach their type through the namespace, and the concept never does.
  */
 const patternFor = (group: Group): RegExp => new RegExp(`(?<![.\\w])(${RETIRED[group].join('|')})\\b`);
 
@@ -77,10 +78,18 @@ const KEPT = [
   'tiptapPlugins', 'TiptapPlugin', 'TiptapPluginBinding', 'TiptapPluginDeclaration', 'tiptapPluginRegistry',
   'PluginKey', 'searchPlugin', 'searchPluginKey', 'SearchPluginState', 'commandSuggestionPluginKey',
   'addProseMirrorPlugins', 'ref.editor.registerPlugin(imagePastePlugin)',
-  'VitePlugin', 'esbuild.Plugin', "import('esbuild').Plugin", 'plugins: [vue()]', 'plugins.push(x)',
+  'VitePlugin', 'esbuild.Plugin', "import('esbuild').Plugin", 'surfaces: [vue()]', 'surfaces.push(x)',
   'packExternalsPlugin', 'hostSharedModulesPlugin', 'postcssPlugins', 'pluginVue', 'pluginOxlint',
   "'@vitejs/plugin-vue'", "'eslint-plugin-vue'", "'rollup-plugin-dts'", "name: 'collect-bare-imports'",
   "'code-plugin-open-tabs'", "'apack-last-active-plugin'",
+  // `claude plugin` — the CLI's own plugin system, which the code feature wraps, and the most dangerous
+  // of the four: its names reach a **subprocess argv**, where a rename typechecks and then calls a
+  // subcommand that does not exist. A pass over this repo did exactly that, turning
+  // `run(['plugin', 'install', …])` into `run(['surface', 'install', …])` — nothing in the compiler or
+  // any spec could see it, because the string is only ever handed to another program.
+  'PluginInfo', 'pluginDir', "'--plugin-dir'",
+  "['plugin', 'list', '--json']", "run(['plugin', 'install', plugin, ...scopeArg(opts.scope)], opts)",
+  "['plugin', 'marketplace', 'add', source, ...scopeArg(opts.scope)]", 'claude plugin',
 ] as const;
 
 /**
@@ -121,7 +130,7 @@ describe('the patterns themselves', () => {
     const caught = population('kept spellings', KEPT).flatMap((sample) => groups
       .filter((group) => patternFor(group).test(sample))
       .map((group) => `${group} matches ${sample}`));
-    expect(caught, 'narrow the pattern; these are editor plugins, bundler plugins or stored keys').toEqual([]);
+    expect(caught, 'narrow the pattern; these are editor surfaces, bundler surfaces or stored keys').toEqual([]);
   });
 
   it('matches a name only on its own word, not inside a longer one', () => {
@@ -132,7 +141,7 @@ describe('the patterns themselves', () => {
 
 describe('the surface vocabulary', () => {
   /**
-   * Parked until Phase 5 of `docs/goals/goal-plugins-to-surfaces.md`: the tree still spells the concept
+   * Parked until Phase 5 of `docs/goals/goal-surfaces-to-surfaces.md`: the tree still spells the concept
    * `plugin` everywhere, so this case cannot pass until the rename lands. `it.fails` makes that a
    * tripwire rather than a silence — the moment the rename is complete this starts failing, and Phase 5
    * is to flip it to `it`.
@@ -153,7 +162,7 @@ describe('the surface vocabulary', () => {
         }
       });
     }
-    expect(violations, 'a surface is not a plugin; see docs/goals/goal-plugins-to-surfaces.md').toEqual([]);
+    expect(violations, 'a surface is not a plugin; see docs/goals/goal-surfaces-to-surfaces.md').toEqual([]);
   });
 
   it('excuses nothing that has stopped needing it', () => {

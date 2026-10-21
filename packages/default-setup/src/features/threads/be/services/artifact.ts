@@ -5,7 +5,7 @@
  * Follows a pure vs side-effect pattern similar to chat service.
  */
 
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { EARS } from '#generated/ears.ts';
 
 import { repository } from '#generated/repository.ts';
@@ -51,7 +51,7 @@ export function createAndNotify(options: CreateArtifactOptions): { artifactId: E
 
   // Send FE notification if linked to thread
   if (options.threadId) {
-    broadcastToPlugin('threads', {
+    broadcastToSurface('threads', {
       type: 'ARTIFACT_ADDED',
       tabId: options.threadId,
       artifact: {
@@ -88,7 +88,7 @@ export function updateAndNotify(
   });
 
   if (options.threadId) {
-    broadcastToPlugin('threads', {
+    broadcastToSurface('threads', {
       type: 'ARTIFACT_UPDATED',
       tabId: options.threadId,
       artifact: {

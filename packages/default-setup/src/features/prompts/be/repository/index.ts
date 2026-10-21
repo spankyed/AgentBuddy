@@ -2,7 +2,7 @@ import { promptRepository } from '@apackdev/sdk/repositories';
 
 /**
  * Prompts Repository: the SDK's prompt repository (`promptRepository`), which owns their reads and writes, as the
- * prompts plugin uses it, and the plugin's views. The SDK's methods are taken as they are, not wrapped.
+ * prompts surface uses it, and the surface's views. The SDK's methods are taken as they are, not wrapped.
  */
 
 // Queries

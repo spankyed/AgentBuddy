@@ -1,4 +1,4 @@
-// The code plugin's `defaultBaseDirectory` is where the explorer opens. Changing it moves the explorer there at once;
+// The code surface's `defaultBaseDirectory` is where the explorer opens. Changing it moves the explorer there at once;
 // any other change to the code settings, `baseDirectory` included (which the explorer writes itself as the user
 // browses), leaves the explorer where the user took it.
 import { afterEach, describe, expect, it } from 'vitest';

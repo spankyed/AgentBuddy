@@ -1,4 +1,4 @@
-// apack db query | exec: console code (the Database plugin's) run on the data dir's database
+// apack db query | exec: console code (the Database surface's) run on the data dir's database
 import * as fs from 'node:fs';
 import { runQueryCode, runTransactionCode } from '@apackdev/sdk/database-console';
 import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';

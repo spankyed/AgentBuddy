@@ -1,8 +1,8 @@
 // The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
-import type { DeclarationData, PluginDeclaration } from '@apackdev/sdk/framework';
+import type { DeclarationData, SurfaceDeclaration } from '@apackdev/sdk/framework';
 import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '@apackdev/sdk/fe/references';
-import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, SettingsPort, StepFrontendBinding, ArtifactFrontendBinding, BlockFrontendBinding } from '@apackdev/sdk/fe';
+import type { Surface, PackFERegistration, TiptapPlugin, TiptapPluginBinding, SettingsPort, StepFrontendBinding, ArtifactFrontendBinding, BlockFrontendBinding } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import { createDesignationStore, createOwnedStepStore } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
@@ -31,19 +31,19 @@ export interface FrontendSettingsBinding {
 
 /** The renderer's registered pack frontends */
 export interface FePackRegistry extends FePackRegistryView {
-  /** Registers a pack's frontend, and returns its plugins as registered: each at its feature's ref */
-  registerPackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
+  /** Registers a pack's frontend, and returns its surfaces as registered: each at its feature's ref */
+  registerPackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding): Surface[];
   /** Prepare a fresh or replacement frontend without publishing it; disposal cancels only this candidate. */
   preparePackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing?: boolean): PreparedFrontend;
   /** Replace an existing owner; failure preserves its accepted resources. */
-  replacePackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
+  replacePackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding): Surface[];
   hasPackFE(packId: string): boolean;
   prepareUnregisterPackFE(packId: string): PreparedFrontend;
-  /** Unregisters a pack's frontend; returns the plugins it had added */
-  unregisterPackFE(packId: string): Plugin[];
-  /** Every registered plugin, in registration order */
-  getRegisteredPlugins(): Plugin[];
-  pluginBindings(): ReadonlyMap<string, PluginFrontendBinding>;
+  /** Unregisters a pack's frontend; returns the surfaces it had added */
+  unregisterPackFE(packId: string): Surface[];
+  /** Every registered surface, in registration order */
+  getRegisteredSurfaces(): Surface[];
+  surfaceBindings(): ReadonlyMap<string, SurfaceFrontendBinding>;
   /** Identity of this accepted frontend instance; replacement changes it even when components are reused. */
   frontendIdentity(packId: string): Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'registrationId' | 'buildRevision'>> | undefined;
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
@@ -52,19 +52,19 @@ export interface FePackRegistry extends FePackRegistryView {
 }
 
 /**
- * A registration addressed once: each plugin at its feature's ref, with its default claim, and each role at the ref of
- * the feature that plays it, that feature's plugin or not
+ * A registration addressed once: each surface at its feature's ref, with its default claim, and each role at the ref of
+ * the feature that plays it, that feature's surface or not
  */
 type AddressedRegistration = PackFERegistration & {
-  addressed: Array<{ plugin: Plugin; default?: true }>;
+  addressed: Array<{ surface: Surface; default?: true }>;
   roles: Record<string, FeatureRef>;
 };
 
 function addressed(registration: PackFERegistration): AddressedRegistration {
   const features = Object.entries(registration.features ?? {}).map(([id, feature]) => [id, { ...feature }] as const);
   const defaults = features.filter(([, feature]) => feature.default);
-  if (defaults.length > 1) throw new Error(`Pack "${registration.id}" declares default plugins "${defaults[0]![0]}" and "${defaults[1]![0]}"; only one may be claimed`);
-  if (defaults[0] && !defaults[0][1].plugin) throw new Error(`Pack "${registration.id}" declares a default for feature "${defaults[0][0]}" without a plugin`);
+  if (defaults.length > 1) throw new Error(`Pack "${registration.id}" declares default surfaces "${defaults[0]![0]}" and "${defaults[1]![0]}"; only one may be claimed`);
+  if (defaults[0] && !defaults[0][1].surface) throw new Error(`Pack "${registration.id}" declares a default for feature "${defaults[0][0]}" without a surface`);
   const roles = new Map<string, FeatureRef>();
   for (const [id, feature] of features) {
     if (!feature.designation) continue;
@@ -74,8 +74,8 @@ function addressed(registration: PackFERegistration): AddressedRegistration {
   return {
     ...registration,
     features: Object.fromEntries(features),
-    addressed: features.flatMap(([featureId, feature]) => feature.plugin
-      ? [{ plugin: Object.freeze({ ...feature.plugin, id: resolveName(featureId, registration.id) }) as Plugin, default: feature.default }]
+    addressed: features.flatMap(([featureId, feature]) => feature.surface
+      ? [{ surface: Object.freeze({ ...feature.surface, id: resolveName(featureId, registration.id) }) as Surface, default: feature.default }]
       : []),
     roles: Object.fromEntries(roles),
   };
@@ -83,21 +83,21 @@ function addressed(registration: PackFERegistration): AddressedRegistration {
 
 /** A staged frontend cannot change the published view until its commit. */
 export interface PreparedFrontend {
-  plugins: Plugin[];
+  surfaces: Surface[];
   /** Commit other prepared host resources after revision checks, before publishing the lookup view. */
-  commit(beforePublish?: () => void): Plugin[];
+  commit(beforePublish?: () => void): Surface[];
   dispose(): void;
 }
 
-/** A plugin implementation admitted against a captured declaration and backend generation. */
-export interface PluginFrontendBinding {
+/** A surface implementation admitted against a captured declaration and backend generation. */
+export interface SurfaceFrontendBinding {
   readonly opens?: readonly string[];
   readonly packId: string;
-  readonly declaration: DeclarationData<PluginDeclaration>;
+  readonly declaration: DeclarationData<SurfaceDeclaration>;
   readonly declarationRevision?: string;
   readonly registrationId?: string;
   readonly buildRevision?: string;
-  readonly binding: Plugin;
+  readonly binding: Surface;
 }
 
 type DefinitionEntry<T> = readonly [string, T];
@@ -105,7 +105,7 @@ interface FrontendContributions {
   id: string;
   identity: Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'registrationId' | 'buildRevision'>>;
   addressed: AddressedRegistration['addressed'];
-  pluginBindings: PluginFrontendBinding[];
+  surfaceBindings: SurfaceFrontendBinding[];
   roles: Record<string, FeatureRef>;
   forms: Array<readonly [string, SettingsForm]>;
   steps: Array<DefinitionEntry<StepFrontendBinding>>;
@@ -134,10 +134,10 @@ function capture(registration: PackFERegistration, identity: AcceptedFrontendAdm
   checkFeatureIds(reg.id, Object.keys(reg.settingsForms ?? {}));
   return {
     id: reg.id, identity: Object.freeze(revisions), addressed: reg.addressed, roles: reg.roles, bindSettings: reg.bindSettings,
-    pluginBindings: reg.addressed.map(({ plugin }) => Object.freeze({ packId: reg.id, ...revisions,
+    surfaceBindings: reg.addressed.map(({ surface }) => Object.freeze({ packId: reg.id, ...revisions,
       ...(identity.entityDestinations && { opens: Object.freeze(Object.keys(identity.entityDestinations)
-        .filter(entity => identity.entityDestinations![entity] === plugin.id.slice(reg.id.length + 1)).sort()) }),
-      declaration: identity.declarations.features![plugin.id.slice(reg.id.length + 1)]!.plugin!, binding: plugin })),
+        .filter(entity => identity.entityDestinations![entity] === surface.id.slice(reg.id.length + 1)).sort()) }),
+      declaration: identity.declarations.features![surface.id.slice(reg.id.length + 1)]!.surface!, binding: surface })),
     forms: [
       ...Object.entries(reg.features ?? {}).flatMap(([id, feature]) => feature.settingsForm
         ? [[formKey({ kind: 'feature', featureRef: resolveName(id, reg.id) }), feature.settingsForm] as const] : []),
@@ -166,8 +166,8 @@ function capture(registration: PackFERegistration, identity: AcceptedFrontendAdm
 }
 
 function buildTables(packs: Iterable<FrontendContributions>) {
-  const plugins: Plugin[] = [];
-  const pluginBindings = new Map<string, PluginFrontendBinding>();
+  const surfaces: Surface[] = [];
+  const surfaceBindings = new Map<string, SurfaceFrontendBinding>();
   const designations = createDesignationStore();
   const steps = createOwnedStepStore<StepFrontendBinding>();
   const artifacts = new Map<string, ArtifactFrontendBinding>();
@@ -196,24 +196,24 @@ function buildTables(packs: Iterable<FrontendContributions>) {
       }
     }
     designations.register(pack.roles);
-    plugins.push(...pack.addressed.map(({ plugin }) => plugin));
-    for (const binding of pack.pluginBindings) pluginBindings.set(binding.binding.id, binding);
+    surfaces.push(...pack.addressed.map(({ surface }) => surface));
+    for (const binding of pack.surfaceBindings) surfaceBindings.set(binding.binding.id, binding);
     for (const [key, value] of pack.forms) forms.set(key, value);
     for (const [key, value] of pack.steps) { steps.set(key, value, pack.id); }
     for (const [key, value] of pack.artifacts) artifacts.set(key, value);
     for (const [key, value] of pack.blocks) blocks.set(key, value);
     for (const [key, value] of pack.appExtensions) appExtensions.set(key, value);
-    for (const [id, plugin] of pack.tiptapPlugins) {
+    for (const [id, surface] of pack.tiptapPlugins) {
       const owner = `${pack.id}/${id}`;
-      for (const name of Object.keys(plugin.extensions ?? {})) {
+      for (const name of Object.keys(surface.extensions ?? {})) {
         const previous = editorOwners.get(name);
         if (previous !== undefined) throw new Error(`Tiptap extension "${name}" declared by both "${previous}" and "${owner}"`);
         editorOwners.set(name, owner);
       }
-      tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: plugin }));
+      tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: surface }));
     }
   }
-  return { plugins, pluginBindings, designations, steps, artifacts, blocks, appExtensions, forms, tiptapPlugins, referenceTypes, referenceCategories };
+  return { surfaces, surfaceBindings, designations, steps, artifacts, blocks, appExtensions, forms, tiptapPlugins, referenceTypes, referenceCategories };
 }
 
 /** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
@@ -241,7 +241,7 @@ export function createFePackRegistry(): FePackRegistry {
     if (errors.length) logger.error('Frontend resource retirement failed', new AggregateError(errors, 'Frontend resource retirement failed'));
   }
   function prepareChange(id: string, next: Map<string, FrontendContributions>, projected: ReturnType<typeof buildTables>,
-    binding: ReturnType<typeof createFrontendSettingsBinding> | undefined, plugins: Plugin[]): PreparedFrontend {
+    binding: ReturnType<typeof createFrontendSettingsBinding> | undefined, surfaces: Surface[]): PreparedFrontend {
     const before = revision;
     let state: 'pending' | 'committed' | 'disposed' = 'pending';
     const discard = () => {
@@ -251,7 +251,7 @@ export function createFePackRegistry(): FePackRegistry {
     };
     const dispose = () => { if (changing) discard(); else mutate(discard); };
     return {
-      plugins,
+      surfaces,
       commit(beforePublish) {
         try { return mutate(() => {
           if (state !== 'pending') throw new Error('Only a pending frontend may commit');
@@ -270,7 +270,7 @@ export function createFePackRegistry(): FePackRegistry {
           revision++;
           retire(previous);
           publishChange(id);
-          return plugins;
+          return surfaces;
         }); } catch (error) { dispose(); throw error; }
       },
       dispose,
@@ -300,7 +300,7 @@ export function createFePackRegistry(): FePackRegistry {
         next.set(id, candidate);
         const projected = buildTables(next.values());
         binding.bind(candidate.bindSettings);
-        return prepareChange(id, next, projected, binding, candidate.addressed.map(({ plugin }) => plugin));
+        return prepareChange(id, next, projected, binding, candidate.addressed.map(({ surface }) => surface));
       });
     } catch (error) {
       if (changing) retire(binding); else mutate(() => retire(binding));
@@ -311,12 +311,12 @@ export function createFePackRegistry(): FePackRegistry {
     const prepared = preparePackFE(admission, registration, settings, replacing);
     try { return prepared.commit(); } finally { prepared.dispose(); }
   };
-  function unregisterPackFE(id: string): Plugin[] {
+  function unregisterPackFE(id: string): Surface[] {
     const previous = accepted.get(id);
     if (!previous) return [];
     const prepared = prepareUnregisterPackFE(id);
     try { prepared.commit(); } finally { prepared.dispose(); }
-    return previous.addressed.map(({ plugin }) => plugin);
+    return previous.addressed.map(({ surface }) => surface);
   }
 
   return {
@@ -326,7 +326,7 @@ export function createFePackRegistry(): FePackRegistry {
     registerPackFE: (admission, registration, settings) => accept(admission, registration, settings, false),
     replacePackFE: (admission, registration, settings) => accept(admission, registration, settings, true),
     unregisterPackFE,
-    getRegisteredPlugins: () => [...tables.plugins],
+    getRegisteredSurfaces: () => [...tables.surfaces],
     getAppExtension: key => tables.appExtensions.get(key),
     settingsForm: target => tables.forms.get(formKey(target)),
     onChanged(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
@@ -336,9 +336,9 @@ export function createFePackRegistry(): FePackRegistry {
     artifact: key => tables.artifacts.get(key)?.binding, artifacts: () => [...tables.artifacts.values()].map(entry => entry.binding),
     blockBindings: () => new Map(tables.blocks.entries()),
     block: key => tables.blocks.get(key)?.binding, blocks: () => [...tables.blocks.values()].map(entry => entry.binding),
-    pluginBindings: () => new Map(tables.pluginBindings),
+    surfaceBindings: () => new Map(tables.surfaceBindings),
     frontendIdentity: packId => accepted.get(packId)?.identity,
-    plugins: () => [...tables.plugins],
+    surfaces: () => [...tables.surfaces],
     tiptapPlugins: () => [...tables.tiptapPlugins],
     referenceTypes: () => new Map(tables.referenceTypes),
     referenceCategories: () => new Map(tables.referenceCategories),

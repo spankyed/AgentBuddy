@@ -493,7 +493,7 @@ describe('a step that drives the app fixture declares the bundle it drives', () 
 
 /**
  * **Nothing here compiles a pack into the app any more**, so the check that lived here has no subject. It
- * held `build:runtime` to declaring every compiled file of every built-in pack, because the renderer's plugin
+ * held `build:runtime` to declaring every compiled file of every built-in pack, because the renderer's surface
  * and the api's tsup each traced a generated entry into the pack's `src` and the renderer's Tailwind globbed
  * it for class names — and with none of that declared, one `.vue` edit left `build:runtime` cached over an app
  * that never held the change (measured 2026-10-07).

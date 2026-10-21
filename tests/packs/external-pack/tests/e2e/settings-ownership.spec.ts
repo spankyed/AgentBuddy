@@ -55,7 +55,7 @@ test('backup import restores all settings owners and updates an open window', as
     const original = await change('Saved');
     const companionRuntime = await acceptedRuntime(appPage, 'bundled-ui-fixture');
     const opened = electronApp.waitForEvent('window');
-    await appPage.evaluate(() => (window as any).electronAPI.plugins.popout('host/settings', 'Settings'));
+    await appPage.evaluate(() => (window as any).electronAPI.surfaces.popout('host/settings', 'Settings'));
     second = await opened;
     await second.waitForLoadState('domcontentloaded');
     await second.getByRole('button', { name: 'Features', exact: true }).click();

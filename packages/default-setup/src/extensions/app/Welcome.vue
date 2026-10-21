@@ -59,8 +59,8 @@ import { openLink, useShell } from '@apackdev/sdk/fe';
  *
  * It was a markdown string rendered through a full Tiptap viewer, which is this pack's editor: the editor
  * carries every registered pack's tiptap extensions, so drawing eleven static paragraphs mounted the
- * reference and slash-command popups, and those read the threads, notes and library plugins' state. This
- * component is rendered by the *host*, in no plugin's scope and before those plugins are running, so the one
+ * reference and slash-command popups, and those read the threads, notes and library surfaces' state. This
+ * component is rendered by the *host*, in no surface's scope and before those surfaces are running, so the one
  * screen a first-time user sees depended on three of this pack's features having started.
  *
  * The rule about untrusted text (`CLAUDE.md`: markdown renders in a Tiptap viewer, which emits no raw HTML)

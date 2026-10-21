@@ -33,9 +33,9 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
         if (!input.refresh && input.acceptedPackRuntimes[pack.id] === pack.registrationId) continue;
         try {
           // null: the pack has no frontend code, so there's nothing to merge or ask startup data for
-          const plugins = await packFrontends.load(pack, controller.signal);
+          const surfaces = await packFrontends.load(pack, controller.signal);
           if (stopped) return;
-          sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, registrationId: pack.registrationId, plugins });
+          sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, registrationId: pack.registrationId, surfaces });
         } catch (err: unknown) {
           if (stopped) return;
           failedPacks.push({ packId: pack.id, error: messageOf(err) });
@@ -53,7 +53,7 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
 /**
  * Asks a pack's systems for their startup data. A connection's CLIENT_CONNECTED skips the systems of every pack
  * with frontend code, the ones the app ships included, since that frontend loads after it; each is asked for once
- * its load finished, whether it added plugins or not, so its systems without plugins get it too.
+ * its load finished, whether it added surfaces or not, so its systems without surfaces get it too.
  */
 export function announcePackClientReady(client: ShellClient, packId: string, registrationId: string): void {
   client.packClientReady(packId, registrationId).catch((err: unknown) => {

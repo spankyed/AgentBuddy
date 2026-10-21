@@ -1,12 +1,12 @@
-// API keys in default-setup: the settings system refreshes its plugin when the host's stored keys change
+// API keys in default-setup: the settings system refreshes its surface when the host's stored keys change
 // (never with values). CLI paths live in
-// the code plugin.
+// the code surface.
 import { describe, expect, it } from 'vitest';
 import { getTestSettings, addTestSecret, startApp, takeSystemErrors } from '@apackdev/testing/harness';
 import { featureSettings } from '#generated/settings.ts';
 
 describe('settings and stored API keys', () => {
-  it('sends its plugin the keys without values when the stored keys change', async () => {
+  it('sends its surface the keys without values when the stored keys change', async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
     expect(app.emitted('host/settings').filter((e) => e.type === 'SECRETS_UPDATED').at(-1)).toMatchObject({ secrets: [] });
@@ -19,15 +19,15 @@ describe('settings and stored API keys', () => {
     expect(JSON.stringify(updated)).not.toContain('value');
   });
 
-  it("stores a CLI path override on the code plugin's settings", async () => {
+  it("stores a CLI path override on the code surface's settings", async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
     await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'default-setup/code' }, path: ['cliPaths'], value: { gh: '/opt/bin/gh' } }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
     expect(featureSettings.forFeature('code').get()).toMatchObject({ cliPaths: { gh: '/opt/bin/gh' } });
   });
 
-  // A feature settings change reaches the plugin identified by its qualified ref
-  it('tells the plugin whose settings changed', async () => {
+  // A feature settings change reaches the surface identified by its qualified ref
+  it('tells the surface whose settings changed', async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
     await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'default-setup/code' }, path: ['mdEditorDefault'], value: false }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
@@ -36,7 +36,7 @@ describe('settings and stored API keys', () => {
   });
 
   // The frontend resolves a feature name before sending; an unqualified ref reaching the system
-  // would be written under a key no plugin reads, so it is reported and nothing is saved
+  // would be written under a key no surface reads, so it is reported and nothing is saved
   it('refuses an unqualified feature target, saving nothing', async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();

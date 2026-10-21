@@ -18,7 +18,7 @@ import { _callOn, _runDelivery, type _Asker, type Message } from '@apackdev/sdk/
  *
  * The common case, and so the short one — twelve call sites against the two that carry an address.
  */
-export function notifyPluginActor(actor: AnyActorRef, ref: string, event: AnyEventObject, call?: Pick<Message, 'call' | 'answering'>): void {
+export function notifySurfaceActor(actor: AnyActorRef, ref: string, event: AnyEventObject, call?: Pick<Message, 'call' | 'answering'>): void {
   _runDelivery({ receiver: ref, ...(call?.call === undefined ? {} : { call: call.call }) }, () =>
     actor.send(call === undefined ? event : { ...event, ..._callOn(call) }));
 }
@@ -33,21 +33,21 @@ export function notifyPluginActor(actor: AnyActorRef, ref: string, event: AnyEve
  * it from its neighbour exactly as readily as it would have omitted an argument. A required parameter whose
  * usual value is a name for nothing asks for a token, not a decision. Two functions ask for the decision.
  *
- * What no signature prevents is a caller that *has* an asker calling `notifyPluginActor` anyway. That is a
- * semantic choice, and `tests/features/application/fe/plugin-reply.spec.ts` is what catches it.
+ * What no signature prevents is a caller that *has* an asker calling `notifySurfaceActor` anyway. That is a
+ * semantic choice, and `tests/features/application/fe/surface-reply.spec.ts` is what catches it.
  *
  * **The scope a *sender* was in does not reach the receiver**, which is the second thing this buys and the
- * reason the bypasses were worth closing: measured 2026-10-06, a plugin reaching the shell's actor directly
- * from inside its own delivery left the shell handling the event as that plugin, with that plugin's asker — so
- * a send the shell made there was stamped with a plugin that did not make it, and a handler it ran was handed a
- * `reply` addressed to a system that had asked the plugin something else.
+ * reason the bypasses were worth closing: measured 2026-10-06, a surface reaching the shell's actor directly
+ * from inside its own delivery left the shell handling the event as that surface, with that surface's asker — so
+ * a send the shell made there was stamped with a surface that did not make it, and a handler it ran was handed a
+ * `reply` addressed to a system that had asked the surface something else.
  *
- * **Both take an actor, not a lookup that may miss.** Whether a missing plugin is a bug or an ordinary race
- * differs by call site — the shell's own lifecycle sends address a plugin it just spawned, where absence is an
- * invariant broken and worth a crash, while a send arriving for a plugin whose pack has unloaded is neither. A
+ * **Both take an actor, not a lookup that may miss.** Whether a missing surface is a bug or an ordinary race
+ * differs by call site — the shell's own lifecycle sends address a surface it just spawned, where absence is an
+ * invariant broken and worth a crash, while a send arriving for a surface whose pack has unloaded is neither. A
  * `?.` here would have levelled those two to the quieter one, which it briefly did.
  */
-export function sendToPluginActor(actor: AnyActorRef, ref: string, event: AnyEventObject, asker: _Asker, call?: Pick<Message, 'call' | 'answering'>): void {
+export function sendToSurfaceActor(actor: AnyActorRef, ref: string, event: AnyEventObject, asker: _Asker, call?: Pick<Message, 'call' | 'answering'>): void {
   _runDelivery({ receiver: ref, asker, ...(call?.call === undefined ? {} : { call: call.call }) }, () =>
     actor.send(call === undefined ? event : { ...event, ..._callOn(call) }));
 }

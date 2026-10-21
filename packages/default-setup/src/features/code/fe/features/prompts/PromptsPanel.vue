@@ -234,12 +234,12 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, computed, watch, nextTick } from 'vue'
 import { openEntity } from '@apackdev/sdk/fe'
 import type { CodeState } from '#features/code/fe/state.ts'
-import { usePluginState } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
 import EmptyState from '#features/code/fe/features/EmptyState.vue'
@@ -257,15 +257,15 @@ import Button from '@apackdev/ui/design/button'
 import uFuzzy from '@leeoniya/ufuzzy'
 import { codeChild } from '../children.ts';
 
-// Get actors - use main prompts plugin for state, codePrompts for tab management
-const codeActor: CodeState = usePlugin()
+// Get actors - use main prompts surface for state, codePrompts for tab management
+const codeActor: CodeState = useSurface()
 const codePromptsActor = codeChild(codeActor, 'codePrompts')!
 
-// State - the prompts plugin's list (single source of truth)
-const prompts = usePluginState('prompts', (s) => s.prompts)
-const page = usePluginState('prompts', (s) => s.page)
-const totalPages = usePluginState('prompts', (s) => s.totalPages)
-const loadingMore = usePluginState('prompts', (s) => s.loadingMore)
+// State - the prompts surface's list (single source of truth)
+const prompts = useSurfaceState('prompts', (s) => s.prompts)
+const page = useSurfaceState('prompts', (s) => s.page)
+const totalPages = useSurfaceState('prompts', (s) => s.totalPages)
+const loadingMore = useSurfaceState('prompts', (s) => s.loadingMore)
 const hasMore = computed(() => page.value < totalPages.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)

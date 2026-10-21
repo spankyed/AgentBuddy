@@ -34,7 +34,7 @@ afterEach(async () => {
   if (temporary) fs.rmSync(temporary, { recursive: true, force: true });
 });
 
-/** A private distributable compiler; only its Vue plugin is changed between generations. */
+/** A private distributable compiler; only its Vue surface is changed between generations. */
 function fixture() {
   temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-generation-'));
   const source = installations.compilerPackageDirectory();
@@ -48,13 +48,13 @@ function fixture() {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.symlinkSync(inputs.nodes[index]!.directory, destination, 'dir');
   }
-  const plugin = path.join(compiler, 'node_modules/@vitejs/plugin-vue');
-  const original = fs.realpathSync(plugin);
-  fs.unlinkSync(plugin);
-  fs.cpSync(original, plugin, { recursive: true });
-  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(plugin, 'node_modules'), 'dir');
-  const entry = path.join(plugin, 'dist/index.mjs');
-  fs.renameSync(entry, path.join(plugin, 'dist/original.mjs'));
+  const surface = path.join(compiler, 'node_modules/@vitejs/plugin-vue');
+  const original = fs.realpathSync(surface);
+  fs.unlinkSync(surface);
+  fs.cpSync(original, surface, { recursive: true });
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(surface, 'node_modules'), 'dir');
+  const entry = path.join(surface, 'dist/index.mjs');
+  fs.renameSync(entry, path.join(surface, 'dist/original.mjs'));
   const generation = (value: string) => fs.writeFileSync(entry, `import vue from './original.mjs';
     export * from './original.mjs'; export default options => [vue(options), {name:'generation-test',
     transform(code,id){if(id.split('?')[0].endsWith('.vue')) return code.replaceAll('VIEW',${JSON.stringify(value)})+'\\n//${value}';}}];`);
@@ -98,7 +98,7 @@ async function nextComponentUpdate(address: PackFrontendAddress): Promise<{ read
 }
 
 async function response(address: PackFrontendAddress, template = false): Promise<string> {
-  // A browser re-imports the component before its template after an update: plugin-vue's main module re-reads the
+  // A browser re-imports the component before its template after an update: surface-vue's main module re-reads the
   // file, and the template module is compiled from what that read cached
   if (template) await response(address);
   const suffix = template ? '?vue&type=template&id=generation' : '';

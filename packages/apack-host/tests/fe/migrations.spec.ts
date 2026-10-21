@@ -16,8 +16,8 @@ function fakeStorage(initial: Record<string, string> = {}) {
 }
 
 describe('a window\'s migrations', () => {
-  // The host keeps the last active plugin now; the window's own copy would linger forever
-  it('drops the last active plugin a window stored before 0.4.0, and leaves the panel sizes', () => {
+  // The host keeps the last active surface now; the window's own copy would linger forever
+  it('drops the last active surface a window stored before 0.4.0, and leaves the panel sizes', () => {
     const { storage, items } = fakeStorage({
       'apack-fe-version': '0.3.14',
       'apack-last-active-plugin': 'threads',

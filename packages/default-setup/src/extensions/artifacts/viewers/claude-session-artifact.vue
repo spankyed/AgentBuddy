@@ -261,8 +261,8 @@
 import { computed, ref } from 'vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@apackdev/sdk/artifacts'
-import { usePluginState } from '#generated/fe.ts'
-import { openPlugin } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
+import { openSurface } from '#generated/fe.ts'
 import { sendToSystem } from '#generated/events.ts'
 
 
@@ -319,7 +319,7 @@ const props = defineProps<{
   artifact: ArtifactItem<SessionContent>
 }>()
 
-const currentThread = usePluginState('threads', (s) => s.currentThread)
+const currentThread = useSurfaceState('threads', (s) => s.currentThread)
 const currentThreadId = computed(() => currentThread.value?.id as string | undefined)
 
 // The thread context is the source of truth for session data.
@@ -362,8 +362,8 @@ function fmt(n: number): string {
   return String(n)
 }
 
-const settings = usePluginState('threads', (s) => s.settings)
-const overrides = usePluginState('threads', (s) => s.chatStateOverrides)
+const settings = useSurfaceState('threads', (s) => s.settings)
+const overrides = useSurfaceState('threads', (s) => s.chatStateOverrides)
 const stateConfig = computed(() => {
   const configs = settings.value?.chatStates;
   const threadId = currentThreadId.value ?? '';
@@ -405,8 +405,8 @@ async function copySessionId() {
 }
 
 function openTerminalTab() {
-  // The code plugin routes a terminal.* event to its terminals
-  openPlugin('code', {
+  // The code surface routes a terminal.* event to its terminals
+  openSurface('code', {
     type: 'terminal.CREATE',
     target: 'tab',
     command: `claude --resume ${content.value.sessionId}`,

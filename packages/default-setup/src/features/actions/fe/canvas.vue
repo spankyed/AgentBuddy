@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -46,7 +46,7 @@ import ActionDetail from './components/ActionDetail.vue';
 import type { EARS } from '@apackdev/sdk';
 import type { ActionParameter } from '@apackdev/sdk';
 
-const actor: ActionsState = usePlugin();
+const actor: ActionsState = useSurface();
 const state = useSelector(actor, (state) => state);
 const actions = useSelector(actor, (state) => state.context.actions);
 const selectedAction = useSelector(actor, (state) => state.context.selectedAction);

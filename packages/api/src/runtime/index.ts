@@ -157,7 +157,7 @@ export async function setupBackend(): Promise<void> {
   const shippedDir = process.env.SHIPPED_PACKS_DIR;
   if (!shippedDir) {
     // "This app ships no packs" and "nobody told me where they are" are different answers, and installing
-    // nothing looks the same either way: on a fresh data dir both give an app with no plugins
+    // nothing looks the same either way: on a fresh data dir both give an app with no surfaces
     console.warn('[packs] SHIPPED_PACKS_DIR is not set, so no pack the app ships is installed');
   } else {
     const results = await installShippedPacks(shippedDir, appContext.packsDir, { installedPacksFile: appContext.installedPacksFile, hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT, settingsOverrides: () => storedSettings(store) });

@@ -3,7 +3,7 @@
  *
  * Nothing resolves them here any more. A pack's specifier names the file that is there
  * (`docs/archive/goals/goal-pack-imports-name-the-file.md`), and esbuild and Vite both resolve a pack's
- * mapping themselves once the path names a file — measured by deleting the two plugins that used to supply
+ * mapping themselves once the path names a file — measured by deleting the two surfaces that used to supply
  * the suffix and rebuilding: `apack pack build` over the fixture pack and default-setup, and the API's tsup
  * build, byte for byte the same output. What is left is the reading, which the check that a specifier names
  * its file still needs (`own-module-specifiers.ts`).

@@ -38,13 +38,13 @@ const selectedIndex = ref(0)
 const popupEl = ref<HTMLElement | null>(null)
 const popupStyle = ref<Record<string, string>>({ bottom: '0px', left: '0px' })
 
-const pluginState = computed(() => {
+const surfaceState = computed(() => {
   return props.editor ? commandSuggestionPluginKey.getState(props.editor.state) : undefined
 })
 
-const isActive = computed(() => pluginState.value?.active ?? false)
-const query = computed(() => pluginState.value?.query ?? '')
-const selectedCommand = computed(() => pluginState.value?.selectedCommand ?? null)
+const isActive = computed(() => surfaceState.value?.active ?? false)
+const query = computed(() => surfaceState.value?.query ?? '')
+const selectedCommand = computed(() => surfaceState.value?.selectedCommand ?? null)
 
 const isPopupVisible = computed(() => isActive.value && !selectedCommand.value)
 
@@ -55,7 +55,7 @@ watch(filteredCommands, () => {
 })
 
 function updatePosition() {
-  if (!isPopupVisible.value || !pluginState.value) return
+  if (!isPopupVisible.value || !surfaceState.value) return
 
   try {
     const coords = props.editor.view.coordsAtPos(COMMAND_TRIGGER_POS)
@@ -161,7 +161,7 @@ onBeforeUnmount(() => {
 })
 
 function selectCommand(cmd: CommandItem) {
-  const state = pluginState.value
+  const state = surfaceState.value
   if (!state) return
 
   const from = COMMAND_TRIGGER_POS
@@ -181,7 +181,7 @@ function selectCommand(cmd: CommandItem) {
 }
 
 function deactivateAndClean() {
-  const state = pluginState.value
+  const state = surfaceState.value
   if (!state) return
 
   const from = COMMAND_TRIGGER_POS

@@ -1,5 +1,5 @@
 import { featureSettings } from '#generated/settings.ts';
-// The root flow is the flow with the root role, and only that: the flows system reports it to its plugin and changes
+// The root flow is the flow with the root role, and only that: the flows system reports it to its surface and changes
 // it (SET_ROOT_FLOW), imports and content imports bring it with their flows, and no setting records it
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -15,7 +15,7 @@ const importRoot = (label: string) =>
 const reportedRoot = (event: unknown) => (event as { data: { rootFlow?: { id: string } } }).data.rootFlow?.id
 
 describe('the root flow', () => {
-  it('is the flow with the root role, which the flows system sends its plugin, and no setting', async () => {
+  it('is the flow with the root role, which the flows system sends its surface, and no setting', async () => {
     const rootId = importRoot('Main')
     const app = await startApp({ systems: ['flows', 'host/settings'] })
     await app.connect()
@@ -41,7 +41,7 @@ describe('the root flow', () => {
     expect(reportedRoot(await app.nextEmit('flows', 'FLOWS_CONNECTED'))).toBeUndefined()
   })
 
-  it('reaches the plugin when a pack content import brought it', async () => {
+  it('reaches the surface when a pack content import brought it', async () => {
     const app = await startApp({ systems: ['brain', 'flows', 'host/settings', 'host/packs'] })
     await app.connect()
     await app.nextEmit('flows', 'FLOWS_CONNECTED')

@@ -66,7 +66,7 @@ export async function addFeature(args: string[], root: string) {
   const layout = {
     system: `${featureRoot}/be/system.ts`, types: `${featureRoot}/be/types.ts`,
     systemContract: `${featureRoot}/be/contract.ts`, repositories: `${featureRoot}/be/repository/index.ts`,
-    pluginContract: `${featureRoot}/fe/contract.ts`, state: `${featureRoot}/fe/state.ts`,
+    surfaceContract: `${featureRoot}/fe/contract.ts`, state: `${featureRoot}/fe/state.ts`,
     canvas: `${featureRoot}/fe/canvas/list.vue`, settingsForm: `${featureRoot}/fe/settings.vue`,
   };
 
@@ -78,7 +78,7 @@ export async function addFeature(args: string[], root: string) {
     [path.join(root, layout.types), renderTemplate('pack/src/features/feature/be/types.ts', { PASCAL: v.PASCAL, CONNECTED_EVENT: v.CONNECTED_EVENT, REFRESH_EVENT: v.REFRESH_EVENT })],
     [path.join(root, layout.systemContract), renderTemplate('pack/src/features/feature/be/contract.ts', { PASCAL: pascal })],
     [path.join(root, layout.repositories), renderTemplate('pack/src/features/feature/be/repository/index.ts', { CAMEL: camel })],
-    [path.join(root, layout.pluginContract), renderTemplate('pack/src/features/feature/fe/contract.ts', { PASCAL: pascal })],
+    [path.join(root, layout.surfaceContract), renderTemplate('pack/src/features/feature/fe/contract.ts', { PASCAL: pascal })],
     [path.join(root, layout.state), renderTemplate('pack/src/features/feature/fe/state.ts', { NAME: v.NAME, CAMEL: v.CAMEL, PASCAL: v.PASCAL })],
     [path.join(root, layout.canvas), renderTemplate('pack/src/features/feature/fe/canvas/list.vue', { LABEL: label })],
     [path.join(root, layout.settingsForm), renderTemplate('pack/src/features/feature/fe/settings.vue')],
@@ -95,7 +95,7 @@ export async function addFeature(args: string[], root: string) {
     ...(designation !== undefined && { designation }),
     settings: { schema: { type: 'object', additionalProperties: false }, defaults: {}, form: layout.settingsForm },
     system: { entry: layout.system, contract: `${layout.systemContract}#Contract` },
-    plugin: { label, icon, state: layout.state, canvas: layout.canvas, defaultVisible: true, contract: `${layout.pluginContract}#Contract` },
+    surface: { label, icon, state: layout.state, canvas: layout.canvas, defaultVisible: true, contract: `${layout.surfaceContract}#Contract` },
     types: layout.types,
     services: {},
     repositories: {

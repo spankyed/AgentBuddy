@@ -187,7 +187,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -199,7 +199,7 @@ import EmptyState from '#features/code/fe/features/EmptyState.vue'
 import { codeChild } from '../children.ts';
 
 // Get actors
-const codeActor: CodeState = usePlugin()
+const codeActor: CodeState = useSurface()
 const searchActor = codeChild(codeActor, 'search')!
 
 // State selectors
@@ -350,7 +350,7 @@ const openMatch = (result: typeof searchResults.value[0], match: typeof result.m
     path: result.path
   })
 
-  // Tell the code plugin to scroll to this line once the file is active
+  // Tell the code surface to scroll to this line once the file is active
   codeActor.send({
     type: 'UPDATE_STATE',
     updates: { pendingRevealLine: { filePath: result.path, line: match.line, column: match.column, lineText: match.lineText } }

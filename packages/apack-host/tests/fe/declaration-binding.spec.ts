@@ -15,7 +15,7 @@ function fixture() {
   const configure = vi.spyOn(editorExtension, 'configure');
   const isSuggestionActive = vi.fn(() => false);
   const manifest: PackManifest = { id: 'notes-pack', name: 'Notes', version: '1.0.0',
-    features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Notes', state: 'src/plugin.ts', default: true }, designation: 'notes' },
+    features: { notes: { description: 'Feature declaration fixture.', surface: { label: 'Notes', state: 'src/surface.ts', default: true }, designation: 'notes' },
       backend: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts' } }, form: { description: 'Feature declaration fixture.', settings: { schema: { type: 'object' }, defaults: {}, form: 'src/form.vue' } } },
     extensions: { settings: { preferences: { schema: { type: 'object' }, defaults: {}, form: 'src/preferences.vue' } },
       steps: { note: { node: { label: 'Note' }, fe: { colorKey: 'blue', nodeConfig: { icon: 'File', category: 'data', connectionRules: { inputs: 1, outputs: 1 } }, components: { form: 'src/form.vue' }, layout: { hasInput: true, getHeight: 'src/layout.ts#getHeight' } } }, trigger: { kind: 'trigger', node: { label: 'Trigger' } } },
@@ -26,7 +26,7 @@ function fixture() {
       dsl: { notes: { prefix: 'n', entry: 'src/schema.ts', targets: ['monaco'], globals: { foo: 'Foo' } } } } };
   expect(ManifestSchema.safeParse(manifest).success).toBe(true);
   const registration = { id: manifest.id, bindSettings,
-    features: { notes: { plugin: { label: 'Notes', state: createMachine({}) }, designation: 'notes', default: true }, form: { settingsForm: component } },
+    features: { notes: { surface: { label: 'Notes', state: createMachine({}) }, designation: 'notes', default: true }, form: { settingsForm: component } },
     settingsForms: { preferences: component }, steps: [{ type: 'note', node: { label: 'Note' }, fe: { colorKey: 'blue', nodeConfig: { icon: component, category: 'data', connectionRules: { inputs: 1, outputs: 1 } }, components: { form: component }, layout: { hasInput: true, getHeight } } }, { type: 'trigger', kind: 'trigger', node: { label: 'Trigger' } }],
     artifacts: [{ type: 'text', fe: { icon: component, component } }], blocks: [{ type: 'note', kind: 'input', fe: { component } }],
     appExtensions: { toolbar: component }, tiptapPlugins: { tools: { extensions: { example: editorExtension },
@@ -52,7 +52,7 @@ describe('frontend declaration binding', () => {
     ['null features', (r: Record<string, unknown>) => { r.features = null; }, 'features'],
     ['foreign role', (r: Record<string, unknown>) => { r.features = { notes: { designation: 'brain' }, form: {} }; }, 'designation'],
     ['changed default', (r: Record<string, unknown>) => { r.features = { notes: { designation: 'notes', default: false }, form: {} }; }, 'default'],
-    ['missing plugin', (r: Record<string, unknown>) => { r.features = { notes: { designation: 'notes', default: true }, form: {} }; }, 'plugin'],
+    ['missing surface', (r: Record<string, unknown>) => { r.features = { notes: { designation: 'notes', default: true }, form: {} }; }, 'surface'],
     ['missing form', (r: Record<string, unknown>) => { (r.features as Record<string, unknown>).form = {}; }, 'settingsForm'],
     ['invalid form', (r: Record<string, unknown>) => { (r.features as Record<string, unknown>).form = { settingsForm: null }; }, 'settingsForm'],
     ['foreign form group', (r: Record<string, unknown>) => { r.settingsForms = { foreign: {} }; }, 'settingsForms'],
@@ -98,20 +98,20 @@ describe('frontend declaration binding', () => {
 
 it('checks declared presentation and panes without resolving a component or predicate', () => {
   const { manifest, registration, component } = fixture();
-  const declaration = manifest.features!.notes.plugin!;
+  const declaration = manifest.features!.notes.surface!;
   Object.assign(declaration, { label: 'Notes', isPinned: true, icon: 'NotebookText',
     canvas: { routes: { list: 'src/list.vue', view: { entry: 'src/view.vue', load: 'lazy' } } },
     panel: 'src/panel.vue', chat: 'src/chat.vue', hotkeys: [{ action: 'open', global: false }],
     options: { headerClass: 'notes' }, fallbackPanel: { label: 'Inspect', toggle: { type: 'INSPECT' }, isShown: 'src/predicate.ts#isShown' } });
   const isShown = vi.fn();
-  Object.assign(registration.features.notes.plugin, { icon: component, isPinned: true,
+  Object.assign(registration.features.notes.surface, { icon: component, isPinned: true,
     canvas: { list: component, view: component }, panel: component, chat: component,
     hotkeys: [{ action: 'open', global: false }], options: { headerClass: 'notes' },
     fallbackPanel: { label: 'Inspect', toggle: { type: 'INSPECT' }, isShown } });
   expect(frontendBindingProblem(manifest, registration)).toBeUndefined();
   expect(isShown).not.toHaveBeenCalled();
   expect(component.render).not.toHaveBeenCalled();
-  const plugin = registration.features.notes.plugin as Record<string, unknown>;
+  const surface = registration.features.notes.surface as Record<string, unknown>;
   const changes: [string, unknown][] = [
     ['label', 'Wrong'], ['isPinned', false], ['icon', undefined], ['canvas', { list: component }],
     ['panel', undefined], ['chat', undefined], ['hotkeys', [{ action: 'other' }]],
@@ -119,26 +119,26 @@ it('checks declared presentation and panes without resolving a component or pred
     ['undeclared', true],
   ];
   for (const [field, value] of changes) {
-    const previous = plugin[field];
-    plugin[field] = value;
-    expect(frontendBindingProblem(manifest, registration), field).toContain(`plugin.${field}`);
-    if (previous === undefined) delete plugin[field]; else plugin[field] = previous;
+    const previous = surface[field];
+    surface[field] = value;
+    expect(frontendBindingProblem(manifest, registration), field).toContain(`surface.${field}`);
+    if (previous === undefined) delete surface[field]; else surface[field] = previous;
   }
   expect(frontendBindingProblem(manifest, registration)).toBeUndefined();
 });
 
-it('refuses a native replacement before granting resources and retains the accepted plugin', () => {
+it('refuses a native replacement before granting resources and retains the accepted surface', () => {
   const component = { render: vi.fn() };
-  const native = { id: 'native', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
+  const native = { id: 'native', features: { view: { description: 'Feature declaration fixture.', surface: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
   const registry = createNativeFrontendTestRegistry([native]);
-  const registration = { id: 'native', features: { view: { plugin: { label: 'Native view', state: createMachine({}), canvas: component } } } };
+  const registration = { id: 'native', features: { view: { surface: { label: 'Native view', state: createMachine({}), canvas: component } } } };
   const [accepted] = registry.registerFixture(registration);
-  native.features.view.plugin.label = 'Mutated caller';
+  native.features.view.surface.label = 'Mutated caller';
   const bindSettings = vi.fn();
   expect(() => registry.replaceFixture({ ...registration, bindSettings,
-    features: { view: { plugin: { ...registration.features.view.plugin, label: 'Changed binding' } } } })).toThrow('plugin.label');
+    features: { view: { surface: { ...registration.features.view.surface, label: 'Changed binding' } } } })).toThrow('surface.label');
   expect(bindSettings).not.toHaveBeenCalled();
-  expect(registry.getRegisteredPlugins()).toEqual([accepted]);
+  expect(registry.getRegisteredSurfaces()).toEqual([accepted]);
   expect(component.render).not.toHaveBeenCalled();
 });
 

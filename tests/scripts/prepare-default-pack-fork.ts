@@ -55,7 +55,7 @@ async function prepare(): Promise<void> {
     fs.symlinkSync(path.join(root, 'node_modules'), path.join(fork, 'node_modules'), 'dir');
     const manifest = JSON.parse(fs.readFileSync(path.join(fork, 'apack.json'), 'utf8'));
     manifest.name = 'Acceptance fork';
-    manifest.features.notes.plugin.label = 'Fork Notes';
+    manifest.features.notes.surface.label = 'Fork Notes';
     fs.writeFileSync(path.join(fork, 'apack.json'), JSON.stringify(manifest, null, 2));
     const canvas = path.join(fork, 'src/features/notes/fe/canvas.vue');
     const original = fs.readFileSync(canvas, 'utf8');

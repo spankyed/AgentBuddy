@@ -141,13 +141,13 @@ class WindowManager implements AppModule {
       window?.close();
     });
 
-    ipcMain.handle('plugin:popout', async (event, pluginId: string, title?: string) => {
-      // It reaches the popout's URL, so only a plugin's ref gets a window
-      if (!splitRef(pluginId)) {
-        throw new Error('Invalid plugin id');
+    ipcMain.handle('surface:popout', async (event, surfaceId: string, title?: string) => {
+      // It reaches the popout's URL, so only a surface's ref gets a window
+      if (!splitRef(surfaceId)) {
+        throw new Error('Invalid surface id');
       }
 
-      const existing = this.#popoutWindows.get(pluginId);
+      const existing = this.#popoutWindows.get(surfaceId);
       if (existing && !existing.isDestroyed()) {
         if (existing.isMinimized()) {
           existing.restore();
@@ -159,9 +159,9 @@ class WindowManager implements AppModule {
         return;
       }
 
-      const popout = await this.createPopoutWindow(pluginId, title);
-      this.#popoutWindows.set(pluginId, popout);
-      popout.on('closed', () => this.#popoutWindows.delete(pluginId));
+      const popout = await this.createPopoutWindow(surfaceId, title);
+      this.#popoutWindows.set(surfaceId, popout);
+      popout.on('closed', () => this.#popoutWindows.delete(surfaceId));
       if (process.env.PLAYWRIGHT_TEST !== 'true' || process.env.PLAYWRIGHT_VISIBLE === '1') {
         popout.show();
         popout.focus();
@@ -477,11 +477,11 @@ class WindowManager implements AppModule {
     });
   }
 
-  async createPopoutWindow(pluginId: string, pluginTitle?: string): Promise<BrowserWindow> {
+  async createPopoutWindow(surfaceId: string, surfaceTitle?: string): Promise<BrowserWindow> {
     const iconPath = getWindowIcon();
     const apiPort = this.#apiServer?.getStatus().port || 3001;
     const startupId = this.#apiServer?.getStatus().startupId;
-    const title = `${WINDOW_CONFIG.POPOUT_TITLE_PREFIX}-${pluginId}`;
+    const title = `${WINDOW_CONFIG.POPOUT_TITLE_PREFIX}-${surfaceId}`;
 
     const browserWindow = new BrowserWindow({
       show: false,
@@ -525,9 +525,9 @@ class WindowManager implements AppModule {
     this.attachRendererDiagnostics(browserWindow);
 
     const query = {
-      popout: 'plugin',
-      pluginId,
-      ...(pluginTitle ? { title: pluginTitle } : {}),
+      popout: 'surface',
+      surfaceId,
+      ...(surfaceTitle ? { title: surfaceTitle } : {}),
     };
 
     try {

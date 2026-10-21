@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 // Finds the CLIs the code feature runs (Claude Code, Codex, Copilot, gh): a path the user set in the code
-// plugin's settings (`cliPaths`), known install locations, then PATH.
+// surface's settings (`cliPaths`), known install locations, then PATH.
 
 import { execFile } from 'child_process'
 import { promisify } from 'util'

@@ -1,9 +1,9 @@
 /**
- * **The dev server is a second context for this plugin, and it can disagree with a build.**
+ * **The dev server is a second context for this surface, and it can disagree with a build.**
  *
  * `apack pack dev` serves a pack's frontend from `vite.createServer`, where every other spec here builds with
- * `vite.build`. The two give a plugin different `PluginContext`s, and the half that matters now is what Vite
- * does with a specifier the plugin refuses to resolve: a build emits the bare name into the chunk, while a
+ * `vite.build`. The two give a surface different `PluginContext`s, and the half that matters now is what Vite
+ * does with a specifier the surface refuses to resolve: a build emits the bare name into the chunk, while a
  * dev server runs `vite:import-analysis` over the served module and rewrites, or rejects, what it can reach.
  * An external that survived the build and not the dev server would be a pack whose frontend loads from
  * `dist` and 500s under `apack pack dev`.
@@ -29,7 +29,7 @@ import { replaceDir } from '@apackdev/host/replace-dir';
 /** A host-shared module: the pack must get the app's instance, so the server leaves it for the import map */
 const SHARED = '@apackdev/sdk/fe';
 /** A name it really exports, so the import under test is one a pack could actually write */
-const EXPORTED = 'usePlugin';
+const EXPORTED = 'useSurface';
 
 let server: Awaited<ReturnType<typeof import('vite').createServer>>;
 let packDir: string;
@@ -58,18 +58,18 @@ beforeAll(async () => {
 
 afterAll(async () => { await server?.close(); });
 
-// Through the dev environment's own plugin container, which is the context `apack pack dev` puts the plugin in —
+// Through the dev environment's own surface container, which is the context `apack pack dev` puts the surface in —
 // rather than a `/@id/` URL, whose encoding is Vite's business and not what this is about
 it('claims a host-shared module and leaves it external', async () => {
   const { pluginContainer } = server.environments.client;
 
   const resolved = await pluginContainer.resolveId(SHARED, entry);
 
-  expect(resolved?.id, `${SHARED} resolved to nothing, so the plugin never claimed it`).toBe(SHARED);
+  expect(resolved?.id, `${SHARED} resolved to nothing, so the surface never claimed it`).toBe(SHARED);
   expect(resolved?.external, `${SHARED} was resolved into the pack instead of left to the host`).toBeTruthy();
 });
 
-// The half the plugin container cannot answer. `vite:import-analysis` rewrites what it serves, and an
+// The half the surface container cannot answer. `vite:import-analysis` rewrites what it serves, and an
 // external it rewrites to `/@id/<specifier>` — which the browser resolves against the module's own `pack://`
 // URL and asks *this* server for, where nothing can answer it. So the pack's frontend has to arrive naming
 // the specifier, for the document's import map to resolve.

@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useFeatureSettings, usePlugin } from '@apackdev/sdk/fe'
+import { useFeatureSettings, useSurface } from '@apackdev/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import { useDebounce } from '@apackdev/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
@@ -34,7 +34,7 @@ import type { SettingsState } from '@apackdev/host/fe'
 
 const { updateSettings } = useSettingsSaveStatus()
 
-const settingsActor: SettingsState = usePlugin()
+const settingsActor: SettingsState = useSurface()
 const cliTestResults = useSelector(settingsActor, (state) => state.context.cliTestResults)
 
 const providers = [
@@ -48,7 +48,7 @@ const testCliProvider = (provider: string) => {
   settingsActor.send({ type: 'CLI.TEST', provider })
 }
 
-// CLI path overrides live in the code plugin's settings
+// CLI path overrides live in the code surface's settings
 const codeSettings = useFeatureSettings<{ cliPaths?: Record<string, string> }>(resolveName('code', 'default-setup'))
 const storedCliPaths = computed(() => codeSettings.value?.cliPaths)
 const cliPathValues = ref<Record<string, string>>({})

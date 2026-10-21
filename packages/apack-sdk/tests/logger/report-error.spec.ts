@@ -17,14 +17,14 @@ process.env.APACK_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime();
 
 
-/** What reached the bus: log events, sends to plugins through the bus, and events straight to the clients */
-function capture(run: () => void): { logs: LogEvent[]; toPlugins: Message[]; outgoing: Message[] } {
+/** What reached the bus: log events, sends to surfaces through the bus, and events straight to the clients */
+function capture(run: () => void): { logs: LogEvent[]; toSurfaces: Message[]; outgoing: Message[] } {
   const logs: LogEvent[] = [];
-  const toPlugins: Message[] = [];
+  const toSurfaces: Message[] = [];
   const outgoing: Message[] = [];
   const stop = [
     testRootEvents.onLog((e) => logs.push(e)),
-    testRootEvents.onPluginSend((e) => toPlugins.push(e)),
+    testRootEvents.onSurfaceSend((e) => toSurfaces.push(e)),
     testRootEvents.onOutgoing((e) => outgoing.push(e)),
   ];
   try {
@@ -32,7 +32,7 @@ function capture(run: () => void): { logs: LogEvent[]; toPlugins: Message[]; out
   } finally {
     stop.forEach((unsubscribe) => unsubscribe());
   }
-  return { logs, toPlugins, outgoing };
+  return { logs, toSurfaces, outgoing };
 }
 
 afterEach(() => {
@@ -44,13 +44,13 @@ afterEach(() => {
 describe('reportError', () => {
   const tNodeId = 'TNode-1' as EARS.EntityId;
 
-  it("with step context logs the error, sends it to the plugin playing the brain role and records it on the step's TNode", () => {
+  it("with step context logs the error, sends it to the surface playing the brain role and records it on the step's TNode", () => {
     const printed = vi.spyOn(console, 'error').mockImplementation(() => {});
     testPacks.designations.set('brain', 'default-setup/brain');
     // The step's TNode, holding what the step ran with
     untypedTx(tNodeId, true).put('entityType', 'TNode').put('nodeAttributes', { input: 'hello' });
     let returned: ReturnType<typeof reportError>;
-    const { logs, toPlugins, outgoing } = capture(() => {
+    const { logs, toSurfaces, outgoing } = capture(() => {
       returned = reportError({
         error: new Error('model failed'),
         source: 'brain-llm',
@@ -63,9 +63,9 @@ describe('reportError', () => {
     expect(logs).toEqual([expect.objectContaining({ level: 'error', source: 'step-runtime', message: 'model failed', stack })]);
     // A log event, printed once as every log event is; the flow shows it, so there's no system error
     expect(printed).toHaveBeenCalledTimes(1);
-    // The plugin's ref: a bare name is no plugin's, and the bus would drop it. `via` is the step that reported it,
+    // The surface's ref: a bare name is no surface's, and the bus would drop it. `via` is the step that reported it,
     // so a drop names the step rather than nothing; there is no pack here to put in `from`.
-    expect(toPlugins).toEqual([{ to: 'default-setup/brain', call: expect.any(String), event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! }, via: 'brain-llm' }]);
+    expect(toSurfaces).toEqual([{ to: 'default-setup/brain', call: expect.any(String), event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! }, via: 'brain-llm' }]);
     expect(outgoing).toEqual([]);
     expect(untypedQx(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
       input: 'hello',
@@ -74,13 +74,13 @@ describe('reportError', () => {
     expect(takeSystemErrors()).toEqual([]);
   });
 
-  it('sends a step error to no plugin when none plays the brain role, still recording it', () => {
+  it('sends a step error to no surface when none plays the brain role, still recording it', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { toPlugins } = capture(() => reportError({
+    const { toSurfaces } = capture(() => reportError({
       error: new Error('model failed'),
       step: { phase: 'llm.execute', nodeId: 'Node-1' as EARS.EntityId, nodeType: 'llm', eventType: 'user.message' },
     }));
-    expect(toPlugins).toEqual([]);
+    expect(toSurfaces).toEqual([]);
   });
 
   it('redacts key-shaped strings a provider error quotes', () => {
@@ -95,7 +95,7 @@ describe('reportError', () => {
   it('without step context logs a system error and sends it to the app to show', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const error = new Error('boom');
-    const { logs, toPlugins, outgoing } = capture(() => {
+    const { logs, toSurfaces, outgoing } = capture(() => {
       expect(reportError({ error, source: 'notes', title: 'Could not save', operation: 'save' })).toBeUndefined();
     });
     const event = {
@@ -106,7 +106,7 @@ describe('reportError', () => {
     expect(outgoing).toEqual([{ to: 'host/application', event, via: 'notes' }]);
     expect(takeSystemErrors()).toEqual([event]);
     expect(logs).toEqual([expect.objectContaining({ level: 'error', source: 'notes', message: 'boom', stack: error.stack })]);
-    expect(toPlugins).toEqual([]);
+    expect(toSurfaces).toEqual([]);
   });
 
   // A report with no source still says where it came from, rather than falling back to nothing

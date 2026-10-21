@@ -24,7 +24,7 @@ export interface ReportErrorInput {
   source?: string;
   title?: string;
   /**
-   * The verb that was attempted: `setPackEnabled`, `broadcastToPlugin`, `sendToSystem`. A reader filters on it
+   * The verb that was attempted: `setPackEnabled`, `broadcastToSurface`, `sendToSystem`. A reader filters on it
    * to pick out one kind of report from a list of them, so it names **one** fact and keeps naming it —
    * `undeclared-incoming.spec.ts` separates the bus's inward reports from its outward ones this way, and the
    * E2E fixture collects the outward ones to fail a test on a dropped send.
@@ -46,10 +46,10 @@ export interface ReportErrorInput {
   /**
    * How loudly the app shows it. `fatal` replaces the window with an error page, `error` raises a
    * toast, and `diagnostic` does neither: it is logged and recorded like the others, and reaches the
-   * Logs plugin and `takeSystemErrors()` the same way, but it does not interrupt.
+   * Logs surface and `takeSystemErrors()` the same way, but it does not interrupt.
    *
    * `diagnostic` is for a report whose reader is whoever is building the app or a pack — a send to a
-   * plugin nobody declares, say. The person using the app cannot act on it, and a toast reading
+   * surface nobody declares, say. The person using the app cannot act on it, and a toast reading
    * "Something went wrong" over a correct action of theirs costs more than it tells anyone.
    */
   severity?: SystemErrorSeverity;
@@ -62,7 +62,7 @@ export interface ReportErrorInput {
 /** A system error's report, without a step */
 export type ReportSystemErrorInput = Omit<ReportErrorInput, 'step'>;
 
-/** What the app shows for a system error: sent to the `host/application` plugin */
+/** What the app shows for a system error: sent to the `host/application` surface */
 export type SystemErrorEvent = {
   type: 'SYSTEM_ERROR';
   errorId: string;
@@ -80,7 +80,7 @@ export type SystemErrorEvent = {
 
 /**
  * Reports an error: logs it and shows it to the user. Without `step` the app shows it as a system error.
- * With `step` it's a flow step's error: it's also recorded on the step's TNode, sent to the plugin playing the
+ * With `step` it's a flow step's error: it's also recorded on the step's TNode, sent to the surface playing the
  * `brain` role (`BRAIN_RUNTIME_ERROR`) and returned.
  */
 export function reportError(input: ReportErrorInput & { step: StepErrorContext }): StepRuntimeError;
@@ -183,8 +183,8 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
     }
   }
 
-  // The flow shows it in the plugin playing the brain role, if any does — sent as the step that reported it, so a
+  // The flow shows it in the surface playing the brain role, if any does — sent as the step that reported it, so a
   // drop names the step rather than nothing
-  if (hasDesignation('brain')) createSends({ via: source }).broadcastToPlugin(getDesignated('brain'), { type: 'BRAIN_RUNTIME_ERROR', error: runtimeError });
+  if (hasDesignation('brain')) createSends({ via: source }).broadcastToSurface(getDesignated('brain'), { type: 'BRAIN_RUNTIME_ERROR', error: runtimeError });
   return runtimeError;
 }

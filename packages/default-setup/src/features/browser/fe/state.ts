@@ -3,7 +3,7 @@ import type { BrowserSettings } from '#generated/types.ts';
 import type { Bookmark, BrowserContext, BrowserInboxEvent, BrowserTab, BrowserTabPersistedId } from './contract.ts';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
 import { sendToSystem } from '#generated/events.ts';
-import { openPlugin } from '#generated/fe.ts';
+import { openSurface } from '#generated/fe.ts';
 import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@apackdev/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
@@ -286,7 +286,7 @@ const browserState = setup({
           // The user's choice, in this feature's own settings
           actions: ({ context, event }) => {
             if (context.settings.openLinksInApp ?? true) {
-              openPlugin('browser', { type: 'TAB.CREATE', url: event.url });
+              openSurface('browser', { type: 'TAB.CREATE', url: event.url });
             } else {
               window.electronAPI?.shell?.openExternal(event.url);
             }
@@ -581,7 +581,7 @@ const browserState = setup({
                 }
 
                 restoreTabsRemaining = normalized.tabs.length;
-                // Create tabs lazily — don't load URLs until the user opens the browser plugin
+                // Create tabs lazily — don't load URLs until the user opens the browser surface
                 Promise.all(normalized.tabs.map(saved =>
                   window.electronAPI?.browser.createTab(saved.url, {
                     lazy: true,

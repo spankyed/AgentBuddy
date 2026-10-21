@@ -7,7 +7,7 @@ import { boundHost } from '../runtime/host-runtime.ts';
 import type { SettingsDefinition } from './settings-definition.ts';
 import type { DeclarationData } from './catalog-view.ts';
 import type { ReferenceDeclarations } from './reference-declaration.ts';
-import type { PluginDeclaration } from './plugin-declaration.ts';
+import type { SurfaceDeclaration } from './surface-declaration.ts';
 import type { FrontendDeclaration } from './frontend-declaration.ts';
 
 /** Native composition data, admitted independently of its executable bindings. */
@@ -30,7 +30,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
   dsl?: Record<string, DeclarationData<z.infer<typeof DslEntrySchema>>>;
   /** Compiled type data supplied by native composition, independently of frontend activation. */
   dslDefinitions?: Record<string, string>;
-  /** Compiled entity wire name to local plugin feature, supplied by native composition. */
+  /** Compiled entity wire name to local surface feature, supplied by native composition. */
   entityDestinations?: Record<string, string>;
   /** Static transport contracts, including native inboxes without contributed UI panes. */
   eventContracts?: import('./event-contracts.ts').PackEventContracts;
@@ -46,7 +46,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     entities?: Record<string, string | null>;
     designation?: string;
     settings?: SettingsDefinition;
-    plugin?: PluginDeclaration;
+    surface?: SurfaceDeclaration;
     references?: ReferenceDeclarations;
     services?: Record<string, string>;
     repositories?: Record<string, string>;

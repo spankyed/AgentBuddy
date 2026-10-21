@@ -1,7 +1,7 @@
-// A component's send says which plugin made it.
+// A component's send says which surface made it.
 //
 // This is the one path that reaches a machine's actions from outside a delivery. The bus names the message it
-// routes to a system and the shell names the one it hands a plugin, but a click goes straight to the actor — so
+// routes to a system and the shell names the one it hands a surface, but a click goes straight to the actor — so
 // an action that then sent to a system stamped no `Message.sender`, and the system answering it with `reply` had
 // no address and threw. For the commonest kind of request in the app.
 //
@@ -11,14 +11,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createSSRApp, defineComponent, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { assign, createActor, createMachine, type AnyActorRef } from 'xstate';
-import { PluginScope, usePlugin } from '../../src/fe/actor-system.ts';
+import { SurfaceScope, useSurface } from '../../src/fe/actor-system.ts';
 import { _currentDelivery, type _Delivery } from '../../src/events/delivery.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 
 /** What the delivery scope held each time the actor was sent to */
 let scopes: (_Delivery | undefined)[] = [];
 
-/** A plugin actor that records the scope its send ran in, which is the whole subject */
+/** A surface actor that records the scope its send ran in, which is the whole subject */
 const recording = (id: string) => ({
   id,
   send: () => { scopes.push(_currentDelivery()); },
@@ -61,10 +61,10 @@ afterEach(() => {
   unbindFeHost();
 });
 
-/** A component that does what a click handler does: send to its own plugin */
+/** A component that does what a click handler does: send to its own surface */
 const Sends = defineComponent({
   setup: () => {
-    usePlugin<AnyActorRef>().send({ type: 'FETCH' });
+    useSurface<AnyActorRef>().send({ type: 'FETCH' });
     return () => '';
   },
 });
@@ -72,18 +72,18 @@ const Sends = defineComponent({
 const render = (root: () => ReturnType<typeof h>) => renderToString(createSSRApp(defineComponent({ setup: () => root })));
 
 describe("a component's send", () => {
-  it('runs in a delivery naming its own plugin', async () => {
-    await render(() => h(PluginScope, { plugin: 'memo-pack/memos' }, () => h(Sends)));
+  it('runs in a delivery naming its own surface', async () => {
+    await render(() => h(SurfaceScope, { surface: 'memo-pack/memos' }, () => h(Sends)));
 
     expect(scopes).toHaveLength(1);
-    expect(scopes[0]?.receiver, 'so an answer can come back to this plugin').toBe('memo-pack/memos');
+    expect(scopes[0]?.receiver, 'so an answer can come back to this surface').toBe('memo-pack/memos');
   });
 
-  // Two plugins' components in one render: each send must name its own, not whichever rendered last
-  it('names the plugin whose component sent it', async () => {
+  // Two surfaces' components in one render: each send must name its own, not whichever rendered last
+  it('names the surface whose component sent it', async () => {
     await render(() => h('div', [
-      h(PluginScope, { plugin: 'memo-pack/memos' }, () => h(Sends)),
-      h(PluginScope, { plugin: 'default-setup/notes' }, () => h(Sends)),
+      h(SurfaceScope, { surface: 'memo-pack/memos' }, () => h(Sends)),
+      h(SurfaceScope, { surface: 'default-setup/notes' }, () => h(Sends)),
     ]));
 
     expect(scopes.map((scope) => scope?.receiver)).toEqual(['memo-pack/memos', 'default-setup/notes']);
@@ -94,7 +94,7 @@ describe("a component's send", () => {
    * in place, or whatever ran next would answer the wrong asker.
    */
   it('leaves no scope behind once the send has returned', async () => {
-    await render(() => h(PluginScope, { plugin: 'memo-pack/memos' }, () => h(Sends)));
+    await render(() => h(SurfaceScope, { surface: 'memo-pack/memos' }, () => h(Sends)));
 
     expect(_currentDelivery(), 'nothing is being handled out here').toBeUndefined();
   });
@@ -104,7 +104,7 @@ describe("a component's send", () => {
    *
    * Only `send` is wrapped; everything else is passed through bound to the actor. `useSelector` is built on
    * exactly these two — it calls `subscribe` and reads `getSnapshot` — so a Proxy that broke either would make
-   * every selector in every plugin go stale, silently and everywhere. (`useSelector` itself is not exercised
+   * every selector in every surface go stale, silently and everywhere. (`useSelector` itself is not exercised
    * here: `@xstate/vue` is the renderer's dependency, not this package's.)
    */
   it('passes getSnapshot and subscribe through to the actor', async () => {
@@ -114,16 +114,16 @@ describe("a component's send", () => {
 
     const Reads = defineComponent({
       setup: () => {
-        const plugin = usePlugin<AnyActorRef>();
-        plugin.subscribe((snapshot) => { seen.push((snapshot.context as { count: number }).count); });
-        readBefore = (plugin.getSnapshot().context as { count: number }).count;
-        plugin.send({ type: 'BUMP' });
-        readAfter = (plugin.getSnapshot().context as { count: number }).count;
+        const surface = useSurface<AnyActorRef>();
+        surface.subscribe((snapshot) => { seen.push((snapshot.context as { count: number }).count); });
+        readBefore = (surface.getSnapshot().context as { count: number }).count;
+        surface.send({ type: 'BUMP' });
+        readAfter = (surface.getSnapshot().context as { count: number }).count;
         return () => '';
       },
     });
 
-    await render(() => h(PluginScope, { plugin: 'memo-pack/counter' }, () => h(Reads)));
+    await render(() => h(SurfaceScope, { surface: 'memo-pack/counter' }, () => h(Reads)));
 
     expect(readBefore, 'the actor was read through the wrapper').toBe(0);
     expect(readAfter, 'and the send it made reached the real actor').toBe(1);
@@ -134,7 +134,7 @@ describe("a component's send", () => {
    * Its members keep their identity too, which is what stops this depending on a library's internals.
    *
    * `@xstate/vue` reads `getSnapshot` and `subscribe` once, so a fresh binding per read happens to work there —
-   * but a version that memoised on identity would make every selector in every plugin stop updating, silently
+   * but a version that memoised on identity would make every selector in every surface stop updating, silently
    * and visually only. Keeping the bindings removes the question rather than re-checking it on each bump.
    */
   it('hands back the same member each time it is read', async () => {
@@ -142,32 +142,32 @@ describe("a component's send", () => {
     let sendStable: boolean | undefined;
     const Reads = defineComponent({
       setup: () => {
-        const plugin = usePlugin<AnyActorRef>();
-        stable = plugin.getSnapshot === plugin.getSnapshot && plugin.subscribe === plugin.subscribe;
-        sendStable = plugin.send === plugin.send;
+        const surface = useSurface<AnyActorRef>();
+        stable = surface.getSnapshot === surface.getSnapshot && surface.subscribe === surface.subscribe;
+        sendStable = surface.send === surface.send;
         return () => '';
       },
     });
 
-    await render(() => h(PluginScope, { plugin: 'memo-pack/counter' }, () => h(Reads)));
+    await render(() => h(SurfaceScope, { surface: 'memo-pack/counter' }, () => h(Reads)));
 
     expect(stable, 'a selector may hold on to either').toBe(true);
     expect(sendStable, 'and the wrapped send is one function, not one per read').toBe(true);
   });
 
-  // The wrapper is per actor, so a component calling usePlugin() twice compares equal either way
+  // The wrapper is per actor, so a component calling useSurface() twice compares equal either way
   it('hands back the same object each time', async () => {
     let first: unknown;
     let second: unknown;
     const Twice = defineComponent({
       setup: () => {
-        first = usePlugin<AnyActorRef>();
-        second = usePlugin<AnyActorRef>();
+        first = useSurface<AnyActorRef>();
+        second = useSurface<AnyActorRef>();
         return () => '';
       },
     });
 
-    await render(() => h(PluginScope, { plugin: 'memo-pack/memos' }, () => h(Twice)));
+    await render(() => h(SurfaceScope, { surface: 'memo-pack/memos' }, () => h(Twice)));
 
     expect(first).toBe(second);
   });

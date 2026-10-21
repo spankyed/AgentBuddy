@@ -17,7 +17,7 @@ import { assertPrebuiltPackCurrent, packArchiveAcceptance } from './prebuilt-pac
 export interface AppDriver {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
   getState: () => Promise<unknown>;
-  getContext: () => Promise<{ activePluginId: string; pluginIds: string[] }>;
+  getContext: () => Promise<{ activeSurfaceId: string; surfaceIds: string[] }>;
   screenshot: (name: string) => Promise<Buffer>;
   /**
    * An answer a driving run is meant to be *read* for, rather than watched: written to
@@ -29,9 +29,9 @@ export interface AppDriver {
    * agreed on per script.
    */
   report: (name: string, value: unknown) => Promise<string>;
-  navigate: (pluginId: string) => Promise<void>;
+  navigate: (surfaceId: string) => Promise<void>;
   waitForState: (check: string, timeout?: number) => Promise<void>;
-  waitForPlugin: (pluginId: string, timeout?: number) => Promise<void>;
+  waitForPlugin: (surfaceId: string, timeout?: number) => Promise<void>;
 }
 
 export interface CreateTestOptions extends TestHostOptions {
@@ -68,8 +68,8 @@ function resolveApackBin(app: AppLaunch, packDir: string): string {
   throw new Error('Could not find the apack CLI to build the pack. Install it in the pack (npm i -D @apackdev/cli) or run the tests with `apack pack test`.');
 }
 
-let _packManifest: { id: string; pluginIds: string[] } | null | undefined;
-function getPackManifest(): { id: string; pluginIds: string[] } | null {
+let _packManifest: { id: string; surfaceIds: string[] } | null | undefined;
+function getPackManifest(): { id: string; surfaceIds: string[] } | null {
   if (_packManifest !== undefined) return _packManifest;
   if (!process.env.PACK_DIR) { _packManifest = null; return null; }
   const manifestPath = path.join(path.resolve(process.env.PACK_DIR), 'apack.json');
@@ -77,9 +77,9 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
   _packManifest = {
     id: manifest.id,
-    // The ids the plugins run under: a plugin runs at `<packId>/<featureId>`, as a system does
-    pluginIds: Object.entries(manifest.features ?? {})
-      .filter(([, f]: [string, any]) => f.plugin)
+    // The ids the surfaces run under: a surface runs at `<packId>/<featureId>`, as a system does
+    surfaceIds: Object.entries(manifest.features ?? {})
+      .filter(([, f]: [string, any]) => f.surface)
       .map(([id]) => resolveName(id, manifest.id)),
   };
   return _packManifest;
@@ -164,15 +164,15 @@ function captureOutput(app: ElectronApplication, logFile?: string): void {
  * Waits for the pack under test to have been loaded and registered by the app's backend.
  *
  * Nothing else in this fixture observes the backend: an apply reports only its own failures, and the
- * plugin wait below covers a pack with a frontend. A backend-only pack whose systems never registered
+ * surface wait below covers a pack with a frontend. A backend-only pack whose systems never registered
  * — an incompatible hostVersion, an unsupported layout, a throw in its runtime — would otherwise pass
  * its whole suite while dead, because every test it runs asks the app about something else.
  */
 /**
- * The ref a spec's plugin name is, as the pack under test's own code names plugins: its features by id, any
+ * The ref a spec's surface name is, as the pack under test's own code names surfaces: its features by id, any
  * other (the host's too) as `<packId>/<featureId>`.
  */
-function resolvePlugin(name: string): string {
+function resolveSurface(name: string): string {
   return resolveName(name, getPackManifest()?.id);
 }
 
@@ -304,8 +304,8 @@ export function createAppDriver(page: Page, screenshotDir: string): AppDriver {
       return page.evaluate(() => {
         const snap = (window as any).applicationState?.getSnapshot();
         return {
-          activePluginId: snap?.context?.activePlugin?.id ?? '',
-          pluginIds: (snap?.context?.plugins ?? []).map((p: any) => p.id),
+          activeSurfaceId: snap?.context?.activeSurface?.id ?? '',
+          surfaceIds: (snap?.context?.surfaces ?? []).map((p: any) => p.id),
         };
       });
     },
@@ -328,27 +328,27 @@ export function createAppDriver(page: Page, screenshotDir: string): AppDriver {
       return filePath;
     },
   
-    navigate: async (pluginId) => {
-      const id0 = resolvePlugin(pluginId);
+    navigate: async (surfaceId) => {
+      const id0 = resolveSurface(surfaceId);
       await page.evaluate((id) => {
-        (window as any).applicationState.send({ type: 'SELECT_PLUGIN', plugin: id });
+        (window as any).applicationState.send({ type: 'SELECT_PLUGIN', surface: id });
       }, id0);
       await page.waitForFunction((id) => {
         const snap = (window as any).applicationState?.getSnapshot();
-        if (snap?.context?.activePlugin?.id !== id) return false;
+        if (snap?.context?.activeSurface?.id !== id) return false;
         // The state switching is not the canvas being on screen: Vue renders on the next flush, and a
         // test that clicks or screenshots straight after a navigate needs that flush to have happened.
-        // data-active-plugin (WebApp.vue) is written in the flush that swaps the canvas.
-        return document.querySelector(`[data-active-plugin="${id}"]`) !== null;
+        // data-active-surface (WebApp.vue) is written in the flush that swaps the canvas.
+        return document.querySelector(`[data-active-surface="${id}"]`) !== null;
       }, id0, { timeout: 10_000 });
     },
   
-    waitForPlugin: async (pluginId, timeout = 30_000) => {
-      // A host plugin is known once the app has any; a pack's registers later, at its ref
-      await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).length > 0, null, { timeout });
-      const id = resolvePlugin(pluginId);
+    waitForPlugin: async (surfaceId, timeout = 30_000) => {
+      // A host surface is known once the app has any; a pack's registers later, at its ref
+      await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.surfaces ?? []).length > 0, null, { timeout });
+      const id = resolveSurface(surfaceId);
       await page.waitForFunction((target) =>
-        ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).some((p: { id: string }) => p.id === target), id, { timeout });
+        ((window as any).applicationState?.getSnapshot()?.context?.surfaces ?? []).some((p: { id: string }) => p.id === target), id, { timeout });
     },
   
     waitForState: async (check, timeout = 10_000) => {
@@ -405,7 +405,7 @@ export function createTest(options: CreateTestOptions = {}) {
           const manifest = getPackManifest();
           if (!manifest) throw new Error(`No apack.json found in PACK_DIR: ${packDir}`);
           // PACK_ARCHIVE names a packed .tgz to install as it is, so a run can exercise the build a
-          // release ships rather than another build of the same source. Everything else — the plugin ids
+          // release ships rather than another build of the same source. Everything else — the surface ids
           // the fixture waits for, the screenshot directory — still comes from PACK_DIR.
           const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
           const acceptArchive = archive ? packArchiveAcceptance(packDir, !!process.env.APACK_PACK_RELEASE) : undefined;
@@ -541,7 +541,7 @@ export function createTest(options: CreateTestOptions = {}) {
       const rendererErrors: string[] = [];
       let rejectPackFeFailed: (err: Error) => void = () => {};
       const packFeFailed = new Promise<never>((_, reject) => { rejectPackFeFailed = reject; });
-      packFeFailed.catch(() => {}); // only observed while waiting for pack plugins
+      packFeFailed.catch(() => {}); // only observed while waiting for pack surfaces
       const onPageError = (error: Error) => {
         console.error('[page error]', error);
         rendererErrors.push(`[page error] ${error.stack ?? error.message}`);
@@ -580,7 +580,7 @@ export function createTest(options: CreateTestOptions = {}) {
       /**
        * Every send the bus dropped during the test, collected from the app's own SYSTEM_ERROR events.
        *
-       * A send to a plugin nobody declares is the failure the outgoing check exists to catch, and it is
+       * A send to a surface nobody declares is the failure the outgoing check exists to catch, and it is
        * reported quietly (`diagnostic`, so it raises no toast) — which means without this it would sit
        * in the log and fail nothing. `takeSystemErrors()` does the same job for unit tests; this is its
        * counterpart for a running app.
@@ -592,7 +592,7 @@ export function createTest(options: CreateTestOptions = {}) {
         win.applicationState?.system?.inspect?.((inspection: any) => {
           const event = inspection?.event;
           if (inspection?.type !== '@xstate.event' || event?.type !== 'SYSTEM_ERROR') return;
-          if (event.operation === 'broadcastToPlugin') win.__droppedSends.push(String(event.message ?? ''));
+          if (event.operation === 'broadcastToSurface') win.__droppedSends.push(String(event.message ?? ''));
         });
       });
 
@@ -604,15 +604,15 @@ export function createTest(options: CreateTestOptions = {}) {
           throw describeFailure(`Pack ${manifest!.id} failed to apply its content:\n${applyError}`, electronApp, rendererErrors);
         }
         if (manifest) await waitForPackBackend(electronApp, manifest.id);
-        if (manifest && manifest.pluginIds.length > 0) {
-          for (const pluginId of manifest.pluginIds) {
+        if (manifest && manifest.surfaceIds.length > 0) {
+          for (const surfaceId of manifest.surfaceIds) {
             // Fail on the captured loader error as soon as it appears instead of timing out later
-            await waitOrDescribe(`Pack plugin "${pluginId}" did not load within 30s`, Promise.race([
+            await waitOrDescribe(`Pack surface "${surfaceId}" did not load within 30s`, Promise.race([
               packFeFailed,
               page.waitForFunction((id) => {
                 const snap = (window as any).applicationState?.getSnapshot();
-                return snap?.context?.plugins?.some((p: any) => p.id === id);
-              }, pluginId, { timeout: 30_000 }),
+                return snap?.context?.surfaces?.some((p: any) => p.id === id);
+              }, surfaceId, { timeout: 30_000 }),
             ]));
           }
         }
@@ -628,7 +628,7 @@ export function createTest(options: CreateTestOptions = {}) {
       const dropped: string[] = await page.evaluate(() => (window as any).__droppedSends ?? []).catch(() => []);
       if (dropped.length > 0) {
         throw describeFailure(
-          `The bus dropped ${dropped.length} send(s) to plugins during this test:\n  ${[...new Set(dropped)].join('\n  ')}`,
+          `The bus dropped ${dropped.length} send(s) to surfaces during this test:\n  ${[...new Set(dropped)].join('\n  ')}`,
           electronApp,
           rendererErrors,
         );

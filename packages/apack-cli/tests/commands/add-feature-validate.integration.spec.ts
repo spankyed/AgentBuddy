@@ -49,8 +49,8 @@ afterEach(async () => {
 const readManifest = () => JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf-8'));
 
 /**
- * The workspace's modules, so the pack resolves `@apackdev/sdk` as an installed one does. A plugin's contract names
- * `PluginInbox`, and validation runs code generation, which can't read an inbox whose type didn't resolve.
+ * The workspace's modules, so the pack resolves `@apackdev/sdk` as an installed one does. A surface's contract names
+ * `SurfaceInbox`, and validation runs code generation, which can't read an inbox whose type didn't resolve.
  */
 function installDependencies() {
   const link = path.join(pack, 'node_modules');
@@ -91,13 +91,13 @@ describe('apack pack add feature', () => {
     const sources = ['fe/state.ts', 'be/system.ts'].map((file) => fs.readFileSync(path.join(feature, file), 'utf-8')).join('\n');
     expect(sources).not.toMatch(/busId|system-ids|demo-pack\./);
     expect(fs.readFileSync(path.join(feature, 'fe', 'state.ts'), 'utf-8')).toContain("export const id = 'memos';");
-    expect(fs.existsSync(path.join(feature, 'fe', 'plugin.ts'))).toBe(false);
-    expect(JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf8')).features.memos.plugin).toMatchObject({ label: 'Memos', state: 'src/features/memos/fe/state.ts', canvas: 'src/features/memos/fe/canvas/list.vue' });
+    expect(fs.existsSync(path.join(feature, 'fe', 'surface.ts'))).toBe(false);
+    expect(JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf8')).features.memos.surface).toMatchObject({ label: 'Memos', state: 'src/features/memos/fe/state.ts', canvas: 'src/features/memos/fe/canvas/list.vue' });
   });
 
-  // A plugin's contract declares its inbox with `PluginInbox`, so reading one takes the pack's @apackdev/sdk. Without
+  // A surface's contract declares its inbox with `SurfaceInbox`, so reading one takes the pack's @apackdev/sdk. Without
   // it the type collapses to `any`, which has no properties — codegen used to read that as an inbox open to nothing
-  // and generate a pack whose plugin silently received none of what it declares. It stops and says so now, and
+  // and generate a pack whose surface silently received none of what it declares. It stops and says so now, and
   // `init` puts `npm install` before `apack pack add feature` for exactly this reason.
   it("keeps the scaffold of a pack whose dependencies aren't installed, and says npm install regenerates", async () => {
     await addFeature(['memos', '--description', 'Manage memos.'], pack);

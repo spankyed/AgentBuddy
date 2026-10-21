@@ -8,7 +8,7 @@ const manifest = ManifestSchema.parse({
   features: {
     notes: { description: 'Feature declaration fixture.',
       designation: 'notes', system: { entry: 'system.ts' },
-      plugin: { label: 'Fixture', state: 'plugin.ts', defaultVisible: false },
+      surface: { label: 'Fixture', state: 'surface.ts', defaultVisible: false },
       services: { notes: 'notes.ts#notes' }, repositories: { noteQueries: 'notes.ts#queries' },
     },
     preferences: { description: 'Feature declaration fixture.',},
@@ -18,7 +18,7 @@ const manifest = ManifestSchema.parse({
 
 function binding() {
   return { features: {
-    notes: { designation: 'notes', system: { machine: {}, receives: [] }, plugin: { receives: [] }, services: ['notes'] },
+    notes: { designation: 'notes', system: { machine: {}, receives: [] }, surface: { receives: [] }, services: ['notes'] },
     preferences: {},
   }, services: { notes: {}, shared: {} }, repositories: { noteQueries: {} } };
 }
@@ -26,7 +26,7 @@ function binding() {
 it('accepts exactly declared identities independently of registration order', () => {
   const registration = binding();
   registration.services = { shared: {}, notes: {} };
-  expect(backendBindingProblem(manifest, registration, { notes: { system: { incoming: [], outgoing: [] }, plugin: { receives: [] } } })).toBeUndefined();
+  expect(backendBindingProblem(manifest, registration, { notes: { system: { incoming: [], outgoing: [] }, surface: { receives: [] } } })).toBeUndefined();
 });
 
 it.each([
@@ -34,7 +34,7 @@ it.each([
   ['missing feature', (value: ReturnType<typeof binding>) => Reflect.deleteProperty(value.features, 'preferences'), 'features'],
   ['role', (value: ReturnType<typeof binding>) => { value.features.notes.designation = 'other'; }, 'features.notes.designation'],
   ['system', (value: ReturnType<typeof binding>) => Reflect.deleteProperty(value.features.notes, 'system'), 'features.notes.system'],
-  ['plugin', (value: ReturnType<typeof binding>) => Reflect.deleteProperty(value.features.notes, 'plugin'), 'features.notes.plugin'],
+  ['surface', (value: ReturnType<typeof binding>) => Reflect.deleteProperty(value.features.notes, 'surface'), 'features.notes.surface'],
   ['feature service', (value: ReturnType<typeof binding>) => { value.features.notes.services = ['shared']; }, 'features.notes.services'],
   ['duplicate feature service', (value: ReturnType<typeof binding>) => { value.features.notes.services = ['notes', 'notes']; }, 'features.notes.services'],
   ['extra service', (value: ReturnType<typeof binding>) => Object.assign(value.services, { ghost: {} }), 'services'],
@@ -44,11 +44,11 @@ it.each([
 ] as const)('refuses a mismatched %s and identifies the owner and contribution', (_name, change, path) => {
   const registration = binding();
   change(registration);
-  expect(backendBindingProblem(manifest, registration, { notes: { system: { incoming: [], outgoing: [] }, plugin: { receives: [] } } })).toBe(`Pack "example" runtime ${path} does not match its accepted declarations`);
+  expect(backendBindingProblem(manifest, registration, { notes: { system: { incoming: [], outgoing: [] }, surface: { receives: [] } } })).toBe(`Pack "example" runtime ${path} does not match its accepted declarations`);
 });
 
 it.each([null, [], { features: [] }, { features: { notes: null, preferences: {} } }])('refuses malformed runtime records: %j', registration => {
-  expect(backendBindingProblem(manifest, registration, { notes: { system: { incoming: [], outgoing: [] }, plugin: { receives: [] } } })).toBeDefined();
+  expect(backendBindingProblem(manifest, registration, { notes: { system: { incoming: [], outgoing: [] }, surface: { receives: [] } } })).toBeDefined();
 });
 
 it.each(['features', 'services', 'repositories'])('refuses explicit null %s even when nothing is declared', key => {

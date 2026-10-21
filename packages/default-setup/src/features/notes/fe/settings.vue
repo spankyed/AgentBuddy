@@ -193,7 +193,7 @@
 
 <script setup lang="ts">
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, useSurface } from '@apackdev/sdk/fe'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 
 import { ref } from 'vue'
@@ -236,7 +236,7 @@ const updatePosition = (value: 'left' | 'right') => {
 }
 
 // Get notes actor and state via selectors
-const notesActor: NotesState = usePlugin()
+const notesActor: NotesState = useSurface()
 
 // Import state
 const isImporting = useSelector(notesActor, (state) => state.context.notesImport.status === 'importing')

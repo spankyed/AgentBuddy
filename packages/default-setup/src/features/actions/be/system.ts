@@ -1,7 +1,7 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { broadcastToPlugin } from '#generated/events.ts';
-// Cross-plugin send: the flows plugin also receives action events
+import { broadcastToSurface } from '#generated/events.ts';
+// Cross-surface send: the flows surface also receives action events
 import { setup } from 'xstate';
 import type { Reply } from '@apackdev/sdk/events';
 import { defineSystem } from '@apackdev/sdk/framework';
@@ -22,7 +22,7 @@ import { exportActions } from './repository/export-actions.ts';
  * data the import changed is separate news and stays a broadcast.
  */
 const answer = (reply: Reply<OutgoingActionEvents> | undefined, event: OutgoingActionEvents): void =>
-  (reply ? reply(event) : broadcastToPlugin('actions', event));
+  (reply ? reply(event) : broadcastToSurface('actions', event));
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('actions');
@@ -30,15 +30,15 @@ const logger = createLogger('actions');
 export const actionsSpec = defineSystem<Contract>();
 
 /**
- * Broadcasts an action event to the actions plugin, and to the flows plugin the three it declares it takes: the
+ * Broadcasts an action event to the actions surface, and to the flows surface the three it declares it takes: the
  * flows editor keeps its action list current from these. The other eight are between this system and its own
- * plugin, so narrowing here is what the contract asks for rather than a special case.
+ * surface, so narrowing here is what the contract asks for rather than a special case.
  */
 const FLOWS_TAKES = ['ACTION_CREATED', 'ACTION_UPDATED', 'ACTION_DELETED'] as const;
 type FlowsAction = Extract<OutgoingActionEvents, { type: (typeof FLOWS_TAKES)[number] }>;
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
-  broadcastToPlugin('actions', event);
-  if ((FLOWS_TAKES as readonly string[]).includes(event.type)) broadcastToPlugin('flows', event as FlowsAction);
+  broadcastToSurface('actions', event);
+  if ((FLOWS_TAKES as readonly string[]).includes(event.type)) broadcastToSurface('flows', event as FlowsAction);
 };
 
 export const actionsSystem = setup({
@@ -48,7 +48,7 @@ export const actionsSystem = setup({
       const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = featureSettings.forFeature('actions').get();
       
-      broadcastToPlugin('actions', { 
+      broadcastToSurface('actions', { 
         type: 'ACTIONS_LISTED',
         data: {
           ...connectedData,
@@ -60,7 +60,7 @@ export const actionsSystem = setup({
       const ev = actionsSpec.typeOf('FETCH_ACTIONS_PAGE', event);
       const data = repository.actionQueries.connectedData(ev.page || 1);
 
-      broadcastToPlugin('actions', {
+      broadcastToSurface('actions', {
         type: 'ACTIONS_PAGE_LOADED',
         data: {
           actions: data.actions,
@@ -71,14 +71,14 @@ export const actionsSystem = setup({
     },
     fetchAllActions: () => {
       const allActions = repository.actionQueries.all();
-      broadcastToPlugin('actions', {
+      broadcastToSurface('actions', {
         type: 'ACTIONS_ALL_LOADED',
         data: { actions: allActions }
       });
     },
     /**
      * **Answered, not broadcast**, because a broadcast cannot be correlated by anything this event carries.
-     * Sent to every window's actions plugin it would be admitted on the action id alone, so two windows
+     * Sent to every window's actions surface it would be admitted on the action id alone, so two windows
      * looking at the same action would each accept the other's answer, and a window that had moved on since
      * asking would take an answer it was no longer waiting for. `reply` sends to the asker on the connection
      * they asked from, and the call names the ask within it.
@@ -146,7 +146,7 @@ export const actionsSystem = setup({
     },
     importActions: ({ system, event, reply }) => {
       const { actions: importData } = actionsSpec.typeOf('IMPORT_ACTIONS', event);
-      const pluginId = 'actions' as const;
+      const surfaceId = 'actions' as const;
 
       logger.info('Importing actions', { count: Array.isArray(importData) ? importData.length : 0 });
 
@@ -208,7 +208,7 @@ export const actionsSystem = setup({
       // Refresh the full actions list
       const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = featureSettings.forFeature('actions').get();
-      broadcastToPlugin(pluginId, {
+      broadcastToSurface(surfaceId, {
         type: 'ACTIONS_LISTED',
         data: {
           ...connectedData,

@@ -58,16 +58,16 @@ describe('a built pack\'s snapshot', () => {
     }
   });
 
-  // Plugins travel the same way, for the diagnostic rather than for resolution: a pack depending on
-  // the fixture can't send to a default-setup plugin, and this is what lets the build say which pack
-  // to depend on instead of reporting the plugin as unknown.
-  it.skipIf(!fixtureBuilt || !built)('records its dependencies\' plugins, with the pack owning each', () => {
+  // Surfaces travel the same way, for the diagnostic rather than for resolution: a pack depending on
+  // the fixture can't send to a default-setup surface, and this is what lets the build say which pack
+  // to depend on instead of reporting the surface as unknown.
+  it.skipIf(!fixtureBuilt || !built)('records its dependencies\' surfaces, with the pack owning each', () => {
     const dependency = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/default-setup/apack.json'), 'utf-8'));
-    // Recorded under the id each plugin runs under, so a pack that reuses one of its dependency's
+    // Recorded under the id each surface runs under, so a pack that reuses one of its dependency's
     // feature ids has both recorded, each to its owner
-    const owned = Object.entries(dependency.features ?? {}).filter(([, f]: [string, any]) => f.plugin)
+    const owned = Object.entries(dependency.features ?? {}).filter(([, f]: [string, any]) => f.surface)
       .map(([id]) => `default-setup/${id}`);
-    const recorded = JSON.parse(fs.readFileSync(snapshotFile(fixture)!, 'utf-8')).provenance?.plugins ?? {};
+    const recorded = JSON.parse(fs.readFileSync(snapshotFile(fixture)!, 'utf-8')).provenance?.surfaces ?? {};
     expect(owned.length).toBeGreaterThan(0);
     for (const id of owned) {
       expect(recorded[id], `${fixture} records ${id}`).toBe('default-setup');

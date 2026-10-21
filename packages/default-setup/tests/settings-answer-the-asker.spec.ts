@@ -1,7 +1,7 @@
 // A settings write is answered to whoever asked for it, not to the Settings view of every window.
 //
-// `SETTINGS_SAVED` and `SETTINGS_REFUSED` were only ever broadcast to the `settings` plugin, which meant a
-// sender that was not that plugin learned nothing: a drive session's `/set-setting` reported success for
+// `SETTINGS_SAVED` and `SETTINGS_REFUSED` were only ever broadcast to the `settings` surface, which meant a
+// sender that was not that surface learned nothing: a drive session's `/set-setting` reported success for
 // every refused write, because the send had been accepted and the refusal went somewhere it could not see.
 // `/query` had made the opposite bargain since it existed, which is what left this one looking like it worked.
 //
@@ -10,7 +10,7 @@
 // that something it never did had been saved.
 //
 // **Which of the two arms ran is what this file checks, and the address is not how.** The harness resolves a
-// `sender` against registered systems, so a driver's ref cannot be named here, and naming the Settings plugin
+// `sender` against registered systems, so a driver's ref cannot be named here, and naming the Settings surface
 // makes a reply and a broadcast arrive at the same *place*. What tells them apart is `Message.answering`,
 // which only `reply` stamps: `nextEmit`'s `answering` waits for the answer to one ask, so a broadcast of the
 // same type does not satisfy it. Checked by mutation: with `answerSettings`' reply arm deleted, the three

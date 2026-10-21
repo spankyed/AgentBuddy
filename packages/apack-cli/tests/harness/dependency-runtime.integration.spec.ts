@@ -36,7 +36,7 @@ async function dependentPack(spec: string): Promise<string> {
     features: {
       memos: { description: 'Exercise dependency runtime delivery.',
         system: { entry: 'tests/memos-system.ts', contract: 'tests/memos-system.ts#Contract' },
-        plugin: { label: 'Fixture', state: 'tests/memos-plugin.ts' } },
+        surface: { label: 'Fixture', state: 'tests/memos-surface.ts' } },
       widgets: { description: 'Exercise feature settings.', settings: { defaults: { size: 3 }, schema: { type: 'object' } } },
     },
   };
@@ -53,12 +53,12 @@ import { setupPackTests } from '@apackdev/testing/harness';
 import { contentRuntime } from '../src/__generated__/content-runtime';
 import { registration } from '../src/__generated__/pack-entry';
 await setupPackTests({ contentRuntime, registration });`);
-  write(root, 'tests/memos-plugin.ts', `
+  write(root, 'tests/memos-surface.ts', `
 import { setup } from 'xstate';
 export default setup({}).createMachine({});`);
   write(root, 'tests/memos-system.ts', `
 import { setup } from 'xstate';
-import { untypedBroadcastToPlugin } from '@apackdev/sdk/events';
+import { untypedBroadcastToSurface } from '@apackdev/sdk/events';
 import { reportError } from '@apackdev/sdk/logger';
 import { defineSystem } from '@apackdev/sdk/framework';
 export type Contract = {
@@ -67,9 +67,9 @@ export type Contract = {
 };
 const spec = defineSystem<Contract>();
 const machine = setup({ types: spec.types }).createMachine({
-  entry: () => untypedBroadcastToPlugin('dependent-pack/memos', { type: 'MEMOS_STARTED' }),
+  entry: () => untypedBroadcastToSurface('dependent-pack/memos', { type: 'MEMOS_STARTED' }),
   on: {
-    NOTIFY: { actions: () => untypedBroadcastToPlugin('dependent-pack/memos', { type: 'MEMOS_NOTIFIED' }) },
+    NOTIFY: { actions: () => untypedBroadcastToSurface('dependent-pack/memos', { type: 'MEMOS_NOTIFIED' }) },
     SAVE: { actions: () => reportError({ error: new Error('lost memo'), source: 'memos' }) },
   },
 });
@@ -133,7 +133,7 @@ it("connects to default-setup's notes and the app's settings", async () => {
     expect(result.output, 'the dependent pack test run').toMatch(/Tests\s+1 passed/);
   });
 
-  it("drops a system's sends to its plugin until a client connects", async () => {
+  it("drops a system's sends to its surface until a client connects", async () => {
     const root = await dependentPack(`
 import { expect, it } from 'vitest';
 import { startApp } from '@apackdev/testing/harness';

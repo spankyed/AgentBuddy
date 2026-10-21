@@ -22,7 +22,7 @@ import { hasOwn } from '../utils/shared.ts';
 import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
-import type { ComponentTarget } from '../framework/plugin-declaration.ts';
+import type { ComponentTarget } from '../framework/surface-declaration.ts';
 import type { PackEventContracts } from '../framework/event-contracts.ts';
 
 const HEADER = `// @generated from apack.json — do not edit by hand
@@ -373,7 +373,7 @@ function toPascalCase(id: string): string {
 // Local bindings for a feature's default exports start with `__`, which a feature id can't, so they don't
 // collide with generated names (`specs`, `ref`, `<feature>Entry`).
 const systemBinding = (id: string) => `__system_${id}`;
-const pluginBinding = (id: string) => `__plugin_${id}`;
+const surfaceBinding = (id: string) => `__plugin_${id}`;
 
 export interface GenerateEntriesOptions {
   packRoot: string;
@@ -415,15 +415,15 @@ export async function generatePackFiles(
   }
 
   /**
-   * Whether a pack publishes `PackPluginState` — it has at least one feature with a plugin. Three outputs turn on
+   * Whether a pack publishes `PackSurfaceState` — it has at least one feature with a surface. Three outputs turn on
    * this one fact and must agree: whether `fe.ts` is emitted, whether `pack-types.ts` re-exports the type, and
-   * whether a dependent imports it. Spelling it three ways is what left a dependent of a plugin-less pack with an
+   * whether a dependent imports it. Spelling it three ways is what left a dependent of a surface-less pack with an
    * import nothing resolved.
    */
-  const publishesPluginState = (forManifest: PackManifest, packId: string) => PROVENANCE_KINDS.plugins(forManifest, packId).length > 0;
+  const publishesSurfaceState = (forManifest: PackManifest, packId: string) => PROVENANCE_KINDS.surfaces(forManifest, packId).length > 0;
 
-  /** The dependencies whose facade publishes `PackPluginState`, by the same rule applied to their manifests */
-  const depsWithPlugins = depIds.filter((depId) => publishesPluginState(depSnapshots.get(depId)!.manifest, depId));
+  /** The dependencies whose facade publishes `PackSurfaceState`, by the same rule applied to their manifests */
+  const depsWithSurfaces = depIds.filter((depId) => publishesSurfaceState(depSnapshots.get(depId)!.manifest, depId));
 
   /**
    * The slash commands the pack declares, as the registration carries them: the name is the manifest key,
@@ -553,14 +553,14 @@ export async function generatePackFiles(
 
   /**
    * A feature's contract, as `apack.json` names it at `features[].<kind>.contract` — the module and the type in
-   * it. A feature that names none publishes nothing: a system with no plugin of its own sends nothing anyone
-   * receives, and a plugin without one still receives its own system's events.
+   * it. A feature that names none publishes nothing: a system with no surface of its own sends nothing anyone
+   * receives, and a surface without one still receives its own system's events.
    *
    * The contract is a *type*, so the check is that the module declares one: a name that is only a value is the
    * mistake worth catching, since reading it would silently yield an empty inbox.
    */
-  function contractTarget(feature: PackFeature, kind: 'system' | 'plugin'): ContractTarget | undefined {
-    const declared = kind === 'system' ? feature.system?.contract : feature.plugin?.contract;
+  function contractTarget(feature: PackFeature, kind: 'system' | 'surface'): ContractTarget | undefined {
+    const declared = kind === 'system' ? feature.system?.contract : feature.surface?.contract;
     if (!declared) return undefined;
     const label = `Feature "${feature.id}": ${kind}.contract`;
     const target = exportTarget(label, declared);
@@ -571,7 +571,7 @@ export async function generatePackFiles(
   }
 
   /** The contract each of `features` declares for `kind`, by feature id; a feature that declares none is absent */
-  function contractsOf(features: PackFeature[], kind: 'system' | 'plugin'): Map<string, ContractTarget> {
+  function contractsOf(features: PackFeature[], kind: 'system' | 'surface'): Map<string, ContractTarget> {
     return new Map(features.flatMap((feature) => {
       const target = contractTarget(feature, kind);
       return target ? [[feature.id, target] as const] : [];
@@ -579,7 +579,7 @@ export async function generatePackFiles(
   }
 
   /** Read contract metadata without execution, attributing failures to its feature. */
-  function contractTypes(feature: PackFeature, kind: 'system' | 'plugin', read: (file: string, name: string) => string[]): string[] {
+  function contractTypes(feature: PackFeature, kind: 'system' | 'surface', read: (file: string, name: string) => string[]): string[] {
     const contract = contractTarget(feature, kind);
     if (!contract) return [];
     try {
@@ -595,21 +595,21 @@ export async function generatePackFiles(
     return contractTypes(feature, 'system', outgoingEventTypesOf);
   }
 
-  /** The event types a plugin's contract declares that any other plugin or system may send it */
+  /** The event types a surface's contract declares that any other surface or system may send it */
   function acceptedEventTypes(feature: PackFeature): string[] {
-    return contractTypes(feature, 'plugin', inboxEventTypesOf);
+    return contractTypes(feature, 'surface', inboxEventTypesOf);
   }
 
   let compiledEvents: PackEventContracts | undefined;
   function eventContracts(): PackEventContracts {
     return compiledEvents ??= Object.fromEntries(packFeatures(manifest)
-      .filter(feature => feature.system || feature.plugin).map(feature => [feature.id, {
+      .filter(feature => feature.system || feature.surface).map(feature => [feature.id, {
         ...(feature.system && { system: {
           incoming: [...new Set([...contractTypes(feature, 'system', (file, name) => moduleReader().incomingEventTypesOf(file, name)),
             ...(feature.system.events?.incoming ?? [])])].sort(),
           outgoing: [...new Set(sentEventTypes(feature))].sort(),
         } }),
-        ...(feature.plugin && { plugin: { receives: receivedEventTypes(feature) } }),
+        ...(feature.surface && { surface: { receives: receivedEventTypes(feature) } }),
       }]));
   }
 
@@ -618,7 +618,7 @@ export async function generatePackFiles(
       ...[...depSnapshots.values()].flatMap(snapshot => Object.keys(snapshot.types.entities))]);
     const claims = new Map<string, string>();
     for (const feature of packFeatures(manifest)) {
-      for (const entity of contractTypes(feature, 'plugin', (file, name) => moduleReader().openedEntityTypesOf(file, name))) {
+      for (const entity of contractTypes(feature, 'surface', (file, name) => moduleReader().openedEntityTypesOf(file, name))) {
         if (!known.has(entity)) throw new Error(`Feature "${feature.id}": Contract.opens names unknown entity "${entity}"`);
         const owner = claims.get(entity);
         if (owner !== undefined) throw new Error(`Entity destination "${entity}" claimed by both features "${owner}" and "${feature.id}"`);
@@ -629,8 +629,8 @@ export async function generatePackFiles(
   }
 
   /**
-   * The event types one of this pack's plugins receives: what its own feature's system sends it, and every audience
-   * of the inbox its contract declares. The bus checks each send against this (`getPluginEventValidationMap`).
+   * The event types one of this pack's surfaces receives: what its own feature's system sends it, and every audience
+   * of the inbox its contract declares. The bus checks each send against this (`getSurfaceEventValidationMap`).
    *
    * One flat list, deliberately: the audiences are a type-level split, and a passing check here means the event's
    * **shape** was accepted, not that this sender was allowed to send it. `Message.from` is a label the generated
@@ -659,7 +659,7 @@ export async function generatePackFiles(
 
   /**
    * The same blocks for the frontend registration, carrying the component each declares instead of the
-   * backend facet. A component is taken by its default export, as a plugin's entry is, so the manifest
+   * backend facet. A component is taken by its default export, as a surface's entry is, so the manifest
    * names a file rather than a `"path#export"` target.
    */
   function blockDefinitionsFE(): { imports: string[]; literal: string } {
@@ -730,7 +730,7 @@ export async function generatePackFiles(
     return { imports, member: `${facet}: { ${members.join(', ')} }` };
   }
 
-  /** Shared component binding grammar for feature plugins and step presentation. */
+  /** Shared component binding grammar for feature surfaces and step presentation. */
   function frontendBindings(prefix: string, owner: string) {
     const imports: string[] = [];
     let nextBinding = 0;
@@ -975,7 +975,7 @@ ${items.join('\n')}
   function generateBackendEntry(): string {
     const features = packFeatures(manifest);
     const systemFeatures = features.filter(f => f.system);
-    // Every system's events are read, a system without a plugin's too: an entry that lost them (annotated
+    // Every system's events are read, a system without a surface's too: an entry that lost them (annotated
     // `: SystemEntry`) would give the facade types nothing but `{ type: string }`
     for (const feature of systemFeatures) sentEventTypes(feature);
 
@@ -992,7 +992,7 @@ ${items.join('\n')}
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
       if (f.system) parts.push(`      system: ${systemExpr(f)}`);
-      if (f.plugin) parts.push(`      plugin: { receives: ${dataLiteral(eventContracts()[f.id].plugin!.receives)} }`);
+      if (f.surface) parts.push(`      surface: { receives: ${dataLiteral(eventContracts()[f.id].surface!.receives)} }`);
       parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       // JSON.parse preserves own __proto__ keys, which an object literal would treat as a prototype setter.
       if (f.settings) parts.push(`      settings: JSON.parse(${dataLiteral(JSON.stringify(f.settings))})`);
@@ -1073,7 +1073,7 @@ ${contractCheck}`;
 
   function generateFrontendEntry(): string {
     const features = packFeatures(manifest);
-    const pluginFeatures = features.filter(f => f.plugin);
+    const surfaceFeatures = features.filter(f => f.surface);
     const featureForms = features.filter(f => f.settings?.form);
     const groupForms = Object.entries(manifest.extensions?.settings ?? {}).filter(([, definition]) => definition.form);
     const formImports = [
@@ -1081,33 +1081,33 @@ ${contractCheck}`;
       ...groupForms.map(([id, definition]) => `import __settingsGroup_${id} from '${toImportPath(root, definition.form!)}';`),
     ];
 
-    const pluginImports: string[] = [];
-    const pluginDefinitions: string[] = [];
-    for (const feature of pluginFeatures) {
-      const plugin = feature.plugin!;
-      const binding = frontendBindings(pluginBinding(feature.id), `features.${feature.id}.plugin`);
+    const surfaceImports: string[] = [];
+    const surfaceDefinitions: string[] = [];
+    for (const feature of surfaceFeatures) {
+      const surface = feature.surface!;
+      const binding = frontendBindings(surfaceBinding(feature.id), `features.${feature.id}.surface`);
       const { target, component } = binding;
-      const properties = [`label: ${dataLiteral(plugin.label)}`, `state: ${target(plugin.state)}`];
-      if (plugin.icon) properties.push(`icon: ${binding.icon(plugin.icon)}`);
-      if (plugin.canvas !== undefined) {
-        const canvas = plugin.canvas;
+      const properties = [`label: ${dataLiteral(surface.label)}`, `state: ${target(surface.state)}`];
+      if (surface.icon) properties.push(`icon: ${binding.icon(surface.icon)}`);
+      if (surface.canvas !== undefined) {
+        const canvas = surface.canvas;
         properties.push(`canvas: ${typeof canvas === 'object' && 'routes' in canvas
           ? `{ ${Object.entries(canvas.routes).map(([route, reference]) => `${propertyKey(route)}: ${component(reference)}`).join(', ')} }`
           : component(canvas)}`);
       }
-      for (const field of ['panel', 'chat'] as const) if (plugin[field]) properties.push(`${field}: ${component(plugin[field])}`);
-      for (const field of ['isPinned', 'hotkeys', 'options'] as const) if (plugin[field] !== undefined) properties.push(`${field}: ${dataLiteral(plugin[field])}`);
-      if (plugin.fallbackPanel) properties.push(`fallbackPanel: { label: ${dataLiteral(plugin.fallbackPanel.label)}, toggle: ${dataLiteral(plugin.fallbackPanel.toggle)}, isShown: ${target(plugin.fallbackPanel.isShown, 'fallbackPanel.isShown')} }`);
-      pluginImports.push(...binding.imports);
-      pluginDefinitions.push(`const ${pluginBinding(feature.id)} = { ${properties.join(', ')} } satisfies PluginDefinition;`);
+      for (const field of ['panel', 'chat'] as const) if (surface[field]) properties.push(`${field}: ${component(surface[field])}`);
+      for (const field of ['isPinned', 'hotkeys', 'options'] as const) if (surface[field] !== undefined) properties.push(`${field}: ${dataLiteral(surface[field])}`);
+      if (surface.fallbackPanel) properties.push(`fallbackPanel: { label: ${dataLiteral(surface.fallbackPanel.label)}, toggle: ${dataLiteral(surface.fallbackPanel.toggle)}, isShown: ${target(surface.fallbackPanel.isShown, 'fallbackPanel.isShown')} }`);
+      surfaceImports.push(...binding.imports);
+      surfaceDefinitions.push(`const ${surfaceBinding(feature.id)} = { ${properties.join(', ')} } satisfies SurfaceDefinition;`);
     }
-    // The feature whose plugin claims it, and no fallback: `features` is a map, so "the pack's first" would
-    // be whatever key order JSON tooling left behind. A pack claiming none has no default plugin, which the
-    // shell handles (`defaultPlugin: null`, `wantsDefaultPlugin`)
-    const defaultFeature = pluginFeatures.find(f => f.plugin?.default);
-    // A designated feature with no plugin is listed for its role, so a frontend send to that role resolves
-    const featureEntries = features.filter((f) => f.plugin || f.designation || f.settings?.form || f.references).map((f) => {
-      const parts = f.plugin ? [`plugin: ${pluginBinding(f.id)}`] : [];
+    // The feature whose surface claims it, and no fallback: `features` is a map, so "the pack's first" would
+    // be whatever key order JSON tooling left behind. A pack claiming none has no default surface, which the
+    // shell handles (`defaultSurface: null`, `wantsDefaultSurface`)
+    const defaultFeature = surfaceFeatures.find(f => f.surface?.default);
+    // A designated feature with no surface is listed for its role, so a frontend send to that role resolves
+    const featureEntries = features.filter((f) => f.surface || f.designation || f.settings?.form || f.references).map((f) => {
+      const parts = f.surface ? [`surface: ${surfaceBinding(f.id)}`] : [];
       if (f.designation) parts.push(`designation: '${f.designation}'`);
       if (f === defaultFeature) parts.push('default: true');
       if (f.settings?.form) parts.push(`settingsForm: __settingsFeature_${f.id}`);
@@ -1132,17 +1132,17 @@ ${contractCheck}`;
       extraImports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
       return local;
     };
-    const editorPlugins = Object.entries(frontend.tiptapPlugins ?? {}).map(([id, plugin]) => {
+    const editorPlugins = Object.entries(frontend.tiptapPlugins ?? {}).map(([id, surface]) => {
       const label = `extensions.tiptapPlugins.${id}`;
       const parts: string[] = [];
-      if (plugin.extensions) parts.push(`extensions: { ${Object.entries(plugin.extensions).map(([name, target]) =>
+      if (surface.extensions) parts.push(`extensions: { ${Object.entries(surface.extensions).map(([name, target]) =>
         `${propertyKey(name)}: ${editorBinding(`${label}.extensions.${name}`, target)}`).join(', ')} }`);
-      if (plugin.popups) parts.push(`popups: { ${Object.entries(plugin.popups).map(([name, target]) => {
+      if (surface.popups) parts.push(`popups: { ${Object.entries(surface.popups).map(([name, target]) => {
         const local = `__editor_${nextEditorBinding++}`;
         extraImports.push(`import ${local} from '${toImportPath(root, componentFile(`${label}.popups.${name}`, target))}';`);
         return `${propertyKey(name)}: ${local}`;
       }).join(', ')} }`);
-      if (plugin.isSuggestionActive) parts.push(`isSuggestionActive: ${editorBinding(`${label}.isSuggestionActive`, plugin.isSuggestionActive, true)}`);
+      if (surface.isSuggestionActive) parts.push(`isSuggestionActive: ${editorBinding(`${label}.isSuggestionActive`, surface.isSuggestionActive, true)}`);
       return `${propertyKey(id)}: { ${parts.join(', ')} }`;
     });
     extraImports.push(...steps.imports, ...artifacts.imports, ...blocks.imports);
@@ -1163,10 +1163,10 @@ ${contractCheck}`;
     if (blocks.literal) regProps.push(`  blocks: ${blocks.literal},`);
 
     return `${HEADER}
-import type { PackFERegistration${pluginFeatures.length ? ', PluginDefinition' : ''} } from '@apackdev/sdk/fe';
+import type { PackFERegistration${surfaceFeatures.length ? ', SurfaceDefinition' : ''} } from '@apackdev/sdk/fe';
 import { bindSettings } from './settings-fe.ts';
-${[...new Set([...pluginImports, ...formImports, ...extraImports])].join('\n')}
-${pluginDefinitions.join('\n')}
+${[...new Set([...surfaceImports, ...formImports, ...extraImports])].join('\n')}
+${surfaceDefinitions.join('\n')}
 
 export default {
   id: '${manifest.id}',
@@ -1350,7 +1350,7 @@ export const usePackSettings = <K extends PackSettingsName>(name: K): PackSettin
     const names = [...new Set([
       ...packFeatures(manifest).flatMap((f) => [f.id, `${manifest.id}/${f.id}`]),
       ...[...depSnapshots].flatMap(([depId, snap]) => packFeatures(snap.manifest).map((f) => `${depId}/${f.id}`)),
-      ...Object.keys(_mergeProvenance('plugins', [...depSnapshots])),
+      ...Object.keys(_mergeProvenance('surfaces', [...depSnapshots])),
       ...Object.keys(HOST_PLUGIN_EVENT_TYPES),
       ...Object.keys(HOST_SYSTEM_EVENT_TYPES),
     ])];
@@ -1384,164 +1384,164 @@ export const getDataDirPath = (name: string): string => _packDataDir('${manifest
 `;
   }
 
-  // Frontend helpers that take the names this pack's code writes: its own plugins by feature id, those its
+  // Frontend helpers that take the names this pack's code writes: its own surfaces by feature id, those its
   // dependencies declare as `<packId>/<featureId>`. Kept apart from events.ts, which backend systems import,
   // because these reach the frontend SDK.
   function generateFe(): string {
     const features = packFeatures(manifest);
-    const pluginFeatures = features.filter(f => f.plugin);
-    if (!publishesPluginState(manifest, manifest.id)) return '';
-    const own = pluginFeatures.map(f => f.id);
-    const plugins = [...own, ...Object.keys(_mergeProvenance('plugins', [...depSnapshots])).sort()].map(name => `'${name}'`);
+    const surfaceFeatures = features.filter(f => f.surface);
+    if (!publishesSurfaceState(manifest, manifest.id)) return '';
+    const own = surfaceFeatures.map(f => f.id);
+    const surfaces = [...own, ...Object.keys(_mergeProvenance('surfaces', [...depSnapshots])).sort()].map(name => `'${name}'`);
 
-    // Each own plugin's published state, from the same contract the inbox is read from. A feature that declares no
+    // Each own surface's published state, from the same contract the inbox is read from. A feature that declares no
     // contract publishes nothing, and `never` is what a selector for it gets.
-    const contracts = contractsOf(pluginFeatures, 'plugin');
+    const contracts = contractsOf(surfaceFeatures, 'surface');
     const stateImports = [...contracts]
       .map(([id, contract]) => `import type { ${contract.exportName} as __state_contract_${id} } from '${toImportPath(root, contract.source)}';`)
       .join('\n');
-    const ownState = pluginFeatures
-      .map(f => `  '${f.id}': ${contracts.has(f.id) ? `PluginStateOf<__state_contract_${f.id}>` : 'never'};`)
+    const ownState = surfaceFeatures
+      .map(f => `  '${f.id}': ${contracts.has(f.id) ? `SurfaceStateOf<__state_contract_${f.id}>` : 'never'};`)
       .join('\n');
-    const depState = depTypeImports('PackPluginState', depsWithPlugins);
-    const qualifiedState = depsWithPlugins.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackPluginState')}>`);
+    const depState = depTypeImports('PackSurfaceState', depsWithSurfaces);
+    const qualifiedState = depsWithSurfaces.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackSurfaceState')}>`);
 
     return `${HEADER}
-import { pluginIsRunning, readUntypedPluginState, untypedOpenPlugin, useUntypedPluginState, type PluginStateOf } from '@apackdev/sdk/fe';
+import { surfaceIsRunning, readUntypedSurfaceState, untypedOpenSurface, useUntypedSurfaceState, type SurfaceStateOf } from '@apackdev/sdk/fe';
 ${qualifiedState.length > 0 ? "import type { Qualified } from '@apackdev/sdk/events';\n" : ''}import type { Ref } from 'vue';
-import type { SendablePluginEvents } from './events.ts';
+import type { SendableSurfaceEvents } from './events.ts';
 import { ref } from './ref.ts';
 ${stateImports}
 ${depState.imports.join('\n')}
 
 /**
- * A plugin as this pack's code names it: its own by feature id, a dependency's as \`<packId>/<featureId>\`.
- * A plugin named by data (a link's target, a registered plugin's \`id\`) opens through \`untypedOpenPlugin\`
+ * A surface as this pack's code names it: its own by feature id, a dependency's as \`<packId>/<featureId>\`.
+ * A surface named by data (a link's target, a registered surface's \`id\`) opens through \`untypedOpenSurface\`
  * from \`@apackdev/sdk/fe\`, which checks it at runtime instead.
  */
-export type PluginName = ${plugins.join(' | ')};
+export type SurfaceName = ${surfaces.join(' | ')};
 
-/** Feature id → the state this pack's plugin for that feature publishes (dependents name it \`${manifest.id}/<feature>\`). */
-export type PackPluginState = {
+/** Feature id → the state this pack's surface for that feature publishes (dependents name it \`${manifest.id}/<feature>\`). */
+export type PackSurfaceState = {
 ${ownState}
 };
 
-/** A plugin of this pack, whose actor is running whenever this pack's frontend is */
-export type OwnPluginName = keyof PackPluginState & string;
+/** A surface of this pack, whose actor is running whenever this pack's frontend is */
+export type OwnSurfaceName = keyof PackSurfaceState & string;
 ${qualifiedState.length > 0 ? `
-/** A dependency's plugin, whose frontend may still be loading */
+/** A dependency's surface, whose frontend may still be loading */
 type DependencyPluginState = ${qualifiedState.join(' & ')};
-export type DependencyPluginName = keyof DependencyPluginState & string;
+export type DependencySurfaceName = keyof DependencyPluginState & string;
 ` : ''}
 /**
- * Opens a plugin and hands its actor \`event\` once it's running; throws if no such plugin is registered.
+ * Opens a surface and hands its actor \`event\` once it's running; throws if no such surface is registered.
  *
- * The events are the target's inbox, the same one \`sendToPlugin\` takes — this delivers to that plugin's actor
+ * The events are the target's inbox, the same one \`sendToSurface\` takes — this delivers to that surface's actor
  * too, so leaving it open would be a second, unchecked door to what the inbox exists to declare. A pack's own
- * plugins take their own feature's system's events as well, so a UI command a machine handles
+ * surfaces take their own feature's system's events as well, so a UI command a machine handles
  * (\`FLOW.SELECT\`, \`TAB.CREATE\`) needs declaring only where another pack sends it.
  */
-export function openPlugin<Name extends PluginName>(
+export function openSurface<Name extends SurfaceName>(
   name: Name,
-  event?: SendablePluginEvents[Name] | SendablePluginEvents[Name][],
+  event?: SendableSurfaceEvents[Name] | SendableSurfaceEvents[Name][],
 ): void {
-  untypedOpenPlugin(ref(name), event);
+  untypedOpenSurface(ref(name), event);
 }
 
 const OWN_PLUGINS = new Set<string>([${own.map(id => `'${id}'`).join(', ')}]);
 
 /**
- * The ref to read at, checked where this pack's own plugins are concerned. Their overloads say the value is never
+ * The ref to read at, checked where this pack's own surfaces are concerned. Their overloads say the value is never
  * \`undefined\`, and this is what keeps that true instead of handing back an \`undefined\` the type denies. A
  * dependency's may legitimately not be running yet, and reads as \`undefined\` until its frontend loads.
  *
  * **The spawn is the shell's, not the registration's**, which bounds where "never running is a bug" holds. The
- * shell spawns a pack's plugins when it handles the \`PACK_FRONTEND_LOADED\` it is sent *after*
- * \`registerPackFE\` hands them back — so inside a plugin's own views the plugin is certainly running, while a
+ * shell spawns a pack's surfaces when it handles the \`PACK_FRONTEND_LOADED\` it is sent *after*
+ * \`registerPackFE\` hands them back — so inside a surface's own views the surface is certainly running, while a
  * component the host renders outside any of them (an app extension, an artifact viewer) can be drawn in
- * between. Such a component reads another plugin with the \`untyped\` readers, which answer \`undefined\`; the
+ * between. Such a component reads another surface with the \`untyped\` readers, which answer \`undefined\`; the
  * throw below says so.
  */
-function ownPlugin(name: PluginName): string {
+function ownSurface(name: SurfaceName): string {
   const target = ref(name);
-  if (OWN_PLUGINS.has(name) && !pluginIsRunning(target)) {
-    throw new Error(\`No plugin is running at "\${target}", which is this pack's own. Inside that plugin's own views this is a bug rather than a state to render. A component the host renders — an app extension, an artifact viewer — can be drawn before the shell has spawned the plugins it just registered, and there it is a state: read with readUntypedPluginState or useUntypedPluginState, which answer undefined.\`);
+  if (OWN_PLUGINS.has(name) && !surfaceIsRunning(target)) {
+    throw new Error(\`No surface is running at "\${target}", which is this pack's own. Inside that surface's own views this is a bug rather than a state to render. A component the host renders — an app extension, an artifact viewer — can be drawn before the shell has spawned the surfaces it just registered, and there it is a state: read with readUntypedSurfaceState or useUntypedSurfaceState, which answer undefined.\`);
   }
   return target;
 }
 
 /**
- * A value from the state a plugin publishes, followed until the calling scope is disposed — so it runs in a
- * component's setup or an effect scope, never inside a \`computed\`. The selector takes that plugin's published
+ * A value from the state a surface publishes, followed until the calling scope is disposed — so it runs in a
+ * component's setup or an effect scope, never inside a \`computed\`. The selector takes that surface's published
  * state, not an XState snapshot.
  *
- * This pack's own plugins are spawned in the step that registers them, so one of those is always running and the
- * value is never \`undefined\`. A dependency's frontend may still be loading, so reading one of its plugins gives
+ * This pack's own surfaces are spawned in the step that registers them, so one of those is always running and the
+ * value is never \`undefined\`. A dependency's frontend may still be loading, so reading one of its surfaces gives
  * \`undefined\` until it arrives — that is a state to render, not an error.
  *
- * \`useUntypedPluginState\` from \`@apackdev/sdk/fe\` is the escape hatch, for a ref that arrives as data.
+ * \`useUntypedSurfaceState\` from \`@apackdev/sdk/fe\` is the escape hatch, for a ref that arrives as data.
  */
-export function usePluginState<Name extends OwnPluginName, TSelected>(name: Name, selector: (state: PackPluginState[Name]) => TSelected): Readonly<Ref<TSelected>>;${qualifiedState.length > 0 ? `
-export function usePluginState<Name extends DependencyPluginName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): Readonly<Ref<TSelected | undefined>>;` : ''}
-export function usePluginState(name: PluginName, selector: (state: never) => unknown): Readonly<Ref<unknown>> {
-  return useUntypedPluginState(ownPlugin(name), (snapshot: { context: never }) => selector(snapshot.context));
+export function useSurfaceState<Name extends OwnSurfaceName, TSelected>(name: Name, selector: (state: PackSurfaceState[Name]) => TSelected): Readonly<Ref<TSelected>>;${qualifiedState.length > 0 ? `
+export function useSurfaceState<Name extends DependencySurfaceName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): Readonly<Ref<TSelected | undefined>>;` : ''}
+export function useSurfaceState(name: SurfaceName, selector: (state: never) => unknown): Readonly<Ref<unknown>> {
+  return useUntypedSurfaceState(ownSurface(name), (snapshot: { context: never }) => selector(snapshot.context));
 }
 
 /** The same read, once, for code outside a reactive scope — a machine's action, an event handler. */
-export function readPluginState<Name extends OwnPluginName, TSelected>(name: Name, selector: (state: PackPluginState[Name]) => TSelected): TSelected;${qualifiedState.length > 0 ? `
-export function readPluginState<Name extends DependencyPluginName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): TSelected | undefined;` : ''}
-export function readPluginState(name: PluginName, selector: (state: never) => unknown): unknown {
-  return readUntypedPluginState(ownPlugin(name), (snapshot: { context: never }) => selector(snapshot.context));
+export function readSurfaceState<Name extends OwnSurfaceName, TSelected>(name: Name, selector: (state: PackSurfaceState[Name]) => TSelected): TSelected;${qualifiedState.length > 0 ? `
+export function readSurfaceState<Name extends DependencySurfaceName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): TSelected | undefined;` : ''}
+export function readSurfaceState(name: SurfaceName, selector: (state: never) => unknown): unknown {
+  return readUntypedSurfaceState(ownSurface(name), (snapshot: { context: never }) => selector(snapshot.context));
 }
 `;
   }
 
 
   /**
-   * Plugin id → the events that plugin receives: what its own feature's system sends it, plus the inbox the
-   * plugin's `Contract` declares (`features[].plugin.contract`). Only features that have a plugin get a key: nothing can
+   * Surface id → the events that surface receives: what its own feature's system sends it, plus the inbox the
+   * surface's `Contract` declares (`features[].surface.contract`). Only features that have a surface get a key: nothing can
    * receive an event sent to a feature that has none.
    *
-   * Every dependency's plugins and the host's are addressable with no declaration on this side — the receiver's
-   * own `PackPluginEvents` says what it takes, as a system's `PackSystemEvents` does. Only the pack that owns a
-   * plugin widens what it receives, since only it can handle a new event, and only the declared half crosses:
+   * Every dependency's surfaces and the host's are addressable with no declaration on this side — the receiver's
+   * own `PackSurfaceEvents` says what it takes, as a system's `PackSystemEvents` does. Only the pack that owns a
+   * surface widens what it receives, since only it can handle a new event, and only the declared half crosses:
    * what passes between a feature's own two halves is nobody else's to send.
    */
   function generateEvents(): string {
     const features = packFeatures(manifest);
     const systemFeatures = features.filter(f => f.system);
-    const pluginFeatures = features.filter(f => f.plugin);
+    const surfaceFeatures = features.filter(f => f.surface);
     const hasSystems = systemFeatures.length > 0;
 
     // Each system's sent events, read from its spec: the one place they are declared
-    const outgoingAliases = pluginFeatures.filter(f => f.system)
+    const outgoingAliases = surfaceFeatures.filter(f => f.system)
       .map(f => `type __events_${f.id} = OutgoingEventsOf<__SystemContracts['${f.id}']>;`)
       .join('\n');
-    // Each plugin's declared contract, from the leaf module apack.json names — never the plugin module itself,
+    // Each surface's declared contract, from the leaf module apack.json names — never the surface module itself,
     // whose machine imports cycle back through this file
-    const contracts = contractsOf(pluginFeatures, 'plugin');
+    const contracts = contractsOf(surfaceFeatures, 'surface');
     const acceptsImports = [...contracts]
       .map(([id, contract]) => `import type { ${contract.exportName} as __contract_${id} } from '${toImportPath(root, contract.source)}';`)
       .join('\n');
-    const acceptsAliases = pluginFeatures
+    const acceptsAliases = surfaceFeatures
       .flatMap(f => contracts.has(f.id)
-        ? [`type __accepts_${f.id} = PluginInboxOf<__contract_${f.id}>;`, `type __public_${f.id} = PublicPluginInboxOf<__contract_${f.id}>;`]
+        ? [`type __accepts_${f.id} = SurfaceInboxOf<__contract_${f.id}>;`, `type __public_${f.id} = PublicSurfaceInboxOf<__contract_${f.id}>;`]
         : [`type __accepts_${f.id} = never;`, `type __public_${f.id} = never;`])
       .join('\n');
-    // A plugin receives what its own feature's system sends it, and whatever it declares anyone else may send
-    const entries = pluginFeatures.map((f) => {
+    // A surface receives what its own feature's system sends it, and whatever it declares anyone else may send
+    const entries = surfaceFeatures.map((f) => {
       const ownSystem = systemFeatures.some(s => s.id === f.id) ? [`__events_${f.id}`] : [];
       return `  '${f.id}': ${[...ownSystem, `__accepts_${f.id}`].join(' | ')};`;
     }).join('\n');
     const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<__SystemContracts['${f.id}']>;`).join('\n');
     const pack = `'${manifest.id}'`;
-    const depPlugins = depTypeImports('PackPluginEvents');
+    const depSurfaces = depTypeImports('PackSurfaceEvents');
     const depSystems = depTypeImports('PackSystemEvents');
     // Every map keyed by ref; the maps pack code sends with name the pack's own features by bare id instead (`WithOwnNames`)
-    const qualifiedPlugins = [
-      `Qualified<${pack}, OwnPluginEvents>`,
-      ...depIds.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackPluginEvents')}>`),
-      'HostPluginEvents',
+    const qualifiedSurfaces = [
+      `Qualified<${pack}, OwnSurfaceEvents>`,
+      ...depIds.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackSurfaceEvents')}>`),
+      'HostSurfaceEvents',
     ].join(' & ');
     const qualifiedSystems = [
       `Qualified<${pack}, PackSystemEvents>`,
@@ -1549,26 +1549,26 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
       'HostSystemEvents',
     ].join(' & ');
     return `${HEADER}
-import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${outgoingAliases ? ', type OutgoingEventsOf' : ''}${contracts.size > 0 ? ', type PluginInboxOf, type PublicPluginInboxOf' : ''}, type Qualified, type WithOwnNames } from '@apackdev/sdk/events';
-${hasSystems ? `import type { SystemContracts as __SystemContracts } from './system-specs.ts';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depPlugins.imports, ...depSystems.imports].join('\n')}
+import { defineEvents, type HostSurfaceEvents, type HostSystemEvents, type IncomingEventsOf${outgoingAliases ? ', type OutgoingEventsOf' : ''}${contracts.size > 0 ? ', type SurfaceInboxOf, type PublicSurfaceInboxOf' : ''}, type Qualified, type WithOwnNames } from '@apackdev/sdk/events';
+${hasSystems ? `import type { SystemContracts as __SystemContracts } from './system-specs.ts';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depSurfaces.imports, ...depSystems.imports].join('\n')}
 ${[outgoingAliases, acceptsAliases].filter(Boolean).join('\n')}
 
 /**
- * Plugin id → the events that plugin receives: its own feature's system's, and every audience of the inbox its
+ * Surface id → the events that surface receives: its own feature's system's, and every audience of the inbox its
  * contract declares. This pack's own sends are checked against it, so a sibling may send the \`pack\` half.
  */
-export type OwnPluginEvents = {
+export type OwnSurfaceEvents = {
 ${entries}
 };
 
 /**
- * Feature id → the \`public\` half of the inbox this pack's plugin declares (dependents name it
+ * Feature id → the \`public\` half of the inbox this pack's surface declares (dependents name it
  * \`${manifest.id}/<feature>\`). Neither its own system's events nor its \`pack\` audience are here: the first is
  * between the two halves of one feature, the second between this pack's features. What is left is what a dependent
  * pack may send, and it mirrors \`PackSystemEvents\`.
  */
-export type PackPluginEvents = {
-${pluginFeatures.map(f => `  '${f.id}': __public_${f.id};`).join('\n')}
+export type PackSurfaceEvents = {
+${surfaceFeatures.map(f => `  '${f.id}': __public_${f.id};`).join('\n')}
 };
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it \`${manifest.id}/<feature>\`). */
@@ -1577,22 +1577,22 @@ ${systemEntries}
 };
 
 /**
- * Every plugin this pack's code can send to, by ref: its own, its dependencies' and the host's. A plugin owned
+ * Every surface this pack's code can send to, by ref: its own, its dependencies' and the host's. A surface owned
  * elsewhere takes the inbox its own pack declares — a pack widens only its own. Actions (\`services.emitter\`)
  * send with it.
  */
-export type QualifiedPluginEvents = ${qualifiedPlugins};
+export type QualifiedSurfaceEvents = ${qualifiedSurfaces};
 
 /** Every system this pack's code can send to, by ref: its own, its dependencies' and the host's. */
 export type QualifiedSystemEvents = ${qualifiedSystems};
 
-/** The plugins this pack's code sends to: \`QualifiedPluginEvents\`, with its own named by feature id instead of ref */
-export type SendablePluginEvents = WithOwnNames<${pack}, QualifiedPluginEvents>;
+/** The surfaces this pack's code sends to: \`QualifiedSurfaceEvents\`, with its own named by feature id instead of ref */
+export type SendableSurfaceEvents = WithOwnNames<${pack}, QualifiedSurfaceEvents>;
 
 /** The systems this pack's code sends to: \`QualifiedSystemEvents\`, with its own named by feature id instead of ref */
 export type SendableSystemEvents = WithOwnNames<${pack}, QualifiedSystemEvents>;
 
-export const { broadcastToPlugin, sendToWindow, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<SendablePluginEvents, SendableSystemEvents>('${manifest.id}');
+export const { broadcastToSurface, sendToWindow, sendToSurface, sendToSystem } = /*#__PURE__*/ defineEvents<SendableSurfaceEvents, SendableSystemEvents>('${manifest.id}');
 `;
   }
 
@@ -1676,9 +1676,9 @@ import type { z } from 'zod';
 import type { EARS } from '@apackdev/ears';
 import type { HostServices, PackServiceAccess } from '@apackdev/sdk/services';
 import { runtimeServices } from './runtime-services.ts';
-import type { TypedSendToPlugin, TypedSendToWindow, TypedSendToSystem } from '@apackdev/sdk/events';
+import type { TypedSendToSurface, TypedSendToWindow, TypedSendToSystem } from '@apackdev/sdk/events';
 import type { Repositories } from './repository.ts';
-import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.ts';
+import type { QualifiedSurfaceEvents, QualifiedSystemEvents } from './events.ts';
 ${imports.join('\n')}
 ${deps.imports.filter((_, index) => selectedServices.some(entry => entry.packId === depIds[index])).join('\n')}
 
@@ -1687,18 +1687,18 @@ ${entries.join('\n')}
 };
 
 /**
- * \`services.emitter\`, typed with this pack's events. A system and a plugin are both named
+ * \`services.emitter\`, typed with this pack's events. A system and a surface are both named
  * \`<pack>/<feature>\`, this pack's own and the host's too; a system may also be a role.
  *
  * Naming its own pack is the point, not a gap left by the action having no pack scope. An action is content,
- * not source: a row a user can edit in the Actions plugin, read in the DB console, export to a content file and
+ * not source: a row a user can edit in the Actions surface, read in the DB console, export to a content file and
  * copy into another pack. A bare name would rebind on that copy — \`'threads'\` quietly meaning the new pack's
  * feature, or nothing — where a ref that no longer fits is wrong visibly, and is refused at the bus rather
  * than doing something else.
  */
-export type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToWindow' | 'sendToSystem'> & {
-  broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
-  sendToWindow: TypedSendToWindow<QualifiedPluginEvents>;
+export type PackEmitter = Omit<HostServices['emitter'], 'broadcastToSurface' | 'sendToWindow' | 'sendToSystem'> & {
+  broadcastToSurface: TypedSendToSurface<QualifiedSurfaceEvents>;
+  sendToWindow: TypedSendToWindow<QualifiedSurfaceEvents>;
   sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 
@@ -1807,13 +1807,13 @@ export const contentRuntime: ContentRuntime = {
 
   /** The facade types dependents import, bundled into dist/types/pack-types.d.ts by \`apack pack build\` */
   function generatePackTypes(): string {
-    // `fe.ts` is generated only for a pack with plugins, and `PackPluginState` lives there: a pack with none has no
-    // plugin state to publish, and naming the module anyway leaves the facade bundle unable to resolve it.
-    const hasPlugins = publishesPluginState(manifest, manifest.id);
+    // `fe.ts` is generated only for a pack with surfaces, and `PackSurfaceState` lives there: a pack with none has no
+    // surface state to publish, and naming the module anyway leaves the facade bundle unable to resolve it.
+    const hasSurfaces = publishesSurfaceState(manifest, manifest.id);
     return `${HEADER}
 export type { PackShapes as PackEntityShapes, PackStepNodes } from './ears.ts';
-export type { PackPluginEvents, PackSystemEvents } from './events.ts';
-${hasPlugins ? "export type { PackPluginState } from './fe.ts';\n" : ''}export type { Services } from './services.ts';
+export type { PackSurfaceEvents, PackSystemEvents } from './events.ts';
+${hasSurfaces ? "export type { PackSurfaceState } from './fe.ts';\n" : ''}export type { Services } from './services.ts';
 export type { Repositories } from './repository.ts';
 export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
 `;

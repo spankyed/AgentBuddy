@@ -320,7 +320,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: null } }, lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, eventContracts: eventContractsFixture(manifest as PackManifest, { widget: { system: { incoming, outgoing: [] }, ...((manifest as PackManifest).features?.widget?.plugin && { plugin: { receives: [] } }) } }), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, eventContracts: eventContractsFixture(manifest as PackManifest, { widget: { system: { incoming, outgoing: [] }, ...((manifest as PackManifest).features?.widget?.surface && { surface: { receives: [] } }) } }), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `${registrationSource}\nif (module.exports.registration) module.exports.registration.declarationRevision = '${declarationRevision}';`);
     fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), 'export default {};');
     sealPack(packDir);
@@ -378,8 +378,8 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const { _contentWriterRegistry } = await import('@apackdev/sdk/content');
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
-      features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [] }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
-    `), { features: { widget: { description: 'Exercise the widget system.', system: { entry: 'system.ts' }, plugin: { label: 'Fixture', state: 'plugin.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } }, content: { writers: { Widget: 'writer.ts#writer' } } }, ['PING']);
+      features: { widget: { system: { machine, receives: ['PING'] }, surface: { receives: [] }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
+    `), { features: { widget: { description: 'Exercise the widget system.', system: { entry: 'system.ts' }, surface: { label: 'Fixture', state: 'surface.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } }, content: { writers: { Widget: 'writer.ts#writer' } } }, ['PING']);
 
     registry.refreshCatalog(path.join(_appDirOf(tmpDir), 'packs'));
     const [pack] = loadExternalPacks(registry);
@@ -387,7 +387,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     try {
       expect(_contentWriterRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
       expect(getSettingsCatalog().features).toEqual({ 'settings-pack/widget': { defaults: { size: 3 }, schema: { type: 'object' } } });
-      expect(registry.pluginDefaults()).toEqual({ 'settings-pack/widget': false });
+      expect(registry.surfaceDefaults()).toEqual({ 'settings-pack/widget': false });
     } finally {
       registry.unregisterPack('settings-pack');
     }
@@ -650,7 +650,7 @@ describe('applyPacks: failures', () => {
     const { testPacks } = await import('@apackdev/sdk/testing');
     const pack = installedPack('with-settings');
     writeRegistry(['with-settings']);
-    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'settings.content.json'), '{"plugins": {}}');
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'settings.content.json'), '{"surfaces": {}}');
     const settingsContent = vi.fn(() => ({ created: 0, updated: 1, skipped: 0 }));
     const actionsContent = vi.fn(() => ({ created: 1, updated: 0, skipped: 0 }));
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'content.json'), JSON.stringify({ version: 1, packId: 'with-settings', entries: [] }));

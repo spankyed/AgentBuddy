@@ -12,7 +12,7 @@ import { createNativePackTestRegistry } from '@apackdev/host/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, fromPromise, setup, type AnyActorRef, type AnyEventObject, type MachineContext } from 'xstate';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
-import { _currentDelivery, _replyTo, _runDelivery, untypedBroadcastToPlugin, untypedSendToSystem, type Message, type Reply } from '@apackdev/sdk/events';
+import { _currentDelivery, _replyTo, _runDelivery, untypedBroadcastToSurface, untypedSendToSystem, type Message, type Reply } from '@apackdev/sdk/events';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { _whenSatisfied } from '@apackdev/sdk/testing/waiting';
 import { createAppBus } from '../../src/bus/index.ts';
@@ -55,7 +55,7 @@ const answering = setup({
     // Names its target rather than answering, which is what every system did before `reply` existed. The
     // envelope should still say who sent it, and that stamp is `createSends`' rather than `reply`'s.
     ANNOUNCE: {
-      actions: () => { untypedBroadcastToPlugin('memo-pack/memos', { type: 'MEMOS_CONNECTED' }); },
+      actions: () => { untypedBroadcastToSurface('memo-pack/memos', { type: 'MEMOS_CONNECTED' }); },
     },
   },
 });
@@ -95,8 +95,8 @@ const invoking = setup({
 /**
  * Asks the answering system and records what comes back: the asker in a system-to-system round trip.
  *
- * It has a plugin as well as a system, which is the point — a feature's two halves share one ref, so before
- * `reply` routed on the connection the answer went to this *plugin*, in every window, and the system that
+ * It has a surface as well as a system, which is the point — a feature's two halves share one ref, so before
+ * `reply` routed on the connection the answer went to this *surface*, in every window, and the system that
  * asked got nothing. The case below asserts both halves of that: the system has it, and no window did.
  */
 const answered: string[] = [];
@@ -108,9 +108,9 @@ const asking = setup({}).createMachine({
 });
 
 const memoFeatures = {
-  memos: { system: { machine: answering, receives: ['PING', 'PING_TWICE', 'ANNOUNCE'] }, plugin: { receives: ['MEMOS_CONNECTED', 'MEMO_ADDED'] } },
-  invoker: { system: { machine: invoking, receives: ['PING'] }, plugin: { receives: ['MEMO_ADDED'] } },
-  asker: { system: { machine: asking, receives: ['GO', 'MEMO_ADDED'] }, plugin: { receives: ['MEMO_ADDED'] } },
+  memos: { system: { machine: answering, receives: ['PING', 'PING_TWICE', 'ANNOUNCE'] }, surface: { receives: ['MEMOS_CONNECTED', 'MEMO_ADDED'] } },
+  invoker: { system: { machine: invoking, receives: ['PING'] }, surface: { receives: ['MEMO_ADDED'] } },
+  asker: { system: { machine: asking, receives: ['GO', 'MEMO_ADDED'] }, surface: { receives: ['MEMO_ADDED'] } },
 };
 
 let bus: AnyActorRef;
@@ -203,8 +203,8 @@ describe('reply', () => {
    * The ask with no connection, which is a system's, and the case this routing exists for.
    *
    * It used to be answered outward and read as correct — "the answer is then for every window, as before" —
-   * which was wrong twice: the system that asked never got it, and because a feature's system and plugin share
-   * one ref, a private answer went to that feature's plugin in every open window. `answered` is the asking
+   * which was wrong twice: the system that asked never got it, and because a feature's system and surface share
+   * one ref, a private answer went to that feature's surface in every open window. `answered` is the asking
    * *system*; `answers()` is what the windows saw.
    */
   it('answers the asking system when the ask came from no connection', async () => {
@@ -309,7 +309,7 @@ describe('an answer names the call it answers', () => {
 describe('a send made while handling says where an answer would go', () => {
   /**
    * `reply` sets `sender` itself, so it would pass with no stamping anywhere. This covers the other half: an
-   * ordinary `broadcastToPlugin` made during a delivery carries the handler's own ref, which is what lets the
+   * ordinary `broadcastToSurface` made during a delivery carries the handler's own ref, which is what lets the
    * receiver answer *it* rather than having to be told. The stamp comes from the delivery because a pack's
    * generated sends know their pack and not which of its features called them.
    */
@@ -324,7 +324,7 @@ describe('a send made while handling says where an answer would go', () => {
 
   // Outside a delivery there is nobody to answer, so the field is absent rather than guessed at
   it('stamps nothing on a send made outside any delivery', async () => {
-    untypedBroadcastToPlugin('memo-pack/memos', { type: 'MEMOS_CONNECTED' });
+    untypedBroadcastToSurface('memo-pack/memos', { type: 'MEMOS_CONNECTED' });
     await untilBus(() => outgoing.some(({ event }) => event.type === 'MEMOS_CONNECTED'), 'the announcement');
 
     const announced = outgoing.filter(({ event }) => event.type === 'MEMOS_CONNECTED');

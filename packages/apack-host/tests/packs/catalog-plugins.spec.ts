@@ -15,7 +15,7 @@ import { appSettingsDefinition } from '../../src/features/settings/be/app-defini
 
 startTestRuntime({ appVersion: '1.0.0' });
 
-const feature = { description: 'Open actions', plugin: { label: 'Actions', state: 'missing.ts' } };
+const feature = { description: 'Open actions', surface: { label: 'Actions', state: 'missing.ts' } };
 function source(id: string, enabled = true) {
   const manifest = { id, name: id, version: '1.0.0', features: { view: feature } };
   return { dir: `/missing/${id}`, enabled, snapshot: { manifest, declarationRevision: _declarationRevision(manifest),
@@ -28,12 +28,12 @@ it('projects compiled claims without source or activation, leaving source previe
   catalog.replace([source('installed', false)]);
   const manifest = { ...source('source').snapshot.manifest, id: 'source' };
   catalog.setSources([{ dir: '/no-sources', manifest, declarationRevision: _declarationRevision(manifest) }]);
-  expect(catalog.plugins()).toMatchObject([
+  expect(catalog.surfaces()).toMatchObject([
     { featureRef: 'native/view', opens: ['Prompt'] }, { featureRef: 'installed/view', enabled: false, opens: ['Action'] },
     { featureRef: 'source/view', origin: 'source' },
   ]);
-  expect(catalog.plugins()[2]).not.toHaveProperty('opens');
-  expect(Reflect.set(catalog.plugins()[0].opens!, 0, 'Action')).toBe(false);
+  expect(catalog.surfaces()[2]).not.toHaveProperty('opens');
+  expect(Reflect.set(catalog.surfaces()[0].opens!, 0, 'Action')).toBe(false);
 });
 
 it('refuses enabled conflicts atomically, naming both owners; disabled claims do not compete', () => {

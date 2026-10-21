@@ -9,7 +9,7 @@ import './boot/monaco';
 // highlight.js's stylesheet is global (.hljs, pre code.hljs), so the app owns it: imported from
 // @apackdev/ui it would ship again inside every build.bundleUi pack and restyle code everywhere.
 import 'highlight.js/styles/github-dark.css'
-import { hostFrontend } from '@/views/packs/plugin';
+import { hostFrontend } from '@/views/packs/surface';
 import { createAppShell } from '@/runtime/shell';
 import { HOST, installFromProtocol, runFrontendMigrations } from '@apackdev/host/fe';
 import 'virtual:host-shared-modules';
@@ -25,7 +25,7 @@ declare global {
     applicationState: Actor<ReturnType<typeof createAppShell>>;
     __disableOnboardingUI?: () => void;
     /**
-     * Sends a backend system an event the way a plugin does, for the E2E suite.
+     * Sends a backend system an event the way a surface does, for the E2E suite.
      *
      * A door of its own, because the suite has no other: a send to a system goes through the API's
      * `bus.send`, which is tRPC over a WebSocket — a client to stand up rather than a call to make — and
@@ -41,8 +41,8 @@ declare global {
 installGlobalErrorHandling();
 
 const query = new URLSearchParams(window.location.search);
-const isPluginPopout = query.get('popout') === 'plugin';
-const initialPluginId = isPluginPopout ? query.get('pluginId') ?? undefined : undefined;
+const isSurfacePopout = query.get('popout') === 'surface';
+const initialSurfaceId = isSurfacePopout ? query.get('surfaceId') ?? undefined : undefined;
 
 // --- Pre-actor initialization ---
 window.appVersion = __APP_VERSION__;
@@ -56,7 +56,7 @@ runFrontendMigrations(localStorage, __APP_VERSION__);
 fePacks.registerPackFE({ kind: 'native', declaration: hostDeclaration }, hostFrontend);
 
 // The SDK's frontend code (lookups, navigation, sends, the secrets client) reaches this window's app from here on:
-// bound before the application actor is created, since creating it builds its plugins' state, and before any
+// bound before the application actor is created, since creating it builds its surfaces' state, and before any
 // external pack frontend loads
 // Read by the binding above before it is assigned below, so `const` would not compile: a const needs its
 // initializer, and this one cannot have one until the actor exists. prefer-const misses the closure read.
@@ -64,13 +64,13 @@ fePacks.registerPackFE({ kind: 'native', declaration: hostDeclaration }, hostFro
 let createdApplication: typeof applicationState | undefined;
 bindRendererHost(() => createdApplication);
 
-// The shell starts with the plugins registered above, its default the one a pack claims
+// The shell starts with the surfaces registered above, its default the one a pack claims
 export const applicationState = createActor(createAppShell(), {
   systemId: HOST.application,
   // inspect,
   input: {
-    initialPluginId,
-    ownsLastActivePlugin: !isPluginPopout,
+    initialSurfaceId,
+    ownsLastActiveSurface: !isSurfacePopout,
   }
 });
 

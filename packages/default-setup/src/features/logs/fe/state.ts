@@ -23,7 +23,7 @@ type LogsEvents =
   | { type: 'SET_SEARCH'; search: string }
   | { type: 'CLEAR_LOGS' }
   | OutgoingLogsEvents
-  // The app's, when the logs plugin's settings change; the canvas sends one itself to show a change at once
+  // The app's, when the logs surface's settings change; the canvas sends one itself to show a change at once
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: LogsSettings };
 
 const typeOf = safeEvents<LogsEvents>();

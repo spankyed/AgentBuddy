@@ -51,7 +51,7 @@ describe('shipped manifest schema in a JSON editor', () => {
     const root = await complete('{ | }');
     expect(root.map(item => item.label)).toEqual(expect.arrayContaining(['features', 'data', 'lifecycle', 'checks']));
     const feature = await complete('{ "features": { "memos": { | } } }');
-    expect(feature.map(item => item.label)).toEqual(expect.arrayContaining(['description', 'entities', 'settings', 'types', 'plugin']));
+    expect(feature.map(item => item.label)).toEqual(expect.arrayContaining(['description', 'entities', 'settings', 'types', 'surface']));
     expect(feature.find(item => item.label === 'entities')!.documentation).toContain('untyped');
   });
 
@@ -66,12 +66,12 @@ describe('shipped manifest schema in a JSON editor', () => {
   it('completes policy values and component loading modes', async () => {
     const policy = await complete('{ "features": { "memos": { "settings": { "access": | } } } }');
     expect(policy.map(item => item.label)).toEqual(expect.arrayContaining(['"shared"', '"owner"']));
-    const loading = await complete('{ "features": { "memos": { "plugin": { "panel": { "load": | } } } } }');
+    const loading = await complete('{ "features": { "memos": { "surface": { "panel": { "load": | } } } } }');
     expect(loading.map(item => item.label)).toContain('"lazy"');
   });
 
   it('shows behavior-specific hover help for component loading', async () => {
-    const text = '{ "features": { "memos": { "plugin": { "panel": { "entry": "src/panel.vue", "load": "lazy" } } } } }';
+    const text = '{ "features": { "memos": { "surface": { "panel": { "entry": "src/panel.vue", "load": "lazy" } } } } }';
     const { service, document, parsed } = editor(text);
     const hover = await service.doHover(document, document.positionAt(text.indexOf('"load"') + 2), parsed);
     expect(JSON.stringify(hover?.contents)).toContain('Load the component on demand');

@@ -1,7 +1,7 @@
-// The logs system collects what any code logs, through onLog, and sends each entry to its plugin. It's the
+// The logs system collects what any code logs, through onLog, and sends each entry to its surface. It's the
 // pack's early system (the app starts it before the others and delivers its messages), which the harness's startApp
 // doesn't run, so the test starts its machine on the test host, whose bus is the bound runtime's. Its sends to the
-// plugin go through the app's bus, which delivers them once a client is connected.
+// surface go through the app's bus, which delivers them once a client is connected.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 import { createLogger } from '@apackdev/sdk/logger';
@@ -17,19 +17,19 @@ afterEach(() => {
 });
 
 describe('logs system', () => {
-  it('receives a log entry through onLog and sends it to the logs plugin', () => {
+  it('receives a log entry through onLog and sends it to the logs surface', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const toPlugin: Message[] = [];
-    cleanup.push(testRootEvents.onPluginSend((event) => toPlugin.push(event)));
+    const toSurface: Message[] = [];
+    cleanup.push(testRootEvents.onSurfaceSend((event) => toSurface.push(event)));
     const actor = createActor(logsEntry.machine).start();
     cleanup.push(() => actor.stop());
 
     createLogger('notes').warn('Note sync is slow', { noteId: 'Note-1' });
 
-    expect(toPlugin).toEqual([{
+    expect(toSurface).toEqual([{
       to: 'default-setup/logs',
       call: expect.any(String),
-      // The pack that sent it, stamped by this pack's generated broadcastToPlugin
+      // The pack that sent it, stamped by this pack's generated broadcastToSurface
       from: 'default-setup',
       event: expect.objectContaining({
         type: 'LOG_ADDED',

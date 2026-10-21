@@ -67,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, computed } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -76,7 +76,7 @@ import { RefreshCw, History } from 'lucide-vue-next'
 import TraceFlowSelector from './TraceFlowSelector.vue'
 import TraceEventList from './TraceEventList.vue'
 
-const databaseActor: DatabaseState = usePlugin()
+const databaseActor: DatabaseState = useSurface()
 
 // State selectors
 const currentFlowId = useSelector(databaseActor, (state) => state.context.currentFlowId)

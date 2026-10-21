@@ -18,7 +18,7 @@ const registry = createNativePackTestRegistry();
 startTestRuntime({ packs: registry });
 const {
   getPackRegistration, getRegisteredEntityTypes, getRegisteredServices,
-  registerPack, systemIds, pluginIds, unregisterPack,
+  registerPack, systemIds, surfaceIds, unregisterPack,
 } = registry;
 
 const registered: string[] = [];
@@ -110,7 +110,7 @@ describe('registerPack repositories', () => {
 /**
  * The host's own features are addressed as `HOST.<feature>`, not by a role. Settings claimed the `settings`
  * designation from when it was a default-setup feature, and every reader of that role turned out to be the app
- * resolving its own plugin. The role is gone; the plugin is registered and reachable without it, and the name is
+ * resolving its own surface. The role is gone; the surface is registered and reachable without it, and the name is
  * free for a pack to take.
  */
 describe('the host claims no designation', () => {
@@ -118,7 +118,7 @@ describe('the host claims no designation', () => {
     registry.registerPack(hostRegistration());
     registered.push(HOST_PACK_ID);
 
-    expect(pluginIds()).toContain(HOST.settings);
+    expect(surfaceIds()).toContain(HOST.settings);
     expect(hasDesignation('settings')).toBe(false);
   });
 
@@ -127,11 +127,11 @@ describe('the host claims no designation', () => {
   it('leaves every role name to the packs, `settings` included', () => {
     registry.registerPack(hostRegistration());
     registered.push(HOST_PACK_ID);
-    registerPack({ id: 'ext', features: { prefs: { designation: 'settings', plugin: { receives: [] } } } });
+    registerPack({ id: 'ext', features: { prefs: { designation: 'settings', surface: { receives: [] } } } });
     registered.push('ext');
 
     expect(getDesignated('settings')).toBe('ext/prefs');
-    expect(pluginIds()).toContain(HOST.settings);
+    expect(surfaceIds()).toContain(HOST.settings);
   });
 });
 
@@ -142,7 +142,7 @@ describe('registerPack designations', () => {
     registered.push(id);
   };
 
-  // Its system and plugin share the feature's address, so the role resolves to it whether it has a system, runs
+  // Its system and surface share the feature's address, so the role resolves to it whether it has a system, runs
   // it early, or has none
   it.each([
     ['with a system', { system }],
@@ -165,14 +165,14 @@ describe('registerPack designations', () => {
 
 describe('registered addresses', () => {
   it("lists every pack's systems and features at their refs", () => {
-    registerPack({ id: 'ext', features: { notes: { system: { machine: {} as PackFeatureSystem['machine'], receives: [] }, plugin: { receives: [] } } } });
+    registerPack({ id: 'ext', features: { notes: { system: { machine: {} as PackFeatureSystem['machine'], receives: [] }, surface: { receives: [] } } } });
     registered.push('ext');
     expect(systemIds()).toContain('ext/notes');
-    expect(pluginIds()).toContain('ext/notes');
+    expect(surfaceIds()).toContain('ext/notes');
 
     unregisterPack(registered.pop()!);
     expect(systemIds()).not.toContain('ext/notes');
-    expect(pluginIds()).not.toContain('ext/notes');
+    expect(surfaceIds()).not.toContain('ext/notes');
   });
 });
 
@@ -234,7 +234,7 @@ describe('registerPack entities', () => {
 });
 
 describe('registerPack feature settings', () => {
-  const memos = { plugin: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
+  const memos = { surface: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
 
   it("rejects invalid feature defaults, registering none of the pack", () => {
     const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: {} } };

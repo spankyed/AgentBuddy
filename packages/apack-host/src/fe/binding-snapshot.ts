@@ -13,9 +13,9 @@ export function captureFrontendBindings(registration: PackFERegistration, declar
   if (Array.isArray(captured.artifacts)) captured.artifacts = captured.artifacts.map(captureFacet);
   if (Array.isArray(captured.blocks)) captured.blocks = captured.blocks.map(captureFacet);
   if (Array.isArray(captured.steps)) captured.steps = captured.steps.map(captureStepBinding);
-  if (isPlainObject(captured.tiptapPlugins)) captured.tiptapPlugins = Object.fromEntries(Object.entries(captured.tiptapPlugins).map(([id, plugin]) => {
-    if (!isPlainObject(plugin)) return [id, plugin];
-    const value = { ...plugin };
+  if (isPlainObject(captured.tiptapPlugins)) captured.tiptapPlugins = Object.fromEntries(Object.entries(captured.tiptapPlugins).map(([id, surface]) => {
+    if (!isPlainObject(surface)) return [id, surface];
+    const value = { ...surface };
     if (isPlainObject(value.extensions)) value.extensions = Object.freeze({ ...value.extensions });
     if (isPlainObject(value.popups)) value.popups = Object.freeze({ ...value.popups });
     return [id, Object.freeze(value)];
@@ -24,18 +24,18 @@ export function captureFrontendBindings(registration: PackFERegistration, declar
   captured.features = Object.fromEntries(Object.entries(captured.features).map(([id, feature]) => {
     if (!isPlainObject(feature)) return [id, feature];
     const copy = { ...feature };
-    if (isPlainObject(copy.plugin)) {
-      const plugin = { ...copy.plugin };
-      const canvas = declarations.features?.[id]?.plugin?.canvas;
-      if (canvas && typeof canvas === 'object' && 'routes' in canvas && isPlainObject(plugin.canvas)) {
-        plugin.canvas = Object.freeze({ ...plugin.canvas });
+    if (isPlainObject(copy.surface)) {
+      const surface = { ...copy.surface };
+      const canvas = declarations.features?.[id]?.surface?.canvas;
+      if (canvas && typeof canvas === 'object' && 'routes' in canvas && isPlainObject(surface.canvas)) {
+        surface.canvas = Object.freeze({ ...surface.canvas });
       }
-      if (isPlainObject(plugin.options)) plugin.options = Object.freeze({ ...plugin.options });
-      if (Array.isArray(plugin.hotkeys)) plugin.hotkeys = Object.freeze(plugin.hotkeys.map(hotkey =>
+      if (isPlainObject(surface.options)) surface.options = Object.freeze({ ...surface.options });
+      if (Array.isArray(surface.hotkeys)) surface.hotkeys = Object.freeze(surface.hotkeys.map(hotkey =>
         isPlainObject(hotkey) ? Object.freeze({ ...hotkey }) : hotkey));
-      if (isPlainObject(plugin.fallbackPanel)) plugin.fallbackPanel = Object.freeze({ ...plugin.fallbackPanel,
-        ...(isPlainObject(plugin.fallbackPanel.toggle) && { toggle: Object.freeze({ ...plugin.fallbackPanel.toggle }) }) });
-      copy.plugin = Object.freeze(plugin);
+      if (isPlainObject(surface.fallbackPanel)) surface.fallbackPanel = Object.freeze({ ...surface.fallbackPanel,
+        ...(isPlainObject(surface.fallbackPanel.toggle) && { toggle: Object.freeze({ ...surface.fallbackPanel.toggle }) }) });
+      copy.surface = Object.freeze(surface);
     }
     if (isPlainObject(copy.references)) {
       const references = { ...copy.references };

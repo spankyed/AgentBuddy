@@ -1,19 +1,19 @@
-// Reading another plugin's state by ref: the untyped escape hatch beside the typed readers `#generated/fe`
-// generates, for code with no PluginScope — an extension component the host renders wherever it belongs. The actor
+// Reading another surface's state by ref: the untyped escape hatch beside the typed readers `#generated/fe`
+// generates, for code with no SurfaceScope — an extension component the host renders wherever it belongs. The actor
 // comes from the shell's registry, so nothing keeps its own, and the shell's snapshot is what says to look again.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { effectScope, watchSyncEffect, type Ref } from 'vue';
 import type { AnyActorRef } from 'xstate';
-import { _replyTo, _sendToLocalPlugin, untypedBroadcastToPlugin } from '../../src/events/index.ts';
+import { _replyTo, _sendToLocalSurface, untypedBroadcastToSurface } from '../../src/events/index.ts';
 import { _runDelivery } from '../../src/events/delivery.ts';
-import { readUntypedPluginState, useUntypedPluginState } from '../../src/fe/plugin-state.ts';
+import { readUntypedSurfaceState, useUntypedSurfaceState } from '../../src/fe/surface-state.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { bindHost, unbindHost } from '../../src/runtime/host-runtime.ts';
 
 type Snapshot = { context: { notes: string[] } };
 
-/** A plugin actor as the shell's registry holds one: a snapshot, and subscribers told when it changes */
-function fakePlugin(notes: string[]) {
+/** A surface actor as the shell's registry holds one: a snapshot, and subscribers told when it changes */
+function fakeSurface(notes: string[]) {
   const listeners = new Set<(snapshot: Snapshot) => void>();
   let snapshot: Snapshot = { context: { notes } };
   return {
@@ -32,13 +32,13 @@ function fakePlugin(notes: string[]) {
   };
 }
 
-let notes: ReturnType<typeof fakePlugin>;
-/** The shell's registry of running plugins, and its snapshot stream: a pack's frontend loading changes both */
+let notes: ReturnType<typeof fakeSurface>;
+/** The shell's registry of running surfaces, and its snapshot stream: a pack's frontend loading changes both */
 let running: Record<string, AnyActorRef>;
 let shellChanged: () => void;
 
 beforeEach(() => {
-  notes = fakePlugin(['a']);
+  notes = fakeSurface(['a']);
   running = { 'default-setup/notes': notes.actor };
   const shellListeners = new Set<() => void>();
   // The copy is the point: a listener may subscribe while this runs, and a Set visits what is added during
@@ -61,11 +61,11 @@ afterEach(() => unbindFeHost());
 
 const read = (s: Snapshot) => s.context.notes;
 
-describe('useUntypedPluginState', () => {
-  it('follows the plugin until the scope is disposed, and unsubscribes with it', () => {
+describe('useUntypedSurfaceState', () => {
+  it('follows the surface until the scope is disposed, and unsubscribes with it', () => {
     const scope = effectScope();
     let selected!: Readonly<Ref<string[] | undefined>>;
-    scope.run(() => { selected = useUntypedPluginState('default-setup/notes', read); });
+    scope.run(() => { selected = useUntypedSurfaceState('default-setup/notes', read); });
 
     expect(selected.value).toEqual(['a']);
     expect(notes.subscribers).toBe(1);
@@ -78,29 +78,29 @@ describe('useUntypedPluginState', () => {
   });
 
   it('runs only in a reactive scope, so its subscription is always released', () => {
-    expect(() => useUntypedPluginState('default-setup/notes', read))
+    expect(() => useUntypedSurfaceState('default-setup/notes', read))
       .toThrow(/runs in a component's setup or an effect scope/);
   });
 
-  // A ref names a plugin; nothing about a name says it is running. Another pack's frontend may still be loading,
+  // A ref names a surface; nothing about a name says it is running. Another pack's frontend may still be loading,
   // so absence is a value to render, not a throw — the generated readers narrow it away where the pack ships the
-  // plugin itself. A name that isn't a ref is still a mistake, and still throws.
-  it('reads a plugin that is not running as undefined, and refuses a name that is not a ref', () => {
+  // surface itself. A name that isn't a ref is still a mistake, and still throws.
+  it('reads a surface that is not running as undefined, and refuses a name that is not a ref', () => {
     const scope = effectScope();
-    expect(scope.run(() => useUntypedPluginState('default-setup/memos', read)?.value)).toBeUndefined();
-    expect(readUntypedPluginState('default-setup/memos', read)).toBeUndefined();
-    expect(() => scope.run(() => useUntypedPluginState('notes', read)))
-      .toThrow(`"notes" doesn't name a plugin`);
+    expect(scope.run(() => useUntypedSurfaceState('default-setup/memos', read)?.value)).toBeUndefined();
+    expect(readUntypedSurfaceState('default-setup/memos', read)).toBeUndefined();
+    expect(() => scope.run(() => useUntypedSurfaceState('notes', read)))
+      .toThrow(`"notes" doesn't name a surface`);
     scope.stop();
   });
 
   // The ref is written only when the selected value changed, so a component reading one field of a busy
-  // plugin's context isn't re-rendered every time another field moves.
+  // surface's context isn't re-rendered every time another field moves.
   it('writes the ref only when the selected value changed', () => {
     const scope = effectScope();
     let writes = 0;
     scope.run(() => {
-      const selected = useUntypedPluginState('default-setup/notes', read) as Ref<string[]>;
+      const selected = useUntypedSurfaceState('default-setup/notes', read) as Ref<string[]>;
       // A dependency on the ref, counted each time it is written
       const stop = watchSyncEffect(() => { void selected.value; writes += 1; });
       expect(writes).toBe(1);
@@ -114,28 +114,28 @@ describe('useUntypedPluginState', () => {
     scope.stop();
   });
 });
-describe('readUntypedPluginState', () => {
+describe('readUntypedSurfaceState', () => {
   it('takes the value once, outside any scope, and never follows it', () => {
-    expect(readUntypedPluginState('default-setup/notes', read)).toEqual(['a']);
+    expect(readUntypedSurfaceState('default-setup/notes', read)).toEqual(['a']);
     notes.change(['c']);
-    expect(readUntypedPluginState('default-setup/notes', read)).toEqual(['c']);
+    expect(readUntypedSurfaceState('default-setup/notes', read)).toEqual(['c']);
     expect(notes.subscribers).toBe(0);
   });
 });
 
-// The renderer half of sending: straight to this window's actor, with no bus between. A backend `untypedBroadcastToPlugin`
-// reaches every window showing the plugin, which is why the two have different names.
+// The renderer half of sending: straight to this window's actor, with no bus between. A backend `untypedBroadcastToSurface`
+// reaches every window showing the surface, which is why the two have different names.
 // A read made while another pack's frontend is still loading has nothing to read yet. Resolving the actor once
 // left it `undefined` for the life of the scope, which made the cross-pack read — the reason the value is typed
 // `T | undefined` at all — useless in exactly the case the type exists for.
-describe('following a plugin that is not running yet', () => {
-  it('fills in when the plugin arrives, and follows it from then on', () => {
+describe('following a surface that is not running yet', () => {
+  it('fills in when the surface arrives, and follows it from then on', () => {
     const scope = effectScope();
     let selected!: Readonly<Ref<string[] | undefined>>;
-    scope.run(() => { selected = useUntypedPluginState('memo-pack/memos', read); });
+    scope.run(() => { selected = useUntypedSurfaceState('memo-pack/memos', read); });
     expect(selected.value).toBeUndefined();
 
-    const memos = fakePlugin(['m1']);
+    const memos = fakeSurface(['m1']);
     running['memo-pack/memos'] = memos.actor;
     shellChanged();
 
@@ -146,13 +146,13 @@ describe('following a plugin that is not running yet', () => {
     expect(memos.subscribers).toBe(0);
   });
 
-  it("follows the new actor when a plugin's pack reloads, and drops the old one", () => {
+  it("follows the new actor when a surface's pack reloads, and drops the old one", () => {
     const scope = effectScope();
     let selected!: Readonly<Ref<string[] | undefined>>;
-    scope.run(() => { selected = useUntypedPluginState('default-setup/notes', read); });
+    scope.run(() => { selected = useUntypedSurfaceState('default-setup/notes', read); });
     expect(selected.value).toEqual(['a']);
 
-    const reloaded = fakePlugin(['fresh']);
+    const reloaded = fakeSurface(['fresh']);
     running['default-setup/notes'] = reloaded.actor;
     shellChanged();
 
@@ -163,10 +163,10 @@ describe('following a plugin that is not running yet', () => {
     scope.stop();
   });
 
-  it('reads as undefined again when the plugin goes away', () => {
+  it('reads as undefined again when the surface goes away', () => {
     const scope = effectScope();
     let selected!: Readonly<Ref<string[] | undefined>>;
-    scope.run(() => { selected = useUntypedPluginState('default-setup/notes', read); });
+    scope.run(() => { selected = useUntypedSurfaceState('default-setup/notes', read); });
     expect(selected.value).toEqual(['a']);
 
     delete running['default-setup/notes'];
@@ -179,18 +179,18 @@ describe('following a plugin that is not running yet', () => {
 
   it('stops listening to the shell when the scope is disposed', () => {
     const scope = effectScope();
-    scope.run(() => { useUntypedPluginState('memo-pack/memos', read); });
+    scope.run(() => { useUntypedSurfaceState('memo-pack/memos', read); });
     scope.stop();
 
-    running['memo-pack/memos'] = fakePlugin(['m1']).actor;
+    running['memo-pack/memos'] = fakeSurface(['m1']).actor;
     expect(() => shellChanged()).not.toThrow();
   });
 });
 
-describe('_sendToLocalPlugin', () => {
-  // It asks the shell rather than the actor: the shell owns whether that plugin is here yet, and answers the same
-  // question for `OPEN_PLUGIN`. What it must not do is open the plugin — a send is not a navigation.
-  it("asks the shell to hand this window's plugin the event, without opening it", () => {
+describe('_sendToLocalSurface', () => {
+  // It asks the shell rather than the actor: the shell owns whether that surface is here yet, and answers the same
+  // question for `OPEN_PLUGIN`. What it must not do is open the surface — a send is not a navigation.
+  it("asks the shell to hand this window's surface the event, without opening it", () => {
     const sent: unknown[] = [];
     unbindFeHost();
     bindFeHost({ catalog: {} as never,
@@ -201,30 +201,30 @@ describe('_sendToLocalPlugin', () => {
       packs: {} as never,
     });
 
-    _sendToLocalPlugin('default-setup/threads', { type: 'SELECT_ARTIFACT', artifactId: 'a1' });
+    _sendToLocalSurface('default-setup/threads', { type: 'SELECT_ARTIFACT', artifactId: 'a1' });
 
-    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/threads', call: expect.any(String), events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] }]);
+    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', surface: 'default-setup/threads', call: expect.any(String), events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] }]);
   });
 
   // The two sends share a signature, so picking the wrong one compiles. Worse, a pack test that starts both an
   // app and a shell binds both hosts, where the wrong one would work — so each says which it is by name.
   it('says which send it is when only the other half is bound', () => {
     unbindFeHost();
-    expect(() => _sendToLocalPlugin('default-setup/notes', { type: 'X' }))
+    expect(() => _sendToLocalSurface('default-setup/notes', { type: 'X' }))
       .toThrow(/No frontend host is bound/);
 
-    bindHost({ transport: { rootEvents: { emitPluginSend() {} } } } as never);
+    bindHost({ transport: { rootEvents: { emitSurfaceSend() {} } } } as never);
     try {
-      expect(() => _sendToLocalPlugin('default-setup/notes', { type: 'X' }))
-        .toThrow(/sendToPlugin.*is the renderer's.*broadcastToPlugin/s);
+      expect(() => _sendToLocalSurface('default-setup/notes', { type: 'X' }))
+        .toThrow(/sendToSurface.*is the renderer's.*broadcastToSurface/s);
     } finally {
       unbindHost();
     }
   });
 
-  it("says broadcastToPlugin is the backend's when only a window is bound", () => {
-    expect(() => untypedBroadcastToPlugin('default-setup/notes', { type: 'X' }))
-      .toThrow(/broadcastToPlugin.*is the backend's.*sendToPlugin/s);
+  it("says broadcastToSurface is the backend's when only a window is bound", () => {
+    expect(() => untypedBroadcastToSurface('default-setup/notes', { type: 'X' }))
+      .toThrow(/broadcastToSurface.*is the backend's.*sendToSurface/s);
   });
 
   /**
@@ -234,9 +234,9 @@ describe('_sendToLocalPlugin', () => {
    * later from a fact about this queue that was a guess.
    *
    * It is the window's counterpart of the bus's `askerOf`, and the mutation is the same for both: change the
-   * `kind` here and `apack-host`'s `plugin-reply.spec.ts` fails on an answer leaving for the backend.
+   * `kind` here and `apack-host`'s `surface-reply.spec.ts` fails on an answer leaving for the backend.
    */
-  it("names the sending plugin as a window asker, from the delivery it is sent inside", () => {
+  it("names the sending surface as a window asker, from the delivery it is sent inside", () => {
     const sent: unknown[] = [];
     unbindFeHost();
     bindFeHost({ catalog: {} as never,
@@ -245,12 +245,12 @@ describe('_sendToLocalPlugin', () => {
     });
 
     _runDelivery({ receiver: 'default-setup/threads' }, () => {
-      _sendToLocalPlugin('default-setup/notes', { type: 'ASK' });
+      _sendToLocalSurface('default-setup/notes', { type: 'ASK' });
     });
 
     expect(sent).toEqual([{
       type: 'SEND_TO_PLUGIN',
-      plugin: 'default-setup/notes',
+      surface: 'default-setup/notes',
       call: expect.any(String), 
       events: [{ type: 'ASK' }],
       asker: { kind: 'window', ref: 'default-setup/threads' },
@@ -259,8 +259,8 @@ describe('_sendToLocalPlugin', () => {
 
   /**
    * **`reply` is what marks a send as an answer**, and nothing else does. The shell uses that to decide
-   * whether a plugin that isn't there is worth telling the user about — a command someone gave is, an answer
-   * to a machine's question is not (`apack-host`'s `open-plugin.spec.ts`).
+   * whether a surface that isn't there is worth telling the user about — a command someone gave is, an answer
+   * to a machine's question is not (`apack-host`'s `open-surface.spec.ts`).
    *
    * Here rather than there because the host's cases build the flag by hand, so they hold what the shell does
    * with it and say nothing about who sets it. Measured by mutation: with this case absent, dropping
@@ -281,7 +281,7 @@ describe('_sendToLocalPlugin', () => {
 
     expect(sent).toEqual([{
       type: 'SEND_TO_PLUGIN',
-      plugin: 'default-setup/threads',
+      surface: 'default-setup/threads',
       // Its own, because a reply is a send and may itself be answered
       call: expect.any(String),
       events: [{ type: 'ANSWER' }],
@@ -299,13 +299,13 @@ describe('_sendToLocalPlugin', () => {
       secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
     });
 
-    _sendToLocalPlugin('default-setup/notes', { type: 'ASK' });
+    _sendToLocalSurface('default-setup/notes', { type: 'ASK' });
 
     expect(sent[0]?.answering).toBeUndefined();
   });
 
-  // A plugin that isn't here yet is the shell's to wait for and, once loading settles, to report through `notify`
-  // (`apack-host/tests/features/application/fe/open-plugin.spec.ts`). Nothing throws here any more: this half
+  // A surface that isn't here yet is the shell's to wait for and, once loading settles, to report through `notify`
+  // (`apack-host/tests/features/application/fe/open-surface.spec.ts`). Nothing throws here any more: this half
   // knows only that it asked.
   it('hands the shell a ref no pack provides, rather than throwing on the caller', () => {
     const sent: unknown[] = [];
@@ -315,8 +315,8 @@ describe('_sendToLocalPlugin', () => {
       secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
     });
 
-    _sendToLocalPlugin('default-setup/memos', { type: 'X' });
+    _sendToLocalSurface('default-setup/memos', { type: 'X' });
 
-    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/memos', call: expect.any(String), events: [{ type: 'X' }] }]);
+    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', surface: 'default-setup/memos', call: expect.any(String), events: [{ type: 'X' }] }]);
   });
 });

@@ -6,7 +6,7 @@ import { _declarationRevision } from '@apackdev/sdk/build';
  * test data directory (resolved through @apackdev/sdk/env, never the user's
  * real app data). The test installs a fresh test pack, runs the full
  * boot-sequence functions, and verifies the system loads, registers, and
- * could serve plugins to the FE (the packs.loaded entries).
+ * could serve surfaces to the FE (the packs.loaded entries).
  *
  * Cleans up after itself.
  */
@@ -44,10 +44,10 @@ function installTestPack() {
           entry: 'src/features/hello/be/system.ts',
           events: { incoming: ['HELLO_PING'] },
         },
-        plugin: { label: 'Fixture', state: 'src/features/hello/fe/plugin.ts' },
+        surface: { label: 'Fixture', state: 'src/features/hello/fe/surface.ts' },
       },
-      // No system — plugin only
-      dataOnly: { description: 'Feature declaration fixture.', plugin: { label: 'Fixture', state: 'src/features/dataOnly/fe/plugin.ts' } },
+      // No system — surface only
+      dataOnly: { description: 'Feature declaration fixture.', surface: { label: 'Fixture', state: 'src/features/dataOnly/fe/surface.ts' } },
     },
   }, null, 2));
 
@@ -55,7 +55,7 @@ function installTestPack() {
   fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8')), eventContracts: eventContractsFixture(JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
 
   // The pack's frontend, which the renderer loads from the installed pack
-  fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { surfaces: [] };');
 
   // A real runtime registration whose system machine requires xstate from the host
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'index.cjs'), (`
@@ -88,8 +88,8 @@ function installTestPack() {
         id: '${TEST_PACK_ID}',
         features: {
           // As apack pack build writes it: the machine's events and the manifest's incoming ones
-          hello: { system: { machine: helloMachine, receives: ['CLIENT_CONNECTED', 'HELLO_PING'] }, plugin: { receives: [] } },
-          dataOnly: { plugin: { receives: [] } },
+          hello: { system: { machine: helloMachine, receives: ['CLIENT_CONNECTED', 'HELLO_PING'] }, surface: { receives: [] } },
+          dataOnly: { surface: { receives: [] } },
         },
       },
     };
@@ -143,7 +143,7 @@ describe('E2E: pack loading pipeline', () => {
     expect(system?.machine.id).toBe('e2e-hello');
   });
 
-  it('registers no system for a feature that has only a plugin', () => {
+  it('registers no system for a feature that has only a surface', () => {
     const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
     expect(systemOf(testPack, 'dataOnly')).toBeUndefined();
   });

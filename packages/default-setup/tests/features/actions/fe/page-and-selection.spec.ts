@@ -19,7 +19,7 @@ const anAction = (id: string) => ({
   id, label: id, description: '', category: '', input: {}, actionFn: '', output: {},
 }) as unknown as ActionEntity;
 
-/** A started plugin showing page 1, which is the state a double-click starts from */
+/** A started surface showing page 1, which is the state a double-click starts from */
 function listed() {
   const actor = createActor(actionsState).start();
   actor.send({
@@ -103,7 +103,7 @@ it('shows the action last asked for, not the answer that arrived last', () => {
 /**
  * The answer another window got, which the action id could not tell from this window's.
  *
- * A broadcast `ACTION_SELECTED` reaches every window showing the actions plugin, and a guard on the action id
+ * A broadcast `ACTION_SELECTED` reaches every window showing the actions surface, and a guard on the action id
  * alone admits it in all of them — two people looking at the same action take each other's answers. Replying
  * narrows it to the asker, and the call narrows it to the ask: one from elsewhere matches nothing here.
  */
@@ -119,7 +119,7 @@ it('ignores an answer for an ask it did not make', () => {
 /**
  * Settled, so the answer just taken cannot be taken again.
  *
- * A slot that is only ever set names the last ask for the life of the plugin. Cleared on the answer, the
+ * A slot that is only ever set names the last ask for the life of the surface. Cleared on the answer, the
  * same answer arriving twice — a reconnect replaying it, a double delivery — matches nothing the second
  * time, and an ask made since is still outstanding.
  */

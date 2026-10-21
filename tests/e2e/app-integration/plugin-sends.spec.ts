@@ -1,6 +1,6 @@
-// Backend sends to plugins from outside a system's own `emit` (broadcastToPlugin, services.emitter.broadcastToPlugin) go
+// Backend sends to surfaces from outside a system's own `emit` (broadcastToSurface, services.emitter.broadcastToSurface) go
 // through the app's bus, which drops them until a client connects and delivers them after. The code system's file
-// watcher and terminal output, and the browser system's startup data, still reach their plugins.
+// watcher and terminal output, and the browser system's startup data, still reach their surfaces.
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -9,7 +9,7 @@ import type { Page } from '@playwright/test';
 import { API_TOKEN_HEADER } from '@apackdev/sdk/utils/pure';
 import { test, expect } from '@apackdev/testing';
 
-interface Received { plugin: string; type: string; data?: unknown; savedBookmarks?: Array<{ url: string }> }
+interface Received { surface: string; type: string; data?: unknown; savedBookmarks?: Array<{ url: string }> }
 
 type RecordingWindow = {
   __received?: Received[];
@@ -18,33 +18,33 @@ type RecordingWindow = {
 };
 
 /**
- * The id a built-in feature's system and plugin run under. This spec drives the app the way pack code
+ * The id a built-in feature's system and surface run under. This spec drives the app the way pack code
  * can't — the raw `sendToSystem` and the actor ids — so it writes the ids rather than the names.
  */
 const builtIn = (feature: string) => `default-setup/${feature}`;
 
-/** Records every event the code and browser plugin actors receive from here on */
-async function recordPluginEvents(appPage: Page): Promise<void> {
+/** Records every event the code and browser surface actors receive from here on */
+async function recordSurfaceEvents(appPage: Page): Promise<void> {
   await appPage.evaluate((ids) => {
     const win = window as unknown as RecordingWindow;
     if (win.__received) return;
     win.__received = [];
     win.applicationState.system.inspect((inspection) => {
-      const plugin = inspection.actorRef?.id;
-      if (inspection.type === '@xstate.event' && (plugin === ids.code || plugin === ids.browser)) {
-        win.__received!.push({ ...(JSON.parse(JSON.stringify(inspection.event)) as Received), plugin });
+      const surface = inspection.actorRef?.id;
+      if (inspection.type === '@xstate.event' && (surface === ids.code || surface === ids.browser)) {
+        win.__received!.push({ ...(JSON.parse(JSON.stringify(inspection.event)) as Received), surface });
       }
     });
   }, { code: builtIn('code'), browser: builtIn('browser') });
 }
 
 async function received(appPage: Page, feature: string, type: string): Promise<Received[]> {
-  return appPage.evaluate(({ plugin, type }) => ((window as unknown as RecordingWindow).__received ?? [])
-    .filter((event) => event.plugin === plugin && event.type === type), { plugin: builtIn(feature), type });
+  return appPage.evaluate(({ surface, type }) => ((window as unknown as RecordingWindow).__received ?? [])
+    .filter((event) => event.surface === surface && event.type === type), { surface: builtIn(feature), type });
 }
 
 /**
- * Sends a backend system an event as a plugin does, through `window.__sendToSystem` — the renderer's door
+ * Sends a backend system an event as a surface does, through `window.__sendToSystem` — the renderer's door
  * for this suite (`packages/renderer/src/main.ts`), which is the SDK's `untypedSendToSystem`. A pack writes
  * the typed `sendToSystem` its `#generated/events` builds, which `defineEvents` wraps around that one.
  */
@@ -60,11 +60,11 @@ test.afterEach(() => {
   workDir = undefined;
 });
 
-test("the code system's file watcher and terminal output reach the code plugin", async ({ appPage }) => {
-  workDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-plugin-sends-')));
+test("the code system's file watcher and terminal output reach the code surface", async ({ appPage }) => {
+  workDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-surface-sends-')));
   // The code system watches a git working directory
   execFileSync('git', ['init', '-q'], { cwd: workDir });
-  await recordPluginEvents(appPage);
+  await recordSurfaceEvents(appPage);
 
   const changed = path.join(workDir, 'changed-outside.txt');
   fs.writeFileSync(changed, 'first');
@@ -82,12 +82,12 @@ test("the code system's file watcher and terminal output reach the code plugin",
       .some((event) => JSON.stringify(event.data).includes('changed-outside.txt'));
   }, { timeout: 20_000, intervals: [500] }).toBe(true);
 
-  await sendToSystem(appPage, 'code', { type: 'terminal.CREATE_TERMINAL', title: 'e2e plugin sends', cwd: workDir });
+  await sendToSystem(appPage, 'code', { type: 'terminal.CREATE_TERMINAL', title: 'e2e surface sends', cwd: workDir });
   await expect.poll(async () => (await received(appPage, 'code', 'terminal.CREATED'))
-    .some((event) => (event.data as { title?: string }).title === 'e2e plugin sends'), { timeout: 15_000 }).toBe(true);
+    .some((event) => (event.data as { title?: string }).title === 'e2e surface sends'), { timeout: 15_000 }).toBe(true);
   const terminalId = (await received(appPage, 'code', 'terminal.CREATED'))
     .map((event) => event.data as { id: string; title?: string })
-    .find((terminal) => terminal.title === 'e2e plugin sends')!.id;
+    .find((terminal) => terminal.title === 'e2e surface sends')!.id;
   try {
     await sendToSystem(appPage, 'code', { type: 'terminal.TERMINAL_INPUT', terminalId, data: 'echo "e2e-marker-$((6 * 7))"\r' });
     await expect.poll(async () => (await received(appPage, 'code', 'terminal.OUTPUT'))
@@ -98,9 +98,9 @@ test("the code system's file watcher and terminal output reach the code plugin",
   }
 });
 
-test("a restarted pack's browser system sends its startup data to the browser plugin", async ({ appPage }) => {
-  const url = `https://example.com/e2e-plugin-sends-${Date.now()}`;
-  await recordPluginEvents(appPage);
+test("a restarted pack's browser system sends its startup data to the browser surface", async ({ appPage }) => {
+  const url = `https://example.com/e2e-surface-sends-${Date.now()}`;
+  await recordSurfaceEvents(appPage);
   await sendToSystem(appPage, 'browser', { type: 'SYNC_BOOKMARKS', bookmarks: [{ url, title: 'E2E bookmark', displayOrder: 0 }] });
   const { apiPort, apiToken } = await appPage.evaluate(() => {
     const api = (window as { electronAPI?: { apiPort?: number; apiToken?: string } }).electronAPI;

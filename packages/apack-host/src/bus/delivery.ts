@@ -12,7 +12,7 @@
 // named as the one thing a single variable could not do.
 //
 // **What is given up is a label on four sends.** Across both packages, four sends are made after an `await`
-// inside one action — `database`'s `resetDatabase`, which fires `RESTART_BRAIN` and three plugin
+// inside one action — `database`'s `resetDatabase`, which fires `RESTART_BRAIN` and three surface
 // notifications. None of them is answered, so none needs a return address, and `Message.from` still names the
 // pack because that is stamped from the pack's identity rather than from here.
 //
@@ -26,7 +26,7 @@ import { _runDelivery, type _Asker, type Message } from '@apackdev/sdk/events';
  * The way back to whoever sent this message, read off the envelope.
  *
  * **One reader, because the two doors used to each build it and could disagree.** A `sender` with a `client` is
- * a plugin or a claimed participant on that connection; a `sender` without one came from the backend, so it is
+ * a surface or a claimed participant on that connection; a `sender` without one came from the backend, so it is
  * a system reachable over the bus; no `sender` means nobody said where an answer would go, and there is then
  * nothing for a handler to answer with.
  *

@@ -14,6 +14,6 @@ test('renders and edits with its bundled @apackdev/ui editor', async ({ appPage,
   await expect(editor).toContainText('Bundled editor', { timeout: 10_000 });
   await editor.fill('Bundled editor typed');
   await expect(appPage.getByTestId('scribbles-text')).toContainText('Bundled editor typed');
-  // Two ProseMirror copies fail here ("Adding different instances of a keyed plugin", instanceof checks)
+  // Two ProseMirror copies fail here ("Adding different instances of a keyed surface", instanceof checks)
   expect(errors).toEqual([]);
 });

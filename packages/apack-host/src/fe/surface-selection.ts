@@ -1,32 +1,32 @@
 import { isEqual } from '../features/settings/document.ts';
-import type { PluginCatalogEntry } from '../packs/catalog.ts';
-import type { PluginFrontendBinding } from './pack-store.ts';
+import type { SurfaceCatalogEntry } from '../packs/catalog.ts';
+import type { SurfaceFrontendBinding } from './pack-store.ts';
 
-export interface ShellPluginCatalog {
+export interface ShellSurfaceCatalog {
   status(): 'loading' | 'ready' | 'disconnected' | 'error' | 'disposed';
-  plugins(): readonly PluginCatalogEntry[];
+  surfaces(): readonly SurfaceCatalogEntry[];
   subscribe(listener: () => void): () => void;
 }
 
 /** Installed/native ownership takes precedence over authoring-source previews. */
-export function selectPluginDeclaration(catalog: ShellPluginCatalog, ref: string): PluginCatalogEntry | undefined {
-  const owners = catalog.plugins().filter(entry => entry.featureRef === ref);
+export function selectSurfaceDeclaration(catalog: ShellSurfaceCatalog, ref: string): SurfaceCatalogEntry | undefined {
+  const owners = catalog.surfaces().filter(entry => entry.featureRef === ref);
   const runtime = owners.filter(entry => entry.origin !== 'source');
   const candidates = runtime.length ? runtime : owners;
   return candidates.length === 1 ? candidates[0] : undefined;
 }
 
 /** The default is selected before frontend loading; delivery order cannot change its owner. */
-export function selectDefaultPluginDeclaration(catalog: ShellPluginCatalog): PluginCatalogEntry | undefined {
-  return catalog.plugins().filter(entry => entry.enabled === true && entry.origin !== 'source' && entry.declaration.default
-    && selectPluginDeclaration(catalog, entry.featureRef)?.packId === entry.packId)
+export function selectDefaultSurfaceDeclaration(catalog: ShellSurfaceCatalog): SurfaceCatalogEntry | undefined {
+  return catalog.surfaces().filter(entry => entry.enabled === true && entry.origin !== 'source' && entry.declaration.default
+    && selectSurfaceDeclaration(catalog, entry.featureRef)?.packId === entry.packId)
     .sort((a, b) => (a.origin === 'native' ? 0 : 1) - (b.origin === 'native' ? 0 : 1)
       || a.featureRef.localeCompare(b.featureRef, 'en'))[0];
 }
 
 /** A declaration does not authorize stale components or actors to receive new work. */
-export function getEligiblePlugin(catalog: ShellPluginCatalog, bindings: ReadonlyMap<string, PluginFrontendBinding>, ref: string) {
-  const owner = selectPluginDeclaration(catalog, ref); const accepted = bindings.get(ref);
+export function getEligibleSurface(catalog: ShellSurfaceCatalog, bindings: ReadonlyMap<string, SurfaceFrontendBinding>, ref: string) {
+  const owner = selectSurfaceDeclaration(catalog, ref); const accepted = bindings.get(ref);
   if (!owner || owner.enabled !== true || owner.origin === 'source' || !accepted
     || (owner.origin !== 'native' && catalog.status() !== 'ready')
     || accepted.packId !== owner.packId || accepted.binding.id !== ref
@@ -40,13 +40,13 @@ export function getEligiblePlugin(catalog: ShellPluginCatalog, bindings: Readonl
 
 
 export type EntityDestinationSelection =
-  | { status: 'declared'; destination: PluginCatalogEntry }
-  | { status: 'disabled' | 'ambiguous'; destinations: readonly PluginCatalogEntry[] }
+  | { status: 'declared'; destination: SurfaceCatalogEntry }
+  | { status: 'disabled' | 'ambiguous'; destinations: readonly SurfaceCatalogEntry[] }
   | { status: 'loading' | 'unavailable' | 'unclaimed' };
 
 /** Resolve declarations first; actor readiness and accepted binding identity remain separate. */
-export function selectEntityDestination(catalog: ShellPluginCatalog, entity: string): EntityDestinationSelection {
-  const claims = catalog.plugins().filter(entry => entry.origin !== 'source' && entry.opens?.includes(entity));
+export function selectEntityDestination(catalog: ShellSurfaceCatalog, entity: string): EntityDestinationSelection {
+  const claims = catalog.surfaces().filter(entry => entry.origin !== 'source' && entry.opens?.includes(entity));
   const enabled = claims.filter(entry => entry.enabled === true);
   if (enabled.length > 1) return { status: 'ambiguous', destinations: enabled };
   const destination = enabled[0];

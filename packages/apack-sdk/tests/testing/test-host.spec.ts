@@ -3,7 +3,7 @@ import { installedEngine as ears } from '@apackdev/ears';
 import * as os from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 import { entityIds, dropAttribute, resetTestData, startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
-import { untypedBroadcastToPlugin, untypedSendToSystem } from '../../src/events/index.ts';
+import { untypedBroadcastToSurface, untypedSendToSystem } from '../../src/events/index.ts';
 import { testPacks, testPacksView } from '../../src/testing/packs.ts';
 import { getAppVersion } from '../../src/env/index.ts';
 import { createLogger, reportError } from '../../src/logger/index.ts';
@@ -16,13 +16,13 @@ process.env.APACK_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime();
 
 describe('the test host', () => {
-  it('binds testRootEvents as the bus untypedBroadcastToPlugin and untypedSendToSystem send on, which _rootEvents is', () => {
-    const toPlugins: unknown[] = [];
+  it('binds testRootEvents as the bus untypedBroadcastToSurface and untypedSendToSystem send on, which _rootEvents is', () => {
+    const toSurfaces: unknown[] = [];
     const incoming: unknown[] = [];
-    const stop = [testRootEvents.onPluginSend((e) => toPlugins.push(e)), testRootEvents.onIncoming((e) => incoming.push(e))];
+    const stop = [testRootEvents.onSurfaceSend((e) => toSurfaces.push(e)), testRootEvents.onIncoming((e) => incoming.push(e))];
     testPacks.designations.set('brain', 'brain-system');
     try {
-      untypedBroadcastToPlugin('memos', { type: 'MEMO_ADDED' });
+      untypedBroadcastToSurface('memos', { type: 'MEMO_ADDED' });
       untypedSendToSystem('memos', { type: 'ADD_MEMO' });
       untypedSendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' });
       _rootEvents.emitIncoming({ to: 'memos', event: { type: 'PING' } });
@@ -30,7 +30,7 @@ describe('the test host', () => {
       stop.forEach((unsubscribe) => unsubscribe());
       testPacks.designations.delete('brain');
     }
-    expect(toPlugins).toEqual([{ to: 'memos', call: expect.any(String), event: { type: 'MEMO_ADDED' } }]);
+    expect(toSurfaces).toEqual([{ to: 'memos', call: expect.any(String), event: { type: 'MEMO_ADDED' } }]);
     expect(incoming).toEqual([
       { to: 'memos', call: expect.any(String), event: { type: 'ADD_MEMO' } },
       { to: 'brain-system', call: expect.any(String), event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' } },

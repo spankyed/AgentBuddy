@@ -9,7 +9,7 @@
           {{ feature.label }}
           <span class="block text-xs text-neutral-500">{{ feature.id }}</span>
         </button>
-        <button v-if="feature.plugin" @click="toggleVisibility(feature.id)" class="p-2 text-neutral-400"
+        <button v-if="feature.surface" @click="toggleVisibility(feature.id)" class="p-2 text-neutral-400"
           :title="isVisible(feature.id) ? 'Hide from toolbar' : 'Show in toolbar'">
           <component :is="isVisible(feature.id) ? Eye : EyeOff" class="w-4 h-4" />
         </button>
@@ -19,10 +19,10 @@
     <div class="flex-1 p-8 overflow-auto">
       <SettingsEditor v-if="selected" :key="selected.id" :target="selected.target" :title="selected.label"
         :description="selected.definition.description" :form="selected.form"
-        :value="snapshot?.values.features[selected.id]" :plugin="selected.plugin?.id">
+        :value="snapshot?.values.features[selected.id]" :surface="selected.surface?.id">
         <template #actions>
           <button data-testid="feature-help" :aria-label="`Help for ${selected.label}`" v-if="hasHelp(selected.id)" @click="openFeatureHelp(selected.id)" class="text-sm text-neutral-400 underline">Help</button>
-          <button v-if="selected.plugin" @click="untypedOpenPlugin(selected.id)" title="Open feature" class="text-neutral-400">
+          <button v-if="selected.surface" @click="untypedOpenSurface(selected.id)" title="Open feature" class="text-neutral-400">
             <ExternalLink class="w-4 h-4" />
           </button>
         </template>
@@ -34,7 +34,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { usePlugin, useShell, untypedOpenPlugin } from '@apackdev/sdk/fe';
+import { useSurface, useShell, untypedOpenSurface } from '@apackdev/sdk/fe';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import type { SettingsState } from '@apackdev/host/fe';
 import { Eye, EyeOff, ExternalLink } from 'lucide-vue-next';
@@ -43,7 +43,7 @@ import { useSettingsFormLookup } from '@/views/settings/forms';
 import { useContextualHelp } from '@/views/settings/contextual-help';
 import SettingsEditor from '../components/SettingsEditor.vue';
 
-const actor: SettingsState = usePlugin();
+const actor: SettingsState = useSurface();
 const shell = useShell();
 const snapshot = useWindowSettingsSnapshot();
 const settingsForm = useSettingsFormLookup();
@@ -52,8 +52,8 @@ const { hasHelp, openFeatureHelp } = useContextualHelp();
 const features = computed(() => Object.entries(snapshot.value?.catalog.features ?? {}).map(([name, definition]) => {
   const id = resolveName(name);
   const target = { kind: 'feature' as const, featureRef: id };
-  const plugin = shell.plugins.value.find(plugin => plugin.id === id);
-  return { id, target, definition, plugin, label: definition.title ?? plugin?.label ?? id, form: settingsForm(target) };
+  const surface = shell.surfaces.value.find(surface => surface.id === id);
+  return { id, target, definition, surface, label: definition.title ?? surface?.label ?? id, form: settingsForm(target) };
 }));
 const selected = computed(() => features.value.find(feature => feature.id === selectedId.value) ?? features.value[0]);
 const sidebar = ref<HTMLElement>();

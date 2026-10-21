@@ -31,9 +31,9 @@ const windowControls = {
   close: () => ipcRenderer.send('window:close'),
 } satisfies _HostBridge['windowControls'];
 
-const plugins = {
-  popout: (pluginId: string, title?: string) => ipcRenderer.invoke('plugin:popout', pluginId, title) as Promise<void>,
-} satisfies _HostBridge['plugins'];
+const surfaces = {
+  popout: (surfaceId: string, title?: string) => ipcRenderer.invoke('surface:popout', surfaceId, title) as Promise<void>,
+} satisfies _HostBridge['surfaces'];
 
 // File utilities
 const fileUtils = {
@@ -229,7 +229,7 @@ const protocolAction = {
  */
 const electronAPI = {
   windowControls,
-  plugins,
+  surfaces,
   fileUtils,
   shell,
   media,

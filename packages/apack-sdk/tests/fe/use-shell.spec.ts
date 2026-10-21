@@ -9,7 +9,7 @@ let observers: Array<(snapshot: HostShellSnapshot) => void>
 let snapshot: HostShellSnapshot
 
 const withSizes = (canvasHeight: number): HostShellSnapshot => ({
-  context: { plugins: [], activePlugin: { id: 'memo-pack/memos' } as never, pluginVisibility: {}, panelSizes: { canvasHeight, inspectionWidth: 400 } },
+  context: { surfaces: [], activeSurface: { id: 'memo-pack/memos' } as never, pluginVisibility: {}, panelSizes: { canvasHeight, inspectionWidth: 400 } },
   hasTag: () => false,
 })
 

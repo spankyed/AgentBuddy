@@ -16,13 +16,13 @@ test('installed pack help remains navigable without its runtime', async ({ app, 
     await appPage.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(appPage.getByTestId('help-article-title')).toHaveText('Fixture guide');
     const toggle = () => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs').send({ type: 'UI.TOGGLE_ENABLED', packId: 'e2e-fixture' }));
-    const pluginIds = () => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.plugins.map((plugin: { id: string }) => plugin.id) as string[]);
+    const surfaceIds = () => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.surfaces.map((surface: { id: string }) => surface.id) as string[]);
     await toggle();
     try {
-      await expect.poll(pluginIds).not.toContain('e2e-fixture/memos');
+      await expect.poll(surfaceIds).not.toContain('e2e-fixture/memos');
       await appPage.getByRole('link', { name: 'Next guide' }).click();
       await expect(appPage.getByTestId('help-article-title')).toHaveText('Next fixture guide');
-      await expect.poll(pluginIds).not.toContain('e2e-fixture/memos');
+      await expect.poll(surfaceIds).not.toContain('e2e-fixture/memos');
     } finally {
       await toggle();
       await app.waitForPlugin('memos');

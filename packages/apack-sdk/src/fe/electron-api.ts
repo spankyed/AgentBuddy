@@ -27,8 +27,8 @@ export interface _HostBridge {
     maximize: () => void;
     close: () => void;
   };
-  plugins: {
-    popout: (pluginId: string, title?: string) => Promise<void>;
+  surfaces: {
+    popout: (surfaceId: string, title?: string) => Promise<void>;
   };
   fileUtils: {
     selectDirectory: () => Promise<string | null>;

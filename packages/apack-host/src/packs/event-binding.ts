@@ -9,7 +9,7 @@ export function eventBindingProblem(contracts: Readonly<PackEventContracts> | un
   for (const id of new Set([...Object.keys(contracts ?? {}), ...Object.keys(actual)])) {
     const feature = actual[id];
     if (feature !== undefined && !isPlainObject(feature)) return `features.${id}`;
-    for (const kind of ['system', 'plugin'] as const) {
+    for (const kind of ['system', 'surface'] as const) {
       const declared = contracts?.[id]?.[kind];
       const binding = feature?.[kind];
       const path = `features.${id}.${kind}`;

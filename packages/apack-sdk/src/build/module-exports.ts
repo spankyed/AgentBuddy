@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
-import type { PluginInboxAudiences } from '../fe/plugin.ts';
+import type { SurfaceInboxAudiences } from '../fe/surface.ts';
 
 /** What a module exports under a name, as the TypeScript compiler resolves it */
 export interface ModuleExport {
@@ -18,10 +18,10 @@ export interface ModuleExports {
   /** The export `name` of `file` (an absolute path the reader was created with); undefined when it has none */
   exportOf(file: string, name: string): ModuleExport | undefined;
   /**
-   * The `type` literals of the events a system's contract says it sends its plugin, read from the type `name` that
+   * The `type` literals of the events a system's contract says it sends its surface, read from the type `name` that
    * `file` declares (`apack.json`'s `features[].system.contract`) — its `outgoing`.
    *
-   * A declared type, as the plugin reader takes one. Reading a value's type instead is what made an annotation on
+   * A declared type, as the surface reader takes one. Reading a value's type instead is what made an annotation on
    * the system's default export (`: SystemEntry` rather than `satisfies`) silently drop every outgoing event, and
    * what left the reader unable to tell a broken install from a mistake, since a failed import reads as `any`.
    */
@@ -30,29 +30,29 @@ export interface ModuleExports {
   incomingEventTypesOf(file: string, name: string): string[];
 
   /**
-   * The `type` literals of the events a plugin's contract says *other* plugins may send it, read from the type
-   * `name` that `file` declares (`apack.json`'s `features[].plugin.contract`) — its `inbox`, across audiences.
+   * The `type` literals of the events a surface's contract says *other* surfaces may send it, read from the type
+   * `name` that `file` declares (`apack.json`'s `features[].surface.contract`) — its `inbox`, across audiences.
    *
    * A contract with no `inbox` reads as `[]`: it publishes state only, and what its own feature's system sends it
    * is that system's outgoing union, which codegen adds. Throws when the module declares no such type, when the
    * inbox names an audience that doesn't exist, and on a member with no literal `type`, as the system reader does.
    *
-   * It reads a *declared* type, never a value, which is what lets the contract live in a leaf module the plugin's
-   * machine doesn't reach: reading it off `fe/plugin.ts` would pull in the machine, whose imports cycle back
+   * It reads a *declared* type, never a value, which is what lets the contract live in a leaf module the surface's
+   * machine doesn't reach: reading it off `fe/surface.ts` would pull in the machine, whose imports cycle back
    * through the generated events module this feeds.
    */
   inboxEventTypesOf(file: string, name: string): string[];
-  /** Literal entity names in a plugin contract's optional `opens` field; never evaluates its module. */
+  /** Literal entity names in a surface contract's optional `opens` field; never evaluates its module. */
   openedEntityTypesOf(file: string, name: string): string[];
 
 }
 
 /**
- * The audiences a plugin's inbox may open to, in the order an error lists them. Constrained by the type packs
- * write against (`PluginInboxAudiences`, `@apackdev/sdk/fe`), so a new audience there is a compile error here
+ * The audiences a surface's inbox may open to, in the order an error lists them. Constrained by the type packs
+ * write against (`SurfaceInboxAudiences`, `@apackdev/sdk/fe`), so a new audience there is a compile error here
  * rather than a contract codegen rejects as "not an audience".
  */
-const INBOX_AUDIENCES = ['pack', 'public'] as const satisfies readonly (keyof PluginInboxAudiences)[];
+const INBOX_AUDIENCES = ['pack', 'public'] as const satisfies readonly (keyof SurfaceInboxAudiences)[];
 
 function loadTypeScript(): typeof TS {
   try {
@@ -183,7 +183,7 @@ export function createModuleExports(packRoot: string, files: string[], sources: 
    * Throws when part of a contract reads as `any` or `unknown` — what an import that didn't resolve leaves behind.
    *
    * Without this the readers below answer "no events" rather than failing: `getProperties()` on `any` is empty, so
-   * a plugin whose inbox didn't resolve publishes an inbox nothing may send to, and the pack builds. Where it did
+   * a surface whose inbox didn't resolve publishes an inbox nothing may send to, and the pack builds. Where it did
    * fail, it failed as "this member's `type` is missing" or "declares no `outgoing`" — both of which point the
    * author at their own contract, and the second of which advises deleting the manifest entry that is correct.
    *
@@ -194,7 +194,7 @@ export function createModuleExports(packRoot: string, files: string[], sources: 
    */
   function checkResolved(type: TS.Type, file: string, what: string): void {
     if (!(type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown))) return;
-    // `typeToString` prints the alias as written (`PluginInbox<{ pack: NotesInbox }>`), which reads as though it
+    // `typeToString` prints the alias as written (`SurfaceInbox<{ pack: NotesInbox }>`), which reads as though it
     // resolved, so name what it collapsed to first and show the written form as corroboration
     const collapsed = type.flags & ts.TypeFlags.Any ? 'any' : 'unknown';
     throw new Error(`${path.basename(file)}: ${what} resolves to \`${collapsed}\` — written as \`${checker.typeToString(type)}\` — so a type it names didn't resolve: an uninstalled dependency, or a name its module doesn't export${generatedCause(file)}. Required type inspection cannot use an unresolved type`);
@@ -269,7 +269,7 @@ export function createModuleExports(packRoot: string, files: string[], sources: 
     inboxEventTypesOf(file, name) {
       const contract = declaredTypeOf(file, name);
       if (!contract) {
-        throw new Error(`${path.basename(file)}: it declares no type "${name}". A plugin's contract is a declared type — \`export type ${name} = { state: …; inbox: … }\` — named in apack.json at features[].plugin.contract`);
+        throw new Error(`${path.basename(file)}: it declares no type "${name}". A surface's contract is a declared type — \`export type ${name} = { state: …; inbox: … }\` — named in apack.json at features[].surface.contract`);
       }
       const inbox = propertyType(contract, 'inbox');
       // A contract may publish state alone; its own system's events still reach it
@@ -278,15 +278,15 @@ export function createModuleExports(packRoot: string, files: string[], sources: 
       const audiences = inbox.getProperties();
       const unknown = audiences.filter((audience) => !(INBOX_AUDIENCES as readonly string[]).includes(audience.name));
       if (unknown.length > 0) {
-        throw new Error(`${path.basename(file)}: ${name}'s inbox names ${unknown.map((a) => `"${a.name}"`).join(', ')}, which ${unknown.length > 1 ? 'are not audiences' : 'is not an audience'}: an inbox opens to ${INBOX_AUDIENCES.map((a) => `\`${a}\``).join(' or ')}. Declaring it with \`PluginInbox<…>\` would have caught this at the declaration`);
+        throw new Error(`${path.basename(file)}: ${name}'s inbox names ${unknown.map((a) => `"${a.name}"`).join(', ')}, which ${unknown.length > 1 ? 'are not audiences' : 'is not an audience'}: an inbox opens to ${INBOX_AUDIENCES.map((a) => `\`${a}\``).join(' or ')}. Declaring it with \`SurfaceInbox<…>\` would have caught this at the declaration`);
       }
       return audiences.flatMap((audience) => {
         const declared = propertyType(inbox, audience.name);
         const events = declared ? eventTypeLiterals(declared, file, `the events it accepts from \`${audience.name}\``) : [];
         // The same refusal `outgoing` gets above, which the inbox went without: a declared audience that accepts
-        // nothing published an audience nothing may send to, and the pack built. `PluginInbox<{ public: never }>`
+        // nothing published an audience nothing may send to, and the pack built. `SurfaceInbox<{ public: never }>`
         // is the shape, and it need not arrive as a literal `never` — any type that resolves to one does, which is
-        // how a contract reaching another plugin's absent inbox reads.
+        // how a contract reaching another surface's absent inbox reads.
         //
         // At the audience level, not below it: an **absent** `inbox` is legitimate and returns early above, and
         // `never` as one member of a union stays "no events" in `eventTypeLiterals`, which is what lets a first
@@ -294,7 +294,7 @@ export function createModuleExports(packRoot: string, files: string[], sources: 
         // and left empty.
         if (events.length === 0) {
           throw new Error(`${path.basename(file)}: ${name}'s inbox declares \`${audience.name}\` and it accepts no events. `
-            + 'An audience with none is left out rather than declared empty, and a plugin that accepts nothing from '
+            + 'An audience with none is left out rather than declared empty, and a surface that accepts nothing from '
             + "anyone omits `inbox` altogether — its own system's outgoing events still reach it");
         }
         return events;

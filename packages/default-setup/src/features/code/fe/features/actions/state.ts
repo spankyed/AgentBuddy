@@ -1,7 +1,7 @@
 import type { ActionTab } from '../../contract.ts';
 export type { ActionTab } from '../../contract.ts';
 import { setup , type ActorRefFrom } from 'xstate';
-import { sendToPlugin, sendToSystem } from '#generated/events.ts';
+import { sendToSurface, sendToSystem } from '#generated/events.ts';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication.ts';
 import type { ActionEntity } from '@apackdev/sdk';
 import type { EARS } from '#generated/ears.ts';
@@ -16,16 +16,16 @@ export type Event =
   // Tab restoration
   | { type: 'codeActions.OPEN_TABS'; actionIds: string[] }
   /**
-   * What the panel asks of the **actions plugin**, which owns the list and the rows.
+   * What the panel asks of the **actions surface**, which owns the list and the rows.
    *
-   * The panel used to send these straight to that plugin from its click handlers. Two things were wrong
+   * The panel used to send these straight to that surface from its click handlers. Two things were wrong
    * with that and the second is why they are here rather than merely tidier: a component is not inside any
-   * delivery, so the send carried no `Message.sender` and the actions plugin had no address to answer — a
+   * delivery, so the send carried no `Message.sender` and the actions surface had no address to answer — a
    * refusal or an error had nowhere to go but a toast. A send made from this machine carries the code
-   * plugin's ref, because the shell names a plugin while it handles anything (`notifyPluginActor`).
+   * surface's ref, because the shell names a surface while it handles anything (`notifySurfaceActor`).
    *
    * The names match what they forward, so the hand-off reads as one; the `codeActions.` prefix is how the
-   * code plugin routes an event to this child.
+   * code surface routes an event to this child.
    */
   | { type: 'codeActions.LOAD_ALL' }
   | { type: 'codeActions.LOAD_MORE' }
@@ -101,28 +101,28 @@ export const actionsState = setup({
       updateParentState(self, { openFiles: updatedFiles })
     },
 
-    // The panel's asks of the actions plugin, forwarded from here so each one carries a sender
-    loadAllActions: () => { sendToPlugin('actions', { type: 'ACTIONS.LOAD_ALL' }) },
-    loadMoreActions: () => { sendToPlugin('actions', { type: 'ACTIONS.LOAD_MORE' }) },
+    // The panel's asks of the actions surface, forwarded from here so each one carries a sender
+    loadAllActions: () => { sendToSurface('actions', { type: 'ACTIONS.LOAD_ALL' }) },
+    loadMoreActions: () => { sendToSurface('actions', { type: 'ACTIONS.LOAD_MORE' }) },
 
     updateActionInput: ({ event }) => {
       const ev = event as { type: 'codeActions.UPDATE_INPUT'; actionId: string; input: Record<string, unknown> }
-      sendToPlugin('actions', { type: 'ACTION.UPDATE_INPUT', actionId: ev.actionId, input: ev.input })
+      sendToSurface('actions', { type: 'ACTION.UPDATE_INPUT', actionId: ev.actionId, input: ev.input })
     },
 
     updateActionLabel: ({ event }) => {
       const ev = event as { type: 'codeActions.UPDATE_LABEL'; actionId: string; label: string }
-      sendToPlugin('actions', { type: 'ACTION.UPDATE_LABEL', actionId: ev.actionId, label: ev.label })
+      sendToSurface('actions', { type: 'ACTION.UPDATE_LABEL', actionId: ev.actionId, label: ev.label })
     },
 
     deleteAction: ({ event }) => {
       const ev = event as { type: 'codeActions.DELETE'; actionId: EARS.EntityId }
-      sendToPlugin('actions', { type: 'ACTION.DELETE', actionId: ev.actionId })
+      sendToSurface('actions', { type: 'ACTION.DELETE', actionId: ev.actionId })
     },
 
     createActionInline: ({ event }) => {
       const ev = event as { type: 'codeActions.CREATE_INLINE'; label: string; actionFn: string; input: Record<string, unknown> }
-      sendToPlugin('actions', { type: 'ACTION.CREATE_INLINE', label: ev.label, actionFn: ev.actionFn, input: ev.input })
+      sendToSurface('actions', { type: 'ACTION.CREATE_INLINE', label: ev.label, actionFn: ev.actionFn, input: ev.input })
     },
 
     // Handle tab restoration
@@ -155,7 +155,7 @@ export const actionsState = setup({
     'codeActions.ACTION_UPDATED': {
       actions: 'updateActionInOpenFiles'
     },
-    // The panel's asks of the actions plugin
+    // The panel's asks of the actions surface
     'codeActions.LOAD_ALL': { actions: 'loadAllActions' },
     'codeActions.LOAD_MORE': { actions: 'loadMoreActions' },
     'codeActions.UPDATE_INPUT': { actions: 'updateActionInput' },

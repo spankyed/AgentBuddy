@@ -993,7 +993,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // step depending on another's output says so can only see outputs that are declared, and a step declaring
   // `tests` would otherwise contain these and never cache.
   // The four cases that say the app is an app: it launches without crashing, reaches `connected`, has
-  // its plugins, and runs in its own data dir. **This one is a gate**, where the suite around it is not.
+  // its surfaces, and runs in its own data dir. **This one is a gate**, where the suite around it is not.
   //
   // The distinction is what the suite failed and these pass: a regression gate has to assert something a
   // change could break, and "the app starts" is the assertion every other check silently assumes. Taking

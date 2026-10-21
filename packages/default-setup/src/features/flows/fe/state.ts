@@ -168,7 +168,7 @@ const flowsState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setPluginData: enqueueActions(({ context, event, self, enqueue }) => {
+    setSurfaceData: enqueueActions(({ context, event, self, enqueue }) => {
       const ev = typeOf('FLOWS_CONNECTED', event);
       const flows = (ev.data.flows || []) as FlowEntity[];
       enqueue.assign({
@@ -1175,7 +1175,7 @@ const flowsState = setup({
     'NODE.REVEAL': { target: '.view', actions: 'selectFlow' },
     PLUGIN_DEACTIVATED: { actions: 'cancelFlowSelection' },
     FLOWS_CONNECTED: {
-      actions: 'setPluginData',
+      actions: 'setSurfaceData',
       // target: '.view' // Go directly to view since we have the selected flow's data
     },
     FEATURE_SETTINGS_UPDATED: {

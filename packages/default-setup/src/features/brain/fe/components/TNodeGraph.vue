@@ -114,7 +114,7 @@ const emit = defineEmits<{
 const LAYOUT = {
   HORIZONTAL_GAP: 45,   // Reduced by 2/3 (was 250)
   VERTICAL_GAP: 40,     // Between sibling nodes in parallel branches
-  TRACK_GAP: 30,        // Between separate tracks (like flow plugin's chainGap)
+  TRACK_GAP: 30,        // Between separate tracks (like flow surface's chainGap)
   NODE_WIDTH: 200,
   NODE_HEIGHT: 80,
 } as const;

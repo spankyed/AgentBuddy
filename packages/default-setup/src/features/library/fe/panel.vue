@@ -241,7 +241,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -249,7 +249,7 @@ import type { FieldContent, ListContent, MarkdownContent, TextContent } from '#f
 import type { LibraryActor } from './state.ts'
 // [SEARCH_INDEX_FF] import { getModelConfig } from '../embedding-models'
 
-const actor = usePlugin<LibraryActor>()
+const actor = useSurface<LibraryActor>()
 
 // Individual selectors for each context property
 const index = useSelector(actor, (state) => state.context.index)

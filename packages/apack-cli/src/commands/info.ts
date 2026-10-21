@@ -57,7 +57,7 @@ export async function info(args: string[]) {
   };
   console.log(`\nDeclared features (${Object.keys(manifest.features ?? {}).length}):`);
   for (const [id, feature] of Object.entries(manifest.features ?? {})) {
-    console.log(`  ${id}${feature.plugin ? ` — ${feature.plugin.label}` : ''}: ${feature.description}`);
+    console.log(`  ${id}${feature.surface ? ` — ${feature.surface.label}` : ''}: ${feature.description}`);
     if (feature.system) console.log(`    System: ${feature.system.entry}`);
     names('    Services', feature.services);
     names('    Repositories', feature.repositories);
@@ -85,7 +85,7 @@ export async function info(args: string[]) {
     console.log(`Event contracts: ${Object.keys(metadata.eventContracts ?? {}).length ? '' : 'none'}`);
     for (const [feature, events] of Object.entries(metadata.eventContracts ?? {})) {
       if (events.system) console.log(`  ${metadata.packId}/${feature} system: receives ${events.system.incoming.join(', ') || 'none'}; sends ${events.system.outgoing.join(', ') || 'none'}`);
-      if (events.plugin) console.log(`  ${metadata.packId}/${feature} plugin: receives ${events.plugin.receives.join(', ') || 'none'}`);
+      if (events.surface) console.log(`  ${metadata.packId}/${feature} surface: receives ${events.surface.receives.join(', ') || 'none'}`);
     }
   } else {
     console.log('Entity destinations: unavailable (requires a verified build)');

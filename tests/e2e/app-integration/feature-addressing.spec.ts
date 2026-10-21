@@ -13,20 +13,20 @@ async function selectFeature(page: Page, featureId: string): Promise<void> {
   }, featureId);
 }
 
-/** Records the event types a plugin's actor receives from here on */
-async function recordEvents(page: Page, pluginId: string): Promise<() => Promise<string[]>> {
+/** Records the event types a surface's actor receives from here on */
+async function recordEvents(page: Page, surfaceId: string): Promise<() => Promise<string[]>> {
   await page.evaluate((id) => {
     const win = window as any;
     win.__addressingEvents = [];
     win.applicationState.system.inspect((inspection: { type: string; actorRef?: { id: string }; event: { type: string } }) => {
       if (inspection.type === '@xstate.event' && inspection.actorRef?.id === id) win.__addressingEvents.push(inspection.event.type);
     });
-  }, pluginId);
+  }, surfaceId);
   return () => page.evaluate(() => [...(window as any).__addressingEvents] as string[]);
 }
 
-// The settings system tells the feature's system and plugin; the harness specs see the system half
-test("a plugin setting changed in Settings reaches the feature's plugin, once", async ({ app, appPage }) => {
+// The settings system tells the feature's system and surface; the harness specs see the system half
+test("a surface setting changed in Settings reaches the feature's surface, once", async ({ app, appPage }) => {
   await app.waitForPlugin('default-setup/code');
   await app.navigate('host/settings');
   await selectFeature(appPage, 'default-setup/code');
@@ -38,8 +38,8 @@ test("a plugin setting changed in Settings reaches the feature's plugin, once", 
   expect((await events()).filter((type) => type === 'FEATURE_SETTINGS_UPDATED')).toHaveLength(1);
 });
 
-// Settings → Secrets shows the code plugin's CLI path overrides, read from the settings by the plugin's name
-test('a plugin setting changed in Settings is what its canvas reads', async ({ app, appPage }) => {
+// Settings → Secrets shows the code surface's CLI path overrides, read from the settings by the surface's name
+test('a surface setting changed in Settings is what its canvas reads', async ({ app, appPage }) => {
   const override = `/e2e/addressing/${Date.now()}/claude`;
   await app.waitForPlugin('default-setup/code');
   await app.navigate('host/settings');
@@ -63,8 +63,8 @@ test('a plugin setting changed in Settings is what its canvas reads', async ({ a
 
 // default-setup's link-navigation unit spec covers the navigation itself on the harness's shell; this case keeps what
 // only the running app shows: the Logs canvas renders the link once a source is excluded, and clicking it navigates
-test('a link to another plugin opens it and hands it the events', async ({ app, appPage }) => {
-  // The Logs toolbar shows the link once a source is excluded; it opens Settings on the Logs plugin
+test('a link to another surface opens it and hands it the events', async ({ app, appPage }) => {
+  // The Logs toolbar shows the link once a source is excluded; it opens Settings on the Logs surface
   await app.waitForPlugin('default-setup/logs');
   await app.navigate('host/settings');
   await selectFeature(appPage, 'default-setup/logs');
@@ -75,7 +75,7 @@ test('a link to another plugin opens it and hands it the events', async ({ app, 
   await app.navigate('default-setup/logs');
   await appPage.getByTitle('Click to manage excluded sources').click();
 
-  await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.activePlugin.id))
+  await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.activeSurface.id))
     .toBe('host/settings');
   const settings = () => appPage.evaluate(() => {
     const { activeTab, selectedFeatureId } = (window as any).applicationState.system.get('host/settings').getSnapshot().context;

@@ -12,7 +12,7 @@ import type { OutgoingThreadsEvents } from '#features/threads/be/types.ts';
 import { sendToSystem } from '#generated/events.ts';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@apackdev/sdk/fe';
-import { untypedOpenPlugin } from '@apackdev/sdk/fe'
+import { untypedOpenSurface } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host');
@@ -313,7 +313,7 @@ function optimisticFieldUpdate(context: ThreadsContext, threadId: string, key: s
 
 /*
  * The timers below are callback actors, which never finish on their own: the handler of the event a timer sends
- * stops it, or it would stay among the plugin's children for the session. Spawning one stops the thread's
+ * stops it, or it would stay among the surface's children for the session. Spawning one stops the thread's
  * earlier timer first, since a spawn under an id already taken replaces the entry without stopping the actor,
  * which would then fire early.
  */
@@ -361,7 +361,7 @@ const threadsState = setup({
         }
       };
     }),
-    setPluginData: assign(({ event }) => {
+    setSurfaceData: assign(({ event }) => {
       const typedEvent = typeOf('THREAD_CONNECTED', event);
 
       return {
@@ -758,7 +758,7 @@ const threadsState = setup({
       };
     }),
     navigateToSecrets: () => {
-      untypedOpenPlugin(HOST_SETTINGS, [
+      untypedOpenSurface(HOST_SETTINGS, [
         { type: 'TAB.SELECT', tab: 'general' },
         { type: 'GENERAL_NAV.SELECT', item: 'secrets' }
       ]);
@@ -1513,7 +1513,7 @@ const threadsState = setup({
     },
     THREAD_CONNECTED: {
       guard: ({ context }) => !context.showArchived,
-      actions: ['setPluginData', 'refreshViewIfActive']
+      actions: ['setSurfaceData', 'refreshViewIfActive']
     },
     SET_VIEW_DATA: {
       // Only apply if the response matches the currently viewed thread (prevents stale out-of-order responses)

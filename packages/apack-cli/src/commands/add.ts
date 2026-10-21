@@ -14,7 +14,7 @@ const USAGE = `
 Usage: apack pack add <entity> <name> [options]
 
 Entities:
-  feature <name>     Full feature (system + plugin)
+  feature <name>     Full feature (system + surface)
   step <type>        Flow step definition
   artifact <type>    Artifact viewer
   block <type>       Message block component

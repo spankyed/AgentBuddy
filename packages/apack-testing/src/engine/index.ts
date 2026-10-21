@@ -21,7 +21,7 @@ import { CLAIM_CONFLICT, connectApiClient, type ApiClient } from './api-client.t
 export type EngineAppDriver = {
   readonly screenshot: (name: string) => Promise<unknown>;
   readonly waitForState: (check: string, timeoutMs?: number) => Promise<unknown>;
-  readonly waitForPlugin: (pluginId: string, timeoutMs?: number) => Promise<unknown>;
+  readonly waitForPlugin: (surfaceId: string, timeoutMs?: number) => Promise<unknown>;
 };
 
 /**
@@ -82,7 +82,7 @@ export const asSessionPage = (page: Page, app: EngineAppDriver, window?: EngineW
   },
   screenshot: (name) => app.screenshot(name),
   waitForState: (check, timeoutMs) => app.waitForState(check, timeoutMs),
-  waitForPlugin: (pluginId, timeoutMs) => app.waitForPlugin(pluginId, timeoutMs),
+  waitForPlugin: (surfaceId, timeoutMs) => app.waitForPlugin(surfaceId, timeoutMs),
 });
 
 /**

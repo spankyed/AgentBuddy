@@ -51,7 +51,7 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
 export const id = 'library' as const;
 import type { ContentSection } from '#features/library/be/types.ts';
 
-/** The library plugin's actor, as its own components reach it with `usePlugin<LibraryActor>()` */
+/** The library surface's actor, as its own components reach it with `useSurface<LibraryActor>()` */
 export type LibraryActor = ActorRefFrom<typeof librarySystem>
 
 export type LibraryEvents =

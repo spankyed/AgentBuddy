@@ -209,7 +209,7 @@ export function buildReads(packDir: string, sourcePath?: (file: string) => strin
  * The files of one phase, as the record holds them: pack-relative, real, sorted, and only files.
  *
  * Two drops, both judgements rather than readings. A **virtual module** names no file — esbuild writes
- * `<stdin>` for the content-compiler bundle's generated entry and Rollup prefixes a plugin's own ids with a
+ * `<stdin>` for the content-compiler bundle's generated entry and Rollup prefixes a surface's own ids with a
  * NUL — so what is kept is what is on disk, asked rather than pattern-matched. And a path in any
  * `node_modules` is dropped, the same judgement `readsOf` makes for the typecheck legs and for the same
  * reason: it is a dependency, which every step already covers through `package-lock.json`, where the

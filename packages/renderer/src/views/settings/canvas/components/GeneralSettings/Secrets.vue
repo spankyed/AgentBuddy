@@ -107,7 +107,7 @@
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ExternalLink, ShieldAlert, ShieldCheck } from 'lucide-vue-next'
-import { openLink, secretsClient, usePlugin } from '@apackdev/sdk/fe'
+import { openLink, secretsClient, useSurface } from '@apackdev/sdk/fe'
 import { providerLabels } from '@apackdev/sdk/models'
 import type { SecretMetadata, SecretProvider } from '@apackdev/sdk/services'
 import { API_KEY_URLS, REQUIRED_PROVIDERS } from '@/views/settings/constants'
@@ -117,7 +117,7 @@ import NewSecretRow from './NewSecretRow.vue'
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import type { SettingsState } from '@apackdev/host/fe'
 
-const settingsActor: SettingsState = usePlugin()
+const settingsActor: SettingsState = useSurface()
 const secrets = useSelector(settingsActor, (state) => state.context.secrets)
 const status = useSelector(settingsActor, (state) => state.context.secretsStatus)
 const error = ref<string | null>(null)

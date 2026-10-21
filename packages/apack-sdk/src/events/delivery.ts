@@ -2,7 +2,7 @@
  * Which message is being handled right now, so a handler can answer its sender without being told who that is.
  *
  * **Why this is not a field on the event.** The envelope's central rule forbids it: `event` arrives exactly as
- * the sender wrote it, which `outgoing-events.spec.ts` pins with a deliberate `pluginId` collision. So the
+ * the sender wrote it, which `outgoing-events.spec.ts` pins with a deliberate `surfaceId` collision. So the
  * address is kept *beside* the handler, and this is where.
  *
  * **This header used to argue there was nowhere else to put it** — that an XState action is handed
@@ -26,13 +26,13 @@
  *
  * **Four doors set it, and that they are doors rather than call sites is the point.** On the backend,
  * `@apackdev/host/bus`'s `deliverAs`: the bus routing a message to a system, and the host handing one to an early
- * system. In a window, `notifyPluginActor` and `sendToPluginActor` — the two functions every send to a plugin's actor goes through — and
- * `usePlugin`, which wraps the actor it gives a component rather than any one send.
+ * system. In a window, `notifySurfaceActor` and `sendToSurfaceActor` — the two functions every send to a surface's actor goes through — and
+ * `useSurface`, which wraps the actor it gives a component rather than any one send.
  *
  * It was a list of four *places* until a test asked each of them to answer, and the real number was nine: the
- * shell reached plugins from eight sites and named them at one, so a plugin handling anything the backend
+ * shell reached surfaces from eight sites and named them at one, so a surface handling anything the backend
  * broadcast, or its own `PLUGIN_ACTIVATED`, sent on with no `sender` and could not be answered. A count a
- * reader has to keep is the failure; the two `*PluginActor` functions are the correction.
+ * reader has to keep is the failure; the two `*SurfaceActor` functions are the correction.
  *
  * **Three ways a send ends up outside any delivery**, all of which leave `Message.sender` absent, so the system
  * it reaches cannot answer it. Worth knowing in this order, because only the first is widely known:
@@ -70,15 +70,15 @@
  * The way back to whoever asked.
  *
  * **Each variant names a channel, not a kind of participant**, because the channel is the only thing answering
- * needs and the participant does not determine it. A **plugin** asker appears as `connection` when the answerer
+ * needs and the participant does not determine it. A **surface** asker appears as `connection` when the answerer
  * is on the backend and as `window` when the answerer is beside it in the same window — same participant, two
  * ways back. A **system** asker is always `bus`. A participant that claimed a name on its connection (a drive
- * session) is a `connection` like a plugin, which is what makes it answerable without being a plugin at all.
+ * session) is a `connection` like a surface, which is what makes it answerable without being a surface at all.
  *
  * **One value rather than two optional fields, because the third case had no spelling.** This was
  * `replyTo?: string` beside `client?: string`, where a present `client` meant "answer out to that connection"
  * and an absent one meant "answer in to a system". A window has no connection id of its own — the window *is*
- * the client — so "a plugin in this window asked" could not be said, and a feature's system and plugin share
+ * the client — so "a surface in this window asked" could not be said, and a feature's system and surface share
  * one ref, so the ref cannot supply it either. A third boolean would have worked and would have been the third
  * unchecked field; a variant is one the switch has to handle.
  *
@@ -87,10 +87,10 @@
  * — there is no window-to-window channel, and a window cannot address another window's connection.
  *
  * **`connection` covering two kinds of participant is a decision, not an oversight**, and splitting it is the
- * obvious tidy-up to refuse. A plugin in another window and a claimed participant (`host/drive`) share that
+ * obvious tidy-up to refuse. A surface in another window and a claimed participant (`host/drive`) share that
  * variant, and the one place the difference matters already asks the authority rather than the asker:
  * `routeOutgoing` (`@apackdev/host/bus`'s `machine.ts`) looks the ref up in the participant claims and, for a
- * claimed name, delivers to the connection holding it instead of checking the event against a plugin's
+ * claimed name, delivers to the connection holding it instead of checking the event against a surface's
  * declared list. Tested, not merely intended — `participants.spec.ts`'s *"leaves an answer addressed to the
  * connection that asked"* is that path.
  *
@@ -111,9 +111,9 @@
 export type _Asker =
   /** Over the backend bus, which is where a system is */
   | { kind: 'bus'; ref: string }
-  /** Out over one connection, where a plugin in another window or a claimed participant is */
+  /** Out over one connection, where a surface in another window or a claimed participant is */
   | { kind: 'connection'; ref: string; client: string }
-  /** Inside this window, where a plugin beside the answerer is */
+  /** Inside this window, where a surface beside the answerer is */
   | { kind: 'window'; ref: string };
 
 /**
@@ -151,8 +151,8 @@ export function _currentDelivery(): _Delivery | undefined {
 /**
  * Runs `body` as the handling of `delivery`, restoring whatever was being handled before.
  *
- * @internal Called by the doors named above: `deliverAs` on the backend, `notifyPluginActor`,
- * `sendToPluginActor` and `usePlugin` in a window.
+ * @internal Called by the doors named above: `deliverAs` on the backend, `notifySurfaceActor`,
+ * `sendToSurfaceActor` and `useSurface` in a window.
  */
 export function _runDelivery<T>(delivery: _Delivery, body: () => T): T {
   const previous = current;

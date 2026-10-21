@@ -1,7 +1,7 @@
 import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // A send to a system that declares no such event is reported, not ignored in silence.
 //
-// The bus has always checked the outgoing direction: a send to a plugin that declares no such event is
+// The bus has always checked the outgoing direction: a send to a surface that declares no such event is
 // reported and dropped (`notify`). Inward it checked only whether the actor was running, so the event was
 // delivered, the machine ignored it, and nothing said so — a typo or a stale event type simply stopped
 // working.
@@ -9,7 +9,7 @@ import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // **What this nets is the untyped hatch**, which is where the asymmetry was. A pack's `sendToSystem` and a
 // handler's `reply` are typed against a contract, so the compiler has those; `untypedSendToSystem` is for
 // host code, tooling and a target that arrives as data, and its outward mirror
-// (`untypedBroadcastToPlugin`) was already caught here while this one was not.
+// (`untypedBroadcastToSurface`) was already caught here while this one was not.
 //
 // Measured 2026-10-06: nothing in either unit pool trips it, so the cases below are written rather than
 // found. That makes them the only thing standing under the check — delete the report and the first one
@@ -35,7 +35,7 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 /**
  * What the bus reported about a send to a system, as a pack test would see it.
  *
- * Filtered by `operation`, because the bus also reports the host plugin sends this fixture has no plugins
+ * Filtered by `operation`, because the bus also reports the host surface sends this fixture has no surfaces
  * registered for — unrelated noise that would otherwise be `reported()[0]`.
  */
 const reported = () => takeSystemErrors()

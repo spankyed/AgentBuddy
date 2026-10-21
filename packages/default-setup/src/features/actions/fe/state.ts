@@ -66,7 +66,7 @@ const actionsState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setPluginData: assign(({ event }) => {
+    setSurfaceData: assign(({ event }) => {
       const ev = typeOf('ACTIONS_LISTED', event);
       return {
         actions: ev.data.actions,
@@ -494,7 +494,7 @@ const actionsState = setup({
     PLUGIN_DEACTIVATED: { actions: 'cancelSelection' },
     OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Action' } }, target: '.detail', actions: 'selectAction' },
     'ACTION.SELECT': { target: '.detail', actions: 'selectAction' },
-    ACTIONS_LISTED: { actions: 'setPluginData' },
+    ACTIONS_LISTED: { actions: 'setSurfaceData' },
     ACTION_SELECTED: { guard: 'answersPendingAction', actions: 'loadActionData' },
     FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     ACTION_CREATED: {

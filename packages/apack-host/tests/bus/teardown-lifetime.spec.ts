@@ -44,7 +44,7 @@ it('drains messages queued before actor shutdown before removing their declared 
     } } },
   });
   registry.registerPack({ id: 'worker', features: { observer: {
-    system: { machine: worker, receives: ['STOP'] }, plugin: { receives: ['FINAL_STATE'] },
+    system: { machine: worker, receives: ['STOP'] }, surface: { receives: ['FINAL_STATE'] },
   } } });
   bus = createActor(createBusMachine({ registry, listen: () => () => {},
     onOutgoing: () => { order.push('message'); },

@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { assign, setup, fromCallback, spawnChild } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
 
@@ -67,7 +67,7 @@ export const logsSystem = setup({
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      broadcastToPlugin('logs', {
+      broadcastToSurface('logs', {
         type: 'LOGS_CONNECTED',
         logs: filteredLogs,
         settings: settings ?? { maxLogs: 1000, excludedSources: [], showAppEvents: false }
@@ -85,7 +85,7 @@ export const logsSystem = setup({
         return; // Don't broadcast excluded logs
       }
 
-      broadcastToPlugin('logs', {
+      broadcastToSurface('logs', {
         type: 'LOG_ADDED',
         log: newLog,
       });
@@ -98,13 +98,13 @@ export const logsSystem = setup({
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      broadcastToPlugin('logs', {
+      broadcastToSurface('logs', {
         type: 'LOGS_UPDATE',
         logs: filteredLogs,
       });
     },
     broadcastLogsCleared: () => {
-      broadcastToPlugin('logs', {
+      broadcastToSurface('logs', {
         type: 'LOGS_CLEARED',
       })
     },

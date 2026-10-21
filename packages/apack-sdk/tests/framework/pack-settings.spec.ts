@@ -21,7 +21,7 @@ describe('declarative feature settings', () => {
     { ...settings, defaults: { count: 'wrong' } },
     { ...settings, defaults: { count: 0 } },
     { ...settings, defaults: { count: 10, extra: true } },
-    { ...settings, plugins: {} },
+    { ...settings, surfaces: {} },
   ])('refuses invalid declarations: %j', declaration => {
     const result = parseManifest(manifest(declaration));
     expect(result.status).toBe('invalid');
@@ -30,7 +30,7 @@ describe('declarative feature settings', () => {
 
   it('allows navigation visibility without inventing a settings definition', () => {
     expect(parseManifest({ id: 'memos', name: 'Memos', version: '1.0.0',
-      features: { memos: { description: 'Feature declaration fixture.', plugin: { label: 'Fixture', state: 'src/plugin.ts', defaultVisible: false } } },
+      features: { memos: { description: 'Feature declaration fixture.', surface: { label: 'Fixture', state: 'src/surface.ts', defaultVisible: false } } },
     }).status).toBe('valid');
   });
 });

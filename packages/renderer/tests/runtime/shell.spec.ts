@@ -23,7 +23,7 @@ const { HOST } = await import('@apackdev/host/fe');
 
 const registration = {
   id: 'memo-pack',
-  features: { memos: { plugin: { label: 'Memos', icon: {}, state: setup({}).createMachine({}), canvas: {} }, default: true as const } },
+  features: { memos: { surface: { label: 'Memos', icon: {}, state: setup({}).createMachine({}), canvas: {} }, default: true as const } },
 };
 fePacks.registerPackFE({ kind: 'native', declaration: nativeFrontendDeclarationFixture(registration) }, registration);
 
@@ -33,7 +33,7 @@ afterEach(() => localStorage.removeItem(PANEL_SIZES_KEY));
 
 const openedPanelSizes = () => {
   // Under the id main.ts gives it: the shell's own children reach it there
-  const shell = createActor(createAppShell(), { systemId: HOST.application, input: { ownsLastActivePlugin: false } }).start();
+  const shell = createActor(createAppShell(), { systemId: HOST.application, input: { ownsLastActiveSurface: false } }).start();
   const { panelSizes } = shell.getSnapshot().context;
   shell.stop();
   return panelSizes;

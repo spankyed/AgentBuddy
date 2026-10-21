@@ -194,13 +194,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { usePlugin } from '@apackdev/sdk/fe';
+import { useSurface } from '@apackdev/sdk/fe';
 import { Package as PackageIcon, X } from 'lucide-vue-next';
 import type { PacksState } from '@apackdev/host/fe';
 import PackDetail from './PackDetail.vue';
 import ContentOfferNotice from './ContentOfferNotice.vue';
 
-const actor = usePlugin<PacksState>();
+const actor = useSurface<PacksState>();
 
 const packs = useSelector(actor, s => s.context.packs);
 const appPackSources = useSelector(actor, s => s.context.appPackSources);
