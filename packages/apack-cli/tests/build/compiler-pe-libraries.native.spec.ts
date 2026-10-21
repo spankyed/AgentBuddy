@@ -1141,7 +1141,7 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
     // The refusal's two edits (the marker removed, the configuration rewritten) can reach the watcher as separate
     // events, and one landing mid-build queues another refused build. The repair is asserted to start a build of its
     // own, so it lands on an idle watcher: a build that keeps starting another would leave this waiting and fail.
-    await _byDeadline((async () => { while (inFlight.size > 0) await Promise.allSettled([...inFlight]); })(),
+    await _byDeadline((async () => { while (inFlight.size > 0) await Promise.allSettled(inFlight); })(),
       'refused builds to settle before the repair', 60_000);
     builds.mockClear();
     fs.mkdirSync(path.dirname(repair), { recursive: true });
