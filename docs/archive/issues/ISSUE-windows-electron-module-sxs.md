@@ -1,4 +1,19 @@
-# Windows: the Electron-runtime PE case fails side-by-side activation
+# Windows: the Electron-runtime PE case failed side-by-side activation
+
+**Status:** resolved 2026-10-21 by `b5ae5b62c`. The full `compiler_windows` workflow passes on `windows-latest`
+(run `39661693026` on `e5d790b20`, every step, 26 of 26 PE cases).
+
+## Cause
+
+The compiler's read tree stored a captured file under a directory keyed by the literal root of the path it
+was reached by. Windows reaches the same file as `\\?\C:\…` and as `C:\…`, so the addon and the files its
+activation context names landed in two different directories. The loader then resolved the context against a
+tree that held only half of it and refused the image. `compilerReadMapping`
+(`packages/apack-cli/bin/compiler-source-hooks.mjs`) now keys storage on the drive spelling, so every spelling
+of a file reaches one copy; `compiler-read-tree.spec.ts` holds it with a Windows-only case. The VM did not
+reproduce it because its runs reached the files by one spelling.
+
+## Original report
 
 `compiler-pe-libraries.native.spec.ts > preserves Electron module native selection and refuses it through
 compiler startup` fails on a hosted `windows-latest` runner at its accepted path, before any refusal is

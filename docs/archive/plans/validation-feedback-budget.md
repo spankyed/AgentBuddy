@@ -97,7 +97,7 @@ installation above is not one of these: it lives inside one spec file and is dis
   ordinary-edit speed on a fresh runner. After it comes recording which built files each spec reads, the only
   lever for package-source edits.
 - [The credential-boundary app test's per-run pack build](../../issues/ISSUE-app-step-credentials-prebuild.md).
-- [The Windows Electron-runtime side-by-side failure](../../issues/ISSUE-windows-electron-module-sxs.md), for the
+- [The Windows Electron-runtime side-by-side failure](../issues/ISSUE-windows-electron-module-sxs.md), for the
   Windows VM.
 - The 46 remaining timeout exceptions stay reviewed per case. The 31 integration ones would need the
   integration half sized to its cold-build specs, which would loosen its fast specs too.
