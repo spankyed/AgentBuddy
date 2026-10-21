@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
@@ -20,6 +21,22 @@ export const compilerMetadataOperations: Record<CompilerMetadataKind, {
 };
 
 type MetadataOutcome = { ok: true; value: unknown } | { ok: false; error: unknown };
+
+const nativeReadFile = fs.readFileSync;
+
+/**
+ * Stat fields that say when a file was touched rather than what it holds. A compiler reading one — Tailwind
+ * and Vite key their caches on `mtimeMs` — is asking whether the file's bytes changed, so where the file is
+ * a regular file the fact records its content hash: touching an unchanged file leaves a build current, and
+ * a record replays on a checkout whose times differ. The compiler still sees the real time.
+ */
+const TIME_FIELDS: ReadonlySet<PropertyKey> = new Set(['atime', 'mtime', 'ctime', 'birthtime']
+  .flatMap(field => [field, `${field}Ms`, `${field}Ns`]));
+
+const contentDigest = (file: string): string | undefined => {
+  try { return createHash('sha256').update(nativeReadFile(file)).digest('hex'); }
+  catch { return undefined; }
+};
 
 export function copyCompilerValue<T>(value: T): T {
   if (!value || typeof value !== 'object') return value;
@@ -62,12 +79,20 @@ export function captureCompilerMetadata(kind: CompilerMetadataKind, file: string
   const outcome: MetadataOutcome = initial ? { ok: true, value: copyCompilerValue(initial.value) } : read();
   const fields = new Set<PropertyKey>();
   const isStats = outcome.ok && (kind === 'stat' || kind === 'lstat') && outcome.value !== undefined;
+  const stats = outcome.ok && isStats ? outcome.value as fs.Stats : undefined;
+  const isRegularFile = stats?.isFile?.() === true;
+  /** The file's bytes when a time field was first read, which is what a time fact stands for */
+  let contentAtRead: string | undefined;
+  const contentIdentified = (key: PropertyKey) => isRegularFile && TIME_FIELDS.has(key);
+  const fieldFact = (key: PropertyKey): unknown => contentIdentified(key)
+    ? { contentSha256: contentAtRead ?? null }
+    : copyCompilerValue(Reflect.get(stats!, key));
   return {
     facts(project: (file: string) => string = file => file): Array<readonly [query: readonly string[], value: unknown]> {
       if (isStats) return [
         [['outcome'], { ok: true, stats: true }],
         ...[...fields].sort((a, b) => String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0)
-          .map(key => [['field', String(key)], copyCompilerValue(Reflect.get(outcome.value as object, key))] as const),
+          .map(key => [['field', String(key)], fieldFact(key)] as const),
       ];
       let value = outcome.ok ? copyCompilerValue(outcome.value) : compilerErrorValue(outcome.error, project);
       if (outcome.ok && ['realpath', 'realpathNative', 'readlink'].includes(kind)) {
@@ -86,7 +111,13 @@ export function captureCompilerMetadata(kind: CompilerMetadataKind, file: string
         if (!('value' in descriptor)) continue;
         let value: unknown = descriptor.value;
         let mutated = false;
-        const get = () => { if (!mutated) fields.add(key); return value; };
+        const get = () => {
+          if (!mutated) {
+            fields.add(key);
+            if (contentIdentified(key)) contentAtRead ??= contentDigest(file);
+          }
+          return value;
+        };
         getters.set(key, get);
         Object.defineProperty(copy, key, { configurable: descriptor.configurable, enumerable: descriptor.enumerable, get,
           ...(descriptor.writable && { set(next: unknown) { mutated = true; value = next; } }) });
@@ -108,7 +139,9 @@ export function captureCompilerMetadata(kind: CompilerMetadataKind, file: string
       const current = read();
       if (!current.ok || !isStats) return outcomeKey(current) === outcomeKey(outcome);
       if (!current.value || typeof current.value !== 'object') return false;
-      return fields.size === 0 || [...fields].every(key => valueKey(Reflect.get(current.value as object, key)) === valueKey(Reflect.get(outcome.value as object, key)));
+      return fields.size === 0 || [...fields].every(key => contentIdentified(key)
+        ? (current.value as fs.Stats).isFile?.() === true && contentDigest(file) === contentAtRead
+        : valueKey(Reflect.get(current.value as object, key)) === valueKey(Reflect.get(outcome.value as object, key)));
     },
   };
 }
