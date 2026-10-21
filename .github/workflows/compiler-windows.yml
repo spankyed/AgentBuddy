@@ -84,6 +84,19 @@ jobs:
         run: >-
           Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'SideBySide' } -MaxEvents 10
           -ErrorAction SilentlyContinue | Format-List TimeCreated, Id, Message
+      # A failed native case keeps its temporary tree: list the selectors a side-by-side activation probes for,
+      # in the original pack and in its captured copy, beside the Windows build
+      - name: Side-by-side selectors in the kept fixture tree
+        if: ${{ failure() }}
+        run: |
+          [System.Environment]::OSVersion.VersionString
+          (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').DisplayVersion
+          $root = Get-ChildItem $env:TEMP -Directory -Filter 'apack-*-module-*' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($root) {
+            Get-ChildItem $root.FullName -Recurse -Force -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -match 'addon\.node|apack\.fixture\.value|apack_value|^alternate$' } |
+              ForEach-Object { "{0,10} {1}" -f $(if ($_.PSIsContainer) { '<dir>' } else { $_.Length }), $_.FullName.Substring($root.FullName.Length) }
+          }
       - name: Compiler input and installation checks
         if: ${{ !inputs.test_name }}
         env:
