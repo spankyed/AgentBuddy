@@ -1,15 +1,13 @@
 # Restore fast validation
 
-Status: proposed; implement after the settings and pack contracts goal completes.
-Date: 2026-10-19.
+Status: in progress. Created 2026-10-19; current state below as of 2026-10-21.
 
-During the current goal's closeout, repair demonstrated blockers and retain timing evidence. This
-plan does not change that goal's required checks or final strict gate.
-
-Before extending orchestration, complete the [Nx evaluation](nx-orchestration-evaluation.md). This
-plan owns feedback budgets and coverage; that evaluation decides whether Nx or the existing runner
-owns generic task execution. The typed custom configuration design below applies if the runner is
-retained; adopting Nx requires reconciling it around Nx's native configuration, without dual inventories.
+This plan owns feedback budgets and coverage. The [Nx evaluation](nx-orchestration-evaluation.md) decides
+whether Nx or the existing runner owns generic task execution. **The lead developer chose to extend the
+existing runner before that evaluation finished** (2026-10-20): the strict gate's cost made waiting the more
+expensive option. So the parallel gate below is built on `scripts/chain.ts`. If Nx is adopted later, it has to
+take over the job derivation (`scripts/lib/chain-only.ts`) and the sharding, not run beside them. The typed
+configuration design below still applies while the runner is retained.
 
 ## Outcome and budgets
 
@@ -34,6 +32,49 @@ Keep repeated measurements and variation. Report dependency installation and rem
 separately; do not exclude required preparation, use cached no-ops or change machines to claim success.
 Preserve native-execution restrictions on the daily-use Mac. Report timing regressions initially;
 introduce hard performance gates only after measurements stabilize.
+
+## Current state (2026-10-21)
+
+**Source:** branch `session/integration-sharding`, [PR #249](https://github.com/spankyed/apack/pull/249),
+on top of [PR #248](https://github.com/spankyed/apack/pull/248) (merged).
+
+**What changed:**
+
+| Change | Where | Measured effect |
+|---|---|---|
+| A pack build captures only the dependency files its compilers read (R-F1's decision) | #248 | Shipped-pack cold build 140s → 60s locally, output byte-identical; on the two-core runner `build:default-setup` 473–522s → 105–166s (strict runs `39550321649`, `39554079038`); integration file time about 10,000s → 6,600s |
+| Native-runtime and live-watcher specs are their own half (`*.native.spec.ts`, `test:native`) | #249 | Implements checkpoint 2's boundary: ordinary CLI integration versus real compiler scenarios |
+| `chain --only`, `--shard k/N`, `--job`, with jobs derived from the graph | #249 | A consumer job refuses unless the producers' outputs it downloaded are current |
+| The strict gate runs as a producers job plus five consumer jobs | #249 | Two integration shards, two native shards, and the app half with the remaining checks. Five is the free plan's cap on concurrent macOS jobs, account-wide; a sixth job waits for a slot and pays its setup again |
+| Every integration and native case turns the event loop afterwards (`tests/_support/turn-event-loop.ts`) | #249 | Ends `Timeout calling onTaskUpdate` failing runs whose tests all passed |
+| Native files run one at a time | #249 | Contention, not cost: one case took 14.4s alone (run `39553670513`) and passed 60s beside another native file on a 3-vCPU runner |
+| Native cases whose subject is not capture share one compiler installation per file (`shareCompilerInstallation`) | #249 | About 23 fewer captures on the macOS gate. Before: strict run `39554079038`; after: strict run `39556379585` (pending) |
+
+**Gate wall time:** the single-job strict gate was an estimated 2–2.5h. Parallel runs on #249 took 34–37
+minutes, including runner queueing, and each job has passed in at least one run. No run is yet green end to
+end; `39556379585` is expected to be the first.
+
+**Measured and dropped:**
+- **A per-run cache of dependency hashes:** after #248 it would save about 2–4s per build, for a new cache
+  protocol.
+- **Keeping the compiler copy between builds:** about 2.3s of a roughly 30s local build, for a cache
+  directory with eviction.
+
+Both conflict with "no other cache protocol" in decision 5 for little return. The per-file shared
+installation above is not one of these: it lives inside one spec file and is disposed with it.
+
+**Next actions:**
+1. Merge #249 once `39556379585` passes, and record its per-job times and the native before/after here.
+2. R-F1 is resolved on #249: `build:default-setup` is back on `suite`, at 105–166s on the runner against
+   600s. `test:external-pack:fork` stays on `scenario` by construction: it composes a `suite`-sized build
+   (600s) with archive verification (180s) and cleanup (120s) in `DEFAULT_FORK_BUDGET_MS`, so its outer
+   bound has to exceed `suite`.
+3. 10.7: refresh `test:external-pack:app`'s declared `seconds` (18). It took 211s on the two-core runner in
+   `39554079038`, but `seconds` describes the 10-core machine `chain-steps.ts` was measured on, so the new figure
+   has to come from a completed local chain run, which reports the measured cost beside the declared one.
+4. Checkpoint 1 and decision 3: affected-target selection, so that an ordinary edit runs only the
+   acceptance it needs, and the full strict gate runs only at the boundaries in decision 4.
+5. 10.1, 10.2 and 3a.1 as in their rows.
 
 ## Problem
 
@@ -196,7 +237,7 @@ defects with one fix, and its acceptance runs surfaced a fifth (R-F1). They stay
 | 10.1 | The `suite` rung is 600s (`scripts/lib/step-timeouts.ts`), double its earlier 300s. The reason recorded for raising it, the integration pool, now has its own `acceptance` class. On the two-core runner, strict run `39450690425` (2026-10-20) measured `test:external-pack:contract` at 345s and `test:unit:host` at 294s, both `suite` members, so returning to 300s would kill or nearly kill passing steps | Measure the remaining `suite` members, then set the rung from that measurement or return it to 300s. No change before then |
 | 10.2 | `TIMEOUT_EXCEPTIONS` (`packages/repo-checks/tests/suite-timeouts.spec.ts`) holds 69 per-test overrides of 120–540s, many justified only by a run that hit the old limit | Apply "reduce title-keyed timeout exceptions" above: move recurring patterns to a fitting project, keep reviewed overrides for genuinely different scenarios |
 | 10.7 | `test:external-pack:app` declares `seconds: 18` but now also runs the default-fork lifecycle (four app launches, four `apack pack` commands) | Refresh the declared cost from a completed run |
-| R-F1 | A cold `apack pack build` of default-setup took 522s on the two-core hosted macOS runner (strict run `39430263642`), with 175s in finalization (run `39427595920`). Finalization re-checked every captured input twice and replayed the startup threads' observations from disk; removing those repeats cut it to 63s on the runner (run `39489689366`, 2026-10-20) and a local cold build from 149s to 122s (interleaved, 2 runs each, 71-76% idle). The runner's whole pack build is still 473s, because the phases before finalization take about 400s and varied by 52s between two runs; capturing and re-checking the dependency inputs is a large share of it in the local profile. The observation set is about 104,000 entries, including the whole package directory of every dependency and devDependency (36,800 files). Warm local builds cost the same as cold (118-120s), so `seconds` is now 120. Both steps stay on `scenario`: 473s leaves too little margin under `suite`'s 600s | Decide whether the build's inputs should include whole dependency package trees (devDependencies in particular), or only the files the compilers actually read. That is a change to the freshness contract, so it needs a decision before any code. Then re-measure on the runner and return both steps to `suite` if the cold build fits with margin |
+| R-F1 | **Decided and implemented (PR #248): a build captures only the dependency files its compilers read.** On the runner `build:default-setup` now takes 105–166s. `build:default-setup` is back on `suite`; the fork stays on `scenario` (next action 2). The history: a cold `apack pack build` of default-setup took 522s on the two-core hosted macOS runner (strict run `39430263642`), with 175s in finalization (run `39427595920`). Finalization re-checked every captured input twice and replayed the startup threads' observations from disk; removing those repeats cut it to 63s on the runner (run `39489689366`, 2026-10-20) and a local cold build from 149s to 122s (interleaved, 2 runs each, 71-76% idle). The runner's whole pack build is still 473s, because the phases before finalization take about 400s and varied by 52s between two runs; capturing and re-checking the dependency inputs is a large share of it in the local profile. The observation set is about 104,000 entries, including the whole package directory of every dependency and devDependency (36,800 files). Warm local builds cost the same as cold (118-120s), so `seconds` is now 120. Both steps stay on `scenario`: 473s leaves too little margin under `suite`'s 600s | Decide whether the build's inputs should include whole dependency package trees (devDependencies in particular), or only the files the compilers actually read. That is a change to the freshness contract, so it needs a decision before any code. Then re-measure on the runner and return both steps to `suite` if the cold build fits with margin |
 | 3a.1 | `test:smoke` and `test:e2e` both declare `.apack/tests/results` as an output, and output digests are now part of a step's cache key, so any E2E run makes `test:smoke` stale with no input moved | Decide what a check step's declared outputs mean for cache validity, in the chain target and planner, rather than special-casing one step |
 
 ## Implementation checkpoints
