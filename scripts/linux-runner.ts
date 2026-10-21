@@ -12,7 +12,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { PACKAGES_PREBUILT_ENV, REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 const DOCKERFILE = path.join(REPO_ROOT, 'scripts', 'linux', 'Dockerfile');
 const short = (text: string | Buffer): string => createHash('sha256').update(text).digest('hex').slice(0, 12);
@@ -77,8 +77,18 @@ function gitDirMount(): string[] {
   return ['-v', `${common}:${common}:ro`];
 }
 
-/** What the chain and its pools tell a step about the run it is part of */
-const forwarded = Object.keys(process.env).filter((key) => key.startsWith('APACK_') || key === 'FORCE_COLOR');
+/**
+ * What the chain and its pools tell a step about the run it is part of.
+ *
+ * `PACKAGES_PREBUILT_ENV` is the one `APACK_` variable that must not cross: it says the publishable packages
+ * are already built, which is true of the Mac's tree and false of this volume by construction — the copy
+ * below excludes every `packages/<pkg>/dist`, so the container builds its own. Forwarded, it makes the
+ * `packages:ensure` in `sync` read that intended absence as a writer rewriting the tree mid-run, and refuse
+ * the very builds it is there to make. A volume warmed by a run outside the chain hides this, which is why
+ * it survived: the excluded paths persist, so only the first container run in a checkout is refused.
+ */
+const forwarded = Object.keys(process.env)
+  .filter((key) => (key.startsWith('APACK_') && key !== PACKAGES_PREBUILT_ENV) || key === 'FORCE_COLOR');
 
 const quote = (arg: string): string => `'${arg.replace(/'/g, `'\\''`)}'`;
 /**
