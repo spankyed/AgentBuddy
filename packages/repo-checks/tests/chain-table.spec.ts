@@ -423,10 +423,8 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
  * The chain runs every recorded file's check.
  *
  * An `<name>:check` that nothing runs is a recorded file free to go stale with every gate green, and with
- * CI off the chain is the only gate. Two of them were in exactly that state until 2026-09-27 — `schema:check`,
- * which holds the manifest schema published with the SDK, and `facade:check` — each named only by
- * `.github/workflows/ci.yml`, whose triggers are commented out. `packages:check` had been the same. Three
- * instances of one thing nobody could see is what makes this a check rather than a sweep somebody repeats.
+ * CI off the chain is the only gate — a check named only by `.github/workflows/ci.yml`, whose triggers are
+ * commented out, runs nowhere. This is a check rather than a sweep somebody repeats.
  *
  * It asks what a step *invokes*, not what its text mentions: `check-import-specifiers.ts` prints `api:check` in
  * a message, and a search over the reachable text would read that as the chain running it. The walk is

@@ -61,7 +61,7 @@ export function unitFor(step: ChainStep, budget?: number): BuildUnit {
     outputs: (step.outputs ?? []).map((output) => path.join(REPO_ROOT, output)),
     excludes: (step.excludes ?? []).map((excluded) => path.join(REPO_ROOT, excluded)),
     ...(step.excludeSuffixes === undefined ? {} : { excludeSuffixes: step.excludeSuffixes }),
-    // What `npm run <name>` resolves to, which is what `package.json` used to be in every step's inputs for
+    // What `npm run <name>` resolves to, so a step's script is in its key without `package.json` being one
     command: commandText(step.name, rootScripts()) + (poolForStep(step.name) === undefined ? ''
       : `\n${measureCommandFor(step.name, budget ?? box())}`),
   };

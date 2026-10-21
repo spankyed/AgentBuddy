@@ -196,3 +196,310 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
 - `npm run spec -- <target>` runs focused tests during development.
 
 `npm test` does not accept filters; use the appropriate suite command instead. Workspace `npm test -w <workspace>` commands keep their existing behavior.
+
+## Command notes
+
+What the root guide's command list said about each command beyond its one line: the measurements behind
+it and the traps it records.
+
+### `npm run dev`
+
+```text
+Prepare the pack, then run dev mode with hot reload and drive support
+The pack's backend watcher rebuilds its runtime on source changes;
+Vite serves frontend source. Use build:default-setup for all pack output.
+```
+
+### `npm run typecheck`
+
+```text
+Every check below, plus check:specifiers — its legs run at once
+(scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts): 18.0s wall
+(median of 3, 17.5-18.3s, 79% idle, 2026-10-08).
+**It answers for every recorded file**: beside the legs it borrows the two
+whose checks are chain steps (api:check, facade:check — RECORDED_FILE_CHECKS), taking
+each step's own timeout class and core width rather than restating
+them. Borrowed, not moved: as legs they would need five hand-written fields each
+and would drop inputs that decide what a report says.
+**Two ordered prerequisites, then the rest at once.** `packages:ensure` builds what
+the jobs read; `generate:entries` regenerates the pack's barrel, which
+typecheck:pack compiles and two repo-scope legs walk — so it is ordered rather than
+concurrent, and facade:check runs with `--skip-generate` and writes nothing. Those
+two are the only jobs that write. `-- --cores 1` runs everything one at a time, to
+test that claim or to read a confusing failure. A failure prints that job's output
+alone, and several can fail in one run where the old `&&` chain stopped at the first
+```
+
+### `npm run spec`
+
+```text
+The specs your uncommitted changes affect, wherever they live.
+**Three exit codes**: 1 a spec failed; 2 the name was wide enough to be a search,
+so the paths were listed rather than run; 3 the target exists and no spec covers
+it, so nothing ran and nothing passed. 3 matters because `vitest related` exits 0
+when the graph reaches no spec.
+```
+
+### `npm run spec:dry [...]`
+
+```text
+What the plan would run and what the last run here measured it at, running
+nothing (~1.6s). File time summed across workers, never a wall estimate, with
+the date it was measured; a spec no run here has seen is named, not counted free.
+Nothing is committed and nothing can describe another machine.
+```
+
+### `npm run spec -- <target>`
+
+```text
+You don't say what the target is; it works that out:
+  a source file  -> every spec that imports it, transitively, in ANY package
+  a spec path    -> that spec        a directory -> every spec under it
+  part of a name -> every spec whose path contains it
+  a pack's src/content/** or a build input -> the walk, plus the specs that read
+                    what building it produces (named here, run by spec:full)
+Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
+`--bail 1` and `--changed HEAD~1` work. The routing is data
+(scripts/lib/spec-plan.ts), asserted by repo-checks' spec-plan.spec.ts.
+Where a spec belongs: its path under tests/ mirrors the source it covers
+(docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts).
+**A pack suite and an integration half are not in a plain run's answer** — one
+resolves the published dist, the other is a second config the root projects
+exclude. docs/reference/pipeline-commands.md has the blast-radius figures.
+```
+
+### `npm run chain`
+
+```text
+Before a merge: every check in dependency order, cold 158s and warm 0.9s.
+Each step is cached on the inputs it declares (scripts/lib/chain-steps.ts), so a
+doc edit runs nothing and a one-package edit runs that package's suite. The E2E
+suite is opt-in rather than a gate.
+**Every step that ran leaves its output** in this run's own directory, named on
+the last line (node_modules/.cache/apack-chain/runs/<started>Z-<pid>/). So piping a
+run is harmless and the output is still answerable after the terminal has gone.
+Beside each `<step>.log` of what it said, a **failed** step's `<step>.files/`
+holds what it wrote (`evidence`, scripts/lib/chain-steps.ts), copied in before the
+next run's runner clears its output directory — which is how an app's own log
+survives.
+The newest `KEEP_RUNS` of them are kept, the writer pruning the rest, and a
+cached run writes no directory at all, having run nothing.
+**One run per checkout**, held by a lock beside the stamps
+(node_modules/.cache/apack-chain/chain.lock): two runs share those stamps, so
+each would cache results the other took against a different tree, and `cached`
+would mean "some run with these inputs passed". A second run names the first and
+exits 1; `--dry` is exempt, reading the tree and writing nothing.
+Afterwards it names a step that passed and is already stale again. What each
+passing step cost joins a machine-local window (scripts/lib/step-durations.ts),
+which `--dry` and a failure report read; nothing is committed.
+`npm run chain -- --help` lists its flags. Read `--dry`'s critical path and what
+each step on it could buy before sizing an optimisation: a step off the path buys
+nothing, and one on it is capped by the second-longest route.
+docs/reference/pipeline-commands.md: what each flag replaced and what was
+measured to choose it.
+```
+
+### `npm run test:unit`
+
+```text
+Vitest, as two pools: the host suites as one root run under the
+@apackdev/source condition, and the pack suite on its own resolving the published
+dist. Serial, measured — a second lane buys 3% for 87% more work.
+The list is scripts/lib/unit-suites.ts, which the chain reads too
+```
+
+### `npm run test:native`
+
+```text
+The native half (*.native.spec.ts): native compiler runtime and live-watcher specs,
+one vitest run over vitest.native.config.ts, beside integration rather than in it.
+One file at a time (two compiler-heavy files starve each other), at the `enormous`
+size: 300s a case (`SIZE_MS`), since each composes cold captures and builds
+```
+
+### `npm run test:integration`
+
+```text
+The expensive half of every suite that has one (@apackdev/cli, @app/repo-checks,
+@app/publish-checks), as **one vitest run** over vitest.integration.config.ts's
+projects rather than three `npm -w` invocations in series: measured 2026-09-29,
+48.2s pooled against 71s. Which packages those are is derived from the configs
+each has (INTEGRATION_SUITES); the root config's project list is checked rather
+than derived, because check:specifiers reads these files as text.
+**It is the third pool**, not a fourth kind of thing: the same runner as the two
+unit pools (scripts/test-unit-pool.ts, over POOLS in scripts/lib/unit-pool.ts),
+so it runs only the projects whose inputs moved — a repo-checks edit is 6s of its
+44s. A pool is a resolution and a half; this one shares the host resolution and
+differs in the half, which is why its stamps are keyed (dir, half). One key for
+both would skip the expensive half on the fast half's record, which is the hole
+that keying it this way exists to close
+It runs at half the cores, and that is faster than all of them — 48.2s capped
+against 52.4s uncapped, since nine workers each running ts.createProgram and
+apack pack build put the box at a load of 25-32.
+**The birpc timeout the cap was written against is a worker blocking its own
+event loop**, not a main thread too busy to answer: measured 2026-09-30, the
+main process sits at 6% event-loop utilisation with a worst block of 74ms,
+quiet and loaded alike. A worker runs each case synchronously and `await` on a
+resolved promise drains microtasks without turning the loop, so a file of
+synchronous cases is **one** block however many `it`s it holds — against
+birpc's hardcoded 60s window (DEFAULT_TIMEOUT = 6e4, which vitest exposes no
+knob for; vitest-dev/vitest#4497, #6479, #8164). Every test passes and the run
+exits 1.
+The fix is to turn the loop: `afterEach(() => new Promise(r => setImmediate(r)))`
+caps a file's *cases* at the longest of them. Every integration and native spec
+gets it from its config's setup file (`tests/_support/turn-event-loop.ts`), since
+any all-synchronous file can breach the window on a slow runner.
+`npm run measure:loop` found the first such files — measured 2026-10-06,
+`published-sdk-any` was the half's worst block at 13.6s over eight ~200ms cases
+and `published-exports` 9.1s over four. Neither was slow; each was a sum being
+reported as a block, which is the shape to look for.
+**The hook is not a cap on the file**: those two came down to 9.6s and 5.6s, not
+to one case, because a synchronous `beforeAll` is its own block — theirs packs
+three tarballs through execFileSync. The half's worst block went 13.6s to 11.6s
+and its headroom 4.4x to 5.2x. What is left is a setup to make cheaper, and a
+single long case the hook can never help: `types-bundler-determinism` is one
+test of ~11.6s and is the floor on this headroom now.
+**Do not try to split that one.** It is a single `it` that builds the facade
+twice — once from the workspace, once from the packed tarballs — and compares
+them, so the comparison needs both in one scope: two cases would share a
+`beforeAll`, which is its own block and shrinks nothing (watched on
+`published-sdk-any`, 13.6s to 9.6s and no further), and two files would need one
+to write a hash for the other, which is the cross-file state a determinism test
+must not have. The levers are making the two builds faster or leaving it.
+**The margin is the thing to watch, not the duration**: it breaches at 5.2x
+against a worst observed load inflation of 3.29x, so the trigger is the block
+passing ~18s (60s / 3.29), where that load would breach. `measure:loop` is how
+you find out; nothing watches it for you.
+To reproduce on demand rather than wait for it:
+  npm run measure -- --trials 3 --busy 12 "npx vitest run --config vitest.integration.config.ts"
+```
+
+### `npm run test:unit:pack`
+
+```text
+(--project per stale project, one process). Each is a chain step; per-package
+staleness lives inside them, so a one-package edit still runs one project.
+They cannot be one pool: Node conditions are per process, and vitest shares its
+worker pool across projects. Each runs packages:ensure first, since npm pretest
+does not fire under a root run, and then prunes the pool stamps no pool would
+write — the key gained its half on 2026-10-01 and left a dead file per suite
+```
+
+### `npm run api:update`
+
+```text
+Dev: regenerate etc/<entry>.api.md (and etc/<entry>.component.md for UI components),
+Both read an @apackdev dependency's built declarations: npm run packages:build first
+All three take 6.9s (median of 5, 2026-10-05), run at once by scripts/api-check.ts
+rather than in the series npm's `-w a -w b -w c` gives; 12s in that series, and 48s
+before one API Extractor compiler state was shared across a package's entries.
+A chain step, so a merge runs it and an unchanged tree pays nothing for it
+```
+
+### `npm run measure -- "<cmd>"`
+
+```text
+Times a command on a quiet machine and prints a number you can quote:
+`48.2s median of 5 (45.0s-49.3s), 92% idle, 2026-09-30`. A number without its
+conditions is an assertion; with them it is a citation.
+  --runs N          how many (5)
+  --against "<B>"   an A/B, interleaved, reported as the median of the pairs,
+                    with cores busy per arm
+  --trials N        how often does it *fail*? The rate and its 95% upper bound
+  --busy N          N CPU burners, so contention is induced rather than waited for
+  --idle PERCENT    lower the floor    --force  measure anyway
+Refuses below 70% idle, or 80% for a command that records; idle is sampled
+between runs, never during one. Prints, never records — a timings file would be
+a sample, and the deleted spec-cost.json is what that costs.
+**A null A/B is unfalsifiable until the independent variable is shown to have
+moved**, and this cannot do that half for you: read the config before guessing
+at the knob, run the positive control first, and prefer the thing's own report
+(vitest names its worker count) to the cores-busy proxy.
+```
+
+### `npm run measure:loop -- "<cmd>"`
+
+```text
+Not how long a command took, but how long each process it started went
+without turning its event loop, against the 60s window birpc gives a call and
+vitest hardcodes. Per process, worst block first, with the headroom rather than
+the block alone — 38s against 60s is one busy afternoon from failing. `elu` says
+whether a quiet process was waiting or working.
+docs/reference/pipeline-commands.md has the measured habits behind both.
+```
+
+### `npm run check:idle`
+
+```text
+Is this machine quiet enough to measure on — `82% idle — quiet enough to
+measure on`, exit 1 below `IDLE_FLOOR`. One floor, because every command that
+asks it prints its reading and records nothing. `measure` and `measure:loop`
+refuse on the same floor before they run anything, so asking first saves a
+five-run A/B: `npm run check:idle && npm run measure -- "<cmd>"`.
+**It answers "is it worth starting", not "will this be clean"**: a reading is of
+this instant, and a long command is its own load — a chain run reads 83% before
+ending under the floor. Not a chain step, and must not become one, since the
+chain would then gate on its own load
+```
+
+### `npm run check:specifiers`
+
+```text
+Every import rule, over the whole repo (2.5s, one parse and one tree walk). Takes paths to
+run only the per-file rules over them (0.9s over one feature), and says which
+whole-tree rules it skipped; --rule <id> runs one, --list prints them all
+```
+
+### `npm run specifiers:fix`
+
+```text
+Rewrites the specifiers whose repair the rules compute — an own-module specifier
+that names no file, a relative .js whose source sibling exists — and reports the
+rest. --dry prints without writing. Verifies each span before splicing and refuses
+a whole file when the disk and the reader disagree
+```
+
+### `npm run lint:check`
+
+```text
+Reports; run by npm run typecheck, so it is in the chain. The whole tree is at
+zero and the whole pass is about a tenth of a second.
+**Only `correctness` is enabled**, in every invocation — so a rule outside that
+category is read nowhere in this repo, and an inline disable naming one
+suppresses nothing wherever it sits. `no-console` is the one to know: it is a
+`restriction` rule, and `console` in a pack's backend is the `backend-console`
+pack rule's job, not oxlint's. The scaffold's templates are the one exclusion,
+since an unused parameter there is documentation for a pack author. The few
+inline disables elsewhere each say why
+```
+
+### `npm run packages:check`
+
+```text
+publint + arethetypeswrong over a tarball packed from each of the five published
+trees — the tarball npm ships, rather than the directory it is derived from, and
+one tarball per tree so the two tools cannot read different bytes of it. It
+refuses a tree the sources have moved past rather than checking it, so
+`after packages:build` is enforced rather than advised — door 8 in
+packages/apack-testing/CLAUDE.md.
+A chain step, for the opposite reason to the proxy `api:check` does without —
+see "packages:check is a chain step" above
+```
+
+### `npm run check:repro`
+
+```text
+**A diagnostic instrument, not a gate**, and nothing runs it on a schedule by
+design: everything it compares is a chain input, so the chain's freshness sweep
+already reports a step that went stale again. What this adds is asking per file
+in one run — the sweep fired on PACK_OUTPUTS for days and the diagnosis blamed
+esbuild and one file, where this found three and the cause (tsc's union
+ordering). Builds everything twice from one input and compares 1295 built files
+(54.7s measured 2026-09-28). Run it after bumping a bundler (esbuild, vite,
+tsup, tsx), which is when the answer can change, or before cutting a release.
+Three outputs are known-irreproducible and reported rather than failed
+(KNOWN_IRREPRODUCIBLE, scripts/lib/repro.ts). They are races, so a run where one
+agrees is not evidence it is fixed — which is why a stale entry is reported here
+and failed everywhere else. docs/archive/goals/goal-reproducible-builds.md has
+the measurements
+```

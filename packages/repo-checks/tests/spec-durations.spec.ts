@@ -599,10 +599,8 @@ describe('outlierIn', () => {
   /**
    * **A file whose cost is all setup is an outlier too, which it was not for one commit.**
    *
-   * `outlierIn` compared `ms` until 2026-10-06, so a spec with a thirty-second setup and no test time was
-   * invisible to it — in a subsystem whose own commit had just established that `ms` is about half of what
-   * a file costs. The pack pool is where this is not hypothetical: every file there carries ~1.7s of setup
-   * and none of it was visible to any comparison here.
+   * Comparing `ms` alone, a spec with a thirty-second setup and no test time would be invisible — and `ms`
+   * is about half of what a file costs. In the pack pool every file carries ~1.7s of setup.
    */
   it('reports a file whose cost is its setup rather than its tests', () => {
     const rows = [row('a', 'tests/heavy-setup.spec.ts', 100, 29_900), ...peers];

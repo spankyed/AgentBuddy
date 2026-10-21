@@ -34,7 +34,7 @@ export interface Leg {
    *
    * Absent is the common case and the right one: twelve of these legs name their workspace in the script
    * itself (`--workspace`, or `tsc -p packages/x`), so `scopeOf` reads it from there and a declaration
-   * would be a second copy of a fact — which is what this field was until 2026-10, all eighteen of them.
+   * would be a second copy of a fact.
    *
    * Declare one when the script names nothing usable, and the entry is then a claim with something to say:
    * `'repo'` for a leg that walks the whole tree, or a list for one whose subject the command line does not
@@ -49,11 +49,8 @@ export interface Leg {
    * the root `package.json`, which `scope: ['api']` cannot express. `typecheck:main` and `typecheck:preload`
    * compile `types/`, the repo-root ambient declarations their tsconfigs `include`.
    *
-   * **A file inside a workspace does not belong here, and the one that did is gone.** `typecheck:preload`
-   * used to name `packages/apack-sdk/src/fe/speech-event.d.ts`, because a `types/speech.d.ts` at the repo
-   * root re-exported it and preload's manifest said nothing about the SDK — an edge no declaration
-   * described, so nothing could derive it. The type is published from `@apackdev/sdk/fe` now and preload
-   * declares the dependency, so `workspaceDeps` finds it like any other.
+   * **A file inside a workspace does not belong here.** Naming one means an edge no declaration describes;
+   * declare the workspace dependency instead, so `workspaceDeps` finds it like any other.
    *
    * Declared rather than derived from the dep file, for the reason a dep file is never a key — it records
    * what was read *last* time, so a leg that starts reading one would not be invalidated by the thing it

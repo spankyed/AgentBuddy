@@ -48,10 +48,9 @@ const importsARepoScript = (file: string): boolean => {
  * repo tooling as one that imports it. `with-source` and `import-specifiers-script` reach their subject
  * that way and import nothing.
  *
- * The two checks asked one question between them until 2026-09-26, and that cost an allowlist: a spec
- * naming a script path as an *expected value* — `package-freshness` asserting `BUILD_UNITS` covers the
- * build scripts — tripped the reachability check, which it cannot affect, and had to be excused. Asking
- * each check only what it needs left no exception to write down.
+ * Two checks, each asking only what it needs: one question between them would trip on a spec naming a
+ * script path as an *expected value* — `package-freshness` asserting `BUILD_UNITS` covers the build
+ * scripts — which cannot affect reachability, and would need an allowlist.
  */
 const namesARepoScript = (file: string): boolean =>
   importsARepoScript(file) || /REPO_ROOT,\s*'scripts'/.test(fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8'));

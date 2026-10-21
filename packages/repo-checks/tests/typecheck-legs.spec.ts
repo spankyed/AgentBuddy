@@ -43,12 +43,8 @@ else assert.deepEqual(context,JSON.parse(fs.readFileSync('context.json','utf8'))
 /**
  * A leg's scope comes from its script, and a declared one has something the script cannot say.
  *
- * This was the other way round until 2026-10: every leg declared a scope and this file held the
- * declaration to the script. Twelve of the eighteen declarations turned out to be byte-identical to what
- * the script already named — a second record of one fact, which is what the derived chain graph exists to
- * remove. So the parse became the source and the declarations went.
- *
- * What is checked now is the shape of the exception rather than the rule: that nothing declares a list the
+ * The script is the source of a leg's scope; a declaration repeating it would be a second record of one
+ * fact. What is checked is the shape of the exception rather than the rule: that nothing declares a list the
  * script would have given anyway, that nothing is left without either, and that a declaration names real
  * workspaces.
  */

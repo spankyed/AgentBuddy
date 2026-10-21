@@ -66,8 +66,7 @@ export const unitStepName = (suite: UnitSuite): string => `test:unit:${suite.kin
  * **One bucket per half, because each half is what consumes one.** The fast half is `small`, the integration
  * half `large`, and the native half `enormous`: its specs compose cold compiler captures, builds and watcher
  * cycles, which a 60s case could not hold, so a `large` budget there made nearly every native case a reviewed
- * exception. A bucket nothing distinguishes is the defect this replaced: `tier` had three values and two
- * consumers, each using it as a different binary.
+ * exception. A bucket must be one something distinguishes.
  *
  * The point is the ceiling, not the number. `testTimeout: 120_000` on a unit suite turns a hang into a
  * slow pass — a load-induced stall reached a chain summary as two unexplained errors rather than as a

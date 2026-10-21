@@ -6,14 +6,11 @@
  * behind an `await import` in the command, which is what keeps the ordinary run from paying for vitest's
  * node API or the chain steps the app label reads.
  *
- * **It prices the plan from the last run on this machine**, and that is a different thing from what it used
- * to do. It summed `spec-cost.json`, a committed record of what every spec cost, compared across runs and
- * machines against a fixed edge; the quantity was not one number — a spec read 2.8s in the fast pool and
- * 0.64s in the integration pool — and nothing in the file said which machine it described. What it reads
- * now is a cache this machine's own last run wrote (`spec-durations.ts`), so there is no record to go
- * stale, nothing to re-record, and a fresh clone is simply unpriced rather than wrong.
+ * **It prices the plan from the last run on this machine** — a cache that run wrote (`spec-durations.ts`),
+ * never a committed record, so there is nothing to go stale or re-record and a fresh clone is simply
+ * unpriced rather than wrong.
  *
- * The caveat the old one carried is still true and still has to be said: this is **file time summed across
+ * One caveat has to be said: this is **file time summed across
  * workers, never a wall estimate**. Measured on one target three days apart, the ratio between the two was
  * 1.55:1 and 2.18:1.
  *
@@ -52,9 +49,7 @@ export function checkedSpecs(specs: readonly string[]): readonly string[] {
  * Every spec a whole-suite run would execute, walked from the packages it covers.
  *
  * The third thing a run's specs can come from, beside collecting and a named list — `--full`'s pack suite is
- * the largest run a plan produces and names none of its files. It read the cost record until 2026-10-05,
- * which held a row per spec and so doubled as the suite's inventory; `specFiles` is that inventory without
- * the millisecond, and is the walk the record was built from in the first place.
+ * the largest run a plan produces and names none of its files. `specFiles` is the suite's inventory.
  */
 export function specsOfSuites(workspaces: readonly string[], root: string): readonly string[] {
   const specs: string[] = [];

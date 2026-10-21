@@ -23,18 +23,16 @@ export const STEP_NAME_WIDTH = 30;
 /**
  * Where each row's reason starts, composed from the one width rather than restated.
  *
- * Every one of these used to be a literal with the arithmetic in a comment beside it, which is how three of
- * them came to disagree with the rows they describe. They are derived now, so widening the name column moves
- * them together and a doc comment cannot go stale against a number it only describes.
+ * Derived rather than literal, so widening the name column moves them together and a comment cannot go
+ * stale against a number it only describes.
  */
 export const REASON_COLUMN = STEP_NAME_WIDTH + 21; // verdict(7) ␣ marker(3) ␣ name ␣ time(6) + two spaces
 
 /**
  * The one thing a row says about a step besides its name and its time: whether it needs the built app.
  *
- * Three characters, blank for a step that does not, so the column is a marker rather than a classification
- * — which is what replaced it. `tier` printed `t1`/`t2`/`t3` here, three values no reader could act on,
- * where the one that changes how a run behaves is whether the step waits for `build:runtime`.
+ * Three characters, blank for a step that does not: the one fact about a step that changes how a run
+ * behaves is whether it waits for `build:runtime`.
  */
 export const marker = (needsApp: boolean): string => (needsApp ? 'app' : '   ');
 
@@ -263,11 +261,9 @@ export const CHANGED_CAP = 5;
 /**
  * What to print under a step that passed and is already stale, given the diff against its own stamp.
  *
- * Every line here is something the stamp can prove. That is the whole change: the list used to be the files
- * whose mtime had moved, which is a superset — it named a compiled content an E2E test rewrites with the bytes it
- * already had, and the diagnosis that followed was about the wrong file. So a rewrite that changed nothing is no
- * longer a cause; it is a footnote, because a tree being written during every run is worth knowing and is not
- * why anything re-ran.
+ * Every line here is something the stamp can prove. Files whose mtime moved would be a superset — a rewrite
+ * with the same bytes would be named as a cause — so a rewrite that changed nothing is a footnote: a tree
+ * being written during every run is worth knowing and is not why anything re-ran.
  *
  * A declared-set change prints instead of files rather than beside them: gaining a watched path makes a unit
  * stale before a byte moves, and a file list for that cause is empty and reads as a contradiction.

@@ -77,8 +77,7 @@ const sstep = (name: string, dependsOn: string[] = [], extra: Partial<Step> = {}
  *
  * **Never the raw `ScheduleResult`.** `threw[].error` holds `Error` objects, which `toEqual` compares by
  * message alone, and a `Map` or `Set` compares order-insensitively — both weaken exactly the discrimination
- * an entry is for. `peers` carries the most: it is written at dispatch, in both directions, so it says what
- * overlapped what, which is how a budget decision is visible at all.
+ * an entry is for. `peak` is how a budget decision is visible at all: the most steps running at once.
  *
  * `run` resolves immediately and that is sufficient, so the `release`/`drain` machinery in
  * `chain-schedule.spec.ts` is deliberately not reproduced here: `schedule`'s dispatch pass is synchronous,
@@ -89,17 +88,24 @@ const scheduled = async (lib: Lib, steps: readonly Step[], budget: number, optio
   readonly failing?: readonly string[];
   readonly skipping?: readonly string[];
 } = {}) => {
+  let live = 0;
+  let peak = 0;
   const result = await lib.schedule({
     steps,
     budget,
     skip: (step) => (options.skipping ?? []).includes(step.name),
-    run: async (step) => !(options.failing ?? []).includes(step.name),
+    run: async (step) => {
+      peak = Math.max(peak, ++live);
+      await Promise.resolve();
+      live -= 1;
+      return !(options.failing ?? []).includes(step.name);
+    },
   });
   return {
     started: result.started.join(','),
     skipped: result.skipped.join(','),
     failed: result.failed ?? 'none',
-    peers: [...result.peers].map(([name, beside]) => `${name}:${[...beside].sort().join('+')}`).sort().join(' '),
+    peak,
   };
 };
 
@@ -143,8 +149,7 @@ const MUTATIONS: readonly Mutation[] = [
     in: 'chain-schedule',
     from: 'if (spent > 0 && spent + (step.cores ?? 1) > budget) continue;',
     to: '',
-    // Three four-core steps and ten to spend: `c` waits, so it overlaps nothing. Without the clause it
-    // joins the other two and `peers` says so.
+    // Three four-core steps and ten to spend: `c` waits, so two run at once. Without the clause all three do
     call: (lib) => scheduled(lib, [sstep('a', [], { cores: 4 }), sstep('b', [], { cores: 4 }), sstep('c', [], { cores: 4 })], 10),
   },
   {

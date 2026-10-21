@@ -965,8 +965,7 @@ describe('what the plan would list', () => {
   /**
    * A whole-suite run names no files, so its specs are walked from the packages it covers.
    *
-   * This read the cost record until 2026-10-05 — a row per spec doubled as the suite's inventory. The walk
-   * is where that record came from, so the answer is the same without the millisecond.
+   * The walk is the suite's inventory.
    */
   it('lists a whole suite by walking it, since the run names no files', () => {
     const listed = specsOfSuites(['@app/repo-checks'], REPO_ROOT);

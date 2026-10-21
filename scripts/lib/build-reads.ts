@@ -112,8 +112,8 @@ export function readsOf(packDir: string): BuildReads | undefined {
 /**
  * The command that rebuilds a pack's record, so every refusal below can say what to do about it.
  *
- * A bundler bump invalidates every record at once, and the message for that used to name the two versions
- * and stop there — true, diagnostic, and silent about the one action that resolves it.
+ * A bundler bump invalidates every record at once, and a message naming the two versions alone would be
+ * silent about the one action that resolves it.
  *
  * `apack pack build` for anything this cannot place, which is the honest answer and the general one: a refusal
  * is asked about a directory the caller named, which may hold no pack at all — the spec asks about

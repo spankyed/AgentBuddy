@@ -624,7 +624,7 @@ async function main(): Promise<void> {
     for (const { name, reason } of uncacheable) {
       const step = steps.find((s) => s.name === name)!;
       const unusual = reason === INPUTS_CHANGED ? undefined : reason;
-      // Hoisted out of the `staleLines` call it used to sit in, because the verdict needs it too: `when` is the
+      // Its own binding, because the verdict needs it too: `when` is the
       // only thing in the system that tells a change *during* the run from one after it, and `willNotCache`
       // cannot see it — it compares fingerprints, which say that something moved and never when
       const moved = whatMoved(step, steps, sweep, budget);

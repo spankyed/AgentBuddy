@@ -17,9 +17,9 @@
 //   npm run spec -- --changed HEAD~1        a different base for the change set
 //   npm run spec:full [...]                 and the pack suites a rebuilt `dist` would reach
 //
-// A **source file** is the case worth knowing about. It used to run the file's own package, which for
-// `@apackdev/sdk` was one of the seven suites that cover it: a green run of specs that could not fail for the
-// change. It now runs one vitest over every host project, which is what the root `vitest.config.ts` is for.
+// A **source file** is the case worth knowing about. Its own package would be one of the seven suites that
+// cover `@apackdev/sdk`: a green run of specs that could not fail for the change. So it runs one vitest over
+// every host project, which is what the root `vitest.config.ts` is for.
 // That costs what the blast radius costs — a component nothing imports is still 1-3s, a type every pack's
 // data flows through is 28s and 104 files. To go back to one spec while iterating, name it.
 //
@@ -233,8 +233,7 @@ try {
     const verdict = verdictOf(run, result.status ?? 1, counter?.read());
     if (verdict === 'fail') {
       failed++;
-      // The failure is the answer, and every run behind it is a bill for information already in hand: a 1s
-      // failure in a fast half used to pay for the 18s pack suite that followed it
+      // The failure is the answer, and every run behind it is a bill for information already in hand
       if (bail) { notReached = runs.slice(index + 1); break; }
     }
     if (verdict === 'uncovered') uncovered.push(run);
@@ -259,7 +258,7 @@ if (notReached.length > 0) {
 }
 
 // Two sentences for one emptiness, because they are opposite facts: a gap in the suite, and specs that
-// exist behind a build this run did not do. Saying the first for the second is what a content source used to get
+// exist behind a build this run did not do. A content source is the second, never the first
 for (const run of uncovered) {
   const target = run.claimsCoverageOf!;
   console.error(run.beyond === undefined

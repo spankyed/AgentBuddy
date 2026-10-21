@@ -5,13 +5,12 @@
  *   tsx scripts/check-test-tiers.ts        (npm run check:tiers, part of npm run typecheck)
  *
  * A step that does not need the built app must not reach one: the moment it does, it has to run after
- * `build:runtime`, its real inputs become the whole repo, and it can no longer be cached or reordered. Four
- * attempts at a cheaper chain each died on exactly that, because nothing recorded it
- * (`docs/archive/goals/goal-test-tiers.md`, where the declaration was a three-valued `tier`).
+ * `build:runtime`, its real inputs become the whole repo, and it cannot be cached or reordered
+ * (`docs/archive/goals/goal-test-tiers.md`).
  *
  * **One question, and it is the one no reading of the inputs can answer.** Whether a step *needs* the app
- * is derived from what it declares (`needsApp`, `chain-steps.ts`), so the two clauses that used to compare
- * the two were a derivation against its own source and could not fail. What is left is text: it reads each
+ * is derived from what it declares (`needsApp`, `chain-steps.ts`), so comparing the two could not fail.
+ * What is left is text: it reads each
  * step's npm script, follows what it calls, and looks for the ways this repo launches the app —
  * Playwright, Electron, and `apack pack test`, which is Playwright with a different name. A step can launch
  * the app while declaring none of its outputs, and that is the case nothing else sees.
@@ -55,9 +54,8 @@ function problems(): string[] {
   const found: string[] = [];
   for (const step of CHAIN_STEPS) {
     const { name } = step;
-    // One question, not two. `needsApp` is the declared inputs read back (`chain-steps.ts`), so the two
-    // clauses that used to compare it against those inputs were comparing a derivation with its own source
-    // and could not fail. What is left is the half no reading of the inputs can answer.
+    // One question, not two. `needsApp` is the declared inputs read back (`chain-steps.ts`), so comparing it
+    // with them could not fail. What is left is the half no reading of the inputs can answer.
     if (needsApp(step)) continue;
     const script = name;
     if (!(script in all)) { found.push(`${name}: no such npm script`); continue; }

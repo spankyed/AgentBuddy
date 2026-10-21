@@ -313,3 +313,333 @@ a guess instead, so each now names what it has and says what it could not rule o
 **The one thing none of them can close** is a writer that records nothing: an editor, a tool that takes no
 lock, another session. All three now say that in the arm where it is the answer, which is the difference
 between a report a reader can act on and one they learn to skip.
+
+
+## From the root guide
+
+The root `CLAUDE.md` states each rule briefly; this is the evidence and the worked examples it points here
+for, kept as it was written.
+
+### What a change costs the chain
+
+**`npm run chain` costs what you changed.** Each step declares what it reads
+(`scripts/lib/chain-steps.ts`), is fingerprinted over exactly that, and is skipped when nothing under it
+moved — so working out which suite covers your edit is the graph's job, not yours and not a table here. Run
+the chain and it runs the subset; it does not need you to have guessed right.
+
+Measured with `npm run measure`, 2026-10-04, each a median of three real runs rather than a sum of the
+parts — so each figure carries its conditions and the table can be re-derived rather than trusted:
+
+| What you changed | What the chain runs | Cost |
+|---|---|---|
+| nothing tracked | nothing | **0.9s** |
+| a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/`, and a fingerprint skips every `CLAUDE.md` | **0.9s** |
+| one package's source (the renderer) | nine of thirty-one steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers` and `build:runtime` | **38.6s** |
+| nothing is cached (a cold tree) | every gated step — 30 of the 31, `test:e2e` being opt-in — on a ten-core budget (`--all`, 2026-10-07) | **185.8s** |
+
+**The one-package row is the one worth reading twice**, because the obvious reasoning about it is wrong.
+`build:runtime` rewrites `packages/*/dist`, which looks like it moves what every app-dependent step reads — and
+on that reasoning editing a package the app is built from would cost four times editing one it is not. It
+does not. `build:runtime` runs, and `test:smoke`, `test:packaged-authoring` and `test:external-pack:app` stay
+**cached** through it: their keys are over the built app's *content*, and a rebuild from unchanged input
+produces the same bytes, so nothing they read has moved. That rests entirely on the build being
+reproducible, which is the largest single saving in this table and the one nothing else would notice losing —
+`npm run check:repro` is the instrument that keeps it true.
+
+So the shape to carry is that an edit costs the steps whose *inputs* moved, and a step that only consumes a
+deterministic build is not one of them. Re-derive it with `npm run chain -- --dry`, which names the ten and
+the reason beside each.
+
+`npm run chain -- --dry` prints that plan without running it, and says why each step is or is not cached —
+which is the way to find out why something you expected to be skipped is not.
+
+**The inner loop is still `npm run spec`**, and it is still much cheaper than a chain run: with no
+arguments it runs the specs your uncommitted changes affect, in every package they touch; with a source
+file it runs the specs that import it. One spec file is 1-3s and a package's `tsc --noEmit` is 3s, against
+the 38.6s a chain run costs after a one-package edit — **not** against the chain's floor, which is 0.9s and so
+cheaper than either. What `spec` saves is not the cost of starting the chain but the cost of what your change
+made stale. Use it while you are working, and the chain when you are done. A change to
+`scripts/` or to a vitest config counts too: it routes to `@app/repo-checks`, the package holding the
+specs that check the repo's own tooling.
+
+**Two answers `spec` cannot get from the module graph**, and it names both rather than passing a run that
+skipped them. A *pack suite* resolves the published `dist` while the host projects resolve source, so the
+edge to its specs runs only through a build — the same reason editing `@apackdev/sdk` can be green under
+`spec` and red under `chain`, which declares that dependency (`scripts/lib/workspace-deps.ts`). An
+*integration half* is a second vitest config whose specs the root projects `exclude`, and nothing has to
+be built to reach it. `npm run spec:full` runs both. The pack seam is also why a pack's own source runs
+that pack's whole suite rather than a root `related` — nothing in the root projects imports it.
+
+**Two more edges run through a build, and they are inside one pack.** A pack's `src/content/**` compiles to
+`dist/*.content.json`, which `tests/content/` reads against its goldens; its **build inputs** — `apack.json`,
+which drives codegen into `src/__generated__/`, `package.json`, whose `imports` map is how those generated
+specifiers resolve and whose `prepare` runs the codegen, and `tsconfig.json`, which the build compiles with —
+are what every spec in the pack goes through. Both are `src -> apack pack build -> output -> spec`, so a
+*regenerated* tree is covered while editing what generates it reaches nothing. `npm run spec`
+names those specs beside whatever the walk did find, and `npm run spec:full` builds the pack and runs them.
+The routes are derived from the pack's own layout (`scripts/lib/spec-plan.ts`'s `packBuildEdge`), and
+repo-checks' `spec-plan.spec.ts` partitions the packs under `packages/`, so a second pack cannot arrive
+unrouted. Before them a content item source was told *"No spec covers …"*, which its goldens refute.
+
+Three things the chain cannot work out for you, because they rewrite files you commit:
+
+- **a public export of `@apackdev/ears`, `/sdk` or `/ui`** — `npm run api:update`, and commit `etc/`.
+  `typecheck` fails until you do. **Read the regenerated diff before committing it, and that is the whole
+  of the review** — every line should be the edit you just made, and one that is not is what these records
+  exist to show you. That holds for all four: regenerating is the ordinary next step after a deliberate
+  change, while regenerating a diff you cannot account for is how a surface change comes to look reviewed.
+- **default-setup's facade** — the types a dependent pack compiles against, bundled by `apack pack build` into
+  `dist/types/pack-types.d.ts` and recorded in `etc/pack-types.api.md`. Run
+  `npm run facade:update -w @app/default-setup` and commit the report. **`typecheck` fails until you do**, as
+  it does for all four recorded files: `exports:check` and `schema:check` are legs, and `api:check` and
+  `facade:check` are chain steps the runner borrows (`RECORDED_FILE_CHECKS`, `scripts/lib/typecheck-jobs.ts`), so
+  one command answers for every one of them. It did not until 2026-10-08, and a green typecheck over a stale
+  report is what that cost.
+  The root chain check uses `facade-report --from-build`: verify sealed output, replay the common
+  build-input record, then compare the published facade without regenerating shared files. It runs
+  after `build:default-setup`. Source edits, missing output or modified receipts refuse.
+  The pack-local command still derives from source without needing a build. `npm run typecheck`
+  uses that command with `--skip-generate` after regenerating once ahead of its pool.
+- **a pack's content source (`src/content/`)** — when only `contentHash`/`rowSha256` moved, re-record
+  deliberately with `npm run content-parity:update -w @app/default-setup`, and never edit a hash by hand.
+  Re-recording rewrites a test expectation, not user data; what reaches users is the new `contentHash`.
+  `packages/default-setup/tests/content/CLAUDE.md` has the rule for what a golden records.
+
+The chain is the normal repository gate. **Automatic CI is disabled, on purpose:**
+`.github/workflows/ci.yml` has its `push` and `pull_request` triggers commented out while this is a
+single-contributor repo. Do not report their absence as a failure or enable them. Manual platform and
+strict-chain dispatches remain available and are used where the execution boundary below or an active
+goal requires them; cite actual results, not an assumption that all CI runs or never runs.
+
+**And when it does: CI may fail a check, never a clock.** A runner is smaller and noisier than any
+developer's box, so anything gating on wall-clock there manufactures flakes that read as code failures.
+Two things keep that true and are worth knowing before changing them: every kill deadline is a declared
+class rather than a multiple of a measurement (`scripts/lib/step-timeouts.ts`), and what a step costs is a
+reading of the machine it ran on, never a committed figure. CI already does the right thing where it has its own bound —
+`ci.yml`'s `timeout-minutes` is a round number nobody measured — and it is the chain that was the outlier.
+**Do not gate any of this on `process.env.CI`**: a CI-gated refusal in this repo never fires, and the one
+that was cost thirteen spec files a silent green (`@apackdev/host/build/packages-built`, on `ALLOW_UNBUILT`).
+The condition is the machine, which is a fact a run can check.
+
+### Things that waste the most time: the evidence
+
+- **Running anything at all after a doc or a CLAUDE.md edit.** Nothing means nothing: not
+  `typecheck`, not the package's suite, not "just to be safe". No step declares `docs/` and `fingerprintUnit`
+  skips every `CLAUDE.md`, so `npm run chain -- --dry` reports every step cached. A full `typecheck` is 11s
+  against a doc edit's 0s, and repo-checks' *"prose costs nothing"* holds this claim. The two exceptions are
+  a spec that asserts the text and a code fence someone will copy.
+  **A comment inside a source file is not one of these.** A fingerprint is over the file's content, so a
+  comment moves it like any other edit and every step that reads that file runs. The spec above is about
+  markdown and does not reach this half, so `npm run chain -- --dry` is what answers it.
+- **Sizing an optimisation from a duration.** Three errors, and `npm run chain -- --dry --all` prints the
+  answer to the first two. A step **off** the critical path contributes nothing, because the chain admits
+  steps in parallel: `test:unit:pack` is the worked warning — **89% setup overhead**, the most alarming
+  ratio in the repo, off the path, so halving it buys zero. A step **on** it is capped by the second-longest
+  route, so a long step on a dense graph is worth little — `test:packaged-authoring:author` is 95s of a 118s
+  path and buys 19s, because another route sits at 99s. Three proposals in one day were sized by reading a
+  duration and all three were bounded by a path nobody had computed. And in the other direction, moving a
+  step off the path need not shorten the run, because a cold chain is core-bound; what it shortens is
+  whatever was waiting behind it. **Read the path and the saving before measuring a ratio.**
+- **Running `npm run build:runtime` to test a change no build output depends on.** The renderer and API build from
+  source; a CLI or SDK change does not need them rebuilt to be tested.
+- **Running an E2E suite to find a bug you have a stack trace for.** Build once with `sourcemap: true`,
+  decode the mapping, read the source. Do that before you grep, not after.
+- **Re-running the full chain after a fix to a thing the chain already covered.** If the CLI suite caught
+  it, the CLI suite proves the fix.
+- **Reading the source twice to explain a bug the running app would show you.** One instrumented E2E run is
+  decisive where two carefully argued explanations were wrong, and the run you already did wrote the app's
+  output to `tests/results/app-<workerIndex>.log`. `tests/e2e/CLAUDE.md` has the method.
+- **Reading a chain step's `cached` as "the thing it guarantees is true".** It means only that the step's
+  declared inputs have not moved. `packages:ensure` guarantees something its own fingerprint cannot see, so
+  it carries a `neverCachedBecause`; the three pool steps keep two layers on purpose, because a pool step's
+  inputs are the union of its projects' and so cannot disagree.
+- **Running suites concurrently *before the packages are built*.** Two suites that both find a stale package
+  race each other's build and fail about the race rather than the code. Run `npm run packages:ensure` once
+  first and every later call is a stat and a return.
+
+### Rules that pay for themselves: the evidence
+
+- **Measure before you optimise, and before you accept someone else's measurement.** Two proposals here were
+  rejected by one command each, both having been argued for at length first.
+- **Attribute a concurrent pipeline's cost with a CPU profile, not by timing its stages.** Wall clock
+  summed per stage double-counts everything that overlaps, and the result reads as a table with a plausible
+  winner rather than as an error: the pack frontend bundle's plugin hooks totalled 120s inside an 11.5s
+  build, and the stage that table blamed held a twentieth of the cost. `node --cpu-prof` with self time per
+  package is the instrument, and two profiles subtracted isolate one phase.
+- **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the right
+  test fail proves more than running the whole suite again.
+- **But a mutation check does not redeem a test that mirrors the code.** A case asserting the
+  implementation's shape — send X, expect the single line X's handler contains — fails when that line is
+  edited, so the mutation fires and proves nothing: it fired because the test restates the line, not because
+  behaviour moved. Ask instead whether the code could be **correct but different**; a case that every
+  behaviour-preserving rewrite fails encodes the code, and its failure says no more than the diff.
+  **A pure re-route needs no new spec** — the typecheck holds the wiring — and *not* finding a behavioural
+  claim is the signal to stop rather than to manufacture one. Reaching for one anyway produces this and its
+  sibling, a `toContain` over source text, which is a lint rule in a spec's clothing: that belongs in
+  `check:specifiers`, this repo's home for call-site rules, or nowhere.
+- **A check that reports nothing may have looked at nothing**, and a green run cannot tell you which. Derive
+  the subject from the declaration that defines it, and assert it is not empty — in that order, because the
+  first is the half that keeps failing. Where the input is data, **mutate it in the test**: drop the thing
+  under test from a copy and assert the answer flips.
+- **A result that is partial says so, and there are four shapes — copy one rather than invent a fifth.**
+  **Refuse** where the evidence is missing (`packagesBuiltOrRefuse`); **a distinct exit code** where "nothing
+  covered this" and "everything passed" are different answers (`npm run spec`'s 3); **a named bucket beside
+  the total** where only part of the input is anyone's to fix (`pricedSpecs`' `unpriced`); **a clause on the
+  success line** where one claim in the sentence did not hold (the chain's `(N of M cached)`). What none of
+  them is: silent.
+- **A check that cannot fail today is a gate or an assertion, and they want opposite things.** A gate's
+  subject is input, so it needs a firing case. An assertion's subject is the program's own construction, so
+  being unreachable is the point — what it needs instead is a comment naming the *edit* that would make it
+  fire, because that edit is what you mutate to watch it.
+- **A list and its type are one declaration.** Write the list and derive the type from it
+  (`const XS = [...] as const; type X = (typeof XS)[number]`), or the other way round — never both by hand.
+  Four pairs here were written twice and each had a different failure.
+- **A stamp directory has one writer, and a lock beside the stamps is what makes that true.** Two writers
+  make a cached result mean "some run with these inputs passed" rather than "this tree passed", and nothing
+  downstream can tell. `holdExclusiveLock` (`@apackdev/host/exclusive-lock`) is the mechanism for all of them —
+  `holdChainLock` (`scripts/lib/chain-lock.ts`) is the worked example, and the lock file must not end in
+  `.json` or `pruneStamps` deletes a live run's. Two of the four are guarded;
+  [`reference/pipeline-lessons.md`](pipeline-lessons.md) names the other two and what the fix is.
+- **A cache needs a key that cannot go stale, or a scope in which it cannot — and a reset hatch is neither.**
+  Content-key where the input is a file (path, mtime **and** size), scope where it is a tree. If you reach
+  for a hatch anyway, give it a case that fails when it is forgotten.
+- **A comment is for whoever opens the file cold, not for whoever reads the diff.** What changed, how many
+  copies there used to be, what you measured — that is commit-message material. The test: will this sentence
+  still be true, and worth reading, a year from now, to someone who never saw the change?
+  **No comment reads as a changelog, and this governs a guide's prose as much as a `//` comment.** Write the
+  state of the thing, never its edit history: `it was X until <date>`, `renamed from`, `previously called`,
+  `this used to be` and `we changed this to` do not belong in the tree. Keep the lesson and drop the history
+  that carried it — a trap is stated as a trap (`two clauses keeping it equal to the inputs cannot fail`), not
+  as a story about when it was removed. The git log is where the edit lives, and it is one command away.
+- **A comment justifying something by a past failure must name what prevents that failure now.** If it is
+  this code, say how it fails; if it is something else, name the file; if it is nothing, say nothing checks
+  it. "X is the whole point" cannot be checked; "Y fails when Z" can.
+- **Keep readings; do not decide with them.** A record that informs a *column* needs no hysteresis, no band,
+  no tie rule, no machine field and no idle floor, because there is no threshold for a reading to be wrong
+  about — `spec-durations.ts`' ten-run window is that shape, uncommitted and machine-local, and it costs
+  nothing to be right. The moment a reading is compared against an edge it needs every one of those, and the
+  edge is usually the thing that could have been declared instead: two subsystems here grew the full
+  apparatus and both were deleted, their decisions replaced by a filename and a hand-written number.
+  **Before building one, ask what the reading decides and whether that could simply be stated.**
+- **Load inflates a duration and cannot deflate it**, so the two directions are not equally safe to act on.
+  Measured 1.27x median, 2.03x p90, 3.29x at worst: a busy box can hide a stale claim and cannot invent one.
+  So *measured faster than declared* is a fact about the code and is safe to gate anywhere — the `@slow:`
+  marker gate is the worked example — while *measured slower* may be a fact about the machine and is only
+  ever a report. Gating that direction is what cost the deleted subsystem its window, its band and its two
+  idle floors. **The asymmetry holds for a thing's own time and not for a bar derived from it**, which is
+  the correction [`reference/recorded-files.md`](recorded-files.md) records: a
+  quantile moves with the load that moves the files under it.
+
+[`docs/reference/pipeline-lessons.md`](pipeline-lessons.md) has what each of these cost to
+learn — the measurements, what was tried first, and the commit that closed it.
+
+### What a test may read
+
+**A step says what it reads, and whether it needs the built app follows from that.** `needsApp`
+(`scripts/lib/chain-steps.ts`) is derived: a step needs the app when it declares one of `build:runtime`'s
+outputs among its inputs. So there is no second record to disagree with the graph, and the ordering comes
+from those same two fields whatever anyone writes. Declaring it instead would need two `check:tiers` clauses
+to keep it equal to the inputs, and clauses like that cannot fail — which is what redundancy looks like
+rather than what protection looks like.
+
+The rule it holds: a step that does not need the app must not reach one, because the moment it does it has
+to run after `build:runtime`, its real inputs become the whole repo, and it can no longer be cached or
+reordered. Four attempts at a cheaper chain each failed on exactly that, because nothing recorded it. A
+check that genuinely needs the app declares it — that is an answer, not a failure, and the fix is never to
+delete the check.
+
+**`npm run check:tiers` asks the one question the inputs cannot answer.** It follows each step's npm
+script as text and looks for the ways this repo launches the app, because a step can launch it while
+declaring none of its outputs. Being a scan is the safe direction for that half: a wrong scan reports a
+false finding, where a wrong cache key is silent. It goes when the action graph can answer "does this
+transitively depend on `build:runtime`" (`docs/archive/plans/one-action-cache.md`, item 18; the follow-up is
+`docs/archive/plans/observed-inputs.md`, now closed).
+
+**`build:runtime` does not satisfy it.** It writes the app rather than reading one, and the rule is about
+reading. That distinction is why this replaced a three-valued `tier`, which lumped the producer in
+with its consumers: `docs/archive/plans/tier-split.md` has the evidence, and the budget half of `tier` is now
+`SIZE_MS` in `scripts/lib/unit-suites.ts`.
+
+`test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
+pack and runs its harness specs with no app. `:fork` builds and archives the shipped-pack fork as a separate
+producer. `:app` consumes both outputs and runs Playwright after `build:runtime`. Separate scripts keep
+app launches out of the producers: the scan reads scripts as text, including branches never taken.
+
+`test:packaged-authoring` is split the same way: `:author` authors, builds, tests and releases a pack with
+no app, `:app` runs that archive against one. They hand over a work dir through `tests/authoring-handoff`,
+the author half's declared output and the app half's input, so the edge derives like any other — and that
+dir stays **outside** the checkout, or a pack built inside it resolves `@apackdev/*` by walking up to the
+workspace `node_modules`, which is the thing the check exists to disprove.
+[`goal-test-tiers.md`](../archive/goals/goal-test-tiers.md) has the rest, and what each of the four attempts at a
+cheaper chain measured — written when the declaration was a tier.
+
+### Figures in prose
+
+**A figure earns its place by sizing a choice, and one a record owns is named rather than copied.** Two
+different failures: a figure that informs no decision is weight, and a copy of something `chain-steps.ts`
+already knows drifts with nothing to catch it. "One spec file is 1-3s against the 38.6s a
+one-package edit costs the chain" earns its place; a count the `--list` flag derives does not.
+**Name the floor, never quote it.** A sentence like that one, written against "the chain's 27s floor" and
+then copied to two other places, goes on arguing from a number thirty times too large the moment per-step
+caching moves the floor to 0.9s — and no check holds any of the three. The figure that earns its place is the
+one sizing the choice in front of you; the one a record owns gets named so there is a single thing to
+re-measure.
+
+**A third failure, which is neither of those: a measurement a decision cites.** `@app/publish-checks`' guide
+kept a spec in the fast half *"on the strength of its five `npm pack --dry-run` calls costing ~1.5s"*, and
+it measured 3.74s — 2.5x out, with a placement decision resting on it. Such a figure cannot be derived and
+cannot be dropped, so it takes the third option, which is already this repo's convention for a measurement:
+**it carries its date and its conditions.** `npm run measure`'s output is the format — *"a number without
+its conditions is an assertion; with them it is a citation"* — and a number quoted in prose is under the
+same rule as one printed by a command.
+
+**Nothing holds prose to code, and that is deliberate**: a spec pinning a guide's figure forces a doc edit
+for every code edit. Point at the record or the command that derives the figure instead. Three drifts were found by review on 2026-10-06 (a spec count 9 short, the
+~1.5s above, and a "closest left" another step had overtaken); review is what catches the third kind, because
+a causal claim is an argument and no check holds an argument.
+
+**Script names say whether they write.** Three shapes, and the second word tells them apart:
+
+- `<name>:check` / `<name>:update` — something recorded that can go stale, and the two halves
+  carry the *same* noun: `api:*`, `facade:*`, `schema:*`, `exports:*`, `content-parity:*`. `check` and
+  `update` are reserved as suffixes, so a name ending in `update` is the only kind that rewrites a file
+  you would commit.
+- `<action>:<scope>` — an action over part of the repo: `typecheck:renderer`, `test:unit`, `build:api`. The
+  second word is a place, and nothing here writes a tracked file.
+- `<action>:<variant>` — a variant of one action: `build:dev`, `test:watch`, `lint:fix`.
+
+The point is that the name is derivable: knowing a recorded file tells you both its scripts, without a grep.
+Put a new recorded file in the first shape and give it both halves, even when one half is trivial —
+a recorded file with only an update is one nothing will notice has gone stale.
+
+### E2E: what earns a place in the suite
+
+**Driving the app now has its own place: `drive/`, run with `npm run dev:drive` (a pack author gets
+`npm run dev:drive --`).** That is where an agent debugs and develops against the app — open what you just built,
+click through it, read the state back, screenshot it. Scripts there import `drive` rather than `test`,
+nothing collects them, and nothing gates on them. **One question needs no script at all**: `npm run dev:eval`
+and its neighbours ask the app `npm run dev` is holding, over its debug port — one JSON object on stdout,
+0.9s. With no app running they exit 3 and say so; `--spawn` starts one and keeps it for the next question.
+`docs/public-facing/cli.md` has the verbs.
+
+**One directory here is a gate: `tests/e2e/smoke/`**, as its own chain step (`test:smoke`, 6s). Its four
+cases are the ones every other check silently assumes — the app launches without crashing, reaches `connected`, has
+its plugins, and runs in its own data dir. Taking the suite off the chain took that with it, which is the
+one thing worth paying for.
+
+**The rest is not a regression suite, and is not in `npm run chain`.** It was built to watch the app while
+writing a feature, and it became a chain step while the reasoning around it drifted into caching policy —
+a question you only ask of a gate. What earns a place here is a test that asserts something a future
+change could break **and** needs the real process boundary; everything else is either a harness test or a
+driving script (`drive/`).
+
+**One spec here has earned it, and what it caught is the argument for that rule rather than against the
+gate.** `app-integration/dev-reload.spec.ts` found that a rebuilt pack the app ships reloaded the copy
+installed *before* the edit — so every pack edit in dev appeared not to take effect, and `POST /dev/reload`
+answered 200. The chain, `test:smoke` and every unit suite passed straight through it, because the fact it
+rests on is a built pack in a real data dir reloaded over a real port, which no harness has. That is
+exactly the two-part test above, met; the ones that do not meet it are still the reason this is not a gate.
+**So the question to ask of a spec here is which of the two halves it has**, and `npm run chain -- --e2e`
+is how you run the suite when a change is in that territory.
+`npm run chain -- --e2e` runs it with the chain when you want it — ordered after `test:smoke`, since both
+drive Playwright at `tests/results` — and `npm run test:e2e` runs it alone.

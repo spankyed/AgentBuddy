@@ -327,8 +327,8 @@ describe('a file takes the budget of the target it runs in', () => {
 
   /**
    * And it answers for a config by the config's own existence, which is the other half of the one
-   * question. These were two functions in two modules until 2026-10: a spec's name is a claim and a
-   * config's name is the fact, and that asymmetry is a reason for two branches rather than two names.
+   * question: a spec's name is a claim and a config's name is the fact, and that asymmetry is a reason for
+   * two branches rather than two functions.
    */
   it('reads a config by which config it is', () => {
     const [withHalf] = INTEGRATION_SUITES;

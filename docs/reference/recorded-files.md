@@ -155,3 +155,66 @@ was apparatus for a column. What a step costs is now a reading — a machine-loc
 runs (`scripts/lib/step-durations.ts`), the same shape as the spec duration cache above — and the critical
 path and a failure report read its median. **Keep the reading; do not decide with it** is the rule, and this
 is the third subsystem it has now cost.
+
+
+## The recorded-file checks
+
+The root `CLAUDE.md`'s argument for derivations over proxies and samples, and for `api:check` and
+`packages:check` being chain steps, in full.
+
+**`api:check` is a chain step and needs no proxy.** It regenerates the reviewed reports and compares, so it is
+a derivation and has no staleness record of its own to go stale. It costs **6.9s** — median of 5, 6.7-7.0s,
+measured 2026-10-05 — which is less than `typecheck:pack`, so there is nothing a cheaper stand-in would buy.
+Two things keep it there: one API Extractor compiler state per package rather than one per entry, and the
+three packages' extractions running at once rather than in the series `npm -w a -w b -w c` gives.
+
+**Do not add a proxy for it, and these are the five reasons.** A hash of the declarations a report is a
+function of is the obvious cheap stand-in, and every one of its failure modes is worse than the 6.9s:
+a doc-comment edit reddens it though no report can move; a package's stamp fingerprints its *dependencies'*
+declarations, so clearing sdk's leaves ui's red and one comment costs two round trips; every fix writes a
+committed file, including runs that change no report; it cannot see a hand-edited `etc/*.api.md` whose
+declarations never moved, which a derivation simply reads as an input. And it races a rebuild in flight —
+more than one process touching this tree is the ordinary case — which matters because **the remedy a proxy
+names is a write.** `api:update` run inside that window records a hash of a half-written tree into a
+committed file and looks like it worked. A derivation cannot: it compares and writes nothing, so a racing
+read fails and the next run passes.
+
+**`packages:check` is a chain step, for the opposite reason**: publint and attw over the five published trees
+cost seconds together, so there is nothing to build a proxy for, and
+its only other homes were the publish workflow
+and a CI file whose triggers are commented out — the recorded-file checks ran at the one moment they cannot be
+cheap. **It takes no mutex, and that is a thing it had to stop needing**: `attw --pack <dir>` packs a tarball
+inside the tree it is checking, which made it a second writer of trees twenty-nine other steps read, so it ran
+alone — 6s of a cold run for a tool that takes a tarball path. `scripts/packages-check.ts` packs outside the
+repository instead (`packTree`), and derives both populations from `publishedTreeDirs()`: publint over all five
+tarballs, attw over the four whose tree ships declarations. Both read the same tarball per tree — publint's
+other mode asks `npm pack --dry-run` for the file list, which is a subprocess for an answer already inside the
+tarball (0.4s against 0.1s, interleaved, paired over 5 at 83% idle, 2026-10-08), and the same rules run either
+way: both of publint's input kinds converge on one `core()` with a different virtual filesystem. It is not the
+dangling-published-path check, which publint cannot be — it skips any target behind a custom condition, which
+is how 99 published paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is
+that one.
+**Three kinds of recorded file, and the question to ask of a new one is which it is.** A
+**derivation** re-takes its answer on every run and compares (`schema:check`, `exports:check`,
+`facade:check`, `content-parity:check`, `api:check`) — a missing input cannot happen to one. **Re-taking it
+means running whatever produces it**, which is the half that is easy to skip: a check that compares against
+a file some earlier command left on disk is a derivation in name only, and goes stale exactly as a proxy
+does while reading like one that cannot. A **proxy**
+records a hash of what it *believes* the inputs are; **nothing here is one any more**, because a proxy can
+go stale from an input nobody listed and its remedy *writes*. A **sample** records a measurement, so
+neither check is available to it — **there are none, and do not add one.**
+
+**Price the derivation before reaching for either.** `api:stamp` was a proxy for `api:check` purely because
+that cost 55s; at 6.9s the derivation is cheaper to keep, and the proxy's whole justification went with the
+speedup. And a sample's apparatus outgrows the decision it informs: `spec-cost.json` was 1,884 lines, twelve
+records, a band, a window, a tie rule, a machine field and two idle floors, to decide which of two config
+files a spec was listed in — a question nine of twelve packages could not even ask. **The quantity was never
+one number**, which no amount of hysteresis fixes: one spec read 2.8s in the fast half and 0.64s in the
+integration half, 4.37x apart against a band of 2.5x. The half is a decision now, declared by a filename
+(`scripts/lib/spec-halves.ts`), and nothing re-derives it.
+
+[`docs/reference/recorded-files.md`](recorded-files.md) has what each of those cost,
+measurement by measurement. **There are none left.** What a chain step costs is a reading: a machine-local
+window of recent passing runs (`scripts/lib/step-durations.ts`), which orders nothing that decides pass or
+fail — it draws the critical path and is the context a failure report gives — so it needs no band, floor or
+machine field.

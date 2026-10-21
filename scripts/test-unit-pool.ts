@@ -83,8 +83,8 @@ function reportDurations(kind: Pool, covered: readonly UnitSuite[], reported: Re
   const rows = durationsOf(reported, covered);
   // A run whose every file was skipped reports no durations, and a ranking of nothing is not a finding.
   // **Not "all cached"**, which this cannot be reached for — `main` returns before building `runs` when
-  // nothing is stale. And no longer "the reporter's format moved" either: a reporter that did not run
-  // writes no file, which `readReportedRun` answers `undefined` for and the caller refuses on.
+  // nothing is stale. Nor a reporter that did not run: it writes no file, which `readReportedRun` answers
+  // `undefined` for and the caller refuses on.
   if (rows.length === 0) return;
   // Written whether or not this run may record a verdict. A duration is a measurement, true whoever asked
   // for it — the same reason `recordRun` suppresses a stamp and `ensurePackagesBuilt` does not suppress a

@@ -325,14 +325,9 @@ describe('every spawn an orchestrator makes is bounded', () => {
   /**
    * And the rung a step declares is the one its *kind of work* puts it on.
    *
-   * **The case above bounds; this one classifies, and nothing asked this until 2026-10-05.** Every other
-   * rung check here is about the deadline fitting — the class exists, the declared cost has room, the
-   * measured cost has not outgrown it. The criterion `step-timeouts.ts` actually states is a kind of work,
-   * and whether a step is on the right kind was carried by prose. The comment above says so from the other
-   * side: `packages:ensure` and `build:default-setup` sat on `quick` while being bundles, and were found *"by reading
-   * the table, not by this"* — caught at 93% and 87% by proximity to a bound rather than by kind. The
-   * opposite direction was unwatched outright: one compiler declared `suite` gets 600s to die rather than
-   * 60s, and nothing would have said a word.
+   * **This one classifies.** The criterion `step-timeouts.ts` states is a kind of work, and without this
+   * whether a step is on the right kind would be carried by prose: a bundle left on `quick` is killed early,
+   * and one compiler declared `suite` gets 600s to die rather than 60s with nothing saying a word.
    *
    * The three facts are gathered here and the criterion is `rungForKind`'s, beside the ladder it formalizes.
    * `fansOut` uses declared pool widths, excluding flattened compiler legs, never what `coresFor` returns — that resolves
@@ -486,8 +481,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * it makes the surviving one a surprise: the tighter wins, and if that is the inner class the chain's
    * timeout message reasons from a rung that never fired.
    *
-   * Nothing held them equal until 2026-10-06. They agreed, which is the state in which a second record is
-   * most comfortable and least checked.
+   * Two records of one fact agreeing today is the state in which a second record is least checked.
    *
    * A script that is not a chain step is skipped rather than excused: `test:external-pack` bounds the two
    * halves by hand and has no row to agree with, so there is no second record to keep honest.

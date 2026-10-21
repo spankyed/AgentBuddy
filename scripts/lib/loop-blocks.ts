@@ -86,8 +86,8 @@ export function lastPerPid(samples: readonly Sample[]): Sample[] {
  * A pool worker is the **topmost** process carrying a tinypool worker id: the id is set in the worker's
  * env, so a compiler or a nested vitest the worker spawns inherits it and is not one. The main process is
  * the parent those workers share. Nothing here names an entry file, because a list of names is a restated
- * population — the version of this that read `process.js` would have called every process `other` the day
- * tinypool renamed its entry, and reported a clean run over a suite it could no longer see.
+ * population: reading an entry file's name would call every process `other` the day tinypool changes it,
+ * and report a clean run over a suite it can no longer see.
  */
 export function roleOf(rows: readonly Sample[]): Process[] {
   const byPid = new Map(rows.map((row) => [row.pid, row]));
@@ -119,9 +119,7 @@ export const ranked = (rows: readonly Process[]): Process[] =>
 /**
  * What the run is worth saying out loud: the worst block, and whatever has already breached.
  *
- * It carried a third answer, `atRisk`, for the rows within some factor of the window. `factorText` below
- * replaced it — every row now says how much room it has, so a separate list of the close ones was a second
- * way to ask one question, and the parameter that tuned it survived into `verdictLine` doing nothing at all.
+ * No list of the rows close to the window: every row says how much room it has (`factorText`).
  */
 export function verdict(rows: readonly Process[]): {
   readonly worst: Process | undefined;
@@ -163,8 +161,7 @@ export function parseSamples(text: string): { readonly samples: Sample[]; readon
 /**
  * The one sentence the table does not say, printed on every run.
  *
- * It used to appear only when something was already close to the window, so a healthy run
- * printed a table and no judgement at all — and that is the run somebody quotes as proof. A clean
+ * Printed even on a healthy run, because that is the run somebody quotes as proof. A clean
  * measurement is a measurement of the room left, never evidence that a flake is gone, and the place to say
  * so is the run where everything looks fine.
  */

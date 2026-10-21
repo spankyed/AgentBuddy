@@ -103,8 +103,8 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   // prevent and the one its own history records, where a width above the truth only leaves a core idle.
   'build:runtime': { cores: 3 },
   // Three independent extractions at once (`scripts/api-check.ts`), measured the same way: 25.6s of CPU in
-  // 7.1s, so 3.6 cores. It ran serially and counted as one until 2026-10-05, which is a step using a third
-  // of this box while the budget admitted it as a single core
+  // 7.1s, so 3.6 cores; weighed as one, the budget would admit it as a single core while it took a third of
+  // this box
   'api:check': { cores: 4 },
 };
 

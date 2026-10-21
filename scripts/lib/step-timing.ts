@@ -56,11 +56,9 @@ export const measurementsFrom = (
  *
  * A step stamps the fingerprint it was dispatched with; if recomputing it straight afterwards gives a
  * different answer, something wrote into that step's declared inputs *after* it ran. That is a whole class
- * of defect, and this repo has now produced it three ways: a step writing under a tree it also declares
- * (`build:default-setup` into `src/__generated__`, the fixture check into each fixture's `dist`), and one step
- * writing under a tree another declares (the E2E suite into `tests/screenshots`, which `typecheck` read as
- * part of `tests` — that one cost 34s of every warm chain and was invisible until someone asked why a
- * "15 of 17 cached" run still took 34 seconds).
+ * of defect, in two shapes: a step writing under a tree it also declares (`build:default-setup` into
+ * `src/__generated__`), and one step writing under a tree another declares (an E2E suite writing under
+ * `tests` while a typecheck reads it), which silently costs every warm chain that step's whole run.
  *
  * Checked by running rather than by reading, on purpose. A static rule needs a model of what each process
  * touches, and the thing that keeps being wrong *is* that model — the tool that writes somewhere nobody

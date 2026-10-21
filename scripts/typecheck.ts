@@ -5,26 +5,14 @@
  *   npm run typecheck              # all of it
  *   npm run typecheck -- --cores 1 # one at a time, for a measurement or a confusing failure
  *
- * WHY THIS IS NOT AN `&&` CHAIN ANY MORE
+ * WHY CONCURRENT
  *
- * It was one, and every leg is a single-threaded compiler, so the step used one core for half a minute while
- * nine sat idle. Measured 2026-09-27 on a 10-core machine: **29.3s one at a time, 10.8s all at once**. Inside
- * the chain it was worse than either — 63.4s — because the rest of the chain saturated the cores it was not
- * using and starved the one it was.
- *
- * That corrected a claim in `chain.ts`'s header, which argued against running the steps together on the
- * grounds that "every step already uses all the cores". The largest app-free step did not, and the chain
- * admits on what each step takes now rather than counting them.
+ * Every leg is a single-threaded compiler, so run one at a time the command uses one core while the rest sit
+ * idle. Measured 2026-09-27 on a 10-core machine: **29.3s one at a time, 10.8s all at once**.
  *
  * WHY EACH LEG'S COMMAND IS SPELLED OUT
  *
- * For whoever reads the table, and nothing more — **which is a correction.** This paragraph used to say two
- * checks read the commands from here through `reachableText` (`lib/npm-scripts.ts`), and that
- * `schema:check` and `exports:check` were reachable *only* this way, so a template literal would hide them.
- * Measured 2026-10-06, all three parts are false: `reachableText('typecheck')` follows one file, this one,
- * whose own text makes no `npm run` call, so its `invoked` set is `{ typecheck }` and the legs are invisible
- * to the scan however they are written; and both of those checks are chain steps in their own right, found
- * without going through here at all.
+ * For whoever reads the table, and nothing more: no check reads the commands from here.
  *
  * **Where a template literal does bite is the root manifest, not this table.** `namedByScript`
  * (`lib/typecheck-legs.ts`) derives a leg's cache scope by reading the *root* `package.json` script text
@@ -47,13 +35,9 @@ import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
  * Every leg is one `tsc`, so each weighs one core and a budget of ten runs ten of them — which is why
  * this shares the chain's scheduler and its one unit rather than counting legs of its own.
  *
- * **This command is not in the chain any more.** Each leg is its own chain step, so the chain's scheduler
- * owns the whole machine and this runs only when a person runs it directly, where there is nothing to
- * share with. The bound it used to carry was half the cores, "because the chain runs two other lanes
- * beside this step": a guess about a scheduler it could not observe, and the two-schedulers problem
- * `docs/archive/plans/test-unit-scheduling.md` removed for the unit suites and left here. It cost a
- * measured 63.4s in-chain against 29.3s of work, because the rest of the chain saturated the cores it was
- * not using and starved the one it was.
+ * **This command is not in the chain.** Each leg is its own chain step, so the chain's scheduler owns the
+ * whole machine and this runs only when a person runs it directly, where there is nothing to share with.
+ * A fraction of the cores here would be a guess about a scheduler it cannot observe.
  *
  * Measured 2026-09-27 on ten cores, run alone, the step is flat from four at a time up — 12.9s at 3,
  * 11.2s at 4, 10.6s at 6, 11.5s at 8, 11.2s at 16 — because one leg, `typecheck:renderer`, is most of the
@@ -120,10 +104,9 @@ const pruned = pruneDepFiles();
 if (pruned.length > 0) console.log(`Removed ${pruned.length} dep file(s) no tsconfig declares: ${pruned.join(', ')}`);
 
 const result = await schedule({
-  // One ordering rule, stated once: everything else reads what `packages:ensure` builds. It used to be a
-  // `needs: [ENSURE]` on all seventeen legs — a hand-written edge beside a fact, which is what the chain
-  // stopped keeping. The chain derives its own from `PACKAGE_BUILD_OUTPUTS`; this runner has one graph
-  // and no inputs to derive from, so it says the rule instead of repeating it.
+  // One ordering rule, stated once: everything else reads what `packages:ensure` builds. The chain derives
+  // its own from `PACKAGE_BUILD_OUTPUTS`; this runner has one graph and no inputs to derive from, so it says
+  // the rule once rather than an edge per leg.
   steps: JOBS,
   budget: budgetFrom(parseFlags(process.argv.slice(2), { values: ['cores'], booleans: [] }).values.cores, JOBS.length),
   skip: () => false,

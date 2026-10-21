@@ -7,9 +7,8 @@
  * which is why it survives a `dist` clean and is absent on a fresh clone).
  *
  * **It is a proxy, in this repo's taxonomy** (root `CLAUDE.md`, "Three kinds of recorded file"): it
- * records what was read *last* time, so it can go stale from an input nobody listed. That was what bit the
- * API report stamp, the repo's other proxy until it was deleted for the derivation it stood in for — which
- * leaves this and `build-reads.ts` as the two that remain. It is the known unsoundness of dep files
+ * records what was read *last* time, so it can go stale from an input nobody listed. It is the known
+ * unsoundness of dep files
  * generally, and it is why Bazel pairs them
  * with sandboxing and Gradle pairs them with "undeclared means uncacheable". Here it is paired with
  * `trustworthy()` below and with the rule that a missing dep file is not a cacheable state.
@@ -137,10 +136,9 @@ let declared: Map<string, DepFileSource> | undefined;
  * Where a dep file's name comes from, which is the only non-guess answer to "whose reads are these".
  *
  * TypeScript writes one dep file per tsconfig and each config declares the name itself, through
- * `tsBuildInfoFile` — so this is read from a declaration. It used to be inferred from the dep file's name
- * instead (`api-test` starts with `api-`, so it must be `api`'s), a naming convention that nothing held up
- * and that two readers depended on: the compiler-version check below, and the gate deciding which leg
- * answers for a dep file.
+ * `tsBuildInfoFile` — so this is read from a declaration, not inferred from the dep file's name (`api-test`
+ * starts with `api-`), a convention nothing would hold up and two readers depend on: the compiler-version
+ * check below, and the gate deciding which leg answers for a dep file.
  *
  * **Enumerated from `PACKAGE_DIRS`, never by searching the tree.** `.claude/worktrees/` holds entire
  * checkouts, so a filesystem walk for `tsconfig*.json` finds another branch's configs — measured, it does.
@@ -174,9 +172,8 @@ export function sourceOf(depFile: string): DepFileSource | undefined {
  *
  * **Litter, not evidence.** A dep file is written by `tsc` under the name its tsconfig chose, and nothing
  * removes it when that tsconfig goes — so deleting a workspace or renaming a leg leaves a file whose reads
- * answer for nobody. `dep-files.integration.spec.ts` refuses one, correctly, and the chain then fails on
- * litter: removing `@app/pack-fixtures` on 2026-10-02 left `pack-fixtures.tsbuildinfo` behind and the step
- * stayed red until it was deleted by hand.
+ * answer for nobody. `dep-files.integration.spec.ts` refuses one, correctly, so without pruning the chain
+ * would fail on litter until someone deleted the file by hand.
  *
  * **The writer prunes, which is what the two existing records here do** — `pruneStamps` clears a chain stamp
  * with no step, and the pool steps clear a pool stamp no pool would write. `npm run typecheck` drives the
@@ -241,10 +238,9 @@ export function readsOf(name: string): readonly string[] | undefined {
 /**
  * Why a dep file cannot be believed, or `null` when it can — the proxy's self-check.
  *
- * A proxy records a hash of what it *believes* its inputs are, so it goes stale from one nobody listed. The
- * API report stamp was bitten exactly that way before it was deleted: the set of published entries was
- * missing from its key, so adding one passed the stamp and the whole chain. The lesson it left is that a
- * proxy needs a check against *itself*, not only a comparison, and this is that check.
+ * A proxy records a hash of what it *believes* its inputs are, so it goes stale from one nobody listed — an
+ * input missing from its key passes the stamp and the whole chain. So a proxy needs a check against
+ * *itself*, not only a comparison, and this is that check.
  *
  * Two causes, named separately because they call for different fixes. A compiler upgrade invalidates every
  * recorded read set, and the file says which version wrote it. A changed `tsconfig` changes what the

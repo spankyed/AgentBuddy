@@ -205,33 +205,17 @@ const POOL_BY_STEP: ReadonlyMap<string, Pool> =
 export const poolForStep = (step: string): Pool | undefined => POOL_BY_STEP.get(step);
 
 /**
- * The one command that measures a step on its own, for a report telling a reader how to check a reading.
+ * The command that runs a step's whole work on its own: what `npm run measure` should be handed for it, and
+ * what a pool step's cache key names (`unitFor`, `chain-stamps.ts`).
  *
- * **Derived from how the step is actually run, because the alternative is a remedy that measures something
- * else.** That is not hypothetical: the advisory this feeds used to prescribe `chain --all --cores 1`, which
- * re-runs all thirty steps serially to settle one — and it was the only instruction, so the cheap answer was
- * never offered. Measured 2026-10-07, the integration pool read 83s and then 100s inside two crowded chain
- * runs while costing **47.7s median of 5 (47.6s-48.1s) at 93% idle**, dead on the 48.2s the guide records.
- * The chain is a poor instrument for one step's cost: it admits steps in parallel, so what a step reads there
- * is a function of what ran beside it.
+ * **A pool step cannot be named by its npm script.** All three keep a cache of their own — the reason they
+ * declare `forceArgs: ['--all']` — so `npm run test:integration` a second time finds every project up to
+ * date and returns in under a second, measuring nothing. So a pool names the vitest invocation underneath,
+ * from `POOLS[pool].run` — the same declaration the pool itself runs, so the two cannot drift — minus the
+ * durations reporter, which is bookkeeping rather than the work, and over the whole pool rather than the
+ * suites one run found stale.
  *
- * **A pool step cannot be named by its npm script**, which is the reason this is a function and not a
- * template. All three keep a cache of their own — the reason they declare `forceArgs: ['--all']` — so
- * `npm run test:integration` a second time finds every project up to date and returns in under a second,
- * which is advice that measures nothing. Exactly the defect the old wording warned about for a plain
- * `--cores 1`, one level further in. So a pool names the vitest invocation underneath, from `POOLS[pool].run`
- * — the same declaration the pool itself runs, so the two cannot drift.
- *
- * **Minus the durations reporter**, which is the one part of that invocation that is machinery rather than
- * measurement: it is a long absolute path in a line a person has to read, and what it records is the chain's
- * own duration history. What the command therefore measures is the step's run and not its stamp bookkeeping
- * — the dominant term, which is the whole of what a reading near a rung is about.
- *
- * **The whole pool, not the suites this run found stale**, which is what makes the two numbers comparable:
- * the step's recorded cost is the whole pool's, so a command that ran the stale subset would answer a
- * cheaper question and read as a step that had shrunk.
- *
- * Every other step runs its work unconditionally, so its npm script is the measurement.
+ * Every other step runs its work unconditionally, so its npm script is the command.
  */
 export function measureCommandFor(stepName: string, budget?: number): string {
   const pool = POOL_BY_STEP.get(stepName);
@@ -301,8 +285,8 @@ export function prunePoolStamps(): void {
  * A project as a build unit, so it goes through the same freshness check as everything else.
  *
  * **Keyed by pool, and the command is why.** A suite with an expensive half is two units over one input set,
- * and until 2026-10-02 they hashed the same preimage — so a stamp read under the wrong key came out *fresh*,
- * which is the expensive half skipped on the fast half's record. `unitStaleReason` consults nothing but the
+ * and if they hashed the same preimage a stamp read under the wrong key would come out *fresh* — the
+ * expensive half skipped on the fast half's record. `unitStaleReason` consults nothing but the
  * fingerprint, by design, since it recomputes its own side: the only place an identity can live is the
  * preimage, which is what `BuildUnit.command` is for.
  *
@@ -337,13 +321,9 @@ export const poolUnitFor = (suite: UnitSuite, pool: Pool, provenance: Provenance
  * Checked rather than adapted to. Stamping only what reported would make the run "correct" while quietly
  * testing less, which is the failure being prevented, just smaller.
  *
- * **It reads the reporter's account, which closed two holes the console output could not.** Scraping the
- * labels meant handling both of vitest's spellings — `|name|` without colour, a space-padded coloured name
- * with it — and this repo had already shipped a version reading only the first, which reported all eleven
- * host projects absent from a run every one of them had passed. It also meant the answer was only
- * available for a multi-project run, because vitest prints no label otherwise, and a project that ran
- * *zero files* appeared in no output at all. The reporter names every project the run started
- * (`onTestRunStart`), so both of those are gone and there is no longer a case this cannot answer.
+ * **It reads the reporter's account, not the console.** Vitest prints project labels in two spellings and
+ * only for a multi-project run, and a project that ran *zero files* appears in no output at all; the
+ * reporter names every project the run started (`onTestRunStart`).
  */
 export function projectsThatDidNotRun(asked: readonly string[], run: ReportedRun): string[] {
   const reported = new Set(run.projects);
@@ -443,8 +423,8 @@ const placementLines = (rows: readonly FileDuration[], marked: ReadonlyMap<strin
  * than a rename. The three in `@apackdev/cli` have both halves and so could move today.
  *
  * That is what this line is for: the gap between the markers that could act on this evidence and the ones
- * that could not. `f2a003bb2` moved two specs on it, so the question is no longer whether the gate is ever
- * acted on but how much of its population is reachable, which is what a reader of a passing run sees here.
+ * that could not — how much of the gate's population is reachable, which is what a reader of a passing run
+ * sees here.
  *
  * Silent at zero, so the output stops mentioning it the moment a package gains a second half or a marker
  * lands in one of the three that already have one.
@@ -549,8 +529,8 @@ export function poolDurationLines(pool: Pool, width: number, since: Date,
  * Pure, over a read and a thunk, so the answers can be checked without a stamp on disk — and `??`
  * short-circuits, so the diff is never computed for a stamp that may not be diffed. It takes the *read* rather
  * than the record because that is what makes the two inseparable: the caller cannot reach the fields a diff
- * needs without having been told whether they are readable, where it used to ask one function and then narrow
- * for itself. Forgetting that printed a file name beside a reason that said the stamp could not be read at all.
+ * needs without having been told whether they are readable. Narrowing for itself, a caller could print a
+ * file name beside a reason saying the stamp could not be read at all.
  */
 export const whyItRuns = (read: ReturnType<typeof diffableStamp>, moved: () => string): string =>
   read.undiffable ?? (moved() || 'its inputs changed');
