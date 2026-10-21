@@ -273,10 +273,11 @@ it('does not inspect an unused fallback after resolving a package-relative libra
 });
 
 it('checks a bare library in the working directory before explicit fallbacks', () => {
-  const local = path.resolve('value.dylib');
+  // A Mach-O working directory is a POSIX path whichever platform runs the check
+  const cwd = '/work', local = path.join(cwd, 'value.dylib');
   const files = new Map([[entry, image([[0xc, 'value.dylib']])], [local, image([])], ['/outside/value.dylib', image([])]]);
   const reads: string[] = [];
-  expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read(file) { reads.push(file); return files.get(file); }, realpath: file => file,
+  expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', cwd, read(file) { reads.push(file); return files.get(file); }, realpath: file => file,
     environment: captureMachOLibraryEnvironment({ DYLD_FALLBACK_LIBRARY_PATH: ['/outside'].join(':') }) })).toThrow('references "value.dylib"');
   expect(reads).toContain(local);
   expect(reads).not.toContain('/outside/value.dylib');

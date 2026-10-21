@@ -106,7 +106,7 @@ it.skipIf(process.platform === 'win32' || !!process.versions.electron)('retains 
   expect(JSON.parse(output)).toEqual({ current: false, output: 'captured' });
 });
 
-it('owns a relative external esbuild executable and detects changed selection, bytes and copy damage', async () => {
+it('owns a relative external esbuild executable and detects changed selection and bytes', async () => {
   const compiler = esbuildFixture();
   fs.writeFileSync(compiler.file, compiler.bytes, { mode: 0o755 });
   const first = await compiler.capture();
@@ -118,11 +118,17 @@ it('owns a relative external esbuild executable and detects changed selection, b
   expect(first.isCurrent(compiler.root, compiler.options)).toBe(false);
   const changed = await compiler.capture();
   expect(changed.hash).not.toBe(first.hash);
-  expect(compiler.run(first)).toBe('let value=1;');
   fs.rmSync(compiler.file);
   expect(compiler.run(first)).toBe('let value=1;');
   fs.writeFileSync(compiler.file, compiler.bytes, { mode: 0o755 });
   expect(first.isCurrent(compiler.root, { ...compiler.options, env: {} })).toBe(false);
+  expect(first.isCurrent(compiler.root, compiler.options)).toBe(true);
+});
+
+it('detects damage to its captured external esbuild executable', async () => {
+  const compiler = esbuildFixture();
+  fs.writeFileSync(compiler.file, compiler.bytes, { mode: 0o755 });
+  const first = await compiler.capture();
   expect(first.isCurrent(compiler.root, compiler.options)).toBe(true);
   const captured = first.environment.ESBUILD_BINARY_PATH!;
   fs.chmodSync(captured, 0o755);
