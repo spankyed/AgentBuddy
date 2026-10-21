@@ -2798,8 +2798,8 @@ paths. Readings stream `subsystem == "com.apple.syspolicy.exec"` with `/usr/bin/
   not once per build.
 - **The CLI integration half run directly on the Mac** (44 files, 360 tests, 551s, `813fa6844`): 48 rows;
   distinct paths were 8 `node`, 15 `fsevents.node`, 6 `a.out`, 3 `libbindings_napi.dylib`, one `lmdb.node`
-  and one `extract.node`. Against the incident's capture: no notarization-daemon errors were logged, and no
-  launch stalls were reported during the run.
+  and one `extract.node`. The predicate covers execution assessments only, so this says nothing about the
+  notarization-daemon errors the incident's capture held.
 - **These test counts are the test isolation, not a per-build cost.** Each vitest worker captures into its
   own store under the run's directory, and specs that damage an entry create their own, so a run holds
   several store entries and each assesses its executables once. The `a.out` and `libbindings_napi.dylib`
