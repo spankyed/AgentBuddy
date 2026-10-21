@@ -112,7 +112,7 @@ this ledger is not permission to downgrade an outcome to a survey.
 - [LMDB-only](../../goals/goal-lmdb-only.md), console transactions and advisory locks remain a separate storage
   track. Settle their overlapping transaction/lock decisions together before changing persistence.
 - Plugins-to-surfaces, logs extraction and distribution remain deferred. Re-audit their APIs after the
-  earlier contract changes; none is a prerequisite here. [Stretch-projection removal](../../plans/drop-the-stretch-projection.md)
+  earlier contract changes; none is a prerequisite here. [Stretch-projection removal](drop-the-stretch-projection.md)
   is independent tooling cleanup, not part of the manifest workstream.
 
 Update affected active docs at each checkpoint; archive a completed plan with evidence then. Preserve

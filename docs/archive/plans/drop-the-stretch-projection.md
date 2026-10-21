@@ -1,8 +1,7 @@
 # Drop the stretch projection: keep the deadline, delete the prediction
 
-**Status:** ready, not started. Refreshed against the code on 2026-10-21. Do it after
-[PR #249](https://github.com/spankyed/apack/pull/249) merges, as its own change: both edit `chain-steps.ts`,
-`step-timeouts.ts` and the chain specs.
+**Status:** archived 2026-10-21, absorbed into [Simplify the validation tooling](../../plans/simplify-validation-tooling.md)
+as its first phase. The audit below was refreshed against the code the same day.
 
 ## What this is about
 
