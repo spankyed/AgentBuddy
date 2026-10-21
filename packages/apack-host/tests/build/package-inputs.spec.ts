@@ -289,3 +289,11 @@ it('in resolution mode reads only what resolvers read directly, and keeps every 
   pack.write('node_modules/helper/added.js', '');
   expect(read().hash).not.toBe(before.hash);
 });
+
+it('reads an owner\'s graph whole when that owner asks for it, whatever the default', () => {
+  const pack = tree();
+  const inputs = readPackageInputs([{ id: 'compiler', directory: pack.root, dependencyContents: 'all' }], { dependencyContents: 'resolution' });
+  const dependencies = inputs.nodes.filter(node => node.directory !== fs.realpathSync.native(pack.root));
+  expect(dependencies.map(node => node.contents)).toEqual(['all', 'all']);
+  expect(dependencies.flatMap(node => node.unread)).toEqual([]);
+});

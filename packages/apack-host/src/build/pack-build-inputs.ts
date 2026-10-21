@@ -34,7 +34,8 @@ export function parsePackBuildInputs(value: unknown): PackBuildInputs {
     || !Array.isArray(value.packages.owners) || !value.packages.owners.length
     || !value.packages.owners.every(owner => object(owner) && text(owner.id) && text(owner.directory)
       && (owner.development === undefined || typeof owner.development === 'boolean')
-      && (owner.contents === undefined || typeof owner.contents === 'boolean'))
+      && (owner.contents === undefined || typeof owner.contents === 'boolean')
+      && (owner.dependencyContents === undefined || owner.dependencyContents === 'all' || owner.dependencyContents === 'resolution'))
     || !Array.isArray(value.observations) || !value.observations.every(entry => Array.isArray(entry)
       && entry.length === 2 && entry.every(text))) {
     throw new Error('Invalid pack build inputs: expected compiler, execution, options, package scope and observations');

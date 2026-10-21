@@ -10,6 +10,8 @@ export interface PackageInputOwner {
   readonly development?: boolean;
   /** Consumers normally hash their authored files separately; compiler installations include them. */
   readonly contents?: boolean;
+  /** Overrides `PackageInputOptions.dependencyContents` for this owner's graph: compiler code is read whole. */
+  readonly dependencyContents?: 'all' | 'resolution';
 }
 
 export interface PackageInputFile {
@@ -197,7 +199,7 @@ function* packageInputReads(owners: readonly PackageInputOwner[], options: Packa
     return index;
   }
   const populated = new Set<number>();
-  function* populate(index: number, development: boolean): Generator<string, void, Buffer> {
+  function* populate(index: number, development: boolean, contents: 'all' | 'resolution'): Generator<string, void, Buffer> {
     if (populated.has(index)) return;
     populated.add(index);
     const node = nodes[index]!;
@@ -208,10 +210,10 @@ function* packageInputReads(owners: readonly PackageInputOwner[], options: Packa
     for (const name of names) {
       const dependency = findPackageDirectory(node.directory, name, observe);
       if (!dependency) { node.dependencies[name] = null; continue; }
-      const child = yield* register(dependency.directory, dependencyContents);
+      const child = yield* register(dependency.directory, contents);
       node.dependencies[name] = child;
       node.lookups[name] = dependency.lookup;
-      yield* populate(child, false);
+      yield* populate(child, false, contents);
     }
   }
   // Consumer roots normally have their own authored scope. Pre-register roots so cycles cannot
@@ -219,11 +221,14 @@ function* packageInputReads(owners: readonly PackageInputOwner[], options: Packa
   const roots: Array<{ id: string; node: number }> = [];
   for (const owner of owners) roots.push({ id: owner.id,
     node: yield* register(owner.directory, rootInputs.get(fs.realpathSync.native(owner.directory))!.contents ? 'all' : 'none') });
-  for (const [index, owner] of owners.entries()) yield* populate(roots[index]!.node, owner.development ?? false);
+  // A package two owners reach keeps the mode of the first owner to reach it
+  for (const [index, owner] of owners.entries()) {
+    yield* populate(roots[index]!.node, owner.development ?? false, owner.dependencyContents ?? dependencyContents);
+  }
   const imported: number[] = [];
   for (const directory of discovered) {
     const index = yield* register(directory, dependencyContents);
-    yield* populate(index, false);
+    yield* populate(index, false, dependencyContents);
     imported.push(index);
   }
   const identity = nodes.map(node => ({
