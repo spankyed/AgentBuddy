@@ -57,10 +57,10 @@ describe('on the bound bus', () => {
   // Where a message goes is never a field of its event, so an event may carry any field of its own
   it('delivers an event exactly as it was sent, a field named surfaceId or systemId included', () => {
     const sent = onBus(() => {
-      untypedBroadcastToSurface('memo-pack/memos', { type: 'PLUGIN_PICKED', surfaceId: 'default-setup/notes' });
+      untypedBroadcastToSurface('memo-pack/memos', { type: 'SURFACE_PICKED', surfaceId: 'default-setup/notes' });
       untypedSendToSystem('memo-pack/memos', { type: 'OPEN', systemId: 'kept', surfaceId: 'also-kept' });
     });
-    expect(sent.toSurfaces).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'PLUGIN_PICKED', surfaceId: 'default-setup/notes' } }]);
+    expect(sent.toSurfaces).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'SURFACE_PICKED', surfaceId: 'default-setup/notes' } }]);
     expect(sent.incoming).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'OPEN', systemId: 'kept', surfaceId: 'also-kept' } }]);
   });
 

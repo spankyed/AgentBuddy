@@ -1,7 +1,7 @@
 import { test, expect } from '@apackdev/testing';
 
 test('the running brain gives an external step its own service scope', async ({ app, appPage }) => {
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await app.navigate('default-setup/flows');
   await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system
     .get('default-setup/flows').getSnapshot().context.flows.some((flow: { label: string }) => flow.label === 'Stamp Flow'))).toBe(true);

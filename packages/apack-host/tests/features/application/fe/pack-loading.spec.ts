@@ -116,7 +116,7 @@ describe('loading pack frontends from the loaded packs', () => {
     await settle();
 
     // The pack is uninstalled while its frontend is still loading
-    app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'ext' });
+    app.send({ type: 'PACK_SURFACES_UNLOADED', packId: 'ext' });
     releaseLoad([surface('ext/own')]);
     await settle();
 
@@ -245,7 +245,7 @@ it('preserves the selected actor through disconnect and replaces it after fresh 
   loadPackFrontend.mockResolvedValue([surface('ext/own')]);
   connect();
   await settle();
-  app.send({ type: 'SELECT_PLUGIN', surface: 'ext/own' });
+  app.send({ type: 'SELECT_SURFACE', surface: 'ext/own' });
   const previous = app.system.get('ext/own');
   dropConnection();
   expect(app.system.get('ext/own')).toBe(previous);
@@ -282,7 +282,7 @@ it('keeps the accepted frontend and selection when a reconnect read fails', asyn
   loadPackFrontend.mockResolvedValue([surface('ext/own')]);
   connect();
   await settle();
-  app.send({ type: 'SELECT_PLUGIN', surface: 'ext/own' });
+  app.send({ type: 'SELECT_SURFACE', surface: 'ext/own' });
   const previous = app.system.get('ext/own');
   loadedPacksQuery.mockRejectedValueOnce(new Error('read refused'));
   dropConnection();
@@ -299,7 +299,7 @@ it('keeps accepted actors while preparing a replacement, and unloads them when i
   loadPackFrontend.mockResolvedValueOnce([surface('ext/own')]);
   connect();
   await settle();
-  app.send({ type: 'SELECT_PLUGIN', surface: 'ext/own' });
+  app.send({ type: 'SELECT_SURFACE', surface: 'ext/own' });
   const previous = app.system.get('ext/own');
   let refuse!: (error: Error) => void;
   loadPackFrontend.mockReturnValueOnce(new Promise((_resolve, reject) => { refuse = reject; }));
@@ -331,7 +331,7 @@ it('removes an absent owner only after an authoritative reconnect read', async (
   loadPackFrontend.mockResolvedValue([surface('ext/own')]);
   connect();
   await settle();
-  app.send({ type: 'SELECT_PLUGIN', surface: 'ext/own' });
+  app.send({ type: 'SELECT_SURFACE', surface: 'ext/own' });
   const previous = app.system.get('ext/own');
   dropConnection();
   expect(previous?.getSnapshot().status).toBe('active');
@@ -350,7 +350,7 @@ it('reconciles removed surfaces when an accepted replacement has no frontend', a
   loadPackFrontend.mockResolvedValueOnce([surface('ext/own'), surface('ext/removed')]);
   connect();
   await settle();
-  app.send({ type: 'SELECT_PLUGIN', surface: 'ext/own' });
+  app.send({ type: 'SELECT_SURFACE', surface: 'ext/own' });
   const previous = app.system.get('ext/own');
   loadPackFrontend.mockResolvedValueOnce(null);
   packClientReady.mockClear();
@@ -373,8 +373,8 @@ it('publishes new surface definitions without duplicate actors or changing tab o
   loadPackFrontend.mockImplementation(pack => Promise.resolve([surface(`${pack.id}/own`)]));
   connect();
   await settle();
-  app.send({ type: 'SELECT_PLUGIN', surface: 'ext/own' });
-  app.send({ type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'ext/own': false } });
+  app.send({ type: 'SELECT_SURFACE', surface: 'ext/own' });
+  app.send({ type: 'SURFACE_VISIBILITY_UPDATED', pluginVisibility: { 'ext/own': false } });
   const previous = app.system.get('ext/own');
   const order = app.getSnapshot().context.surfaces.map(surface => surface.id);
   const replacement = { ...surface('ext/own'), label: 'Updated' };
@@ -397,7 +397,7 @@ it('refreshes only changed runtimes and leaves unrelated actors and selection in
   loadPackFrontend.mockImplementation(pack => Promise.resolve([surface(`${pack.id}/own`)]));
   connect();
   await settle();
-  app.send({ type: 'SELECT_PLUGIN', surface: 'other/own' });
+  app.send({ type: 'SELECT_SURFACE', surface: 'other/own' });
   const other = app.system.get('other/own');
   const previous = app.system.get('ext/own');
   loadPackFrontend.mockClear();

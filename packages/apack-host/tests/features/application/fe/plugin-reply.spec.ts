@@ -50,7 +50,7 @@ function answering(id: string): Surface {
   }).createMachine({
     on: {
       ASK: { actions: 'note' },
-      PLUGIN_ACTIVATED: { actions: 'note' },
+      SURFACE_ACTIVATED: { actions: 'note' },
       NEWS: { actions: 'note' },
       ANSWER: { actions: 'overhear' },
     },
@@ -136,7 +136,7 @@ describe('a surface asked by a backend system', () => {
 describe('a surface asked by another surface in the same window', () => {
   /** What the renderer's `sendToSurface` builds: the shell's request, carrying the asking surface's address */
   const askLocally = (tag: string) => main.app.send({
-    type: 'SEND_TO_PLUGIN', surface: NOTES, events: [{ type: 'ASK', tag }], asker: { kind: 'window', ref: THREADS },
+    type: 'SEND_TO_SURFACE', surface: NOTES, events: [{ type: 'ASK', tag }], asker: { kind: 'window', ref: THREADS },
   });
 
   it('answers that surface beside it', async () => {
@@ -178,16 +178,16 @@ describe('a surface that nobody asked', () => {
   // The shell's own lifecycle: an activation is a fact about the window, with nobody waiting on an answer.
   // THREADS rather than NOTES, which the shell already opened on as the default — selecting it again is a no-op
   it('is handed nothing for the activation the shell raises itself', async () => {
-    main.app.send({ type: 'SELECT_PLUGIN', surface: THREADS });
+    main.app.send({ type: 'SELECT_SURFACE', surface: THREADS });
     await settle();
 
-    expect(handed.filter(({ type }) => type === 'PLUGIN_ACTIVATED'))
-      .toEqual([{ surface: THREADS, type: 'PLUGIN_ACTIVATED', canAnswer: false }]);
+    expect(handed.filter(({ type }) => type === 'SURFACE_ACTIVATED'))
+      .toEqual([{ surface: THREADS, type: 'SURFACE_ACTIVATED', canAnswer: false }]);
   });
 
   // An in-window send that named no asker, which is what the host's own `_sendToLocalSurface` callers make
   it('is handed nothing for an in-window send that named no sender', async () => {
-    main.app.send({ type: 'SEND_TO_PLUGIN', surface: NOTES, events: [{ type: 'NEWS' }] });
+    main.app.send({ type: 'SEND_TO_SURFACE', surface: NOTES, events: [{ type: 'NEWS' }] });
     await settle();
 
     expect(handed).toEqual([{ surface: NOTES, type: 'NEWS', canAnswer: false }]);

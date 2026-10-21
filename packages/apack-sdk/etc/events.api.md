@@ -98,8 +98,8 @@ export type FeatureSettingsUpdated = {
 };
 
 // @public
-export const HOST_PLUGIN_EVENT_TYPES: {
-    'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED", "ONBOARDING_COMPLETE", "OPEN_PLUGIN"];
+export const HOST_SURFACE_EVENT_TYPES: {
+    'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "SURFACE_VISIBILITY_UPDATED", "ONBOARDING_COMPLETE", "OPEN_SURFACE"];
     'host/settings': readonly ["CLI_TEST_RESULT", "HELP.OPEN"];
 };
 
@@ -119,12 +119,12 @@ export type HostSurfaceEvents = {
         type: 'APPLICATION_HOTKEYS';
         hotkeys: ApplicationHotkeys;
     } | {
-        type: 'PLUGIN_VISIBILITY_UPDATED';
+        type: 'SURFACE_VISIBILITY_UPDATED';
         pluginVisibility: Record<string, boolean>;
     } | {
         type: 'ONBOARDING_COMPLETE';
     } | {
-        type: 'OPEN_PLUGIN';
+        type: 'OPEN_SURFACE';
         surface: string;
         events?: Array<{
             type: string;
@@ -190,9 +190,6 @@ export type OpenEntity = {
 export type OutgoingEventsOf<C> = ContractOutgoing<C>;
 
 // @public
-export const PLUGIN_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED", "OPEN_ENTITY"];
-
-// @public
 export type PublicSurfaceInboxOf<C> = C extends {
     inbox: {
         public: infer Events;
@@ -246,6 +243,9 @@ export const settleCall: <T>(pending: Record<string, T>, event: {
     recorded?: T;
     pending: Record<string, T>;
 };
+
+// @public
+export const SURFACE_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED", "OPEN_ENTITY"];
 
 // @public
 export type SurfaceEvents = {

@@ -107,7 +107,7 @@ export const brainSystem = setup({
         const data = repository.brainQueries.rootData();
 
         broadcastToSurface('brain', {
-          type: 'RECEIVE_PLUGIN_DATA',
+          type: 'RECEIVE_SURFACE_DATA',
           data
         });
       });
@@ -196,7 +196,7 @@ export const brainSystem = setup({
 
       // Send empty data to clear the UI temporarily
       broadcastToSurface('brain', {
-        type: 'RECEIVE_PLUGIN_DATA',
+        type: 'RECEIVE_SURFACE_DATA',
         data: {
           flowTNodeId: '' as EARS.EntityId,
           tNodeTree: [],
@@ -223,7 +223,7 @@ export const brainSystem = setup({
         // Send fresh data after starting new brain
         const data = repository.brainQueries.rootData();
         broadcastToSurface('brain', { 
-          type: 'RECEIVE_PLUGIN_DATA',
+          type: 'RECEIVE_SURFACE_DATA',
           data
         });
         
@@ -245,7 +245,7 @@ export const brainSystem = setup({
     }),
     sendSurfaceData: ({ context, event, self }) => {
       // Use provided flowTNodeId or fall back to root
-      const flowId = event.type === 'REQUEST_PLUGIN_DATA' && event.flowTNodeId
+      const flowId = event.type === 'REQUEST_SURFACE_DATA' && event.flowTNodeId
         ? event.flowTNodeId as EARS.EntityId<'TNode'>
         : undefined;
 
@@ -260,7 +260,7 @@ export const brainSystem = setup({
       }
 
       broadcastToSurface('brain', {
-        type: 'RECEIVE_PLUGIN_DATA',
+        type: 'RECEIVE_SURFACE_DATA',
         data
       });
 
@@ -442,7 +442,7 @@ export const brainSystem = setup({
       CLIENT_CONNECTED: {
         actions: 'setClientConnected',
       },
-      REQUEST_PLUGIN_DATA: {
+      REQUEST_SURFACE_DATA: {
         actions: 'sendSurfaceData',
       },
       ERROR: {

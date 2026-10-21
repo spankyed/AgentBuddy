@@ -87,9 +87,9 @@ it.each(['replace', 'disable', 'unload', 'disconnect', 'navigate', 'breadcrumb',
   switch (reason) {
     case 'replace': shell.bindings.set('notes/view', { ...shell.bindings.get('notes/view')! }); shell.publishCatalog(); break;
     case 'disable': shell.declarations.set('notes/view', { ...shell.declaration, enabled: false }); shell.publishCatalog(); break;
-    case 'unload': shell.app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'notes' }); break;
+    case 'unload': shell.app.send({ type: 'PACK_SURFACES_UNLOADED', packId: 'notes' }); break;
     case 'disconnect': shell.client.dropConnection(); break;
-    case 'navigate': shell.app.send({ type: 'OPEN_PLUGIN', surface: 'host/home', events: [] }); break;
+    case 'navigate': shell.app.send({ type: 'OPEN_SURFACE', surface: 'host/home', events: [] }); break;
     case 'breadcrumb': shell.app.send({ type: 'TRAIL_CLICK', target: 'home' }); break;
     case 'back': shell.app.send({ type: 'NAVIGATE_BACK' }); break;
     case 'forward': shell.app.send({ type: 'NAVIGATE_FORWARD' }); break;

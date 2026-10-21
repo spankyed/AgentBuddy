@@ -57,7 +57,7 @@ export type Event =
   // Generic update event for child actors to update parent state
   | CodeInboxEvent
   | { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<CodeContext> }
-  | { type: 'PLUGIN_ACTIVATED' }
+  | { type: 'SURFACE_ACTIVATED' }
   | { type: 'SELECT_PANEL'; panel: PanelType }
   // Tab pinning events
   | { type: 'PIN_TAB'; path: string }
@@ -1241,7 +1241,7 @@ const codeState = setup({
   entry: ['spawnFeatureActors', 'restorePersistedTabs'],
   context: {
     baseDirectory: '', // Will be loaded from backend EARS store
-    openFiles: [], // Don't load tabs here - wait for PLUGIN_ACTIVATED
+    openFiles: [], // Don't load tabs here - wait for SURFACE_ACTIVATED
     activeFilePath: null,
     isLoading: false,
     error: null,
@@ -1290,7 +1290,7 @@ const codeState = setup({
           actions: ['addTab', 'saveTabsAction']
         },
         // Surface initialization
-        PLUGIN_ACTIVATED: {
+        SURFACE_ACTIVATED: {
           actions: ['initializeSurface']
         },
         // Panel selection

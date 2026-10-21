@@ -7,7 +7,7 @@ test('renders and edits with its bundled @apackdev/ui editor', async ({ appPage,
   appPage.on('pageerror', (error) => errors.push(error.message));
   appPage.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
 
-  await app.waitForPlugin('scribbles');
+  await app.waitForSurface('scribbles');
   await app.navigate('scribbles');
 
   const editor = appPage.getByTestId('scribbles-editor').locator('.ProseMirror');

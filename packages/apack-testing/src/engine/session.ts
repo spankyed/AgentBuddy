@@ -94,7 +94,7 @@ export interface SessionPage {
    * avoids wherever something event-driven exists — and here it does.
    */
   waitForState: (check: string, timeoutMs?: number) => Promise<unknown>;
-  waitForPlugin: (surfaceId: string, timeoutMs?: number) => Promise<unknown>;
+  waitForSurface: (surfaceId: string, timeoutMs?: number) => Promise<unknown>;
 }
 
 /**
@@ -554,11 +554,11 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
     /** The fixture's wait, so a reply arrives when the state does rather than when something asks again */
     wait: (target, timeoutMs) => attempt('wait', async () => {
       if ('state' in target) await page.waitForState(target.state, timeoutMs);
-      else await page.waitForPlugin(target.surface, timeoutMs);
+      else await page.waitForSurface(target.surface, timeoutMs);
       return target;
     }),
 
-    navigate: (surfaceId) => attempt('navigate', () => sendToApp({ type: 'SELECT_PLUGIN', surface: surfaceId })),
+    navigate: (surfaceId) => attempt('navigate', () => sendToApp({ type: 'SELECT_SURFACE', surface: surfaceId })),
 
     /**
      * A surface's published state, which is what a view is actually showing.

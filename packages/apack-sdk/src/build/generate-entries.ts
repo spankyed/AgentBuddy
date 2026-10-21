@@ -9,7 +9,7 @@ import { _parseModuleReference } from '../framework/module-reference.ts';
 import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
 import { readFileSync, existsSync } from 'fs';
-import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
+import { HOST_SURFACE_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
 import { extname, join, relative, resolve } from 'path';
 import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackDependencySnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { MIGRATION_LINES, StepEntrySchema } from '../framework/declaration-schema.ts';
@@ -1351,7 +1351,7 @@ export const usePackSettings = <K extends PackSettingsName>(name: K): PackSettin
       ...packFeatures(manifest).flatMap((f) => [f.id, `${manifest.id}/${f.id}`]),
       ...[...depSnapshots].flatMap(([depId, snap]) => packFeatures(snap.manifest).map((f) => `${depId}/${f.id}`)),
       ...Object.keys(_mergeProvenance('surfaces', [...depSnapshots])),
-      ...Object.keys(HOST_PLUGIN_EVENT_TYPES),
+      ...Object.keys(HOST_SURFACE_EVENT_TYPES),
       ...Object.keys(HOST_SYSTEM_EVENT_TYPES),
     ])];
     return `${HEADER}
@@ -1448,7 +1448,7 @@ export function openSurface<Name extends SurfaceName>(
   untypedOpenSurface(ref(name), event);
 }
 
-const OWN_PLUGINS = new Set<string>([${own.map(id => `'${id}'`).join(', ')}]);
+const OWN_SURFACES = new Set<string>([${own.map(id => `'${id}'`).join(', ')}]);
 
 /**
  * The ref to read at, checked where this pack's own surfaces are concerned. Their overloads say the value is never
@@ -1464,7 +1464,7 @@ const OWN_PLUGINS = new Set<string>([${own.map(id => `'${id}'`).join(', ')}]);
  */
 function ownSurface(name: SurfaceName): string {
   const target = ref(name);
-  if (OWN_PLUGINS.has(name) && !surfaceIsRunning(target)) {
+  if (OWN_SURFACES.has(name) && !surfaceIsRunning(target)) {
     throw new Error(\`No surface is running at "\${target}", which is this pack's own. Inside that surface's own views this is a bug rather than a state to render. A component the host renders — an app extension, an artifact viewer — can be drawn before the shell has spawned the surfaces it just registered, and there it is a state: read with readUntypedSurfaceState or useUntypedSurfaceState, which answer undefined.\`);
   }
   return target;

@@ -43,7 +43,7 @@ type UIEvent =
   | { type: 'FORM.UPDATE_OUTPUT'; output: any }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
   | { type: 'VIEW_LIST' }
-  | { type: 'PLUGIN_DEACTIVATED' }
+  | { type: 'SURFACE_DEACTIVATED' }
   | { type: 'TOGGLE_PARAMETERS_SECTION'; show: boolean }
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
@@ -491,7 +491,7 @@ const actionsState = setup({
     },
   },
   on: {
-    PLUGIN_DEACTIVATED: { actions: 'cancelSelection' },
+    SURFACE_DEACTIVATED: { actions: 'cancelSelection' },
     OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Action' } }, target: '.detail', actions: 'selectAction' },
     'ACTION.SELECT': { target: '.detail', actions: 'selectAction' },
     ACTIONS_LISTED: { actions: 'setSurfaceData' },

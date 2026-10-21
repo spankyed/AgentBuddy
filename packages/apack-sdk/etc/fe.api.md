@@ -437,12 +437,12 @@ export interface HostShell {
 // @public
 export type HostShellEvent = OpenEntity
 | {
-    type: 'OPEN_PLUGIN';
+    type: 'OPEN_SURFACE';
     surface: string;
     events: SurfaceEvent[];
 }
 /**
-* Hands a surface's actor `events` without opening it. The same wait as `OPEN_PLUGIN` — a surface whose pack's
+* Hands a surface's actor `events` without opening it. The same wait as `OPEN_SURFACE` — a surface whose pack's
 * frontend is still loading is waited for, and one no pack provides is reported once loading settles — but the
 * surface the user has open doesn't change: a send is not a navigation.
 *
@@ -459,7 +459,7 @@ export type HostShellEvent = OpenEntity
 * and there is no user behind an answer. Only `reply` sets it.
 */
 | {
-    type: 'SEND_TO_PLUGIN';
+    type: 'SEND_TO_SURFACE';
     surface: string;
     events: SurfaceEvent[];
     from?: string;
@@ -474,7 +474,7 @@ export type HostShellEvent = OpenEntity
 } | {
     type: 'RESTORE_CHAT';
 } | {
-    type: 'SET_PLUGIN_VISIBILITY';
+    type: 'SET_SURFACE_VISIBILITY';
     surface: string;
     visible: boolean;
 } | {

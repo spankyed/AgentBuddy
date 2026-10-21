@@ -386,7 +386,7 @@ describe('the snapshot format', () => {
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
-  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackSurfaceEntry, true> = { contract: true, default: true, defaultVisible: true, label: true, state: true, icon: true, canvas: true, panel: true, chat: true, isPinned: true, hotkeys: true, options: true, fallbackPanel: true };
+  const MANIFEST_SURFACE_FIELDS: Record<keyof PackSurfaceEntry, true> = { contract: true, default: true, defaultVisible: true, label: true, state: true, icon: true, canvas: true, panel: true, chat: true, isPinned: true, hotkeys: true, options: true, fallbackPanel: true };
   /** A dependency's content formats, which a dependent's `content.sources` compiles its own sources with */
   const FORMAT_FIELDS: Record<keyof ContentFormatConfig, true> = {
     compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
@@ -403,7 +403,7 @@ describe('the snapshot format', () => {
     designation: true, system: true, surface: true, services: true, settings: true,
   };
   const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { machine: true, receives: true };
-  const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeatureSurface, true> = { receives: true };
+  const REGISTRATION_SURFACE_FIELDS: Record<keyof PackFeatureSurface, true> = { receives: true };
 
   /** Every name generated code imports from a dependency's facade, with a send to one of its surfaces */
   async function facadeImports(): Promise<string[]> {
@@ -423,7 +423,7 @@ describe('the snapshot format', () => {
         feature: Object.keys(MANIFEST_FEATURE_FIELDS).sort(),
         system: Object.keys(MANIFEST_SYSTEM_FIELDS).sort(),
         systemEvents: Object.keys(MANIFEST_SYSTEM_EVENTS_FIELDS).sort(),
-        surface: Object.keys(MANIFEST_PLUGIN_FIELDS).sort(),
+        surface: Object.keys(MANIFEST_SURFACE_FIELDS).sort(),
         contentFormat: Object.keys(FORMAT_FIELDS).sort(),
         contentTree: Object.keys(TREE_FIELDS).sort(),
         contentField: Object.keys(FIELD_FIELDS).sort(),
@@ -432,7 +432,7 @@ describe('the snapshot format', () => {
         fields: Object.keys(REGISTRATION_FIELDS).sort(),
         feature: Object.keys(REGISTRATION_FEATURE_FIELDS).sort(),
         system: Object.keys(REGISTRATION_SYSTEM_FIELDS).sort(),
-        surface: Object.keys(REGISTRATION_PLUGIN_FIELDS).sort(),
+        surface: Object.keys(REGISTRATION_SURFACE_FIELDS).sort(),
       },
       provenanceKinds: Object.keys(PROVENANCE_KINDS).sort(),
       facadeImports: await facadeImports(),

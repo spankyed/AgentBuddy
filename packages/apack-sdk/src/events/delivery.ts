@@ -31,7 +31,7 @@
  *
  * It was a list of four *places* until a test asked each of them to answer, and the real number was nine: the
  * shell reached surfaces from eight sites and named them at one, so a surface handling anything the backend
- * broadcast, or its own `PLUGIN_ACTIVATED`, sent on with no `sender` and could not be answered. A count a
+ * broadcast, or its own `SURFACE_ACTIVATED`, sent on with no `sender` and could not be answered. A count a
  * reader has to keep is the failure; the two `*SurfaceActor` functions are the correction.
  *
  * **Three ways a send ends up outside any delivery**, all of which leave `Message.sender` absent, so the system

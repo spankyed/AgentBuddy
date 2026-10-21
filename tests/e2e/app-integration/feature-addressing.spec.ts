@@ -27,7 +27,7 @@ async function recordEvents(page: Page, surfaceId: string): Promise<() => Promis
 
 // The settings system tells the feature's system and surface; the harness specs see the system half
 test("a surface setting changed in Settings reaches the feature's surface, once", async ({ app, appPage }) => {
-  await app.waitForPlugin('default-setup/code');
+  await app.waitForSurface('default-setup/code');
   await app.navigate('host/settings');
   await selectFeature(appPage, 'default-setup/code');
   await expect(appPage.locator('#md-editor-default')).toBeChecked();
@@ -41,7 +41,7 @@ test("a surface setting changed in Settings reaches the feature's surface, once"
 // Settings → Secrets shows the code surface's CLI path overrides, read from the settings by the surface's name
 test('a surface setting changed in Settings is what its canvas reads', async ({ app, appPage }) => {
   const override = `/e2e/addressing/${Date.now()}/claude`;
-  await app.waitForPlugin('default-setup/code');
+  await app.waitForSurface('default-setup/code');
   await app.navigate('host/settings');
   await appPage.evaluate(() => {
     const settings = (window as any).applicationState.system.get('host/settings');
@@ -65,7 +65,7 @@ test('a surface setting changed in Settings is what its canvas reads', async ({ 
 // only the running app shows: the Logs canvas renders the link once a source is excluded, and clicking it navigates
 test('a link to another surface opens it and hands it the events', async ({ app, appPage }) => {
   // The Logs toolbar shows the link once a source is excluded; it opens Settings on the Logs surface
-  await app.waitForPlugin('default-setup/logs');
+  await app.waitForSurface('default-setup/logs');
   await app.navigate('host/settings');
   await selectFeature(appPage, 'default-setup/logs');
   const pattern = appPage.getByPlaceholder('Add pattern, e.g. debug.*');

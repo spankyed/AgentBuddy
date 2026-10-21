@@ -26,7 +26,7 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
       if (stopped) return;
       const present = new Set(loadedPacks.map(pack => pack.id));
       for (const packId of Object.keys(input.acceptedPackRuntimes)) {
-        if (!present.has(packId)) sendBack({ type: 'PACK_PLUGINS_UNLOADED', packId });
+        if (!present.has(packId)) sendBack({ type: 'PACK_SURFACES_UNLOADED', packId });
       }
       for (const pack of loadedPacks) {
         if (stopped) return;

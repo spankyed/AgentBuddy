@@ -1,7 +1,7 @@
 import { test, expect } from '@apackdev/testing';
 
 test('pack loads and renders', async ({ app }) => {
-  // await app.waitForPlugin('your-surface-id');
+  // await app.waitForSurface('your-surface-id');
   // await app.navigate('your-surface-id');
   await app.screenshot('pack-default');
 });

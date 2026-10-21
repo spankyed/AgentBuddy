@@ -27,7 +27,7 @@ function getApp(): HostShell {
 export function untypedOpenSurface(ref: string, event?: SurfaceEvent | SurfaceEvent[]): void {
   if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a surface: a surface is named "<packId>/<featureId>"`);
   const events = event === undefined ? [] : Array.isArray(event) ? event : [event];
-  getApp().send({ type: 'OPEN_PLUGIN', surface: ref, events });
+  getApp().send({ type: 'OPEN_SURFACE', surface: ref, events });
 }
 
 /**

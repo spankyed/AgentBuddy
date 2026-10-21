@@ -16,7 +16,7 @@ const PLAYWRIGHT_RANGE = '^1.54.1';
  */
 function sampleTest(surfaceId: string | undefined): string {
   return surfaceId
-    ? renderTemplate('pack/tests/e2e/smoke.spec.ts', { PLUGIN_ID: surfaceId })
+    ? renderTemplate('pack/tests/e2e/smoke.spec.ts', { SURFACE_ID: surfaceId })
     : renderTemplate('pack/tests/e2e/smoke-without-surface.spec.ts');
 }
 

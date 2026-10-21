@@ -31,7 +31,7 @@ export interface AppDriver {
   report: (name: string, value: unknown) => Promise<string>;
   navigate: (surfaceId: string) => Promise<void>;
   waitForState: (check: string, timeout?: number) => Promise<void>;
-  waitForPlugin: (surfaceId: string, timeout?: number) => Promise<void>;
+  waitForSurface: (surfaceId: string, timeout?: number) => Promise<void>;
 }
 
 export interface CreateTestOptions extends TestHostOptions {
@@ -331,7 +331,7 @@ export function createAppDriver(page: Page, screenshotDir: string): AppDriver {
     navigate: async (surfaceId) => {
       const id0 = resolveSurface(surfaceId);
       await page.evaluate((id) => {
-        (window as any).applicationState.send({ type: 'SELECT_PLUGIN', surface: id });
+        (window as any).applicationState.send({ type: 'SELECT_SURFACE', surface: id });
       }, id0);
       await page.waitForFunction((id) => {
         const snap = (window as any).applicationState?.getSnapshot();
@@ -343,7 +343,7 @@ export function createAppDriver(page: Page, screenshotDir: string): AppDriver {
       }, id0, { timeout: 10_000 });
     },
   
-    waitForPlugin: async (surfaceId, timeout = 30_000) => {
+    waitForSurface: async (surfaceId, timeout = 30_000) => {
       // A host surface is known once the app has any; a pack's registers later, at its ref
       await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.surfaces ?? []).length > 0, null, { timeout });
       const id = resolveSurface(surfaceId);

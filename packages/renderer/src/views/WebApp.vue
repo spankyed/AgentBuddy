@@ -9,8 +9,8 @@
         v-if="!isOnboarding"
         :surfaces="surfaces"
         :active-surface="activeSurface"
-        @select-surface="(id: string) => send({ type: 'SELECT_PLUGIN', surface: id })"
-        @open-surface="(id: string) => send({ type: 'OPEN_PLUGIN', surface: id, events: [] })"
+        @select-surface="(id: string) => send({ type: 'SELECT_SURFACE', surface: id })"
+        @open-surface="(id: string) => send({ type: 'OPEN_SURFACE', surface: id, events: [] })"
     />
 
     <!-- Main Area -->
@@ -141,11 +141,11 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
   const surfaceItems = contextMenuItems.value
 
   const defaultItems: ContextMenuItem[] = [
-    ...(hasHelp(currentSurfaceId.value) ? [{ label: 'Help', icon: CircleHelp, event: { type: 'APP_OPEN_PLUGIN_HELP', surfaceId: currentSurfaceId.value } }] : []),
+    ...(hasHelp(currentSurfaceId.value) ? [{ label: 'Help', icon: CircleHelp, event: { type: 'APP_OPEN_SURFACE_HELP', surfaceId: currentSurfaceId.value } }] : []),
     {
       label: 'Pop Out Surface',
       icon: ExternalLink,
-      event: { type: 'APP_POPOUT_PLUGIN', surfaceId: currentSurfaceId.value },
+      event: { type: 'APP_POPOUT_SURFACE', surfaceId: currentSurfaceId.value },
       separator: surfaceItems.length > 0,
     },
     {
@@ -200,7 +200,7 @@ const handleMenuAction = (event: ContextMenuItem['event']) => {
     return
   }
 
-  if (event.type === 'APP_OPEN_PLUGIN_HELP' && typeof event.surfaceId === 'string') { openFeatureHelp(event.surfaceId); return; }
+  if (event.type === 'APP_OPEN_SURFACE_HELP' && typeof event.surfaceId === 'string') { openFeatureHelp(event.surfaceId); return; }
 
   if (event.type === 'APP_OPEN_FEATURE_SETTINGS') {
     untypedOpenSurface(HOST.settings, [
@@ -210,7 +210,7 @@ const handleMenuAction = (event: ContextMenuItem['event']) => {
     return
   }
 
-  if (event.type === 'APP_POPOUT_PLUGIN') {
+  if (event.type === 'APP_POPOUT_SURFACE') {
     const surface = surfaces.value.find((item) => item.id === event.surfaceId)
       ?? activeSurface.value
     window.electronAPI?.surfaces?.popout(surface.id, surface.label)

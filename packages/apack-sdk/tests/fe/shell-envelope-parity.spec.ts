@@ -1,7 +1,7 @@
-// The shell's `SEND_TO_PLUGIN` is a second envelope, and this is what stops a field being lost in it.
+// The shell's `SEND_TO_SURFACE` is a second envelope, and this is what stops a field being lost in it.
 //
 // `deliverInWindow` (`events/index.ts`) is the window's counterpart of the bus: it takes a `Message` and
-// hands the shell a `SEND_TO_PLUGIN` built **field by field**. So a field added to `Message` and not named
+// hands the shell a `SEND_TO_SURFACE` built **field by field**. So a field added to `Message` and not named
 // there simply does not reach the surface — no error, no dropped message, just a value that is never read.
 // Every other boundary the envelope crosses has a guard against that: `bus.send`'s schema is held by
 // `api/tests/transport/bus-send-sender.spec.ts`'s `Required<Omit<Message, 'client'>>` sample, and the drive
@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import type { HostShellEvent } from '../../src/fe/shell.ts';
 import type { Message } from '../../src/events/index.ts';
 
-type SendToPlugin = Extract<HostShellEvent, { type: 'SEND_TO_PLUGIN' }>;
+type SendToPlugin = Extract<HostShellEvent, { type: 'SEND_TO_SURFACE' }>;
 
 /** Mutual assignability, so neither widening nor narrowing a field passes */
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;

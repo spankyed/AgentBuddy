@@ -7,7 +7,7 @@ test('opens every surface, and every surface\'s settings, without a renderer err
   appPage.on('pageerror', (error) => errors.push(error.message));
   appPage.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
 
-  await app.waitForPlugin('default-setup/threads');
+  await app.waitForSurface('default-setup/threads');
   const { surfaceIds, activeSurfaceId: first } = await app.getContext();
   expect(surfaceIds.length).toBeGreaterThan(5);
 
@@ -35,7 +35,7 @@ test('opens every surface, and every surface\'s settings, without a renderer err
 
 
 test('an open feature form follows its settings being reset', async ({ app, appPage }) => {
-  await app.waitForPlugin('default-setup/code');
+  await app.waitForSurface('default-setup/code');
   await app.navigate('host/settings');
   await appPage.evaluate(() => {
     const settings = (window as any).applicationState.system.get('host/settings');

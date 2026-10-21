@@ -56,7 +56,7 @@ export type LibraryActor = ActorRefFrom<typeof librarySystem>
 
 export type LibraryEvents =
   | OpenEntity
-  | { type: 'PLUGIN_ACTIVATED' }
+  | { type: 'SURFACE_ACTIVATED' }
   | { type: 'TRAIL_CLICK'; trail: string[] }
   | { type: 'VIEW_BROWSER' }
 
@@ -782,7 +782,7 @@ export const librarySystem = setup({
       { guard: { type: 'entityIs', params: { entity: 'Collection' } }, target: '.browser', actions: ['navigateToFolder', 'clearSelection', 'selectFolder'] },
     ],
     EDIT_DOCUMENT: { target: '.edit', actions: ['setEditingDocument', 'requestEditingDocument', 'clearSelection'] },
-    PLUGIN_ACTIVATED: {
+    SURFACE_ACTIVATED: {
       actions: ['requestFolderContents', 'requestIndex'],
     },
     LIBRARY_CONNECTED: {

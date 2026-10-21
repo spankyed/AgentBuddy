@@ -112,8 +112,8 @@ function trail(actor: AnyActorRef, onStateChange: (data: UpdateData) => void): (
   }).unsubscribe;
 }
 
-/** Follows the surface at the ref it starts with, and the one each `TRAIL_NEW_PLUGIN` names, sending the shell its crumbs */
-export const surfaceTrailer = fromCallback<{ type: 'TRAIL_NEW_PLUGIN'; id: string }, string>(({ system, receive, input: id }) => {
+/** Follows the surface at the ref it starts with, and the one each `TRAIL_NEW_SURFACE` names, sending the shell its crumbs */
+export const surfaceTrailer = fromCallback<{ type: 'TRAIL_NEW_SURFACE'; id: string }, string>(({ system, receive, input: id }) => {
   const onStateChange = ({ crumbs, target, menuItems }: UpdateData) =>
     system.get(HOST.application).send({ type: 'TRAIL_UPDATE', crumbs, target, menuItems });
 
@@ -121,7 +121,7 @@ export const surfaceTrailer = fromCallback<{ type: 'TRAIL_NEW_PLUGIN'; id: strin
   let unsubscribe = initial ? trail(initial, onStateChange) : () => {};
 
   receive((event) => {
-    if (event.type === 'TRAIL_NEW_PLUGIN') {
+    if (event.type === 'TRAIL_NEW_SURFACE') {
       unsubscribe();
       const surface = system.get(event.id);
       unsubscribe = surface ? trail(surface, onStateChange) : () => {};

@@ -56,7 +56,7 @@ it.each(['leave', 'list'] as const)('ignores a reply after navigating to %s', wh
   const actor = view();
   actor.send({ type: 'NODE.REVEAL', flowId: 'Flow-first', nodeId: 'Node-first' });
   const call = sentCall(sendToSystem, 'FLOW_SELECT');
-  if (where === 'leave') actor.send({ type: 'PLUGIN_DEACTIVATED' });
+  if (where === 'leave') actor.send({ type: 'SURFACE_DEACTIVATED' });
   else actor.send({ type: 'TRAIL_CLICK', target: 'list' });
   actor.send(answerTo(call, selected('Flow-first', 'Node-first')));
   expect(actor.getSnapshot().context.selectedFlowId).toBeUndefined();
@@ -165,7 +165,7 @@ it.each(['double-click a node', 'reselect the shown flow', 'leave the surface'] 
     const { actor, refresh } = refreshing();
     if (where === 'double-click a node') actor.send({ type: 'NODE.DOUBLE_CLICK', nodeId: 'Node-first' } as never);
     else if (where === 'reselect the shown flow') actor.send({ type: 'FLOW.SELECT', flowId: 'Flow-first' });
-    else actor.send({ type: 'PLUGIN_DEACTIVATED' });
+    else actor.send({ type: 'SURFACE_DEACTIVATED' });
     actor.send(answerTo(refresh, withAdded));
     expect(nodesOf(actor)).toEqual(['Node-first', 'Node-added']);
   });

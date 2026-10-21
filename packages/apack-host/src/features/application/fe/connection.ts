@@ -19,7 +19,7 @@ export function connectionListener(client: ShellClient) {
       const { to, event, sender, call, answering } = message;
       if (to === HOST.application) {
         // Every window hears it; the shell tells a backend's request to open a surface from its own window's
-        sendBack((event.type === 'OPEN_PLUGIN' ? { ...event, type: 'OPEN_PLUGIN_FROM_APP' } : event) as ShellEvent);
+        sendBack((event.type === 'OPEN_SURFACE' ? { ...event, type: 'OPEN_SURFACE_FROM_APP' } : event) as ShellEvent);
         return;
       }
       const surface = system.get(to);

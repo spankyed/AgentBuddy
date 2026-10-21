@@ -60,19 +60,19 @@ it('preserves saved selection and explicit navigation over a later default', () 
   f.shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', pluginVisibility: {}, lastActivePlugin: 'preferred/view' } });
   defaultView.accept(); expect(app!.getSnapshot().context.activeSurface.id).toBe('host/settings');
   preferred.accept(); expect(app!.getSnapshot().context.activeSurface.id).toBe('preferred/view');
-  app!.send({ type: 'SELECT_PLUGIN', surface: 'host/settings' });
+  app!.send({ type: 'SELECT_SURFACE', surface: 'host/settings' });
   f.publish(); expect(app!.getSnapshot().context.activeSurface.id).toBe('host/settings');
 });
 
 it('distinguishes unknown, disabled and failed destinations, without waiting for unrelated frontend imports', () => {
   const f = fixture(); const disabled = f.candidate('disabled', false, false); disabled.declare();
-  app!.send({ type: 'OPEN_PLUGIN', surface: 'unknown/view', events: [] });
+  app!.send({ type: 'OPEN_SURFACE', surface: 'unknown/view', events: [] });
   expect(app!.getSnapshot().context.awaitingSurface).toEqual([]);
   expect(f.shell.notify.error).toHaveBeenLastCalledWith("Couldn't open unknown/view", 'No surface is declared at "unknown/view".');
-  app!.send({ type: 'OPEN_PLUGIN', surface: 'disabled/view', events: [] });
+  app!.send({ type: 'OPEN_SURFACE', surface: 'disabled/view', events: [] });
   expect(f.shell.notify.error).toHaveBeenLastCalledWith("Couldn't open disabled/view", 'The pack providing "disabled/view" is disabled.');
   const failed = f.candidate('failed'); failed.declare();
-  app!.send({ type: 'OPEN_PLUGIN', surface: 'failed/view', events: [] });
+  app!.send({ type: 'OPEN_SURFACE', surface: 'failed/view', events: [] });
   expect(app!.getSnapshot().context.awaitingSurface).toHaveLength(1);
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   try { app!.send({ type: 'PACK_FRONTENDS_SETTLED', failedPacks: [{ packId: 'failed', error: 'Import failed' }] }); }
@@ -92,9 +92,9 @@ it('reconciles admission before the catalog frame and rejects a stale completion
   expect(app!.system.get('external/view')).toBe(actor);
   expect(app!.getSnapshot().context.acceptedPackRuntimes.external).toBe(next.pack.registrationId);
   f.catalog.status.mockReturnValue('disconnected'); f.publish();
-  app!.send({ type: 'SELECT_PLUGIN', surface: 'host/settings' });
+  app!.send({ type: 'SELECT_SURFACE', surface: 'host/settings' });
   expect(app!.getSnapshot().context.activeSurface.id).toBe('host/settings');
-  app!.send({ type: 'OPEN_PLUGIN', surface: 'external/view', events: [] });
+  app!.send({ type: 'OPEN_SURFACE', surface: 'external/view', events: [] });
   expect(app!.getSnapshot().context.activeSurface.id).toBe('host/settings');
 });
 
@@ -102,9 +102,9 @@ it('does not route new requests to an actor while its replacement binding awaits
   const f = fixture(); const next = f.candidate('external'); next.declare(); next.accept();
   const old = app!.system.get('external/view')!; const sent = vi.spyOn(old, 'send');
   f.packs.replacePackFE({ kind: 'loaded', pack: { ...next.pack, registrationId: 'replacement' } }, next.registration);
-  app!.send({ type: 'SELECT_PLUGIN', surface: 'external/view' });
+  app!.send({ type: 'SELECT_SURFACE', surface: 'external/view' });
   expect(app!.getSnapshot().context.activeSurface.id).toBe('host/settings');
-  app!.send({ type: 'SEND_TO_PLUGIN', surface: 'external/view', events: [{ type: 'DO_WORK' }] });
+  app!.send({ type: 'SEND_TO_SURFACE', surface: 'external/view', events: [{ type: 'DO_WORK' }] });
   expect(sent).not.toHaveBeenCalled();
   expect(app!.getSnapshot().context.awaitingSurface).toHaveLength(1);
 });
@@ -113,10 +113,10 @@ it('steps the switch-surface hotkeys over a declared tab whose frontend has not 
   const f = fixture(); const alpha = f.candidate('alpha'); const beta = f.candidate('beta'); const gamma = f.candidate('gamma');
   alpha.declare(); beta.declare(); gamma.declare();
   alpha.accept(); gamma.accept();
-  app!.send({ type: 'SELECT_PLUGIN', surface: 'alpha/view' });
-  app!.send({ type: 'SWITCH_PLUGIN_DOWN' });
+  app!.send({ type: 'SELECT_SURFACE', surface: 'alpha/view' });
+  app!.send({ type: 'SWITCH_SURFACE_DOWN' });
   expect(app!.getSnapshot().context.activeSurface.id).toBe('gamma/view');
-  app!.send({ type: 'SWITCH_PLUGIN_UP' });
+  app!.send({ type: 'SWITCH_SURFACE_UP' });
   expect(app!.getSnapshot().context.activeSurface.id).toBe('alpha/view');
 });
 

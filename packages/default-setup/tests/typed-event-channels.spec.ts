@@ -46,7 +46,7 @@ describe('broadcastToSurface', () => {
       broadcastToSurface('threads', { type: 'THREAD_CREATED', id: 't1' as EARS.EntityId, shortCode: 'T1', entityType: 'Thread' as EARS.Entity, timestamp: 0 });
       broadcastToSurface('flows', { type: 'ACTION_DELETED', actionId: 'Action-1' as EARS.EntityId });
       broadcastToSurface('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys });
-      broadcastToSurface('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'default-setup/notes': false } });
+      broadcastToSurface('host/application', { type: 'SURFACE_VISIBILITY_UPDATED', pluginVisibility: { 'default-setup/notes': false } });
     }).toBeFunction();
   });
 

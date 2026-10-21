@@ -12,7 +12,7 @@ const REGISTRATION_KEYS = {
 } satisfies Record<keyof PackFERegistration, true>;
 
 const FEATURE_KEYS = { surface: true, settingsForm: true, designation: true, default: true, references: true } satisfies Record<keyof PackFEFeature, true>;
-const PLUGIN_KEYS = { label: true, state: true, icon: true, canvas: true, panel: true, chat: true,
+const SURFACE_KEYS = { label: true, state: true, icon: true, canvas: true, panel: true, chat: true,
   isPinned: true, hotkeys: true, options: true, fallbackPanel: true } satisfies Record<keyof SurfaceDefinition, true>;
 const TIPTAP_KEYS = { extensions: true, popups: true, isSuggestionActive: true } satisfies Record<keyof TiptapPlugin, true>;
 const optionalKeys = (actual: unknown, keys: string[]) => sameKeys(actual === undefined ? {} : actual, keys);
@@ -24,7 +24,7 @@ function surfaceBindingProblem(declaration: SurfaceDeclaration, surface: unknown
   if (!isPlainObject(surface) || typeof surface.label !== 'string' || !surface.label.trim()
     || !isPlainObject(surface.state) || typeof surface.state.transition !== 'function'
     || typeof surface.state.getInitialSnapshot !== 'function') return problem();
-  for (const key of Object.keys(surface)) if (!hasOwn(PLUGIN_KEYS, key)) return problem(key);
+  for (const key of Object.keys(surface)) if (!hasOwn(SURFACE_KEYS, key)) return problem(key);
   for (const field of ['label', 'isPinned'] as const) if (surface[field] !== declaration[field]) return problem(field);
   for (const field of ['icon', 'panel', 'chat'] as const) {
     if ((surface[field] !== undefined) !== (declaration[field] !== undefined)

@@ -28,12 +28,12 @@ test('an app default can be disabled, removed and restored while host settings r
     await appPage.getByPlaceholder('owner/repo, owner/repo@tag, or local path')
       .fill(fileURLToPath(new URL('../../../../../packages/default-setup/', import.meta.url)));
     await appPage.getByRole('button', { name: 'Replace', exact: true }).click();
-    await app.waitForPlugin('default-setup/threads');
+    await app.waitForSurface('default-setup/threads');
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
       .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.updatesWith)).toBe('user');
     await appPage.getByTestId('pack-restore').click();
     await appPage.getByTestId('pack-confirm-restore').click();
-    await app.waitForPlugin('default-setup/threads');
+    await app.waitForSurface('default-setup/threads');
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
       .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.updatesWith)).toBe('app');
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
@@ -43,7 +43,7 @@ test('an app default can be disabled, removed and restored while host settings r
     if (needsRestore) {
       await appPage.evaluate(source => (window as any).applicationState.system.get('host/packs')
         .send({ type: 'UI.RESTORE', packId: source.id, sourceRevision: source.sourceRevision }), source);
-      await app.waitForPlugin('default-setup/threads');
+      await app.waitForSurface('default-setup/threads');
     }
   }
 });

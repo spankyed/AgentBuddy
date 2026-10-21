@@ -129,7 +129,7 @@ export function createEntityOpeningMachine(options: EntityOpeningOptions) {
               actions: ({ context }) => refuse(context.request, 'This entity no longer exists or is in the trash.') },
             { target: 'waiting', actions: enqueueActions(({ context, enqueue }) => {
               const request = context.request!;
-              enqueue.sendParent({ type: 'OPEN_PLUGIN', surface: request.target!.declaration.featureRef,
+              enqueue.sendParent({ type: 'OPEN_SURFACE', surface: request.target!.declaration.featureRef,
                 events: [], entityToken: request.token });
             }) },
           ],

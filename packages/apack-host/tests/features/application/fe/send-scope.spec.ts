@@ -1,5 +1,5 @@
-// The two sends differ in reach, and nothing pinned it until now — which is how `OPEN_PLUGIN_FROM_APP` came about:
-// a backend `OPEN_PLUGIN` reaches every window, so a popout would have followed the main window's navigation, and
+// The two sends differ in reach, and nothing pinned it until now — which is how `OPEN_SURFACE_FROM_APP` came about:
+// a backend `OPEN_SURFACE` reaches every window, so a popout would have followed the main window's navigation, and
 // the event had to be renamed and guarded per window instead.
 //
 // `broadcastToSurface` (backend, over the bus) reaches **every** window showing that surface, because a surface runs
@@ -17,7 +17,7 @@ let heard: Array<{ window: string; type: string }>;
 
 function recording(id: string, window: string): Surface {
   const state = setup({}).createMachine({
-    on: { '*': { actions: ({ event }) => { if (!event.type.startsWith('PLUGIN_')) heard.push({ window, type: event.type }); } } },
+    on: { '*': { actions: ({ event }) => { if (!event.type.startsWith('SURFACE_')) heard.push({ window, type: event.type }); } } },
   });
   return { id, label: id, icon: 'Zap', state, canvas: {} } as unknown as Surface;
 }
@@ -87,16 +87,16 @@ describe('a surface handling what the shell gave it', () => {
 
   /**
    * And for the lifecycle, which is where it matters most: a view that asks its system for data when it opens is
-   * the commonest request in the app, and `PLUGIN_ACTIVATED` is when it asks.
+   * the commonest request in the app, and `SURFACE_ACTIVATED` is when it asks.
    */
   it('names it for the activation the shell raises itself', async () => {
     const w = watching();
     try {
       await settle();
-      w.app.send({ type: 'SELECT_PLUGIN', surface: 'default-setup/notes' });
+      w.app.send({ type: 'SELECT_SURFACE', surface: 'default-setup/notes' });
       await settle();
 
-      expect(receiverFor(w.seen, 'PLUGIN_ACTIVATED')).toBe('default-setup/notes');
+      expect(receiverFor(w.seen, 'SURFACE_ACTIVATED')).toBe('default-setup/notes');
     } finally {
       w.app.stop();
     }
@@ -146,13 +146,13 @@ describe('how far each send reaches', () => {
 
   /**
    * `Message.from` is stamped by the sends `#generated/events` builds, and the in-window send carries it on the
-   * shell's `SEND_TO_PLUGIN`. It is worth carrying only if something reads it: this is the one place the renderer
+   * shell's `SEND_TO_SURFACE`. It is worth carrying only if something reads it: this is the one place the renderer
    * can say who sent an event it couldn't deliver, and the backend's bus already does the same for its drops.
    */
   it('names the sending pack when the send reaches no surface', async () => {
     await settle();
 
-    main.app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }], from: 'memo-pack' });
+    main.app.send({ type: 'SEND_TO_SURFACE', surface: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }], from: 'memo-pack' });
     await settle();
 
     expect(main.shell.notify.error).toHaveBeenCalledWith(
@@ -161,11 +161,11 @@ describe('how far each send reaches', () => {
     );
   });
 
-  // The in-window send carries `via` on `SEND_TO_PLUGIN` as it carries `from`, so this refusal names both too
+  // The in-window send carries `via` on `SEND_TO_SURFACE` as it carries `from`, so this refusal names both too
   it('names the action too, for a send an action made', async () => {
     await settle();
 
-    main.app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }], from: 'memo-pack', via: 'action:Add Memo' });
+    main.app.send({ type: 'SEND_TO_SURFACE', surface: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }], from: 'memo-pack', via: 'action:Add Memo' });
     await settle();
 
     expect(main.shell.notify.error).toHaveBeenCalledWith(
@@ -178,7 +178,7 @@ describe('how far each send reaches', () => {
   it('reads the same when the send carries no sender', async () => {
     await settle();
 
-    main.app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }] });
+    main.app.send({ type: 'SEND_TO_SURFACE', surface: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }] });
     await settle();
 
     expect(main.shell.notify.error).toHaveBeenCalledWith(
@@ -192,7 +192,7 @@ describe('how far each send reaches', () => {
     await settle();
 
     // What `_sendToLocalSurface` does: one window's shell, never the bus
-    main.app.send({ type: 'SEND_TO_PLUGIN', surface: 'default-setup/threads', events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] });
+    main.app.send({ type: 'SEND_TO_SURFACE', surface: 'default-setup/threads', events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] });
     await settle();
 
     expect(heard).toEqual([{ window: 'main', type: 'SELECT_ARTIFACT' }]);

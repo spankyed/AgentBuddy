@@ -14,10 +14,10 @@ import { blockRegistry } from '@apackdev/sdk/blocks';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
 import { getPackCommands, getSettingsCatalog, onPackCatalogChanged, type PackRegistration } from '@apackdev/sdk/framework';
 import { importCompiledContent, type ContentApplier } from '@apackdev/sdk/utils';
-import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import { SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 
 /** The events a pack's surface receives: what its pack declares, and what the app sends every surface */
-const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
+const receives = (...types: string[]) => new Set([...types, ...SURFACE_EVENT_TYPES]);
 
 // How this spec registers and unregisters packs: a registry it creates, bound for the SDK's lookups
 const registry = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });

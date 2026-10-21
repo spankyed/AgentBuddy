@@ -1,4 +1,4 @@
-// Opening a surface is the shell's command (OPEN_PLUGIN), because only the shell knows which pack frontends are still
+// Opening a surface is the shell's command (OPEN_SURFACE), because only the shell knows which pack frontends are still
 // loading: a surface asked for while its pack loads opens once it arrives, one no pack provides is refused once
 // loading settles, and one whose pack goes away meanwhile is dropped.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,7 +28,7 @@ function recording(id: string): Surface {
 }
 
 const opened = () => app.getSnapshot().context.activeSurface.id;
-const eventsOf = (surface: string) => heard.filter((h) => h.surface === surface && !h.type.startsWith('PLUGIN_'));
+const eventsOf = (surface: string) => heard.filter((h) => h.surface === surface && !h.type.startsWith('SURFACE_'));
 
 beforeEach(() => {
   heard = [];
@@ -52,7 +52,7 @@ it('opens a registered surface and hands it the events, once it is open', async 
   await connectLoading([]);
   await settle();
 
-  app.send({ type: 'OPEN_PLUGIN', surface: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] });
+  app.send({ type: 'OPEN_SURFACE', surface: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] });
 
   expect(opened()).toBe('default-setup/settings');
   expect(eventsOf('default-setup/settings')).toEqual([{ surface: 'default-setup/settings', type: 'FEATURE.SELECT', open: true }]);
@@ -63,7 +63,7 @@ it("waits for a surface whose pack's frontend is still loading, and opens it wit
   const release = new Promise<void>((resolve) => { loaded = resolve; });
   await connectLoading([{ id: 'memo-pack', surfaces: [recording('memo-pack/memos')] }], release);
 
-  app.send({ type: 'OPEN_PLUGIN', surface: 'memo-pack/memos', events: [{ type: 'MEMO.OPEN', id: 'm1' }] });
+  app.send({ type: 'OPEN_SURFACE', surface: 'memo-pack/memos', events: [{ type: 'MEMO.OPEN', id: 'm1' }] });
   expect(opened()).toBe('default-setup/notes');
   expect(shell.notify.error).not.toHaveBeenCalled();
 
@@ -80,7 +80,7 @@ it('refuses a surface no pack provides once loading settles, naming it', async (
   const release = new Promise<void>((resolve) => { loaded = resolve; });
   await connectLoading([{ id: 'memo-pack', surfaces: [recording('memo-pack/memos')] }], release);
 
-  app.send({ type: 'OPEN_PLUGIN', surface: 'memo-pack/memoz', events: [] });
+  app.send({ type: 'OPEN_SURFACE', surface: 'memo-pack/memoz', events: [] });
   loaded();
   await settle();
 
@@ -92,7 +92,7 @@ it('refuses at once a surface no pack provides when no pack frontend is loading'
   await connectLoading([]);
   await settle();
 
-  app.send({ type: 'OPEN_PLUGIN', surface: 'memo-pack/memos', events: [] });
+  app.send({ type: 'OPEN_SURFACE', surface: 'memo-pack/memos', events: [] });
 
   expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memos", 'No surface is declared at "memo-pack/memos".');
 });
@@ -102,8 +102,8 @@ it('drops a request whose pack is unloaded while it waits', async () => {
   const release = new Promise<void>((resolve) => { loaded = resolve; });
   await connectLoading([{ id: 'memo-pack', surfaces: [recording('memo-pack/memos')] }], release);
 
-  app.send({ type: 'OPEN_PLUGIN', surface: 'memo-pack/memos', events: [{ type: 'MEMO.OPEN', id: 'm1' }] });
-  app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'memo-pack' });
+  app.send({ type: 'OPEN_SURFACE', surface: 'memo-pack/memos', events: [{ type: 'MEMO.OPEN', id: 'm1' }] });
+  app.send({ type: 'PACK_SURFACES_UNLOADED', packId: 'memo-pack' });
   loaded();
   await settle();
 
@@ -113,14 +113,14 @@ it('drops a request whose pack is unloaded while it waits', async () => {
   expect(shell.notify.error).not.toHaveBeenCalled();
 });
 
-// SEND_TO_PLUGIN is the same wait with a different ending: the renderer's `sendToSurface` (`_sendToLocalSurface`)
+// SEND_TO_SURFACE is the same wait with a different ending: the renderer's `sendToSurface` (`_sendToLocalSurface`)
 // routes through here rather than reaching into the surface's actor, so one owner answers "is that surface here yet"
 // for both channels. What it must not do is open the surface — a cross-feature command is not a navigation.
 it('hands a registered surface its events without opening it', async () => {
   await connectLoading([]);
   await settle();
 
-  app.send({ type: 'SEND_TO_PLUGIN', surface: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] });
+  app.send({ type: 'SEND_TO_SURFACE', surface: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] });
   await settle();
 
   expect(opened()).toBe('default-setup/notes');
@@ -132,7 +132,7 @@ it("waits for a surface whose pack's frontend is still loading, and delivers onc
   const release = new Promise<void>((resolve) => { loaded = resolve; });
   await connectLoading([{ id: 'memo-pack', surfaces: [recording('memo-pack/memos')] }], release);
 
-  app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memos', events: [{ type: 'MEMO.HIGHLIGHT', memoId: 'm1' }] });
+  app.send({ type: 'SEND_TO_SURFACE', surface: 'memo-pack/memos', events: [{ type: 'MEMO.HIGHLIGHT', memoId: 'm1' }] });
   expect(eventsOf('memo-pack/memos')).toEqual([]);
 
   loaded();
@@ -148,7 +148,7 @@ it("waits for a surface whose pack's frontend is still loading, and delivers onc
  * One renderer makes divergence impossible; this is what fails if a second is ever written.
  */
 it('says exactly the same thing whether it refuses at once or after waiting', async () => {
-  const send: ShellEvent = { type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'X' }], from: 'other-pack', via: 'action:Add Memo' };
+  const send: ShellEvent = { type: 'SEND_TO_SURFACE', surface: 'memo-pack/memoz', events: [{ type: 'X' }], from: 'other-pack', via: 'action:Add Memo' };
 
   let loaded!: () => void;
   const release = new Promise<void>((resolve) => { loaded = resolve; });
@@ -173,7 +173,7 @@ it('reports a send to a surface no pack provides once loading settles, naming wh
   const release = new Promise<void>((resolve) => { loaded = resolve; });
   await connectLoading([{ id: 'memo-pack', surfaces: [recording('memo-pack/memos')] }], release);
 
-  app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'X' }], from: 'other-pack', via: 'action:Add Memo' });
+  app.send({ type: 'SEND_TO_SURFACE', surface: 'memo-pack/memoz', events: [{ type: 'X' }], from: 'other-pack', via: 'action:Add Memo' });
   loaded();
   await settle();
 
@@ -198,7 +198,7 @@ it('logs rather than toasts when an answer reaches no surface', async () => {
   await settle();
 
   // What `reply` builds for a `window` asker whose surface has gone
-  app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'ANSWER' }], asker: { kind: 'window', ref: 'default-setup/notes' }, answering: 'c-asked', from: 'memo-pack' });
+  app.send({ type: 'SEND_TO_SURFACE', surface: 'memo-pack/memoz', events: [{ type: 'ANSWER' }], asker: { kind: 'window', ref: 'default-setup/notes' }, answering: 'c-asked', from: 'memo-pack' });
   await settle();
 
   expect(shell.notify.error, 'no toast for a machine-to-machine loss').not.toHaveBeenCalled();
@@ -220,7 +220,7 @@ it('logs rather than toasts for an answer refused after waiting', async () => {
   const release = new Promise<void>((resolve) => { loaded = resolve; });
   await connectLoading([{ id: 'memo-pack', surfaces: [recording('memo-pack/memos')] }], release);
 
-  app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'ANSWER' }], asker: { kind: 'window', ref: 'default-setup/notes' }, answering: 'c-asked', from: 'memo-pack' });
+  app.send({ type: 'SEND_TO_SURFACE', surface: 'memo-pack/memoz', events: [{ type: 'ANSWER' }], asker: { kind: 'window', ref: 'default-setup/notes' }, answering: 'c-asked', from: 'memo-pack' });
   expect(app.getSnapshot().context.awaitingSurface, 'it waited like any other send').toHaveLength(1);
 
   loaded();
@@ -239,7 +239,7 @@ it('still toasts for an ordinary send that carries an asker', async () => {
   await connectLoading([]);
   await settle();
 
-  app.send({ type: 'SEND_TO_PLUGIN', surface: 'memo-pack/memoz', events: [{ type: 'ASK' }], asker: { kind: 'window', ref: 'default-setup/notes' }, from: 'memo-pack' });
+  app.send({ type: 'SEND_TO_SURFACE', surface: 'memo-pack/memoz', events: [{ type: 'ASK' }], asker: { kind: 'window', ref: 'default-setup/notes' }, from: 'memo-pack' });
   await settle();
 
   expect(shell.notify.error).toHaveBeenCalledWith(
@@ -259,7 +259,7 @@ describe('a request from the app to open a surface', () => {
     shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
     await settle();
 
-    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_PLUGIN', surface: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] } });
+    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_SURFACE', surface: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] } });
     await settle();
 
     expect(opened()).toBe('default-setup/settings');
@@ -279,7 +279,7 @@ describe('a request from the app to open a surface', () => {
     shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
     await settle();
 
-    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_PLUGIN', surface: 'default-setup/settings', events } });
+    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_SURFACE', surface: 'default-setup/settings', events } });
     await settle();
 
     expect(opened()).toBe('default-setup/notes');
@@ -292,7 +292,7 @@ describe('a request from the app to open a surface', () => {
     await connectLoading([]);
     await settle();
 
-    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_PLUGIN', surface: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] } });
+    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_SURFACE', surface: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] } });
     await settle();
 
     expect(opened()).toBe('default-setup/notes');
@@ -311,8 +311,8 @@ describe('a later navigation supersedes an open still waiting for its pack', () 
 
   it('stays where the user went, and still delivers the waiting open its events', async () => {
     const loaded = await waiting();
-    app.send({ type: 'OPEN_PLUGIN', surface: 'memo-pack/memos', events: [{ type: 'MEMO.OPEN', id: 'm1' }] });
-    app.send({ type: 'SELECT_PLUGIN', surface: 'default-setup/settings' });
+    app.send({ type: 'OPEN_SURFACE', surface: 'memo-pack/memos', events: [{ type: 'MEMO.OPEN', id: 'm1' }] });
+    app.send({ type: 'SELECT_SURFACE', surface: 'default-setup/settings' });
 
     loaded();
     await settle();
@@ -323,14 +323,14 @@ describe('a later navigation supersedes an open still waiting for its pack', () 
 
   it('opens only the last of several waiting opens', async () => {
     const loaded = await waiting();
-    app.send({ type: 'OPEN_PLUGIN', surface: 'memo-pack/memos', events: [] });
-    app.send({ type: 'OPEN_PLUGIN', surface: 'memo-pack/drafts', events: [] });
+    app.send({ type: 'OPEN_SURFACE', surface: 'memo-pack/memos', events: [] });
+    app.send({ type: 'OPEN_SURFACE', surface: 'memo-pack/drafts', events: [] });
     const before = heard.length;
 
     loaded();
     await settle();
 
     expect(opened()).toBe('memo-pack/drafts');
-    expect(heard.slice(before).filter((h) => h.type === 'PLUGIN_ACTIVATED').map((h) => h.surface)).toEqual(['memo-pack/drafts']);
+    expect(heard.slice(before).filter((h) => h.type === 'SURFACE_ACTIVATED').map((h) => h.surface)).toEqual(['memo-pack/drafts']);
   });
 });

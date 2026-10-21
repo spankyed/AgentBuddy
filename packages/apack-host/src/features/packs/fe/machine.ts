@@ -92,7 +92,7 @@ const packsState = setup({
       const ev = typeOf('PACK_DEACTIVATED', event);
       // Through the funnel: this runs while handling a bus message, and a direct send would leave the shell
       // handling the unload as *this* surface, with this surface's asker. Nobody waits on the unload itself.
-      notifySurfaceActor(system.get(HOST.application), HOST.application, { type: 'PACK_PLUGINS_UNLOADED', packId: ev.packId });
+      notifySurfaceActor(system.get(HOST.application), HOST.application, { type: 'PACK_SURFACES_UNLOADED', packId: ev.packId });
     },
 
     // The application actor owns pack frontend loading — it loads the packs it hasn't yet, this one

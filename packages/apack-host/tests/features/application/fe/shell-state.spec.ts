@@ -62,7 +62,7 @@ it("opens on the surface last open once its pack's frontend adds it", () => {
 
 it('keeps the surface the user opened while that pack was loading', () => {
   connect({ lastActivePlugin: 'memo-pack/memos' });
-  app.send({ type: 'SELECT_PLUGIN', surface: 'default-setup/threads' });
+  app.send({ type: 'SELECT_SURFACE', surface: 'default-setup/threads' });
   loadMemoPack();
 
   expect(context().activeSurface.id).toBe('default-setup/threads');
@@ -75,11 +75,11 @@ it("opens a popout on an external pack's surface once that pack's frontend adds 
   }).start();
 
   loadMemoPack(popout);
-  popout.send({ type: 'SELECT_PLUGIN', surface: 'default-setup/threads' });
+  popout.send({ type: 'SELECT_SURFACE', surface: 'default-setup/threads' });
 
   expect(popout.getSnapshot().context.activeSurface.id).toBe('default-setup/threads');
   // The main window opens on the surface last open there, never on one a popout showed
-  const recorded = mutate.mock.calls.filter(([message]) => (message as { event: { type: string } }).event.type === 'SET_LAST_ACTIVE_PLUGIN');
+  const recorded = mutate.mock.calls.filter(([message]) => (message as { event: { type: string } }).event.type === 'SET_LAST_ACTIVE_SURFACE');
   expect(recorded).toEqual([]);
   popout.stop();
 });
@@ -91,16 +91,16 @@ it("shows the tabs the host's state says to", () => {
 });
 
 it('hides a tab at once, and sends the host the choice to record', () => {
-  app.send({ type: 'SET_PLUGIN_VISIBILITY', surface: 'default-setup/threads', visible: false });
+  app.send({ type: 'SET_SURFACE_VISIBILITY', surface: 'default-setup/threads', visible: false });
 
   expect(surfaceNavigationItems(shell.options.catalog, shell.options.packs.surfaceBindings(), context().pluginVisibility).filter(surface => surface.visible).map((p) => p.id)).toEqual(['default-setup/notes']);
-  expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_PLUGIN_VISIBILITY', surface: 'default-setup/threads', visible: false } });
+  expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_SURFACE_VISIBILITY', surface: 'default-setup/threads', visible: false } });
 });
 
 it('sends the host the surface opened, to open on next time', () => {
-  app.send({ type: 'SELECT_PLUGIN', surface: 'default-setup/threads' });
+  app.send({ type: 'SELECT_SURFACE', surface: 'default-setup/threads' });
 
-  expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_LAST_ACTIVE_PLUGIN', surface: 'default-setup/threads' } });
+  expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_LAST_ACTIVE_SURFACE', surface: 'default-setup/threads' } });
 });
 
 // A pack's frontend loads after the window starts, and its surfaces join before the app's own (the Packs tab)

@@ -1,15 +1,15 @@
 // Static host endpoint contracts; importing these constructs no systems or services.
-import { eventTypes, HOST_PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import { eventTypes, HOST_SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 import type { PackEventContracts, HelpCatalog } from '@apackdev/sdk/framework';
 import type { AppPackSourceSummary, InstalledPackSummary } from '../packs/registry.ts';
 import type { IncomingPacksEvents } from './packs/be/types.ts';
 import type { IncomingSettingsEvents, IncomingSecretsEvents, OutgoingSettingsEvents } from './settings/be/types.ts';
-import { APPLICATION_PLUGIN_EVENT_TYPES } from './application/events.ts';
+import { APPLICATION_SURFACE_EVENT_TYPES } from './application/events.ts';
 
 export type ApplicationClientEvent =
-  | { type: 'SET_PLUGIN_VISIBILITY'; surface: string; visible: boolean }
-  | { type: 'SET_LAST_ACTIVE_PLUGIN'; surface: string };
-export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('SET_PLUGIN_VISIBILITY', 'SET_LAST_ACTIVE_PLUGIN');
+  | { type: 'SET_SURFACE_VISIBILITY'; surface: string; visible: boolean }
+  | { type: 'SET_LAST_ACTIVE_SURFACE'; surface: string };
+export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('SET_SURFACE_VISIBILITY', 'SET_LAST_ACTIVE_SURFACE');
 export type HelpOutgoing = { type: 'HELP_CATALOG'; catalog: HelpCatalog };
 export const helpEvents = ['GET_HELP', 'CLIENT_CONNECTED'] as const;
 
@@ -32,7 +32,7 @@ export type OutgoingPacksEvents =
  * inbox — what any pack may send it, as a pack's surface publishes its own in its `Contract`. These are the
  * host's to send itself, and no pack's.
  */
-export const PACKS_PLUGIN_EVENT_TYPES = eventTypes<OutgoingPacksEvents>()(
+export const PACKS_SURFACE_EVENT_TYPES = eventTypes<OutgoingPacksEvents>()(
   'PACKS_LIST',
   'PACK_INSTALL_STARTED',
   'PACK_INSTALL_COMPLETE',
@@ -71,7 +71,7 @@ export const settingsEvents = eventTypes<IncomingSettingsEvents | IncomingSecret
 export type SettingsPluginEvents = Exclude<OutgoingSettingsEvents, { type: 'APPLICATION_HOTKEYS' }>;
 
 /** The event types the `settings` surface receives; the host's to send, and no pack's */
-export const SETTINGS_PLUGIN_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
+export const SETTINGS_SURFACE_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
   'SETTINGS_RECOVERY',
   'SETTINGS_LOADED',
   'SETTINGS_UPDATED',
@@ -90,13 +90,13 @@ export const SETTINGS_PLUGIN_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
 /** Native endpoint metadata includes the shell inbox without advertising it as a sidebar pane. */
 export const hostEventContracts = {
   application: {
-    system: { incoming: APPLICATION_SYSTEM_EVENTS, outgoing: ['PACK_RUNTIMES_UPDATED', 'PLUGIN_VISIBILITY_UPDATED'] },
-    surface: { receives: [...HOST_PLUGIN_EVENT_TYPES['host/application'], ...APPLICATION_PLUGIN_EVENT_TYPES] },
+    system: { incoming: APPLICATION_SYSTEM_EVENTS, outgoing: ['PACK_RUNTIMES_UPDATED', 'SURFACE_VISIBILITY_UPDATED'] },
+    surface: { receives: [...HOST_SURFACE_EVENT_TYPES['host/application'], ...APPLICATION_SURFACE_EVENT_TYPES] },
   },
   help: { system: { incoming: helpEvents, outgoing: ['HELP_CATALOG'] } },
-  packs: { system: { incoming: packsEvents, outgoing: PACKS_PLUGIN_EVENT_TYPES }, surface: { receives: PACKS_PLUGIN_EVENT_TYPES } },
+  packs: { system: { incoming: packsEvents, outgoing: PACKS_SURFACE_EVENT_TYPES }, surface: { receives: PACKS_SURFACE_EVENT_TYPES } },
   settings: {
-    system: { incoming: settingsEvents, outgoing: [...SETTINGS_PLUGIN_EVENT_TYPES, 'APPLICATION_HOTKEYS'] },
-    surface: { receives: ['HELP_CATALOG', ...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] },
+    system: { incoming: settingsEvents, outgoing: [...SETTINGS_SURFACE_EVENT_TYPES, 'APPLICATION_HOTKEYS'] },
+    surface: { receives: ['HELP_CATALOG', ...SETTINGS_SURFACE_EVENT_TYPES, ...HOST_SURFACE_EVENT_TYPES['host/settings']] },
   },
 } satisfies PackEventContracts;

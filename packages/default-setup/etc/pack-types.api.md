@@ -1924,7 +1924,7 @@ type IncomingBrainEvents = {
     type: 'GO_BACK_TNODE';
     currentFlowTNodeId?: string;
 } | {
-    type: 'REQUEST_PLUGIN_DATA';
+    type: 'REQUEST_SURFACE_DATA';
     flowTNodeId?: string;
 } | {
     type: 'GET_TNODE_DETAILS';
@@ -3156,7 +3156,7 @@ type OutgoingActionsEvents = {
 };
 
 type OutgoingBrainEvents = {
-    type: 'RECEIVE_PLUGIN_DATA';
+    type: 'RECEIVE_SURFACE_DATA';
     data: FlowTNodeData;
 } | {
     type: 'TNODE_OPENED';

@@ -41,7 +41,7 @@ it('opens a link in its own tab by default, which is what no setting means', () 
   startBrowser().send({ type: 'LINK.OPEN', url: 'https://example.test/a' })
 
   expect(asked).toEqual([{
-    type: 'OPEN_PLUGIN',
+    type: 'OPEN_SURFACE',
     surface: 'default-setup/browser',
     events: [{ type: 'TAB.CREATE', url: 'https://example.test/a' }],
   }])

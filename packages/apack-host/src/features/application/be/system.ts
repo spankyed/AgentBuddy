@@ -38,13 +38,13 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'surfaceDef
         broadcastToSurface('application', { type: 'PACK_RUNTIMES_UPDATED', runtimes });
       },
       sendVisibility: () => {
-        broadcastToSurface('application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
+        broadcastToSurface('application', { type: 'SURFACE_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
       },
     }),
   }).createMachine({
     id: 'application',
     on: {
-      SET_PLUGIN_VISIBILITY: {
+      SET_SURFACE_VISIBILITY: {
         // A surface that isn't a ref names no surface, so nothing could ever read the choice back
         guard: ({ event }) => splitRef(event.surface) !== undefined,
         actions: [
@@ -52,7 +52,7 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'surfaceDef
           'sendVisibility',
         ],
       },
-      SET_LAST_ACTIVE_PLUGIN: {
+      SET_LAST_ACTIVE_SURFACE: {
         guard: ({ event }) => splitRef(event.surface) !== undefined,
         actions: ({ event }) => appState.update({ lastActivePlugin: event.surface }),
       },

@@ -45,7 +45,7 @@ it.each(['reconnect', 'live publication'] as const)('rebinds the real shell, loa
   try {
     shell.client.connect();
     await settle();
-    app.send({ type: 'SELECT_PLUGIN', surface: 'ext/own' });
+    app.send({ type: 'SELECT_SURFACE', surface: 'ext/own' });
     const actor = app.system.get('ext/own');
     expect(actor).toBeDefined();
     const old = scope.run(() => generated.useSettings<{ limit: number }>(target))!;

@@ -71,14 +71,14 @@ it('binds before the application actor exists, naming it when SDK code reaches t
   expect(() => untypedOpenSurface(settingsAddress)).toThrow(/isn't created yet/);
   created = application;
   untypedOpenSurface(settingsAddress);
-  expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_PLUGIN', surface: 'default-setup/settings', events: [] });
+  expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_SURFACE', surface: 'default-setup/settings', events: [] });
 });
 
 it('gives secretsClient the API client and untypedOpenSurface the application actor', async () => {
   bindRendererHost(() => application as never);
   await expect(secretsClient.list()).resolves.toMatchObject({ secrets: [] });
   untypedOpenSurface(settingsAddress);
-  expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_PLUGIN', surface: 'default-setup/settings', events: [] });
+  expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_SURFACE', surface: 'default-setup/settings', events: [] });
 });
 
 // Whether a ref names a registered surface is the shell's to answer, once pack frontends have loaded; a string that

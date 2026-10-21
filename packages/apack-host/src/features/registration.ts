@@ -16,7 +16,7 @@ export function hostRegistration(systems: { application?: PackFeatureSystem; pac
       [hostFeatureIds.help]: { system: { machine: helpSystem, receives: hostEventContracts.help.system.incoming } },
       [hostFeatureIds.packs]: { ...(systems.packs && { system: systems.packs }), surface: { receives: hostEventContracts.packs.surface.receives } },
       // The app's settings: the store's system, and the Settings view the renderer draws. It takes what its own
-      // system sends, and what a pack may send it (`HOST_PLUGIN_EVENT_TYPES`): only that pack can find those out.
+      // system sends, and what a pack may send it (`HOST_SURFACE_EVENT_TYPES`): only that pack can find those out.
       [hostFeatureIds.settings]: { ...(systems.settings && { system: systems.settings }), surface: { receives: hostEventContracts.settings.surface.receives } },
     },
   };

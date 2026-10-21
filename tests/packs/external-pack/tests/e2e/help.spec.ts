@@ -25,7 +25,7 @@ test('installed pack help remains navigable without its runtime', async ({ app, 
       await expect.poll(surfaceIds).not.toContain('e2e-fixture/memos');
     } finally {
       await toggle();
-      await app.waitForPlugin('memos');
+      await app.waitForSurface('memos');
     }
     expect(await electronApp.evaluate(() => (globalThis as any).__helpExternalUrls)).toEqual([]);
   } finally {

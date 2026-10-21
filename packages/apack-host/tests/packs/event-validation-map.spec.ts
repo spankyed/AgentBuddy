@@ -5,11 +5,11 @@ import { setup } from 'xstate';
 import { SYSTEM_EVENT_TYPES } from '@apackdev/sdk/framework';
 import type { PackFeature } from '@apackdev/sdk/framework';
 import { hostRegistration } from '../../src/features/registration.ts';
-import { PACKS_PLUGIN_EVENT_TYPES } from '../../src/features/event-contracts.ts';
-import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import { PACKS_SURFACE_EVENT_TYPES } from '../../src/features/event-contracts.ts';
+import { SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 
 /** The events a pack's surface receives: what its pack declares, and what the app sends every surface */
-const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
+const receives = (...types: string[]) => new Set([...types, ...SURFACE_EVENT_TYPES]);
 
 const { getEventValidationMap, registerPack, unregisterPack } = createNativePackTestRegistry();
 
@@ -131,8 +131,8 @@ describe('a host surface', () => {
   it('is checked with the event types its registration declares', () => {
     const registry = createNativePackTestRegistry();
     registry.registerPack(hostRegistration());
-    expect(registry.getSurfaceEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_PLUGIN_EVENT_TYPES));
-    expect(registry.getSurfaceEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN', 'PACK_RUNTIMES_UPDATED'));
+    expect(registry.getSurfaceEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_SURFACE_EVENT_TYPES));
+    expect(registry.getSurfaceEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'SURFACE_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_SURFACE', 'PACK_RUNTIMES_UPDATED'));
   });
 
   // The host is the pack `host`, so a pack with a `packs` feature of its own is not a contest
@@ -140,7 +140,7 @@ describe('a host surface', () => {
     const registry = createNativePackTestRegistry();
     registry.registerPack({ id: 'owner-pack', features: { packs: surface(['NOT_THE_HOSTS']) } });
     registry.registerPack(hostRegistration());
-    expect(registry.getSurfaceEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_PLUGIN_EVENT_TYPES));
+    expect(registry.getSurfaceEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_SURFACE_EVENT_TYPES));
     expect(registry.getSurfaceEventValidationMap().get('owner-pack/packs')).toEqual(receives('NOT_THE_HOSTS'));
   });
 });

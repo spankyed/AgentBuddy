@@ -54,14 +54,14 @@ function fakePage() {
     // A real reload drops the page's globals; the flag the bridge guards itself with goes with them
     reload: vi.fn(async () => { reloaded = true; return undefined; }),
     waitForState: vi.fn(async () => undefined),
-    waitForPlugin: vi.fn(async () => undefined),
+    waitForSurface: vi.fn(async () => undefined),
   };
   return {
     page, expressions, evaluateExpression, evaluateWith, acted,
     reload: page.reload as ReturnType<typeof vi.fn>,
     didReload: () => reloaded,
     waitForState: page.waitForState as ReturnType<typeof vi.fn>,
-    waitForPlugin: page.waitForPlugin as ReturnType<typeof vi.fn>,
+    waitForSurface: page.waitForSurface as ReturnType<typeof vi.fn>,
     emit: (event: SeenEvent) => emit?.(event),
   };
 }
@@ -502,7 +502,7 @@ describe('the viewport', () => {
       },
       locator: () => ({ ariaSnapshot: async () => '' }),
     } as unknown as Page;
-    const app = { screenshot: async () => null, waitForState: async () => null, waitForPlugin: async () => null };
+    const app = { screenshot: async () => null, waitForState: async () => null, waitForSurface: async () => null };
 
     // An emulated viewport is applied exactly, so the adapter answers with what it asked for
     expect(await asSessionPage(page, app).setViewport(1000, 700)).toEqual({ width: 1000, height: 700 });
@@ -844,19 +844,19 @@ describe('the drains', () => {
  */
 describe('wait', () => {
   it('waits on a state path, passing the timeout through', async () => {
-    const { session, waitForState, waitForPlugin } = sessionWith();
+    const { session, waitForState, waitForSurface } = sessionWith();
     const result = await session.wait({ state: 'running.connected' }, 2_000);
 
     expect(result).toEqual({ ok: true, value: { state: 'running.connected' } });
     expect(waitForState).toHaveBeenCalledWith('running.connected', 2_000);
-    expect(waitForPlugin, 'the other wait is not the one for a state').not.toHaveBeenCalled();
+    expect(waitForSurface, 'the other wait is not the one for a state').not.toHaveBeenCalled();
   });
 
   it('waits on a surface arriving instead, when that is what was asked', async () => {
-    const { session, waitForState, waitForPlugin } = sessionWith();
+    const { session, waitForState, waitForSurface } = sessionWith();
     await session.wait({ surface: 'default-setup/notes' });
 
-    expect(waitForPlugin).toHaveBeenCalledWith('default-setup/notes', undefined);
+    expect(waitForSurface).toHaveBeenCalledWith('default-setup/notes', undefined);
     expect(waitForState).not.toHaveBeenCalled();
   });
 

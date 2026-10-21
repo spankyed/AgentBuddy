@@ -181,7 +181,7 @@ it.each(['list', 'create', 'deactivate'] as const)('retires an entity selection 
   try {
     actor.send({ type: 'OPEN_ENTITY', id: 'Prompt-p1' });
     const abandoned = selectCall(0);
-    if (destination === 'deactivate') actor.send({ type: 'PLUGIN_DEACTIVATED' });
+    if (destination === 'deactivate') actor.send({ type: 'SURFACE_DEACTIVATED' });
     else actor.send({ type: 'TRAIL_CLICK', target: destination });
     actor.send(answerTo(abandoned, { type: 'PROMPT_SELECTED', promptId: 'Prompt-p1', data: aPrompt('Prompt-p1') }));
     expect(actor.getSnapshot().context.selectedPromptId).toBeUndefined();

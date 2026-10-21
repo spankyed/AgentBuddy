@@ -40,9 +40,9 @@ export type HostShellEvent =
    * Opens the surface at a ref and hands its actor `events`. The shell waits for a surface whose pack's frontend is
    * still loading, and reports a ref no pack provides once loading has settled.
    */
-  | { type: 'OPEN_PLUGIN'; surface: string; events: SurfaceEvent[] }
+  | { type: 'OPEN_SURFACE'; surface: string; events: SurfaceEvent[] }
   /**
-   * Hands a surface's actor `events` without opening it. The same wait as `OPEN_PLUGIN` — a surface whose pack's
+   * Hands a surface's actor `events` without opening it. The same wait as `OPEN_SURFACE` — a surface whose pack's
    * frontend is still loading is waited for, and one no pack provides is reported once loading settles — but the
    * surface the user has open doesn't change: a send is not a navigation.
    *
@@ -58,10 +58,10 @@ export type HostShellEvent =
    * what decides how the shell reports a surface that isn't there — a toast tells a user their command failed,
    * and there is no user behind an answer. Only `reply` sets it.
    */
-  | { type: 'SEND_TO_PLUGIN'; surface: string; events: SurfaceEvent[]; from?: string; via?: string; asker?: _Asker; answering?: string; call?: string }
+  | { type: 'SEND_TO_SURFACE'; surface: string; events: SurfaceEvent[]; from?: string; via?: string; asker?: _Asker; answering?: string; call?: string }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'RESTORE_CHAT' }
-  | { type: 'SET_PLUGIN_VISIBILITY'; surface: string; visible: boolean }
+  | { type: 'SET_SURFACE_VISIBILITY'; surface: string; visible: boolean }
   | { type: 'CLOSE_DEV_LETTER' }
   | { type: 'HOTKEYS_RECORDING_START' }
   | { type: 'HOTKEYS_RECORDING_END' };
@@ -147,7 +147,7 @@ export function useShell(): Shell {
     isOnboarding: shallowReadonly(refs.isOnboarding),
     restoreChat: () => shell.send({ type: 'RESTORE_CHAT' }),
     resizeCanvas: (size) => shell.send({ type: 'RESIZE_PANEL', panel: 'canvas', size }),
-    setPluginVisible: (ref, visible) => shell.send({ type: 'SET_PLUGIN_VISIBILITY', surface: ref, visible }),
+    setPluginVisible: (ref, visible) => shell.send({ type: 'SET_SURFACE_VISIBILITY', surface: ref, visible }),
     startHotkeyRecording: () => shell.send({ type: 'HOTKEYS_RECORDING_START' }),
     endHotkeyRecording: () => shell.send({ type: 'HOTKEYS_RECORDING_END' }),
     closeDevLetter: () => shell.send({ type: 'CLOSE_DEV_LETTER' }),

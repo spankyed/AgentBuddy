@@ -10,7 +10,7 @@
 import { test, expect } from '@apackdev/testing';
 
 test('this pack and default-setup each get their own notes surface', async ({ app, appPage }) => {
-  await app.waitForPlugin('notes');
+  await app.waitForSurface('notes');
 
   const ids = await appPage.evaluate(() => {
     const surfaces: Array<{ id: string; label: string }> =

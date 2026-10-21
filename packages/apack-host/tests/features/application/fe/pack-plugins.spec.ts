@@ -117,7 +117,7 @@ describe('pack surfaces in the application actor', () => {
     expect(packsWithFrontend).toEqual(['exported-none', 'empty']);
     expect(packClientReady.mock.calls).toEqual([['exported-none', 'runtime'], ['empty', 'runtime']]);
 
-    app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'empty' });
+    app.send({ type: 'PACK_SURFACES_UNLOADED', packId: 'empty' });
     expect(app.getSnapshot().context.packsWithFrontend).toEqual(['exported-none']);
   });
 
@@ -157,7 +157,7 @@ describe('pack surfaces in the application actor', () => {
     const notesActor = app.system.get('notes');
     loaded({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'ext', surfaces: [surface('ext/notes'), surface('ext/pack-own')] });
 
-    app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'ext' });
+    app.send({ type: 'PACK_SURFACES_UNLOADED', packId: 'ext' });
 
     const { surfaces, packsWithFrontend } = app.getSnapshot().context;
     expect(surfaces).toEqual([builtInNotes]);

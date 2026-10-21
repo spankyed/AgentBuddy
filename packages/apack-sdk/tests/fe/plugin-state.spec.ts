@@ -189,7 +189,7 @@ describe('following a surface that is not running yet', () => {
 
 describe('_sendToLocalSurface', () => {
   // It asks the shell rather than the actor: the shell owns whether that surface is here yet, and answers the same
-  // question for `OPEN_PLUGIN`. What it must not do is open the surface — a send is not a navigation.
+  // question for `OPEN_SURFACE`. What it must not do is open the surface — a send is not a navigation.
   it("asks the shell to hand this window's surface the event, without opening it", () => {
     const sent: unknown[] = [];
     unbindFeHost();
@@ -203,7 +203,7 @@ describe('_sendToLocalSurface', () => {
 
     _sendToLocalSurface('default-setup/threads', { type: 'SELECT_ARTIFACT', artifactId: 'a1' });
 
-    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', surface: 'default-setup/threads', call: expect.any(String), events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] }]);
+    expect(sent).toEqual([{ type: 'SEND_TO_SURFACE', surface: 'default-setup/threads', call: expect.any(String), events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] }]);
   });
 
   // The two sends share a signature, so picking the wrong one compiles. Worse, a pack test that starts both an
@@ -249,7 +249,7 @@ describe('_sendToLocalSurface', () => {
     });
 
     expect(sent).toEqual([{
-      type: 'SEND_TO_PLUGIN',
+      type: 'SEND_TO_SURFACE',
       surface: 'default-setup/notes',
       call: expect.any(String), 
       events: [{ type: 'ASK' }],
@@ -280,7 +280,7 @@ describe('_sendToLocalSurface', () => {
     reply?.({ type: 'ANSWER' });
 
     expect(sent).toEqual([{
-      type: 'SEND_TO_PLUGIN',
+      type: 'SEND_TO_SURFACE',
       surface: 'default-setup/threads',
       // Its own, because a reply is a send and may itself be answered
       call: expect.any(String),
@@ -317,6 +317,6 @@ describe('_sendToLocalSurface', () => {
 
     _sendToLocalSurface('default-setup/memos', { type: 'X' });
 
-    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', surface: 'default-setup/memos', call: expect.any(String), events: [{ type: 'X' }] }]);
+    expect(sent).toEqual([{ type: 'SEND_TO_SURFACE', surface: 'default-setup/memos', call: expect.any(String), events: [{ type: 'X' }] }]);
   });
 });

@@ -62,7 +62,7 @@ export type MessageSender = Pick<Message, 'from' | 'via'>;
 export interface RequestSender extends MessageSender {
   /**
    * Where an answer goes, so the receiving surface's handler is handed a `reply` that reaches whoever asked.
-   * Absent for the shell's own sends — a lifecycle event, a hotkey, a navigation — and for an `OPEN_PLUGIN`,
+   * Absent for the shell's own sends — a lifecycle event, a hotkey, a navigation — and for an `OPEN_SURFACE`,
    * which is a navigation command rather than a question.
    *
    * The address whole, not a ref: it is built at the door it arrived through (`deliverInWindow` in the SDK, as
@@ -133,8 +133,8 @@ export interface ShellContext {
    */
   pendingSurfaceId: string | null;
   /**
-   * Work waiting on a surface that isn't registered while pack frontends are still loading: an `OPEN_PLUGIN`
-   * (`select: true`) or a `SEND_TO_PLUGIN`. One queue, because the wait is the same question — has that pack's
+   * Work waiting on a surface that isn't registered while pack frontends are still loading: an `OPEN_SURFACE`
+   * (`select: true`) or a `SEND_TO_SURFACE`. One queue, because the wait is the same question — has that pack's
    * frontend arrived — and `select` is the only thing that differs once it has.
    */
   awaitingSurface: Array<SurfaceRequest & { events: SurfaceEvent[] }>;
@@ -165,16 +165,16 @@ export type ShellEvent =
   | { type: 'ENTITY_OPEN_FINISHED'; token: string }
   /**
    * A selection the shell makes itself: an open whose surface is here, the default surface, the last-active surface
-   * restored. Unlike `SELECT_PLUGIN`, a person's choice, it cancels no entity open and supersedes no waiting open.
+   * restored. Unlike `SELECT_SURFACE`, a person's choice, it cancels no entity open and supersedes no waiting open.
    */
-  | { type: 'SELECT_PLUGIN_BY_SHELL'; surface: string }
+  | { type: 'SELECT_SURFACE_BY_SHELL'; surface: string }
   | ApplicationPluginEvents
-  | { type: 'PLUGIN_DECLARATIONS_CHANGED' }
-  | { type: 'SELECT_PLUGIN'; surface: string; historyIndex?: number }
-  | { type: 'OPEN_PLUGIN'; surface: string; events: SurfaceEvent[]; entityToken?: string }
-  | ({ type: 'SEND_TO_PLUGIN'; surface: string; events: SurfaceEvent[]; answering?: string; call?: string } & RequestSender)
+  | { type: 'SURFACE_DECLARATIONS_CHANGED' }
+  | { type: 'SELECT_SURFACE'; surface: string; historyIndex?: number }
+  | { type: 'OPEN_SURFACE'; surface: string; events: SurfaceEvent[]; entityToken?: string }
+  | ({ type: 'SEND_TO_SURFACE'; surface: string; events: SurfaceEvent[]; answering?: string; call?: string } & RequestSender)
   /** Hands an opened surface its events, once the shell has selected it */
-  | { type: 'DELIVER_PLUGIN_EVENTS'; surface: string; events: SurfaceEvent[]; asker?: RequestSender['asker']; answering?: string; call?: string; entityToken?: string }
+  | { type: 'DELIVER_SURFACE_EVENTS'; surface: string; events: SurfaceEvent[]; asker?: RequestSender['asker']; answering?: string; call?: string; entityToken?: string }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target?: string; menuItems: ContextMenuItem[] }
   | { type: 'TRAIL_CLICK'; target: string; info?: unknown }
@@ -183,19 +183,19 @@ export type ShellEvent =
   | { type: 'MAXIMIZE_CHAT' }
   | { type: 'RESTORE_CHAT' }
   | HotkeyEvent
-  | { type: 'SWITCH_PLUGIN_UP' }
-  | { type: 'SWITCH_PLUGIN_DOWN' }
+  | { type: 'SWITCH_SURFACE_UP' }
+  | { type: 'SWITCH_SURFACE_DOWN' }
   | { type: 'NAVIGATE_BACK' }
   | { type: 'NAVIGATE_FORWARD' }
   | { type: 'FORWARD_HOTKEY'; event: HotkeyEvent }
   | { type: 'PROCESS_GLOBAL_HOTKEY'; hotkeyEvent: HotkeyEvent; originalEvent?: { preventDefault(): void } }
   | { type: 'HOTKEYS_RECORDING_START' }
   | { type: 'HOTKEYS_RECORDING_END' }
-  // What the host's application system and pack systems send this surface; their OPEN_PLUGIN arrives as
-  // OPEN_PLUGIN_FROM_APP, which only a main window acts on
-  | Exclude<HostSurfaceEvents['host/application'], { type: 'OPEN_PLUGIN' }>
-  | { type: 'OPEN_PLUGIN_FROM_APP'; surface: string; events?: SurfaceEvent[] }
-  | { type: 'SET_PLUGIN_VISIBILITY'; surface: string; visible: boolean }
+  // What the host's application system and pack systems send this surface; their OPEN_SURFACE arrives as
+  // OPEN_SURFACE_FROM_APP, which only a main window acts on
+  | Exclude<HostSurfaceEvents['host/application'], { type: 'OPEN_SURFACE' }>
+  | { type: 'OPEN_SURFACE_FROM_APP'; surface: string; events?: SurfaceEvent[] }
+  | { type: 'SET_SURFACE_VISIBILITY'; surface: string; visible: boolean }
   | { type: 'CLOSE_DEV_LETTER' }
   | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'diagnostic' | 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: ShellFailure }
@@ -217,4 +217,4 @@ export type ShellEvent =
    * A pack's frontend is gone from this window. `refused`: its replacement was refused, so the incumbent it
    * would have replaced is unloaded too, and no load of it is in flight to discard.
    */
-  | { type: 'PACK_PLUGINS_UNLOADED'; packId: string; refused?: true };
+  | { type: 'PACK_SURFACES_UNLOADED'; packId: string; refused?: true };

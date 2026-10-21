@@ -16,7 +16,7 @@ const hasMemos = (page: Page) => page.evaluate((memos) =>
   (window as any).applicationState.getSnapshot().context.surfaces.some((surface: { id: string }) => surface.id === memos), MEMOS);
 
 test("opens a pack's surface asked for while the pack's frontend loads, once it has loaded", async ({ app, appPage }) => {
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await app.navigate('default-setup/threads');
   await togglePack(appPage);
   await expect.poll(() => hasMemos(appPage), { timeout: 15_000 }).toBe(false);
@@ -34,7 +34,7 @@ test("opens a pack's surface asked for while the pack's frontend loads, once it 
       if (snapshot.context.surfaces.some((surface) => surface.id === memos)) return;
       win.__openedWhileLoading = true;
       subscription.unsubscribe();
-      win.applicationState.send({ type: 'OPEN_PLUGIN', surface: memos, events: [{ type: 'E2E_LINK_FOLLOWED' }] });
+      win.applicationState.send({ type: 'OPEN_SURFACE', surface: memos, events: [{ type: 'E2E_LINK_FOLLOWED' }] });
     });
   }, { memos: MEMOS });
 

@@ -287,7 +287,7 @@ export type FeatureSettingsUpdated = { type: 'FEATURE_SETTINGS_UPDATED'; setting
 export type OpenEntity = { type: 'OPEN_ENTITY'; id: import('@apackdev/ears').EARS.EntityId };
 
 /** The event types every surface receives from the app, beside those its pack's systems declare. */
-export const PLUGIN_EVENT_TYPES = eventTypes<FeatureSettingsUpdated | OpenEntity>()('FEATURE_SETTINGS_UPDATED', 'OPEN_ENTITY');
+export const SURFACE_EVENT_TYPES = eventTypes<FeatureSettingsUpdated | OpenEntity>()('FEATURE_SETTINGS_UPDATED', 'OPEN_ENTITY');
 
 /** `M` keyed `<PackId>/<key>`: a pack's features by their refs */
 export type Qualified<PackId extends string, M> = { [K in keyof M & string as `${PackId}/${K}`]: M[K] };
@@ -364,12 +364,12 @@ export type HostSurfaceEvents = {
     | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginVisibility: Record<string, boolean>; lastActivePlugin?: string }
     | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
     // The app's own send when a surface's tab is shown or hidden, or a pack's defaults change
-    | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
+    | { type: 'SURFACE_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
     // The user finished onboarding: the shell leaves its onboarding layout
     | { type: 'ONBOARDING_COMPLETE' }
     // Opens a surface, by its ref, in the app's main windows (a popout keeps the surface it shows) and hands its actor
     // `events`; the shell waits for a surface whose pack's frontend is still loading
-    | { type: 'OPEN_PLUGIN'; surface: string; events?: Array<{ type: string; [key: string]: unknown }> };
+    | { type: 'OPEN_SURFACE'; surface: string; events?: Array<{ type: string; [key: string]: unknown }> };
   /**
    * The app's Settings view. A pack sends it what only that pack can find out about its own things, for the view to
    * show — the code feature's CLI resolution, for one. The settings themselves are the app's.
@@ -397,8 +397,8 @@ export const HOST_SYSTEM_EVENT_TYPES = {
  * The event types each host surface receives, as a value the app can check a send against and the build can
  * read the host's surfaces from. A pack's own surfaces get this generated from their systems' specs.
  */
-export const HOST_PLUGIN_EVENT_TYPES = {
-  'host/application': eventTypes<HostSurfaceEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN'),
+export const HOST_SURFACE_EVENT_TYPES = {
+  'host/application': eventTypes<HostSurfaceEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'SURFACE_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_SURFACE'),
   'host/settings': eventTypes<HostSurfaceEvents['host/settings']>()('CLI_TEST_RESULT', 'HELP.OPEN'),
 } satisfies Record<keyof HostSurfaceEvents, readonly string[]>;
 
@@ -421,7 +421,7 @@ function sendIncoming(message: Message): void {
  * ambient scope is the one that most needs the address to arrive.
  *
  * Through the shell rather than at the actor, because "is that surface here yet" is the shell's question and it
- * already answers it for `OPEN_PLUGIN`: a surface whose pack's frontend is still loading is waited for, and one
+ * already answers it for `OPEN_SURFACE`: a surface whose pack's frontend is still loading is waited for, and one
  * no pack provides is reported to the user once loading settles.
  */
 function deliverInWindow(message: Message): void {
@@ -429,7 +429,7 @@ function deliverInWindow(message: Message): void {
   if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a surface: a surface is named "<packId>/<featureId>"`);
   const { from, via, sender, answering, call } = message;
   boundFeHost().application.send({
-    type: 'SEND_TO_PLUGIN',
+    type: 'SEND_TO_SURFACE',
     surface: ref,
     events: [message.event],
     ...(from ? { from } : {}),
@@ -565,7 +565,7 @@ const unboundSends = createSends();
  * window showing that surface, since a surface runs once per window. Backend only.
  *
  * That reach is the reason for the name. `sendToSurface` beside it is the renderer's, and goes to one window's actor.
- * A backend send that only one window should act on says so in the event, as the host's `OPEN_PLUGIN` does.
+ * A backend send that only one window should act on says so in the event, as the host's `OPEN_SURFACE` does.
  *
  * Untyped: packs use the `broadcastToSurface` from their `#generated/events`.
  */
@@ -580,7 +580,7 @@ export function untypedBroadcastToSurface(to: string, event: { type: string; [ke
  * A surface runs once per window, so this is what UI coordination wants: the artifact opens where the user clicked.
  *
  * It goes through the shell rather than to the actor directly, because "is that surface here yet" is the shell's
- * question and it already answers it for `OPEN_PLUGIN`: a surface whose pack's frontend is still loading is waited
+ * question and it already answers it for `OPEN_SURFACE`: a surface whose pack's frontend is still loading is waited
  * for, and one no pack provides is reported to the user once loading settles. Reaching past the shell meant two
  * owners of that question giving different answers — this one threw. It is a send, not a navigation, so the surface
  * the user has open doesn't change.

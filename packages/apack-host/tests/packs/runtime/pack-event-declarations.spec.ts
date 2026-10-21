@@ -11,13 +11,13 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { registry } from './test-host.ts';
 import { loadExternalPacks, registerExternalPacks } from '../../../src/packs/runtime/loader.ts';
-import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import { SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
 /** The events a pack's surface receives: what its pack declares, and what the app sends every surface */
-const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
+const receives = (...types: string[]) => new Set([...types, ...SURFACE_EVENT_TYPES]);
 
 const PACK_ID = 'declaring-pack';
 const RECEIVED = ['MEMOS_CONNECTED', 'MEMO_ADDED'];

@@ -7,7 +7,7 @@ import { reportError } from '@apackdev/sdk/logger';
 import { HOST } from '../refs.ts';
 import { deliverAs } from './delivery.ts';
 import { SYSTEM_EVENT_TYPES } from '@apackdev/sdk/framework';
-import { PLUGIN_EVENT_TYPES, _callOn, senderSuffix, type Message } from '@apackdev/sdk/events';
+import { SURFACE_EVENT_TYPES, _callOn, senderSuffix, type Message } from '@apackdev/sdk/events';
 import type { PackRegistry } from '../packs/registry.ts';
 
 
@@ -239,7 +239,7 @@ export function createBusMachine(options: BusOptions) {
             return;
           }
           // An event every surface takes (a feature's settings changing) is the feature's surface's if it has one
-          if ((PLUGIN_EVENT_TYPES as readonly string[]).includes(type)) return;
+          if ((SURFACE_EVENT_TYPES as readonly string[]).includes(type)) return;
           reportDrop(answering
             ? `Dropped the answer "${type}"${sender} to "${surfaceId}", which no registered pack declares as a surface that receives events. Nothing holds an asker open, so this is most likely a race: the asking pack unloaded before the answer landed.`
             : `Dropped "${type}" sent${sender} to "${surfaceId}", which no registered pack declares as a surface that receives events. Check the id, or give the surface's own pack a system that declares what it sends there.`);

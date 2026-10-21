@@ -156,7 +156,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
     },
     actors: {
       entityOpening: createEntityOpeningMachine(entityOptions),
-      surfaceCatalogListener: fromCallback(({ sendBack }) => catalog.subscribe(() => sendBack({ type: 'PLUGIN_DECLARATIONS_CHANGED' }))),
+      surfaceCatalogListener: fromCallback(({ sendBack }) => catalog.subscribe(() => sendBack({ type: 'SURFACE_DECLARATIONS_CHANGED' }))),
       hotkeyListener: hotkeyListener(target),
       mouseListener: mouseListener(target),
       connectionListener: connectionListener(client),
@@ -177,7 +177,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       refreshSurfaceDeclarations: enqueueActions(({ context, enqueue }) => {
         const claimed = selectedDefaultSurface(context.surfaces) ?? null;
         enqueue.assign({ defaultSurface: claimed });
-        if (context.wantsDefaultSurface && !context.pendingSurfaceId && claimed) enqueue.raise({ type: 'SELECT_PLUGIN_BY_SHELL', surface: claimed.id });
+        if (context.wantsDefaultSurface && !context.pendingSurfaceId && claimed) enqueue.raise({ type: 'SELECT_SURFACE_BY_SHELL', surface: claimed.id });
         // A frontend may be admitted before its declaration frame reaches this window. Reconcile
         // from accepted bindings when that frame arrives, without keeping a second pending inventory.
         const bindings = packs.surfaceBindings();
@@ -193,8 +193,8 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         const waiting = [];
         for (const request of context.awaitingSurface) {
           if (currentSurface(context, request.surface)) {
-            enqueue.raise(request.select ? { type: 'OPEN_PLUGIN', surface: request.surface, events: request.events, entityToken: request.entityToken }
-              : { type: 'SEND_TO_PLUGIN', surface: request.surface, events: request.events, ...request.sender, answering: request.answering, call: request.call });
+            enqueue.raise(request.select ? { type: 'OPEN_SURFACE', surface: request.surface, events: request.events, entityToken: request.entityToken }
+              : { type: 'SEND_TO_SURFACE', surface: request.surface, events: request.events, ...request.sender, answering: request.answering, call: request.call });
           } else if (unavailable(request.surface) || (catalog.status() === 'ready' && !packFrontendsPending(context) && !pending.has(splitRef(request.surface)?.packId ?? ''))) {
             refuse(context, request, enqueue);
           } else waiting.push(request);
@@ -202,7 +202,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         enqueue.assign({ awaitingSurface: waiting });
         if (context.pendingSurfaceId) {
           if (unavailable(context.pendingSurfaceId)) enqueue.assign({ pendingSurfaceId: null });
-          else if (currentSurface(context, context.pendingSurfaceId)) enqueue.raise({ type: 'SELECT_PLUGIN_BY_SHELL', surface: context.pendingSurfaceId });
+          else if (currentSurface(context, context.pendingSurfaceId)) enqueue.raise({ type: 'SELECT_SURFACE_BY_SHELL', surface: context.pendingSurfaceId });
         }
       }),
 
@@ -229,7 +229,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
           // out, since nothing else would. While the catalog is still settling, eligibility says nothing yet.
           const withdrawn = catalog.status() === 'ready'
             && packSurfaces.some(surface => selectSurfaceDeclaration(catalog, surface.id)?.enabled !== true);
-          if (withdrawn) enqueue.raise({ type: 'PACK_PLUGINS_UNLOADED', packId, refused: true });
+          if (withdrawn) enqueue.raise({ type: 'PACK_SURFACES_UNLOADED', packId, refused: true });
           return;
         }
 
@@ -268,11 +268,11 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
           if (claimed && added.has(claimed.id)) {
             enqueue.assign({ defaultSurface: claimed, wantsDefaultSurface: false });
             if (context.wantsDefaultSurface && !context.pendingSurfaceId) {
-              enqueue.raise({ type: 'SELECT_PLUGIN_BY_SHELL', surface: claimed.id });
+              enqueue.raise({ type: 'SELECT_SURFACE_BY_SHELL', surface: claimed.id });
             }
           }
           const pending = context.pendingSurfaceId;
-          if (pending && added.has(pending)) enqueue.raise({ type: 'SELECT_PLUGIN_BY_SHELL', surface: pending });
+          if (pending && added.has(pending)) enqueue.raise({ type: 'SELECT_SURFACE_BY_SHELL', surface: pending });
           // Surfaces asked to open while their pack loaded open now, with their events
           const arrived = context.awaitingSurface.filter((work) => added.has(work.surface));
           if (arrived.length > 0) {
@@ -287,15 +287,15 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
               // requests whose surface arrived, so `readyFor` says yes and the send is delivered rather than
               // refused. Measured by mutation 2026-10-06 — dropping it here fails nothing. What would make it
               // matter is the surface going away again between arriving and this re-raise being handled, which
-              // `PACK_PLUGINS_UNLOADED` can do; then it is refused after all, and the flag decides how.
-              enqueue.raise(select ? { type: 'OPEN_PLUGIN', surface, events, entityToken } : { type: 'SEND_TO_PLUGIN', surface, events, ...sender, answering, call });
+              // `PACK_SURFACES_UNLOADED` can do; then it is refused after all, and the flag decides how.
+              enqueue.raise(select ? { type: 'OPEN_SURFACE', surface, events, entityToken } : { type: 'SEND_TO_SURFACE', surface, events, ...sender, answering, call });
             }
           }
         }
         if (replacingActive && activeSurface) {
           enqueue(({ system }) => {
             const actor = system.get(activeSurface.id);
-            if (actor) notifySurfaceActor(actor, activeSurface.id, { type: 'PLUGIN_ACTIVATED' });
+            if (actor) notifySurfaceActor(actor, activeSurface.id, { type: 'SURFACE_ACTIVATED' });
           });
         }
         if (packSurfaces !== null && context.busSubscribed) enqueue(() => announcePackClientReady(client, packId, registrationId));
@@ -333,7 +333,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         const refusedIncumbents = (failedPacks ?? []).map(failed => failed.packId).filter(id => id in context.acceptedPackRuntimes);
         const acceptedPackRuntimes = Object.fromEntries(Object.entries(context.acceptedPackRuntimes)
           .filter(([id]) => !refusedIncumbents.includes(id)));
-        for (const packId of refusedIncumbents) enqueue.raise({ type: 'PACK_PLUGINS_UNLOADED', packId, refused: true });
+        for (const packId of refusedIncumbents) enqueue.raise({ type: 'PACK_SURFACES_UNLOADED', packId, refused: true });
 
         // Every result of the run that finished has arrived, so nothing is left to drop
         if (context.packsUnloadedWhileLoading.length > 0) enqueue.assign({ packsUnloadedWhileLoading: [] });
@@ -387,7 +387,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       }),
 
       removePackSurfaces: enqueueActions(({ event, context, system, enqueue }) => {
-        const { packId, refused } = typeOf('PACK_PLUGINS_UNLOADED', event);
+        const { packId, refused } = typeOf('PACK_SURFACES_UNLOADED', event);
         enqueue.sendTo(context.entityOpening, { type: 'UNLOADED', packId });
         // A surface runs under its feature's ref, `<packId>/<featureId>`, and a pack id holds no `/`, so the pack's
         // surfaces are the ones this window has under that prefix. Matched rather than parsed: a surface left here
@@ -435,12 +435,12 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
           enqueue(({ system }) => {
             // Tolerated: this runs as a pack's surfaces arrive, where the actor may not be spawned yet
             const active = system.get(activeSurface.id);
-            if (active) notifySurfaceActor(active, activeSurface.id, { type: 'PLUGIN_ACTIVATED' });
+            if (active) notifySurfaceActor(active, activeSurface.id, { type: 'SURFACE_ACTIVATED' });
           });
         }
       }),
 
-      updatePluginVisibility: assign(({ event }) => ({ pluginVisibility: typeOf('PLUGIN_VISIBILITY_UPDATED', event).pluginVisibility })),
+      updatePluginVisibility: assign(({ event }) => ({ pluginVisibility: typeOf('SURFACE_VISIBILITY_UPDATED', event).pluginVisibility })),
 
       /**
        * The shell's state the backend sends on each connection (the host `application` system's, in AppState): which
@@ -453,7 +453,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         if (context.ownsLastActiveSurface && lastActivePlugin) enqueue.assign({ wantsDefaultSurface: false });
         if (!context.ownsLastActiveSurface || !lastActivePlugin || lastActivePlugin === context.activeSurface.id) return;
         if (context.surfaces.some((p) => p.id === lastActivePlugin)) {
-          enqueue(() => self.send({ type: 'SELECT_PLUGIN_BY_SHELL', surface: lastActivePlugin }));
+          enqueue(() => self.send({ type: 'SELECT_SURFACE_BY_SHELL', surface: lastActivePlugin }));
         } else {
           enqueue.assign({ pendingSurfaceId: lastActivePlugin });
         }
@@ -461,50 +461,50 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
 
       /** A tab shown or hidden here: shown at once, and recorded by the host so every window and the next run agree */
       setPluginVisibility: enqueueActions(({ event, context, enqueue }) => {
-        const { surface, visible } = typeOf('SET_PLUGIN_VISIBILITY', event);
+        const { surface, visible } = typeOf('SET_SURFACE_VISIBILITY', event);
         enqueue.assign({ pluginVisibility: { ...context.pluginVisibility, [surface]: visible } });
-        enqueue(() => client.send({ to: HOST.application, event: { type: 'SET_PLUGIN_VISIBILITY', surface, visible } }));
+        enqueue(() => client.send({ to: HOST.application, event: { type: 'SET_SURFACE_VISIBILITY', surface, visible } }));
       }),
 
       /**
-       * Selects the surface, opens the canvas, then hands it its events — what `OPEN_PLUGIN` asks for. The selecting
+       * Selects the surface, opens the canvas, then hands it its events — what `OPEN_SURFACE` asks for. The selecting
        * half of the pair, and the reason the pair exists: a send that stole the user's canvas would make every
        * cross-feature command a navigation.
        */
       selectAndDeliver: enqueueActions(({ context, event, enqueue }) => {
-        const { surface, events, entityToken } = typeOf('OPEN_PLUGIN', event);
+        const { surface, events, entityToken } = typeOf('OPEN_SURFACE', event);
         if (!entityToken) enqueue.sendTo(context.entityOpening, { type: 'CANCEL' });
         // The latest open is the one that selects
         const awaitingSurface = supersedeWaitingOpens(context);
         enqueue.assign({ awaitingSurface });
         if (!readyFor({ ...context, awaitingSurface }, { surface, events, entityToken, select: true, sender: {} }, enqueue)) return;
         if (entityToken) enqueue.sendTo(context.entityOpening, { type: 'READY', token: entityToken });
-        if (context.activeSurface.id !== surface) enqueue.raise({ type: 'SELECT_PLUGIN_BY_SHELL', surface });
+        if (context.activeSurface.id !== surface) enqueue.raise({ type: 'SELECT_SURFACE_BY_SHELL', surface });
         if (context.defaultToggles.canvas) enqueue.raise({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
-        if (events.length > 0 || entityToken) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', surface, events, entityToken }));
+        if (events.length > 0 || entityToken) enqueue(({ self }) => self.send({ type: 'DELIVER_SURFACE_EVENTS', surface, events, entityToken }));
       }),
 
-      /** Hands a surface its events and leaves the view where it is — what `SEND_TO_PLUGIN` asks for */
+      /** Hands a surface its events and leaves the view where it is — what `SEND_TO_SURFACE` asks for */
       deliverWithoutSelecting: enqueueActions(({ context, event, enqueue }) => {
-        const { surface, events, from, via, asker, answering, call } = typeOf('SEND_TO_PLUGIN', event);
+        const { surface, events, from, via, asker, answering, call } = typeOf('SEND_TO_SURFACE', event);
         if (!readyFor(context, { surface, events, select: false, sender: { from, via, asker }, answering, call }, enqueue)) return;
-        if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', surface, events, asker, answering, call }));
+        if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_SURFACE_EVENTS', surface, events, asker, answering, call }));
       }),
 
       // A backend's request carries whatever the sending pack built: a payload that isn't a surface and its events
       // would crash the surface's actor, or this one, so it is refused here rather than delivered
       checkBackendOpenRequest: enqueueActions(({ event, enqueue }) => {
-        const { surface, events = [] } = typeOf('OPEN_PLUGIN_FROM_APP', event);
+        const { surface, events = [] } = typeOf('OPEN_SURFACE_FROM_APP', event);
         const deliverable = Array.isArray(events) && events.every((e) => isPlainObject(e) && typeof e.type === 'string');
         if (typeof surface !== 'string' || !deliverable) {
           enqueue(() => notify.error("Couldn't open a surface", `A pack asked the app to open "${String(surface)}" with events it can't deliver`));
           return;
         }
-        enqueue.raise({ type: 'OPEN_PLUGIN' as const, surface, events: events as SurfaceEvent[] });
+        enqueue.raise({ type: 'OPEN_SURFACE' as const, surface, events: events as SurfaceEvent[] });
       }),
 
       deliverSurfaceEvents: enqueueActions(({ event, context, system, enqueue }) => {
-        const { surface, events, asker, answering, call, entityToken } = typeOf('DELIVER_PLUGIN_EVENTS', event);
+        const { surface, events, asker, answering, call, entityToken } = typeOf('DELIVER_SURFACE_EVENTS', event);
         if (entityToken) {
           enqueue.sendTo(context.entityOpening, { type: 'DELIVER', token: entityToken });
           return;
@@ -530,8 +530,8 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         const { hotkeyEvent, originalEvent } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
         const actionType = processHotkeys(hotkeyEvent, context.hotkeys, {
           toggleInspectionPanel: 'TOGGLE_INSPECTION_PANEL',
-          switchSurfaceUp: 'SWITCH_PLUGIN_UP',
-          switchSurfaceDown: 'SWITCH_PLUGIN_DOWN',
+          switchSurfaceUp: 'SWITCH_SURFACE_UP',
+          switchSurfaceDown: 'SWITCH_SURFACE_DOWN',
         });
         if (actionType) {
           originalEvent?.preventDefault();
@@ -552,8 +552,8 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
 
       switchSurfaceByDirection: ({ context, event, self }) => {
         const next = neighbourOf(surfaceNavigationItems(catalog, packs.surfaceBindings(), context.pluginVisibility)
-          .filter(surface => surface.visible && surface.loaded), context.activeSurface.id, event.type === 'SWITCH_PLUGIN_UP' ? 'up' : 'down');
-        if (next) self.send({ type: 'SELECT_PLUGIN', surface: next.id });
+          .filter(surface => surface.visible && surface.loaded), context.activeSurface.id, event.type === 'SWITCH_SURFACE_UP' ? 'up' : 'down');
+        if (next) self.send({ type: 'SELECT_SURFACE', surface: next.id });
       },
 
       forwardHotkeyToSurface: ({ context, event, system }) => {
@@ -581,7 +581,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       })),
 
       setActiveSurface: enqueueActions(({ context, event, enqueue, system }) => {
-        const selection = typeOf(['SELECT_PLUGIN', 'SELECT_PLUGIN_BY_SHELL'], event);
+        const selection = typeOf(['SELECT_SURFACE', 'SELECT_SURFACE_BY_SHELL'], event);
         const { surface } = selection;
         const historyIndex = 'historyIndex' in selection ? selection.historyIndex : undefined;
         const newSurface = currentSurface(context, surface);
@@ -596,8 +596,8 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         }
 
         if (context.activeSurface.id !== newSurface.id) {
-          notifySurfaceActor(system.get(context.activeSurface.id), context.activeSurface.id, { type: 'PLUGIN_DEACTIVATED' });
-          notifySurfaceActor(system.get(newSurface.id), newSurface.id, { type: 'PLUGIN_ACTIVATED' });
+          notifySurfaceActor(system.get(context.activeSurface.id), context.activeSurface.id, { type: 'SURFACE_DEACTIVATED' });
+          notifySurfaceActor(system.get(newSurface.id), newSurface.id, { type: 'SURFACE_ACTIVATED' });
         }
 
         enqueue.assign(({ context }) => ({
@@ -609,7 +609,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
 
         // The host records the surface opened, so the next window and the next run open on it: a main window's only
         if (context.ownsLastActiveSurface && context.activeSurface.id !== newSurface.id) {
-          enqueue(() => client.send({ to: HOST.application, event: { type: 'SET_LAST_ACTIVE_PLUGIN', surface: newSurface.id } }));
+          enqueue(() => client.send({ to: HOST.application, event: { type: 'SET_LAST_ACTIVE_SURFACE', surface: newSurface.id } }));
         }
       }),
       toggleCanvas: assign(({ context }) => ({ defaultToggles: { canvas: !context.defaultToggles.canvas } })),
@@ -617,8 +617,8 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       trailNewSurface: enqueueActions(({ enqueue, context, event }) => {
         const surfaceId = event.type === 'DEFAULT_TOGGLE'
           ? (!context.defaultToggles.canvas ? (context.defaultSurface?.id ?? context.activeSurface.id) : context.activeSurface.id)
-          : typeOf(['SELECT_PLUGIN', 'SELECT_PLUGIN_BY_SHELL'], event).surface;
-        enqueue.sendTo('surfaceTrailer', { type: 'TRAIL_NEW_PLUGIN', id: surfaceId });
+          : typeOf(['SELECT_SURFACE', 'SELECT_SURFACE_BY_SHELL'], event).surface;
+        enqueue.sendTo('surfaceTrailer', { type: 'TRAIL_NEW_SURFACE', id: surfaceId });
         enqueue.assign(({ system }) => {
           const surfaceActor = system.get(surfaceId);
           return surfaceActor ? { targetView: computeCrumbs(surfaceActor.getSnapshot()).target ?? '' } : {};
@@ -639,7 +639,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       closeDevLetter: ({ self }) => {
         const threads = packs.designation('threads');
         if (threads) {
-          self.send({ type: 'SELECT_PLUGIN', surface: threads });
+          self.send({ type: 'SELECT_SURFACE', surface: threads });
         }
       },
     },
@@ -692,7 +692,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
     entry: [
       'spawnSurfaceActors',
       ({ context, system }) => {
-        notifySurfaceActor(system.get(context.activeSurface.id), context.activeSurface.id, { type: 'PLUGIN_ACTIVATED' });
+        notifySurfaceActor(system.get(context.activeSurface.id), context.activeSurface.id, { type: 'SURFACE_ACTIVATED' });
       },
       'trailActiveSurface',
       spawnChild('hotkeyListener', { id: 'hotkeyListener' }),
@@ -768,7 +768,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       'error': {},
     },
     on: {
-      PLUGIN_DECLARATIONS_CHANGED: { actions: ['refreshSurfaceDeclarations', 'updateEntityDestination'] },
+      SURFACE_DECLARATIONS_CHANGED: { actions: ['refreshSurfaceDeclarations', 'updateEntityDestination'] },
       APPLICATION_HOTKEYS: { actions: 'updateHotkeys' },
       // In every state: onboarding and the error page keep pack systems' startup data flowing too. The loader runs on
       // every establishment of the subscription, so packs a failed read left unloaded are picked up by the next one.
@@ -788,27 +788,27 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
           }
         }),
       },
-      PACK_PLUGINS_UNLOADED: { actions: 'removePackSurfaces' },
-      PLUGIN_VISIBILITY_UPDATED: { actions: 'updatePluginVisibility' },
-      SET_PLUGIN_VISIBILITY: { actions: 'setPluginVisibility' },
+      PACK_SURFACES_UNLOADED: { actions: 'removePackSurfaces' },
+      SURFACE_VISIBILITY_UPDATED: { actions: 'updatePluginVisibility' },
+      SET_SURFACE_VISIBILITY: { actions: 'setPluginVisibility' },
       OPEN_ENTITY: { actions: 'beginEntityOpen' },
       ENTITY_OPEN_FINISHED: { actions: assign(({ context, event }) => ({ awaitingSurface: context.awaitingSurface.filter(request => request.entityToken !== event.token) })) },
-      OPEN_PLUGIN: { actions: 'selectAndDeliver' },
-      SEND_TO_PLUGIN: { actions: 'deliverWithoutSelecting' },
+      OPEN_SURFACE: { actions: 'selectAndDeliver' },
+      SEND_TO_SURFACE: { actions: 'deliverWithoutSelecting' },
       // A backend's request: a main window opens the surface, a popout keeps the one it shows
-      OPEN_PLUGIN_FROM_APP: { guard: 'isMainWindow', actions: 'checkBackendOpenRequest' },
-      DELIVER_PLUGIN_EVENTS: { actions: 'deliverSurfaceEvents' },
+      OPEN_SURFACE_FROM_APP: { guard: 'isMainWindow', actions: 'checkBackendOpenRequest' },
+      DELIVER_SURFACE_EVENTS: { actions: 'deliverSurfaceEvents' },
       TRAIL_UPDATE: { actions: ['setBreadcrumbs', 'setTargetView'] },
       TRAIL_CLICK: { actions: ['cancelEntityOpen', 'setTargetView', 'sendRouteClick'] },
       DEFAULT_TOGGLE: { actions: ['trailNewSurface', 'toggleCanvas'] },
-      SELECT_PLUGIN: { actions: ['cancelEntityOpen', 'supersedeWaitingOpens', 'setActiveSurface', 'trailNewSurface'] },
-      SELECT_PLUGIN_BY_SHELL: { actions: ['setActiveSurface', 'trailNewSurface'] },
+      SELECT_SURFACE: { actions: ['cancelEntityOpen', 'supersedeWaitingOpens', 'setActiveSurface', 'trailNewSurface'] },
+      SELECT_SURFACE_BY_SHELL: { actions: ['setActiveSurface', 'trailNewSurface'] },
       RESIZE_PANEL: { actions: 'resizePanel' },
       TOGGLE_INSPECTION_PANEL: { actions: 'toggleInspectionPanel' },
       MAXIMIZE_CHAT: { actions: 'maximizeChat' },
       RESTORE_CHAT: { actions: 'restoreChat' },
-      SWITCH_PLUGIN_UP: { actions: 'switchSurfaceByDirection' },
-      SWITCH_PLUGIN_DOWN: { actions: 'switchSurfaceByDirection' },
+      SWITCH_SURFACE_UP: { actions: 'switchSurfaceByDirection' },
+      SWITCH_SURFACE_DOWN: { actions: 'switchSurfaceByDirection' },
       NAVIGATE_BACK: { actions: ['cancelEntityOpen', 'forwardNavToSurface'] },
       NAVIGATE_FORWARD: { actions: ['cancelEntityOpen', 'forwardNavToSurface'] },
       FORWARD_HOTKEY: { actions: 'forwardHotkeyToSurface' },

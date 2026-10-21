@@ -90,7 +90,7 @@ const isVisible = (id: string) => props.surfaces.find(surface => surface.id === 
 
 const togglePluginVisibility = (id: string) => {
   if (id === HOST.settings) return;
-  applicationState.send({ type: 'SET_PLUGIN_VISIBILITY', surface: id, visible: !isVisible(id) });
+  applicationState.send({ type: 'SET_SURFACE_VISIBILITY', surface: id, visible: !isVisible(id) });
 };
 
 const visibilityMenuItems = computed<MenuItem[]>(() =>

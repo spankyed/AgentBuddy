@@ -31,7 +31,7 @@ import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apackdev/sdk/types';
-import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import { HOST_SYSTEM_EVENT_TYPES, SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { installedEngine } from '@apackdev/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
@@ -316,7 +316,7 @@ function admitContributions(registration: PackRegistration, { steps: declaration
     systems: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.system
       ? [[ref, { machine: feature.system.machine, receives: [...eventContracts![featureId].system!.incoming, ...SYSTEM_EVENT_TYPES] }] as const] : [])),
     surfaceEvents: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.surface
-      ? [[ref, [...eventContracts![featureId].surface!.receives, ...PLUGIN_EVENT_TYPES]] as const] : [])),
+      ? [[ref, [...eventContracts![featureId].surface!.receives, ...SURFACE_EVENT_TYPES]] as const] : [])),
     designations: designationsOf(registration),
     repositories: new Map(Object.entries(registration.repositories ?? {})),
     services: new Map(Object.entries(registration.services ?? {})),

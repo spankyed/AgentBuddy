@@ -30,7 +30,7 @@ function runApplicationSystem(defaults: Record<string, boolean> = {}, surfaceIds
     actor.stop();
     stopListening();
   };
-  const visibilitySent = () => sent.filter((message) => message.event.type === 'PLUGIN_VISIBILITY_UPDATED');
+  const visibilitySent = () => sent.filter((message) => message.event.type === 'SURFACE_VISIBILITY_UPDATED');
   return { send: (event: EventFromLogic<typeof machine>) => actor.send(event), visibilitySent };
 }
 
@@ -41,21 +41,21 @@ describe('the host application system', () => {
   it('records a tab shown or hidden, and sends the visibility, defaults included, to the application surface', () => {
     const system = runApplicationSystem({ 'default-setup/logs': false, 'default-setup/notes': true });
 
-    system.send({ type: 'SET_PLUGIN_VISIBILITY', surface: 'default-setup/notes', visible: false });
+    system.send({ type: 'SET_SURFACE_VISIBILITY', surface: 'default-setup/notes', visible: false });
 
     expect(appState.get().pluginVisibility).toEqual({ 'default-setup/notes': false });
     expect(system.visibilitySent()).toEqual([{
       to: 'host/application',
       from: 'host',
       call: expect.any(String), 
-      event: { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'default-setup/logs': false, 'default-setup/notes': false } },
+      event: { type: 'SURFACE_VISIBILITY_UPDATED', pluginVisibility: { 'default-setup/logs': false, 'default-setup/notes': false } },
     }]);
   });
 
   it('records the surface last open', () => {
     const system = runApplicationSystem();
 
-    system.send({ type: 'SET_LAST_ACTIVE_PLUGIN', surface: 'default-setup/threads' });
+    system.send({ type: 'SET_LAST_ACTIVE_SURFACE', surface: 'default-setup/threads' });
 
     expect(appState.get().lastActivePlugin).toBe('default-setup/threads');
   });
@@ -64,8 +64,8 @@ describe('the host application system', () => {
   it('ignores a surface id that is not a ref', () => {
     const system = runApplicationSystem();
 
-    system.send({ type: 'SET_PLUGIN_VISIBILITY', surface: 'notes', visible: false });
-    system.send({ type: 'SET_LAST_ACTIVE_PLUGIN', surface: 'threads' });
+    system.send({ type: 'SET_SURFACE_VISIBILITY', surface: 'notes', visible: false });
+    system.send({ type: 'SET_LAST_ACTIVE_SURFACE', surface: 'threads' });
 
     expect(appState.get()).toMatchObject({ pluginVisibility: {} });
     expect(appState.get().lastActivePlugin).toBeUndefined();
