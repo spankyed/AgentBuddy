@@ -14,7 +14,7 @@ import { unitFor } from '../../../scripts/lib/chain-stamps.ts';
 import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@apackdev/sdk/testing';
-import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
+import { POOL_WIDTH } from '../../../scripts/lib/core-budget.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
 import { DEFAULT_FORK_BUDGET_MS } from '../../../tests/scripts/prepare-default-pack-fork.ts';
@@ -309,12 +309,6 @@ describe('every spawn an orchestrator makes is bounded', () => {
     expect(unbounded, 'these run a shell script with no wall-clock budget').toEqual([]);
   });
 
-  // Not for the budget any more — that is a declared class — but because the drift report compares a run
-  // against this number, and a step with none is one no run can contradict
-  it('every chain step declares what it costs healthy', () => {
-    expect(CHAIN_STEPS.filter((step) => step.seconds === undefined).map((step) => step.name)).toEqual([]);
-  });
-
   /**
    * Every step declares a timeout class, which is what actually bounds it.
    *
@@ -441,25 +435,19 @@ describe('every spawn an orchestrator makes is bounded', () => {
   });
 
   describe('what a timed-out step reports', () => {
-    const HERE = thisMachine();
-    const SMALLER = { cpu: 'Some Smaller CPU', cores: 4 };
-
-    it.each([HERE, SMALLER])('reports the bound without diagnosing stalled work on %j', machine => {
-      const why = timedOutBecause({ what: 'test:integration', timeout: 'suite', seconds: 60, measuredOn: HERE, machine });
+    it('reports the bound and the usual cost without diagnosing stalled work', () => {
+      const why = timedOutBecause({ what: 'test:integration', timeout: 'suite', seconds: 60 });
       expect(why).toContain('600s (suite)');
-      expect(why).toContain('Recorded cost: 60s');
-      expect(why).toContain(machineText(HERE));
-      expect(why).toContain(machineText(machine));
+      expect(why).toContain('usually takes 60s here');
       expect(why).toContain('does not distinguish slow progress from stalled work');
-      expect(why).not.toMatch(/wedged|deadlock|not a stale number|put the number on/);
+      expect(why).not.toMatch(/wedged|deadlock/);
     });
 
     it.each([undefined, 0])('does not invent a recorded cost for %s', seconds => {
-      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', seconds, measuredOn: HERE });
+      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', seconds });
       expect(why).toContain('900s (scenario)');
-      expect(why).toContain('This run carries no recorded cost');
-      expect(why).not.toContain('Recorded cost:');
-      expect(why).not.toMatch(/wedged|deadlock|put the number on/);
+      expect(why).toContain('no recorded cost');
+      expect(why).not.toContain('usually takes');
     });
   });
 

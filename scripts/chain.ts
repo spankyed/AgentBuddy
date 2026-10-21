@@ -46,11 +46,12 @@ import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
 import type { ExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { timeoutMsFor, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
-import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine } from './lib/core-budget.ts';
-import { asCount, idleNow, parseFlags } from './lib/measure.ts';
+import { box } from './lib/core-budget.ts';
+import { readStepSeconds, recordStepDurations, withRecordedSeconds } from './lib/step-durations.ts';
+import { asCount, parseFlags } from './lib/measure.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { driftedSteps, measurementsFrom, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { measurementsFrom, willNotCache } from './lib/step-timing.ts';
+import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { CHAIN_RUN_ENV, CHAIN_CORES_ENV, DIAGNOSTIC_RUN_ENV, poolWorkerLimit, poolForStep, poolDurationLines } from './lib/unit-pool.ts';
 import { parseShard, selectOnly, shardArg, STRICT_JOBS, strictJobSteps, type Shard, type StrictJob } from './lib/chain-only.ts';
@@ -321,7 +322,7 @@ async function runAndStamp(step: ChainStep, all: boolean, budget: number, extra:
  * alone. Resolving the widths against the flag instead was proposed and declined: it would turn the flag
  * into a simulation nothing can validate on the box it runs on, and the oversubscription it permits is
  * already what the soft budget allows a single step. What the divergence does cost is the schedule's
- * identity, which is why `isMeasuredSchedule` asks about both numbers.
+ * identity: a reading under `--cores 4` describes a different schedule from one under the default.
  */
 const budgetFrom = (cores: string | undefined): number => asCount(cores, 'cores') ?? box();
 
@@ -460,15 +461,16 @@ async function main(): Promise<void> {
       const reason = all ? '--all' : (moved === '' ? (why ?? '') : moved);
       console.log(`${(willRun ? 'run' : 'cached').padStart(7)} ${marker(needsApp(step))} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, reason)}`.trimEnd());
     }
-    // What bounds the plan, over the declared table — the question "which step is worth making faster",
-    // answered before anyone measures one. A step that is not on this path runs inside the shadow of the
-    // ones that are, so its own duration is not a saving. `criticalPathLine` has what that cost to learn.
-    const plannedPath = criticalPathLine(planned, 'declared');
+    // What bounds the plan, over what each step cost here recently — the question "which step is worth making
+    // faster". A step that is not on this path runs inside the shadow of the ones that are, so its own
+    // duration is not a saving. `criticalPathLine` has what that cost to learn.
+    const costed = withRecordedSeconds(planned, readStepSeconds(REPO_ROOT));
+    const plannedPath = criticalPathLine(costed.steps, 'recorded', costed.unread.length);
     if (plannedPath !== '') console.log(`\n${plannedPath}`);
     // What shortening any of them could buy, which a duration does not say: a step's saving is capped by
     // the second-longest route, so a long step on a dense graph can be worth nothing. `pathSavingsLine`
     // has the three proposals that cost.
-    const plannedSavings = pathSavingsLine(planned);
+    const plannedSavings = pathSavingsLine(costed.steps);
     if (plannedSavings !== '') console.log(`  ${plannedSavings}`);
     return;
   }
@@ -511,12 +513,6 @@ async function main(): Promise<void> {
   const dispatchSweep = freshnessSweep();
   pruneStamps();
   pruneRunEvidence();
-
-  // **Read before the run, not after it.** The drift report quotes this to whoever is about to type a
-  // number, and a reading taken as the run returns is of this run's own teardown: measured 2026-10-08, this
-  // box read 78% immediately after a chain run and ~91% once it had settled. Before needs no settling, which
-  // is why the five-second watch window the recorder's gate needed is not here.
-  const idleAtStart = idleNow();
 
   const outcome = await schedule({
     steps,
@@ -577,6 +573,8 @@ async function main(): Promise<void> {
   // and `inputs`/`outputs` are caching, so nothing makes them agree. This does not depend on their agreeing.
   const sweep = freshnessSweep();
 
+  // Read before this run's readings join the window, so a failure is compared with what the step usually costs
+  const recorded = readStepSeconds(REPO_ROOT);
   let classifyMs = 0;
   const failed = outcome.failed === undefined ? undefined : results.find((r) => r.step === outcome.failed);
   if (failed) {
@@ -592,13 +590,8 @@ async function main(): Promise<void> {
       optedOut: noClassify,
     });
     const why = failed.timedOut
-      ? timedOutBecause({
-        what: step.name,
-        timeout: step.timeout,
-        measuredOn: MEASURED_ON,
-        ...step.seconds === undefined ? {} : { seconds: step.seconds },
-      })
-      : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, budget, classifying)}`;
+      ? timedOutBecause({ what: step.name, timeout: step.timeout, seconds: recorded.get(step.name) })
+      : `${step.name} failed (exit ${failed.code})${howLong(recorded.get(step.name), failed.ms, budget, classifying)}`;
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
     // **Before the retry, which is what would take them.** The retry runs the step again, and a runner that
     // clears its output directory on the way in overwrites what the attempt being diagnosed wrote — the
@@ -691,28 +684,12 @@ async function main(): Promise<void> {
     if (voided.length > 0) console.log(voidedLine(voided, strict));
   }
 
-  // The table feeds the kill budget and the floor above, so a number a run has contradicted is worth more
-  // than a note in a doc nobody re-reads
-  // Every `seconds` is the cost under one admission policy, so a different one invalidates all of them at
-  // once — which happened silently the day a third lane landed two hours after a number was taken under two.
-  // The policy is now the box, because that is what the default budget is, and that makes a fact explicit
-  // that was only ever implicit: these numbers were always measured on one machine and nothing said which.
-  if (!isMeasuredMachine(MEASURED_ON)) {
-    // Context, and no instruction — this message fires *only* off the reference machine, where the one
-    // thing a reader could do with it is write a number that does not describe the table's schedule.
-    console.log(`\nchain-steps.ts' seconds were measured on ${machineText(MEASURED_ON)}; this is ${machineText(thisMachine())}.`);
-    console.log('  So the report below is context rather than advice: what a step cost here is true, and the');
-    console.log('  table it is compared against describes another machine.');
+  // What each passing step cost joins this machine's window, which `--dry` and the next failure read. Not a
+  // shard's: it ran part of a suite, and its time is not what the step costs
+  if (shardArgs.length === 0) {
+    const passed = new Set(results.filter((result) => result.code === 0).map((result) => result.step));
+    recordStepDurations(REPO_ROOT, new Map([...measuredMs].filter(([step]) => passed.has(step))));
   }
-
-  // The same population `driftedSteps` compares, so the denominator it is reported against is honest: a
-  // step with a declared cost and a reading of at least a second. Counted here because that function hands
-  // back only the rows that drifted, and its row shape is asserted whole elsewhere
-  const comparable = steps.filter((step) => step.seconds !== undefined
-    && Math.round((measuredMs.get(step.name) ?? 0) / 1000) >= 1).length;
-  const report = driftReport(driftedSteps(steps, measuredMs, outcome.peers), budget, MEASURED_ON, all,
-    thisMachine(), { idle: idleAtStart, comparable });
-  if (report !== '') console.log(report);
 
   console.log(`\n${verdictText()} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
   // After the verdict, so it is the last thing on screen and a reader who scrolled past everything else

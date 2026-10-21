@@ -64,20 +64,6 @@ export interface Leg {
    * this list honest.
    */
   readonly alsoReads?: readonly string[];
-  /**
-   * What it costs **in the chain**, where each leg is its own step — the same regime as `ChainStep.seconds`,
-   * which this becomes (`chain-steps.ts` copies it onto the generated step).
-   *
-   * **In the chain and not alone, which are two regimes for one field.** `driftedSteps` compares a chain
-   * run against these numbers; only `npm run typecheck`, run by a person directly, ever sees a leg alone.
-   * The figure for a leg alone is in that command's own doc, which is where it informs something.
-   *
-   * **It bounds nothing.** It sized each leg's kill deadline at four times until 2026-10-03, which made
-   * every leg's deadline a function of this machine; a leg is bounded by the `quick` class now
-   * (`step-timeouts.ts`), as the chain's own copy of it is. What is left here is the number a run is
-   * reported against, so re-measure rather than raise one.
-   */
-  readonly seconds: number;
 }
 
 /** The first ordering constraint: every other job reads what it builds */
@@ -93,24 +79,24 @@ export const ENSURE = 'packages:ensure';
  * plausible, and `--cores 1` is how to test it if a leg ever starts behaving differently in company.
  */
 export const TYPECHECK_LEGS: readonly Leg[] = [
-  { name: ENSURE, command: 'npm run packages:ensure', scope: ['apack-ears', 'apack-sdk', 'apack-ui', 'apack-cli', 'apack-testing'], seconds: 0.3 },
-  { name: 'typecheck:renderer', command: 'npm run typecheck:renderer', alsoReads: ['build/build-metadata.ts', 'package.json'], seconds: 9 },
-  { name: 'typecheck:api', command: 'npm run typecheck:api', alsoReads: ['package.json'], seconds: 7 },
-  { name: 'typecheck:ears', command: 'npm run typecheck:ears', seconds: 2 },
-  { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', seconds: 4 },
-  { name: 'typecheck:host', command: 'npm run typecheck:host', seconds: 4 },
-  { name: 'typecheck:ui', command: 'npm run typecheck:ui', seconds: 5 },
-  { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo', seconds: 7 },
-  { name: 'exports:check', command: 'npm run exports:check', seconds: 1 },
-  { name: 'schema:check', command: 'npm run schema:check', seconds: 0.5 },
-  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 7 },
-  { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 7 },
-  { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 10 },
+  { name: ENSURE, command: 'npm run packages:ensure', scope: ['apack-ears', 'apack-sdk', 'apack-ui', 'apack-cli', 'apack-testing'] },
+  { name: 'typecheck:renderer', command: 'npm run typecheck:renderer', alsoReads: ['build/build-metadata.ts', 'package.json'] },
+  { name: 'typecheck:api', command: 'npm run typecheck:api', alsoReads: ['package.json'] },
+  { name: 'typecheck:ears', command: 'npm run typecheck:ears' },
+  { name: 'typecheck:sdk', command: 'npm run typecheck:sdk' },
+  { name: 'typecheck:host', command: 'npm run typecheck:host' },
+  { name: 'typecheck:ui', command: 'npm run typecheck:ui' },
+  { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo' },
+  { name: 'exports:check', command: 'npm run exports:check' },
+  { name: 'schema:check', command: 'npm run schema:check' },
+  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo' },
+  { name: 'typecheck:cli', command: 'npm run typecheck:cli' },
+  { name: 'typecheck:pack', command: 'npm run typecheck:pack' },
   // Both compile `../../types/**/*.d.ts` through their own tsconfig `include`
-  { name: 'typecheck:main', command: 'npm run typecheck:main', alsoReads: ['types'], seconds: 3 },
-  { name: 'typecheck:preload', command: 'npm run typecheck:preload', alsoReads: ['types'], seconds: 2 },
-  { name: 'check:tiers', command: 'npm run check:tiers', scope: 'repo', seconds: 0.3 },
-  { name: 'lint:check', command: 'npm run lint:check', scope: 'repo', seconds: 5 },
+  { name: 'typecheck:main', command: 'npm run typecheck:main', alsoReads: ['types'] },
+  { name: 'typecheck:preload', command: 'npm run typecheck:preload', alsoReads: ['types'] },
+  { name: 'check:tiers', command: 'npm run check:tiers', scope: 'repo' },
+  { name: 'lint:check', command: 'npm run lint:check', scope: 'repo' },
 ];
 
 /**

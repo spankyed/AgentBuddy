@@ -190,8 +190,7 @@ committed file and looks like it worked. A derivation cannot: it compares and wr
 read fails and the next run passes.
 
 **`packages:check` is a chain step, for the opposite reason**: publint and attw over the five published trees
-cost seconds together (its declared `seconds` is in `chain-steps.ts`, and the chain reports any run that
-contradicts it, on the machine that table was measured on), so there is nothing to build a proxy for, and
+cost seconds together, so there is nothing to build a proxy for, and
 its only other homes were the publish workflow
 and a CI file whose triggers are commented out — the recorded-file checks ran at the one moment they cannot be
 cheap. **It takes no mutex, and that is a thing it had to stop needing**: `attw --pack <dir>` packs a tarball
@@ -225,11 +224,10 @@ integration half, 4.37x apart against a band of 2.5x. The half is a decision now
 (`scripts/lib/spec-halves.ts`), and nothing re-derives it.
 
 [`docs/reference/recorded-files.md`](docs/reference/recorded-files.md) has what each of those cost,
-measurement by measurement. **There are none left, and the chain's `seconds` table is the one that was.** It
-was recorded behind a band, a machine field, a budget check and an idle floor, and the quantity underneath
-was never one number — `test:smoke` read 11s, 16s, 20s, 21s and 24s across five runs that all passed that
-floor, because it is the cost beside whichever peers the schedule admitted. It is declared now, and its
-three readers all tolerate half-to-double, so nothing needed the apparatus the floor was defending.
+measurement by measurement. **There are none left.** What a chain step costs is a reading: a machine-local
+window of recent passing runs (`scripts/lib/step-durations.ts`), which orders nothing that decides pass or
+fail — it draws the critical path and is the context a failure report gives — so it needs no band, floor or
+machine field.
 
 The chain is the normal repository gate. **Automatic CI is disabled, on purpose:**
 `.github/workflows/ci.yml` has its `push` and `pull_request` triggers commented out while this is a
@@ -240,9 +238,8 @@ goal requires them; cite actual results, not an assumption that all CI runs or n
 **And when it does: CI may fail a check, never a clock.** A runner is smaller and noisier than any
 developer's box, so anything gating on wall-clock there manufactures flakes that read as code failures.
 Two things keep that true and are worth knowing before changing them: every kill deadline is a declared
-class rather than a multiple of a measurement (`scripts/lib/step-timeouts.ts`), and the drift report prints
-its numbers but offers no figure to write off the machine the table describes (`isMeasuredSchedule`), since
-nothing on a runner can produce a number that belongs in it. CI already does the right thing where it has its own bound —
+class rather than a multiple of a measurement (`scripts/lib/step-timeouts.ts`), and what a step costs is a
+reading of the machine it ran on, never a committed figure. CI already does the right thing where it has its own bound —
 `ci.yml`'s `timeout-minutes` is a round number nobody measured — and it is the chain that was the outlier.
 **Do not gate any of this on `process.env.CI`**: a CI-gated refusal in this repo never fires, and the one
 that was cost thirteen spec files a silent green (`@apackdev/host/build/packages-built`, on `ALLOW_UNBUILT`).
@@ -467,12 +464,8 @@ cannot be dropped, so it takes the third option, which is already this repo's co
 its conditions is an assertion; with them it is a citation"* — and a number quoted in prose is under the
 same rule as one printed by a command.
 
-**What holds any of this is a case, where the figure is derivable, and nothing otherwise.**
-`typecheck-legs.spec.ts` is the worked example: it holds this guide's leg count and the sum of the legs'
-declared `seconds`, and leaves the wall time beside them as a dated measurement — *"the derivable half is
-derived"*. There is no general check here and should not be: a scan cannot tell a derivable count from a
-measurement by looking at one, and holding a *measurement* against a record is the `spec-cost.json` disease
-the sample section above records. Three drifts were found by review on 2026-10-06 (a spec count 9 short, the
+**Nothing holds prose to code, and that is deliberate**: a spec pinning a guide's figure forces a doc edit
+for every code edit. Point at the record or the command that derives the figure instead. Three drifts were found by review on 2026-10-06 (a spec count 9 short, the
 ~1.5s above, and a "closest left" another step had overtaken); review is what catches the third kind, because
 a causal claim is an argument and no check holds an argument.
 
@@ -501,16 +494,12 @@ npm run build:default-setup          # Build the built-in pack and ensure packag
 npm run build:runtime    # Build the app runtime after build:default-setup
 npm run build:production       # Full production build (build/build.sh)
 
-npm run typecheck        # Every check below, plus check:specifiers — its 17 legs run at once
-                         # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 74.1s of
-                         # single-threaded compilers in 18.0s (median of 3, 17.5-18.3s, 79% idle, 2026-10-08). The
-                         # two figures are the table's own — the leg count and the sum of what they declare —
-                         # and typecheck-legs.spec.ts holds this line to them, so a leg added or re-costed
-                         # fails here rather than leaving the sentence to drift. The wall time is a
-                         # measurement and can only be re-measured.
+npm run typecheck        # Every check below, plus check:specifiers — its legs run at once
+                         # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts): 18.0s wall
+                         # (median of 3, 17.5-18.3s, 79% idle, 2026-10-08).
                          # **It answers for every recorded file**: beside the legs it borrows the two
                          # whose checks are chain steps (api:check, facade:check — RECORDED_FILE_CHECKS), taking
-                         # each step's own timeout class, declared cost and core width rather than restating
+                         # each step's own timeout class and core width rather than restating
                          # them. Borrowed, not moved: as legs they would need five hand-written fields each
                          # and would drop inputs that decide what a report says.
                          # **Two ordered prerequisites, then the rest at once.** `packages:ensure` builds what
@@ -576,14 +565,11 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # each would cache results the other took against a different tree, and `cached`
                          # would mean "some run with these inputs passed". A second run names the first and
                          # exits 1; `--dry` is exempt, reading the tree and writing nothing.
-                         # Afterwards it names what the run contradicted — a step past double its declared
-                         # `seconds`, one that passed and is already stale again, one whose measured cost
-                         # outgrew its timeout rung. `seconds` is **declared**, so the remedy is an edit the
-                         # report prints for you; on the machine its table was measured on it offers the
-                         # number, and anywhere else it gives the rows without one, since the figure it
-                         # would name describes that box and not this one.
+                         # Afterwards it names a step that passed and is already stale again. What each
+                         # passing step cost joins a machine-local window (scripts/lib/step-durations.ts),
+                         # which `--dry` and a failure report read; nothing is committed.
                          #   --dry      the plan, why each step is or is not cached, and **what bounds it**:
-                         #              the critical path, plus **the most any step on it could buy**. A
+                         #              the critical path over recent runs here, plus **the most any step on it could buy**. A
                          #              step off the path runs in the shadow of the ones on it, and a step
                          #              on it is capped by the second-longest route — measured 2026-10-06,
                          #              a 95s step on a 118s path buys 19s, because another route sits at

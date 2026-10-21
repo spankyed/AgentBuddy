@@ -31,21 +31,19 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # standing in for the mechanism. The classification retry was the sharper half: it
                          # re-runs the failed step, so its output had no reader at all and the step script's
                          # own log file was truncated by the attempt being diagnosed.
-                         # Afterwards it names the steps a run contradicted, wherever it ran — what the
-                         # measured schedule gates is the figure it offers to write, never the rows: one
-                         # past double its declared
-                         # `seconds`, and one that passed and is already stale again — the second with the
+                         # Afterwards it names a step that passed and is already stale again, with the
                          # inputs that differ and whether each moved while the step ran (an ordering to
-                         # fix) or since.
+                         # fix) or since. What each passing step cost joins a machine-local window
+                         # (scripts/lib/step-durations.ts) that `--dry` and a failure report read.
                          #   --dry     the plan and why each step is or is not cached, running nothing —
-                         #             and **what bounds it**: the critical path over the declared table,
+                         #             and **what bounds it**: the critical path over recent runs here,
                          #             which is the answer to "which step is worth making faster". A step
                          #             off that path runs inside the shadow of the ones on it, so its own
                          #             duration is not a saving. `--dry --all` gives the cold chain's path,
                          #             since `--all` plans every step; no second flag, the composition
                          #             already means it
                          #   --all     every step regardless of its stamp, forcing those that keep a cache
-                         #             of their own; the run each step's `seconds` is checked on
+                         #             of their own
                          #   --cores N how much of the machine to spend. **This machine's cores by default**,
                          #             and the only limit there is: a step declares what it takes
                          #             (`POOL_WIDTH`, scripts/lib/core-budget.ts) and admission is the sum,

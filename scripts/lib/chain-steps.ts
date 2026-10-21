@@ -133,60 +133,10 @@ export interface ChainStep {
    * How long it may run before its process group is killed, by the kind of work it is
    * (`TIMEOUT_MS`, `scripts/lib/step-timeouts.ts`).
    *
-   * **Declared, and deliberately not derived from `seconds`.** The deadline was `seconds × 4` until
-   * 2026-10-03, which made it a function of one box: a machine with a third of the cores runs the same
-   * deadline over a step three times slower. A class carries no machine. Thresholding `seconds` into a class
-   * would re-couple the two, just coarsely, which is the shortcut `step-timeouts.ts` exists to refuse.
-   *
-   * It is required, as `Leg.seconds` is, because a step with no class has no bound — and an unbounded step
-   * is the hang that `boundedSpawn` was written for.
+   * Declared, and never derived from what a step costs: a class carries no machine (`step-timeouts.ts`).
+   * Required, because a step with no class has no bound — the hang `boundedSpawn` was written for.
    */
   readonly timeout: TimeoutClass;
-  /**
-   * What this step costs **when it does its work**, in seconds, measured under the chain's own default
-   * admission. Not what it costs when it is cached: `packages:ensure` returns in 0.3s with nothing
-   * stale and takes 14s when it builds, and recording the 0.3 gave a step that builds a budget sized for a
-   * step that does not, and a timeout message claiming it "costs 1s healthy".
-   *
-   * **It bounds nothing.** It did until 2026-10-03, when a kill deadline was `seconds × 4` — and what that
-   * made every deadline in the repo was a function of this one machine. The deadline is a declared class
-   * now (`timeout` above), so what is left here is a *report*: the weight on the critical path, and the
-   * number a run is compared against. A stale value misreports the floor and nothing else, which is the
-   * whole of why this field may stay machine-bound (`docs/archive/plans/costs-across-machines.md`).
-   *
-   * **Declared by hand, not recorded, and that is this field's one design choice.** Three readers use it —
-   * `driftedSteps` reports a run that contradicts it, `declaredShare` bounds it against the step's timeout
-   * rung, and `criticalPath` sums it to say what the chain waits on — and not one of them gates a merge on
-   * it. So none needs the number to be *fresh*, only approximately true of one machine, and every one of
-   * them tolerates the half-to-double band. A recorder for it needed a band, a window, a machine field and
-   * an idle floor before one reading could be compared with another, and the quantity underneath was never
-   * one number: `test:smoke` read 11s, 16s, 20s, 21s and 24s across five runs that all passed that floor,
-   * because this is the cost *beside whichever peers the schedule admitted*. **Keep the reading; do not
-   * decide with it** — the root guide's rule, and `docs/reference/recorded-files.md` has what deciding
-   * with one cost the last time.
-   *
-   * **To change one:** run `npm run chain -- --all` and read the drift report, which prints the declared
-   * value beside the measured one; edit this number to match. That judgement is a person's, because one
-   * reading cannot tell a step that grew from a box that was busy — the rows are evidence, not an
-   * instruction. Every run reports a step that ran past double this number, which is what keeps the table
-   * honest without anyone remembering to check. A step that came in under half is reported only by `--all`
-   * at `MEASURED_ON`: a run with steps cached, or a smaller budget, has less contention and makes
-   * everything look fast, so that direction says nothing about the table. `driftedSteps` finds both;
-   * `driftReport` in chain-output.ts decides which the run can answer for.
-   *
-   * For a step that keeps a cache of its own — the two pooled steps, which run only their stale projects —
-   * it is the cost of the *whole* pool, so that the drift report compares like with like. Those steps
-   * needed no rule of their own once the gate was on the
-   * run: an incremental pool run lands under half, which is the direction every step is now quiet about.
-   *
-   * **It is the cost in the chain at `MEASURED_ON`, not the cost alone.** Those differ by about two
-   * times for a CPU-bound step — `typecheck` was 29s by itself and 63s sharing the machine — so the number is
-   * meaningless without the schedule, and saying only "what this costs when it does its work" is how a
-   * measurement taken under one admission policy came to sit in a chain running another for two days. That
-   * is why `MEASURED_ON` records the box these were taken on and the chain says so when it differs:
-   * the schedule was always implicit in the machine, and nothing named it.
-   */
-  readonly seconds?: number;
 }
 
 /** Every step, by name, for validating the derived edges */
@@ -714,24 +664,6 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
   'publish-checks': { packages: true },
 };
 
-/**
- * Each pool's whole-pool cost, in the chain at `MEASURED_ON`, measured with every project stale —
- * `npm run chain --all`, the only run that does all of that work and the run `driftedSteps` checks it on.
- *
- * Re-measured 2026-09-27 with the rest of this table: 20 and 21 were taken before `typecheck` stopped
- * running its legs one at a time, and a step that asks for half the cores makes everything beside it
- * slower — which is where those seconds went rather than being new work.
- *
- * It bounds nothing — the chain step and the pool's own inner spawn both take the `suite` class now
- * (`step-timeouts.ts`), so neither deadline is a function of this number. What it still has to be is the
- * cost of the whole pool and never of a partial run, so that the drift report compares like with like.
- *
- * **Correcting one of these is an edit here**, like every other declared cost: the drift report prints what
- * the pool measured beside what this says, and one key moves at a time. A run that measured the machine
- * rather than the code is the reason that is a judgement rather than a rewrite — `driftedSteps` reports both
- * directions and neither is self-evidently the code's.
- */
-export const POOL_SECONDS: Record<'host' | 'pack' | 'integration' | 'native', number> = { host: 34, pack: 19, integration: 60, native: 60 };
 
 /**
  * The files a chain step is declared in — the two tables, as one list, repo-relative.
@@ -894,9 +826,8 @@ const TYPECHECK_STEPS: readonly ChainStep[] = TYPECHECK_LEGS
   .map((leg) => ({
     name: leg.name,
     // Declared beside the legs (`LEG_TIMEOUT`), so the runner and this copy of the same steps cannot
-    // disagree about it — they each named the class themselves until 2026-10-03.
+    // disagree about it
     timeout: LEG_TIMEOUT,
-    seconds: leg.seconds,
     inputs: legInputs(leg),
     // A leg reading every source tree reads around the fixture packs' build output for the same reason
     // the single step did: `tsc -p tests` compiles `e2e/**` only and `check:specifiers` filters
@@ -923,10 +854,6 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
     name: `test:unit:${kind}`,
     // A pool fans out across workers
     timeout: 'suite' as const,
-    // Measured on the pool, not summed from its suites. Summing gave the host pool 50s for a step that
-    // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
-    // them. `driftedSteps` reported it on every run.
-    seconds: POOL_SECONDS[kind],
     ...inputsForSuites(suites, 'fast'),
     // It keeps a cache of its own, so the chain's `--all` has to reach inside it
     forceArgs: ['--all'],
@@ -949,13 +876,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // it does depends on which other step's `pretest` rebuilds the stamps first, which across three lanes is a
   // race. The step's own check is content-addressed and returns in ~0.3s warm, so a chain-level cache on top
   // of it buys nothing and is a second record of one fact.
-  // `seconds` is the warm cost, which is what it does on almost every run: 0.3s, measured three times, and
-  // the chain's warm floor is unchanged at 26.6s. The cold case is 14s and reports drift once — which is a
-  // run where you have just changed a package's source and are rebuilding it anyway.
-  // 14, not the 0.3 its warm check costs: `seconds` is what a step costs when it does its work, and this one's
-  // work is the build. The paragraph on that field describes this step getting it wrong — "a timeout message
-  // claiming it costs 1s healthy" — and 1 was still here until the overrun report named it, 1s -> 14s.
-  { name: 'packages:ensure', timeout: 'suite', seconds: 14,
+  { name: 'packages:ensure', timeout: 'suite',
     neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
       + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
@@ -1000,7 +921,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    */
   // `suite` because it fans out — three extractions at once (`scripts/api-check.ts`) — which is the kind of
   // work that rung names. `chain-graph.spec.ts` holds every step to the rung its work implies
-  { name: 'api:check', timeout: API_CHECK_TIMEOUT, seconds: 8,
+  { name: 'api:check', timeout: API_CHECK_TIMEOUT,
     // The three packages it reports on, and nothing else that was built. It declared every build output
     // (`PACKAGE_BUILD_OUTPUTS`) until 2026-10-05, which keyed it on the `@apackdev/cli` and `@apackdev/testing`
     // bundles it never opens and on the `publish/` trees, a staged copy of the same declarations — so a CLI
@@ -1034,10 +955,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     excludeSuffixes: ['.js', '.mjs', '.cjs', '.js.map', '.mjs.map', '.cjs.map', '.css', '.css.map'] },
   // Nothing it runs writes into a tree another step reads, so it takes no mutex: `scripts/packages-check.ts`
   // packs each tarball `attw` wants into a temp directory outside the repository, where `attw --pack` packed
-  // it inside the tree it was checking. That cost the step a conflict with 29 of the 30 — 6s on its own of a
-  // cold run, simulated over this table's declared seconds — and the recorded
-  // `ENOENT: open 'publish/apack-ui-0.1.0.tgz'`
-  { name: 'packages:check', timeout: 'quick', seconds: 6,
+  // it inside the tree it was checking, which conflicted with every other step reading those trees.
+  { name: 'packages:check', timeout: 'quick',
     // Its own script and what that reaches, as `api:check` declares its own: `packages-check-plan.ts` decides
     // which tool is asked of which tree, and `published-manifest.ts` is where `packTree` lives — so an edit to
     // either moves what this step checks while a fingerprint over the trees alone would read fresh. The two
@@ -1052,7 +971,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // Build the built-in pack before build:runtime reads its outputs.
   // Includes cold compiler capture, codegen, all bundles and final source/input verification.
   // 59.0s median of 3 (58.7-72.1s, 60% idle, 2026-10-21), measured on a busy box, which can only inflate it.
-  { name: 'build:default-setup', timeout: 'suite', seconds: 60, outputs: PACK_OUTPUTS,
+  { name: 'build:default-setup', timeout: 'suite', outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `apack pack build` never reads those
     //
     // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the
@@ -1065,7 +984,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: PACK_DERIVED_READS },
   // Compare the committed report with a verified current build; never regenerate shared inputs here.
   // Source/dependency freshness uses the build's recorded context, not this inspecting command's compiler.
-  { name: 'facade:check', timeout: 'quick', seconds: 7,
+  { name: 'facade:check', timeout: 'quick',
     inputs: [...PACK_DERIVED_READS, ...PACK_OUTPUTS] },
   // The fixture packs depend on default-setup, so they need its snapshot from build:default-setup
   //
@@ -1077,11 +996,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // condition to re-check: were this step's work ever to become `apack pack build` alone, or were that skip to
   // grow to cover the typecheck or the specs, it would have the shape the pool steps had — stale for a
   // reason its inner layer cannot see, so it runs, skips everything and stamps green.
-  //
-  // 97s, not the 73s it takes alone (2026-10-21, 73% idle): `seconds` is what a step costs under the chain's
-  // own default admission, because that is the schedule the drift report compares against, and beside its two
-  // peers there it took 97s.
-  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 97, outputs: FIXTURE_OUTPUTS,
+  { name: 'test:external-pack:contract', timeout: 'suite', outputs: FIXTURE_OUTPUTS,
     // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
@@ -1090,7 +1005,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // A full shipped-pack fork is a separate producer, not work charged to the fixture contract suite.
   // Its 120s is the shipped build's measured 60s with as much again for the archive phase, which is not measured separately.
   // A 600s build, 180s archive and 120s housekeeping compose the existing 900s scenario bound.
-  { name: 'test:external-pack:fork', timeout: 'scenario', seconds: 120, outputs: [DEFAULT_FORK_OUTPUT],
+  { name: 'test:external-pack:fork', timeout: 'scenario', outputs: [DEFAULT_FORK_OUTPUT],
     inputs: [...PACK_DERIVED_READS, ...BOUNDED_RUNNER, 'tests/scripts/prepare-default-pack-fork.ts',
       ...['apack-host', ...workspaceDeps('apack-host')].flatMap(dependencySource), ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
@@ -1102,16 +1017,13 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // Needs `build:default-setup` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. It used to run after `build:default-setup` only because of where it sat
   // in this table, which `orderedSteps` never promised.
-  // `POOL_SECONDS`, not a literal: one cost declared twice drifts the moment somebody edits whichever copy
-  // they found first
-  { name: 'test:integration', timeout: 'acceptance', seconds: POOL_SECONDS.integration,
+  { name: 'test:integration', timeout: 'acceptance',
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
   // Native runtime and live-watcher scenarios, beside integration rather than inside it: same reads, and a
   // run of its own so it can be scheduled, selected and sharded apart from the ordinary integration specs.
-  // Its cost is declared like the integration pool's, until a completed run refreshes it
-  { name: 'test:native', timeout: 'acceptance', seconds: POOL_SECONDS.native,
+  { name: 'test:native', timeout: 'acceptance',
     forceArgs: ['--all'],
     ...inputsForSuites(NATIVE_SUITES, 'native') },
   // build:default-setup owns pack outputs; build:runtime only builds the four app workspaces.
@@ -1123,7 +1035,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // entry into the pack's `src`; `check:tiers` and the app build's own header are what keep that from coming
   // back quietly
   // 29.2s run alone (2026-10-21, 80% idle).
-  { name: 'build:runtime', timeout: 'suite', seconds: 29, outputs: APP_OUTPUTS,
+  { name: 'build:runtime', timeout: 'suite', outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload', 'apack-host'].flatMap(workspace),
       'packages/api/tsup.config.ts', 'build/build-metadata.ts', 'package.json', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
@@ -1131,7 +1043,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // app workspace bundle stays identical, so their cache keys must include PACK_OUTPUTS too.
   // 83.4s (2026-10-21, 76% idle): each fixture pack's Playwright suite on one worker per three cores, with
   // the default-fork lifecycle running beside them.
-  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 84,
+  { name: 'test:external-pack:app', timeout: 'scenario',
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@apackdev/testing` resolves to its
@@ -1162,7 +1074,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', timeout: 'suite', seconds: 16,
+  { name: 'test:smoke', timeout: 'suite',
     // The fixture writes the app's stdout and stderr here (`app-<workerIndex>.log`), which is the only
     // account of why an app did not start or did not close. Playwright clears the directory on the way in,
     // so the retry would take it
@@ -1175,7 +1087,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
   // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
   // nothing and is still there when you want it, which is what it was for.
-  { name: 'test:e2e', timeout: 'suite', seconds: 26,
+  { name: 'test:e2e', timeout: 'suite',
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     evidence: ['.apack/tests/results'],
@@ -1196,12 +1108,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    * Neither half deletes that dir: it is the author half's declared output, and a step whose output is gone
    * reads as never-built. The author half clears the previous run's at its start.
    */
-  { name: 'test:packaged-authoring:author', timeout: 'scenario', seconds: 95,
+  { name: 'test:packaged-authoring:author', timeout: 'scenario',
     outputs: ['tests/authoring-handoff', 'tests/authoring-handoff/work-ready', 'tests/authoring-handoff/archive'],
     // APACK_HOST selects default-setup's built snapshot for the external pack's dependency.
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring-author.sh',
       'tests/scripts/lib', ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
-  { name: 'test:packaged-authoring:app', timeout: 'suite', seconds: 9,
+  { name: 'test:packaged-authoring:app', timeout: 'suite',
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring-app.sh',
       'tests/scripts/lib', 'tests/authoring-handoff', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
 ];

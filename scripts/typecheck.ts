@@ -34,7 +34,7 @@
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { CHAIN_STEPS } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { box, coresFor, MEASURED_ON } from './lib/core-budget.ts';
+import { box, coresFor } from './lib/core-budget.ts';
 import { pruneDepFiles } from './lib/dep-files.ts';
 import { asCount, parseFlags } from './lib/measure.ts';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
@@ -72,7 +72,6 @@ interface Job {
   readonly command: string;
   readonly cwd?: string;
   readonly timeout: TimeoutClass;
-  readonly seconds: number;
   readonly cores: number;
   readonly dependsOn: readonly string[];
 }
@@ -82,7 +81,7 @@ function borrowed({ name, command, cwd, timeout }: TypecheckCommand): Job {
   const step = CHAIN_STEPS.find((candidate) => candidate.name === name);
   if (!step) throw new Error(`${name} is not a chain step, so there is no class or cost to borrow — `
     + 'either it was renamed or it belongs in TYPECHECK_LEGS');
-  return { name, command, cwd, timeout: timeout ?? step.timeout, seconds: step.seconds ?? 0, cores: coresFor(name),
+  return { name, command, cwd, timeout: timeout ?? step.timeout, cores: coresFor(name),
     dependsOn: [ENSURE, CODEGEN] };
 }
 
@@ -98,13 +97,12 @@ const JOBS: readonly Job[] = [
     name: leg.name,
     command: leg.command,
     timeout: LEG_TIMEOUT,
-    seconds: leg.seconds,
     cores: coresFor(leg.name),
     dependsOn: leg.name === ENSURE ? [] : [ENSURE, CODEGEN],
   })),
   // Generation captures the compiler/dependency installation before compiling declarations; it is a
   // pack compilation prerequisite, rather than one of the single-tsc reader legs.
-  { ...GENERATE_ENTRIES, timeout: 'suite', seconds: 2,
+  { ...GENERATE_ENTRIES, timeout: 'suite',
     cores: 1, dependsOn: [ENSURE] },
   ...RECORDED_FILE_CHECKS.map(borrowed),
 ];
@@ -131,9 +129,8 @@ const result = await schedule({
   skip: () => false,
   async run(leg) {
     const [command, ...args] = leg.command.split(' ');
-    // Not `leg.seconds`: a deadline from a measurement is a deadline from this machine. The class is the job's
-    // own — `LEG_TIMEOUT` for a leg, and for a borrowed step the one its chain entry declares, so a step that
-    // fans out keeps the rung sized for that rather than a leg's.
+    // The class is the job's own — `LEG_TIMEOUT` for a leg, and for a borrowed step the one its chain entry
+    // declares, so a step that fans out keeps the rung sized for that rather than a leg's.
     const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[leg.timeout].ms, { cwd: leg.cwd });
     done.set(leg.name, outcome);
     // One line as it finishes, so a ten-second command is not ten seconds of silence. Completion order, since
@@ -149,12 +146,7 @@ for (const leg of failed) {
   // `LEG_TIMEOUT`, never the literal: this named `'quick'` while the kill above read `TIMEOUT_MS[LEG_TIMEOUT]`,
   // so changing the legs' class would have had the message report a deadline other than the one that fired
   const why = outcome.timedOut === true
-    ? timedOutBecause({
-      what: leg.name,
-      timeout: leg.timeout,
-      measuredOn: MEASURED_ON,
-      seconds: leg.seconds,
-    })
+    ? timedOutBecause({ what: leg.name, timeout: leg.timeout })
     : `${leg.name} failed (exit ${outcome.code})`;
   process.stderr.write(`\n${'─'.repeat(72)}\n${why}\n${'─'.repeat(72)}\n${outcome.output}\n`);
 }

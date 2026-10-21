@@ -16,7 +16,7 @@ import { DIAGNOSTIC_RUN_ENV, CHAIN_CORES_ENV, holdPoolLock, poolWorkers, poolWor
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { unitFor } from '../../../scripts/lib/chain-stamps.ts';
-import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
 import { coresFor } from '../../../scripts/lib/core-budget.ts';
 import { poolDurationLines } from '../../../scripts/lib/unit-pool.ts';
 import { writeDurations } from '../../../scripts/lib/spec-durations.ts';
@@ -257,8 +257,8 @@ describe('measureCommandFor', () => {
   });
 
   /**
-   * The whole pool, because `POOL_SECONDS` declares one cost for it: a command that ran the stale subset
-   * would answer a cheaper question and read as a step that had shrunk.
+   * The whole pool, because the step's cost is the whole pool's: a command that ran the stale subset would
+   * answer a cheaper question and read as a step that had shrunk.
    */
   it('names every suite the pool has, not a subset', () => {
     for (const pool of pools()) {
@@ -504,13 +504,6 @@ describe('the pools', () => {
     expect([...live].filter((file) => !shape.test(file)),
       'a stamp keyed by less than the suite, half and provenance is an earlier shape, which prune must drop')
       .toEqual([]);
-  });
-
-  // `POOL_SECONDS` cannot be keyed off `Pool`: `unit-pool.ts` imports the steps, so the steps cannot import
-  // the pools back. A check stands in for the derivation, because a pool with no budget gets `budgetFor` of
-  // nothing — a timeout of NaN, which bounds no run at all.
-  it('each have a measured budget', () => {
-    expect(Object.keys(POOL_SECONDS).sort()).toEqual([...names].sort());
   });
 });
 

@@ -1,11 +1,11 @@
-// The two pure readings of a run's timings: the floor lanes could reach, and whether the table still tells
-// the truth about what a step costs.
+// The pure readings of a run's timings: the floor lanes could reach, what a run measured, and which passing
+// steps are already stale.
 import { describe, expect, it } from 'vitest';
-import { criticalPath, driftedSteps, measurementsFrom, willNotCache } from '../../../scripts/lib/step-timing.ts';
+import { criticalPath, measurementsFrom, willNotCache } from '../../../scripts/lib/step-timing.ts';
 import type { TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
 import type { SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
 
-/** A pooled step, which `driftedSteps` treats like any other — the run decides what may be reported, not the step */
+/** A step as the timing readers see it */
 type TimedStep = SchedulableStep & { readonly forceArgs?: readonly string[]; readonly timeout?: TimeoutClass };
 
 const step = (name: string, dependsOn: string[] = [], extra: Partial<TimedStep> = {}): TimedStep =>
@@ -33,96 +33,16 @@ describe('criticalPath', () => {
   });
 });
 
-describe('driftedSteps', () => {
-  const steps = [step('slow', [], { seconds: 10 }), step('fast', [], { seconds: 10 }), step('right', [], { seconds: 10 })];
-
-  it('reports a step that now costs more than twice what it claims', () => {
-    expect(driftedSteps(steps, new Map([['slow', 21_000]]))).toEqual([{ name: 'slow', declared: 10, measured: 21, peers: 0 }]);
-  });
-
-  it('reports one that claims far more than it costs, since that inflates the critical path', () => {
-    expect(driftedSteps(steps, new Map([['fast', 4_000]]))).toEqual([{ name: 'fast', declared: 10, measured: 4, peers: 0 }]);
-  });
-
-  // Wide on purpose: lanes, a warm cache and a loaded machine move a step a long way, and a warning that
-  // fires on ordinary variance is one people learn to skip
-  it('says nothing about ordinary variance inside the band', () => {
-    expect(driftedSteps(steps, new Map([['right', 19_000]]))).toEqual([]);
-    expect(driftedSteps(steps, new Map([['right', 5_000]]))).toEqual([]);
-  });
-
-  // `seconds` is what a step costs when it does its work, and a step can run having nothing to do:
-  // packages:ensure returns in 0.4s with the packages already fresh. Reporting that told the first run of
-  // this check to record `seconds: 14 -> 0`, the cached cost.
-  it('says nothing about a step that finished in under a second, which may have had nothing to do', () => {
-    expect(driftedSteps([step('ensure', [], { seconds: 14 })], new Map([['ensure', 400]]))).toEqual([]);
-  });
-
-  /**
-   * The other end of the same rule, and the one that shipped reporting forever.
-   *
-   * `check:tiers` declares 0.3s. A 1s measurement is past twice that, so the report named it on every full
-   * run — and `SECONDS_FLOOR` refuses to write a movement of a second or less, so "re-measure, or record"
-   * could not be done. Three steps declare under a second, so this was not one step's quirk.
-   */
-  it('says nothing about a drift the record would refuse to write', () => {
-    expect(driftedSteps([step('tiers', [], { seconds: 0.3 })], new Map([['tiers', 1_000]]))).toEqual([]);
-  });
-
-  it('still reports a sub-second declaration that moved further than the floor', () => {
-    // Not over-broad: the guard is about the size of the movement, not about the size of the declaration,
-    // and 0.3 -> 2 is a step that really has grown
-    expect(driftedSteps([step('tiers', [], { seconds: 0.3 })], new Map([['tiers', 2_000]])))
-      .toEqual([{ name: 'tiers', declared: 0.3, measured: 2, peers: 0 }]);
-  });
-
-  /**
-   * The two pooled steps run only their stale projects, so an incremental run is normally well under half
-   * the declared cost — which is the whole pool's. That fired the advisory on nearly every run, and a warning
-   * that is always on is one nobody reads. `forceArgs` is the marker, because it already means the step keeps
-   * a cache of its own.
-   */
-  describe('a step that keeps a cache of its own', () => {
-    const pooled = [step('test:unit:host', [], { seconds: 20, forceArgs: ['--all'] })];
-
-    /**
-     * The `--all` gate that used to live here moved to `driftReport`, because it was never only about pooled
-     * steps: measured, an incremental run left `typecheck` at 12s against a declared 27s, having run with
-     * nine of twelve steps cached and so no contention. One gate on the run, rather than a flag per step.
-     * `chain-output.spec.ts` holds it now.
-     */
-    it('is reported like any other step, the run being what decides whether to ask', () => {
-      expect(driftedSteps(pooled, new Map([['test:unit:host', 5_000]])))
-        .toEqual([{ name: 'test:unit:host', declared: 20, measured: 5, peers: 0 }]);
-    });
-
-    // The direction the kill budget cares about: at four times the declared cost, budgetFor starts killing
-    it('is reported when it overran, not only when it undershot', () => {
-      expect(driftedSteps(pooled, new Map([['test:unit:host', 50_000]])))
-        .toEqual([{ name: 'test:unit:host', declared: 20, measured: 50, peers: 0 }]);
-    });
-  });
-
-  it('says nothing about a step that did not run, or one that declares no measurement', () => {
-    expect(driftedSteps(steps, new Map())).toEqual([]);
-    expect(driftedSteps([step('undeclared')], new Map([['undeclared', 999_000]]))).toEqual([]);
-  });
-});
-
 /**
  * What a run measured, which is not the same as what each of its steps took.
  *
  * **A killed step's elapsed time is its deadline, not its cost.** `boundedSpawn` returns when the budget runs
  * out, so a wedged `test:integration` reports ~300s — and every reader of that map takes it for a measurement:
- * the drift report would offer 300s as the edit, and `criticalPath` puts the deadline on the floor. None of them is wrong
- * about the number; the number is not a measurement.
- *
- * `recordTheCosts` already draws this line at the other end, and its reasoning is the same: *"Under a second is
- * not a measurement of the step's work… `packages:ensure` returns in 0.3s with the packages fresh and takes 14s
- * when it builds."* A deadline is the same category and the more dangerous one, being large rather than small.
+ * the duration window would record 300s as the cost, and `criticalPath` puts the deadline on the floor.
+ * Neither is wrong about the number; the number is not a measurement.
  *
  * A step that failed *without* being killed is kept: it ran and stopped early, so its time is real and under,
- * which `driftedSteps`' lower band is already there for.
+ * and the window takes only passing steps anyway.
  */
 describe('measurementsFrom', () => {
   it('leaves out a step whose time is the deadline it was killed at', () => {

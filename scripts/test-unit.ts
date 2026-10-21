@@ -21,8 +21,6 @@
  */
 import * as os from 'node:os';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { POOL_SECONDS } from './lib/chain-steps.ts';
-import { MEASURED_ON } from './lib/core-budget.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { UNIT_SUITES } from './lib/unit-suites.ts';
 import { poolDurationLines, type Pool as PoolKind } from './lib/unit-pool.ts';
@@ -46,14 +44,13 @@ exitOnEpipe();
  *
  * `integration` is not here: it is `npm run test:integration`, its own pool and its own chain step.
  */
-interface Pool { label: string; kind: PoolKind; seconds: number }
+interface Pool { label: string; kind: PoolKind }
 
 const POOLS: Pool[] = (['host', 'pack'] as const).map((kind) => ({
   // Named rather than counted where there is one, since `pack pool (1 suite)` says less than the suite does
   label: ((held: readonly { workspace: string }[]) =>
     `${kind} pool (${held.length === 1 ? held[0]!.workspace : `${held.length} suites`})`)(UNIT_SUITES.filter((suite) => suite.kind === kind)),
   kind,
-  seconds: POOL_SECONDS[kind],
 }));
 
 const cpus = os.availableParallelism?.() ?? os.cpus().length;
@@ -76,16 +73,7 @@ async function run(pool: Pool): Promise<Result> {
   // It was `budgetFor(75)`, which reached the same number through a measurement nobody took.
   const { code, output, ms, timedOut } = await boundedSpawn('npx',
     ['tsx', 'scripts/test-unit-pool.ts', pool.kind, '--all'], TIMEOUT_MS.suite.ms);
-  // A kill used to be the word `TIMEOUT` in the status column and nothing else — no class, no cost, no rope —
-  // on the one rung whose stretch factor is the measured one
-  const why = timedOut
-    ? timedOutBecause({
-      what: pool.label,
-      timeout: 'suite',
-      measuredOn: MEASURED_ON,
-      seconds: pool.seconds,
-    })
-    : undefined;
+  const why = timedOut ? timedOutBecause({ what: pool.label, timeout: 'suite' }) : undefined;
   return { pool: pool.label, code, ms, output, ...(why === undefined ? {} : { why }) };
 }
 

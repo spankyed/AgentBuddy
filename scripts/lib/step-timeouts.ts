@@ -9,8 +9,6 @@
 // measurement. `sizeOf` (`scripts/lib/test-timeouts.ts`) is the same rule for tests: it reads the config
 // filename, the half and suite membership — never a duration — and refuses a file it cannot classify.
 
-import { machineText, thisMachine, type Machine } from './core-budget.ts';
-
 /**
  * Which common rung a step's *kind of work* puts it on, as something a check can run:
  *
@@ -63,17 +61,14 @@ export function timeoutMsFor(className: string): number {
 export const timeoutText = (className: TimeoutClass): string =>
   `${TIMEOUT_MS[className].ms / 1000}s (${className})`;
 
-/** Report the enforced bound and recorded context without diagnosing the cause from elapsed time. */
-export function timedOutBecause({ what, timeout, measuredOn, machine, seconds }: {
-  what: string;
-  timeout: TimeoutClass;
-  measuredOn: Machine;
-  machine?: Machine;
-  seconds?: number;
-}): string {
+/**
+ * Report the enforced bound and the step's recorded cost here, without diagnosing the cause from elapsed time.
+ * `seconds` is the median from `step-durations.ts`, absent where this machine has no reading.
+ */
+export function timedOutBecause({ what, timeout, seconds }: { what: string; timeout: TimeoutClass; seconds?: number }): string {
   const recorded = seconds !== undefined && seconds > 0
-    ? ` Recorded cost: ${seconds}s on ${machineText(measuredOn)}; this run: ${machineText(machine ?? thisMachine())}.`
-    : ' This run carries no recorded cost.';
+    ? ` It usually takes ${seconds}s here.`
+    : ' This machine has no recorded cost for it.';
   return `${what} timed out: it exceeded its ${timeoutText(timeout)} budget and its process group was killed.`
     + recorded + ' A timeout alone does not distinguish slow progress from stalled work. Inspect the run output before retrying or changing its budget.';
 }

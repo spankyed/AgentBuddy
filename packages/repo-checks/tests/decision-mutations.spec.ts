@@ -256,7 +256,7 @@ const MUTATIONS: readonly Mutation[] = [
     ])],
   },
   /**
-   * `core-budget.ts`'s eight. What a step takes of the machine is the chain's admission weight, so a wrong
+   * `core-budget.ts`'s four. What a step takes of the machine is the chain's admission weight, so a wrong
    * answer here is an over- or under-admitted chain rather than a failure, which is why none of these has a
    * case that would notice.
    *
@@ -299,45 +299,6 @@ const MUTATIONS: readonly Mutation[] = [
     // An **odd** box, which is what makes the rounding observable at all: half of nine is 5 rounded and 4
     // floored. Both of `core-budget.spec.ts`'s share cases use even counts, so neither can see this
     call: (lib) => lib.coresFor('test:integration', 9),
-  },
-  {
-    why: 'a machine with the measured CPU but different cores is not the measured machine',
-    in: 'core-budget',
-    from: 'machine.cores === measuredOn.cores && ',
-    to: '',
-    call: (lib) => lib.isMeasuredMachine({ cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Apple M1 Pro', cores: 8 }),
-  },
-  {
-    // The hole the CPU was added to close, and the one that actually turned up: a 10-core Mac is the
-    // commonest shape there is, so before this conjunct every one of them read as the box the costs came
-    // from, and were offered the drift report's figures as describing someone else's silicon
-    why: 'a machine with the measured cores but different silicon is not the measured machine',
-    in: 'core-budget',
-    from: ' && machine.cpu === measuredOn.cpu',
-    to: '',
-    call: (lib) => lib.isMeasuredMachine({ cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Intel Xeon W', cores: 10 }),
-  },
-  {
-    why: 'a run spending fewer cores than the table was measured at is not the measured schedule',
-    in: 'core-budget',
-    from: "budget === measuredOn.cores ? undefined : 'budget'",
-    to: 'undefined',
-    // `--cores 4` on the measured machine. The widths are still box-sized, so the costs do not describe it
-    call: (lib) => lib.isMeasuredSchedule(4, { cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Apple M1 Pro', cores: 10 }),
-  },
-  {
-    // The entry the predicate's split created. Dropping the machine branch leaves a schedule check that asks
-    // only about the budget, which is what comparing the budget alone did before the machine existed --
-    // and the budget matches here, so nothing else is left to refuse it.
-    //
-    // Both anchors moved when `isMeasuredSchedule` became a delegation to `scheduleMismatch`: the decisions
-    // are in that function now. The harness said so rather than passing over two entries that no longer
-    // matched anything, which is the whole reason it asserts each anchor matches exactly once.
-    why: 'the schedule check asks the machine question as well as its own',
-    in: 'core-budget',
-    from: "if (!isMeasuredMachine(measuredOn, machine)) return 'machine';",
-    to: '',
-    call: (lib) => lib.isMeasuredSchedule(10, { cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Intel Xeon W', cores: 10 }),
   },
 ];
 

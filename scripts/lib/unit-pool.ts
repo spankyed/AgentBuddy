@@ -240,7 +240,7 @@ export const poolForStep = (step: string): Pool | undefined => POOL_BY_STEP.get(
  * — the dominant term, which is the whole of what a reading near a rung is about.
  *
  * **The whole pool, not the suites this run found stale**, which is what makes the two numbers comparable:
- * `POOL_SECONDS` declares one cost for the pool, so a remedy that ran the stale subset would answer a
+ * the step's recorded cost is the whole pool's, so a command that ran the stale subset would answer a
  * cheaper question and read as a step that had shrunk.
  *
  * Every other step runs its work unconditionally, so its npm script is the measurement.

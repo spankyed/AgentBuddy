@@ -146,14 +146,12 @@ recorder had the full apparatus — a half-to-double band, a one-second floor, a
 an 80% idle floor sampled after the run, a body-versus-member drift verdict, and five flags to work around
 them — and the quantity underneath was still not one number: `test:smoke` read 11s, 16s, 20s, 21s and 24s
 across five runs that all passed that floor, because `seconds` is the cost *beside whichever peers the
-schedule admitted*, and no floor can see the schedule. The three readers that use it — `driftedSteps`,
-`declaredShare`, `criticalPath` — all tolerate half-to-double and none gates a merge on it, so none of them
-ever needed the number to be fresh.
+schedule admitted*, and no floor can see the schedule. None of its readers gated a merge on it, so none of
+them ever needed the number to be fresh.
 
-**What the deletion kept is the half that was working.** The drift report still prints what a run measured
-beside what the table says, on every run and on any box; what it offers only on the measured schedule is the
-*number to write*, since a figure taken elsewhere would be wrong the moment it landed. That is the same
-distinction as the duration cache above — the reading informs a column, and nothing compares it against an
-edge. The apparatus was there to let a *write* be automatic, and the write is a one-line edit a person makes
-from evidence. **Keep the reading; do not decide with it** is the rule, and this is the second subsystem it
-has now cost.
+**Then the declaration went too.** Once a deadline was a declared class and the stretch projection was gone,
+nothing that decides pass or fail read a step's cost, so a hand-written figure policed by a drift report
+was apparatus for a column. What a step costs is now a reading — a machine-local window of recent passing
+runs (`scripts/lib/step-durations.ts`), the same shape as the spec duration cache above — and the critical
+path and a failure report read its median. **Keep the reading; do not decide with it** is the rule, and this
+is the third subsystem it has now cost.

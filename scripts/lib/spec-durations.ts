@@ -629,10 +629,7 @@ export interface DurationRecord {
   /**
    * Overhead per spec, by the same key — import, setup, environment and prepare.
    *
-   * A second map rather than a field on each entry, because `ms` was a flat `Record<string, number>` on
-   * disk before this and every record written then is still readable: `readDurationRuns` fills this with
-   * an empty object for one, so a reader sees overhead it has no figure for as zero rather than being
-   * refused a measurement it does have.
+   * A second map rather than a field on each entry, so `ms` stays the flat map every reader indexes.
    */
   readonly overheadMs: Readonly<Record<string, number>>;
 }
@@ -654,53 +651,45 @@ export interface DurationRecord {
  */
 export const KEPT_RUNS = 10;
 
-/** The window as it sits on disk: newest first, at most `KEPT_RUNS` long */
-interface DurationHistory {
-  readonly runs: readonly DurationRecord[];
+/**
+ * A window of runs on disk, newest first and at most `KEPT_RUNS` long, or `undefined` where none is recorded.
+ *
+ * Shared by every machine-local reading — the specs' durations here and the chain steps' in
+ * `step-durations.ts`. `sound` validates one record; an unreadable file or a record it rejects reads as no
+ * evidence, since the cache is uncommitted and the next run rebuilds it.
+ */
+export function readWindow<R>(file: string, sound: (value: unknown) => R | undefined): R[] | undefined {
+  try {
+    const { runs } = JSON.parse(fs.readFileSync(file, 'utf8')) as { runs?: unknown };
+    if (!Array.isArray(runs)) return undefined;
+    const kept = runs.map(sound).filter((run): run is R => run !== undefined);
+    return kept.length === 0 ? undefined : kept;
+  } catch {
+    return undefined;
+  }
+}
+
+/** `record` prepended to the window at `file`, the oldest dropped past `KEPT_RUNS` */
+export function prependToWindow<R>(file: string, record: R, sound: (value: unknown) => R | undefined): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const runs = [record, ...readWindow(file, sound) ?? []].slice(0, KEPT_RUNS);
+  fs.writeFileSync(file, `${JSON.stringify({ runs }, null, 2)}\n`);
 }
 
 /**
- * The window, oldest entries dropped, or `undefined` where no run here has measured this suite.
- *
- * A file in the single-record shape this replaced is read as a window of one rather than refused: the
- * cache is uncommitted and rebuilt by any run, so refusing would turn a format change into a lost
- * measurement for no gain.
+ * A spec record is sound on `measuredAt` and `ms`; a consumer of `overheadMs` sees zero where it is absent,
+ * which is what "no figure" means here.
  */
-export function readDurationRuns(root: string, dir: string, half: Half): readonly DurationRecord[] | undefined {
-  let raw: string;
-  try {
-    raw = fs.readFileSync(recordFor(root, dir, half), 'utf8');
-  } catch {
-    return undefined;
-  }
-  /**
-   * A record is sound on `measuredAt` and `ms` alone, and `overheadMs` is filled in where it is absent.
-   *
-   * That is the same compatibility the window itself has: a record from before this field was recorded
-   * holds real measurements, and refusing it would throw away evidence to insist on a field no reader
-   * needs in order to use `ms`. A consumer of overhead sees zero, which is what "no figure" means here.
-   */
-  const sound = (value: unknown): DurationRecord | undefined => {
-    if (typeof value !== 'object' || value === null) return undefined;
-    const { measuredAt, ms, overheadMs } = value as Partial<DurationRecord>;
-    if (typeof measuredAt !== 'string' || typeof ms !== 'object' || ms === null) return undefined;
-    return { measuredAt, ms, overheadMs: typeof overheadMs === 'object' && overheadMs !== null ? overheadMs : {} };
-  };
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (typeof parsed !== 'object' || parsed === null) return undefined;
-    const { runs } = parsed as Partial<DurationHistory>;
-    if (Array.isArray(runs)) {
-      const kept = runs.map(sound).filter((run): run is DurationRecord => run !== undefined);
-      return kept.length === 0 ? undefined : kept;
-    }
-    // The shape before the window; one reading is still a reading
-    const one = sound(parsed);
-    return one === undefined ? undefined : [one];
-  } catch {
-    return undefined;
-  }
-}
+const soundDurations = (value: unknown): DurationRecord | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const { measuredAt, ms, overheadMs } = value as Partial<DurationRecord>;
+  if (typeof measuredAt !== 'string' || typeof ms !== 'object' || ms === null) return undefined;
+  return { measuredAt, ms, overheadMs: typeof overheadMs === 'object' && overheadMs !== null ? overheadMs : {} };
+};
+
+/** A suite half's window, or `undefined` where no run here has measured it */
+export const readDurationRuns = (root: string, dir: string, half: Half): readonly DurationRecord[] | undefined =>
+  readWindow(recordFor(root, dir, half), soundDurations);
 
 /**
  * What the last run measured, or `undefined` where no run on this machine has measured it.
@@ -728,13 +717,10 @@ export function writeDurations(root: string, rows: readonly FileDuration[], meas
   }
   for (const [key, held] of byRecord) {
     const [dir, half] = key.split('\u0000') as [string, Half];
-    const file = recordFor(root, dir, half);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
     const sorted = [...held].sort((a, b) => a.file.localeCompare(b.file));
     const ms = Object.fromEntries(sorted.map((row) => [row.file, row.ms]));
     const overheadMs = Object.fromEntries(sorted.map((row) => [row.file, row.overheadMs]));
-    const runs = [{ measuredAt, ms, overheadMs }, ...readDurationRuns(root, dir, half) ?? []].slice(0, KEPT_RUNS);
-    fs.writeFileSync(file, `${JSON.stringify({ runs } satisfies DurationHistory, null, 2)}\n`);
+    prependToWindow(recordFor(root, dir, half), { measuredAt, ms, overheadMs }, soundDurations);
   }
 }
 

@@ -43,7 +43,7 @@ import { sealBuildSession } from '../build/build-metadata.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { RUNTIME_BUILD_LEGS, BUILD_TIMEOUT } from './lib/runtime-build-legs.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { box, MEASURED_ON } from './lib/core-budget.ts';
+import { box } from './lib/core-budget.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 import { asCount, parseFlags } from './lib/measure.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
@@ -75,8 +75,7 @@ const result = await schedule({
   skip: () => false,
   async run(leg) {
     const [command, ...args] = leg.command.split(' ');
-    // Not `leg.seconds`: a deadline from a measurement is a deadline from this machine. The class is
-    // `BUILD_TIMEOUT`, declared beside the legs so the chain's copy of this step reads the same one.
+    // `BUILD_TIMEOUT` is declared beside the legs so the chain's copy of this step reads the same one
     const env = leg.heapMb === undefined ? process.env : {
       ...process.env,
       NODE_OPTIONS: [process.env.NODE_OPTIONS, `--max-old-space-size=${leg.heapMb}`].filter(Boolean).join(' '),
@@ -94,12 +93,7 @@ const failed = RUNTIME_BUILD_LEGS.filter((leg) => (done.get(leg.name)?.code ?? 0
 for (const leg of failed) {
   const outcome = done.get(leg.name)!;
   const why = outcome.timedOut === true
-    ? timedOutBecause({
-      what: leg.name,
-      timeout: BUILD_TIMEOUT,
-      measuredOn: MEASURED_ON,
-      seconds: leg.seconds,
-    })
+    ? timedOutBecause({ what: leg.name, timeout: BUILD_TIMEOUT })
     : `${leg.name} failed (exit ${outcome.code})`;
   process.stderr.write(`\n${'─'.repeat(72)}\n${why}\n${'─'.repeat(72)}\n${outcome.output}\n`);
 }

@@ -671,17 +671,6 @@ describe('the duration window', () => {
     expect(runs[0]!.ms['tests/a.spec.ts'], 'the newest survives').toBe(KEPT_RUNS + 3);
   });
 
-  // The uncommitted cache is rebuilt by any run, so refusing a record written before the window existed
-  // would lose a measurement for nothing
-  it('reads a record from before the window as a window of one', () => {
-    const root = tmpdir();
-    fs.mkdirSync(durationCacheDir(root), { recursive: true });
-    fs.writeFileSync(path.join(durationCacheDir(root), 'apack-host.fast.json'),
-      JSON.stringify({ measuredAt: '2026-10-01T00:00:00.000Z', ms: { 'tests/a.spec.ts': 500 } }));
-    expect(readDurationRuns(root, 'apack-host', 'fast')).toHaveLength(1);
-    expect(readDurations(root, 'apack-host', 'fast')!.ms['tests/a.spec.ts']).toBe(500);
-  });
-
   /**
    * And a record from before `collectMs` keeps its `ms`, with no collection figures rather than none at all.
    *
