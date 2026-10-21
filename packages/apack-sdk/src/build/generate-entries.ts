@@ -373,7 +373,7 @@ function toPascalCase(id: string): string {
 // Local bindings for a feature's default exports start with `__`, which a feature id can't, so they don't
 // collide with generated names (`specs`, `ref`, `<feature>Entry`).
 const systemBinding = (id: string) => `__system_${id}`;
-const surfaceBinding = (id: string) => `__plugin_${id}`;
+const surfaceBinding = (id: string) => `__surface_${id}`;
 
 export interface GenerateEntriesOptions {
   packRoot: string;
@@ -1430,8 +1430,8 @@ ${ownState}
 export type OwnSurfaceName = keyof PackSurfaceState & string;
 ${qualifiedState.length > 0 ? `
 /** A dependency's surface, whose frontend may still be loading */
-type DependencyPluginState = ${qualifiedState.join(' & ')};
-export type DependencySurfaceName = keyof DependencyPluginState & string;
+type DependencySurfaceState = ${qualifiedState.join(' & ')};
+export type DependencySurfaceName = keyof DependencySurfaceState & string;
 ` : ''}
 /**
  * Opens a surface and hands its actor \`event\` once it's running; throws if no such surface is registered.
@@ -1482,14 +1482,14 @@ function ownSurface(name: SurfaceName): string {
  * \`useUntypedSurfaceState\` from \`@apackdev/sdk/fe\` is the escape hatch, for a ref that arrives as data.
  */
 export function useSurfaceState<Name extends OwnSurfaceName, TSelected>(name: Name, selector: (state: PackSurfaceState[Name]) => TSelected): Readonly<Ref<TSelected>>;${qualifiedState.length > 0 ? `
-export function useSurfaceState<Name extends DependencySurfaceName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): Readonly<Ref<TSelected | undefined>>;` : ''}
+export function useSurfaceState<Name extends DependencySurfaceName, TSelected>(name: Name, selector: (state: DependencySurfaceState[Name]) => TSelected): Readonly<Ref<TSelected | undefined>>;` : ''}
 export function useSurfaceState(name: SurfaceName, selector: (state: never) => unknown): Readonly<Ref<unknown>> {
   return useUntypedSurfaceState(ownSurface(name), (snapshot: { context: never }) => selector(snapshot.context));
 }
 
 /** The same read, once, for code outside a reactive scope — a machine's action, an event handler. */
 export function readSurfaceState<Name extends OwnSurfaceName, TSelected>(name: Name, selector: (state: PackSurfaceState[Name]) => TSelected): TSelected;${qualifiedState.length > 0 ? `
-export function readSurfaceState<Name extends DependencySurfaceName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): TSelected | undefined;` : ''}
+export function readSurfaceState<Name extends DependencySurfaceName, TSelected>(name: Name, selector: (state: DependencySurfaceState[Name]) => TSelected): TSelected | undefined;` : ''}
 export function readSurfaceState(name: SurfaceName, selector: (state: never) => unknown): unknown {
   return readUntypedSurfaceState(ownSurface(name), (snapshot: { context: never }) => selector(snapshot.context));
 }

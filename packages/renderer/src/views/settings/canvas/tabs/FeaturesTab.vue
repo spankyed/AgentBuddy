@@ -62,5 +62,5 @@ onMounted(scrollToSelected);
 watch(() => selected.value?.id, scrollToSelected, { flush: 'post' });
 const selectFeature = (featureId: FeatureRef) => actor.send({ type: 'FEATURE.SELECT', featureId });
 const isVisible = (id: FeatureRef) => shell.surfaceVisibility.value[id] !== false;
-const toggleVisibility = (id: FeatureRef) => shell.setPluginVisible(id, !isVisible(id));
+const toggleVisibility = (id: FeatureRef) => shell.setSurfaceVisible(id, !isVisible(id));
 </script>

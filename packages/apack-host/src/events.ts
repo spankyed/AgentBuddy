@@ -13,8 +13,8 @@ import type { HelpOutgoing } from './features/event-contracts.ts';
 import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import type { Contract as PacksContract } from './features/packs/be/contract.ts';
 import type { Contract as SettingsContract } from './features/settings/be/contract.ts';
-import type { SettingsPluginEvents } from './features/event-contracts.ts';
-import type { ApplicationPluginEvents } from './features/application/events.ts';
+import type { SettingsSurfaceEvents } from './features/event-contracts.ts';
+import type { ApplicationSurfaceEvents } from './features/application/events.ts';
 import type { OutgoingPacksEvents } from './features/event-contracts.ts';
 
 /**
@@ -23,9 +23,9 @@ import type { OutgoingPacksEvents } from './features/event-contracts.ts';
  * pack may send. The Packs view takes only the latter.
  */
 type HostSurfaces = WithOwnNames<typeof HOST_PACK_ID, {
-  'host/application': HostSurfaceEvents['host/application'] | ApplicationPluginEvents;
+  'host/application': HostSurfaceEvents['host/application'] | ApplicationSurfaceEvents;
   'host/packs': OutgoingPacksEvents;
-  'host/settings': HelpOutgoing | SettingsPluginEvents | HostSurfaceEvents['host/settings'];
+  'host/settings': HelpOutgoing | SettingsSurfaceEvents | HostSurfaceEvents['host/settings'];
 }>;
 
 /** What each of the host's systems receives, from the contracts those features declare */

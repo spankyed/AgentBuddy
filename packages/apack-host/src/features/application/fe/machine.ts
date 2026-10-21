@@ -440,7 +440,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         }
       }),
 
-      updatePluginVisibility: assign(({ event }) => ({ surfaceVisibility: typeOf('SURFACE_VISIBILITY_UPDATED', event).surfaceVisibility })),
+      updateSurfaceVisibility: assign(({ event }) => ({ surfaceVisibility: typeOf('SURFACE_VISIBILITY_UPDATED', event).surfaceVisibility })),
 
       /**
        * The shell's state the backend sends on each connection (the host `application` system's, in AppState): which
@@ -460,7 +460,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       }),
 
       /** A tab shown or hidden here: shown at once, and recorded by the host so every window and the next run agree */
-      setPluginVisibility: enqueueActions(({ event, context, enqueue }) => {
+      setSurfaceVisibility: enqueueActions(({ event, context, enqueue }) => {
         const { surface, visible } = typeOf('SET_SURFACE_VISIBILITY', event);
         enqueue.assign({ surfaceVisibility: { ...context.surfaceVisibility, [surface]: visible } });
         enqueue(() => client.send({ to: HOST.application, event: { type: 'SET_SURFACE_VISIBILITY', surface, visible } }));
@@ -789,8 +789,8 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         }),
       },
       PACK_SURFACES_UNLOADED: { actions: 'removePackSurfaces' },
-      SURFACE_VISIBILITY_UPDATED: { actions: 'updatePluginVisibility' },
-      SET_SURFACE_VISIBILITY: { actions: 'setPluginVisibility' },
+      SURFACE_VISIBILITY_UPDATED: { actions: 'updateSurfaceVisibility' },
+      SET_SURFACE_VISIBILITY: { actions: 'setSurfaceVisibility' },
       OPEN_ENTITY: { actions: 'beginEntityOpen' },
       ENTITY_OPEN_FINISHED: { actions: assign(({ context, event }) => ({ awaitingSurface: context.awaitingSurface.filter(request => request.entityToken !== event.token) })) },
       OPEN_SURFACE: { actions: 'selectAndDeliver' },

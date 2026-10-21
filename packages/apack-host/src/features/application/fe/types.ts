@@ -9,7 +9,7 @@ import type { ShellClient, ShellFailure } from '../../../fe/client.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 import type { ShellSurfaceCatalog } from '../../../fe/surface-selection.ts';
 import type { FePackRegistry } from '../../../fe/pack-store.ts';
-import type { ApplicationPluginEvents } from '../events.ts';
+import type { ApplicationSurfaceEvents } from '../events.ts';
 import type { BreadcrumbItem } from './trail.ts';
 
 /** Where the panel sizes the user sets are kept, so the next window opens with them */
@@ -168,7 +168,7 @@ export type ShellEvent =
    * restored. Unlike `SELECT_SURFACE`, a person's choice, it cancels no entity open and supersedes no waiting open.
    */
   | { type: 'SELECT_SURFACE_BY_SHELL'; surface: string }
-  | ApplicationPluginEvents
+  | ApplicationSurfaceEvents
   | { type: 'SURFACE_DECLARATIONS_CHANGED' }
   | { type: 'SELECT_SURFACE'; surface: string; historyIndex?: number }
   | { type: 'OPEN_SURFACE'; surface: string; events: SurfaceEvent[]; entityToken?: string }

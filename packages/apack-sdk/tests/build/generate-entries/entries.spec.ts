@@ -80,9 +80,9 @@ describe('generated frontend entry', () => {
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
 
-    expect(fe).toContain("  features: {\n    'settings': { surface: __plugin_settings, designation: 'settings' },\n    'memos': { surface: __plugin_memos },\n  },");
-    expect(fe).toContain('import __plugin_settings_0 from "../settings/surface.ts";');
-    expect(fe).toContain('label: "Fixture", state: __plugin_settings_0');
+    expect(fe).toContain("  features: {\n    'settings': { surface: __surface_settings, designation: 'settings' },\n    'memos': { surface: __surface_memos },\n  },");
+    expect(fe).toContain('import __surface_settings_0 from "../settings/surface.ts";');
+    expect(fe).toContain('label: "Fixture", state: __surface_settings_0');
     expect(fe).not.toContain('_module');
   });
 
@@ -99,8 +99,8 @@ describe('generated frontend entry', () => {
     ] });
 
     const fe = files['src/__generated__/pack-entry-fe.ts'];
-    expect(fe).toContain("'memos': { surface: __plugin_memos, default: true },");
-    expect(fe).toContain("'settings': { surface: __plugin_settings },");
+    expect(fe).toContain("'memos': { surface: __surface_memos, default: true },");
+    expect(fe).toContain("'settings': { surface: __surface_settings },");
   });
 
   /**
@@ -128,7 +128,7 @@ describe('generated frontend entry', () => {
     const fe = files['src/__generated__/pack-entry-fe.ts'];
     expect(fe).toContain("'scheduler': { designation: 'clock' },");
     expect(fe).not.toContain("'worker'");
-    expect(fe).toContain("'memos': { surface: __plugin_memos },");
+    expect(fe).toContain("'memos': { surface: __surface_memos },");
   });
 
   it('names the missing Tiptap member export without executing its module', async () => {
@@ -523,10 +523,10 @@ it('generates routed and lazy panes, named state, custom icons and fallback pred
     panel: 'src/panel.vue', chat: 'src/chat.vue',
     fallbackPanel: { label: 'Inspect', toggle: { type: 'INSPECT' }, isShown: 'src/predicate.ts#visible' } } }] });
   const frontend = files['src/__generated__/pack-entry-fe.ts'];
-  expect(frontend).toContain('import { machine as __plugin_notes_0 }');
-  expect(frontend).toContain('"entry": __plugin_notes_2');
+  expect(frontend).toContain('import { machine as __surface_notes_0 }');
+  expect(frontend).toContain('"entry": __surface_notes_2');
   expect(frontend).toContain('defineAsyncComponent(() => import("../detail.vue").then(module => module.default))');
-  expect(frontend).toContain('import { visible as __plugin_notes_5 }');
+  expect(frontend).toContain('import { visible as __surface_notes_5 }');
   expect(frontend).toContain('label: "Inspect", toggle: {"type":"INSPECT"}');
   expect(files['src/__generated__/pack-entry.ts']).not.toContain('src/state');
   write('src/predicate.ts', 'export type visible = boolean;');

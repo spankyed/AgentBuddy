@@ -88,7 +88,7 @@ const surfaceContextMenu = ref<InstanceType<typeof ToolbarSurfaceContextMenu> | 
 
 const isVisible = (id: string) => props.surfaces.find(surface => surface.id === id)?.visible ?? false;
 
-const togglePluginVisibility = (id: string) => {
+const toggleSurfaceVisibility = (id: string) => {
   if (id === HOST.settings) return;
   applicationState.send({ type: 'SET_SURFACE_VISIBILITY', surface: id, visible: !isVisible(id) });
 };
@@ -107,7 +107,7 @@ const visibilityMenuItems = computed<MenuItem[]>(() =>
       icon: surface.icon ?? Puzzle,
       class: textClass,
       iconClass: textClass,
-      action: () => togglePluginVisibility(surface.id),
+      action: () => toggleSurfaceVisibility(surface.id),
       keepOpen: true,
     };
   }),

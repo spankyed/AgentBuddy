@@ -32,13 +32,17 @@ const RETIRED = {
     'HostPluginEvents', 'OwnPluginEvents', 'QualifiedPluginEvents', 'TypedSendToPlugin',
     'PluginFrontendBinding', 'PluginCatalogEntry', 'ShellPluginCatalog', 'SendablePluginEvents',
     'PluginName', 'OwnPluginName', 'DependencyPluginName',
+    // Found by enumerating every remaining occurrence rather than sampling greps: these eight survived
+    // four passes because no pattern here named them, and one — `setPluginVisible` — was published API.
+    'SettingsPluginEvents', 'ApplicationPluginEvents', 'DependencyPluginState', 'SendToPlugin',
   ],
   'concept-call': [
     'usePlugin', 'pluginIsRunning', 'usePluginState', 'readPluginState', 'writePluginState',
     'useUntypedPluginState', 'readUntypedPluginState', 'openPlugin', 'untypedOpenPlugin',
     'sendToPlugin', 'broadcastToPlugin', 'untypedBroadcastToPlugin', '_sendToLocalPlugin',
     'sendToPluginActor', 'notifyPluginActor', 'getRegisteredPlugins', 'getPluginEventValidationMap',
-    '_pluginTargets',
+    '_pluginTargets', 'setPluginVisible', 'setPluginVisibility', 'updatePluginVisibility',
+    'togglePluginVisibility',
   ],
   'concept-field': [
     'pluginId', 'pluginIds', 'pluginVisibility', 'lastActivePlugin', 'activePlugin',
@@ -61,6 +65,9 @@ const patternFor = (group: Group): RegExp => new RegExp(`(?<![.\\w])(${RETIRED[g
 
 /** The manifest key, which is not an identifier and so needs its own pattern. */
 const MANIFEST_KEY = /"plugin":/;
+
+/** Codegen's binding prefix, which is a fragment rather than a word and so no `\b` reaches it. */
+const GENERATED_PREFIX = /__plugin_/;
 
 /**
  * Bare `Plugin` is not in `concept-type`, and that is the pattern decision worth explaining.
@@ -136,6 +143,7 @@ describe('the patterns themselves', () => {
       }
     }
     expect(MANIFEST_KEY.test('"plugin": { "label": "Notes" }')).toBe(true);
+    expect(GENERATED_PREFIX.test('const x = __plugin_memos;')).toBe(true);
     expect(DECLARES_PLUGIN.test('export interface Plugin {')).toBe(true);
     // The same keyword, mid-line: `import { …, type Plugin, … } from 'vite'` is Vite's, not a declaration
     expect(DECLARES_PLUGIN.test("import { type Plugin } from 'vite';"), 'an imported one is theirs').toBe(false);
@@ -172,7 +180,7 @@ describe('the surface vocabulary', () => {
           if (excused.includes(group)) continue;
           if (patternFor(group).test(line)) violations.push(`${file}:${i + 1} ${line.trim()}  ← ${group}`);
         }
-        if (!excused.includes('concept-type') && DECLARES_PLUGIN.test(line)) {
+        if (!excused.includes("concept-type") && DECLARES_PLUGIN.test(line)) {
           violations.push(`${file}:${i + 1} ${line.trim()}  ← a surface's type is Surface`);
         }
         if (file.endsWith('apack.json') && MANIFEST_KEY.test(line)) {

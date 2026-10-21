@@ -53,7 +53,7 @@ const menuItems = computed<MenuItem[]>(() => {
       icon: EyeOff,
       class: 'text-neutral-200',
       iconClass: 'text-neutral-500',
-      action: () => shell.setPluginVisible(surface.id, false),
+      action: () => shell.setSurfaceVisible(surface.id, false),
     },
     {
       label: `${surface.label} Settings`,

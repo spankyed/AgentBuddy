@@ -80,7 +80,7 @@ export function isolatedDataDir(prefix = 'apack-tests-'): IsolatedDataDir {
  * A pack's specs drive machines, systems, content and repositories; **one spec in the whole apack repo
  * mounts a Vue component**. What every pack needs instead is a module graph that *resolves*, because
  * `vitest related` and `--changed` walk it from the file you edited — and without this they die on the first
- * `.vue` they reach, which is any pack with a plugin.
+ * `.vue` they reach, which is any pack with a surface.
  *
  * This is the third place the toolchain answers that question the same way, so it is the convention rather
  * than a shortcut: `apack pack init`'s `env.d.ts` declares `*.vue` as a generic component for `tsc` (*"Plain

@@ -45,10 +45,23 @@ steps ok (`node_modules/.cache/apack-chain/runs/2026-10-21T20-52-54Z-10193`).
 | 3 — the wire | `260a96801` | `npm test -w @apackdev/host` 1746 passed / 135 files, including `tests/bus/outgoing-events.spec.ts` and `tests/packs/event-validation-map.spec.ts`; `test:smoke` 16.1s in the chain. Mutation: a half-applied rename in the bus's lookup (the map keyed by ref, the lookup building the old spelling) failed **23** specs across both files, so no new spec was needed |
 | 4 — stored state | `824df0b92` | `tests/migrations/surface-state-0.4.0.spec.ts`. Mutation: dropping the removal, guarding on `undefined`, and guarding the row instead of each attribute each failed a different case |
 | 5 — docs, guard live | `afedfa064` | Scan unparked and green; `welcome.md` re-recorded; `doc-links` passing |
-| 6 — the prose read | `dc57c0504` | 19 inversions; three agent memories. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader |
+| 6 — the prose read | `dc57c0504`, `0e1a7f4` | 19 inversions. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader. Its "no comment or guide sentence" condition rests on a **complete enumeration** — all 241 remaining occurrences classified, not a sampled grep — which found eight concept names that four passes had missed, `setPluginVisible` among them, published. All four memory files now name only things that exist |
 
-The suite criteria are evidenced **through the chain** for `test:external-pack` and `test:smoke`, which
-are its steps, rather than by a separate invocation of each command.
+`npm run test:e2e -- smoke` runs directly at 5 passed; `test:external-pack` is evidenced through the
+chain, which runs it as its three steps.
+
+**Phase 2's exit grep leaves two sources, both correct**: `CHANGELOG.md`, where a 2024 entry reads
+"rename usePlugin to useState composable" and is released history, and the guard's own retired list,
+which has to spell the names it retires. Read literally the grep also matches `TiptapPluginDeclaration`
+as a substring of `PluginDeclaration`, so the condition is only meaningful word-bounded.
+
+**The sampled grep is what let residue through.** Four passes, a live guard and a green chain all held
+while eight concept names survived — `SettingsPluginEvents`, `ApplicationPluginEvents`,
+`DependencyPluginState`, `SendToPlugin`, `setPluginVisible`, `setPluginVisibility`,
+`updatePluginVisibility`, `togglePluginVisibility` — plus codegen's `__plugin_` binding prefix, which is
+a fragment no `\b` reaches. None was in the guard's list, so nothing could have caught them; they are in
+it now, with the prefix as its own pattern. A rename's completeness claim needs an enumeration, not a
+search.
 
 **The four things it cost, which the plan had three of.** The fourth vocabulary is a third-party CLI's
 own plugins (`claude plugin`), and it is the one no check can reach: its names go into a **subprocess

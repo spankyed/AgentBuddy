@@ -68,10 +68,10 @@ export const settingsEvents = eventTypes<IncomingSettingsEvents | IncomingSecret
 );
 
 /** What the settings system sends its own surface: everything outgoing but the shell's hotkeys */
-export type SettingsPluginEvents = Exclude<OutgoingSettingsEvents, { type: 'APPLICATION_HOTKEYS' }>;
+export type SettingsSurfaceEvents = Exclude<OutgoingSettingsEvents, { type: 'APPLICATION_HOTKEYS' }>;
 
 /** The event types the `settings` surface receives; the host's to send, and no pack's */
-export const SETTINGS_SURFACE_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
+export const SETTINGS_SURFACE_EVENT_TYPES = eventTypes<SettingsSurfaceEvents>()(
   'SETTINGS_RECOVERY',
   'SETTINGS_LOADED',
   'SETTINGS_UPDATED',

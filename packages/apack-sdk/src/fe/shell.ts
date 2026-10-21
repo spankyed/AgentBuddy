@@ -97,7 +97,7 @@ export interface Shell {
   /** Sets the canvas's share of the main area's height, in percent (kept within 20–95) */
   resizeCanvas(size: number): void;
   /** Shows or hides the tab of the surface at `ref`, in every window */
-  setPluginVisible(ref: string, visible: boolean): void;
+  setSurfaceVisible(ref: string, visible: boolean): void;
   /** Stops the app's hotkeys while a shortcut is being recorded, and starts them again */
   startHotkeyRecording(): void;
   endHotkeyRecording(): void;
@@ -147,7 +147,7 @@ export function useShell(): Shell {
     isOnboarding: shallowReadonly(refs.isOnboarding),
     restoreChat: () => shell.send({ type: 'RESTORE_CHAT' }),
     resizeCanvas: (size) => shell.send({ type: 'RESIZE_PANEL', panel: 'canvas', size }),
-    setPluginVisible: (ref, visible) => shell.send({ type: 'SET_SURFACE_VISIBILITY', surface: ref, visible }),
+    setSurfaceVisible: (ref, visible) => shell.send({ type: 'SET_SURFACE_VISIBILITY', surface: ref, visible }),
     startHotkeyRecording: () => shell.send({ type: 'HOTKEYS_RECORDING_START' }),
     endHotkeyRecording: () => shell.send({ type: 'HOTKEYS_RECORDING_END' }),
     closeDevLetter: () => shell.send({ type: 'CLOSE_DEV_LETTER' }),

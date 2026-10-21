@@ -718,7 +718,7 @@ export interface Shell {
     panelSizes: Readonly<Ref<ShellPanelSizes>>;
     resizeCanvas(size: number): void;
     restoreChat(): void;
-    setPluginVisible(ref: string, visible: boolean): void;
+    setSurfaceVisible(ref: string, visible: boolean): void;
     startHotkeyRecording(): void;
     // (undocumented)
     surfaces: Readonly<Ref<readonly Surface[]>>;

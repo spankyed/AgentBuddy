@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import type { HostShellEvent } from '../../src/fe/shell.ts';
 import type { Message } from '../../src/events/index.ts';
 
-type SendToPlugin = Extract<HostShellEvent, { type: 'SEND_TO_SURFACE' }>;
+type SendToSurface = Extract<HostShellEvent, { type: 'SEND_TO_SURFACE' }>;
 
 /** Mutual assignability, so neither widening nor narrowing a field passes */
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -29,7 +29,7 @@ describe("the shell's second envelope", () => {
    * rather than silently handing the shell a value the surface cannot use.
    */
   it('carries the envelope fields a surface reads, with the envelope types', () => {
-    const matches: Same<Pick<Message, Carried>, Pick<SendToPlugin, Carried>> = true;
+    const matches: Same<Pick<Message, Carried>, Pick<SendToSurface, Carried>> = true;
     expect(matches, 'add the missing field to the shell event and forward it in deliverInWindow').toBe(true);
   });
 
@@ -38,7 +38,7 @@ describe("the shell's second envelope", () => {
    * window is one connection, so it has no `client` to be told about, and routing here is by `surface`.
    */
   it('does not carry what a window has no use for', () => {
-    const noClient: Same<'client' extends keyof SendToPlugin ? true : false, false> = true;
+    const noClient: Same<'client' extends keyof SendToSurface ? true : false, false> = true;
     expect(noClient, 'a window is one connection; `client` names which, which it cannot need').toBe(true);
   });
 });
