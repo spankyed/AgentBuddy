@@ -132,6 +132,21 @@ dependency names `@vitejs/plugin-vue`, `vite-plugin-vue-devtools`, `vite-plugin-
 the user's window storage, not identifiers: rename either and the data is orphaned or the migration
 that removes it stops finding it. Phase 4 decides each; until then they keep their spelling.
 
+## What the user sees
+
+The word is in the product, not only the code, and it goes too — nothing is left saying `plugin`.
+
+- `WebApp.vue:146` — the context-menu item `'Pop Out Plugin'`.
+- `CanvasArea.vue:27` and `PopoutTitlebar.vue:22` — `title="Plugin menu"`.
+- `Hotkeys.vue:19,28` — the settings labels `"Previous Plugin"` / `"Next Plugin"`, and the ids
+  `switch-plugin-up` / `switch-plugin-down`.
+- `PackDetail.vue:239` — a feature's `plugin` badge, sitting beside its `system` one.
+- `Toolbar.vue:15,36` — `data-onboarding-id="plugin-<id>"`, the selector
+  `packages/renderer/tests/views/layout/toolbar.spec.ts:26` queries buttons by.
+- `packages/default-setup/src/content/notes/welcome.md:29,30,32,62` — the first thing a new user
+  reads: "switch between plugins", "the active plugin" twice, "the Brain plugin". **Content**, so the
+  edit moves its `contentHash` and the run needs `content-parity:update`.
+
 ## Phases
 
 ### Phase 1 — write the vocabulary down, and guard it
@@ -230,11 +245,13 @@ keep their behaviour; `npm test -w @apackdev/host` and `npm run test:unit` pass.
 **Deliverable.** `CLAUDE.md`, `packages/renderer/CLAUDE.md`, `packages/apack-sdk/CLAUDE.md`,
 `packages/apack-host/CLAUDE.md`, `packages/apack-cli/CLAUDE.md`, `packages/apack-ui/CLAUDE.md`,
 `packages/default-setup/CLAUDE.md`, `tests/e2e/CLAUDE.md`, and `docs/public-facing/` (`architecture.md`,
-`manifest.md`, `extensions.md`, `cli.md`, `testing.md`, `content.md`). Flip Phase 1's guard live.
+`manifest.md`, `extensions.md`, `cli.md`, `testing.md`, `content.md`). Everything under "What the user
+sees". Flip Phase 1's guard live.
 
 **Dependencies.** Phases 2–4.
 
-**Done when:** `npm run chain` passes, and the guard reports only the groups above and `docs/archive`.
+**Done when:** `npm run chain` passes — which includes `content-parity:check` over the re-recorded
+`welcome.md` — and the guard reports only the groups above and `docs/archive`.
 
 ## Deferred
 
