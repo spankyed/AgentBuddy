@@ -4,9 +4,12 @@ import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { createFrontendResourceFixture, readFrontendOutput } from '../_support/frontend-resources.ts';
 import { readPackBuild } from '@apackdev/host/packs';
 import { WATCH_REBUILD_BUDGET_MS, type TestPackBuildWatcher } from '../_support/watch-builds.ts';
+import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
+
+const sharedCompiler = shareCompilerInstallation();
 
 // The live-watcher half of the frontend resource cases: the same fixture as frontend-resources.integration.spec.ts
-const fixture = createFrontendResourceFixture();
+const fixture = createFrontendResourceFixture({ captureCompiler: sharedCompiler.capture });
 const { consumer } = fixture;
 
 describe('CSS dependency watching', () => {

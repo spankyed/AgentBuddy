@@ -8,16 +8,19 @@ import { readPackBuild } from '@apackdev/host/packs';
 import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
 import { createPackBuilder } from '../../src/build/build-process.ts';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
-import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import type { CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { nativeFixture, nativeLoad } from '../_support/native-libraries.ts';
+import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
 
 // The native-library proofs are split by subject so the native half's shards can spread them; this one is
 // outside launch overrides: OS libraries, the DYLD_* variables and the selected image suffix.
 
+const sharedCompiler = shareCompilerInstallation();
+
 it.runIf(process.platform === 'darwin')('admits OS libraries and refuses outside launch overrides before build or frontend launch', async () => {
   const fixture = nativeFixture('relative');
-  const builder = createPackBuilder(fixture.pack);
+  const builder = createPackBuilder(fixture.pack, { captureCompiler: sharedCompiler.capture });
   const previous = process.env.DYLD_INSERT_LIBRARIES;
   const previousCache = process.env.DYLD_SHARED_CACHE_DIR;
   const marker = path.join(fixture.root, 'inserted');
@@ -66,7 +69,7 @@ it.runIf(process.platform === 'darwin').each(['DYLD_FALLBACK_LIBRARY_PATH', 'DYL
   'refuses external %s before native initialization after preload mutation', async variable => {
     const framework = variable !== 'DYLD_FALLBACK_LIBRARY_PATH';
     const fixture = nativeFixture(framework ? 'framework' : 'fallback');
-    const builder = createPackBuilder(fixture.pack);
+    const builder = createPackBuilder(fixture.pack, { captureCompiler: sharedCompiler.capture });
     const previousOptions = process.env.NODE_OPTIONS;
     const previousSearch = process.env[variable];
     const preload = path.join(fixture.pack, 'clear-fallback.cjs');
@@ -138,7 +141,7 @@ it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DY
       fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.frontend')]) {
         delete process.env[${JSON.stringify(variable)}]; require(${JSON.stringify(addon)});
       }`);
-      compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: fixture.pack });
+      compiler = await sharedCompiler.installation({ cwd: fixture.pack });
       process.env[variable] = directory;
       process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
       await expect(startPackFrontend(fixture.pack, compiler, new AbortController().signal)
@@ -157,7 +160,7 @@ it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DY
 
 it.runIf(process.platform === 'darwin')('captures the selected native image suffix and refuses its later transitive escape', async () => {
   const fixture = nativeFixture('relative');
-  const builder = createPackBuilder(fixture.pack);
+  const builder = createPackBuilder(fixture.pack, { captureCompiler: sharedCompiler.capture });
   const previousOptions = process.env.NODE_OPTIONS;
   const previousSuffix = process.env.DYLD_IMAGE_SUFFIX;
   const selected = fixture.library.replace(/\.dylib$/, '_apack.dylib');

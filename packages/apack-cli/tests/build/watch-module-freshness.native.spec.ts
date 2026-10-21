@@ -6,6 +6,9 @@ import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
 import { startTestPackBuildWatcher, WATCH_REBUILD_BUDGET_MS, type TestPackBuildWatcher } from '../_support/watch-builds.ts';
+import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
+
+const sharedCompiler = shareCompilerInstallation();
 
 it('refreshes flow modules loaded through ordinary imports on the next watched build', async ({ signal }) => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-watch-flows-'));
@@ -30,6 +33,7 @@ it('refreshes flow modules loaded through ordinary imports on the next watched b
       'src/content/flows/main.ts': declaration('First'),
     } });
     watcher = await startTestPackBuildWatcher(root, {
+      captureCompiler: sharedCompiler.capture,
       signal,
       place: { env: 'test', userDataDir: path.join(temporary, 'profile') },
       onBuilt: async () => { publications++; },
@@ -67,6 +71,7 @@ it('recompiles changed transitive content modules and retains the accepted build
       'src/data.ts': 'export default [];',
     } });
     watcher = await startTestPackBuildWatcher(root, {
+      captureCompiler: sharedCompiler.capture,
       signal,
       place: { env: 'test', userDataDir: path.join(temporary, 'profile') },
       onBuilt: async () => { publications++; },

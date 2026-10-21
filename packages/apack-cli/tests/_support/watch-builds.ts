@@ -1,5 +1,5 @@
 import { expect, vi } from 'vitest';
-import { createPackBuilder } from '../../src/build/build-process.ts';
+import { createPackBuilder, type PackBuilderOptions } from '../../src/build/build-process.ts';
 import { startPackBuildWatcher, type WatchOptions } from '../../src/build/watch.ts';
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -13,8 +13,9 @@ export type TestPackBuildWatcher = Awaited<ReturnType<typeof startPackBuildWatch
 };
 
 /** Separate a missing watch request from compilation; callers retain their notification/output checks. */
-export async function startTestPackBuildWatcher(root: string, options: Omit<WatchOptions, 'builder'> = {}): Promise<TestPackBuildWatcher> {
-  const builder = createPackBuilder(root);
+export async function startTestPackBuildWatcher(root: string,
+  { captureCompiler, ...options }: Omit<WatchOptions, 'builder'> & PackBuilderOptions = {}): Promise<TestPackBuildWatcher> {
+  const builder = createPackBuilder(root, { captureCompiler });
   const build = builder.build.bind(builder);
   const builds: Promise<{ interrupted: boolean; error?: unknown }>[] = [];
   builder.build = input => {

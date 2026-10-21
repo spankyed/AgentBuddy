@@ -16,6 +16,9 @@ import { reloadPackById } from '@apackdev/host/packs/runtime';
 import { HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { startTestPackBuildWatcher, WATCH_REBUILD_BUDGET_MS, type TestPackBuildWatcher } from '../_support/watch-builds.ts';
+import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
+
+const sharedCompiler = shareCompilerInstallation();
 
 const built = packagesBuiltOrRefuse('npm run packages:ensure');
 let settings: ReturnType<typeof createSettingsService>;
@@ -91,6 +94,7 @@ async function startWatchedPack(signal: AbortSignal): Promise<WatchedPack & { cl
     fs.writeFileSync(environment.apiPortFile, JSON.stringify({ port: address.port, pid: process.pid }));
     fs.writeFileSync(environment.apiTokenFile, 'watch-test-token');
     watcher = await startTestPackBuildWatcher(root, {
+      captureCompiler: sharedCompiler.capture,
       signal,
       place: { env: 'test', userDataDir: environment.userDataDir },
       onBuilt: async () => { stagePack(root, installed); state.publications++; },

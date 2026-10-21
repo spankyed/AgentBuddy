@@ -11,9 +11,12 @@ import { createPackBuilder } from '../../src/build/build-process.ts';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { nativeFixture, ordinaryNativeLoad, nativeLoad, nativeWorkerCompiler } from '../_support/native-libraries.ts';
+import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
 
 // The native-library proofs are split by subject so the native half's shards can spread them; this one is
 // native libraries checked before addon initialization, in preloads, threads and launch search paths.
+
+const sharedCompiler = shareCompilerInstallation();
 
 it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitive'] as const)('checks %s native libraries before addon initialization', async mode => {
   const { root, pack, library, marker, outside, entry } = nativeFixture(mode);
@@ -57,7 +60,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
   const checkpoint = (phase: string) => console.info(`Native ${site}: ${phase} (${Math.round(performance.now() - started)}ms)`);
   const supported = nativeFixture('relative');
   const refused = [nativeFixture('absolute'), nativeFixture('transitive')];
-  const builder = createPackBuilder(supported.pack);
+  const builder = createPackBuilder(supported.pack, { captureCompiler: sharedCompiler.capture });
   const previous = process.env.NODE_OPTIONS;
   const preload = path.join(supported.pack, 'native-preload.cjs');
   const proof = path.join(supported.root, 'preload-proof.json');
@@ -137,7 +140,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
 
 it.runIf(process.platform === 'darwin' || process.platform === 'linux')('retains launch-time native search paths across preload changes and compiler workers', async () => {
   const fixture = nativeFixture(process.platform === 'linux' ? 'runpath' : 'relative');
-  const builder = createPackBuilder(fixture.pack);
+  const builder = createPackBuilder(fixture.pack, { captureCompiler: sharedCompiler.capture });
   const previousOptions = process.env.NODE_OPTIONS;
   const variable = process.platform === 'linux' ? 'LD_LIBRARY_PATH' : 'DYLD_LIBRARY_PATH';
   const previousSearch = process.env[variable];

@@ -4,6 +4,9 @@ import path from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { startTestPackBuildWatcher, WATCH_REBUILD_BUDGET_MS, type TestPackBuildWatcher } from '../_support/watch-builds.ts';
 import { runtimePack, vueRuntimePack } from '../_support/frontend-pack.ts';
+import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
+
+const sharedCompiler = shareCompilerInstallation();
 
 // The live-watcher half of package-inputs.integration.spec.ts: an undeclared runtime import rebuilt on its own edit
 let root: string | undefined;
@@ -39,6 +42,7 @@ it.each([
   let publications = 0;
   try {
     starting = startTestPackBuildWatcher(pack, {
+      captureCompiler: sharedCompiler.capture,
       signal,
       place: { env: 'test', userDataDir: path.join(root!, 'profile') },
       onBuilt: async () => { publications++; },

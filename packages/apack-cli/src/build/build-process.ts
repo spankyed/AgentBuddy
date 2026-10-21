@@ -37,8 +37,20 @@ export interface PackBuilder {
   close(): Promise<void>;
 }
 
+/** How a builder obtains a compiler installation; the default captures a private one per builder. */
+export type CaptureCompiler = typeof captureCompilerInstallation;
+
+export interface PackBuilderOptions {
+  /**
+   * Supplies the installation when the builder needs one. The builder still checks `isCurrent` before every
+   * reuse and calls `dispose` when no generation holds it, so a supplier lending one installation to several
+   * builders hands each a `dispose` that leaves it in place.
+   */
+  readonly captureCompiler?: CaptureCompiler;
+}
+
 /** A pack retains its accepted compiler and frontend until a replacement is ready. */
-export function createPackBuilder(root: string): PackBuilder {
+export function createPackBuilder(root: string, { captureCompiler }: PackBuilderOptions = {}): PackBuilder {
   interface Generation { compiler: CompilerInstallation; frontend?: PackFrontend; configuration?: string; inputs?: CompilerWatchPaths }
   let current: Generation | undefined;
   const owned = new Set<Generation>();
@@ -121,7 +133,7 @@ export function createPackBuilder(root: string): PackBuilder {
         const reusable = compiler && (!current?.frontend
           || (current.configuration === configuration && await current.frontend.isCurrent(options.signal)));
         const candidate: Generation = current && reusable ? current
-          : { compiler: compiler ?? await captureCompilerInstallation(directory, { cwd: root, signal: options.signal }) };
+          : { compiler: compiler ?? await (captureCompiler ?? captureCompilerInstallation)(directory, { cwd: root, signal: options.signal }) };
         owned.add(candidate);
         try {
           options.signal.throwIfAborted();

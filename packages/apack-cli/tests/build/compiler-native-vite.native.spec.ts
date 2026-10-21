@@ -2,20 +2,22 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { } from 'node:module';
 import { expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { createPackBuilder } from '../../src/build/build-process.ts';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
-import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import type { CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { createCompilerWatchMatcher, mergeCompilerWatchPaths, type CompilerWatchPaths } from '../../src/build/compiler-watch.ts';
 import { nativeFixture, nativeLoad } from '../_support/native-libraries.ts';
+import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
 
 // The native-library proofs are split by subject so the native half's shards can spread them; this one is
 // retained Vite's native inputs and process ownership.
+
+const sharedCompiler = shareCompilerInstallation();
 
 it('tracks retained Vite ESM preload and loader inputs without freezing Vue sources', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-vite-esm-inputs-')));
@@ -91,7 +93,7 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
     fs.writeFileSync(path.join(importEntry, 'package.json'), '{"type":"module","exports":"./index.mjs"}');
     fs.writeFileSync(path.join(importEntry, 'index.mjs'), `import ${JSON.stringify(pathToFileURL(imported).href)};`);
     await new Promise<void>(resolve => setImmediate(resolve));
-    compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
+    compiler = await sharedCompiler.installation({ cwd: pack });
     process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', 'startup-require-fixture',
       '--import', 'startup-import-fixture', '--experimental-loader', pathToFileURL(loader).href]);
     let observed: CompilerWatchPaths = new Map();
@@ -184,7 +186,7 @@ it('retains independent captured Vite owners through replacement and close', asy
       child.unref();
       require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({root:process.pid, child:child.pid})+'\\n');
     }`);
-    compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
+    compiler = await sharedCompiler.installation({ cwd: pack });
     process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
     frontends.push(await startPackFrontend(pack, compiler, signal));
     frontends.push(await startPackFrontend(pack, compiler, signal));
@@ -208,7 +210,7 @@ it('retains independent captured Vite owners through replacement and close', asy
 
 it.runIf(process.platform === 'darwin')('watches external Vite native changes and repairs a failed generation through newly discovered inputs', async ({ onTestFinished }) => {
   const fixture = nativeFixture('relative');
-  const builder = createPackBuilder(fixture.pack);
+  const builder = createPackBuilder(fixture.pack, { captureCompiler: sharedCompiler.capture });
   const previous = process.env.NODE_OPTIONS;
   let watcher: Awaited<ReturnType<typeof startPackBuildWatcher>> | undefined;
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -324,7 +326,7 @@ it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)(
         worker.on('error', error => { console.error(error); process.exit(1); });`}
       }`);
       writePreload(load);
-      compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: fixture.pack });
+      compiler = await sharedCompiler.installation({ cwd: fixture.pack });
       process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
       frontend = await startPackFrontend(fixture.pack, compiler, signal);
       await vi.waitFor(() => expect(fs.existsSync(proof)).toBe(true), { timeout: 2_000 });
