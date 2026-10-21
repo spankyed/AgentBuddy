@@ -94,7 +94,8 @@ each case costs, measured: [pipeline-lessons.md](docs/archive/references/pipelin
 
 **`npm run chain -- --no-native` is the everyday local gate when your change does not touch the compiler.**
 It leaves out `test:native` — compiler runtimes, native fixtures and live watchers, the longest step — and says
-so on the result line. Run the full chain when you change `packages/apack-cli/src/build/`, the captured
+so on the result line. On a Mac it is also the run that needs no Docker, since native is the one step that
+uses the container. Run the full chain when you change `packages/apack-cli/src/build/`, the captured
 runtime or watcher code, or anything native; the strict gate always runs it.
 
 **Use `npm run spec` while working and the chain when done.** With no arguments it runs the specs your
@@ -150,12 +151,13 @@ fixtures, repeated captured-runtime execution and startup/cancellation batches. 
 immediately if unrelated apps stop launching; preserve
 evidence without changing macOS security settings. Cause remains unproven in the
 [launch incident](docs/references/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
-The CLI integration and native configs do not run directly on a Mac: each run executes fresh runtime copies
-that macOS security-assesses one by one. **Run them in the Linux test container instead** —
-`npm run chain` does so for `test:integration` and `test:native` (`linuxOnMac`, `scripts/lib/chain-steps.ts`),
-and `npm run test:linux -- <command>` runs any command there (`scripts/linux-runner.ts`; Docker/OrbStack
-must be running). Do not bypass the guard with fabricated runner variables. Live watcher cases belong in
-`*.native.spec.ts`, so they run there too; pure unit checks stay in the fast half.
+The CLI's native half does not run directly on a Mac: its specs execute fresh native fixtures and runtime copies
+that macOS security-assesses one by one. **It runs in the Linux test container instead** — `npm run chain` does
+so for `test:native` (`linuxOnMac`, `scripts/lib/chain-steps.ts`), and `npm run test:linux -- <command>` runs any
+command there (`scripts/linux-runner.ts`; Docker/OrbStack must be running). Do not bypass the guard with
+fabricated runner variables. The integration half runs directly: its builds reuse the shared compiler store, so
+macOS assesses each runtime once. Live watcher cases belong in `*.native.spec.ts`; pure unit checks stay in the
+fast half.
 Run required final strict acceptance with `gh workflow run ci.yml --ref <branch> -f strict_chain=true`: it
 runs strict `--all` on disposable macOS runners as parallel jobs (`strict-chain.yml`): a producers job, then
 two integration shards, two native shards, and the app half with the remaining checks, beside each other on
@@ -317,7 +319,7 @@ npm run test:unit:host           # One pool, only the projects whose inputs chan
 npm run test:unit:pack           # The pack pool, resolving the published dist
 npm run test:integration         # Every suite's expensive half, as one vitest run at half the cores
 npm run test:native              # The native half (*.native.spec.ts), one file at a time, 300s a case
-npm run test:linux -- <command>  # Run a command in the Linux test container (the chain does for the two halves above on a Mac)
+npm run test:linux -- <command>  # Run a command in the Linux test container (the chain does for test:native on a Mac)
 npm run test:external-pack       # Both halves of the fixture-pack check
 npm run test:external-pack:contract  # Validate, build, typecheck, harness specs — no app
 npm run test:external-pack:fork  # Build and archive the shipped-pack fork — no app

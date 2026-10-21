@@ -955,7 +955,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // never the app — which is why they can run before `build` rather than behind it.
   // Needs `build:default-setup` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. Table order promises nothing (`orderedSteps`), so the edge is declared.
-  { name: 'test:integration', timeout: 'acceptance', linuxOnMac: true,
+  { name: 'test:integration', timeout: 'acceptance',
     // It keeps a cache of its own, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },

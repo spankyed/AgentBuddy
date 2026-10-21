@@ -340,10 +340,11 @@ Three suites, split by what a spec costs and needs:
   (`tests/_support/shared-compiler.ts`, passed to `createPackBuilder` as `captureCompiler`); a case about
   capture, the captured runtime, an esbuild override or an installation's removal captures its own.
 
-On a Mac the integration and native configs refuse before importing specs (`compilerTestsRunHere`,
-`@apackdev/host/build/compiler-test-host`) and run in the Linux test container instead: `npm run chain`
-routes them there, and `npm run test:linux -- <command>` runs a targeted one. A GitHub-hosted runner runs them
-directly. Live filesystem-watcher cases live in `*.native.spec.ts`; mocked watcher-error and cancellation
+On a Mac the native config refuses before importing specs (`compilerTestsRunHere`,
+`@apackdev/host/build/compiler-test-host`) and runs in the Linux test container instead: `npm run chain` routes
+it there, and `npm run test:linux -- <command>` runs a targeted one. A GitHub-hosted runner runs it directly.
+The integration half runs directly everywhere: its builds reuse the shared compiler store, so macOS assesses
+each runtime and compiler executable once. Live filesystem-watcher cases live in `*.native.spec.ts`; mocked watcher-error and cancellation
 tests stay in the fast half. The guard does not restrict normal CLI use or development builds. The macOS-only
 native cases (Electron's framework copy, signed Mach-O) still need `compiler_macos=true`.
 
