@@ -5,10 +5,19 @@ import { useSettingsRecovery } from '@/runtime/settings';
 import PluginPopoutApp from './PluginPopoutApp.vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
+import { onScopeDispose, shallowRef } from 'vue';
 import { fePacks } from '@/runtime/packs';
 
 const recovery = useSettingsRecovery();
-const WelcomeComponent = fePacks.getAppExtension('welcome');
+/**
+ * Re-read, never read once: this window mounts before any pack's frontend has loaded — `main.ts` registers
+ * none, and the shell loads every one, the app's own included, once the bus says which packs are running. The
+ * slot is drawn while the shell has the `welcome` tag, which is that same window, so a one-shot read is
+ * always `undefined` and a pack contributing a welcome screen has nothing drawn for it on the one boot it is
+ * meant for.
+ */
+const WelcomeComponent = shallowRef(fePacks.getAppExtension('welcome'));
+onScopeDispose(fePacks.onChanged(() => { WelcomeComponent.value = fePacks.getAppExtension('welcome'); }));
 const isWelcome = useSelector(applicationState, (s) => s.hasTag('welcome'));
 const isConnecting = useSelector(applicationState, (s) => s.hasTag('connecting'));
 const isPluginPopout = new URLSearchParams(window.location.search).get('popout') === 'plugin';

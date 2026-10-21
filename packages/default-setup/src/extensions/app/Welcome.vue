@@ -6,7 +6,36 @@
       </div>
 
       <div class="letter-body">
-        <TiptapEditor mode="viewer" variant="chat" :model-value="letterContent" />
+        <p>Hello Testers,</p>
+        <p>
+          Welcome to apack! First off, thank you for being here early. Your feedback is invaluable as I work
+          to make apack the best AI-powered tool for developers.
+        </p>
+        <p>
+          apack isn't a project I started last month—it's an idea I've been iterating on, in different forms,
+          since 2017. In recent years, I've watched a pattern emerge: as AI systems become more powerful, they
+          also become more opaque. Access gets gated. Integrating with them becomes clunky and restrictive.
+          You're expected to adapt to the system instead of helping shape it.
+        </p>
+        <p>apack is my attempt to flip that on its head.</p>
+        <p>
+          It's built to be <strong>local-first</strong>, transparent, and adaptable—something that works
+          <em>with</em> you, not behind a curtain. I believe you should be able to understand what your tools
+          are doing, customize them, and trust them.
+        </p>
+        <p>
+          That said, this is still early. You'll run into rough edges, missing pieces, and things that don't
+          quite click yet.
+        </p>
+        <p>That's where you come in.</p>
+        <p>
+          What feels powerful? What feels frustrating? What would make this actually useful in your daily flow?
+        </p>
+        <p>
+          Your <a href="#" @click.prevent="openLink(DISCORD_URL)">feedback</a> directly shapes what I build next.
+        </p>
+        <p>Thanks for taking a chance on this.</p>
+        <p><em>— The Developer</em></p>
       </div>
 
       <div class="welcome-actions">
@@ -23,34 +52,25 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
-import { useShell } from '@apackdev/sdk/fe';
-import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';
+import { openLink, useShell } from '@apackdev/sdk/fe';
+
+/**
+ * The letter is **markup, not markdown**, and that is the point rather than a shortcut.
+ *
+ * It was a markdown string rendered through a full Tiptap viewer, which is this pack's editor: the editor
+ * carries every registered pack's tiptap extensions, so drawing eleven static paragraphs mounted the
+ * reference and slash-command popups, and those read the threads, notes and library plugins' state. This
+ * component is rendered by the *host*, in no plugin's scope and before those plugins are running, so the one
+ * screen a first-time user sees depended on three of this pack's features having started.
+ *
+ * The rule about untrusted text (`CLAUDE.md`: markdown renders in a Tiptap viewer, which emits no raw HTML)
+ * is not in play: this copy is authored here, in the template, and no value interpolated into it comes from
+ * outside this file.
+ */
 // The app's Settings view shows this too; a copy here rather than an import across the boundary
 const DISCORD_URL = 'https://discord.gg/JvbHRXcYp6';
 
 const shell = useShell();
-
-const letterContent = `Hello Testers,
-
-Welcome to apack! First off, thank you for being here early. Your feedback is invaluable as I work to make apack the best AI-powered tool for developers.
-
-apack isn't a project I started last month—it's an idea I've been iterating on, in different forms, since 2017. In recent years, I've watched a pattern emerge: as AI systems become more powerful, they also become more opaque. Access gets gated. Integrating with them becomes clunky and restrictive. You're expected to adapt to the system instead of helping shape it.
-
-apack is my attempt to flip that on its head.
-
-It's built to be **local-first**, transparent, and adaptable—something that works *with* you, not behind a curtain. I believe you should be able to understand what your tools are doing, customize them, and trust them.
-
-That said, this is still early. You'll run into rough edges, missing pieces, and things that don't quite click yet.
-
-That's where you come in.
-
-What feels powerful? What feels frustrating? What would make this actually useful in your daily flow?
-
-Your [feedback](${DISCORD_URL}) directly shapes what I build next.
-
-Thanks for taking a chance on this.
-
-*— The Developer*`;
 
 const closeDevLetter = () => {
   shell.closeDevLetter();
@@ -113,6 +133,31 @@ onUnmounted(() => {
   line-height: 1.7;
   color: #ccc;
   font-size: 1.05rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* The typography the Tiptap viewer used to supply */
+.letter-body p {
+  margin: 0 0 1rem;
+}
+
+.letter-body p:last-child {
+  margin-bottom: 0;
+}
+
+.letter-body strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.letter-body a {
+  color: #4a9eff;
+  text-decoration: underline;
+}
+
+.letter-body a:hover {
+  color: #6bb0ff;
 }
 
 .welcome-actions {

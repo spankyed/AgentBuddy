@@ -1452,14 +1452,20 @@ const OWN_PLUGINS = new Set<string>([${own.map(id => `'${id}'`).join(', ')}]);
 
 /**
  * The ref to read at, checked where this pack's own plugins are concerned. Their overloads say the value is never
- * \`undefined\` — a plugin of this pack is spawned in the step that registers it, so one that isn't running is a bug
- * rather than a state — and this is what keeps that true, instead of handing back an \`undefined\` the type denies.
- * A dependency's may legitimately not be running yet, and reads as \`undefined\` until its frontend loads.
+ * \`undefined\`, and this is what keeps that true instead of handing back an \`undefined\` the type denies. A
+ * dependency's may legitimately not be running yet, and reads as \`undefined\` until its frontend loads.
+ *
+ * **The spawn is the shell's, not the registration's**, which bounds where "never running is a bug" holds. The
+ * shell spawns a pack's plugins when it handles the \`PACK_FRONTEND_LOADED\` it is sent *after*
+ * \`registerPackFE\` hands them back — so inside a plugin's own views the plugin is certainly running, while a
+ * component the host renders outside any of them (an app extension, an artifact viewer) can be drawn in
+ * between. Such a component reads another plugin with the \`untyped\` readers, which answer \`undefined\`; the
+ * throw below says so.
  */
 function ownPlugin(name: PluginName): string {
   const target = ref(name);
   if (OWN_PLUGINS.has(name) && !pluginIsRunning(target)) {
-    throw new Error(\`No plugin is running at "\${target}", which is this pack's own: its frontend registers it, so this is a bug rather than a state to render\`);
+    throw new Error(\`No plugin is running at "\${target}", which is this pack's own. Inside that plugin's own views this is a bug rather than a state to render. A component the host renders — an app extension, an artifact viewer — can be drawn before the shell has spawned the plugins it just registered, and there it is a state: read with readUntypedPluginState or useUntypedPluginState, which answer undefined.\`);
   }
   return target;
 }
