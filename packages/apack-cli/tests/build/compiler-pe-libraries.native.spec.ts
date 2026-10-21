@@ -1093,7 +1093,20 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
     await new Promise<void>(resolve => setImmediate(resolve));
     builder = createPackBuilder(pack, { captureCompiler: sharedCompiler.capture });
     let observed: CompilerWatchPaths = new Map();
-    unsubscribe = builder.subscribeFrontendInputs(update => { observed = update.paths; });
+    unsubscribe = builder.subscribeFrontendInputs(update => {
+      observed = update.paths;
+      if (update.changed) checkpoint(`frontend inputs discovered (${update.paths.size} paths)`);
+    });
+    const build = builder.build.bind(builder);
+    let buildCount = 0;
+    // Each build's start and outcome, so a run that overlaps the repair says which request started it
+    builder.build = input => {
+      const run = ++buildCount;
+      checkpoint(`build ${run} started`);
+      const running = build(input);
+      running.then(() => checkpoint(`build ${run} published`), error => checkpoint(`build ${run} refused: ${String(error).slice(0, 120)}`));
+      return running;
+    };
     const builds = vi.spyOn(builder, 'build'), publications = vi.fn(async () => {});
     const addresses: Array<{ port: number; pid: number }> = [];
     watcher = await startPackBuildWatcher(pack, { builder, buildArgs: ['--skip-fe'], onBuilt: publications,
