@@ -23,6 +23,8 @@ const BOOLEAN_FLAGS = {
     + 'most any step on it could buy. Runs nothing and writes nothing. With --all, the cold chain',
   all: 'every step regardless of its stamp, forcing those that keep a cache of their own',
   e2e: 'run the E2E suite with the chain, ordered after test:smoke',
+  'no-native': 'leave out test:native (compiler runtime, native fixtures, live watchers) for a faster local run when '
+    + 'nothing under packages/apack-cli/src/build changed; the run says it is partial, and the strict gate runs it',
   strict: "fail the run when a step's inputs moved while it ran — it read a tree that no longer exists. "
     + 'Always reported; this decides whether it fails the run',
   wait: 'queue behind a run already holding the lock, up to 10 minutes, rather than refusing',

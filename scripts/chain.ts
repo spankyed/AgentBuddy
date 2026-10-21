@@ -357,6 +357,8 @@ async function main(): Promise<void> {
   const dry = args.flags.has('dry');
   // The E2E suite is a harness for driving the app rather than a gate, so it runs when asked for
   const e2e = args.flags.has('e2e');
+  // The native half is the longest step and rarely what an edit touches; leaving it out is said on the result
+  const noNative = args.flags.has('no-native');
   // A step whose inputs moved while it ran verified nothing, which is always reported; this decides whether
   // the chain fails on it. Opt-in because the honest answer can be a long list — `api:check` rebuilding
   // `@apackdev/testing` mid-chain once left twenty passed steps stale, every one of them correctly named
@@ -380,6 +382,12 @@ async function main(): Promise<void> {
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
   // than halfway through a six-minute run
   let steps = orderedSteps(chainSteps(e2e ? ['test:e2e'] : []));
+  if (noNative) {
+    const dependent = steps.find((step) => step.dependsOn.includes('test:native'));
+    if (dependent !== undefined) return refuse(`--no-native would leave out what ${dependent.name} reads`);
+    steps = steps.filter((step) => step.name !== 'test:native');
+    console.log(dim('test:native not run: --no-native'));
+  }
   const budget = budgetFrom(args.values.cores);
   if (jobs !== undefined) {
     const chosen = new Set(jobs.flatMap((name) => strictJobSteps(steps, name as StrictJob, TYPECHECK_LEGS.map((leg) => leg.name),
@@ -649,7 +657,7 @@ async function main(): Promise<void> {
     recordStepDurations(REPO_ROOT, new Map([...measuredMs].filter(([step]) => passed.has(step))));
   }
 
-  console.log(`\n${verdictText()} in ${secs(Date.now() - started)}${skipped}${` on ${cores(budget)}`}${floor}`);
+  console.log(`\n${verdictText()} in ${secs(Date.now() - started)}${skipped}${noNative ? ' (test:native not run: --no-native)' : ''}${` on ${cores(budget)}`}${floor}`);
   // After the verdict, so it is the last thing on screen and a reader who scrolled past everything else
   // still has it. Only when there is some: a fully cached run ran nothing and made no directory.
   if (evidence !== undefined && evidence.kept() > 0) console.log(dim(evidenceLine(evidence.dir, evidence.kept())));

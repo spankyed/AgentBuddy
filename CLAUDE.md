@@ -92,6 +92,11 @@ deterministic build stays cached through a rebuild from unchanged input; `npm ru
 builds reproducible. `npm run chain -- --dry` prints the plan and why each step is or is not cached. What
 each case costs, measured: [pipeline-lessons.md](docs/archive/references/pipeline-lessons.md#what-a-change-costs-the-chain).
 
+**`npm run chain -- --no-native` is the everyday local gate when your change does not touch the compiler.**
+It leaves out `test:native` — compiler runtimes, native fixtures and live watchers, the longest step — and says
+so on the result line. Run the full chain when you change `packages/apack-cli/src/build/`, the captured
+runtime or watcher code, or anything native; the strict gate always runs it.
+
 **Use `npm run spec` while working and the chain when done.** With no arguments it runs the specs your
 uncommitted changes affect; with a source file, the specs that import it. A change to `scripts/` or a vitest
 config routes to `@app/repo-checks`. It names the specs the module graph cannot reach — a pack suite, which
