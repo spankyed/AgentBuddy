@@ -127,6 +127,12 @@ export interface ChainStep {
    */
   readonly forceArgs?: readonly string[];
   /**
+   * That the step runs compiler-runtime, native-fixture or live-watcher suites, which do not run directly on a
+   * daily-use Mac (`compilerTestsRunHere`, @apackdev/host/build/compiler-test-host). There the chain runs it in
+   * the Linux test container (`scripts/linux-runner.ts`); elsewhere it runs as written.
+   */
+  readonly linuxOnMac?: true;
+  /**
    * How long it may run before its process group is killed, by the kind of work it is
    * (`TIMEOUT_MS`, `scripts/lib/step-timeouts.ts`).
    *
@@ -949,13 +955,13 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // never the app — which is why they can run before `build` rather than behind it.
   // Needs `build:default-setup` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. Table order promises nothing (`orderedSteps`), so the edge is declared.
-  { name: 'test:integration', timeout: 'acceptance',
+  { name: 'test:integration', timeout: 'acceptance', linuxOnMac: true,
     // It keeps a cache of its own, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
   // Native runtime and live-watcher scenarios, beside integration rather than inside it: same reads, and a
   // run of its own so it can be scheduled, selected and sharded apart from the ordinary integration specs.
-  { name: 'test:native', timeout: 'acceptance',
+  { name: 'test:native', timeout: 'acceptance', linuxOnMac: true,
     forceArgs: ['--all'],
     ...inputsForSuites(NATIVE_SUITES, 'native') },
   // build:default-setup owns pack outputs; build:runtime only builds the four app workspaces.

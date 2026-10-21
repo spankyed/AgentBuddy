@@ -114,6 +114,7 @@
 
     "check:idle": "tsx scripts/check-idle.ts",
     "measure": "tsx scripts/measure.ts",
+    "test:linux": "tsx scripts/linux-runner.ts",
     "measure:loop": "tsx scripts/measure-loop.ts"
   },
   "devDependencies": {

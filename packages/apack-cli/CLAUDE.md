@@ -334,11 +334,12 @@ Three suites, split by what a spec costs and needs:
   (`tests/_support/shared-compiler.ts`, passed to `createPackBuilder` as `captureCompiler`); a case about
   capture, the captured runtime, an esbuild override or an installation's removal captures its own.
 
-On macOS the integration and native configs require a GitHub-hosted runner and refuse before importing specs.
-Use the root guide's disposable compiler workflows for focused native checks; full integration and
-strict gates also belong on disposable CI. A generic `CI=true` or a self-hosted runner is insufficient.
-Live filesystem-watcher cases use the same runner guard even in unit files; mocked watcher-error
-and cancellation tests remain local. This guard does not restrict normal CLI use or development builds.
+On a Mac the integration and native configs refuse before importing specs (`compilerTestsRunHere`,
+`@apackdev/host/build/compiler-test-host`) and run in the Linux test container instead: `npm run chain`
+routes them there, and `npm run test:linux -- <command>` runs a targeted one. A GitHub-hosted runner runs them
+directly. Live filesystem-watcher cases live in `*.native.spec.ts`; mocked watcher-error and cancellation
+tests stay in the fast half. The guard does not restrict normal CLI use or development builds. The macOS-only
+native cases (Electron's framework copy, signed Mach-O) still need `compiler_macos=true`.
 
 `startPackBuildWatcher().done` reports terminal subscription failures after owned cleanup; `close()`
 drains disposal. Both the public watch command and dev session await `done`. Syntax/build/reload errors

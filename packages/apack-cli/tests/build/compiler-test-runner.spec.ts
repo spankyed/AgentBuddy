@@ -8,7 +8,7 @@ it.each([
   { RUNNER_ENVIRONMENT: 'github-hosted' },
   { GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'self-hosted' },
 ])('refuses Mac integration without a hosted runner: %j', env => {
-  expect(() => assertCompilerTestRunner('darwin', env)).toThrow('disposable GitHub-hosted runner');
+  expect(() => assertCompilerTestRunner('darwin', env)).toThrow('npm run test:linux');
 });
 
 it('allows Mac integration on GitHub-hosted runners', () => {

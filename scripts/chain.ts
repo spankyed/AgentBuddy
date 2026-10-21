@@ -47,6 +47,7 @@ import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './
 import type { ExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { timeoutMsFor, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box } from './lib/core-budget.ts';
+import { compilerTestsRunHere } from '@apackdev/host/build/compiler-test-host';
 import { readStepSeconds, recordStepDurations, withRecordedSeconds } from './lib/step-durations.ts';
 import { asCount, parseFlags } from './lib/measure.ts';
 import { schedule } from './lib/chain-schedule.ts';
@@ -210,7 +211,9 @@ function whatMoved(
 async function run(step: string, timeout: TimeoutClass, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env): Promise<Result> {
   const args = ['run', step];
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
-  const withForce = force.length === 0 ? args : [...args, '--', ...force];
+  const direct = force.length === 0 ? args : [...args, '--', ...force];
+  // A step whose suites cannot run on this Mac runs the same npm command in the Linux test container
+  const withForce = inLinuxContainer(step) ? ['run', 'test:linux', '--', 'npm', ...direct] : direct;
   // Explicit feedback limits may shorten the declared work class's ceiling.
   const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, timeoutMsFor(timeout), { env });
   const result = { step, ms, code, output, timedOut };
@@ -219,6 +222,10 @@ async function run(step: string, timeout: TimeoutClass, force: readonly string[]
   evidence?.keep(step, result);
   return result;
 }
+
+/** Whether this machine runs `step` in the Linux test container rather than directly (`ChainStep.linuxOnMac`) */
+const inLinuxContainer = (step: string): boolean =>
+  CHAIN_STEPS.find((candidate) => candidate.name === step)?.linuxOnMac === true && !compilerTestsRunHere();
 
 /**
  * Where this run's per-step output goes, assigned once `main` holds the lock.

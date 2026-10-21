@@ -1,14 +1,10 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createCompilerWatchMatcher, createCompilerWatchTools, compilerWatchPaths, compilerWatchTargets, mergeCompilerWatchPaths, additionalCompilerObservations } from '../../src/build/compiler-watch.ts';
 import { assertNativeCompilerObservations, createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
-import * as installation from '../../src/build/compiler-installation.ts';
 import * as runtime from '../../src/build/compiler-runtime.ts';
-import { startPackBuildWatcher } from '../../src/build/watch.ts';
-import * as reload from '../../src/build/dev-reload.ts';
-import { assertCompilerTestRunner } from '../_support/compiler-test-runner.ts';
+import { compilerWatchFixture } from '../_support/compiler-watch-fixture.ts';
 
 const roots: string[] = [];
 afterEach(() => {
@@ -16,35 +12,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
 });
-function fixture() {
-  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-compiler-watch-')));
-  roots.push(root);
-  const pack = path.join(root, 'pack');
-  fs.mkdirSync(path.join(pack, 'src'), { recursive: true });
-  fs.writeFileSync(path.join(pack, 'src/index.ts'), "export type { Contract } from 'outside';");
-  fs.writeFileSync(path.join(pack, 'tsconfig.json'), JSON.stringify({ extends: '../base.json' }));
-  const configure = (target = 'contract.d.ts') => fs.writeFileSync(path.join(root, 'base.json'), JSON.stringify({
-    compilerOptions: { noLib: true, types: [], baseUrl: '.', paths: { outside: [target] },
-      module: 'ESNext', moduleResolution: 'Bundler' },
-  }));
-  configure();
-  fs.writeFileSync(path.join(root, 'contract.d.ts'), 'export type Contract = string;');
-  const physicalRoot = fs.realpathSync(root);
-  const compiler = path.join(physicalRoot, 'compiler');
-  fs.mkdirSync(compiler);
-  fs.writeFileSync(path.join(compiler, 'package.json'), '{"name":"fixture-compiler"}');
-  const entry = path.join(compiler, 'index.js');
-  fs.writeFileSync(entry, 'first compiler');
-  const executable = path.join(physicalRoot, 'runtime');
-  fs.writeFileSync(executable, 'first runtime', { mode: 0o755 });
-  const override = path.join(physicalRoot, 'esbuild');
-  vi.spyOn(installation, 'compilerPackageDirectory').mockReturnValue(compiler);
-  const readRuntime = runtime.readCompilerRuntimeInputs;
-  vi.spyOn(runtime, 'readCompilerRuntimeInputs').mockImplementation((_executable, _electron, onFile, observe) =>
-    readRuntime(executable, false, onFile, observe));
-  vi.stubEnv('ESBUILD_BINARY_PATH', path.relative(pack, override));
-  return { root, pack, configure, compiler, entry, executable, override };
-}
+const fixture = () => compilerWatchFixture(roots);
 
 it('subscribes to compiler/runtime inputs and a missing esbuild override without authored edits', () => {
   const { pack, entry, executable, override } = fixture();
@@ -125,24 +93,6 @@ it('replays worker bytes and native metadata while leaving ordinary static bytes
     fs.writeFileSync(shared, 'CHANGED');
     expect(() => assertNativeCompilerObservations(observed)).toThrow(/changed/);
   } finally { view.dispose(); }
-});
-
-it('rebuilds an idle session on actual tooling filesystem events', async () => {
-  assertCompilerTestRunner();
-  const { pack, entry, executable, override } = fixture();
-  fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify({ id: 'watch-tooling', name: 'Watch tooling', version: '1.0.0' }));
-  vi.spyOn(reload, 'reloadPack').mockResolvedValue({ status: 'not-running', detail: 'fixture has no app' });
-  let builds = 0;
-  const watcher = await startPackBuildWatcher(pack, { builder: {
-    build: async () => { builds++; }, subscribeFrontendInputs: () => () => {}, isFrontendCurrent: async () => true,
-  } });
-  try {
-    expect(builds).toBe(1);
-    for (const [index, file] of [entry, executable, override].entries()) {
-      fs.writeFileSync(file, `changed tooling ${index}`);
-      await vi.waitFor(() => expect(builds).toBe(index + 2), { timeout: 2_000 });
-    }
-  } finally { await watcher.close(); }
 });
 
 it('collects inherited configuration and resolved outside files, excluding the authored tree', () => {

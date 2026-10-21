@@ -4,7 +4,6 @@ import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { _byDeadline } from '@apackdev/sdk/testing/waiting';
 import { createFrontendWatcher } from '../../src/build/frontend-watch.ts';
-import { assertCompilerTestRunner } from '../_support/compiler-test-runner.ts';
 import { readBuildWatchInputs } from '../../src/build/build-watch-inputs.ts';
 
 const failures: Error[] = [];
@@ -12,7 +11,6 @@ const cleanups: Array<() => void | Promise<void>> = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); expect(failures.splice(0)).toEqual([]); });
 
 function fixture() {
-  assertCompilerTestRunner();
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-watch-'));
   const root = path.join(temporary, 'pack');
   fs.mkdirSync(root);

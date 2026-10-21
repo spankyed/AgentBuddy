@@ -15,6 +15,7 @@
     "./app-state": "./src/app-state/index.ts",
     "./backup": "./src/backup/index.ts",
     "./build/compiler-inputs": "./src/build/compiler-inputs/index.ts",
+    "./build/compiler-test-host": "./src/build/compiler-test-host.ts",
     "./build/discover": "./src/build/discover.ts",
     "./build/package-inputs": "./src/build/package-inputs.ts",
     "./build/pack-build-inputs": "./src/build/pack-build-inputs.ts",

@@ -145,10 +145,12 @@ fixtures, repeated captured-runtime execution and startup/cancellation batches. 
 immediately if unrelated apps stop launching; preserve
 evidence without changing macOS security settings. Cause remains unproven in the
 [launch incident](docs/references/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
-The CLI integration and native configs refuse macOS runs outside GitHub-hosted runners before loading test
-modules. Do not bypass that guard with fabricated runner variables; use disposable CI. This also applies
-when the root integration project or chain selects the CLI suite. Live watcher cases share this boundary
-even inside a unit suite; use the runner guard before opening their watchers. Pure unit checks remain local.
+The CLI integration and native configs do not run directly on a Mac: each run executes fresh runtime copies
+that macOS security-assesses one by one. **Run them in the Linux test container instead** —
+`npm run chain` does so for `test:integration` and `test:native` (`linuxOnMac`, `scripts/lib/chain-steps.ts`),
+and `npm run test:linux -- <command>` runs any command there (`scripts/linux-runner.ts`; Docker/OrbStack
+must be running). Do not bypass the guard with fabricated runner variables. Live watcher cases belong in
+`*.native.spec.ts`, so they run there too; pure unit checks stay in the fast half.
 Run required final strict acceptance with `gh workflow run ci.yml --ref <branch> -f strict_chain=true`: it
 runs strict `--all` on disposable macOS runners as parallel jobs (`strict-chain.yml`): a producers job, then
 two integration shards, two native shards, and the app half with the remaining checks, beside each other on
@@ -310,6 +312,7 @@ npm run test:unit:host           # One pool, only the projects whose inputs chan
 npm run test:unit:pack           # The pack pool, resolving the published dist
 npm run test:integration         # Every suite's expensive half, as one vitest run at half the cores
 npm run test:native              # The native half (*.native.spec.ts), one file at a time, 300s a case
+npm run test:linux -- <command>  # Run a command in the Linux test container (the chain does for the two halves above on a Mac)
 npm run test:external-pack       # Both halves of the fixture-pack check
 npm run test:external-pack:contract  # Validate, build, typecheck, harness specs — no app
 npm run test:external-pack:fork  # Build and archive the shipped-pack fork — no app
