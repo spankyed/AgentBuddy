@@ -565,7 +565,7 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # retry of a failed step beside its first attempt rather than over it. So piping a
                          # run is harmless and the output is still answerable after the terminal has gone.
                          # Beside each `<step>.log` of what it said, a **failed** step's `<step>.files/`
-                         # holds what it wrote (`keepsOnFailure`, scripts/lib/chain-steps.ts), copied in
+                         # holds what it wrote (`keepsOnFailure` and `evidence`, scripts/lib/chain-steps.ts), copied in
                          # before the re-run — which is what would overwrite it, since a runner that clears
                          # its output directory on the way in takes the files of the attempt being
                          # diagnosed. That is how an app's own log survives the retry.
@@ -622,7 +622,9 @@ npm run test:unit        # Vitest, as two pools: the host suites as one root run
                          # dist. Serial, measured — a second lane buys 3% for 87% more work.
                          # The list is scripts/lib/unit-suites.ts, which the chain reads too
 npm run test:native      # The native half (*.native.spec.ts): native compiler runtime and live-watcher specs,
-                         # one vitest run over vitest.native.config.ts, beside integration rather than in it
+                         # one vitest run over vitest.native.config.ts, beside integration rather than in it.
+                         # One file at a time (two compiler-heavy files starve each other), at the `enormous`
+                         # size: 300s a case (`SIZE_MS`), since each composes cold captures and builds
 npm run test:integration # The expensive half of every suite that has one (@apackdev/cli, @app/repo-checks,
                          # @app/publish-checks), as **one vitest run** over vitest.integration.config.ts's
                          # projects rather than three `npm -w` invocations in series: measured 2026-09-29,
