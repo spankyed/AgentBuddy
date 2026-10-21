@@ -135,8 +135,6 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
     "Frontend startup, refused cold replacement and repaired cold replacement are sequential; existing 2s HMR/fetch limits and retirement checks remain.",
   "packages/apack-cli/tests/build/compiler-native-launch.native.spec.ts > captures the selected native image suffix and refuses its later transitive escape":
     "Two captured build attempts follow native fixture/ordinary-loader preparation; freshness, pre-initialization refusal and disposal remain. The complete diagnostic takes 69.377s, above the former default.",
-  "packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts > checks %s native libraries before addon initialization":
-    "Compiling the native fixture (20s), the file's first cold input capture and compiler module loader in a fresh worker (60s), then the native load, freshness check and disposal (20s). The relative case reaches the default 60s at 61.8s in strict run 39550321649, where it is the first case its worker runs; its absolute and transitive siblings run after it, on modules that worker has already loaded. Keep every refusal, initialization and freshness assertion.",
   "packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts > retains launch-time native search paths across preload changes and compiler workers":
     "Two captured builds plus native fixture preparation, source/copy verification and disposal share the case.",
   "packages/apack-cli/tests/build/compiler-native-launch.native.spec.ts > refuses external %s before native initialization after preload mutation":
