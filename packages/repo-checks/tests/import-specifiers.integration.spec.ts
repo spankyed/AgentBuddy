@@ -408,7 +408,7 @@ describe('findUpwardImports', () => {
       .toEqual([`layers/api: imports @apackdev/ears, so its unusedBecause ("${WHY}") no longer applies`]);
   });
 
-  // The third clause the sibling exemption lists carry and this one did not until 2026-10-02: an entry whose
+  // The third clause the sibling exemption lists carry too: an entry whose
   // workspace is gone, or holds no code, excuses nothing and should say so rather than sit there
   // Over the real root, because the clause needs a population to check an entry against: under the synthetic
   // tree there are no workspaces at all, and an entry excusing nothing is indistinguishable from an entry

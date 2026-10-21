@@ -53,10 +53,8 @@ export function packRule(key: PackRuleKey, dirs: readonly string[], root: string
     const where = (file: string) => (prefix ? `${prefix}/${file}` : file);
     return rule.checkPack!(packDir).map((found) => formatPackWide(found, where));
   });
-  // Through `packPlaces`, not a second copy of it: this used to build the place itself, and two of the five
-  // fields had drifted from what `PackPlace` declares — `packRelative` repo-relative where a rule resolves it
-  // against the pack, and `inRoot` relative to whatever the caller named rather than to the pack's half. Both
-  // turned a rule off without failing anything. What stays here is the one thing that is this runner's own: the
+  // Through `packPlaces`, not a second copy of it: a copy's fields drift from what `PackPlace` declares,
+  // and a drifted field turns a rule off without failing anything. What stays here is the one thing that is this runner's own: the
   // path it prints, which is repo-relative because that is where its reader is standing.
   return [...wholePack, ...dirs.flatMap((dir) => {
     const full = path.join(root, dir);

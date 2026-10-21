@@ -53,8 +53,7 @@ export function readJsonFile<T>(file: string): T {
  * **Only for this repo's root, which is what makes it need no reset.** A walk cannot be keyed on content
  * the way `pack-features.ts`'s `publishedEntryPoints` keys on a manifest's mtime and size — a directory's
  * mtime moves when its own entries do, not when something three levels down changes — so the alternative
- * was a `resetSourceCache()`-shaped hatch, and that is the thing two specs remembered, the repo's most
- * expensive spec did not, and which left it quadratic until `7c4b8aacc`.
+ * is a `resetSourceCache()`-shaped hatch, which a caller forgets and then runs quadratic.
  *
  * Two facts make the condition sound, neither of them guarded — a spec pinning the first is worth writing:
  *
@@ -120,7 +119,7 @@ export const CHECKED_DIRS = fs.readdirSync(path.join(repoRoot, 'packages'), { wi
   .filter((dir) => fs.existsSync(path.join(repoRoot, dir)))
   // A pack's own code belongs to `own-modules`, which resolves the specifier and so names the file to write.
   // `packages/default-setup` is both a package and a pack, so without this both rules report its every
-  // relative `.js` and, since only the first to run used to be printed, one of them silently.
+  // relative `.js`.
   .filter((dir) => !PACK_DIRS.some((pack) => dir === pack || dir.startsWith(`${pack}/`)))
   .sort();
 

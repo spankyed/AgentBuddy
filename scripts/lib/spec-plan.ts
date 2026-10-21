@@ -9,13 +9,12 @@
  * **The rule.** A spec path, a directory or a name names specs directly, so those run in the package that
  * holds them — that is what you asked for. A **source file** is a different question: after an edit you
  * want *what could this break*, and the answer is every spec that imports it, transitively, wherever it
- * lives. That question used to be answered with the file's own package, which for `@apackdev/sdk` meant one
- * of the seven suites covering it, reported green.
+ * lives. The file's own package would be one of the seven suites covering `@apackdev/sdk`, reported green.
  *
  * Vitest already answers it properly: the root `vitest.config.ts` lists every host project and `related`
  * resolves the module graph across all of them **in one process**. So a source file plans one root run.
  * Measured 2026-09-26: `packages/apack-sdk/src/types/sdk-entities.ts` reaches 104 files, and
- * `scripts/lib/chain-steps.ts` 4 where the old route found 3 — it is both wider and transitive.
+ * `scripts/lib/chain-steps.ts` 4 — wider than its own package and transitive.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -228,8 +227,8 @@ export const packageOf = (rel: string): string | null => /^packages\/([^/]+)\//.
  * package under `packages/` into those that reach one and those that do not, which is the only form of that
  * claim that cannot quietly go stale. A hand-written "four of twelve" was wrong the day it was written.
  *
- * The note this feeds used to fire on every root run, a `@app/renderer` edit included, and a warning that is
- * always on is one nobody reads.
+ * Narrow on purpose: a note that fires on every root run, a `@app/renderer` edit included, is one nobody
+ * reads.
  */
 export function affectedPackSuites(editedPackages: readonly (string | null)[], root?: string): string[] {
   const edited = new Set(editedPackages.filter((p): p is string => p !== null));
@@ -664,9 +663,8 @@ export function planChanged(changedPaths: readonly string[], flags: readonly str
   // so, so a change set holding one must not answer "nothing a spec could cover" — the two routes would
   // contradict each other about the same file, which is how this was found
   const overEdges = changedPaths.filter((rel) => packBuildEdge(rel, root) !== undefined);
-  // With neither, the answer is known before anything runs. This used to spawn `packages:ensure` and a root
-  // vitest to be told "No test files found" (3.4s measured), and a pack's README planned that pack's whole
-  // suite besides — after a doc edit, which is the first entry in the root CLAUDE.md's list of time-wasters
+  // With neither, the answer is known before anything runs — spawning `packages:ensure` and a root vitest to
+  // be told "No test files found" would cost seconds after a doc edit, which should cost nothing
   if (coverable.length === 0 && overEdges.length === 0) return { runs: [], unmatched: [], ambiguous: [] };
 
   const changedPackages = [...new Set(changedPaths.map(packageOf))].filter((pkg) => pkg !== null);

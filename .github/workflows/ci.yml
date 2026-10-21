@@ -13,11 +13,6 @@ name: CI
 #
 # Turn it on when the repo has other contributors. Uncomment both triggers; the jobs below are current and
 # ready to run as they are. Until then it can still be run by hand from the Actions tab (workflow_dispatch).
-#
-# Timeout classes declare their scaling assumptions in scripts/lib/step-timeouts.ts. `suite` has a
-# measured worker-scaling factor; `quick`, `scenario` and `acceptance` borrow a conservative factor.
-# Regular jobs reach quick compiler legs and install scenarios. The manual strict_chain route also
-# reaches ordinary suite limits and the complete acceptance aggregate on a disposable runner.
 
 on:
   workflow_dispatch:

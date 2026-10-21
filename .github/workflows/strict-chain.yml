@@ -32,14 +32,6 @@ jobs:
         with:
           node-version: 23.11.1
           cache: npm
-      # Recorded build inputs can include a source file's modification time, which a fresh checkout sets to
-      # now: pin every tracked file and directory to the commit's time, so each job's tree reads the same
-      - name: Pin source modification times to the commit
-        run: |
-          stamp=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M.%S)
-          git ls-files -z | TZ=UTC xargs -0 touch -h -t "$stamp"
-          git ls-files | sed 's|/[^/]*$||' | sort -u | tr '\n' '\0' | TZ=UTC xargs -0 touch -t "$stamp"
-          TZ=UTC touch -t "$stamp" .
       - name: Record source and platform
         run: |
           git rev-parse HEAD
@@ -50,14 +42,13 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
       - name: Producers
-        run: npm run chain -- --strict --all --cores 2 --no-classify --job producers | tee "$RUNNER_TEMP/strict-chain.log"
-      # A tarball keeps file modes and symlinks, which the stamps and the CLI bundle depend on. pax keeps
-      # sub-second modification times, which the default format truncates to whole seconds: a build records
-      # the mtimeMs its compilers read (Tailwind stats the files it scans), so a truncated one refuses
+        run: npm run chain -- --strict --all --cores 2 --job producers | tee "$RUNNER_TEMP/strict-chain.log"
+      # A tarball keeps file modes and symlinks, which the stamps and the CLI bundle depend on. Times need not
+      # survive: a build records a file's content where a compiler read its modification time
       - name: Package producer outputs
         run: |
           node scripts/with-source.mjs npx tsx scripts/strict-job-artifact.ts > "$RUNNER_TEMP/producers.list"
-          tar --format=pax -czf "$RUNNER_TEMP/producers.tgz" -T "$RUNNER_TEMP/producers.list"
+          tar -czf "$RUNNER_TEMP/producers.tgz" -T "$RUNNER_TEMP/producers.list"
       - name: Hand producer outputs on
         uses: actions/upload-artifact@v4
         with:
@@ -101,14 +92,6 @@ jobs:
         with:
           node-version: 23.11.1
           cache: npm
-      # Recorded build inputs can include a source file's modification time, which a fresh checkout sets to
-      # now: pin every tracked file and directory to the commit's time, so each job's tree reads the same
-      - name: Pin source modification times to the commit
-        run: |
-          stamp=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M.%S)
-          git ls-files -z | TZ=UTC xargs -0 touch -h -t "$stamp"
-          git ls-files | sed 's|/[^/]*$||' | sort -u | tr '\n' '\0' | TZ=UTC xargs -0 touch -t "$stamp"
-          TZ=UTC touch -t "$stamp" .
       - name: Record source
         run: git rev-parse HEAD
       - name: Install dependencies
@@ -127,7 +110,7 @@ jobs:
           APACK_STRICT_JOB: ${{ matrix.job }}
           APACK_STRICT_SHARD: ${{ matrix.shard }}
         run: |
-          args=(--strict --all --cores 2 --no-classify --job "$APACK_STRICT_JOB")
+          args=(--strict --all --cores 2 --job "$APACK_STRICT_JOB")
           if [[ -n "$APACK_STRICT_SHARD" ]]; then args+=(--shard "$APACK_STRICT_SHARD"); fi
           npm run chain -- "${args[@]}" | tee "$RUNNER_TEMP/strict-chain.log"
       - name: Retain validation evidence

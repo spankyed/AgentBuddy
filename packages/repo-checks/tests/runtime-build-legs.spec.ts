@@ -54,10 +54,6 @@ describe('the app build legs', () => {
     expect([...new Set(names)], 'two legs for one workspace race each other for its dist').toEqual(names);
   });
 
-  it('costs something, since a leg at zero is one whose timeout report reads as a bug', () => {
-    for (const leg of RUNTIME_BUILD_LEGS) expect(leg.seconds, leg.name).toBeGreaterThan(0);
-  });
-
   /**
    * One class, read by the runner and by the chain's copy of this step.
    *

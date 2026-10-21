@@ -1,12 +1,9 @@
 /**
  * The unit suites, as two pools, one after another.
  *
- * It used to run the eight suites as eight `npm test -w` invocations, two at a time. That is two schedulers
- * with no shared budget — this one over suites, vitest's over the files inside each — so a third lane
- * oversubscribed *within* a suite instead of filling idle cores, and the recorded table read
- * 1: 69.8s, 2: 44.3s, 3: 47.7s, 8: 63.1s. Vitest's own sequencer takes every project's files as one list
- * and sorts it longest-first, which is the greedy makespan approximation, so handing it all the files at
- * once is strictly better than handing it one suite at a time.
+ * One pool hands vitest every project's files as one list, which its sequencer sorts longest-first — the
+ * greedy makespan approximation. Running suites as separate invocations would be two schedulers with no
+ * shared budget, oversubscribing within a suite instead of filling idle cores.
  *
  * **There are two pools and not one, and the boundary is forced.** Host suites resolve the workspace
  * `@apackdev` packages to source under the `@apackdev/source` condition; the pack suite must resolve the
@@ -21,8 +18,6 @@
  */
 import * as os from 'node:os';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { POOL_SECONDS } from './lib/chain-steps.ts';
-import { MEASURED_ON } from './lib/core-budget.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { UNIT_SUITES } from './lib/unit-suites.ts';
 import { poolDurationLines, type Pool as PoolKind } from './lib/unit-pool.ts';
@@ -33,12 +28,9 @@ exitOnEpipe();
 /**
  * The two pools this command runs, each through `scripts/test-unit-pool.ts`.
  *
- * **It used to spawn vitest itself, with its own copy of what a pool is**, and the copy is what made that
- * wrong rather than merely duplicated: `scripts/lib/unit-pool.ts` is where a pool's half, suites and
- * invocation are declared, and everything the pool runner has gained since — the durations reporter, the
- * `@slow:` marker gate, the per-file ranking, the duration cache — lived on the other side of a seam this
- * command never crossed. So `npm run test:unit`, the command a person runs by hand, was the one that
- * checked the markers least.
+ * **Never vitest directly, with its own copy of what a pool is.** `scripts/lib/unit-pool.ts` declares a
+ * pool's half, suites and invocation, and the pool runner owns the durations reporter, the `@slow:` marker
+ * gate, the per-file ranking and the duration cache — so a second path would check less.
  *
  * `--all` because this command means *all the unit tests*. The pool runner's per-project staleness is for
  * the chain, which asks what changed; asked by hand, the answer should not depend on what a previous run
@@ -46,22 +38,20 @@ exitOnEpipe();
  *
  * `integration` is not here: it is `npm run test:integration`, its own pool and its own chain step.
  */
-interface Pool { label: string; kind: PoolKind; seconds: number }
+interface Pool { label: string; kind: PoolKind }
 
 const POOLS: Pool[] = (['host', 'pack'] as const).map((kind) => ({
   // Named rather than counted where there is one, since `pack pool (1 suite)` says less than the suite does
   label: ((held: readonly { workspace: string }[]) =>
     `${kind} pool (${held.length === 1 ? held[0]!.workspace : `${held.length} suites`})`)(UNIT_SUITES.filter((suite) => suite.kind === kind)),
   kind,
-  seconds: POOL_SECONDS[kind],
 }));
 
 const cpus = os.availableParallelism?.() ?? os.cpus().length;
 
 /**
- * **There is no lane scheduler here any more.** This used to schedule suites while vitest scheduled the
- * files inside each, which is the two-pools-of-budget problem that pooling removed; what is left runs the
- * pools one after another and lets each one's vitest own the cores. `--maxWorkers` is the single budget,
+ * **There is no lane scheduler here.** It runs the pools one after another and lets each one's vitest own
+ * the cores, so there are never two budgets. `--maxWorkers` is the single budget,
  * which is Decision 6 of `goal-test-tiers.md` satisfied by construction rather than by a script.
  *
  * Running the two pools at once was measured and is not worth it: 34.3s against 35.2s serial, for 66.0s of
@@ -76,16 +66,7 @@ async function run(pool: Pool): Promise<Result> {
   // It was `budgetFor(75)`, which reached the same number through a measurement nobody took.
   const { code, output, ms, timedOut } = await boundedSpawn('npx',
     ['tsx', 'scripts/test-unit-pool.ts', pool.kind, '--all'], TIMEOUT_MS.suite.ms);
-  // A kill used to be the word `TIMEOUT` in the status column and nothing else — no class, no cost, no rope —
-  // on the one rung whose stretch factor is the measured one
-  const why = timedOut
-    ? timedOutBecause({
-      what: pool.label,
-      timeout: 'suite',
-      measuredOn: MEASURED_ON,
-      seconds: pool.seconds,
-    })
-    : undefined;
+  const why = timedOut ? timedOutBecause({ what: pool.label, timeout: 'suite' }) : undefined;
   return { pool: pool.label, code, ms, output, ...(why === undefined ? {} : { why }) };
 }
 

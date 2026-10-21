@@ -60,7 +60,7 @@ through the development workflow.
 
 Some compiler/native checks require an approved disposable environment. Follow the current
 [repository validation rules](CLAUDE.md) rather than starting all suites on your daily-use machine.
-The [pipeline reference](docs/reference/pipeline-commands.md) describes validation commands and flags.
+The [pipeline reference](docs/archive/references/pipeline-commands.md) describes validation commands and flags.
 
 ### Build a local preview
 

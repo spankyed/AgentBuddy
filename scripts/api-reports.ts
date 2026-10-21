@@ -170,10 +170,9 @@ for (const file of fs.readdirSync(reportFolder).filter((f) => /\.(api|component)
 }
 
 if (failed > 0) process.exit(1);
-// How many reports the run *changed*, not how many it looked at. `api:update` said "101 API reports
-// updated" whether or not any had moved, which is the one question its reader has — a doc edit that
-// reaches the declarations but no report is a routine reason to run this, and the old line left no way
-// to tell that from a signature having changed.
+// How many reports the run *changed*, not how many it looked at — the one question its reader has: a doc
+// edit that reaches the declarations but no report is a routine reason to run this, and has to read
+// differently from a signature having changed.
 console.log(local
   ? `${pkg.name}: ${changed} of ${expected.size} API reports updated`
   : `${pkg.name}: ${expected.size} API reports up to date`);

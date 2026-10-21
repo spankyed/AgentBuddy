@@ -225,10 +225,9 @@ export function findExtensionlessOwnModules(
 /**
  * The app's sources by relative path, which is the one shape only a pack *inside this repo* can name.
  *
- * It used to match `@apackdev/host` and the API's `@/core`/`@/setup` aliases too, and both belong elsewhere:
- * `host-imports` owns the package wherever a pack names it, and `pack-own-aliases` owns every `@/` specifier —
- * each over a pack's tests as well as its sources, here and through `apack pack test` for every other pack. Three
- * rules claiming one import is how only the first to run gets read.
+ * Not `@apackdev/host` or `@/` aliases: `host-imports` owns the package wherever a pack names it, and
+ * `pack-own-aliases` owns every `@/` specifier — each over a pack's tests as well as its sources. Several
+ * rules claiming one import means only the first to run gets read.
  */
 const APP_SPECIFIER = /^(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|apack-host|apack-cli)\/src(?:\/|$)/;
 

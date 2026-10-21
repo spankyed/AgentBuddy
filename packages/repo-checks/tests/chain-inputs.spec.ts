@@ -612,10 +612,9 @@ describe('a pool declares the modules that run it', () => {
 /**
  * And a suite's half declares the root config that half runs under — neither more nor less.
  *
- * Both root configs were in every suite's inputs until 2026-10-02, which cost a cache hit in one direction
- * (an edit to the integration config re-ran all thirteen fast projects) and an identity in the other: the two
- * halves of one suite hashed the same declared set, leaving the stamp's filename as the only thing that told
- * them apart. A pack suite's fast half reads neither, because `npm test -w` runs that package's own config.
+ * Declaring both root configs for every suite would cost a cache hit in one direction (an edit to the
+ * integration config re-running every fast project) and an identity in the other: the two halves of one
+ * suite would hash the same declared set. A pack suite's fast half reads neither, because `npm test -w` runs that package's own config.
  */
 describe("a suite's half declares the config that runs it", () => {
   const host = UNIT_SUITES.find((suite) => suite.kind === 'host')!;

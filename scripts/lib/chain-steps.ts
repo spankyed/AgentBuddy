@@ -58,10 +58,8 @@ export interface ChainStep {
   /**
    * What this step leaves on disk that says *why* it failed, kept before anything can overwrite it.
    *
-   * **The classification retry is what overwrites it**, which is why this is not merely nice to have: the
-   * retry runs the step again, and a runner that clears its output directory on the way in — Playwright
-   * does — overwrites what the attempt being diagnosed wrote. A teardown that hung for 60s was
-   * unexplainable afterwards for exactly that reason: the app's own log had been replaced by the retry's.
+   * The next run of the step is what overwrites it: a runner that clears its output directory on the way
+   * in — Playwright does — takes what the failed attempt wrote, which is often the app's own log.
    *
    * **Declared rather than taken from `outputs`.** Most outputs are build product — `build:runtime` and
    * `build:default-setup` write hundreds of megabytes of it — which explains no failure and would be copied on every
@@ -90,8 +88,7 @@ export interface ChainStep {
   readonly evidence?: readonly string[];
   /**
    * A step the chain does not cache, and why. Set means uncached; the chain prints this sentence where a
-   * cache verdict would go, so it is a reason and not a flag — the one line it replaced was hardcoded about
-   * Electron and was wrong about the second step to opt out.
+   * cache verdict would go, so it is a reason and not a flag.
    *
    * Two kinds qualify. One is a pass that is not reproducible (the E2E suite). The other is a step whose
    * *effect* is recorded somewhere the chain's fingerprint cannot see: `packages:ensure` guarantees the
@@ -133,74 +130,10 @@ export interface ChainStep {
    * How long it may run before its process group is killed, by the kind of work it is
    * (`TIMEOUT_MS`, `scripts/lib/step-timeouts.ts`).
    *
-   * **Declared, and deliberately not derived from `seconds`.** The deadline was `seconds × 4` until
-   * 2026-10-03, which made it a function of one box: a machine with a third of the cores runs the same
-   * deadline over a step three times slower. A class carries no machine. Thresholding `seconds` into a class
-   * would re-couple the two, just coarsely, which is the shortcut `step-timeouts.ts` exists to refuse.
-   *
-   * It is required, as `Leg.seconds` is, because a step with no class has no bound — and an unbounded step
-   * is the hang that `boundedSpawn` was written for.
+   * Declared, and never derived from what a step costs: a class carries no machine (`step-timeouts.ts`).
+   * Required, because a step with no class has no bound — the hang `boundedSpawn` was written for.
    */
   readonly timeout: TimeoutClass;
-  /**
-   * What this step loses on a machine a fraction the size of this one, where it has been measured — the
-   * rung's own `stretches` otherwise.
-   *
-   * **Only for a step that caps its own width.** A rung's figure is measured end to end on a pool that takes
-   * the whole box, so a member that holds back workers loses fewer of them and stretches less. Charging it
-   * the class figure is pessimism, which is safe in a *ceiling* and noise in a *report*: `declaredShare` is
-   * both, so a capped member read past its rung on every run while costing what its row says.
-   *
-   * **It does not reach the deadline.** `TIMEOUT_MS[timeout].ms` is what `boundedSpawn` is given, untouched,
-   * so nothing here re-couples when a step is killed to what it was measured at — the trap `step-timeouts.ts`
-   * opens with. This corrects the bound and the report, and leaves the kill alone.
-   */
-  readonly stretches?: number;
-  /**
-   * What this step costs **when it does its work**, in seconds, measured under the chain's own default
-   * admission. Not what it costs when it is cached: `packages:ensure` returns in 0.3s with nothing
-   * stale and takes 14s when it builds, and recording the 0.3 gave a step that builds a budget sized for a
-   * step that does not, and a timeout message claiming it "costs 1s healthy".
-   *
-   * **It bounds nothing.** It did until 2026-10-03, when a kill deadline was `seconds × 4` — and what that
-   * made every deadline in the repo was a function of this one machine. The deadline is a declared class
-   * now (`timeout` above), so what is left here is a *report*: the weight on the critical path, and the
-   * number a run is compared against. A stale value misreports the floor and nothing else, which is the
-   * whole of why this field may stay machine-bound (`docs/archive/plans/costs-across-machines.md`).
-   *
-   * **Declared by hand, not recorded, and that is this field's one design choice.** Three readers use it —
-   * `driftedSteps` reports a run that contradicts it, `declaredShare` bounds it against the step's timeout
-   * rung, and `criticalPath` sums it to say what the chain waits on — and not one of them gates a merge on
-   * it. So none needs the number to be *fresh*, only approximately true of one machine, and every one of
-   * them tolerates the half-to-double band. A recorder for it needed a band, a window, a machine field and
-   * an idle floor before one reading could be compared with another, and the quantity underneath was never
-   * one number: `test:smoke` read 11s, 16s, 20s, 21s and 24s across five runs that all passed that floor,
-   * because this is the cost *beside whichever peers the schedule admitted*. **Keep the reading; do not
-   * decide with it** — the root guide's rule, and `docs/reference/recorded-files.md` has what deciding
-   * with one cost the last time.
-   *
-   * **To change one:** run `npm run chain -- --all` and read the drift report, which prints the declared
-   * value beside the measured one; edit this number to match. That judgement is a person's, because one
-   * reading cannot tell a step that grew from a box that was busy — the rows are evidence, not an
-   * instruction. Every run reports a step that ran past double this number, which is what keeps the table
-   * honest without anyone remembering to check. A step that came in under half is reported only by `--all`
-   * at `MEASURED_ON`: a run with steps cached, or a smaller budget, has less contention and makes
-   * everything look fast, so that direction says nothing about the table. `driftedSteps` finds both;
-   * `driftReport` in chain-output.ts decides which the run can answer for.
-   *
-   * For a step that keeps a cache of its own — the two pooled steps, which run only their stale projects —
-   * it is the cost of the *whole* pool, so that the drift report compares like with like. Those steps
-   * needed no rule of their own once the gate was on the
-   * run: an incremental pool run lands under half, which is the direction every step is now quiet about.
-   *
-   * **It is the cost in the chain at `MEASURED_ON`, not the cost alone.** Those differ by about two
-   * times for a CPU-bound step — `typecheck` was 29s by itself and 63s sharing the machine — so the number is
-   * meaningless without the schedule, and saying only "what this costs when it does its work" is how a
-   * measurement taken under one admission policy came to sit in a chain running another for two days. That
-   * is why `MEASURED_ON` records the box these were taken on and the chain says so when it differs:
-   * the schedule was always implicit in the machine, and nothing named it.
-   */
-  readonly seconds?: number;
 }
 
 /** Every step, by name, for validating the derived edges */
@@ -256,14 +189,11 @@ const consumes = (step: ChainStep, output: string): boolean =>
 /**
  * What a step must run after, derived from what the others write.
  *
- * Two questions over the same two fields, and the second is the one an earlier draft of this missed:
+ * Two questions over the same two fields:
  *
  * - **outputs into inputs** is a data edge: this step reads what that one writes, so it runs after it.
  * - **outputs into outputs** is a *mutex*: two steps writing the same path must not overlap, in either
  *   order. `conflictsOf` answers that one.
- *
- * Both replace fields that used to be written by hand, and the hand-written ones reproduced exactly:
- * 12 of 13 `needs` from the first question, the thirteenth and both `exclusive` flags from the second.
  */
 /**
  * Memoised per step list, which is a scope rather than a key.
@@ -428,11 +358,9 @@ export function orderedSteps(given: readonly ChainStep[] = CHAIN_STEPS): readonl
  * The one file every step really does read: the installed toolchain, because a dependency moving changes
  * what any of them do.
  *
- * **`package.json` is not here any more**, and that is the point. It was, because a step's command lives
- * in it and a fingerprint hashes paths and bytes — so the only way to key on the command was to hash the
- * whole manifest into all 29 steps. Measured over ~587 commits, 37 touched it and every one of those 37
- * was scripts-only: 37 full chains for an edit to one script. A unit carries its `command` now
- * (`commandText`, `scripts/lib/npm-scripts.ts`), so the manifest's other job here is covered precisely.
+ * **`package.json` is not here**, and that is the point. Hashing the whole manifest to key on each step's
+ * command would turn an edit to one script into a full chain. A unit carries its own `command`
+ * (`commandText`, `scripts/lib/npm-scripts.ts`), which covers that job precisely.
  *
  * Its remaining job needs no declaration at all: `workspaces` decides what a workspace is, so adding one
  * changes `EVERY_WORKSPACE`, which changes the declared path list, which `fingerprintUnit` hashes. And
@@ -443,15 +371,10 @@ const ROOT = ['package-lock.json'];
 /**
  * The root vitest config a run of one half uses — which projects it pools is an input to every suite in it.
  *
- * `CONFIG_BY_HALF` is the one record of which file runs which half, and it is the one `hasHalf` and so
- * `INTEGRATION_SUITES` already derive from. The same two names stood here as a `Record<Half, string>` of
- * their own until 2026-10-02 — a second copy one line from a use of its own derivative. The names are a
- * convention rather than a computation, and they are the same convention at both levels: the root config
- * lists the packages' as its projects.
- *
- * Both were declared for every suite until 2026-10-02, which cost two things: an edit to the integration
- * config re-ran all thirteen fast projects, and the two halves of one suite hashed an identical declared set,
- * leaving the stamp's filename as the only thing that told them apart.
+ * `CONFIG_BY_HALF` is the one record of which file runs which half, and the one `hasHalf` and so
+ * `INTEGRATION_SUITES` derive from. A suite declares only its own half's config: declaring both would make an
+ * edit to the integration config re-run every fast project, and give the two halves of one suite an
+ * identical declared set.
  *
  * A pack suite's fast half reads neither. `npm test -w <workspace>` runs that package's own config, which
  * `suiteWorkspace` already declares; the integration half reads this one whatever the suite's kind, because
@@ -466,17 +389,16 @@ const rootConfigFor = (suite: UnitSuite, half: Half): string[] =>
 
 /**
  * Every workspace, from the one definition that decides which they are (`workspace-deps.ts`, read from the
- * root `workspaces` field). This used to walk `packages/` itself and call that "derived" — true of a new
- * directory, false of a new workspace, and these names feed `EVERY_WORKSPACE` and so every step's inputs.
+ * root `workspaces` field). Walking `packages/` instead would be right for a new directory and wrong for a
+ * new workspace, and these names feed `EVERY_WORKSPACE` and so every step's inputs.
  */
 const PACKAGES = PACKAGE_DIRS;
 
 /**
  * A package's own source, its tests, its own tooling, its recorded files, and the files that say how it
  * compiles, tests and lints. `etc` is there because a spec reads it back — `api:check` regenerates the
- * `*.api.md` reports it holds and compares, so a hand-edited report has to re-run what asserts on it. It
- * was justified by `suite-split.spec.ts` reading `etc/spec-cost.json` until 2026-10-05; that record and that
- * spec are gone, and several `etc` directories are now empty, which the walk skips. The config files are inputs in the plain sense — a vitest config decides which specs run at all,
+ * `*.api.md` reports it holds and compares, so a hand-edited report has to re-run what asserts on it. An
+ * empty `etc` is skipped by the walk. The config files are inputs in the plain sense — a vitest config decides which specs run at all,
  * and the renderer's tailwind and postcss configs decide what `build` emits. A name that the package does
  * not have costs nothing: the walk skips what is not there.
  *
@@ -522,9 +444,8 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  * `typecheck` is one, since it compiles the whole thing. The others are the repo-wide *guards* — a spec
  * that asks `git ls-files` what exists and then asserts something about all of it. Those live inside one
  * package's suite while their subject is everything, and the pool runs a project only when that project's
- * own inputs moved, so each was blind to the rest of the tree: measured 2026-09-30, `@apackdev/sdk`'s suite
- * was an input to 241 of 1860 tracked code files and `@app/repo-checks`' to 308. `identity-guard` then
- * missed a forbidden path committed to `@apackdev/cli` and two full chain runs passed over it.
+ * own inputs moved, so a guard declaring only its package's inputs is blind to the rest of the tree and
+ * passes over a forbidden path committed anywhere else.
  *
  * Build output is not in here, because a guard's subject is source. `typecheck` adds its own.
  */
@@ -557,13 +478,11 @@ const PACKAGE_BUILD_OUTPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((un
  * over each of the three staged trees by name. Nothing resolves *through* a staged tree: a
  * published source branch is a resolution failure rather than a fallback, which is why the tree exists.
  *
- * Every consuming step declared the whole constant until 2026-10-05, which put 610 files into 26 keys that
- * could not change any of their answers — 16470 declared file-slots of the chain's 59073. It cost two
- * things: the walk and the hash carried them, and an edit to a package's `files` or `exports` map rewrote
- * the derived `publish/package.json` and so invalidated 26 steps over the shape of a tarball, including
- * steps that declare nothing else of that workspace. Dropping them moved no ordering edge and no mutex,
- * probed per step against `dependsOn` and `conflictsOf`: the edge to `packages:ensure` runs through the
- * `dist` trees, which every one of them does read.
+ * So a consuming step declares this rather than the whole build-output constant: the `publish/` trees could
+ * change none of its answers, and declaring them would let an edit to a package's `files` or `exports` map —
+ * which rewrites the derived `publish/package.json` — invalidate every consumer over the shape of a tarball.
+ * Leaving them out moves no ordering edge or mutex: the edge to `packages:ensure` runs through the `dist`
+ * trees, which every consumer reads.
  *
  * `chain-inputs.spec.ts` holds the rule, so a new step spreading the wrong constant is a failure rather
  * than a key nobody looks at. The narrowing stops here deliberately — `dep-files.ts` records why the same
@@ -580,14 +499,10 @@ export const APP_OUTPUTS = ['packages/renderer/dist', 'packages/api/dist', 'pack
 /**
  * Whether a step reads the built app — derived from what it declares, never written beside it.
  *
- * It was a field until 2026-10-02, on the recorded grounds that deriving it would let a step that gains an
- * app dependency be "silently reclassified instead of refused". That argument does not hold, and the reason
- * is worth keeping: **the expensive consequence is already derived from the same inputs.** A step declaring
+ * Derived because **the expensive consequence is already derived from the same inputs**: a step declaring
  * `APP_OUTPUTS` runs after `build:runtime` because `dependsOn` reads outputs against inputs, whatever any field
- * says — so the field could not be the thing that made an app dependency deliberate. What it did was carry a
- * second copy of that fact, which `check:tiers` then spent two of its three clauses keeping equal.
- *
- * Undo this and you are back to a record that can disagree with the graph. What it does *not* replace is the
+ * says. A declared field would be a second copy of that fact, able to disagree with the graph, with
+ * `check:tiers` clauses spent keeping it equal. What this does *not* replace is the
  * script scan in `check-test-tiers.ts`: a step can launch the app while declaring none of its outputs, which
  * no reading of the inputs can see, and that is the clause that catches it.
  */
@@ -601,8 +516,8 @@ const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
 /**
  * What *runs* the app's builds, as against what those builds read.
  *
- * `build:runtime` was `npm run build -w a -w b …`, which npm runs serially; it is a scheduler over the same
- * four commands now, and these decide which workspaces are built and how. A pass recorded before the leg
+ * `build:runtime` is a scheduler over four build commands, and these decide which workspaces are built and
+ * how. A pass recorded before the leg
  * table changed is not evidence about the pass after it — drop a leg and the step would otherwise stay
  * fresh while producing one `dist` fewer.
  *
@@ -627,12 +542,8 @@ const APP_RUNNER = ['scripts/build-runtime.ts', 'scripts/lib/runtime-build-legs.
  * much a part of the verdict as the runner is. A pass recorded before one of them changed is not evidence
  * about the pass after it, so a project whose runner moved is stale.
  *
- * **They used to be declared on the pool step and on no project, which is the defect this fixes.** The step
- * went stale, ran, asked each project and found them all fresh, printed "all N project(s) up to date" and
- * stamped green having tested nothing — and the five files it could not notice changing were the five that
- * decide whether the suites run correctly at all. Changing a suite's `kind` was the worst of them: the
- * destination pool's step went stale, the suite's stamp was keyed by directory rather than by pool, and it
- * ran in neither.
+ * **Every project declares them, not only the pool step.** Declared on the step alone, a runner edit makes
+ * the step stale, it runs, finds every project fresh, and stamps green having tested nothing.
  */
 const SOURCE_RUNNER = ['scripts/with-source.mjs', 'packages/apack-host/src/build/node-options.js',
   'packages/apack-host/src/build/node-options.d.ts'];
@@ -728,24 +639,6 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
   'publish-checks': { packages: true },
 };
 
-/**
- * Each pool's whole-pool cost, in the chain at `MEASURED_ON`, measured with every project stale —
- * `npm run chain --all`, the only run that does all of that work and the run `driftedSteps` checks it on.
- *
- * Re-measured 2026-09-27 with the rest of this table: 20 and 21 were taken before `typecheck` stopped
- * running its legs one at a time, and a step that asks for half the cores makes everything beside it
- * slower — which is where those seconds went rather than being new work.
- *
- * It bounds nothing — the chain step and the pool's own inner spawn both take the `suite` class now
- * (`step-timeouts.ts`), so neither deadline is a function of this number. What it still has to be is the
- * cost of the whole pool and never of a partial run, so that the drift report compares like with like.
- *
- * **Correcting one of these is an edit here**, like every other declared cost: the drift report prints what
- * the pool measured beside what this says, and one key moves at a time. A run that measured the machine
- * rather than the code is the reason that is a judgement rather than a rewrite — `driftedSteps` reports both
- * directions and neither is self-evidently the code's.
- */
-export const POOL_SECONDS: Record<'host' | 'pack' | 'integration' | 'native', number> = { host: 34, pack: 19, integration: 60, native: 60 };
 
 /**
  * The files a chain step is declared in — the two tables, as one list, repo-relative.
@@ -867,7 +760,7 @@ function inputsForSuites(suites: readonly UnitSuite[], half: Half): Pick<ChainSt
  * so the edge to `build:default-setup` survives on the leg that has it, and the other fourteen stop waiting for a
  * build they never read.
  *
- * What the scope narrows is the source: an edit under the renderer no longer invalidates `typecheck:ears`.
+ * What the scope narrows is the source: an edit under the renderer does not invalidate `typecheck:ears`.
  *
  * `dep-files.spec.ts` checks each leg's declaration against what the compiler reported reading, which is
  * the half that would catch a scope narrower than the truth.
@@ -883,34 +776,23 @@ const legInputs = (leg: Leg): string[] => [...new Set(scopeOf(leg) === 'repo'
 /**
  * One step per typecheck leg, which is what makes the chain's scheduler the only one.
  *
- * `npm run typecheck` used to be a single step that ran eighteen legs on lanes of its own, and it had to
- * guess how many: "half the cores, because the chain runs two other lanes beside this step". That guess
- * is the two-schedulers problem `test-unit-scheduling.md` removed for the unit suites and left here, and
- * it cost a measured 63.4s in-chain against 29.3s of work, because the other lanes saturated the cores it
- * was not using. One scheduler owns every lane now, and `npm run typecheck` remains for a person running
- * it directly, where there is nothing to contend with.
+ * A single typecheck step running its legs on lanes of its own would be a second scheduler guessing how
+ * much of the machine the chain leaves it. One scheduler owns every lane, and `npm run typecheck` remains
+ * for a person running it directly, where there is nothing to contend with.
  *
  * `packages:ensure` is a leg *and* a step, and it is declared as a step: the legs that read what it builds
  * derive an edge to it from `PACKAGE_BUILD_OUTPUTS`, so there is nothing for a second copy to add.
  *
- * **What it bought, measured 2026-10-01 at 84% idle, `chain --all`, three runs each:**
- *
- *     one step, its own lanes    171.0s median (169.8s-187.8s)
- *     one step per leg           169.8s median (169.6s-170.3s)
- *
- * The medians are within a second, which is the honest headline: this is a scheduling change and the
- * chain is core-bound either way. The *spread* is the result — 18s against 0.7s. A run that sometimes
- * cost 188s and sometimes 170s was two schedulers deciding independently how much of the machine to
- * take, and which one won depended on what else happened to be in flight.
+ * Measured 2026-10-01 under `chain --all`: the medians are within a second either way, since the chain is
+ * core-bound, but the spread is 0.7s against 18s with two schedulers competing.
  */
 const TYPECHECK_STEPS: readonly ChainStep[] = TYPECHECK_LEGS
   .filter((leg) => leg.name !== 'packages:ensure')
   .map((leg) => ({
     name: leg.name,
     // Declared beside the legs (`LEG_TIMEOUT`), so the runner and this copy of the same steps cannot
-    // disagree about it — they each named the class themselves until 2026-10-03.
+    // disagree about it
     timeout: LEG_TIMEOUT,
-    seconds: leg.seconds,
     inputs: legInputs(leg),
     // A leg reading every source tree reads around the fixture packs' build output for the same reason
     // the single step did: `tsc -p tests` compiles `e2e/**` only and `check:specifiers` filters
@@ -923,9 +805,8 @@ const TYPECHECK_STEPS: readonly ChainStep[] = TYPECHECK_LEGS
  *
  * **It does not generate the table's names, and that is deliberate.** `declaredAt` locates a step whose
  * name is generated by matching the *template literal* it was built from, which is how a run points at a
- * step's reasoning instead of repeating it — so replacing `name: \`test:unit:${kind}\`` with a call to this
- * made all three pool steps unlocatable and cost `chain-graph.spec.ts` two cases. The table keeps its
- * literals; this is the reverse lookup, and `unit-pool.spec.ts` holds the two to each other so neither can
+ * step's reasoning instead of repeating it — so building the names with a call to this would make the pool
+ * steps unlocatable. The table keeps its literals; this is the reverse lookup, and `unit-pool.spec.ts` holds the two to each other so neither can
  * be renamed alone.
  */
 export const poolStepName = (pool: 'host' | 'pack' | 'integration' | 'native'): string =>
@@ -935,12 +816,8 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   return {
     name: `test:unit:${kind}`,
-    // A pool fans out across workers, so it is the rung that stretches most on a smaller box
+    // A pool fans out across workers
     timeout: 'suite' as const,
-    // Measured on the pool, not summed from its suites. Summing gave the host pool 50s for a step that
-    // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
-    // them. `driftedSteps` reported it on every run.
-    seconds: POOL_SECONDS[kind],
     ...inputsForSuites(suites, 'fast'),
     // It keeps a cache of its own, so the chain's `--all` has to reach inside it
     forceArgs: ['--all'],
@@ -956,26 +833,16 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // means, and the rule itself (`BUILD_UNITS` in `@apackdev/host`) is inside every unit's own inputs. It takes
   // no `forceArgs` for a second reason — 18 call sites reach `ensurePackagesBuilt()` in a serial chain, each
   // a stat and a return, so forcing it would turn them into 18 builds behind one lock.
-  // Not cached, and the 0.3s that costs is the point. Measured 2026-09-26: with the package stamps removed
-  // but `dist` still on disk, this step reported `cached` — its inputs had not moved — while
-  // `packagesBuiltOrRefuse()` refused, because the stamps are what it reads. Every step that guards on the
-  // built packages then fails at collection (five files, thirty-three tests skipped, seen once), and whether
-  // it does depends on which other step's `pretest` rebuilds the stamps first, which across three lanes is a
-  // race. The step's own check is content-addressed and returns in ~0.3s warm, so a chain-level cache on top
-  // of it buys nothing and is a second record of one fact.
-  // `seconds` is the warm cost, which is what it does on almost every run: 0.3s, measured three times, and
-  // the chain's warm floor is unchanged at 26.6s. The cold case is 14s and reports drift once — which is a
-  // run where you have just changed a package's source and are rebuilding it anyway.
-  // 14, not the 0.3 its warm check costs: `seconds` is what a step costs when it does its work, and this one's
-  // work is the build. The paragraph on that field describes this step getting it wrong — "a timeout message
-  // claiming it costs 1s healthy" — and 1 was still here until the overrun report named it, 1s -> 14s.
-  { name: 'packages:ensure', timeout: 'suite', seconds: 14,
+  // Not cached. With the package stamps removed but `dist` still on disk, a cached step would report fresh —
+  // its inputs had not moved — while `packagesBuiltOrRefuse()` refused, because the stamps are what it reads,
+  // and every step that guards on the built packages would fail at collection. The step's own check is
+  // content-addressed and returns in ~0.3s warm, so a chain-level cache on top buys nothing.
+  { name: 'packages:ensure', timeout: 'suite',
     neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
       + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
-  // publint and attw over the five trees npm publishes. 5.9s measured (publint 2.7s, attw 3.2s), against
-  // which its only live call sites were `.github/workflows/ci.yml`, whose triggers are commented out, and the
-  // publish workflow — so the recorded-file checks ran at the one moment they cannot be cheap.
+  // publint and attw over the five trees npm publishes, at seconds of cost, so a chain step rather than a
+  // check left to the publish workflow.
   //
   // Not the dangling-path check, and the difference matters: publint skips any target behind a custom
   // condition (`hasCustomCondition`) and attw resolves standard conditions only, which is how 99 published
@@ -984,47 +851,24 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // It reads the published trees, which `PACKAGE_BUILD_OUTPUTS` covers along with the `dist` they are staged
   // from — the same constant `packages:ensure` declares as its outputs, so every input here is an ancestor's
   // output and the gitignored-input accounting holds without a second list to keep.
-  //
-  // `exclusive` because it must not overlap a build. `attw --pack <dir>` packs a tarball *inside* the tree it
-  // is checking, and `stagePublishTree` removes and recreates that tree, so a rebuild landing mid-check leaves
-  // attw opening a tarball that is no longer there — observed once, as
-  // `ENOENT: open 'publish/apack-ui-0.1.0.tgz'`, and not reproducible in 20 tries against concurrent packs,
-  // which is the profile of a window rather than a collision. Measured with it in, 2026-09-27 under `--all`:
-  // 5.5s here, 176.7s for the chain, and not on the critical path (`packages:ensure` -> `build:default-setup` ->
-  // `build:runtime` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
-  // alternative is packing to a temp directory ourselves and handing attw the tarball, which is the fix if this
-  // step ever needs to share a lane.
   /**
    * The reviewed reports of the published API, regenerated and compared.
    *
-   * **A derivation, where this was a proxy and a derivation.** `api:stamp` hashed the declarations a report is
-   * a function of and ran as a typecheck leg, because this cost 55s and that cost 0.6s. It costs 13.1s now
-   * (measured 2026-10-05; one compiler state per package rather than one per entry, `31473b49d`), which is
-   * less than `typecheck:pack`, so the proxy's whole justification went with the speedup and the stamp is
-   * gone. What the stamp cost while it lived: a doc-comment edit reddened it though no report could move, a
-   * package's stamp fingerprinted its dependencies' declarations so fixing one left the next red, every fix
-   * wrote a committed file, and it raced a rebuild in flight — observed failing under `npm run typecheck`
-   * with all three packages' declarations rewritten inside that run's window, then passing twice after with
-   * nothing rebuilt. Whose build it was is not established (a second agent was in the tree), and the point
-   * does not need it: the remedy a proxy names is a *write*, so `api:update` in that window records a hash
-   * of a half-written tree and looks like it worked.
+   * **A derivation, not a proxy.** It regenerates the reports and compares, so it has no record of its own to
+   * go stale, and at its cost a hash of the declarations would buy nothing. A proxy's remedy is a *write*, so
+   * one racing a rebuild in flight would record a hash of a half-written tree and look like it worked.
    *
    * Its inputs are the declarations it reads and the reports it compares against, so a hand-edited `etc/`
-   * invalidates it — the one case the stamp could not see, since its key was the declarations alone.
+   * invalidates it.
    */
   // `suite` because it fans out — three extractions at once (`scripts/api-check.ts`) — which is the kind of
   // work that rung names. `chain-graph.spec.ts` holds every step to the rung its work implies
-  { name: 'api:check', timeout: API_CHECK_TIMEOUT, seconds: 8,
-    // The three packages it reports on, and nothing else that was built. It declared every build output
-    // (`PACKAGE_BUILD_OUTPUTS`) until 2026-10-05, which keyed it on the `@apackdev/cli` and `@apackdev/testing`
-    // bundles it never opens and on the `publish/` trees, a staged copy of the same declarations — so a CLI
-    // edit re-ran it and every declaration counted twice. Measured then: 1438 declared files, 239 of them
-    // read. Dropping `publish/` also dropped a mutex, `packages:check` having declared those trees as written.
+  { name: 'api:check', timeout: API_CHECK_TIMEOUT,
+    // The three packages it reports on, and nothing else that was built: not the CLI and testing bundles it
+    // never opens, nor the `publish/` trees, which are a staged copy of the same declarations.
     //
     // Each package's own `package.json` is where the entry set comes from (`reportEntries` over `exports`),
-    // so it is declared outright. It used to be covered only by accident, through the derived
-    // `publish/package.json` — and an entry added to a map while that was the only cover is exactly the
-    // `./packs` defect the deleted stamp is remembered for.
+    // so it is declared outright — an entry added to a map must invalidate this step.
     //
     // The extractor and its config decide what a report says, so they belong in the key beside the trees.
     // `component-contracts.ts` writes every `.component.md` and `api-entries.ts` decides which entries get a
@@ -1034,10 +878,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/apack-ears/dist', 'packages/apack-sdk/dist', 'packages/apack-ui/dist',
       'packages/apack-ears/package.json', 'packages/apack-sdk/package.json', 'packages/apack-ui/package.json',
       'scripts/api-check.ts', 'scripts/lib/api-report-packages.ts', 'scripts/lib/exit-on-epipe.ts',
-      // `bounded-spawn` is how this runs the three extractions, and it was declared nowhere until
-      // 2026-10-05. It had an excuse by accident: `chain-inputs.spec.ts` excuses everything reachable from
-      // this file, and this file reached it through the spec-cost module, which imported `measure.ts`, which
-      // imports it. Repointing that import to `spec-halves.ts` shrank the closure and the real gap showed.
+      // `bounded-spawn` is how this runs the three extractions
       'scripts/lib/bounded-spawn.ts',
       'scripts/api-reports.ts', 'scripts/component-contracts.ts', 'scripts/lib/api-entries.ts',
       'packages/apack-ears/etc', 'packages/apack-sdk/etc', 'packages/apack-ui/etc',
@@ -1048,10 +889,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     excludeSuffixes: ['.js', '.mjs', '.cjs', '.js.map', '.mjs.map', '.cjs.map', '.css', '.css.map'] },
   // Nothing it runs writes into a tree another step reads, so it takes no mutex: `scripts/packages-check.ts`
   // packs each tarball `attw` wants into a temp directory outside the repository, where `attw --pack` packed
-  // it inside the tree it was checking. That cost the step a conflict with 29 of the 30 — 6s on its own of a
-  // cold run, simulated over this table's declared seconds — and the recorded
-  // `ENOENT: open 'publish/apack-ui-0.1.0.tgz'`
-  { name: 'packages:check', timeout: 'quick', seconds: 6,
+  // it inside the tree it was checking, which conflicted with every other step reading those trees.
+  { name: 'packages:check', timeout: 'quick',
     // Its own script and what that reaches, as `api:check` declares its own: `packages-check-plan.ts` decides
     // which tool is asked of which tree, and `published-manifest.ts` is where `packTree` lives — so an edit to
     // either moves what this step checks while a fingerprint over the trees alone would read fresh. The two
@@ -1065,8 +904,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/apack-host/src/replace-dir.ts'] },
   // Build the built-in pack before build:runtime reads its outputs.
   // Includes cold compiler capture, codegen, all bundles and final source/input verification.
-  // 59.0s median of 3 (58.7-72.1s, 60% idle, 2026-10-21), measured on a busy box, which can only inflate it.
-  { name: 'build:default-setup', timeout: 'suite', seconds: 60, outputs: PACK_OUTPUTS,
+  { name: 'build:default-setup', timeout: 'suite', outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `apack pack build` never reads those
     //
     // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the
@@ -1079,7 +917,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: PACK_DERIVED_READS },
   // Compare the committed report with a verified current build; never regenerate shared inputs here.
   // Source/dependency freshness uses the build's recorded context, not this inspecting command's compiler.
-  { name: 'facade:check', timeout: 'quick', seconds: 7,
+  { name: 'facade:check', timeout: 'quick',
     inputs: [...PACK_DERIVED_READS, ...PACK_OUTPUTS] },
   // The fixture packs depend on default-setup, so they need its snapshot from build:default-setup
   //
@@ -1089,13 +927,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `tsc --noEmit`, `test --contract`) and only the second caches anything, so the step still validates,
   // typechecks and runs the harness specs however that hash reads. That is the whole reason, and it is the
   // condition to re-check: were this step's work ever to become `apack pack build` alone, or were that skip to
-  // grow to cover the typecheck or the specs, it would have the shape the pool steps had — stale for a
-  // reason its inner layer cannot see, so it runs, skips everything and stamps green.
-  //
-  // 97s, not the 73s it takes alone (2026-10-21, 73% idle): `seconds` is what a step costs under the chain's
-  // own default admission, because that is the schedule the drift report compares against, and beside its two
-  // peers there it took 97s.
-  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 97, outputs: FIXTURE_OUTPUTS,
+  // grow to cover the typecheck or the specs, it would be stale for a reason its inner layer cannot see, so
+  // it would run, skip everything and stamp green.
+  { name: 'test:external-pack:contract', timeout: 'suite', outputs: FIXTURE_OUTPUTS,
     // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
@@ -1104,7 +938,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // A full shipped-pack fork is a separate producer, not work charged to the fixture contract suite.
   // Its 120s is the shipped build's measured 60s with as much again for the archive phase, which is not measured separately.
   // A 600s build, 180s archive and 120s housekeeping compose the existing 900s scenario bound.
-  { name: 'test:external-pack:fork', timeout: 'scenario', seconds: 120, outputs: [DEFAULT_FORK_OUTPUT],
+  { name: 'test:external-pack:fork', timeout: 'scenario', outputs: [DEFAULT_FORK_OUTPUT],
     inputs: [...PACK_DERIVED_READS, ...BOUNDED_RUNNER, 'tests/scripts/prepare-default-pack-fork.ts',
       ...['apack-host', ...workspaceDeps('apack-host')].flatMap(dependencySource), ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
@@ -1114,40 +948,31 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // The CLI specs that run a real build, install or child process. They need the built packages,
   // never the app — which is why they can run before `build` rather than behind it.
   // Needs `build:default-setup` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
-  // on default-setup and so reads its `dist`. It used to run after `build:default-setup` only because of where it sat
-  // in this table, which `orderedSteps` never promised.
-  // `POOL_SECONDS`, not a literal: one cost declared twice drifts the moment somebody edits whichever copy
-  // they found first
-  // 1.94x, measured 2026-10-04: five workers to two is 42.5s -> 82.5s, median of 3 (`suite`'s own note).
-  // It caps itself at half the cores, so it loses far fewer workers than the pool the rung's 4x was taken on
-  { name: 'test:integration', timeout: 'acceptance', stretches: 1.94, seconds: POOL_SECONDS.integration,
-    // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
+  // on default-setup and so reads its `dist`. Table order promises nothing (`orderedSteps`), so the edge is declared.
+  { name: 'test:integration', timeout: 'acceptance',
+    // It keeps a cache of its own, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
   // Native runtime and live-watcher scenarios, beside integration rather than inside it: same reads, and a
   // run of its own so it can be scheduled, selected and sharded apart from the ordinary integration specs.
-  // Its cost is declared like the integration pool's, until a completed run refreshes it
-  { name: 'test:native', timeout: 'acceptance', stretches: 1.94, seconds: POOL_SECONDS.native,
+  { name: 'test:native', timeout: 'acceptance',
     forceArgs: ['--all'],
     ...inputsForSuites(NATIVE_SUITES, 'native') },
   // build:default-setup owns pack outputs; build:runtime only builds the four app workspaces.
   // **No pack's `src` here, and that is a property of the build rather than an omission.** Nothing compiles a
-  // pack into the app any more: a pack's backend is loaded at run time from its own `dist/runtime/index.cjs`
-  // and its frontend fetched over `pack://`, so what this reads of a pack is `PACK_OUTPUTS` — its `dist`,
-  // which now holds both bundles. A pack source edit reaches this step through `build:default-setup`, which is a declared
-  // `need`. It declared `PACK_SOURCES` while the renderer's plugin and the api's tsup each traced a generated
-  // entry into the pack's `src`; `check:tiers` and the app build's own header are what keep that from coming
-  // back quietly
-  // 29.2s run alone (2026-10-21, 80% idle).
-  { name: 'build:runtime', timeout: 'suite', seconds: 29, outputs: APP_OUTPUTS,
+  // pack into the app: a pack's backend is loaded at run time from its own `dist/runtime/index.cjs` and its
+  // frontend fetched over `pack://`, so what this reads of a pack is `PACK_OUTPUTS` — its `dist`, which holds
+  // both bundles. A pack source edit reaches this step through `build:default-setup`. `check:tiers` and the
+  // app build's own header keep an app bundle from tracing into a pack's `src`
+  { name: 'build:runtime', timeout: 'suite', outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload', 'apack-host'].flatMap(workspace),
       'packages/api/tsup.config.ts', 'build/build-metadata.ts', 'package.json', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   // App checks load the shipped pack separately at runtime. Its bytes can change while every
   // app workspace bundle stays identical, so their cache keys must include PACK_OUTPUTS too.
-  // 83.4s (2026-10-21, 76% idle): each fixture pack's Playwright suite on one worker per three cores, with
-  // the default-fork lifecycle running beside them.
-  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 84,
+  // Each fixture pack's Playwright suite on one worker per three cores, with the default-fork lifecycle
+  // beside them where there are cores for it.
+  { name: 'test:external-pack:app', timeout: 'scenario',
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@apackdev/testing` resolves to its
@@ -1159,8 +984,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
   // It declares what it writes although it is never cached and so never reads a stamp: the guard that a
-  // step depending on another's output says so can only see outputs that are declared, and this is the
-  // tree that caused the defect — `typecheck` declared `tests`, which contains these, and could never cache.
+  // step depending on another's output says so can only see outputs that are declared, and a step declaring
+  // `tests` would otherwise contain these and never cache.
   // The four cases that say the app is an app: it launches without crashing, reaches `connected`, has
   // its plugins, and runs in its own data dir. **This one is a gate**, where the suite around it is not.
   //
@@ -1178,10 +1003,10 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', timeout: 'suite', seconds: 16,
+  { name: 'test:smoke', timeout: 'suite',
     // The fixture writes the app's stdout and stderr here (`app-<workerIndex>.log`), which is the only
     // account of why an app did not start or did not close. Playwright clears the directory on the way in,
-    // so the retry would take it
+    // so the next run would take it
     evidence: ['.apack/tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       ...SOURCE_RUNNER, ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
@@ -1191,7 +1016,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
   // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
   // nothing and is still there when you want it, which is what it was for.
-  { name: 'test:e2e', timeout: 'suite', seconds: 26,
+  { name: 'test:e2e', timeout: 'suite',
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     evidence: ['.apack/tests/results'],
@@ -1212,12 +1037,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    * Neither half deletes that dir: it is the author half's declared output, and a step whose output is gone
    * reads as never-built. The author half clears the previous run's at its start.
    */
-  { name: 'test:packaged-authoring:author', timeout: 'scenario', seconds: 95,
+  { name: 'test:packaged-authoring:author', timeout: 'scenario',
     outputs: ['tests/authoring-handoff', 'tests/authoring-handoff/work-ready', 'tests/authoring-handoff/archive'],
     // APACK_HOST selects default-setup's built snapshot for the external pack's dependency.
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring-author.sh',
       'tests/scripts/lib', ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
-  { name: 'test:packaged-authoring:app', timeout: 'suite', seconds: 9,
+  { name: 'test:packaged-authoring:app', timeout: 'suite',
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring-app.sh',
       'tests/scripts/lib', 'tests/authoring-handoff', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
 ];

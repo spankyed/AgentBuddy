@@ -18,9 +18,7 @@ import { closureOf } from './_support/module-closure.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { POOLS, poolUnitFor, STAMP_READERS as POOL_STAMP_READERS, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import { asPercent, POOL_WIDTH, shareOf, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
-import { chainFlagNames } from '../../../scripts/lib/chain-flags.ts';
 import { RUNTIME_BUILD_LEGS } from '../../../scripts/lib/runtime-build-legs.ts';
-import { ASSUMED_RUNGS } from '../../../scripts/lib/step-timeouts.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
 import { importedCallsIn } from '../../../scripts/lib/imported-calls.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
@@ -425,10 +423,8 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
  * The chain runs every recorded file's check.
  *
  * An `<name>:check` that nothing runs is a recorded file free to go stale with every gate green, and with
- * CI off the chain is the only gate. Two of them were in exactly that state until 2026-09-27 — `schema:check`,
- * which holds the manifest schema published with the SDK, and `facade:check` — each named only by
- * `.github/workflows/ci.yml`, whose triggers are commented out. `packages:check` had been the same. Three
- * instances of one thing nobody could see is what makes this a check rather than a sweep somebody repeats.
+ * CI off the chain is the only gate — a check named only by `.github/workflows/ci.yml`, whose triggers are
+ * commented out, runs nowhere. This is a check rather than a sweep somebody repeats.
  *
  * It asks what a step *invokes*, not what its text mentions: `check-import-specifiers.ts` prints `api:check` in
  * a message, and a search over the reachable text would read that as the chain running it. The walk is
@@ -617,149 +613,5 @@ describe('a build unit declares the modules its build script imports', () => {
       return closure.length > 1 ? [] : [`${workspace}'s closure is ${closure.length} files`];
     });
     expect(shallow, 'a closure of one file is the entry alone, which means the walk resolved nothing').toEqual([]);
-  });
-});
-
-/**
- * The rungs whose stretch factor is a borrow, against the prose that tells a person which they are.
- *
- * `ASSUMED_RUNGS` (`step-timeouts.ts`) is derived from the table and is therefore always right. Nothing
- * held the prose to it, and the prose went stale inside a day: `ci.yml`'s header said enabling CI would
- * validate *one* of the two borrowed rows, when `scripts/bounded.ts` is a second path into the ladder and
- * CI's `external-pack-e2e` job bounds at `scenario` through it — so **both** are reached. `5300582c3`
- * corrected that in eight paths and missed a ninth.
- *
- * **This header and not the other five restatements.** It is the only one outside source, so no reader of
- * the code passes it on the way, and it is what a person reads when deciding whether to switch the triggers
- * on — the moment the claim is acted on rather than skimmed. The five in source sit beside the derivation
- * and move with it under review.
- *
- * One direction, as the flags check below takes: every assumed rung must be named. The header may also name
- * a measured one — it does, to say `suite` is the row nothing waits on — and a check that could not tell
- * that from a stale entry would have to read prose for intent.
- *
- * **So it catches omission and not denial, which is worth knowing before trusting it.** A substring match
- * sees that a rung is mentioned, never what is claimed about it: it would have caught the header that named
- * `quick` alone, and it would pass "enabling this settles `quick` and not `scenario`", which names both and
- * is as wrong. Telling those apart means reading the sentence for intent, which is the line this does not
- * cross — the header is prose for a person and a check that parsed it would be a second author. What stands
- * behind the gap is review, and the derivation itself: `ASSUMED_RUNGS` cannot be wrong about the population,
- * so a denial here is a reader's error about a list that is right rather than a stale list.
- */
-describe('CI\'s header names the rungs enabling it would settle', () => {
-  /** Pure, so the case below can mutate the input rather than the workflow */
-  const unnamed = (rungs: readonly string[], header: string): string[] =>
-    rungs.filter((rung) => !header.includes(rung));
-
-  /**
-   * The prose above `jobs:`, which is the part addressed to a person rather than to Actions.
-   *
-   * Every top-level comment before the first job, rather than "the lines before the first key" — the file
-   * opens with `name: CI`, so that reading returned an empty string and the case passed over nothing. It
-   * stops at `jobs:` so a rung named in a `run:` step does not satisfy this: those are commands, and a
-   * command naming `scenario` says nothing about which rows enabling the workflow would settle.
-   */
-  const CI_YML = () => fs.readFileSync(path.join(REPO_ROOT, '.github', 'workflows', 'ci.yml'), 'utf-8');
-  const header = (): string => CI_YML().split('\n')
-    .slice(0, CI_YML().split('\n').findIndex((line) => line.startsWith('jobs:')))
-    .filter((line) => line.startsWith('#')).join('\n');
-
-  it('names every rung whose factor is still a borrow', () => {
-    const rungs = population('the assumed rungs', ASSUMED_RUNGS);
-    expect(unnamed(rungs, header()),
-      "name these in .github/workflows/ci.yml's header, or stop claiming the derivation keeps it honest")
-      .toEqual([]);
-  });
-
-  it('reports a rung the header never mentions, which is what the case above rests on', () => {
-    // The mutation, over the input: a header that happened to contain every word would satisfy the case
-    // above whatever it claimed, which is the state it was in when it named the wrong count
-    expect(unnamed(['quick', 'scenario'], '# quick, through typecheck. suite is measured.'))
-      .toEqual(['scenario']);
-  });
-
-  it('reads the prose and not the jobs, so a run: step naming a rung does not count', () => {
-    // Both halves matter: it must find something (the empty-string reading passed every assertion over it)
-    // and it must not be the whole file (every rung appears in some `run:` line)
-    expect(header(), 'the prose above jobs:').not.toBe('');
-    expect(header().length).toBeLessThan(CI_YML().length);
-    expect(header().split('\n').every((line) => line.startsWith('#')),
-      'comment lines only, so nothing a job says can satisfy the case above').toBe(true);
-  });
-});
-
-/**
- * The chain's flags against the only other place they are written down.
- *
- * Flags shipped with no mention in the guide, `--cores` among them, because nothing could ask: the chain
- * read its flags with `process.argv.includes`, so there was no list to compare. Declaring them
- * (`chain-flags.ts`) makes a typo an error and makes this question askable.
- *
- * **One direction only.** Every accepted flag must be documented; a documented flag need not be accepted,
- * because the guide names `--lanes` deliberately — as the thing `--cores` replaced — and a check that
- * could not tell that from a stale entry would have to parse prose for intent.
- *
- * Free in chain time: `fingerprintUnit` keeps every `CLAUDE.md` out of every step's cache key by name, so
- * a prose edit still runs nothing.
- */
-describe("the chain documents the flags it takes", () => {
-  /** Pure, so the case below can mutate the input rather than the guide */
-  const undocumented = (flags: readonly string[], guide: string): string[] =>
-    flags.filter((flag) => !guide.includes(flag));
-
-  /**
-   * The guide's entry for `npm run chain`, not the whole guide.
-   *
-   * Searching the file lets **another command's** flag satisfy this check, and names are shared on purpose
-   * where a word means the same thing for two commands. So a chain flag can be undocumented while its
-   * spelling sits in `CLAUDE.md` under another command — the failure this check exists to prevent, admitted
-   * by the naming rule the repo wants. The same shape as
-   * `ci.yml`'s header check, which reads the comment block above `jobs:` rather than the file, because every
-   * rung appears in some `run:` line.
-   *
-   * The entry runs from the `npm run chain` line to the next command at column 0, which is how that block is
-   * written: one `npm run <x>` per entry with its flags indented under it.
-   */
-  const chainEntry = (guide: string): string => {
-    const lines = guide.split('\n');
-    const from = lines.findIndex((line) => line.startsWith('npm run chain '));
-    const rest = lines.slice(from + 1);
-    const to = rest.findIndex((line) => /^npm (run )?[\w:-]+ /.test(line));
-    return [lines[from] ?? '', ...(to === -1 ? rest : rest.slice(0, to))].join('\n');
-  };
-
-  const guide = (): string => fs.readFileSync(path.join(REPO_ROOT, 'CLAUDE.md'), 'utf-8');
-
-  it('names every flag it accepts, so a new one cannot ship unmentioned', () => {
-    const flags = population("the chain's flags", chainFlagNames());
-    expect(undocumented(flags, chainEntry(guide())), "add these to the chain's flag list in CLAUDE.md")
-      .toEqual([]);
-  });
-
-  it('reports a flag the guide never mentions, which is what the case above rests on', () => {
-    // The mutation, over the input: a scan that found nothing would satisfy the case above whatever the
-    // guide said, which is how three flags came to be undocumented under a check that did not exist
-    expect(undocumented(['--cores', '--invented'], 'takes --cores N, and nothing else')).toEqual(['--invented']);
-  });
-
-  /**
-   * And the entry it reads is the chain's and not the file, which is what makes the case above able to fail.
-   *
-   * Both halves matter, as they do for `ci.yml`'s header: it must find something, and it must not be
-   * everything. A reading that returned the whole guide would be satisfied by any command's flags.
-   */
-  it('reads the chain entry rather than the guide, so another command cannot vouch for a flag', () => {
-    const entry = chainEntry(guide());
-
-    expect(entry, 'the entry it is about').toContain('npm run chain ');
-    expect(entry.length, 'and not the whole file').toBeLessThan(guide().length / 4);
-
-    // The collision itself, with a real example rather than a banned word: `--trials` is `measure`'s and the
-    // chain has no such flag, so the guide holds it and this entry must not. Naming the other command in
-    // prose is fine and this used to forbid it, which tested the wrong thing. It was `spec-cost:update`'s
-    // `--suite` until 2026-10-05, when that command was deleted and took the control with it
-    expect(guide(), "another command's flag, in the file").toContain('--trials N');
-    expect(entry, 'and outside the chain\'s entry, so it could never vouch for a chain flag')
-      .not.toContain('--trials');
   });
 });

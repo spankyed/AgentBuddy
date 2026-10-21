@@ -5,9 +5,8 @@
  * cannot load `chain.ts` without starting a six-minute build.
  */
 import { covers } from '@apackdev/host/build/packages-built';
-import { isMeasuredSchedule, thisMachine, type Machine } from './core-budget.ts';
-import { criticalPath, overBand } from './step-timing.ts';
-import { IDLE_FLOOR } from './measure.ts';
+import { criticalPath } from './step-timing.ts';
+import { UNREAD_STEP_SECONDS } from './step-durations.ts';
 import type { SchedulableStep } from './chain-schedule.ts';
 
 /**
@@ -24,18 +23,16 @@ export const STEP_NAME_WIDTH = 30;
 /**
  * Where each row's reason starts, composed from the one width rather than restated.
  *
- * Every one of these used to be a literal with the arithmetic in a comment beside it, which is how three of
- * them came to disagree with the rows they describe. They are derived now, so widening the name column moves
- * them together and a doc comment cannot go stale against a number it only describes.
+ * Derived rather than literal, so widening the name column moves them together and a comment cannot go
+ * stale against a number it only describes.
  */
 export const REASON_COLUMN = STEP_NAME_WIDTH + 21; // verdict(7) ␣ marker(3) ␣ name ␣ time(6) + two spaces
 
 /**
  * The one thing a row says about a step besides its name and its time: whether it needs the built app.
  *
- * Three characters, blank for a step that does not, so the column is a marker rather than a classification
- * — which is what replaced it. `tier` printed `t1`/`t2`/`t3` here, three values no reader could act on,
- * where the one that changes how a run behaves is whether the step waits for `build:runtime`.
+ * Three characters, blank for a step that does not: the one fact about a step that changes how a run
+ * behaves is whether it waits for `build:runtime`.
  */
 export const marker = (needsApp: boolean): string => (needsApp ? 'app' : '   ');
 
@@ -264,11 +261,9 @@ export const CHANGED_CAP = 5;
 /**
  * What to print under a step that passed and is already stale, given the diff against its own stamp.
  *
- * Every line here is something the stamp can prove. That is the whole change: the list used to be the files
- * whose mtime had moved, which is a superset — it named a compiled content an E2E test rewrites with the bytes it
- * already had, and the diagnosis that followed was about the wrong file. So a rewrite that changed nothing is no
- * longer a cause; it is a footnote, because a tree being written during every run is worth knowing and is not
- * why anything re-ran.
+ * Every line here is something the stamp can prove. Files whose mtime moved would be a superset — a rewrite
+ * with the same bytes would be named as a cause — so a rewrite that changed nothing is a footnote: a tree
+ * being written during every run is worth knowing and is not why anything re-ran.
  *
  * A declared-set change prints instead of files rather than beside them: gaining a watched path makes a unit
  * stale before a byte moves, and a file list for that cause is empty and reads as a contradiction.
@@ -351,295 +346,22 @@ export function staleLines(found: {
 export const cores = (budget: number): string => (budget === 1 ? '1 core' : `a ${budget}-core budget`);
 
 /**
- * What a failing step cost, against what it costs healthy. The timeout branch below already says this and
- * draws its conclusion; an ordinary failure said only its exit code, which is why one unexplained
- * `test:integration` failure took a reader to `chain-steps.ts` and the deadline by hand to find out it had
- * not been killed — every number needed was already here.
+ * What a failing step cost, against what it usually costs here (`step-durations.ts`). An ordinary failure
+ * otherwise says only its exit code, and a reader then has to find out by hand that it was not killed.
  *
- * Past double the declared cost it names the run that tells the two diagnoses apart, because this repo has
- * measured that they differ: sharing the machine, `@apackdev/cli` "began reporting errors it does not report
- * alone" (the note at the top of this file). The band is `overBand` in step-timing.ts, shared with
- * `driftedSteps` rather than restated — it was restated here once, which is two copies of one rule and how
- * they come apart.
+ * Past double its usual cost it names the run that tells contention from a defect, because sharing the
+ * machine has been measured to change what a suite reports.
  */
 export function howLong(
-  step: { readonly seconds?: number },
+  usually: number | undefined,
   ms: number,
   budget: number,
-  /** Whether the chain is about to re-run the step alone, in which case suggesting it reads as if no answer followed */
-  classifying = false,
 ): string {
-  if (step.seconds === undefined) return '';
-  const measured = Math.round(ms / 1000);
-  const where = ` after ${(ms / 1000).toFixed(1)}s, against ${step.seconds}s healthy on ${cores(budget)}`;
-  return !classifying && overBand(step.seconds, measured)
-    ? `${where}\n  — over twice its measured cost; try \`npm run chain -- --cores 1\``
+  if (usually === undefined) return '';
+  const where = ` after ${(ms / 1000).toFixed(1)}s, against ${usually}s usually on ${cores(budget)}`;
+  return ms / 1000 > usually * 2
+    ? `${where}\n  — over twice its usual cost; try \`npm run chain -- --cores 1\``
     : where;
-}
-
-/**
- * What a drift report means, which depends on the budget the run was given.
- *
- * At `MEASURED_AT_CORES` the numbers are comparable and a drifted step is a stale row, so the value to record
- * is the useful thing to print. At any other budget they are not comparable at all: measured here,
- * `test:external-pack:contract` costs 57s sharing the machine and 18s with it to itself. Printing "record 18"
- * would give a step that takes 57s in the default schedule a 72s kill budget — the mis-sized bound `seconds`'
- * own doc warns about, arrived at by following this tool's advice.
- *
- * The same numbers are worth printing as what they are. Which steps the schedule's contention moves most is not
- * recorded anywhere else. It takes `--all --cores 1` to see it, not the plain `--cores 1` a failing step
- * suggests — that run answers the narrower question the failure asks, whether the step passes alone.
- *
- * **So what the schedule gates is the advice, never the numbers.** Off the measured schedule the rows still
- * print, because what a step cost is true wherever it ran; the sentence offering a number to write does not,
- * because the number would not describe the schedule the table does. A chain on a second developer's machine
- * used to print that instruction on every run against figures taken on different silicon.
- */
-/**
- * How contended a reading was, as a suffix — empty for a step that had the box to itself.
- *
- * **It is why one unchanged step reads four different numbers.** `seconds` is the cost under the chain's own
- * admission, so a contended reading is the right quantity rather than a spoiled one; what the number cannot
- * say on its own is which admission it got. `test:integration` read 77s, 88s, 96s and 101s across four runs
- * while costing what its row says, and a spread nothing explains is how a true row comes to be ignored.
- *
- * Both reports take it, because both compare a measurement against the table.
- */
-/** Up to three names, then a count: a line naming twenty steps is a line nobody reads to the end */
-const listOf = (names: readonly string[], shown = 3): string => {
-  const [head, rest] = [names.slice(0, shown), names.length - shown];
-  return rest > 0 ? `${head.join(', ')} and ${rest} other${rest === 1 ? '' : 's'}` : head.join(', ');
-};
-
-const peerSuffix = (peers: number): string => (peers === 0 ? '  (alone)' : `  (${peers} peers)`);
-
-/**
- * What the figures above were taken under, for the reader who is about to type one.
- *
- * **The judgement the recorder's idle floor used to make, moved to where the decision now is.** `seconds` is
- * declared, so nothing refuses a run any more — which means a reader can read a drift off a loaded box and
- * write the box into the table. These are the two facts that gate used to hold before it wrote, printed
- * instead of enforced: how quiet the machine was, and whether the rows moved together.
- *
- * **The direction decides what a correlated move means, and the two are opposites.** Load can only make a
- * step slower, so rows that all came in slower may be the box; rows that all came in *faster* cannot be,
- * because nothing about contention speeds a step up — that is the table being genuinely stale, which is
- * what `build:runtime` at 39s against a real 13s was. Mixed directions say neither and get no sentence.
- *
- * **One row gets no verdict however far it moved.** A single step carrying a drift is that step's business,
- * and the rows are printed, so a reader sees concentration without the report computing it. The recorder
- * needed that computed because it had to reach a write decision from the numbers alone; a report does not.
- */
-const conditionsNote = (
-  shown: readonly { declared: number; measured: number }[],
-  conditions: { readonly idle: number; readonly comparable: number } | undefined,
-): string => {
-  if (conditions === undefined) return '';
-  const slower = shown.filter(({ declared, measured }) => measured > declared).length;
-  const lines = [`  ${shown.length} of ${conditions.comparable} comparable steps`
-    + `, and the box read ${Math.round(conditions.idle * 100)}% idle as the run started.`];
-  if (shown.length > 1 && (slower === 0 || slower === shown.length)) {
-    lines.push(slower === shown.length
-      ? '  All of them slower, and load can only slow a step — so read the box before the code.'
-      : '  All of them faster, which load cannot cause — so this is the table and not the run.');
-  }
-  // `IDLE_FLOOR` rather than a new number: it already means "below this a timing is not worth printing",
-  // which is the same claim as "do not copy this figure into a committed file"
-  if (conditions.idle < IDLE_FLOOR) {
-    lines.push('  That is under the floor `npm run measure` refuses below, so a figure here may be the'
-      + ' machine. Measuring the step alone is the reading contention cannot fool.');
-  }
-  return `\n${lines.join('\n')}`;
-};
-
-export function driftReport(
-  drifted: readonly { name: string; declared: number; measured: number; peers: number }[],
-  budget: number,
-  /** The machine and budget the table was measured on (`MEASURED_ON`), which is what a run is comparable to */
-  measuredOn: Machine,
-  /** Whether the run did every step's work (`--all`), which is how the table's numbers are taken */
-  forced: boolean,
-  /**
-   * This machine, which with `budget` is what says whether the run is the schedule the table describes —
-   * `isMeasuredSchedule` has why it takes three facts and not one.
-   */
-  machine: Machine = thisMachine(),
-  /**
-   * How quiet the box was as the run started, and how many steps could have drifted — the two facts the
-   * deleted recorder checked before it wrote. Omitted, the report says nothing about either.
-   */
-  conditions?: { readonly idle: number; readonly comparable: number },
-): string {
-  // The two directions are not alike, so a run that cannot answer for one can still answer for the other.
-  // Under the band is the run's doing: a smaller budget, or most steps cached, is less contention, and with
-  // nine of twelve cached any budget behaves like one. Over it is not — less contention should make a step
-  // faster, so an
-  // overrun on a partial run is the step growing, which is the direction worth hearing about even though
-  // nothing is killed for it any more.
-  // Measured over 40 step runs in one day: 6 under the band, 0 over it, so this costs no noise.
-  const shown = forced ? drifted : drifted.filter(({ declared, measured }) => overBand(declared, measured));
-  if (shown.length === 0) return '';
-  const count = `${shown.length} step${shown.length === 1 ? '' : 's'}`;
-  const rows = (line: (d: { name: string; declared: number; measured: number }) => string): string =>
-    shown.map((d) => `  ${d.name.padEnd(STEP_NAME_WIDTH)} ${line(d)}${peerSuffix(d.peers)}`).join('\n');
-
-  if (!forced) {
-    // No `(killed at Ns)` any more, and its absence is the point: a deadline is a declared class now
-    // (`step-timeouts.ts`), so it is not a function of the declared cost and cannot be computed from one.
-    // Naming the class here would mean threading it through a drift row that has no other use for it, to
-    // say a number that is the same for every step in its class and is in the timeout message already.
-    return `\n${count} ran past twice the declared cost — the step grew, not the schedule:\n`
-      + `${rows(({ declared, measured }) => `${declared}s -> ${measured}s`)}`;
-  }
-  // **The instruction is what the schedule gates, not the numbers.** `seconds` is declared, so the remedy is
-  // an edit rather than a command, and an edit is followable on any box — but the *number* to write is only
-  // true of the schedule the table describes, so offering one off that schedule offers a value that would be
-  // wrong the moment it landed. Asked of `isMeasuredSchedule` rather than of `budget === measuredAt`, which
-  // is the weaker form that let `--cores 10` on a twenty-core box through: the budget matched while every
-  // width was twenty-core sized.
-  if (isMeasuredSchedule(budget, measuredOn, machine)) {
-    // The conditions go on this branch alone, because it is the only one that names a number to write. The
-    // other two print what a step cost without offering a figure, so there is nothing for them to qualify
-    return `\n${count} cost something other than chain-steps.ts says — edit the declaration to match:\n`
-      + `${rows(({ declared, measured }) => `seconds: ${declared} -> ${measured}`)}`
-      + conditionsNote(shown, conditions);
-  }
-  return `\non ${cores(budget)}, ${count} moved against ${measuredOn.cores}-core numbers`
-    + ` — the schedule, not a stale table:\n`
-    + `${rows(({ declared, measured }) => {
-      const factor = (Math.max(declared, measured) / Math.min(declared, measured)).toFixed(1);
-      return `${declared}s -> ${measured}s  (${factor}x ${measured < declared ? 'faster alone' : 'slower'})`;
-    })}`;
-}
-
-/**
- * Whether a failed step is worth re-running by itself.
- *
- * The chain is the only thing placed to ask whether a failure reproduces: it knows which step failed,
- * and `schedule` drains what is running before it returns, so at that moment the machine is genuinely quiet.
- * The reader can do it too, which is what the suggestion in `howLong` is for — but they have to decide to, and
- * the evidence is gone by the next run.
- */
-export function shouldClassify(run: {
-  /**
-   * Nothing overlapped this step, so running it alone proves nothing — **observed, not predicted**.
-   *
-   * It was `exclusive`, taken from the step's declared mutexes, which answered a different question the
-   * moment those became derived: `conflictsOf` is non-empty for twelve steps that each run beside two
-   * dozen others, and all twelve skipped this re-run. `schedule` records what actually overlapped
-   * (`ScheduleResult.peers`), and that is the only place the answer exists. The admission limit is gone from
-   * the predicate with it: a serial run overlaps nothing, so it is already covered.
-   */
-  readonly ranAlone: boolean;
-  /**
-   * A wedged step is not re-run: its deadline is a declared class (`step-timeouts.ts`), so the retry spends
-   * that whole class again — ten minutes for a `suite` step — to reach a message `classifyLine` can already
-   * write from what the first run proved.
-   */
-  readonly timedOut: boolean;
-  readonly optedOut: boolean;
-}): boolean {
-  return !run.ranAlone && !run.timedOut && !run.optedOut;
-}
-
-/**
- * What a run says when a step's measured cost has outgrown the rung it declares.
- *
- * `outgrownRungs` (`step-timing.ts`) has why this exists: the bound reads the declaration, and the band
- * watching declarations is looser than the bound, so a step can pass `declaredShare` while its real cost does
- * not. This is the one place a run can say so, because it is the one place both numbers exist.
- *
- * **Every sentence here is followable, which is what the caller's gate buys.** `outgrownRungs` answers only
- * on the schedule the table was measured on, so the number it would have a reader write is one that
- * describes that table; a report whose one instruction cannot be acted on is the defect this chain has
- * already shipped twice (`driftReport`'s doc, and the context paragraph in `chain.ts`).
- *
- * **It names what would make it a false alarm**, which a report has to do or it gets ignored: a crowded run
- * inflates a measurement. What it hands the reader to tell that is **the step's own command under
- * `npm run measure`** (`measureCommandFor`, `unit-pool.ts`), for one reason that settles it — `measure`
- * refuses a box under `IDLE_FLOOR` and reports a median over repetitions with its band, so it is the one
- * instrument here that *cannot* hand back the contended number this report is warning about. A median near
- * the declaration ends the question; the remedy below is for when it is not.
- *
- * **It used to prescribe `chain --all --cores 1` and nothing else, and that was the defect.** Settling one
- * step's cost cost all thirty, serially — the sum of the table rather than its 182.4s critical path — and
- * the reading it produced was still a single observation with no idleness gate on it. Measured 2026-10-07:
- * the integration pool read 83s and then 100s in two crowded chain runs, and 47.7s median of 5 (47.6s-48.1s)
- * at 93% idle, against 60s declared and the 48.2s the guide records. Two false alarms, and the instruction
- * for each was ten minutes long. The serial chain is still named, below the cheap answer, because it is the
- * right tool for the other question — whether the *schedule* is what changed — and `--all` stays on it for
- * the original reason: a step that passed is stamped, so a re-run without it finds the step cached and
- * measures nothing.
- *
- * **And it asks for the declaration, not the rung.** Moving a step to a longer class is the fix, but the
- * declaration moves first: edit `seconds` to what the step costs, `chain-graph.spec.ts` then fails the bound
- * on the new number, and *that* is what says the rung has to change. Advising the rung here would skip the
- * step that proves it.
- */
-export const outgrownReport = (
-  found: readonly {
-    name: string; declared: number; measured: number; at: number; measureWith: string; wholeTable: boolean;
-    peers: number;
-  }[],
-): string => {
-  if (found.length === 0) return '';
-  const count = `${found.length} step${found.length === 1 ? '' : 's'}`;
-  // **The one condition this report skips, said rather than left out.** `outgrownRungs` takes two of the
-  // three comparability conditions and reports a partial run anyway, because contention can only make a step
-  // slower and so the reading is an upper bound — worth printing with the caveat, not worth printing as a
-  // comparison with the table. Said once for the run rather than per row, since every row shares it.
-  const partial = found.some(({ wholeTable }) => !wholeTable)
-    ? '\n  This run was not --all, which is the only schedule the table describes, so each reading above is\n'
-      + '  an upper bound: a crowded run can clear a step and cannot convict one.'
-    : '';
-  const rows = found.map(({ name, declared, measured, at, peers }) =>
-    `  ${name.padEnd(STEP_NAME_WIDTH)} ${declared}s declared, ${measured}s here${peerSuffix(peers)} — ${Math.round(at * 100)}% of `
-    + 'its rung on the smaller machine that rung is sized for').join('\n');
-  // One line per step, because the command is the step's: a report naming two steps and one command would
-  // have a reader measuring whichever it happened to name
-  const checks = found.map(({ measureWith }) => `    npm run measure -- "${measureWith}"`).join('\n');
-  return `\n${count} cost more than the rung ${found.length === 1 ? 'it declares' : 'they declare'} leaves `
-    + `room for:\n${rows}\n`
-    + '  A crowded run inflates this, and measure is what cannot be fooled by it — it refuses a busy box and\n'
-    + `  reports a median with its band:\n${checks}\n`
-    + `  ${found.length === 1 ? 'A median' : 'Medians'} near the declared cost means this run was contention, `
-    + 'not growth. If the schedule is the\n'
-    + '  suspect instead, `npm run chain -- --all --cores 1` re-runs the table serially; without --all the\n'
-    + '  step is cached and the re-run measures nothing.\n'
-    + '  If it has really grown, edit the cost it declares in chain-steps.ts and\n'
-    + '  chain-graph.spec.ts fails the bound on it, which is what says the rung has to change.'
-    + partial;
-};
-
-/**
- * Describe the isolated retry and recorded overlap without assigning a cause.
- * A passing retry neither rules out nondeterministic code nor clears the original failure.
- * The chain retains its failed exit status and records no successful stamp for the retry.
- */
-export function classifyLine(
-  retry: { readonly code: number; readonly ms: number; readonly timedOut?: true },
-  /**
-   * The steps that actually overlapped the failing one (`ScheduleResult.peers`), which is what the pass arm
-   * names instead of calling the whole thing contention. `schedule` records them at dispatch, so this is what
-   * happened rather than what the budget permitted.
-   */
-  peers: readonly string[] = [],
-): string {
-  const took = `${(retry.ms / 1000).toFixed(1)}s`;
-  if (retry.timedOut) {
-    return `\nre-ran it alone: timed out after ${took}. No other chain step overlapped this retry; `
-      + 'slow progress and stalled work remain possible. Inspect its output before retrying.';
-  }
-  if (retry.code !== 0) return `\nre-ran it alone: failed again (exit ${retry.code}) in ${took} — the failure is real.`;
-  // What it ran beside, which is the fact; `and N others` keeps a 24-step line readable while still saying how
-  // many there were, since "three of them" and "twenty of them" are different situations to look into
-  const beside = peers.length === 0
-    ? 'It ran alone the first time too, so nothing here was beside it.'
-    : `It ran beside ${listOf(peers)} the first time.`;
-  return `\nre-ran it alone: passed in ${took} — the original failure remains unresolved. ${beside}`
-    + ' Either one of those interfered, or something this run cannot see did — a tool outside the chain, an'
-    + ' editor, another checkout — or the step is nondeterministic on its own. Running it alone does not say'
-    + ' which, and neither does this message. The chain still fails.';
 }
 
 /**
@@ -681,13 +403,15 @@ export function pathSavingsLine(steps: readonly SchedulableStep[]): string {
  * which it is. `--dry` gives the planned run's path and `--dry --all` the cold chain's, since `--all` plans
  * every step.
  *
- * `source` separates the two numbers rather than letting one wear the other's authority: a run has measured
- * each step, a plan has only the declared table, which is one machine's by declaration (`MEASURED_ON`).
+ * `source` separates the two numbers: a run has measured each step, a plan has this machine's recent
+ * readings, and `unread` counts the plan's steps with none, which took `UNREAD_STEP_SECONDS`.
  *
  * Empty for a path of one step, where the step's own line already said what it cost.
  */
-export function criticalPathLine(steps: readonly SchedulableStep[], source: 'declared' | 'measured'): string {
+export function criticalPathLine(steps: readonly SchedulableStep[], source: 'recorded' | 'measured', unread = 0): string {
   const path = criticalPath(steps);
   if (path.names.length < 2) return '';
-  return `critical path ${path.seconds}s${source === 'declared' ? ' declared' : ''} (${path.names.join(' -> ')})`;
+  const seconds = Math.round(path.seconds * 10) / 10;
+  const assumed = unread === 0 ? '' : `; ${unread} of ${steps.length} steps have no reading here and count as ${UNREAD_STEP_SECONDS}s`;
+  return `critical path ${seconds}s${source === 'recorded' ? ` from recent runs${assumed}` : ''} (${path.names.join(' -> ')})`;
 }

@@ -77,8 +77,7 @@ const sstep = (name: string, dependsOn: string[] = [], extra: Partial<Step> = {}
  *
  * **Never the raw `ScheduleResult`.** `threw[].error` holds `Error` objects, which `toEqual` compares by
  * message alone, and a `Map` or `Set` compares order-insensitively — both weaken exactly the discrimination
- * an entry is for. `peers` carries the most: it is written at dispatch, in both directions, so it says what
- * overlapped what, which is how a budget decision is visible at all.
+ * an entry is for. `peak` is how a budget decision is visible at all: the most steps running at once.
  *
  * `run` resolves immediately and that is sufficient, so the `release`/`drain` machinery in
  * `chain-schedule.spec.ts` is deliberately not reproduced here: `schedule`'s dispatch pass is synchronous,
@@ -89,17 +88,24 @@ const scheduled = async (lib: Lib, steps: readonly Step[], budget: number, optio
   readonly failing?: readonly string[];
   readonly skipping?: readonly string[];
 } = {}) => {
+  let live = 0;
+  let peak = 0;
   const result = await lib.schedule({
     steps,
     budget,
     skip: (step) => (options.skipping ?? []).includes(step.name),
-    run: async (step) => !(options.failing ?? []).includes(step.name),
+    run: async (step) => {
+      peak = Math.max(peak, ++live);
+      await Promise.resolve();
+      live -= 1;
+      return !(options.failing ?? []).includes(step.name);
+    },
   });
   return {
     started: result.started.join(','),
     skipped: result.skipped.join(','),
     failed: result.failed ?? 'none',
-    peers: [...result.peers].map(([name, beside]) => `${name}:${[...beside].sort().join('+')}`).sort().join(' '),
+    peak,
   };
 };
 
@@ -143,8 +149,7 @@ const MUTATIONS: readonly Mutation[] = [
     in: 'chain-schedule',
     from: 'if (spent > 0 && spent + (step.cores ?? 1) > budget) continue;',
     to: '',
-    // Three four-core steps and ten to spend: `c` waits, so it overlaps nothing. Without the clause it
-    // joins the other two and `peers` says so.
+    // Three four-core steps and ten to spend: `c` waits, so two run at once. Without the clause all three do
     call: (lib) => scheduled(lib, [sstep('a', [], { cores: 4 }), sstep('b', [], { cores: 4 }), sstep('c', [], { cores: 4 })], 10),
   },
   {
@@ -206,10 +211,9 @@ const MUTATIONS: readonly Mutation[] = [
     },
   },
   /**
-   * `step-timeouts.ts` has no spec of its own. `chain-graph` reaches three of its exports directly — the
-   * bound through `declaredShare`, each rung's provenance, and what a kill reports through `timedOutBecause`
-   * — but nothing there pins a rung's *deadline*, so changing `quick` to six seconds still leaves every case
-   * in the repo green. These four are what observes the rest.
+   * `step-timeouts.ts` has no spec of its own. `chain-graph` reaches what a kill reports through
+   * `timedOutBecause`, but nothing there pins a rung's *deadline*, so changing `quick` to six seconds still
+   * leaves every case in the repo green. These three are what observes the rest.
    */
   {
     // The mutation is the *permissive* answer rather than a crash, because that is the decision: "a budget is
@@ -228,23 +232,12 @@ const MUTATIONS: readonly Mutation[] = [
     // meaningful thing to give a step. `suite` dropping under `quick` breaks it.
     why: 'the ladder climbs, so a class is slower than the one below it',
     in: 'step-timeouts',
-    from: '    ms: 600_000,',
-    to: '    ms: 30_000,',
+    from: '  suite: { ms: 600_000 },',
+    to: '  suite: { ms: 30_000 },',
     call: (lib) => {
       const ms = lib.TIMEOUT_CLASSES.map((className) => lib.TIMEOUT_MS[className].ms);
       return ms.every((value, at) => at === 0 || value > ms[at - 1]!) ? 'climbs' : 'does not climb';
     },
-  },
-  {
-    // The bound's whole subject: a share that forgets to weigh the rung's factor is a bound against *this*
-    // machine, which is the coupling the ladder was built to remove. 60s declared against `suite`'s 300s is
-    // 20% here and 80% four times slower, so dropping the factor takes a passing step from 0.8 to 0.2 — and
-    // every step in the table would pass a bound that had stopped asking the question
-    why: 'declaredShare weighs a cost by its rung\'s stretch factor, not against the deadline alone',
-    in: 'step-timeouts',
-    from: '  (seconds * 1000 * (stretches ?? TIMEOUT_MS[className].stretches)) / TIMEOUT_MS[className].ms;',
-    to: '  (seconds * 1000) / TIMEOUT_MS[className].ms;',
-    call: (lib) => lib.declaredShare(60, 'suite'),
   },
   {
     why: 'timeoutText says a class in seconds, not milliseconds',
@@ -255,14 +248,8 @@ const MUTATIONS: readonly Mutation[] = [
   },
   {
     /**
-     * The half of the bound that reads the measurement. Dropping the guard makes it report a step whose
-     * *declaration* is already over, which is `chain-graph.spec.ts`' failure and not this report's — so the
-     * run would say the same thing twice, in the weaker place, and a reader would not know which to act on.
-     */
-    /**
      * Dropping the filter hands every reader a killed step's deadline as its cost — the drift report offers
-     * it as an edit, and `declaredShare` makes a wedged `suite` step four times its rung. The number is right
-     * and it is not a measurement.
+     * it as an edit. The number is right and it is not a measurement.
      */
     why: 'measurementsFrom leaves out a step whose time is the deadline it was killed at',
     in: 'step-timing',
@@ -273,45 +260,8 @@ const MUTATIONS: readonly Mutation[] = [
       { step: 'test:integration', ms: 300_400, timedOut: true },
     ])],
   },
-  {
-    why: 'outgrownRungs leaves a declaration that is already over to the spec that gates on it',
-    in: 'step-timing',
-    from: '    if (declaredShare(step.seconds, step.timeout, step.stretches) > 1) continue;',
-    to: '',
-    call: (lib) => lib.outgrownRungs(
-      [{ name: 'greedy', dependsOn: [], seconds: 20, timeout: 'quick' }],
-      new Map([['greedy', 20_000]]),
-      10,
-      { cpu: 'Apple M1 Pro', cores: 10 },
-      { cpu: 'Apple M1 Pro', cores: 10 },
-    ),
-  },
-  {
-    /**
-     * The gate that makes the number mean anything. `declaredShare` projects onto a machine `stretches`
-     * times slower, so a reading from a slower box counts the slowdown twice — measured, a green run on the
-     * 4x-slower runner puts 17 of 29 steps past rungs their declarations sit well inside. Without this the
-     * report fires hardest on the machines whose readings cannot describe the table at all.
-     */
-    why: 'outgrownRungs answers only on the schedule the table was measured on',
-    in: 'step-timing',
-    // The schedule and not the whole run: a partial run is reported with a caveat, since contention can only
-    // make a step slower and so its reading is an upper bound (`outgrownRungs`' doc, and
-    // `step-timing.spec.ts`'s partial-run cases). This entry is about the half that gates
-    from: '  if (scheduleMismatch(budget, measuredOn, machine) !== undefined) return [];',
-    to: '',
-    // 60s declared is 0.80 of `suite`; the reading is that same cost on a box four times slower, so the only
-    // thing that could report it is the double count
-    call: (lib) => lib.outgrownRungs(
-      [{ name: 'test:integration', dependsOn: [], seconds: 60, timeout: 'suite' }],
-      new Map([['test:integration', 240_000]]),
-      4,
-      { cpu: 'Apple M1 Pro', cores: 10 },
-      { cpu: 'Some Smaller CPU', cores: 4 },
-    ),
-  },
   /**
-   * `core-budget.ts`'s eight. What a step takes of the machine is the chain's admission weight, so a wrong
+   * `core-budget.ts`'s four. What a step takes of the machine is the chain's admission weight, so a wrong
    * answer here is an over- or under-admitted chain rather than a failure, which is why none of these has a
    * case that would notice.
    *
@@ -354,45 +304,6 @@ const MUTATIONS: readonly Mutation[] = [
     // An **odd** box, which is what makes the rounding observable at all: half of nine is 5 rounded and 4
     // floored. Both of `core-budget.spec.ts`'s share cases use even counts, so neither can see this
     call: (lib) => lib.coresFor('test:integration', 9),
-  },
-  {
-    why: 'a machine with the measured CPU but different cores is not the measured machine',
-    in: 'core-budget',
-    from: 'machine.cores === measuredOn.cores && ',
-    to: '',
-    call: (lib) => lib.isMeasuredMachine({ cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Apple M1 Pro', cores: 8 }),
-  },
-  {
-    // The hole the CPU was added to close, and the one that actually turned up: a 10-core Mac is the
-    // commonest shape there is, so before this conjunct every one of them read as the box the costs came
-    // from, and were offered the drift report's figures as describing someone else's silicon
-    why: 'a machine with the measured cores but different silicon is not the measured machine',
-    in: 'core-budget',
-    from: ' && machine.cpu === measuredOn.cpu',
-    to: '',
-    call: (lib) => lib.isMeasuredMachine({ cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Intel Xeon W', cores: 10 }),
-  },
-  {
-    why: 'a run spending fewer cores than the table was measured at is not the measured schedule',
-    in: 'core-budget',
-    from: "budget === measuredOn.cores ? undefined : 'budget'",
-    to: 'undefined',
-    // `--cores 4` on the measured machine. The widths are still box-sized, so the costs do not describe it
-    call: (lib) => lib.isMeasuredSchedule(4, { cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Apple M1 Pro', cores: 10 }),
-  },
-  {
-    // The entry the predicate's split created. Dropping the machine branch leaves a schedule check that asks
-    // only about the budget, which is what comparing the budget alone did before the machine existed --
-    // and the budget matches here, so nothing else is left to refuse it.
-    //
-    // Both anchors moved when `isMeasuredSchedule` became a delegation to `scheduleMismatch`: the decisions
-    // are in that function now. The harness said so rather than passing over two entries that no longer
-    // matched anything, which is the whole reason it asserts each anchor matches exactly once.
-    why: 'the schedule check asks the machine question as well as its own',
-    in: 'core-budget',
-    from: "if (!isMeasuredMachine(measuredOn, machine)) return 'machine';",
-    to: '',
-    call: (lib) => lib.isMeasuredSchedule(10, { cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Intel Xeon W', cores: 10 }),
   },
 ];
 

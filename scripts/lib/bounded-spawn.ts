@@ -1,23 +1,18 @@
 /**
  * Spawning with a wall-clock budget, because a run that can hang cannot fail.
  *
- * Every orchestrator here — the chain, the unit runner — used to spawn with no bound, so one wedged step
- * hung the whole run until a person noticed and killed it by pid. The failures that produced that were not
- * exotic: a test server that never returned, a build lock waited on for ten minutes, a compile that stopped
- * making progress. None of them could be caught by vitest's own timeouts, because those bound a *test* and
- * not the process around it, and a synchronous block (`Atomics.wait`) is invisible to them entirely.
+ * Without a bound one wedged step hangs the whole run until a person kills it: a test server that never
+ * returns, a build lock waited on, a compile that stops making progress. Vitest's own timeouts cannot catch
+ * these, because they bound a *test* and not the process around it, and a synchronous block
+ * (`Atomics.wait`) is invisible to them entirely.
  *
  * Two rules this enforces, and both matter:
  *
- * - **A budget is a declared class, not a multiple of a measurement.** It was the second until 2026-10-03,
- *   and what that made it was a function of one developer's machine: `budgetFor(seconds)` multiplied a
- *   ten-core measurement by four, so a box with a third of the cores ran the same deadline over a step three
- *   times slower. Callers pass `TIMEOUT_MS[class]` (`scripts/lib/step-timeouts.ts`), which carries no
- *   machine. A bound longer than anyone will wait is still the same as no bound, which is what keeps the
- *   ladder to three rungs.
+ * - **A budget is a declared class, not a multiple of a measurement**, which would make it a function of one
+ *   machine. Callers pass `TIMEOUT_MS[class]` (`scripts/lib/step-timeouts.ts`), which carries no machine. A
+ *   bound longer than anyone will wait is the same as no bound, which keeps the ladder short.
  * - **The process group dies, not just the child.** `npm run x` is a shell that spawns node that spawns
- *   vitest that spawns workers. Killing the child orphans the rest, which is how this repo ended up with a
- *   `generate-entries` at 99% CPU for a day and a half.
+ *   vitest that spawns workers. Killing the child alone orphans the rest, still running.
  */
 import { spawn } from 'node:child_process';
 

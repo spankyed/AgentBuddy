@@ -8,7 +8,6 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseCLI } from 'vitest/node';
 import { declaredPaths, diffableStamp } from '@apackdev/host/build/packages-built';
@@ -16,7 +15,7 @@ import { DIAGNOSTIC_RUN_ENV, CHAIN_CORES_ENV, holdPoolLock, poolWorkers, poolWor
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { unitFor } from '../../../scripts/lib/chain-stamps.ts';
-import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
 import { coresFor } from '../../../scripts/lib/core-budget.ts';
 import { poolDurationLines } from '../../../scripts/lib/unit-pool.ts';
 import { writeDurations } from '../../../scripts/lib/spec-durations.ts';
@@ -257,8 +256,8 @@ describe('measureCommandFor', () => {
   });
 
   /**
-   * The whole pool, because `POOL_SECONDS` declares one cost for it: a command that ran the stale subset
-   * would answer a cheaper question and read as a step that had shrunk.
+   * The whole pool, because the step's cost is the whole pool's: a command that ran the stale subset would
+   * answer a cheaper question and read as a step that had shrunk.
    */
   it('names every suite the pool has, not a subset', () => {
     for (const pool of pools()) {
@@ -505,23 +504,11 @@ describe('the pools', () => {
       'a stamp keyed by less than the suite, half and provenance is an earlier shape, which prune must drop')
       .toEqual([]);
   });
-
-  // `POOL_SECONDS` cannot be keyed off `Pool`: `unit-pool.ts` imports the steps, so the steps cannot import
-  // the pools back. A check stands in for the derivation, because a pool with no budget gets `budgetFor` of
-  // nothing — a timeout of NaN, which bounds no run at all.
-  it('each have a measured budget', () => {
-    expect(Object.keys(POOL_SECONDS).sort()).toEqual([...names].sort());
-  });
 });
 
 /**
- * What a run is allowed to record, which is the half of the chain's retry policy that was missing.
- *
- * The chain refuses to stamp a step it re-ran alone, so the next chain does the step again — stated in
- * `chain.ts` and in `classifyLine`'s doc, and true only of the chain's own stamp. A pool keeps its own, and on
- * 2026-10-02 the stamps showed what that costs: a laned failure of `test:unit:host`, a re-run that passed and
- * wrote all eleven project stamps, and a next chain that ran zero tests and called the step green. These three
- * cases are what that sequence had nothing holding it.
+ * What a run is allowed to record. A run that covers only part of a suite — a shard — must record no project
+ * stamp, or the next run would skip projects it never finished.
  */
 describe('a diagnostic run', () => {
   const made: string[] = [];
@@ -552,9 +539,9 @@ describe('a diagnostic run', () => {
     const diagnostic = fixture();
     await recordRun([{ label: 'diagnostic', unit: diagnostic.unit, stamp: diagnostic.stamp }],
       () => { ran += 1; }, { [DIAGNOSTIC_RUN_ENV]: '1' });
-    expect(ran, 'a diagnostic run has to do the work — it is being asked whether the work passes alone').toBe(2);
+    expect(ran, 'a diagnostic run still does the work').toBe(2);
     expect(fs.existsSync(diagnostic.stamp),
-      'a diagnostic run recorded a verdict, so the next chain will skip the step that just failed').toBe(false);
+      'a diagnostic run recorded a verdict it did not establish for the whole suite').toBe(false);
   });
 
   /**
@@ -568,63 +555,6 @@ describe('a diagnostic run', () => {
 
     await recordRun([{ label: 'second', unit, stamp }], () => {}, { [DIAGNOSTIC_RUN_ENV]: '1' });
     expect(fs.readFileSync(stamp, 'utf-8')).toBe(recorded);
-  });
-});
-
-/**
- * The call site that has to ask for it. Suppression inside the pool is no use if the chain's re-run does not
- * say it is a diagnostic, and that is one argument on one line in another file — exactly the kind of thing a
- * later edit drops. Read from the syntax tree rather than the text, so reformatting the call is not a failure.
- *
- * To watch it fail: delete the `DIAGNOSTIC_RUN_ENV` argument from the retry in `chain.ts`.
- */
-describe("the chain's classification re-run", () => {
-  it('spawns the step with recording suppressed', () => {
-    const file = path.join(REPO_ROOT, 'scripts', 'chain.ts');
-    const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf-8'), ts.ScriptTarget.Latest, true);
-
-    // What chain.ts binds from the pool module, read from its own import rather than named here: the case is
-    // about the argument being passed, not about what the constant is called.
-    const fromPool = new Set<string>();
-    const branches: ts.IfStatement[] = [];
-    const visit = (node: ts.Node): void => {
-      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)
-        && node.moduleSpecifier.text.endsWith('unit-pool.ts')) {
-        const bindings = node.importClause?.namedBindings;
-        if (bindings !== undefined && ts.isNamedImports(bindings)) {
-          for (const element of bindings.elements) fromPool.add(element.name.text);
-        }
-      }
-      if (ts.isIfStatement(node) && node.expression.getText() === 'classifying') branches.push(node);
-      ts.forEachChild(node, visit);
-    };
-    visit(source);
-
-    expect(branches.length, 'no `if (classifying)` in chain.ts, so this case is asserting over nothing').toBe(1);
-    expect([...fromPool], 'chain.ts imports nothing from the pool module, so it cannot ask for suppression')
-      .not.toEqual([]);
-
-    // The identifiers the re-run's `run(...)` call is *given*, not the text of the branch: the branch's own
-    // comment names the constant, so a text match passed with the argument deleted — watched, on the first
-    // mutation check this case was put through.
-    const passed = new Set<string>();
-    const readArgs = (node: ts.Node): void => {
-      if (ts.isCallExpression(node) && node.expression.getText() === 'run') {
-        for (const argument of node.arguments) {
-          const names = (child: ts.Node): void => {
-            if (ts.isIdentifier(child)) passed.add(child.text);
-            ts.forEachChild(child, names);
-          };
-          names(argument);
-        }
-      }
-      ts.forEachChild(node, readArgs);
-    };
-    readArgs(branches[0]!);
-
-    expect([...fromPool].some((binding) => passed.has(binding)),
-      'the re-run passes the pool nothing, so a step that caches inside itself records a verdict the chain '
-      + 'refuses to record, and the next chain skips the step that just failed').toBe(true);
   });
 });
 

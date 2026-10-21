@@ -57,8 +57,7 @@ const failures: { label: string; output: string }[] = [];
 /**
  * The tool's bin, **never `npx`**, which re-resolves the package on every call: over the nine calls here that
  * is **8.1s against 6.2s**, both medians of 5 at ~73% idle on 2026-10-08, or about 210ms a call. An npm script
- * has `node_modules/.bin` on `PATH` and pays none of it, which is why the shell chain this replaced did not —
- * a script run by `tsx` has to say where the bin is. Declared cost is 6s, and this form measures 6.2s.
+ * has `node_modules/.bin` on `PATH` and pays none of it; a script run by `tsx` has to say where the bin is.
  *
  * The link rather than the package's own `bin` field, which is how `build-ui-package.ts` resolves tsdown:
  * `publint` does not export `./package.json`, so there is nothing to read the field out of. A bin that is not

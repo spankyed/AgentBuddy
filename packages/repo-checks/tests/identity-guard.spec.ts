@@ -10,25 +10,18 @@ import { repoFiles } from './_support/repo-files.ts';
  * process bootstrap that feeds it). This guard fails if the old, divergent resolution
  * patterns come back anywhere in the repo's code.
  *
- * Here and not in `@apackdev/sdk`, where it lived until 2026-10-01, because its subject is every tracked
- * file and not that package — it imports nothing from it. A suite's project is re-run when that project's
- * inputs move, so a guard over the repo has to sit in a suite that declares the repo (`SUITE_READS`'
- * `repo`), and making `@apackdev/sdk`'s 573 tests repo-wide cost 11.6s on every change to protect this one
- * 0.4s check. It missed a forbidden path committed to `@apackdev/cli` for exactly that reason.
+ * Here and not in `@apackdev/sdk`, because its subject is every tracked file and not that package — it
+ * imports nothing from it. A suite's project is re-run when that project's inputs move, so a guard over the
+ * repo has to sit in a suite that declares the repo (`SUITE_READS`' `repo`); in a package suite it would miss
+ * a forbidden path committed anywhere else.
  */
 
 /**
  * The patterns a file is allowed to contain, and why — **per pattern, not per file**.
  *
- * It was per file until 2026-10-01, and the skip ran before the pattern loop, so a file excused for one
- * pattern was invisible to all three. Nothing was hiding behind that, checked: every entry below needs a
- * strict subset, and naming the subset is what keeps a file excused for its data dir from quietly
- * gaining a channel read.
- *
- * The same pass found two entries excusing nothing. `electron-builder.mjs` reads
- * `process.env.APACK_ENV === 'beta'`, and the env pattern's `(?!\s*=)` — meant to permit assignment —
- * exempts a comparison too; `apack-sdk/tests/env/app-context.spec.ts` is a test, which that pattern
- * already allows. Both passed without their entry, so both are gone.
+ * Per pattern, not per file: a file excused wholesale would be invisible to every pattern, so naming the
+ * subset is what keeps a file excused for its data dir from quietly gaining a channel read. The env
+ * pattern's `(?!\s*=)` — meant to permit assignment — exempts a comparison too.
  */
 const ALLOWED: Record<string, { patterns: readonly PatternId[]; why: string }> = {
   'packages/apack-sdk/src/env/index.ts': { patterns: ['data-dir', 'env-read'], why: 'the resolver itself' },
@@ -55,8 +48,8 @@ const FORBIDDEN: Array<{ id: PatternId; pattern: RegExp; why: string; allowInTes
   { id: 'channel', pattern: /__APACK_CHANNEL__/, why: 'the channel stamp is consumed only by the main bootstrap' },
   // Deliberately narrower than every NODE_ENV read: a bundler config asking what mode it builds in is not
   // this repo's business, and every one of those compares against 'development' or assigns. What this
-  // catches is NODE_ENV standing in for the app's identity — which is what decided where the user's
-  // database lived until 2026-10-01, in a variable the ecosystem uses to mean "optimize this build".
+  // catches is NODE_ENV standing in for the app's identity, such as deciding where the user's database
+  // lives — a variable the ecosystem uses to mean "optimize this build".
   // The lookahead `env-read` carries is deliberately absent: `(?!\s*=)` swallows the first `=` of `===`
   // and would make this match nothing it is for.
   { id: 'node-env', pattern: /NODE_ENV\s*[!=]==?\s*['"]production['"]/, why: 'ask resolveAppEnvironment() what this app is, not NODE_ENV', allowInTests: true },
@@ -123,8 +116,7 @@ describe('environment identity guard', () => {
   });
 
   /**
-   * The direction this list had no answer for until 2026-10-01, and the one that found two dead entries:
-   * an exemption excuses nothing once the file stops containing the pattern it was written for. Nothing
+   * An exemption excuses nothing once the file stops containing the pattern it was written for. Nothing
    * fails then — the entry simply sits there, and the next reader takes it for a live constraint.
    */
   it('excuses nothing that has stopped needing it', () => {

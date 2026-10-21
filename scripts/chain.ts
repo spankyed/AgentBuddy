@@ -42,17 +42,18 @@ import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANG
 import { CHAIN_STEPS, type ChainStep, chainSteps, keptOnFailure, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { stampFor, STAMP_DIR, unitFor } from './lib/chain-stamps.ts';
 import { evidenceLine, openRunEvidence, pruneRunEvidence, type RunEvidence } from './lib/chain-evidence.ts';
-import { CHAIN_FLAGS } from './lib/chain-flags.ts';
+import { CHAIN_FLAGS, chainHelp } from './lib/chain-flags.ts';
 import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
 import type { ExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { timeoutMsFor, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
-import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine } from './lib/core-budget.ts';
-import { asCount, idleNow, parseFlags } from './lib/measure.ts';
+import { box } from './lib/core-budget.ts';
+import { readStepSeconds, recordStepDurations, withRecordedSeconds } from './lib/step-durations.ts';
+import { asCount, parseFlags } from './lib/measure.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { driftedSteps, measurementsFrom, outgrownRungs, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { measurementsFrom, willNotCache } from './lib/step-timing.ts';
+import { briefly, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
-import { CHAIN_RUN_ENV, CHAIN_CORES_ENV, DIAGNOSTIC_RUN_ENV, poolWorkerLimit, measureCommandFor, poolForStep, poolDurationLines } from './lib/unit-pool.ts';
+import { CHAIN_RUN_ENV, CHAIN_CORES_ENV, poolWorkerLimit, poolForStep, poolDurationLines } from './lib/unit-pool.ts';
 import { parseShard, selectOnly, shardArg, STRICT_JOBS, strictJobSteps, type Shard, type StrictJob } from './lib/chain-only.ts';
 import { TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -206,7 +207,7 @@ function whatMoved(
  * the two unit pools did exactly that. Only steps that declare them get any, because most steps' commands
  * would reject an argument they do not know.
  */
-async function run(step: string, timeout: TimeoutClass, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env, label = step): Promise<Result> {
+async function run(step: string, timeout: TimeoutClass, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env): Promise<Result> {
   const args = ['run', step];
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
   const withForce = force.length === 0 ? args : [...args, '--', ...force];
@@ -214,11 +215,8 @@ async function run(step: string, timeout: TimeoutClass, force: readonly string[]
   const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, timeoutMsFor(timeout), { env });
   const result = { step, ms, code, output, timedOut };
   // Here rather than where a step's result is read, because this is the one place a step's bytes exist and
-  // every caller passes through it — the never-cached steps, `runAndStamp`, and the classification retry,
-  // whose output had no reader at all. Written as the step ends, so a run that is interrupted keeps what
-  // finished. `label` is the retry's one reason to differ from the step: it must not land on the first
-  // attempt's file, which is the overwrite that made the chain's own diagnostic destructive.
-  evidence?.keep(label, result);
+  // every caller passes through it. Written as the step ends, so a run that is interrupted keeps what finished.
+  evidence?.keep(step, result);
   return result;
 }
 
@@ -250,7 +248,7 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
  * What a step is spawned with. `CHAIN_RUN_ENV` on every one of them, because a step that caches inside
  * itself has to know whose run this is: a pool's per-project stamps record a pass under the chain's
  * concurrency separately from one established alone, and the chain is the only thing that can say which
- * this is. The classification re-run gets it too and records nothing anyway, through `DIAGNOSTIC_RUN_ENV`.
+ * this is.
  */
 const envFor = (step: ChainStep, budget: number): NodeJS.ProcessEnv => ({
   ...process.env,
@@ -321,7 +319,7 @@ async function runAndStamp(step: ChainStep, all: boolean, budget: number, extra:
  * alone. Resolving the widths against the flag instead was proposed and declined: it would turn the flag
  * into a simulation nothing can validate on the box it runs on, and the oversubscription it permits is
  * already what the soft budget allows a single step. What the divergence does cost is the schedule's
- * identity, which is why `isMeasuredSchedule` asks about both numbers.
+ * identity: a reading under `--cores 4` describes a different schedule from one under the default.
  */
 const budgetFrom = (cores: string | undefined): number => asCount(cores, 'cores') ?? box();
 
@@ -336,6 +334,10 @@ async function main(): Promise<void> {
   // documented in two places. `npm run chain --dry --cores 10` is worse: npm keeps both flags and hands
   // this a bare `10`, and before this clause it ran a full chain over a stray argument in silence.
   const args = parseFlags(process.argv.slice(2), CHAIN_FLAGS);
+  if (args.flags.has('help')) {
+    console.log(chainHelp());
+    return;
+  }
   if (args.positionals.length > 0) {
     throw new Error(`The chain takes flags only, not ${args.positionals.join(' ')}`
       + ' — npm keeps a flag you did not put after `--`, so write `npm run chain -- --dry`');
@@ -346,9 +348,6 @@ async function main(): Promise<void> {
   // expected to be cached is not. It reports each step against the tree as it stands, so the verdicts after
   // the first step that would run are what that step would produce nothing for: a plan, not a prediction.
   const dry = args.flags.has('dry');
-  // The retry costs the failing step's own time before the verdict appears, and most failures are the ordinary
-  // kind where the reader already knows what they broke
-  const noClassify = args.flags.has('no-classify');
   // The E2E suite is a harness for driving the app rather than a gate, so it runs when asked for
   const e2e = args.flags.has('e2e');
   // A step whose inputs moved while it ran verified nothing, which is always reported; this decides whether
@@ -460,15 +459,16 @@ async function main(): Promise<void> {
       const reason = all ? '--all' : (moved === '' ? (why ?? '') : moved);
       console.log(`${(willRun ? 'run' : 'cached').padStart(7)} ${marker(needsApp(step))} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, reason)}`.trimEnd());
     }
-    // What bounds the plan, over the declared table — the question "which step is worth making faster",
-    // answered before anyone measures one. A step that is not on this path runs inside the shadow of the
-    // ones that are, so its own duration is not a saving. `criticalPathLine` has what that cost to learn.
-    const plannedPath = criticalPathLine(planned, 'declared');
+    // What bounds the plan, over what each step cost here recently — the question "which step is worth making
+    // faster". A step that is not on this path runs inside the shadow of the ones that are, so its own
+    // duration is not a saving. `criticalPathLine` has what that cost to learn.
+    const costed = withRecordedSeconds(planned, readStepSeconds(REPO_ROOT));
+    const plannedPath = criticalPathLine(costed.steps, 'recorded', costed.unread.length);
     if (plannedPath !== '') console.log(`\n${plannedPath}`);
     // What shortening any of them could buy, which a duration does not say: a step's saving is capped by
     // the second-longest route, so a long step on a dense graph can be worth nothing. `pathSavingsLine`
     // has the three proposals that cost.
-    const plannedSavings = pathSavingsLine(planned);
+    const plannedSavings = pathSavingsLine(costed.steps);
     if (plannedSavings !== '') console.log(`  ${plannedSavings}`);
     return;
   }
@@ -511,12 +511,6 @@ async function main(): Promise<void> {
   const dispatchSweep = freshnessSweep();
   pruneStamps();
   pruneRunEvidence();
-
-  // **Read before the run, not after it.** The drift report quotes this to whoever is about to type a
-  // number, and a reading taken as the run returns is of this run's own teardown: measured 2026-10-08, this
-  // box read 78% immediately after a chain run and ~91% once it had settled. Before needs no settling, which
-  // is why the five-second watch window the recorder's gate needed is not here.
-  const idleAtStart = idleNow();
 
   const outcome = await schedule({
     steps,
@@ -570,72 +564,25 @@ async function main(): Promise<void> {
 
   // Every step is asked about at this one moment, with nothing left running, so one reading of the tree answers
   // both halves: whether each step is stale, and which of its inputs moved. A fresh sweep, never the dry one.
-  //
-  // Read before the retry below, which is a diagnostic rather than part of the run and may write into the tree:
-  // a re-run `build:default-setup` rewrites PACK_OUTPUTS. No passed step reads a failed step's outputs today — every reader
-  // of one declares `needs` on it, and the scheduler skips a failed step's dependents — but `needs` is ordering
-  // and `inputs`/`outputs` are caching, so nothing makes them agree. This does not depend on their agreeing.
   const sweep = freshnessSweep();
 
-  let classifyMs = 0;
+  // Read before this run's readings join the window, so a failure is compared with what the step usually costs
+  const recorded = readStepSeconds(REPO_ROOT);
   const failed = outcome.failed === undefined ? undefined : results.find((r) => r.step === outcome.failed);
   if (failed) {
     const step = steps.find((s) => s.name === failed.step)!;
-    // The names, not just whether there were any: `classifyLine` names them rather than calling the whole
-    // thing contention, and `shouldClassify` wants only the count
-    const beside = [...outcome.peers.get(failed.step) ?? []];
-    const classifying = shouldClassify({
-      // What the schedule saw, not what the table predicts: `conflictsOf(step).length > 0` stood here and
-      // meant "has a mutex partner", which twelve steps do while running beside two dozen others
-      ranAlone: beside.length === 0,
-      timedOut: failed.timedOut === true,
-      optedOut: noClassify,
-    });
     const why = failed.timedOut
-      ? timedOutBecause({
-        what: step.name,
-        timeout: step.timeout,
-        measuredOn: MEASURED_ON,
-        ...step.seconds === undefined ? {} : { seconds: step.seconds },
-      })
-      : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, budget, classifying)}`;
+      ? timedOutBecause({ what: step.name, timeout: step.timeout, seconds: recorded.get(step.name) })
+      : `${step.name} failed (exit ${failed.code})${howLong(recorded.get(step.name), failed.ms, budget)}`;
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
-    // **Before the retry, which is what would take them.** The retry runs the step again, and a runner that
-    // clears its output directory on the way in overwrites what the attempt being diagnosed wrote — the
-    // same reason the sweep above is read here rather than after. Kept on any failure, not only a
-    // classified one: a step that ran alone or timed out leaves the same files and nobody re-runs it.
     const left = evidence?.keepFiles(step.name, keptOnFailure(step)) ?? [];
     if (left.length > 0) console.log(dim(`  kept what it left behind: ${left.join(', ')}`));
-    if (classifying) {
-      // `run`, never `runAndStamp`: a step that passes alone has not passed the chain, and stamping it here
-      // would let the next run skip the thing that just failed. Nothing else is executing — `schedule` drains
-      // before it returns — so this is the step by itself, which is the whole question being asked.
-      //
-      // Demonstrated rather than assumed, with a `build:default-setup` that fails then passes: the retry reports passing,
-      // and the next chain still says `build:default-setup  no stamp — it has not run yet, or the last run failed`.
-      //
-      // **Refusing the chain's own stamp is not enough for a step that caches inside itself**, which the three
-      // pool steps do. `DIAGNOSTIC_RUN_ENV` is how the refusal reaches them: measured 2026-10-02, a crowded
-      // failure of `test:unit:host` was re-run here, the re-run wrote all eleven project stamps, and the next
-      // chain ran zero tests and called the step green. `recordsVerdict` (`scripts/lib/unit-pool.ts`) carries
-      // the evidence and why a *build* under the same re-run still records.
-      const retry = await run(step.name, step.timeout, [...all ? step.forceArgs ?? [] : [], ...shardArgs],
-        { ...envFor(step, budget), [DIAGNOSTIC_RUN_ENV]: '1' }, `${step.name}.retry`);
-      // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
-      // land on the one number a reader compares between runs.
-      classifyMs = retry.ms;
-      // The retry's own, beside the first attempt's rather than over them — a re-run that passed and one
-      // that failed wrote different files, and which it was is the question being asked
-      evidence?.keepFiles(`${step.name}.retry`, keptOnFailure(step));
-      console.log(classifyLine(retry, beside));
-    }
   }
 
   const skipped = cached ? ` (${cached} of ${steps.length} cached)` : '';
-  // Measured, not declared. Reporting the floor from `seconds` made it wrong by the amount the table had
-  // drifted — 109s against the 125.8s those same four steps actually took in that run.
-  // `measurementsFrom`, not the results: a killed step's elapsed time is its deadline, and every reader below
-  // — the floor, the drift report, the rung report — would take that for a cost
+  // Measured by this run, so the floor is what it actually waited on
+  // `measurementsFrom`, not the results: a killed step's elapsed time is its deadline, and the floor and the
+  // duration window would take that for a cost
   const measuredMs = measurementsFrom(results);
   const ran = steps.filter((step) => measuredMs.has(step.name))
     .map((step) => ({ ...step, seconds: Math.round((measuredMs.get(step.name) ?? 0) / 1000) }));
@@ -644,9 +591,6 @@ async function main(): Promise<void> {
   const floor = measuredPath === ''
     ? ''
     : `\n${measuredPath}${measuredSavings === '' ? '' : `\n  ${measuredSavings}`}`;
-  // Named rather than folded in, so the verdict's number stays comparable between runs and the wall time still
-  // adds up — a reader who times the command should not find seconds the chain does not account for.
-  const reran = classifyMs > 0 ? ` (+${secs(classifyMs)} re-run)` : '';
   // `voided` is filled by the stale block below, which runs before this is printed. Kept as a function rather
   // than a const for that reason: the verdict is composed here and the facts it needs arrive after
   const verdictText = (): string => {
@@ -680,7 +624,7 @@ async function main(): Promise<void> {
     for (const { name, reason } of uncacheable) {
       const step = steps.find((s) => s.name === name)!;
       const unusual = reason === INPUTS_CHANGED ? undefined : reason;
-      // Hoisted out of the `staleLines` call it used to sit in, because the verdict needs it too: `when` is the
+      // Its own binding, because the verdict needs it too: `when` is the
       // only thing in the system that tells a change *during* the run from one after it, and `willNotCache`
       // cannot see it — it compares fingerprints, which say that something moved and never when
       const moved = whatMoved(step, steps, sweep, budget);
@@ -691,48 +635,14 @@ async function main(): Promise<void> {
     if (voided.length > 0) console.log(voidedLine(voided, strict));
   }
 
-  // The table feeds the kill budget and the floor above, so a number a run has contradicted is worth more
-  // than a note in a doc nobody re-reads
-  // Every `seconds` is the cost under one admission policy, so a different one invalidates all of them at
-  // once — which happened silently the day a third lane landed two hours after a number was taken under two.
-  // The policy is now the box, because that is what the default budget is, and that makes a fact explicit
-  // that was only ever implicit: these numbers were always measured on one machine and nothing said which.
-  if (!isMeasuredMachine(MEASURED_ON)) {
-    // Context, and no instruction — this message fires *only* off the reference machine, where the one
-    // thing a reader could do with it is write a number that does not describe the table's schedule.
-    console.log(`\nchain-steps.ts' seconds were measured on ${machineText(MEASURED_ON)}; this is ${machineText(thisMachine())}.`);
-    console.log('  So the report below is context rather than advice: what a step cost here is true, and the');
-    console.log('  table it is compared against describes another machine.');
+  // What each passing step cost joins this machine's window, which `--dry` and the next failure read. Not a
+  // shard's: it ran part of a suite, and its time is not what the step costs
+  if (shardArgs.length === 0) {
+    const passed = new Set(results.filter((result) => result.code === 0).map((result) => result.step));
+    recordStepDurations(REPO_ROOT, new Map([...measuredMs].filter(([step]) => passed.has(step))));
   }
 
-  // The same population `driftedSteps` compares, so the denominator it is reported against is honest: a
-  // step with a declared cost and a reading of at least a second. Counted here because that function hands
-  // back only the rows that drifted, and its row shape is asserted whole elsewhere
-  const comparable = steps.filter((step) => step.seconds !== undefined
-    && Math.round((measuredMs.get(step.name) ?? 0) / 1000) >= 1).length;
-  const report = driftReport(driftedSteps(steps, measuredMs, outcome.peers), budget, MEASURED_ON, all,
-    thisMachine(), { idle: idleAtStart, comparable });
-  if (report !== '') console.log(report);
-
-  // **The bound asked of the measurement.** `declaredShare` gates on what a step declares, and the band above
-  // watches declarations at half-to-double — looser than the bound's own margin for four steps, so a step can
-  // outgrow its rung and pass. A run is the one place both numbers exist, which is `criticalPath`'s reason for
-  // reading measured seconds too.
-  //
-  // The schedule goes in because the answer depends on it, not to decide what to print: `declaredShare`
-  // projects onto a machine `stretches` times slower, so a reading from a slower box counts the slowdown
-  // twice and every number it produces is about a machine nothing sized a rung for. `outgrownRungs` has the
-  // measurement. That is the difference from `driftReport` above, which prints its rows anywhere because a
-  // cost is true wherever it was taken, and gates only the sentence telling a reader to record it.
-  // The command comes from how the step is run rather than from its name, because the three pool steps cache
-  // inside themselves and so cannot be measured by their npm script (`measureCommandFor`)
-  // `all` goes in so the report can say the reading is an upper bound rather than a comparison; it is the
-  // one comparability condition this reader skips, and `outgrownRungs` has why
-  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON, thisMachine(), all, outcome.peers)
-    .map((row) => ({ ...row, measureWith: measureCommandFor(row.name, budget) })));
-  if (outgrown !== '') console.log(outgrown);
-
-  console.log(`\n${verdictText()} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
+  console.log(`\n${verdictText()} in ${secs(Date.now() - started)}${skipped}${` on ${cores(budget)}`}${floor}`);
   // After the verdict, so it is the last thing on screen and a reader who scrolled past everything else
   // still has it. Only when there is some: a fully cached run ran nothing and made no directory.
   if (evidence !== undefined && evidence.kept() > 0) console.log(dim(evidenceLine(evidence.dir, evidence.kept())));

@@ -5,7 +5,8 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, classifyLine, criticalPathLine, pathSavingsLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { withRecordedSeconds } from '../../../scripts/lib/step-durations.ts';
+import { briefly, criticalPathLine, pathSavingsLine, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -388,437 +389,27 @@ it('keeps the name column at least as wide as the widest step name', () => {
 
 describe('howLong', () => {
   /**
-   * The timeout branch of the chain's failure report already says what a step costs healthy and what to
-   * conclude; an ordinary failure said only its exit code. One unexplained `test:integration` failure then
-   * took a reader into `chain-steps.ts` and `budgetFor` by hand to find out it had not been killed.
+   * An ordinary failure otherwise says only its exit code, and a reader has to find out by hand that it was
+   * not killed.
    */
-  it('says what it cost against what it costs healthy, and on what budget', () => {
-    expect(howLong({ seconds: 60 }, 47_000, 10)).toBe(' after 47.0s, against 60s healthy on a 10-core budget');
+  it('says what it cost against what it usually costs here, and on what budget', () => {
+    expect(howLong(60, 47_000, 10)).toBe(' after 47.0s, against 60s usually on a 10-core budget');
   });
 
   it('names one core as a core rather than a budget of one', () => {
-    expect(howLong({ seconds: 60 }, 47_000, 1)).toContain('healthy on 1 core');
-    expect(howLong({ seconds: 60 }, 47_000, 1)).not.toContain('budget');
+    expect(howLong(60, 47_000, 1)).toContain('usually on 1 core');
+    expect(howLong(60, 47_000, 1)).not.toContain('budget');
   });
 
   it('points at a serial run only when the step was slow enough for contention to explain it', () => {
-    // Past double the declared cost, which is `driftedSteps`' band rather than a second threshold
-    expect(howLong({ seconds: 60 }, 130_000, 10)).toContain('--cores 1');
+    // Past double its usual cost
+    expect(howLong(60, 130_000, 10)).toContain('--cores 1');
     // A step that failed at its normal speed failed on its merits, and suggesting a re-run would be noise
-    expect(howLong({ seconds: 60 }, 61_000, 10)).not.toContain('--cores 1');
+    expect(howLong(60, 61_000, 10)).not.toContain('--cores 1');
   });
 
-  it('says nothing for a step that declares no cost, rather than reporting undefined', () => {
-    expect(howLong({}, 47_000, 10)).toBe('');
-  });
-});
-
-/** The machine the table was measured on, and two live ones: the same box, and another with the same cores */
-const MEASURED = { cpu: 'Apple M1 Pro', cores: 10 } as const;
-const SAME = MEASURED;
-const OTHER_CORES = { cpu: 'Apple M1 Pro', cores: 20 } as const;
-const OTHER_CPU = { cpu: 'Apple M4 Pro', cores: 10 } as const;
-
-describe('driftReport', () => {
-  const drifted = [
-    { name: 'test:external-pack:contract', declared: 57, measured: 18, peers: 0 },
-    { name: 'typecheck', declared: 27, measured: 11, peers: 0 },
-  ];
-
-  // The same label on the drift rows, for the same reason: both reports put a measurement beside the table
-  it('says how contended each drift reading was', () => {
-    const report = driftReport(drifted.map((row) => ({ ...row, peers: 4 })), 10, MEASURED, true, SAME);
-
-    expect(report).toContain('(4 peers)');
-  });
-
-  it('prints the edit to make, when the run is comparable to the table', () => {
-    const report = driftReport(drifted, 10, MEASURED, true, SAME);
-
-    expect(report).toContain('edit the declaration to match');
-    expect(report).toContain('seconds: 57 -> 18');
-  });
-
-  /**
-   * **The advice is what the schedule gates; the numbers are not.**
-   *
-   * `seconds` is declared, so the remedy is an edit and an edit is followable anywhere — but the *number*
-   * to write is only true of the schedule the table describes, so offering one off that schedule offers a
-   * value that would be wrong the moment it landed. A chain on a second developer's machine printed the
-   * instruction on every run against numbers taken on different silicon.
-   *
-   * The box is the second number, not a nicety: `budget === measuredAt` alone passes `--cores 10` on a
-   * twenty-core machine, where the budget matches and every width is twenty-core sized. That is the hole
-   * `isMeasuredSchedule` was written for, and this is the case that holds this caller to it.
-   */
-  it('prints the numbers but no instruction on a machine the table does not describe', () => {
-    const report = driftReport(drifted, 10, MEASURED, true, OTHER_CORES);
-
-    expect(report, 'what a step cost is true wherever it ran').toContain('57s -> 18s');
-    expect(report, 'the number to write is not true there, so no edit is offered')
-      .not.toContain('edit the declaration');
-  });
-
-  it('gates on the machine as well as the budget, which a budget alone cannot', () => {
-    // Same budget, same measured schedule, different machine — the one combination the weaker guard missed
-    expect(driftReport(drifted, 10, MEASURED, true, SAME)).toContain('edit the declaration to match');
-    expect(driftReport(drifted, 10, MEASURED, true, OTHER_CORES)).not.toContain('edit the declaration to match');
-  });
-
-  /**
-   * And on the CPU as well as the core count, which is the hole a core count alone leaves.
-   *
-   * Keyed on cores only, every 10-core machine read as the one the table was measured on — an M4 Pro, a
-   * 10-core Xeon, any of them. A second developer on a 10-core Mac, the commonest shape there is, got this
-   * instruction on a table measured on different silicon, naming a number that did not describe it.
-   */
-  it('prints no instruction on another machine with the same core count', () => {
-    expect(driftReport(drifted, 10, MEASURED, true, OTHER_CPU), 'same cores, different CPU')
-      .not.toContain('edit the declaration to match');
-    expect(driftReport(drifted, 10, MEASURED, true, OTHER_CPU), 'the numbers are still true there')
-      .toContain('57s -> 18s');
-  });
-
-  /**
-   * Measured: a serial run reports exactly these two, and the old report told the reader to record 18 for a
-   * step that costs 57s in the default schedule — which `budgetFor` turns into a 72s kill budget, the
-   * mis-sized bound `seconds`' own doc warns about. The numbers are real; only "record them" was wrong.
-   */
-  it('names the spread instead, when the run used another budget', () => {
-    const report = driftReport(drifted, 1, MEASURED, true, SAME);
-
-    expect(report).not.toContain('record');
-    expect(report).toContain('on 1 core, 2 steps moved against 10-core numbers');
-    expect(report).toContain('57s -> 18s  (3.2x faster alone)');
-  });
-
-  it('says slower when a bigger budget made a step slower, not faster', () => {
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54, peers: 0 }], 16, MEASURED, true, SAME)).toContain('(2.0x slower)');
-  });
-
-  /**
-   * Measured: a gate run with nine of twelve steps cached reported `typecheck seconds: 27 -> 12`. A full
-   * budget with almost everything cached is no contention at all, so the step ran at its solo speed and the
-   * admission policy — which is what the first version of this gated on — said nothing about it.
-   */
-  it('says nothing about a step that came in under the band, on a run that did less work', () => {
-    expect(driftReport(drifted, 10, MEASURED, false, SAME)).toBe('');
-    expect(driftReport(drifted, 1, MEASURED, false, SAME)).toBe('');
-  });
-
-  /**
-   * The other direction is not the run's doing: less contention cannot make a step slower, so an overrun on a
-   * partial run is the step growing, which is why this one is reported whatever the run did. Measured over 40
-   * step runs in a day: 6 under the band, 0 over it, so saying it always costs no noise.
-   *
-   * **It named `(killed at 108s)` until 2026-10-03, and a sibling case covered the floor that made a cheap
-   * step's real budget 60s rather than four times its cost.** Both went with `budgetFor`: a deadline is a
-   * declared class now (`step-timeouts.ts`), so it is not a function of the declared cost and this row has
-   * no way to compute one — and nothing to gain by being handed the class, which is the same number for
-   * every step in it and is in the timeout message already. Do not put a predicted deadline back here
-   * without first giving the row something the timeout message does not already say.
-   */
-  it('names a step that ran past double, on any run', () => {
-    const grew = [{ name: 'typecheck', declared: 27, measured: 61, peers: 0 }];
-
-    const report = driftReport(grew, 10, MEASURED, false, SAME);
-
-    expect(report).toContain('the step grew, not the schedule');
-    expect(report).toContain('27s -> 61s');
-    expect(report, 'a deadline is a class, so this row cannot predict one').not.toContain('killed at');
-  });
-
-  it('keeps an overrun out of the count when the run could answer for both directions', () => {
-    // forced: the run did all the work, so both directions are reportable and the edit form is right
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61, peers: 0 }], 10, MEASURED, true, SAME))
-      .toContain('edit the declaration to match');
-  });
-
-  it('says nothing when nothing drifted, at either budget', () => {
-    expect(driftReport([], 10, MEASURED, true, SAME)).toBe('');
-    expect(driftReport([], 1, MEASURED, true, SAME)).toBe('');
-  });
-
-  /**
-   * **What the recorder's idle floor used to decide, said to the reader who now decides it.**
-   *
-   * Nothing refuses a run any more, so the way a stale number gets in is somebody reading a drift off a
-   * loaded box and typing it. These cases hold the two facts that stop that — how quiet the machine was,
-   * and whether the rows moved together — and, more importantly, hold the verdict to the cases where it is
-   * actually true. A report that says "this reads as the box" when it does not is the only way this lies.
-   */
-  const QUIET = { idle: 0.88, comparable: 30 };
-  const slowerBy = (over: number) => [{ name: 'build:default-setup', declared: 24, measured: 24 + over, peers: 0 }];
-
-  it('carries the reading and the count, so a figure is not copied blind', () => {
-    const report = driftReport(drifted, 10, MEASURED, true, SAME, QUIET);
-
-    expect(report).toContain('2 of 30 comparable steps');
-    expect(report).toContain('88% idle');
-  });
-
-  it('says nothing of conditions when it was told none, which is how every other caller reads', () => {
-    expect(driftReport(drifted, 10, MEASURED, true, SAME)).not.toContain('comparable steps');
-  });
-
-  it('names the box and the remedy below the floor measure refuses at', () => {
-    const report = driftReport(drifted, 10, MEASURED, true, SAME, { idle: 0.42, comparable: 30 });
-
-    expect(report, 'under IDLE_FLOOR, so the figure may be the machine').toContain('may be the');
-    expect(driftReport(drifted, 10, MEASURED, true, SAME, QUIET), 'and not above it')
-      .not.toContain('may be the');
-  });
-
-  /**
-   * The direction is the whole of it: load inflates a duration and cannot deflate one, so rows that all came
-   * in slower may be the box, and rows that all came in faster cannot be — that is the table being stale,
-   * which is what `build:runtime` declared at 39s against a real 13s was.
-   */
-  it('reads rows that all came in slower as the box', () => {
-    const report = driftReport([...slowerBy(40), { name: 'typecheck', declared: 27, measured: 61, peers: 0 }],
-      10, MEASURED, true, SAME, QUIET);
-
-    expect(report).toContain('read the box before the code');
-  });
-
-  it('reads rows that all came in faster as the table, since load cannot cause it', () => {
-    expect(driftReport(drifted, 10, MEASURED, true, SAME, QUIET))
-      .toContain('this is the table and not the run');
-  });
-
-  // Mutation: drop the `shown.length > 1` clause and this fails — one step carrying a drift is that step's
-  // business, and the rows are printed, so a reader sees concentration without the report asserting it
-  it('calls one row neither, however far it moved', () => {
-    const report = driftReport(slowerBy(200), 10, MEASURED, true, SAME, QUIET);
-
-    expect(report).toContain('1 of 30 comparable steps');
-    expect(report).not.toContain('read the box before the code');
-    expect(report).not.toContain('this is the table and not the run');
-  });
-
-  it('calls rows that moved both ways neither, since they tell no single story', () => {
-    const report = driftReport([...slowerBy(40), ...drifted], 10, MEASURED, true, SAME, QUIET);
-
-    expect(report).not.toContain('read the box before the code');
-    expect(report).not.toContain('this is the table and not the run');
-  });
-});
-
-describe('shouldClassify', () => {
-  const under = { ranAlone: false, timedOut: false, optedOut: false };
-
-  it('re-runs a step that failed while others were running', () => {
-    expect(shouldClassify(under)).toBe(true);
-  });
-
-  // One question, asked of the schedule rather than of the table. It took a lane count and an `exclusive` read off
-  // the step's declared mutexes, and those answered it only while a mutex was global: `conflictsOf` is
-  // non-empty for twelve steps that run beside two dozen others, so all twelve skipped the re-run. A
-  // serial run needs no clause of its own — it overlaps nothing, which is this one
-  it('does not, when nothing overlapped it', () => {
-    expect(shouldClassify({ ...under, ranAlone: true })).toBe(false);
-  });
-
-  it('does not re-run a step that was killed, whose budget it would spend again', () => {
-    expect(shouldClassify({ ...under, timedOut: true })).toBe(false);
-  });
-
-  it('does not when asked not to', () => {
-    expect(shouldClassify({ ...under, optedOut: true })).toBe(false);
-  });
-});
-
-/**
- * What a run says when a step's *measured* cost has outgrown the rung it declares.
- *
- * The bound (`declaredShare`) reads the declaration, and the band watching declarations is half-to-double — so
- * a step can pass the bound while its real cost has outgrown it. `outgrownRungs` finds those; this words them.
- *
- * **It is a report, so what it must not do is read like a failure**, and what it must do is hand the reader
- * something proportionate to the question. The thing that would make it a false alarm is a crowded run, and
- * the instrument that settles that is the step's own command under `measure`, which refuses a busy box — so
- * that is what it leads with. It led with `chain --all --cores 1` instead until 2026-10-07, which spent all
- * thirty steps to answer about one and still produced a single ungated observation; both times it fired,
- * the step turned out not to have grown.
- */
-describe('outgrownReport', () => {
-  const found = [{
-    name: 'test:integration', declared: 60, measured: 80, at: 80 * 4 / 300,
-    measureWith: 'npx vitest run --config vitest.integration.config.ts', wholeTable: true, peers: 0,
-  }];
-
-  /**
-   * How contended the reading was, which is the one thing the two numbers cannot say.
-   *
-   * `seconds` is the cost under the chain's own admission, so a reading taken beside peers is the right
-   * quantity — what a reader cannot tell from `60s -> 101s` is which admission produced it.
-   * `test:integration` read 77s, 88s, 96s and 101s across four runs of an unchanged step, and the spread is
-   * this number. A spread nothing explains is how a true row comes to be ignored, which is what happened.
-   */
-  it('says how many peers the reading was taken beside', () => {
-    const contended = found.map((row) => ({ ...row, peers: 9 }));
-
-    expect(outgrownReport(contended)).toContain('(9 peers)');
-  });
-
-  // Said rather than left blank: "alone" is the reading a budget can be compared against, so it is the
-  // case worth naming, and an empty suffix would read as a report that forgot to say
-  it('says a step had the box to itself, rather than saying nothing', () => {
-    expect(outgrownReport(found)).toContain('(alone)');
-  });
-
-  it('says nothing when no step outgrew its rung', () => {
-    expect(outgrownReport([])).toBe('');
-  });
-
-  it('names both numbers, the share and the rung it is a share of', () => {
-    const said = outgrownReport(found);
-
-    expect(said, 'what it cost').toContain('80s');
-    expect(said, 'against what it declares').toContain('60s');
-    expect(said, 'and where that lands').toContain('107%');
-  });
-
-  /**
-   * The cheap check first, because it is the one a reader can act on at once and the one that ends the
-   * question most often. It carries the step's *own* command, so the advice measures the thing reported
-   * rather than the chain around it.
-   */
-  it("leads with measure over the step's own command", () => {
-    const said = outgrownReport(found);
-
-    expect(said).toContain('npm run measure -- "npx vitest run --config vitest.integration.config.ts"');
-    expect(said.indexOf('npm run measure'), 'before the serial chain, not after it')
-      .toBeLessThan(said.indexOf('--all --cores 1'));
-  });
-
-  // One command per step, or a reader with two reported steps measures whichever the report happened to name
-  it('names a command for each step it reports', () => {
-    const said = outgrownReport([
-      ...found,
-      {
-        name: 'build:runtime', declared: 39, measured: 90, at: 90 * 4 / 300,
-        measureWith: 'npm run build:runtime', wholeTable: true, peers: 0,
-      },
-    ]);
-
-    expect(said).toContain('npm run measure -- "npx vitest run --config vitest.integration.config.ts"');
-    expect(said).toContain('npm run measure -- "npm run build:runtime"');
-  });
-
-  it('still names the serial run, for the question measure cannot answer', () => {
-    // Whether the *schedule* changed is a different question from whether the step did, and the serial chain
-    // is the only thing that answers it — so it stays, below the cheap check rather than instead of it
-    expect(outgrownReport(found)).toContain('--all --cores 1');
-  });
-
-  it('asks for --all with it, since a step it reported has passed and is stamped', () => {
-    // A plain `--cores 1` re-run finds the step cached and measures nothing, which is advice that cannot be
-    // taken — `driftReport`'s doc draws the same distinction from the other side. Asserted as the bad
-    // spelling rather than as "no bare --cores", which the good spelling contains
-    expect(outgrownReport(found)).not.toContain('chain -- --cores 1');
-  });
-
-  it('asks for the declaration rather than the rung, since the declaration moves first', () => {
-    // The pipeline: report, then edit `seconds`, then `chain-graph` fails on the new declaration, then the
-    // step moves. Telling a reader to move the rung first skips the step that proves it needs moving
-    expect(outgrownReport(found)).toContain('edit the cost it declares');
-  });
-
-  /**
-   * **The one comparability condition this report skips, said rather than left out.** The table is
-   * written only under `--all`, so a partial run's reading is an upper bound and not a comparison — worth
-   * printing with that caveat, which is the difference between a report and a finding.
-   */
-  it('says a partial run is an upper bound, and says nothing of the sort for --all', () => {
-    const partial = outgrownReport(found.map((row) => ({ ...row, wholeTable: false })));
-
-    expect(partial).toContain('upper bound');
-    expect(partial, 'and what that buys the reader').toContain('cannot convict');
-    expect(outgrownReport(found), 'an --all run is the schedule the table describes')
-      .not.toContain('upper bound');
-  });
-
-  // Once for the run, not once per row: every row of one run shares the condition
-  it('says it once however many steps it names', () => {
-    const said = outgrownReport([
-      ...found.map((row) => ({ ...row, wholeTable: false })),
-      {
-        name: 'build:runtime', declared: 39, measured: 90, at: 90 * 4 / 300,
-        measureWith: 'npm run build:runtime', wholeTable: false, peers: 0,
-      },
-    ]);
-
-    expect(said.split('upper bound').length - 1).toBe(1);
-  });
-});
-
-describe('classifyLine', () => {
-  /**
-   * The dangerous output. A reader skimming a failing run must not take this for the chain being fine, so the
-   * sentence says the chain fails; the exit code stays 1, and the retry writes no stamp, in chain.ts.
-   */
-  it('says the chain still fails when the step passed alone', () => {
-    const line = classifyLine({ code: 0, ms: 47_200 });
-
-    expect(line).toContain('passed in 47.2s');
-    expect(line).toContain('The chain still fails.');
-  });
-
-  it('leaves the original cause unresolved when a retry passes', () => {
-    const line = classifyLine({ code: 0, ms: 47_200 }, ['test:unit:host']);
-
-    expect(line, 'the verdict it has no evidence for').not.toContain('contention or a flake');
-    expect(line).toContain('the original failure remains unresolved');
-    expect(line).not.toContain('the code is ruled out');
-    expect(line, 'and that it cannot choose between what is left').toContain('neither does this message');
-  });
-
-  // What the schedule recorded, rather than what the budget permitted — which is why this was a guess before
-  it('names the steps that actually ran beside it', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, ['lint:check', 'typecheck:renderer']);
-
-    expect(line).toContain('It ran beside lint:check, typecheck:renderer the first time.');
-  });
-
-  it('counts the rest rather than listing a whole schedule', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, ['a', 'b', 'c', 'd', 'e']);
-
-    expect(line).toContain('beside a, b, c and 2 others the first time');
-  });
-
-  /**
-   * A step that failed while already alone is not re-run (`shouldClassify`), so an empty set reaching here is
-   * the harness's case rather than the chain's — and it must still read as a sentence rather than trailing off.
-   */
-  it('says so when nothing ran beside it', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, []);
-
-    expect(line).toContain('nothing here was beside it');
-    expect(line, 'and still refuses the verdict').toContain('neither does this message');
-  });
-
-  it('says the failure is real when it failed alone too', () => {
-    expect(classifyLine({ code: 1, ms: 48_100 })).toContain('failed again (exit 1) in 48.1s — the failure is real.');
-  });
-
-  it('reports a timeout alone without inferring stalled work or absence of outside contention', () => {
-    const line = classifyLine({ code: 1, ms: 240_000, timedOut: true });
-    expect(line).toContain('timed out after 240.0s');
-    expect(line).toContain('No other chain step overlapped this retry');
-    expect(line).toContain('slow progress and stalled work remain possible');
-    expect(line).not.toMatch(/wedged|not crowded/);
-  });
-});
-
-describe('howLong, once the chain answers the question itself', () => {
-  it('stops suggesting the run it is about to make', () => {
-    const slow = { seconds: 27 };
-
-    expect(howLong(slow, 61_000, 10, false)).toContain('--cores 1');
-    expect(howLong(slow, 61_000, 10, true)).not.toContain('--cores 1');
-    // and still says what it cost, which is the half that does not become redundant
-    expect(howLong(slow, 61_000, 10, true)).toContain('against 27s healthy on a 10-core budget');
+  it('says nothing for a step with no reading here, rather than reporting undefined', () => {
+    expect(howLong(undefined, 47_000, 10)).toBe('');
   });
 });
 
@@ -839,14 +430,19 @@ describe('criticalPathLine', () => {
     { name: 'd', seconds: 99, dependsOn: ['a'] },
   ];
 
-  it('names the longest chain and what it declares, in order', () => {
-    expect(criticalPathLine(chain, 'declared'))
-      .toBe('critical path 109s declared (a -> d)');
+  it('names the longest chain and what it costs, in order', () => {
+    expect(criticalPathLine(chain, 'recorded'))
+      .toBe('critical path 109s from recent runs (a -> d)');
   });
 
-  // Measured wears no label, because the figure is the run's own rather than the table's
-  it('says declared only of the table', () => {
+  // Measured wears no label, because the figure is the run's own
+  it('names the source only for a plan', () => {
     expect(criticalPathLine(chain, 'measured')).toBe('critical path 109s (a -> d)');
+  });
+
+  it('says how many steps it assumed a cost for', () => {
+    expect(criticalPathLine(chain, 'recorded', 2))
+      .toBe('critical path 109s from recent runs; 2 of 4 steps have no reading here and count as 10s (a -> d)');
   });
 
   /**
@@ -857,25 +453,25 @@ describe('criticalPathLine', () => {
    */
   it('counts only the steps it was given, so a cached dependency is free', () => {
     const planned = chain.filter((step) => step.name === 'b' || step.name === 'c');
-    expect(criticalPathLine(planned, 'declared'), "a's 10s is not this run's")
-      .toBe('critical path 20s declared (b -> c)');
+    expect(criticalPathLine(planned, 'measured'), "a's 10s is not this run's")
+      .toBe('critical path 20s (b -> c)');
   });
 
   it('says nothing of a path of one, where the step is its own line already', () => {
-    expect(criticalPathLine([chain[0]!], 'declared')).toBe('');
-    expect(criticalPathLine([], 'declared')).toBe('');
+    expect(criticalPathLine([chain[0]!], 'measured')).toBe('');
+    expect(criticalPathLine([], 'measured')).toBe('');
   });
 
   /**
    * And over the real table it names a path, so the line a dry run prints is not an artefact of a fixture.
    *
-   * Asserted as a shape rather than a value: the names and the total are the declared table's and move with
-   * it, where what must hold is that the chain has a path at all and that it ends at a leaf nothing waits on.
+   * Asserted as a shape rather than a value: with no readings every step counts the same, so what must hold
+   * is that the chain has a path at all.
    */
   it('finds a path through the chain this repo actually has', () => {
-    const ordered = orderedSteps(CHAIN_STEPS);
-    const line = criticalPathLine(ordered, 'declared');
-    expect(line, 'the chain is a graph, so it has a longest route through it').toMatch(/^critical path \d+s declared \(.+ -> .+\)$/);
+    const { steps, unread } = withRecordedSeconds(orderedSteps(CHAIN_STEPS), new Map());
+    const line = criticalPathLine(steps, 'recorded', unread.length);
+    expect(line, 'the chain is a graph, so it has a longest route through it').toMatch(/^critical path \d+s from recent runs; .+ \(.+ -> .+\)$/);
   });
 });
 

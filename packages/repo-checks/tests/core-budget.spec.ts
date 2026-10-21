@@ -9,7 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
-import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, scheduleMismatch, shareOf, thisMachine } from '../../../scripts/lib/core-budget.ts';
+import { asPercent, box, coresFor, POOL_WIDTH, shareOf } from '../../../scripts/lib/core-budget.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@apackdev/sdk/testing';
 
@@ -51,90 +51,8 @@ describe('coresFor', () => {
 
   it('reads this machine by default, which is what the chain asks of it', () => {
     // And deliberately not the budget: `--cores N` caps what to spend of this box rather than describing
-    // a box of N, so a width is about the machine. `isMeasuredSchedule` below is what that costs
+    // a box of N, so a width is about the machine
     expect(coresFor('test:integration')).toBe(Math.max(1, Math.round(0.5 * box())));
-  });
-});
-
-/**
- * The schedule a recorded cost table describes, which takes two numbers rather than one.
- *
- * `--cores` defaults to `box()`, so a run's budget and the box its widths were resolved against normally
- * agree — and a gate that compared only the budget read as sufficient for exactly that reason. The third
- * case is the one it let through.
- */
-describe('isMeasuredSchedule', () => {
-  const MEASURED = { cpu: 'Apple M1 Pro', cores: 10 } as const;
-
-  it('holds when the budget, the cores and the CPU are all the measured ones', () => {
-    expect(isMeasuredSchedule(10, MEASURED, MEASURED)).toBe(true);
-  });
-
-  it('refuses another budget', () => {
-    expect(isMeasuredSchedule(12, MEASURED, MEASURED)).toBe(false);
-  });
-
-  it('refuses another core count, even where the budget is the measured one', () => {
-    // Widths are resolved against the machine, so `--cores 10` on a twenty-core box runs twenty-core widths
-    // under a ten-core budget. The costs that come out describe neither schedule.
-    expect(isMeasuredSchedule(10, MEASURED, { cpu: 'Apple M1 Pro', cores: 20 })).toBe(false);
-  });
-
-  /**
-   * And another CPU at the same core count, which a core count alone cannot see.
-   *
-   * This is the hole: keyed on cores, every 10-core machine read as the measured one, so a second developer
-   * on a 10-core Mac was offered figures taken on different silicon as though they described their box — the
-   * exact failure the portability work was for, surviving for the commonest machine there is.
-   */
-  it('refuses another CPU at the same core count', () => {
-    expect(isMeasuredSchedule(10, MEASURED, { cpu: 'Apple M4 Pro', cores: 10 })).toBe(false);
-  });
-
-  it('reads this machine when none is given, which is how the chain asks', () => {
-    expect(isMeasuredSchedule(box(), thisMachine())).toBe(true);
-  });
-});
-
-/**
- * And *which* fact does not hold, which the boolean above hides.
- *
- * **The bug this exists for was in a caller taking the conjunction apart by hand.** It asked
- * `!isMeasuredSchedule` and then re-asked about the machine to choose what to suggest — so a *budget*
- * mismatch printed an instruction only a *machine* mismatch could act on. Advice nobody can act on is what
- * the portability work was removing, so writing the conjunction once was worth a predicate.
- *
- * It also retires a hand-written variant. "Can this machine claim the table" is this question asked of
- * `thisMachine()`, where the machine conjunct is trivially true and only the budget is left — which
- * `chain.ts` had spelled as `budget !== box()`, three lines from a comparison against `measuredOn.cores`.
- */
-describe('scheduleMismatch', () => {
-  const MEASURED = { cpu: 'Apple M1 Pro', cores: 10 } as const;
-
-  it('says nothing is wrong where the schedule is the measured one', () => {
-    expect(scheduleMismatch(10, MEASURED, MEASURED)).toBeUndefined();
-  });
-
-  it('names the budget where only the budget differs, so no machine advice is offered', () => {
-    expect(scheduleMismatch(9, MEASURED, MEASURED)).toBe('budget');
-  });
-
-  it.each([
-    ['another CPU at the same core count', { cpu: 'Apple M4 Pro', cores: 10 }],
-    ['another core count', { cpu: 'Apple M1 Pro', cores: 20 }],
-  ])('names the machine for %s, which is the one a flag can act on', (_what, machine) => {
-    expect(scheduleMismatch(10, MEASURED, machine)).toBe('machine');
-  });
-
-  /** The machine first, because a run where both differ is one a flag can still do something about */
-  it('names the machine where both differ', () => {
-    expect(scheduleMismatch(9, MEASURED, { cpu: 'Apple M4 Pro', cores: 8 })).toBe('machine');
-  });
-
-  it('asked of this machine, is a question about the budget alone', () => {
-    expect(scheduleMismatch(box(), thisMachine())).toBeUndefined();
-    expect(scheduleMismatch(box() - 1, thisMachine()), 'which is what `budget !== box()` used to spell')
-      .toBe('budget');
   });
 });
 

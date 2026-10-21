@@ -87,15 +87,8 @@ describe('where a chain run keeps its evidence', () => {
     });
   });
 
-  /**
-   * A step and its retry must not land on one file. That overwrite is the defect this exists for: the
-   * chain's classification re-run went through the same step, so the diagnostic destroyed the attempt it
-   * was called to explain.
-   */
-  it('gives a step and its retry different files, with the step spelled as its stamp is', () => {
-    const dir = '/runs/one';
-    expect(path.basename(evidenceFile(dir, 'test:unit:host'))).toBe('test-unit-host.log');
-    expect(evidenceFile(dir, 'test:unit:host.retry')).not.toBe(evidenceFile(dir, 'test:unit:host'));
+  it('names a step\'s file as its stamp is spelled', () => {
+    expect(path.basename(evidenceFile('/runs/one', 'test:unit:host'))).toBe('test-unit-host.log');
   });
 
   /** A log that outlives the summary has to say for itself how its step ended */
@@ -126,7 +119,7 @@ describe('where a chain run keeps its evidence', () => {
     });
 
     /**
-     * The files a failed step wrote, kept before the retry can overwrite them.
+     * The files a failed step wrote, kept before the next run can overwrite them.
      *
      * The paths are repo-relative. Use a private fixture tree so a concurrent Playwright run cannot
      * clear it, and this check never writes into that run's output.
@@ -141,9 +134,6 @@ describe('where a chain run keeps its evidence', () => {
       expect(run.keepFiles('test:smoke', [target])).toEqual([target]);
       expect(fs.readFileSync(path.join(run.dir, 'test-smoke.files', path.basename(left), 'kept-probe.log'), 'utf-8'))
         .toBe('what the app said');
-      // A step and its retry do not share one, as their logs do not
-      run.keepFiles('test:smoke.retry', [target]);
-      expect(fs.existsSync(path.join(run.dir, 'test-smoke.retry.files', path.basename(left)))).toBe(true);
     });
 
     /** A step can fail before writing anything, which is not a second failure to report */

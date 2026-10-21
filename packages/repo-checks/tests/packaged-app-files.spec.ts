@@ -125,8 +125,8 @@ describe("the packaged app's file list", () => {
   });
 
   /**
-   * A pack's working directory, which `packages/**` took until 2026-10-02 — dotted directories included,
-   * since electron-builder reads no `.gitignore`. `apack pack build` keeps its dependency cache, its staging and
+   * A pack's working directory, which `packages/**` would take — dotted directories included, since
+   * electron-builder reads no `.gitignore`. `apack pack build` keeps its dependency cache, its staging and
    * its record of what each bundling phase read there, and the app loads none of it: measured, the built-in
    * pack's record alone was 25K of build-internal data in every installer.
    *

@@ -15,11 +15,10 @@
  * was split on it for no wall-clock gain; the honest figure was 28.1s, against a measured 29.0s wall. **That is why this still exists beside the pools' duration cache**,
  * which holds only in-pool numbers: every figure in there was measured under contention by design.
  *
- * It reads the run's own reporter (`lib/spec-durations-reporter.ts`), as the pools do. It parsed the console
- * until 2026-10-06, and what that cost is the reason to say so: with no line matching — a reporter format
- * away — it printed a complete-looking table of zeros and `total work 0.0s`, which for a tool whose whole
- * output is a number someone quotes is worse than failing. A suite the reporter wrote nothing for is now
- * named and left out of the totals, and the exit code says it happened.
+ * It reads the run's own reporter (`lib/spec-durations-reporter.ts`), as the pools do, never the console: a
+ * parse that matched no line would print a complete-looking table of zeros, which for a tool whose output is
+ * a number someone quotes is worse than failing. A suite the reporter wrote nothing for is named and left
+ * out of the totals, and the exit code says it happened.
  *
  * `scripts/lib/slow-tests.ts` keeps its parser, and that is not unfinished work: it reads *any* chain step's
  * output for per-test times, including `test:external-pack:contract` and `test:packaged-authoring`, which run

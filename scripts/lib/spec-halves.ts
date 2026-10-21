@@ -6,10 +6,9 @@
  * load-bearing well beyond any one command — `chain-steps.ts`' `INTEGRATION_SUITES` and `NATIVE_SUITES` are
  * the suites with that half's config (`hasHalf`), which is the whole chain's view of which suites have one.
  *
- * **It used to be derived from a measured cost, and is not any more.** `spec-cost.json` recorded what every
- * spec cost in milliseconds and a gate moved a file across an edge; that went because the quantity is not
- * one number — a spec read 2.8s in the fast pool and 0.64s in the integration pool, so each half's reading
- * demanded a move the other took back. What survives here is the part that was never measured.
+ * **Declared, never derived from a measured cost**, because the quantity is not one number: a spec read 2.8s
+ * in the fast pool and 0.64s in the integration pool, so each half's reading would demand a move the other
+ * took back.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -61,8 +60,7 @@ export function configsFor(packageDir: string): string[] {
 /**
  * Whether a package has a second half at all.
  *
- * A package with one config has nowhere to move a spec to, which is why nine of the twelve could never act
- * on the placement finding the deleted cost record used to raise. Which halves it has is `hasHalf`.
+ * A package with one config has nowhere to move a spec to. Which halves it has is `hasHalf`.
  */
 export const hasSplit = (packageDir: string): boolean => configsFor(packageDir).length > 1;
 
@@ -72,13 +70,9 @@ export const hasHalf = (packageDir: string, half: Half): boolean => fs.existsSyn
 /**
  * Every spec a package owns, relative to the package.
  *
- * Both `tests/` and `src/`, and `src/` is now a net rather than a necessity. It was there because
- * `@app/default-setup` ran six colocated specs and walking only `tests/` reported them as
- * recorded-but-gone; those moved under `tests/` and no package colocates any more. Keeping the walk is
- * what stops the next one being silent twice over: no config includes `src/**` now, so such a spec would
- * never run, and if this did not see it the record would not report it missing either. As it is, it lands
- * here with no measured cost and nothing reported it. `spec-dry.ts` is the consumer now: it is how a whole-suite run lists the specs it
- * would execute, which used to be read from the deleted cost record.
+ * Both `tests/` and `src/`. No config includes `src/**`, so a colocated spec would never run; walking it
+ * here keeps such a spec visible rather than silently skipped. `spec-dry.ts` is the consumer: it is how a
+ * whole-suite run lists the specs it would execute.
  *
  * Ignoring what a package builds keeps the walk to sources: `dist` holds compiled copies, and `etc` holds
  * recorded files rather than specs.

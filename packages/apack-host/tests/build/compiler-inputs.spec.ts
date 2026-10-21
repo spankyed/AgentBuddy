@@ -17,6 +17,31 @@ it('attributes namespace refusals with recorded and replayed states', () => {
   } finally { view.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+/**
+ * A compiler reading a regular file's modification time is asking whether its bytes changed, so the fact
+ * records the bytes: touching an unchanged file leaves the record current, a changed file refuses, and the
+ * compiler itself still sees the real time.
+ */
+it('records a file\'s content where a compiler read its modification time', () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-mtime-content-')));
+  const file = path.join(root, 'module.js');
+  fs.writeFileSync(file, 'export default 1;');
+  const view = createCompilerFileView(root);
+  try {
+    const seen = (view.readMetadata('stat', file, []) as fs.Stats).mtimeMs;
+    expect(seen, 'the compiler sees the real time').toBe(fs.statSync(file).mtimeMs);
+    const observations = view.observations();
+    const fact = observations.entries.find(([query]) => query.includes('"mtimeMs"'));
+    expect(fact?.[1], 'the record holds the bytes, not the time').toMatch(/contentSha256/);
+    expect(fact?.[1]).not.toContain(String(seen));
+
+    fs.utimesSync(file, new Date(2001, 0, 1), new Date(2001, 0, 1));
+    expect(() => assertNativeCompilerObservations(observations), 'a touch is not a change').not.toThrow();
+    fs.writeFileSync(file, 'export default 2;');
+    expect(() => assertNativeCompilerObservations(observations)).toThrow(/input changed/);
+  } finally { view.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 it('keeps native, authored and extended root spellings in one input identity', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-root-spellings-'));
   const canonical = fs.realpathSync.native(root);

@@ -21,8 +21,7 @@ import type { UnitSuite } from './lib/unit-suites.ts';
 import { DIAGNOSTIC_RUN_ENV, holdPoolLock, poolWorkers, POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
 import type { ReportedRun } from './lib/spec-durations-reporter.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from './lib/chain-steps.ts';
-import { MEASURED_ON } from './lib/core-budget.ts';
+import { CHAIN_STEPS, poolStepName } from './lib/chain-steps.ts';
 import { timeoutMsFor, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 import { asDuration, durationsOf, halfTotal, markedSpecs, trendOf, placementOf, pruneDurationCache, slowestFiles, tailBar, uncheckedNote, UNMARKED_NOTE, writeDurations } from './lib/spec-durations.ts';
@@ -84,8 +83,8 @@ function reportDurations(kind: Pool, covered: readonly UnitSuite[], reported: Re
   const rows = durationsOf(reported, covered);
   // A run whose every file was skipped reports no durations, and a ranking of nothing is not a finding.
   // **Not "all cached"**, which this cannot be reached for — `main` returns before building `runs` when
-  // nothing is stale. And no longer "the reporter's format moved" either: a reporter that did not run
-  // writes no file, which `readReportedRun` answers `undefined` for and the caller refuses on.
+  // nothing is stale. Nor a reporter that did not run: it writes no file, which `readReportedRun` answers
+  // `undefined` for and the caller refuses on.
   if (rows.length === 0) return;
   // Written whether or not this run may record a verdict. A duration is a measurement, true whoever asked
   // for it — the same reason `recordRun` suppresses a stamp and `ensurePackagesBuilt` does not suppress a
@@ -167,7 +166,7 @@ async function main(): Promise<void> {
   const prepared = await boundedSpawn('npm', ['run', preparation.name], timeoutMsFor(preparation.timeout), { stream: true });
   if (prepared.code !== 0) {
     throw new Error(prepared.timedOut
-      ? timedOutBecause({ what: preparation.name, timeout: preparation.timeout, measuredOn: MEASURED_ON, seconds: preparation.seconds })
+      ? timedOutBecause({ what: preparation.name, timeout: preparation.timeout })
       : `${preparation.name} failed (exit ${prepared.code})`);
   }
   // One run of this pool at a time, from here on: everything below stamps the projects it runs, and two runs
@@ -227,16 +226,9 @@ async function main(): Promise<void> {
         const { code, timedOut } = await boundedSpawn(command, [...args], timeoutMsFor(step.timeout),
           { stream: true, env: { ...process.env, [SPEC_DURATIONS_FILE]: reportFile } });
         if (code !== 0) {
-          // `POOL_SECONDS` only where this run is the whole pool, which is the one thing that cost describes
-          // — a run of two projects out of eleven has no recorded cost, and the message says that rather than
-          // computing a rope from a number about other work
+          // No recorded cost: the chain reports one for the whole step, and this run may cover only part of it
           throw new Error(timedOut
-            ? timedOutBecause({
-              what: poolStepName(kind),
-              timeout: step.timeout,
-              measuredOn: MEASURED_ON,
-              ...covered.length === suites.length ? { seconds: POOL_SECONDS[kind] } : {},
-            })
+            ? timedOutBecause({ what: poolStepName(kind), timeout: step.timeout })
             : `${kind} pool failed (exit ${code})`);
         }
         // Only what the run reported may be stamped: a `--project` filter matching nothing is dropped

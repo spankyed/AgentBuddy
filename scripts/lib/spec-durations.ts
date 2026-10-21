@@ -30,9 +30,7 @@
  *
  * **What it guards is fourteen annotations, in one direction, and its failure mode is a stale comment.**
  * What it is *for* is the decision underneath: whether a spec should move between halves — and **that
- * decision is live.** `f2a003bb2` moved two specs on this evidence: `fe-bundler-proxy-exports` into
- * `@apackdev/cli`'s integration half, and `published-manifest-paths` against a recorded placement whose
- * justifying figure had gone 2.5x stale. A marker that has quietly stopped being true is what makes the
+ * decision is live** — specs have moved halves on this evidence. A marker that has quietly stopped being true is what makes the
  * next such reading untrustworthy, which is why the one direction load cannot fabricate is the one gated.
  *
  * **Eleven of the fourteen are in packages with a single vitest config**, where the move the remedy names
@@ -47,9 +45,8 @@
  * cases: that the population has not collapsed to nothing, in `markedSpecs`' describe, and how much of it
  * could move, in `poolDurationLines`'.
  *
- * And price any addition against that figure before making one. The subsystem this replaced grew to 1,884
- * lines by answering each objection with another mechanism, and the lesson recorded for it in the root
- * `CLAUDE.md` — *"price the apparatus against the decision it informs"* — applies to its successor first.
+ * And price any addition against that figure before making one: answering each objection with another
+ * mechanism is how a subsystem like this outgrows the decision it informs (root `CLAUDE.md`).
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -66,8 +63,7 @@ import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
  *
  * Measured 2026-10-05 over 414 files, the five specs marked then clear the fast half's p90 by 5.2x to 32.7x,
  * where a fixed 2,500ms left two of them 13% clear. **If this ever does fail on a spec that is still
- * genuinely slow, deepen the quantile** — the fix is never to record a reading, which is the subsystem
- * this replaced.
+ * genuinely slow, deepen the quantile** — the fix is never to record a reading and decide with it.
  */
 export const SLOW_QUANTILE = 0.9;
 
@@ -121,10 +117,8 @@ export interface FileDuration {
 /**
  * Every file the run reported, attributed to the suite that holds it.
  *
- * The reporter states the project, so attribution is a lookup rather than a recovery. It used to be
- * both: a label when vitest printed one and the path when it did not, because a label appears only in a
- * multi-project run — and the path is ambiguous for the one pair that collides, `tests/source-layout.spec.ts`
- * in both `api` and `renderer`. The two covered each other exactly and neither is needed now.
+ * The reporter states the project, so attribution is a lookup rather than a recovery — a path alone is
+ * ambiguous for `tests/source-layout.spec.ts`, which both `api` and `renderer` hold.
  *
  * Skipped modules are dropped here rather than in the reporter. A skipped file reports a duration of 0
  * rather than no duration, and counting those as readings would pull a half's quantile bar down with
@@ -226,9 +220,8 @@ export const halfTotal = (rows: readonly FileDuration[], half: Half): { ms: numb
  * Which of the two things that can bound a half's run actually does: its slowest file, or its total work
  * spread across the cores.
  *
- * `max(floor, work/cores)` — `measure-suites.ts`' header has called this "the target any change to
- * scheduling is measured against" since 2026-09, and **until now it existed nowhere in code**. Computing
- * it is the whole point of recording overhead, because the figure is worthless without it: measured
+ * `max(floor, work/cores)` — "the target any change to scheduling is measured against" (`measure-suites.ts`).
+ * Computing it is the whole point of recording overhead, because the figure is worthless without it: measured
  * 2026-10-06 the host pool is 141.4s of tests and 139.6s of overhead, so `work/cores` is 28.1s with it and
  * 14.1s without, against a wall of 29.0s. With overhead the prediction lands within a second; without it,
  * it is out by two.
@@ -287,7 +280,7 @@ export const halfBound = (rows: readonly FileDuration[], half: Half, cores: numb
  * sat at 3.39-4.09x before, the integration half at 1.20-1.62x, the pack pool at 1.06-1.90x. So 2x is
  * above every quiet reading and below every firing one, and the midpoint of 1.90x and 3.74x in the ratio's
  * own terms is 2.67x. If this ever fires on a half nobody should touch, widen it — the fix is not to start
- * recording a millisecond, which is the subsystem this replaced.
+ * recording a millisecond and deciding with it.
  *
  * **The size floor is what lets the ratio be that tight.** Without it the pack pool reports its 4.2s
  * slowest file at 1.90x, and splitting a 4.2s file is not work anyone should do. Ten seconds is where it
@@ -629,10 +622,7 @@ export interface DurationRecord {
   /**
    * Overhead per spec, by the same key — import, setup, environment and prepare.
    *
-   * A second map rather than a field on each entry, because `ms` was a flat `Record<string, number>` on
-   * disk before this and every record written then is still readable: `readDurationRuns` fills this with
-   * an empty object for one, so a reader sees overhead it has no figure for as zero rather than being
-   * refused a measurement it does have.
+   * A second map rather than a field on each entry, so `ms` stays the flat map every reader indexes.
    */
   readonly overheadMs: Readonly<Record<string, number>>;
 }
@@ -654,53 +644,45 @@ export interface DurationRecord {
  */
 export const KEPT_RUNS = 10;
 
-/** The window as it sits on disk: newest first, at most `KEPT_RUNS` long */
-interface DurationHistory {
-  readonly runs: readonly DurationRecord[];
+/**
+ * A window of runs on disk, newest first and at most `KEPT_RUNS` long, or `undefined` where none is recorded.
+ *
+ * Shared by every machine-local reading — the specs' durations here and the chain steps' in
+ * `step-durations.ts`. `sound` validates one record; an unreadable file or a record it rejects reads as no
+ * evidence, since the cache is uncommitted and the next run rebuilds it.
+ */
+export function readWindow<R>(file: string, sound: (value: unknown) => R | undefined): R[] | undefined {
+  try {
+    const { runs } = JSON.parse(fs.readFileSync(file, 'utf8')) as { runs?: unknown };
+    if (!Array.isArray(runs)) return undefined;
+    const kept = runs.map(sound).filter((run): run is R => run !== undefined);
+    return kept.length === 0 ? undefined : kept;
+  } catch {
+    return undefined;
+  }
+}
+
+/** `record` prepended to the window at `file`, the oldest dropped past `KEPT_RUNS` */
+export function prependToWindow<R>(file: string, record: R, sound: (value: unknown) => R | undefined): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const runs = [record, ...readWindow(file, sound) ?? []].slice(0, KEPT_RUNS);
+  fs.writeFileSync(file, `${JSON.stringify({ runs }, null, 2)}\n`);
 }
 
 /**
- * The window, oldest entries dropped, or `undefined` where no run here has measured this suite.
- *
- * A file in the single-record shape this replaced is read as a window of one rather than refused: the
- * cache is uncommitted and rebuilt by any run, so refusing would turn a format change into a lost
- * measurement for no gain.
+ * A spec record is sound on `measuredAt` and `ms`; a consumer of `overheadMs` sees zero where it is absent,
+ * which is what "no figure" means here.
  */
-export function readDurationRuns(root: string, dir: string, half: Half): readonly DurationRecord[] | undefined {
-  let raw: string;
-  try {
-    raw = fs.readFileSync(recordFor(root, dir, half), 'utf8');
-  } catch {
-    return undefined;
-  }
-  /**
-   * A record is sound on `measuredAt` and `ms` alone, and `overheadMs` is filled in where it is absent.
-   *
-   * That is the same compatibility the window itself has: a record from before this field was recorded
-   * holds real measurements, and refusing it would throw away evidence to insist on a field no reader
-   * needs in order to use `ms`. A consumer of overhead sees zero, which is what "no figure" means here.
-   */
-  const sound = (value: unknown): DurationRecord | undefined => {
-    if (typeof value !== 'object' || value === null) return undefined;
-    const { measuredAt, ms, overheadMs } = value as Partial<DurationRecord>;
-    if (typeof measuredAt !== 'string' || typeof ms !== 'object' || ms === null) return undefined;
-    return { measuredAt, ms, overheadMs: typeof overheadMs === 'object' && overheadMs !== null ? overheadMs : {} };
-  };
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (typeof parsed !== 'object' || parsed === null) return undefined;
-    const { runs } = parsed as Partial<DurationHistory>;
-    if (Array.isArray(runs)) {
-      const kept = runs.map(sound).filter((run): run is DurationRecord => run !== undefined);
-      return kept.length === 0 ? undefined : kept;
-    }
-    // The shape before the window; one reading is still a reading
-    const one = sound(parsed);
-    return one === undefined ? undefined : [one];
-  } catch {
-    return undefined;
-  }
-}
+const soundDurations = (value: unknown): DurationRecord | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const { measuredAt, ms, overheadMs } = value as Partial<DurationRecord>;
+  if (typeof measuredAt !== 'string' || typeof ms !== 'object' || ms === null) return undefined;
+  return { measuredAt, ms, overheadMs: typeof overheadMs === 'object' && overheadMs !== null ? overheadMs : {} };
+};
+
+/** A suite half's window, or `undefined` where no run here has measured it */
+export const readDurationRuns = (root: string, dir: string, half: Half): readonly DurationRecord[] | undefined =>
+  readWindow(recordFor(root, dir, half), soundDurations);
 
 /**
  * What the last run measured, or `undefined` where no run on this machine has measured it.
@@ -728,13 +710,10 @@ export function writeDurations(root: string, rows: readonly FileDuration[], meas
   }
   for (const [key, held] of byRecord) {
     const [dir, half] = key.split('\u0000') as [string, Half];
-    const file = recordFor(root, dir, half);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
     const sorted = [...held].sort((a, b) => a.file.localeCompare(b.file));
     const ms = Object.fromEntries(sorted.map((row) => [row.file, row.ms]));
     const overheadMs = Object.fromEntries(sorted.map((row) => [row.file, row.overheadMs]));
-    const runs = [{ measuredAt, ms, overheadMs }, ...readDurationRuns(root, dir, half) ?? []].slice(0, KEPT_RUNS);
-    fs.writeFileSync(file, `${JSON.stringify({ runs } satisfies DurationHistory, null, 2)}\n`);
+    prependToWindow(recordFor(root, dir, half), { measuredAt, ms, overheadMs }, soundDurations);
   }
 }
 
