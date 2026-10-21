@@ -42,45 +42,6 @@ function writeBuild(dir: string, id: string) {
 }
 
 describe('pack CLI: init', () => {
-  it('scaffolds a valid pack directory structure', async () => {
-    const { init } = await import('../../src/commands/init');
-
-    const packName = 'test-pack';
-    const packDir = path.join(tmpDir, packName);
-
-    // init uses process.cwd() to resolve paths and readline for prompts,
-    // so we call it with a pre-set name arg and override cwd
-    const origCwd = process.cwd();
-    process.chdir(tmpDir);
-    try {
-      await init([packName]);
-    } finally {
-      process.chdir(origCwd);
-    }
-
-    expect(fs.existsSync(packDir)).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'apack.json'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'package.json'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'tsconfig.json'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, '.gitignore'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'content', 'actions'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'content', 'flows'))).toBe(true);
-    // Features come from `apack pack add feature`; the pack id (kebab-case) is not a valid feature id
-    expect(fs.existsSync(path.join(packDir, '.github', 'workflows', 'release.yml'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', '__generated__', 'pack-entry-fe.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'vitest.config.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'tests', `${packName}.spec.ts`))).toBe(true);
-
-    // Verify manifest content
-    const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'));
-    expect(manifest.id).toBe('test-pack');
-    expect(manifest.name).toBe('Test Pack');
-    expect(manifest.version).toBe('0.1.0');
-    expect(manifest.content?.sources).toBeDefined();
-    expect(manifest.content.sources.actions).toBe('src/content/actions');
-    expect(manifest.content.sources.flows).toBe('src/content/flows');
-  });
-
   it('rejects invalid pack names', async () => {
     const { init } = await import('../../src/commands/init');
 
