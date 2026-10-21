@@ -38,14 +38,17 @@ Surveyed 2026-10-21 at `507b3b747`.
 **Done**, on `session/plugins-to-surfaces`, six commits, `npm run chain` passing in 1468.8s with all 32
 steps ok (`node_modules/.cache/apack-chain/runs/2026-10-21T20-52-54Z-10193`).
 
-| Phase | Commit | Evidence |
+| Phase | Commit | Evidence for its "Done when" |
 |---|---|---|
-| 1 — the guard | `99540ead9` | Live in `@app/repo-checks`; mutation-checked three ways |
-| 2 — the concept | `7f495e0ff` | 557 files; typecheck 17/17, `test:unit` 5689 |
-| 3 — the wire | `260a96801` | 22 event names and their five `eventTypes<T>()` pins |
-| 4 — stored state | `824df0b92` | `tests/migrations/surface-state-0.4.0.spec.ts`, mutation-checked three ways |
-| 5 — docs, guard live | `afedfa064` | Scan unparked and green; `welcome.md` re-recorded |
-| 6 — the prose read | `dc57c0504` | 19 inversions; three agent memories |
+| 1 — the guard | `99540ead9` | Live in `@app/repo-checks`. Mutation: unparked it reported 2128 violations with the manifest key firing; adding `TiptapPlugin` to a group failed the kept-spellings case; a stale `ALLOWED` entry was named |
+| 2 — the concept | `7f495e0ff` | `typecheck` 17/17, `api:check`, `schema:check`, `test:unit` 5689, `build:default-setup`, and `test:external-pack` as the chain's three halves — `:contract` 84.3s, `:fork` 104.2s, `:app` 129.0s |
+| 3 — the wire | `260a96801` | `npm test -w @apackdev/host` 1746 passed / 135 files, including `tests/bus/outgoing-events.spec.ts` and `tests/packs/event-validation-map.spec.ts`; `test:smoke` 16.1s in the chain. Mutation: a half-applied rename in the bus's lookup (the map keyed by ref, the lookup building the old spelling) failed **23** specs across both files, so no new spec was needed |
+| 4 — stored state | `824df0b92` | `tests/migrations/surface-state-0.4.0.spec.ts`. Mutation: dropping the removal, guarding on `undefined`, and guarding the row instead of each attribute each failed a different case |
+| 5 — docs, guard live | `afedfa064` | Scan unparked and green; `welcome.md` re-recorded; `doc-links` passing |
+| 6 — the prose read | `dc57c0504` | 19 inversions; three agent memories. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader |
+
+The suite criteria are evidenced **through the chain** for `test:external-pack` and `test:smoke`, which
+are its steps, rather than by a separate invocation of each command.
 
 **The four things it cost, which the plan had three of.** The fourth vocabulary is a third-party CLI's
 own plugins (`claude plugin`), and it is the one no check can reach: its names go into a **subprocess
