@@ -32,3 +32,14 @@ export function isOwnedCompilerPath(file: string, ...directories: readonly strin
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   });
 }
+
+/**
+ * Whether `file` is a lookup the compiler makes from where it is installed rather than from the pack: an ancestor of
+ * its installation that the pack root does not share, or a name looked up in one (Node's walks for `node_modules` and
+ * `package.json`). Where the installation lives is a fact about the machine — the store under a user cache directory
+ * one machine has and another has not created — so a build input recording it would not replay anywhere else.
+ */
+export function isCompilerLocationPath(file: string, compilerDirectory: string, root: string): boolean {
+  return [file, path.dirname(file)].some(directory =>
+    isOwnedCompilerPath(compilerDirectory, directory) && !isOwnedCompilerPath(root, directory));
+}

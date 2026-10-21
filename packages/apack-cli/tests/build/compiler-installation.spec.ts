@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { execFileSync, fork } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
 import { captureCompilerInstallation, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import { isCompilerLocationPath } from '../../src/build/compiler-installation-inputs.ts';
 import { cliBin } from '../../src/utils.ts';
 import { _byDeadline } from '@apackdev/sdk/testing/waiting';
 
@@ -317,4 +318,20 @@ it('keeps an owned worker in its captured compiler instead of handing off to the
     if (child.exitCode === null && child.signalCode === null) child.kill();
     await _byDeadline(closed, 'captured compiler cleanup', 2_000);
   }
+});
+
+it('treats lookups along the installation\'s location as the compiler\'s, and the pack\'s own as inputs', () => {
+  const home = path.join(path.parse(process.cwd()).root, 'home', 'author');
+  const installation = path.join(home, 'Library', 'Caches', 'apack-cli', 'compilers', '0123456789abcdef');
+  const pack = path.join(home, 'projects', 'pack');
+  const located = (file: string) => isCompilerLocationPath(file, installation, pack);
+
+  expect(located(path.join(home, 'Library', 'Caches', 'apack-cli'))).toBe(true);
+  expect(located(path.join(home, 'Library', 'Caches', 'apack-cli', 'node_modules'))).toBe(true);
+  expect(located(path.join(home, 'Library', 'Caches', 'package.json'))).toBe(true);
+  // The pack's own walk upward reaches the same home directory, and what it finds there is an input
+  expect(located(home)).toBe(false);
+  expect(located(path.join(home, 'node_modules'))).toBe(false);
+  expect(located(path.join(pack, 'src', 'index.ts'))).toBe(false);
+  expect(located(path.join(home, 'projects', 'package.json'))).toBe(false);
 });

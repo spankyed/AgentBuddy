@@ -523,8 +523,9 @@ it.each([
   { name: 'watch is compiling', watch: true, phase: 'compiling', release: false },
   { name: 'one-shot is compiling', watch: false, phase: 'compiling', release: false },
   { name: 'release verification is compiling', watch: false, phase: 'compiling', release: true },
-] as const)('removes its worker and compiler when the public build command is stopped while $name', async ({ watch, phase, release }) => {
-  // Shutdown removes a complete compiler file tree, unlike the IPC-only exit checks above.
+] as const)('removes its worker when the public build command is stopped while $name', async ({ watch, phase, release }) => {
+  // Shutdown removes the worker's complete file tree, unlike the IPC-only exit checks above. The compiler it ran may
+  // be the machine-wide store's entry, which outlives every build by design.
   const cleanupDeadlineMs = 20_000;
   const startupDeadlineMs = phase === 'ready' ? 120_000 : 60_000;
   const root = fixture({
@@ -556,10 +557,11 @@ it.each([
     const inputs = fs.readFileSync(path.join(root, '.apack/compiler-inputs-path'), 'utf8');
     const worker = Number(fs.readFileSync(path.join(root, '.apack/compiler-pid'), 'utf8'));
     expect(fs.existsSync(inputs)).toBe(true);
+    const stored = fs.realpathSync.native(inputs).startsWith(fs.realpathSync.native(process.env.APACK_COMPILER_STORE!) + path.sep);
     child.kill('SIGTERM');
     await _byDeadline(closed, 'public watcher shutdown', cleanupDeadlineMs);
     expect(child.signalCode, output).toBe('SIGTERM');
-    expect(fs.existsSync(inputs), inputs).toBe(false);
+    expect(fs.existsSync(inputs), inputs).toBe(stored);
     expect(() => process.kill(worker, 0)).toThrow();
     if (phase === 'compiling') expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
     if (release) expect(fs.existsSync(path.join(root, '.apack/release'))).toBe(false);

@@ -6,7 +6,7 @@ import { captureCompilerPackage } from './compiler-package-inputs.ts';
 import { assertCapturedCompilerLibraries, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 import { readPeDirectoryEntries } from './compiler-pe-activation.ts';
-import { isOwnedCompilerPath, type CompilerInstallationInputs } from './compiler-installation-inputs.ts';
+import { isCompilerLocationPath, isOwnedCompilerPath, type CompilerInstallationInputs } from './compiler-installation-inputs.ts';
 
 export interface CapturedNativeModule { readonly source: string; readonly captured: string; readonly packageRoot: string }
 
@@ -24,7 +24,8 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     const relative = relativeCompilerPath(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
-  const includes = (file: string) => !isOwnedCompilerPath(file, workspace, compiler.directory);
+  const includes = (file: string) => !isOwnedCompilerPath(file, workspace, compiler.directory)
+    && !isCompilerLocationPath(file, compiler.directory, packRoot);
   let tree: CompilerReadTree | undefined;
   const sourcePath = (file: string) => tree?.sourcePath(file) ?? compilerSourcePath(file, paths);
   const readDataPath = (file: string) => withoutCompilerFileReads(() => {
