@@ -144,18 +144,16 @@ machine, which is a fact a run can check.
 Use the approved [Windows development VM](docs/references/guides/windows-development-vm.md) for
 interactive Windows compiler/native debugging and focused validation instead of dispatching CI for
 each experiment. Coordinate one expensive execution owner, use two cores and deallocate when idle.
-Keep macOS/Linux-specific execution on the corresponding disposable runners, not the developer's
-daily-use Mac: `gh workflow run ci.yml --ref <branch> -f compiler_macos=true` (or
-`compiler_windows=true` / `compiler_linux=true` for clean platform verification). This includes native
-fixtures, repeated captured-runtime execution and startup/cancellation batches. Stop local testing
-immediately if unrelated apps stop launching; preserve
-evidence without changing macOS security settings. Cause remains unproven in the
-[launch incident](docs/references/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
-The CLI's native half does not run directly on a Mac: its specs execute fresh native fixtures and runtime copies
-that macOS security-assesses one by one. **It runs in the Linux test container instead** — `npm run chain` does
-so for `test:native` (`linuxOnMac`, `scripts/lib/chain-steps.ts`), and `npm run test:linux -- <command>` runs any
-command there (`scripts/linux-runner.ts`; Docker/OrbStack must be running). Do not bypass the guard with
-fabricated runner variables. The integration half runs directly: its builds reuse the shared compiler store, so
+**Native execution runs in the Linux test container, not on the developer's daily-use Mac**: native fixtures,
+repeated captured-runtime execution and startup/cancellation batches execute fresh native files and runtime
+copies that macOS security-assesses one by one. `npm run chain` runs `test:native` there (`linuxOnMac`,
+`scripts/lib/chain-steps.ts`), and `npm run test:linux -- <command>` runs any command there
+(`scripts/linux-runner.ts`; Docker/OrbStack must be running). Do not bypass the guard with fabricated runner
+variables. Dispatch CI only for what a Linux container cannot cover: the macOS-only native cases (Electron's
+framework copy, signed Mach-O) with `gh workflow run ci.yml --ref <branch> -f compiler_macos=true`, and clean
+Windows verification with `compiler_windows=true`. Stop local testing immediately if unrelated apps stop
+launching; preserve evidence without changing macOS security settings. Cause remains unproven in the
+[launch incident](docs/references/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17). The integration half runs directly: its builds reuse the shared compiler store, so
 macOS assesses each runtime once. Live watcher cases belong in `*.native.spec.ts`; pure unit checks stay in the
 fast half.
 Run required final strict acceptance with `gh workflow run ci.yml --ref <branch> -f strict_chain=true`: it
