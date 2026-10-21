@@ -1,106 +1,103 @@
 # Drop the stretch projection: keep the deadline, delete the prediction
 
-**Status:** proposed, not started
-**Prompted by:** 2026-10-07, a session spent on one false advisory
+**Status:** ready, not started. Refreshed against the code on 2026-10-21. Do it after
+[PR #249](https://github.com/spankyed/apack/pull/249) merges, as its own change: both edit `chain-steps.ts`,
+`step-timeouts.ts` and the chain specs.
 
 ## What this is about
 
 `scripts/lib/step-timeouts.ts` does two jobs, and only the first is load-bearing.
 
-1. **Kill a wedged step.** Three declared classes — `quick` 60s, `suite` 300s, `scenario` 900s — chosen for
-   the slowest plausible machine, membership derived by `rungForKind`. This works, is simple, and the file's
-   header makes the case for it well: a deadline is a declared class, never a multiple of a measurement.
-
-2. **Predict whether a step would be killed on a machine nobody has.** This is `stretches`, `declaredShare`,
-   `ASSUMED_RUNGS`, `outgrownRungs`, `outgrownReport`, `chain-graph.spec.ts`' bound, the per-step `stretches`
-   override, and the `stretches` arm of `timedOutBecause`. Five concepts, a few hundred lines.
+1. **Kill a wedged step.** Four declared classes — `quick` 60s, `suite` 600s, `scenario` 900s and
+   `acceptance` 7,200s for the integration and native pools — with membership checked against the kind of
+   work by `rungForKind`. A deadline is a declared class, never a multiple of a measurement, and the file's
+   header makes that case well.
+2. **Predict whether a step would be killed on a smaller machine.** This is each rung's `stretches`,
+   `declaredShare`, `ASSUMED_RUNGS`, the per-step `stretches` override, `outgrownRungs` and its report, and
+   `measure:stretch`. It projects a cost measured on the developer's 10-core Mac onto a box `SLOWER_MACHINE`
+   (4x) slower.
 
 The proposal is to delete the second job.
 
 ## Why
 
-**The machine it predicts for does not exist.** `.github/workflows/ci.yml` has its `push` and
-`pull_request` triggers commented out, so the 4x-slower runner `suite`'s `stretches` cites is hypothetical.
-Two of the three rungs say outright that their factor is unmeasured (`ASSUMED_RUNGS`, and each row's `until`
-names the run that would settle it — a run on a smaller box, which nothing makes).
+**The smaller machine is no longer hypothetical, so the prediction has a better substitute: the reading.**
+The strict gate runs on 3-vCPU hosted runners, and every run records each step's real duration under its real
+deadline. A projection of what a smaller box would do is strictly worse than what the runner reports every
+strict run. The chain already says so on the runner: its drift report prints *"the table it is compared
+against describes another machine"* and gives rows without advice.
 
 **Its output has been one signal, and it was false.** `outgrownRungs` fired on `test:integration` on every
-chain run: 101s, 88s, 77s against a 60s declaration, reported as 103-135% of its rung. The step had not
-moved. The cause was that `suite`'s `stretches: 4` is measured end to end on `test:unit:host`, whose pool
-takes the whole box, while `test:integration` caps itself at half the cores and loses 1.94x — a figure the
-file already recorded and described as *"pessimistic rather than a fact about that member"*. Pessimism is
-safe in a ceiling and noise in a report, and `declaredShare` is both.
+chain run, at 103–135% of its rung, while the step had not moved. `suite`'s `stretches: 4` was measured on
+`test:unit:host`, whose pool takes the whole box, while `test:integration` caps itself at half the cores and
+loses 1.94x. The fix was a per-step `stretches`, now declared on both `test:integration` and `test:native`. That
+is a fourth concept added to keep a third honest, which is the shape of a mechanism worth removing rather than
+tuning.
 
-That was patched (per-step `stretches`, `3a7f1c…`'s successor) and the advisory went quiet. The patch is
-correct and shippable. But it adds a fourth concept to keep a third one honest, which is the shape of a
-mechanism worth removing rather than tuning.
-
-**The cost of not having it is already written down and already accepted.** `step-timeouts.ts`' header
-weighs it: *"a wedge found at five minutes rather than at 84 seconds is the same wedge found."* A missing
-prediction costs a slower first discovery on a machine that does not run yet. A wrong prediction costs a
-session.
+**A kill already carries its evidence.** `timedOutBecause` prints the class's deadline, the step's recorded
+cost and the machine both were taken on. A step that outgrows its rung on CI shows up as a kill with real
+numbers, which is the evidence a rung change needs. A missing prediction costs a slower first discovery; a
+wrong one cost a session.
 
 ## What goes
 
-- `stretches` on `Rung`, and `SLOWER_MACHINE`'s use by it (`scripts/lib/step-timeouts.ts`)
-- `declaredShare`, and `ChainStep.stretches` (`scripts/lib/chain-steps.ts`)
-- `ASSUMED_RUNGS`, and each rung's `measured` / `until` pair — the exactly-one-of invariant goes with them
-- `outgrownRungs` (`scripts/lib/step-timing.ts`) and `outgrownReport` (`scripts/lib/chain-output.ts`), with
-  their call site in `scripts/chain.ts`
-- the `stretches` arm of `timedOutBecause`, and `rungTerms` — a kill message then says what it was killed
-  at and what it costs healthy, with no projection
-- `scripts/measure-stretch.ts` and its `measure:stretch` npm script, plus its entry in the root `CLAUDE.md`.
-  Its whole output is a number to paste onto a `stretches` field, so it has no subject once that field is
-  gone — and it is the wrong instrument for the one factor this plan leaves open, since it fakes a smaller
-  box with `--maxWorkers` where that residue asks for a reading from a real runner
-- `chain-graph.spec.ts`' `declaredShare < 1` bound, the `ASSUMED_RUNGS` header check in
-  `chain-table.spec.ts`, and the `outgrownRungs` entries in `decision-mutations.spec.ts`
+| Item | Where |
+|---|---|
+| `Rung.stretches`, and each rung's `measured` / `until` pair (the exactly-one-of invariant goes with them) | `scripts/lib/step-timeouts.ts` |
+| `declaredShare`, `ASSUMED_RUNGS` | `scripts/lib/step-timeouts.ts` |
+| `ChainStep.stretches`, and its two declarations (1.94 on `test:integration` and `test:native`) | `scripts/lib/chain-steps.ts` |
+| `outgrownRungs` | `scripts/lib/step-timing.ts` |
+| `outgrownReport`, and its call site | `scripts/lib/chain-output.ts`, `scripts/chain.ts` (around line 717) |
+| `scripts/measure-stretch.ts` and the `measure:stretch` npm script | its whole output is a number to paste onto a `stretches` field |
+| `SLOWER_MACHINE` | `scripts/lib/core-budget.ts`: once `step-timeouts.ts` and `measure-stretch.ts` stop reading it, nothing does |
+| The `declaredShare` bound and the outgrown cases | `chain-graph.spec.ts`, `step-timing.spec.ts`, `chain-output.spec.ts` |
+| The `stretches`, `declaredShare` and `outgrownRungs` entries | `decision-mutations.spec.ts` |
+| The check holding `ci.yml`'s header to `ASSUMED_RUNGS`, and that header's scaling sentence | `chain-table.spec.ts`; `.github/workflows/ci.yml` lines 17–18 |
 
-Roughly 250 lines of source and 300 of spec.
+The docs that describe them change with them:
+- the root `CLAUDE.md`'s `measure:stretch` entry;
+- `docs/reference/pipeline-commands.md` (the `declaredShare` and `outgrownRungs` lines);
+- `docs/reference/recorded-files.md` (its list of readers that tolerate half-to-double);
+- `packages/repo-checks/CLAUDE.md`'s `chain-graph` row and its description of the bound;
+- the comment in `typecheck-legs.spec.ts` that cites the `ASSUMED_RUNGS` check.
+
+Already gone since this plan was first written: `timedOutBecause` lost its `stretches` arm and `rungTerms`, and
+now reports the bound and the recorded cost with no projection.
 
 ## What stays
 
-- **The three rungs and `rungForKind`.** The deadline is the whole point and nothing here touches it.
-- **`driftedSteps` and `driftReport`.** *Does the declared cost still describe this step*, half to double. No
-  projection, so it answers wherever it ran — which is why it keeps its rows anywhere and gates only its
-  advice.
-- **`scheduleMismatch` and `isMeasuredSchedule`.** Those are about whether a reading describes the table,
-  not about another machine. (They were three conditions behind `RECORDING_CONDITIONS` until the `seconds`
-  recorder went: its `wholeTable` member had no reader left that gated on it.)
-- **`ci.yml`'s `timeout-minutes`**, a round number nobody measured, which is the right shape for CI.
-
-## The question this leaves open, stated so it is not lost
-
-*"Has a step's cost grown enough that its deadline will kill it on CI?"* becomes unanswerable until CI runs.
-That is the deliberate trade. When the triggers go back on, the answer arrives as a kill with a real
-number — `timedOutBecause` already prints the deadline and the healthy cost, which is the evidence a rung
-change needs. If that proves too late, the thing to add back is **one measured factor from a real runner**,
-not three declared ones from an estimate.
+- **The four rungs and `rungForKind`.** The deadline is the point, and nothing here touches it.
+- **`driftedSteps` and `driftReport`:** does a declared cost still describe its step, half to double. No
+  projection, so it answers wherever it runs, and gates only its advice on the measuring machine.
+- **`scheduleMismatch`, `isMeasuredSchedule` and `MEASURED_ON`:** whether a reading describes the table, not a
+  prediction about another machine.
+- **`coresFor` and `POOL_WIDTH`.** `measure:stretch` used them, but so do the scheduler and the pools.
+- **`ci.yml`'s and `strict-chain.yml`'s `timeout-minutes`:** round numbers that bound a hang, the right shape
+  for CI.
 
 ## Verification
 
-- `npm run typecheck` — the deletions ripple through `chain.ts`, `chain-output.ts`, `step-timing.ts` and
-  four spec files; the compiler finds all of them.
-- `npx vitest run tests/ --root packages/repo-checks` — expect the total down by the deleted cases, and
-  **no other case to move**. One that does is a case that was reading the projection for something else.
-- `npm run chain -- --all` — the run must still report `driftReport`'s rows and the critical path, and now
-  reports no rung advisory at all. Compare against the baseline in this doc's prompting session: 167.4s,
-  zero advisories, critical path 98s.
-- **Mutation:** shorten a rung's `ms` and confirm the step is killed and `timedOutBecause` names the new
-  deadline. That is the one behaviour this change must not touch.
+- `npm run typecheck`: the deletions ripple through `chain.ts`, `chain-output.ts`, `step-timing.ts`,
+  `core-budget.ts` and the specs above, and the compiler finds every reader.
+- `npm run spec -- packages/repo-checks`: the total drops by the deleted cases and **no other case moves**. One
+  that does was reading the projection for something else.
+- `npm run chain -- --dry --all`: still prints the plan, the critical path and `driftReport`'s rows, and no rung
+  advisory.
+- **Mutation:** shorten a rung's `ms` and confirm a step is killed and `timedOutBecause` names the new deadline.
+  That is the one behaviour this change must not touch.
+- A strict run on the PR, since it edits the chain the gate runs on.
 
 ## What not to do
 
-- **Do not derive a rung from a cost.** `step-timeouts.ts`' header is about exactly this and the reasoning
-  survives the deletion intact: a class carries no machine, and thresholding a measurement re-couples the
+- **Do not derive a rung from a cost.** A class carries no machine, and thresholding a measurement couples the
   killer to the record.
-- **Do not keep `declaredShare` "just for the bound".** The bound is the projection. Without a factor there
-  is nothing to bound, and `driftedSteps` already watches whether a declaration describes its step.
-- **Do not replace it with a per-step deadline.** That is the coupling above, one step at a time.
+- **Do not keep `declaredShare` "just for the bound".** The bound is the projection. Without a factor there is
+  nothing to bound, and `driftedSteps` already watches whether a declaration describes its step.
+- **Do not replace it with a per-step deadline.** That is the same coupling, one step at a time.
 
-## The lesson worth keeping from the session that prompted this
+## The lesson worth keeping
 
-Before adding a watcher, check whether an existing one is silent because it is broken rather than because it
-is absent — a noisy check and a missing check look identical from the output. And before trusting a factor,
-ask whether it is a measurement of *this* step or of a different step's scaling. `suite`'s 4x was the second
-kind, and said so in its own comment.
+Before adding a watcher, check whether an existing one is silent because it is broken rather than because it is
+absent: a noisy check and a missing check look identical from the output. And before trusting a factor, ask
+whether it measures *this* step or a different step's scaling. `suite`'s 4x was the second kind, and said so in
+its own comment.
