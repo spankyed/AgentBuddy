@@ -170,14 +170,15 @@ it('cancels a frontend input check before retiring its compiler and workspace', 
   await builder.serveFrontend(() => {});
   fs.writeFileSync(path.join(pack, '.apack/frontend-input-hang'), '');
   const refused = expect(builder.build()).rejects.toMatchObject({ name: 'AbortError' });
-  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/frontend-input-requested'))).toBe(true));
+  // A bound on a hang: the build reaches its frontend input check after starting a worker, seconds on a two-core runner
+  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/frontend-input-requested'))).toBe(true), { timeout: 15_000 });
   const { pid, directory } = JSON.parse(fs.readFileSync(path.join(pack, '.apack/frontend-starting.json'), 'utf8'));
   await builder.close();
   await refused;
   expect(() => process.kill(pid, 0)).toThrow();
   expect(fs.existsSync(directory)).toBe(false);
   expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(true);
-});
+}, 15_000 + 15_000);
 
 it('refuses an unresponsive frontend freshness check and allows its later recovery', async () => {
   const { pack, builder } = fixture();
