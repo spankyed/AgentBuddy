@@ -52,33 +52,21 @@ export const STAMP_READERS = { poolStampFor } as const;
 /**
  * Set on a run whose verdict must not be recorded, and read here because this is where the records are kept.
  *
- * The chain's classification re-run is the one that needs it. A step that fails while the machine is busy is
- * run again alone, to tell contention from the code, and `chain.ts` deliberately writes no step stamp for that
- * re-run: *a step that passes alone has not passed the chain*, so the next chain does it again under
- * concurrency — the only condition that can reproduce the failure.
- *
- * **That promise does not survive a step that keeps a cache of its own, and a pool is one.** Read off the
- * stamps on 2026-10-02: `test:unit:host` failed sharing the machine, the re-run passed and wrote all eleven
- * project stamps at 15:20:10, the chain refused the step stamp as designed, and the next chain's step then ran
- * **zero tests** in 0.8s and recorded success at 15:20:15. Nothing stale was left for it to run, so the thing
- * that had failed was never attempted again, and the chain reported green over it. A green-on-retry nobody
- * sees is what the refusal exists to prevent; one level down, it was being recorded anyway.
+ * A shard runs part of each project's specs, so a pass says nothing about the whole project; recording its
+ * project stamps would let the next run skip specs it never ran (`test-unit-pool.ts` sets it for `--shard`).
  *
  * **Builds are deliberately not suppressed.** `ensurePackagesBuilt`'s stamps are read as a *precondition* by
  * other processes in the same run — `packagesBuiltOrRefuse` at every suite's collection — so a build that
- * happened and did not record it turns the re-run into a refusal about stale packages, which fails about the
+ * happened and did not record it turns the run into a refusal about stale packages, which fails about the
  * wrong thing. A build records a fact about files, which is true whoever asked for it; this suppresses a
- * verdict about behaviour, which is the chain's to record and not a diagnostic's.
+ * verdict about behaviour.
  */
 export const DIAGNOSTIC_RUN_ENV = 'APACK_DIAGNOSTIC_RUN';
 
 /**
  * Set by the chain on every step it spawns, and read here because this is where the stamps are kept.
  *
- * **It exists because a pass established alone is not the pass the chain is looking for.** That rule is
- * already written for the chain's own classification re-run — *"a step that passes alone has not passed the
- * chain"* — and `DIAGNOSTIC_RUN_ENV` enforces it by recording nothing. But that signal is one the chain
- * sets, so it covers only the chain's retry. A person doing the same retry by hand is not covered, and the
+ * **It exists because a pass established alone is not the pass the chain is looking for.** Without it the
  * sequence is three commands: `npm run test:unit:host` passes serially and writes eleven project stamps,
  * `npm run chain` finds its own step stamp stale and runs the pool, the pool finds every project fresh and
  * runs **zero tests**, and the step records green in 0.8s. Observed repeatedly on 2026-10-06. The suites

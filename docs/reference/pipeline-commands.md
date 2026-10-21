@@ -28,9 +28,7 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # **A run keeps every step's output** (scripts/lib/chain-evidence.ts), which is
                          # what makes the printing a convenience rather than the only copy — this is where
                          # the instruction never to pipe a backgrounded run used to be, a procedure
-                         # standing in for the mechanism. The classification retry was the sharper half: it
-                         # re-runs the failed step, so its output had no reader at all and the step script's
-                         # own log file was truncated by the attempt being diagnosed.
+                         # standing in for the mechanism.
                          # Afterwards it names a step that passed and is already stale again, with the
                          # inputs that differ and whether each moved while the step ran (an ordering to
                          # fix) or since. What each passing step cost joins a machine-local window
@@ -59,10 +57,6 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             both cache layers record the actual worker configuration. A value
                          #             above the box does not raise an individual pool's configured width
                          #   --e2e     run the E2E suite with the chain, ordered after test:smoke
-                         #   --no-classify  a step failing while the machine is busy is re-run alone, to
-                         #             rule the code out — a pass there rules out nothing else, so the line
-                         #             names the steps that overlapped it and claims no cause. The retry
-                         #             never stamps and the chain still exits 1. This turns that off
 ```
 
 ## `npm run measure and measure:loop`

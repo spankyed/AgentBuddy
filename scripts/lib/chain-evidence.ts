@@ -3,14 +3,11 @@
 //
 // **Two things a run keeps per step: what it said, and — when it failed — what it wrote.** `<step>.log` is
 // its output; `<step>.files/` is the files themselves. The second exists because the first is not always
-// enough: a step whose runner clears its output directory on the way in has what it wrote taken by the
-// chain's own classification retry, which is how a 60s teardown hang came to be unexplainable afterwards.
-// `keepsOnFailure` (`chain-steps.ts`) is where a step says which files those are.
+// enough: a step whose runner clears its output directory on the way in has what it wrote taken by the next
+// run of it. `evidence` (`chain-steps.ts`) is where a step says which files those are.
 //
-// **A failure's output was the one thing a run did not keep.** It was captured, printed once and dropped, so
-// its lifetime was terminal scrollback — which is why the guide had to tell people not to pipe a backgrounded
-// run, a procedure standing in for a mechanism. Worse, the chain's own classification retry re-runs the
-// failed step and its output went nowhere at all, so the diagnostic threw away the cleanest signal there is.
+// Without this a failure's output would live only in terminal scrollback, so piping or backgrounding a run
+// would lose it.
 //
 // It is a module of its own because `chain.ts` runs the chain on import (a top-level `await main()`), so a
 // spec can only reach these decisions by their being here — the same reason `chain-stamps.ts`,

@@ -19,7 +19,7 @@
  */
 export const CHAIN_FLAGS = {
   values: ['cores', 'only', 'shard', 'job'],
-  booleans: ['all', 'dry', 'e2e', 'no-classify', 'wait', 'strict'],
+  booleans: ['all', 'dry', 'e2e', 'wait', 'strict'],
 } as const;
 
 /** Each flag as it is written on a command line and in the docs */

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps } from '../../../scripts/lib/chain-steps.ts';
 import { withRecordedSeconds } from '../../../scripts/lib/step-durations.ts';
-import { briefly, classifyLine, criticalPathLine, pathSavingsLine, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, criticalPathLine, pathSavingsLine, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -410,98 +410,6 @@ describe('howLong', () => {
 
   it('says nothing for a step with no reading here, rather than reporting undefined', () => {
     expect(howLong(undefined, 47_000, 10)).toBe('');
-  });
-});
-
-describe('shouldClassify', () => {
-  const under = { ranAlone: false, timedOut: false, optedOut: false };
-
-  it('re-runs a step that failed while others were running', () => {
-    expect(shouldClassify(under)).toBe(true);
-  });
-
-  // One question, asked of the schedule rather than of the table. It took a lane count and an `exclusive` read off
-  // the step's declared mutexes, and those answered it only while a mutex was global: `conflictsOf` is
-  // non-empty for twelve steps that run beside two dozen others, so all twelve skipped the re-run. A
-  // serial run needs no clause of its own — it overlaps nothing, which is this one
-  it('does not, when nothing overlapped it', () => {
-    expect(shouldClassify({ ...under, ranAlone: true })).toBe(false);
-  });
-
-  it('does not re-run a step that was killed, whose budget it would spend again', () => {
-    expect(shouldClassify({ ...under, timedOut: true })).toBe(false);
-  });
-
-  it('does not when asked not to', () => {
-    expect(shouldClassify({ ...under, optedOut: true })).toBe(false);
-  });
-});
-describe('classifyLine', () => {
-  /**
-   * The dangerous output. A reader skimming a failing run must not take this for the chain being fine, so the
-   * sentence says the chain fails; the exit code stays 1, and the retry writes no stamp, in chain.ts.
-   */
-  it('says the chain still fails when the step passed alone', () => {
-    const line = classifyLine({ code: 0, ms: 47_200 });
-
-    expect(line).toContain('passed in 47.2s');
-    expect(line).toContain('The chain still fails.');
-  });
-
-  it('leaves the original cause unresolved when a retry passes', () => {
-    const line = classifyLine({ code: 0, ms: 47_200 }, ['test:unit:host']);
-
-    expect(line, 'the verdict it has no evidence for').not.toContain('contention or a flake');
-    expect(line).toContain('the original failure remains unresolved');
-    expect(line).not.toContain('the code is ruled out');
-    expect(line, 'and that it cannot choose between what is left').toContain('neither does this message');
-  });
-
-  // What the schedule recorded, rather than what the budget permitted — which is why this was a guess before
-  it('names the steps that actually ran beside it', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, ['lint:check', 'typecheck:renderer']);
-
-    expect(line).toContain('It ran beside lint:check, typecheck:renderer the first time.');
-  });
-
-  it('counts the rest rather than listing a whole schedule', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, ['a', 'b', 'c', 'd', 'e']);
-
-    expect(line).toContain('beside a, b, c and 2 others the first time');
-  });
-
-  /**
-   * A step that failed while already alone is not re-run (`shouldClassify`), so an empty set reaching here is
-   * the harness's case rather than the chain's — and it must still read as a sentence rather than trailing off.
-   */
-  it('says so when nothing ran beside it', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, []);
-
-    expect(line).toContain('nothing here was beside it');
-    expect(line, 'and still refuses the verdict').toContain('neither does this message');
-  });
-
-  it('says the failure is real when it failed alone too', () => {
-    expect(classifyLine({ code: 1, ms: 48_100 })).toContain('failed again (exit 1) in 48.1s — the failure is real.');
-  });
-
-  it('reports a timeout alone without inferring stalled work or absence of outside contention', () => {
-    const line = classifyLine({ code: 1, ms: 240_000, timedOut: true });
-    expect(line).toContain('timed out after 240.0s');
-    expect(line).toContain('No other chain step overlapped this retry');
-    expect(line).toContain('slow progress and stalled work remain possible');
-    expect(line).not.toMatch(/wedged|not crowded/);
-  });
-});
-
-describe('howLong, once the chain answers the question itself', () => {
-  it('stops suggesting the run it is about to make', () => {
-    const slow = 27;
-
-    expect(howLong(slow, 61_000, 10, false)).toContain('--cores 1');
-    expect(howLong(slow, 61_000, 10, true)).not.toContain('--cores 1');
-    // and still says what it cost, which is the half that does not become redundant
-    expect(howLong(slow, 61_000, 10, true)).toContain('against 27s usually on a 10-core budget');
   });
 });
 

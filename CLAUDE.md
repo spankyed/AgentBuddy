@@ -550,14 +550,12 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # doc edit runs nothing and a one-package edit runs that package's suite. The E2E
                          # suite is opt-in rather than a gate.
                          # **Every step that ran leaves its output** in this run's own directory, named on
-                         # the last line (node_modules/.cache/apack-chain/runs/<started>Z-<pid>/), with the
-                         # retry of a failed step beside its first attempt rather than over it. So piping a
+                         # the last line (node_modules/.cache/apack-chain/runs/<started>Z-<pid>/). So piping a
                          # run is harmless and the output is still answerable after the terminal has gone.
                          # Beside each `<step>.log` of what it said, a **failed** step's `<step>.files/`
-                         # holds what it wrote (`keepsOnFailure` and `evidence`, scripts/lib/chain-steps.ts), copied in
-                         # before the re-run — which is what would overwrite it, since a runner that clears
-                         # its output directory on the way in takes the files of the attempt being
-                         # diagnosed. That is how an app's own log survives the retry.
+                         # holds what it wrote (`evidence`, scripts/lib/chain-steps.ts), copied in before the
+                         # next run's runner clears its output directory — which is how an app's own log
+                         # survives.
                          # The newest `KEEP_RUNS` of them are kept, the writer pruning the rest, and a
                          # cached run writes no directory at all, having run nothing.
                          # **One run per checkout**, held by a lock beside the stamps
@@ -580,7 +578,6 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #              and a step declares its own width (POOL_WIDTH, core-budget.ts). The
                          #              budget also caps Vitest workers; pool cache keys include that cap
                          #   --e2e      run the E2E suite with the chain, ordered after test:smoke
-                         #   --no-classify  do not re-run a step that failed while the machine was busy
                          #   --strict   fail the run when a step's inputs moved **while it ran** — it read a
                          #              tree that no longer exists, so its pass establishes nothing. Always
                          #              reported either way; this decides whether the chain stops a merge

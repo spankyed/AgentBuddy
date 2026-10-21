@@ -50,7 +50,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
       - name: Producers
-        run: npm run chain -- --strict --all --cores 2 --no-classify --job producers | tee "$RUNNER_TEMP/strict-chain.log"
+        run: npm run chain -- --strict --all --cores 2 --job producers | tee "$RUNNER_TEMP/strict-chain.log"
       # A tarball keeps file modes and symlinks, which the stamps and the CLI bundle depend on. pax keeps
       # sub-second modification times, which the default format truncates to whole seconds: a build records
       # the mtimeMs its compilers read (Tailwind stats the files it scans), so a truncated one refuses
@@ -127,7 +127,7 @@ jobs:
           APACK_STRICT_JOB: ${{ matrix.job }}
           APACK_STRICT_SHARD: ${{ matrix.shard }}
         run: |
-          args=(--strict --all --cores 2 --no-classify --job "$APACK_STRICT_JOB")
+          args=(--strict --all --cores 2 --job "$APACK_STRICT_JOB")
           if [[ -n "$APACK_STRICT_SHARD" ]]; then args+=(--shard "$APACK_STRICT_SHARD"); fi
           npm run chain -- "${args[@]}" | tee "$RUNNER_TEMP/strict-chain.log"
       - name: Retain validation evidence

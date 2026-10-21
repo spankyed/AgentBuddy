@@ -360,81 +360,12 @@ export function howLong(
   usually: number | undefined,
   ms: number,
   budget: number,
-  /** Whether the chain is about to re-run the step alone, in which case suggesting it reads as if no answer followed */
-  classifying = false,
 ): string {
   if (usually === undefined) return '';
   const where = ` after ${(ms / 1000).toFixed(1)}s, against ${usually}s usually on ${cores(budget)}`;
-  return !classifying && ms / 1000 > usually * 2
+  return ms / 1000 > usually * 2
     ? `${where}\n  — over twice its usual cost; try \`npm run chain -- --cores 1\``
     : where;
-}
-
-/** Up to three names, then a count: a line naming twenty steps is a line nobody reads to the end */
-const listOf = (names: readonly string[], shown = 3): string => {
-  const [head, rest] = [names.slice(0, shown), names.length - shown];
-  return rest > 0 ? `${head.join(', ')} and ${rest} other${rest === 1 ? '' : 's'}` : head.join(', ');
-};
-
-/**
- * Whether a failed step is worth re-running by itself.
- *
- * The chain is the only thing placed to ask whether a failure reproduces: it knows which step failed,
- * and `schedule` drains what is running before it returns, so at that moment the machine is genuinely quiet.
- * The reader can do it too, which is what the suggestion in `howLong` is for — but they have to decide to, and
- * the evidence is gone by the next run.
- */
-export function shouldClassify(run: {
-  /**
-   * Nothing overlapped this step, so running it alone proves nothing — **observed, not predicted**.
-   *
-   * It was `exclusive`, taken from the step's declared mutexes, which answered a different question the
-   * moment those became derived: `conflictsOf` is non-empty for twelve steps that each run beside two
-   * dozen others, and all twelve skipped this re-run. `schedule` records what actually overlapped
-   * (`ScheduleResult.peers`), and that is the only place the answer exists. The admission limit is gone from
-   * the predicate with it: a serial run overlaps nothing, so it is already covered.
-   */
-  readonly ranAlone: boolean;
-  /**
-   * A wedged step is not re-run: its deadline is a declared class (`step-timeouts.ts`), so the retry spends
-   * that whole class again — ten minutes for a `suite` step — to reach a message `classifyLine` can already
-   * write from what the first run proved.
-   */
-  readonly timedOut: boolean;
-  readonly optedOut: boolean;
-}): boolean {
-  return !run.ranAlone && !run.timedOut && !run.optedOut;
-}
-
-/**
- * Describe the isolated retry and recorded overlap without assigning a cause.
- * A passing retry neither rules out nondeterministic code nor clears the original failure.
- * The chain retains its failed exit status and records no successful stamp for the retry.
- */
-export function classifyLine(
-  retry: { readonly code: number; readonly ms: number; readonly timedOut?: true },
-  /**
-   * The steps that actually overlapped the failing one (`ScheduleResult.peers`), which is what the pass arm
-   * names instead of calling the whole thing contention. `schedule` records them at dispatch, so this is what
-   * happened rather than what the budget permitted.
-   */
-  peers: readonly string[] = [],
-): string {
-  const took = `${(retry.ms / 1000).toFixed(1)}s`;
-  if (retry.timedOut) {
-    return `\nre-ran it alone: timed out after ${took}. No other chain step overlapped this retry; `
-      + 'slow progress and stalled work remain possible. Inspect its output before retrying.';
-  }
-  if (retry.code !== 0) return `\nre-ran it alone: failed again (exit ${retry.code}) in ${took} — the failure is real.`;
-  // What it ran beside, which is the fact; `and N others` keeps a 24-step line readable while still saying how
-  // many there were, since "three of them" and "twenty of them" are different situations to look into
-  const beside = peers.length === 0
-    ? 'It ran alone the first time too, so nothing here was beside it.'
-    : `It ran beside ${listOf(peers)} the first time.`;
-  return `\nre-ran it alone: passed in ${took} — the original failure remains unresolved. ${beside}`
-    + ' Either one of those interfered, or something this run cannot see did — a tool outside the chain, an'
-    + ' editor, another checkout — or the step is nondeterministic on its own. Running it alone does not say'
-    + ' which, and neither does this message. The chain still fails.';
 }
 
 /**

@@ -58,10 +58,8 @@ export interface ChainStep {
   /**
    * What this step leaves on disk that says *why* it failed, kept before anything can overwrite it.
    *
-   * **The classification retry is what overwrites it**, which is why this is not merely nice to have: the
-   * retry runs the step again, and a runner that clears its output directory on the way in — Playwright
-   * does — overwrites what the attempt being diagnosed wrote. A teardown that hung for 60s was
-   * unexplainable afterwards for exactly that reason: the app's own log had been replaced by the retry's.
+   * The next run of the step is what overwrites it: a runner that clears its output directory on the way
+   * in — Playwright does — takes what the failed attempt wrote, which is often the app's own log.
    *
    * **Declared rather than taken from `outputs`.** Most outputs are build product — `build:runtime` and
    * `build:default-setup` write hundreds of megabytes of it — which explains no failure and would be copied on every
@@ -1077,7 +1075,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:smoke', timeout: 'suite',
     // The fixture writes the app's stdout and stderr here (`app-<workerIndex>.log`), which is the only
     // account of why an app did not start or did not close. Playwright clears the directory on the way in,
-    // so the retry would take it
+    // so the next run would take it
     evidence: ['.apack/tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       ...SOURCE_RUNNER, ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },

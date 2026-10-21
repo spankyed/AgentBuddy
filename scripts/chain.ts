@@ -51,9 +51,9 @@ import { readStepSeconds, recordStepDurations, withRecordedSeconds } from './lib
 import { asCount, parseFlags } from './lib/measure.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { measurementsFrom, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
-import { CHAIN_RUN_ENV, CHAIN_CORES_ENV, DIAGNOSTIC_RUN_ENV, poolWorkerLimit, poolForStep, poolDurationLines } from './lib/unit-pool.ts';
+import { CHAIN_RUN_ENV, CHAIN_CORES_ENV, poolWorkerLimit, poolForStep, poolDurationLines } from './lib/unit-pool.ts';
 import { parseShard, selectOnly, shardArg, STRICT_JOBS, strictJobSteps, type Shard, type StrictJob } from './lib/chain-only.ts';
 import { TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -207,7 +207,7 @@ function whatMoved(
  * the two unit pools did exactly that. Only steps that declare them get any, because most steps' commands
  * would reject an argument they do not know.
  */
-async function run(step: string, timeout: TimeoutClass, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env, label = step): Promise<Result> {
+async function run(step: string, timeout: TimeoutClass, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env): Promise<Result> {
   const args = ['run', step];
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
   const withForce = force.length === 0 ? args : [...args, '--', ...force];
@@ -215,11 +215,8 @@ async function run(step: string, timeout: TimeoutClass, force: readonly string[]
   const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, timeoutMsFor(timeout), { env });
   const result = { step, ms, code, output, timedOut };
   // Here rather than where a step's result is read, because this is the one place a step's bytes exist and
-  // every caller passes through it — the never-cached steps, `runAndStamp`, and the classification retry,
-  // whose output had no reader at all. Written as the step ends, so a run that is interrupted keeps what
-  // finished. `label` is the retry's one reason to differ from the step: it must not land on the first
-  // attempt's file, which is the overwrite that made the chain's own diagnostic destructive.
-  evidence?.keep(label, result);
+  // every caller passes through it. Written as the step ends, so a run that is interrupted keeps what finished.
+  evidence?.keep(step, result);
   return result;
 }
 
@@ -251,7 +248,7 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
  * What a step is spawned with. `CHAIN_RUN_ENV` on every one of them, because a step that caches inside
  * itself has to know whose run this is: a pool's per-project stamps record a pass under the chain's
  * concurrency separately from one established alone, and the chain is the only thing that can say which
- * this is. The classification re-run gets it too and records nothing anyway, through `DIAGNOSTIC_RUN_ENV`.
+ * this is.
  */
 const envFor = (step: ChainStep, budget: number): NodeJS.ProcessEnv => ({
   ...process.env,
@@ -347,9 +344,6 @@ async function main(): Promise<void> {
   // expected to be cached is not. It reports each step against the tree as it stands, so the verdicts after
   // the first step that would run are what that step would produce nothing for: a plan, not a prediction.
   const dry = args.flags.has('dry');
-  // The retry costs the failing step's own time before the verdict appears, and most failures are the ordinary
-  // kind where the reader already knows what they broke
-  const noClassify = args.flags.has('no-classify');
   // The E2E suite is a harness for driving the app rather than a gate, so it runs when asked for
   const e2e = args.flags.has('e2e');
   // A step whose inputs moved while it ran verified nothing, which is always reported; this decides whether
@@ -566,69 +560,25 @@ async function main(): Promise<void> {
 
   // Every step is asked about at this one moment, with nothing left running, so one reading of the tree answers
   // both halves: whether each step is stale, and which of its inputs moved. A fresh sweep, never the dry one.
-  //
-  // Read before the retry below, which is a diagnostic rather than part of the run and may write into the tree:
-  // a re-run `build:default-setup` rewrites PACK_OUTPUTS. No passed step reads a failed step's outputs today — every reader
-  // of one declares `needs` on it, and the scheduler skips a failed step's dependents — but `needs` is ordering
-  // and `inputs`/`outputs` are caching, so nothing makes them agree. This does not depend on their agreeing.
   const sweep = freshnessSweep();
 
   // Read before this run's readings join the window, so a failure is compared with what the step usually costs
   const recorded = readStepSeconds(REPO_ROOT);
-  let classifyMs = 0;
   const failed = outcome.failed === undefined ? undefined : results.find((r) => r.step === outcome.failed);
   if (failed) {
     const step = steps.find((s) => s.name === failed.step)!;
-    // The names, not just whether there were any: `classifyLine` names them rather than calling the whole
-    // thing contention, and `shouldClassify` wants only the count
-    const beside = [...outcome.peers.get(failed.step) ?? []];
-    const classifying = shouldClassify({
-      // What the schedule saw, not what the table predicts: `conflictsOf(step).length > 0` stood here and
-      // meant "has a mutex partner", which twelve steps do while running beside two dozen others
-      ranAlone: beside.length === 0,
-      timedOut: failed.timedOut === true,
-      optedOut: noClassify,
-    });
     const why = failed.timedOut
       ? timedOutBecause({ what: step.name, timeout: step.timeout, seconds: recorded.get(step.name) })
-      : `${step.name} failed (exit ${failed.code})${howLong(recorded.get(step.name), failed.ms, budget, classifying)}`;
+      : `${step.name} failed (exit ${failed.code})${howLong(recorded.get(step.name), failed.ms, budget)}`;
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
-    // **Before the retry, which is what would take them.** The retry runs the step again, and a runner that
-    // clears its output directory on the way in overwrites what the attempt being diagnosed wrote — the
-    // same reason the sweep above is read here rather than after. Kept on any failure, not only a
-    // classified one: a step that ran alone or timed out leaves the same files and nobody re-runs it.
     const left = evidence?.keepFiles(step.name, keptOnFailure(step)) ?? [];
     if (left.length > 0) console.log(dim(`  kept what it left behind: ${left.join(', ')}`));
-    if (classifying) {
-      // `run`, never `runAndStamp`: a step that passes alone has not passed the chain, and stamping it here
-      // would let the next run skip the thing that just failed. Nothing else is executing — `schedule` drains
-      // before it returns — so this is the step by itself, which is the whole question being asked.
-      //
-      // Demonstrated rather than assumed, with a `build:default-setup` that fails then passes: the retry reports passing,
-      // and the next chain still says `build:default-setup  no stamp — it has not run yet, or the last run failed`.
-      //
-      // **Refusing the chain's own stamp is not enough for a step that caches inside itself**, which the three
-      // pool steps do. `DIAGNOSTIC_RUN_ENV` is how the refusal reaches them: measured 2026-10-02, a crowded
-      // failure of `test:unit:host` was re-run here, the re-run wrote all eleven project stamps, and the next
-      // chain ran zero tests and called the step green. `recordsVerdict` (`scripts/lib/unit-pool.ts`) carries
-      // the evidence and why a *build* under the same re-run still records.
-      const retry = await run(step.name, step.timeout, [...all ? step.forceArgs ?? [] : [], ...shardArgs],
-        { ...envFor(step, budget), [DIAGNOSTIC_RUN_ENV]: '1' }, `${step.name}.retry`);
-      // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
-      // land on the one number a reader compares between runs.
-      classifyMs = retry.ms;
-      // The retry's own, beside the first attempt's rather than over them — a re-run that passed and one
-      // that failed wrote different files, and which it was is the question being asked
-      evidence?.keepFiles(`${step.name}.retry`, keptOnFailure(step));
-      console.log(classifyLine(retry, beside));
-    }
   }
 
   const skipped = cached ? ` (${cached} of ${steps.length} cached)` : '';
-  // Measured, not declared. Reporting the floor from `seconds` made it wrong by the amount the table had
-  // drifted — 109s against the 125.8s those same four steps actually took in that run.
-  // `measurementsFrom`, not the results: a killed step's elapsed time is its deadline, and every reader below
-  // — the floor, the drift report, the rung report — would take that for a cost
+  // Measured by this run, so the floor is what it actually waited on
+  // `measurementsFrom`, not the results: a killed step's elapsed time is its deadline, and the floor and the
+  // duration window would take that for a cost
   const measuredMs = measurementsFrom(results);
   const ran = steps.filter((step) => measuredMs.has(step.name))
     .map((step) => ({ ...step, seconds: Math.round((measuredMs.get(step.name) ?? 0) / 1000) }));
@@ -637,9 +587,6 @@ async function main(): Promise<void> {
   const floor = measuredPath === ''
     ? ''
     : `\n${measuredPath}${measuredSavings === '' ? '' : `\n  ${measuredSavings}`}`;
-  // Named rather than folded in, so the verdict's number stays comparable between runs and the wall time still
-  // adds up — a reader who times the command should not find seconds the chain does not account for.
-  const reran = classifyMs > 0 ? ` (+${secs(classifyMs)} re-run)` : '';
   // `voided` is filled by the stale block below, which runs before this is printed. Kept as a function rather
   // than a const for that reason: the verdict is composed here and the facts it needs arrive after
   const verdictText = (): string => {
@@ -691,7 +638,7 @@ async function main(): Promise<void> {
     recordStepDurations(REPO_ROOT, new Map([...measuredMs].filter(([step]) => passed.has(step))));
   }
 
-  console.log(`\n${verdictText()} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
+  console.log(`\n${verdictText()} in ${secs(Date.now() - started)}${skipped}${` on ${cores(budget)}`}${floor}`);
   // After the verdict, so it is the last thing on screen and a reader who scrolled past everything else
   // still has it. Only when there is some: a fully cached run ran nothing and made no directory.
   if (evidence !== undefined && evidence.kept() > 0) console.log(dim(evidenceLine(evidence.dir, evidence.kept())));
