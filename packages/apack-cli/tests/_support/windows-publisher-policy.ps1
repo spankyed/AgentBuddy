@@ -2,6 +2,9 @@ param([Parameter(Mandatory=$true)][string]$Root)
 $ErrorActionPreference='Stop'
 if(Test-Path $root){throw 'Preserve existing signed-fixture work; choose a new run directory'}
 $tools=@{}
+# .NET rather than Get-FileHash: that cmdlet is a script function in Windows PowerShell's Utility module, which an
+# inherited PowerShell 7 module path leaves unloadable, as on a hosted runner
+function Get-Sha256([string]$file){$sha=[Security.Cryptography.SHA256]::Create();try{-join ($sha.ComputeHash([IO.File]::ReadAllBytes($file))|ForEach-Object{$_.ToString('x2')})}finally{$sha.Dispose()}}
 foreach($toolName in @('cl.exe','mt.exe','makecat.exe')){$tools[$toolName]=(Get-Command $toolName -ErrorAction Stop).Source}
 $extractor=Get-Item (Join-Path (Split-Path $tools['mt.exe']) 'pktextract.exe')
 New-Item -ItemType Directory $root | Out-Null
@@ -68,7 +71,7 @@ try {
   if($verified.SignerInfos.Count -ne 1 -or [Convert]::ToBase64String($verified.ContentInfo.Content) -ne $content){throw 'Catalog signing changed content or signer count'}
   [IO.File]::WriteAllBytes($catalog[0].FullName,$encoded)
   $identity="$assemblyName,version=`"$($part.version)`",processorArchitecture=`"amd64`",publicKeyToken=`"$token`",type=`"$assemblyType`""
-  $entries.Add(@{folder=$part.folder;identity=$identity;manifest=(Join-Path $directory.FullName $manifest);catalog=$catalog[0].FullName;catalogSha256=(Get-FileHash $catalog[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()})
+  $entries.Add(@{folder=$part.folder;identity=$identity;manifest=(Join-Path $directory.FullName $manifest);catalog=$catalog[0].FullName;catalogSha256=(Get-Sha256 $catalog[0].FullName)})
  }
  @{status='prepared-only';name=$name;token=$token;certificateThumbprint=$certificate.Thumbprint;entries=$entries;tools=$tools;extractor=$extractor.FullName} | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 "$root\prepared.json"
 } finally {
