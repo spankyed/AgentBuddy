@@ -1,269 +1,295 @@
-> **Deferred.** Retained for future prioritization; this move does not schedule or authorize implementation.
+> **Deferred.** Retained for future prioritization; this document does not schedule or authorize
+> implementation.
 
 # Goal: a frontend actor is a surface, not a plugin
 
-> **Written in session** `36f122d9-3a1e-40ef-988d-40b2574fc098` (Claude Code, 2026-09-26). Resume it with `claude -r 36f122d9-3a1e-40ef-988d-40b2574fc098`.
-
-```
+```text
 # Goal: a frontend actor is a surface, not a plugin
 
-Implement docs/goals/goal-plugins-to-surfaces.md on a branch cut from master.
-Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
-reopen them or stop to ask. Decision 2 lists what keeps the name `plugin` — read it before any
-rename, and never run a blind find-and-replace over `plugin`.
-Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
-going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
-test, fixture, template and doc in the same change, and fix forward. Stored user data is the exception:
-it moves with migrations, and Phase 4 is that exception.
+Implement docs/goals/goal-plugins-to-surfaces.md. Follow CLAUDE.md and docs/AGENTS.md.
+Read Scope, Current handoff, Decisions, Phases and Constraints before continuing.
+The survey was made at 507b3b747 on master (2026-10-21); inspect current code before relying on it.
+
+Decision 2 lists the three vocabularies that keep the word `plugin`, one of which is published API
+and one of which is stored user data. Read it before any rename. Never run a find-and-replace over
+`plugin`.
 
 Finished when:
-- Phases 1–5 are implemented and each meets its "Done when"; every new guard, helper or test is
-  mutation-checked.
-- The frontend actor concept is named `surface` throughout: `Surface`, `defineSurface`, `useSurface`,
-  `SurfaceDefinition`, `surfaceId`, `features[].surface`, `getRegisteredSurfaces`, `sendToSurface`.
-- `grep -rIn '\bplugin' packages/ scripts/ docs/ --exclude-dir=node_modules --exclude-dir=dist` returns
-  only the names Decision 2 keeps (tiptap/ProseMirror, Vite/rollup/PostCSS) and `docs/archive`.
-- A guard fails when the frontend-actor concept is named `plugin` again, and passes for the kept names.
-- `AppState.surfaceVisibility` and `AppState.lastActiveSurface` hold what the old fields held, for a
-  data dir written before this change, proven by a migration spec.
-- npm run typecheck; npm run api:check; npm run schema:check; npm run test:unit;
-  npm run build:default-setup; npm run test:external-pack; npm test.
-- A final summary: phase → done/deferred, evidence, and the conventional choices made.
+- Every phase's "Done when" holds on current source, and each new guard is mutation-checked.
+- The frontend-actor concept is named `surface` throughout: `Surface`, `SurfaceDeclaration`,
+  `useSurface`, `surfaceId`, `features[].surface`, `getRegisteredSurfaces`, `sendToSurface`.
+- A guard fails when that concept is named `plugin` again, and passes for Decision 2's three groups.
+- What the two `AppState` fields and the two window-storage keys held is still held, proven by a
+  migration spec.
+- `npm run chain` passes.
+- Record Outcome, archive this document, repair links and commit closure.
 
-Never:
-- commit, stage, push or tag unless the user asks in this session. When asked, commit in logical
-  chunks (conventional messages, no Co-Authored-By or session lines) with `git commit -- <paths>`,
-  and check `git diff --cached` first: something outside the session stages files.
-- npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
-- pkill/killall Electron or node; launch the app outside the test env without an isolated
-  APACK_USER_DATA_DIR.
-- run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
-  metadata.
-- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
-- add backward-compat shims or loosen a failing assertion instead of investigating.
-- rename a tiptap/ProseMirror or Vite/rollup/PostCSS plugin (Decision 2), or rename `pack` — a pack is
-  the extension unit and is not what this goal touches.
-- rename `AppState` fields without the migration in Phase 4: those are stored user data.
+Commit usable checkpoints as you go. Do not expand or reduce scope without user authorization.
 ```
 
-## Background (2026-09-26, at `8b9d62114`)
+## Scope
 
-**`plugin` names three unrelated things.** Counted across `packages/`, `docs/`, `scripts/` and `tests/`,
-excluding `node_modules` and `dist`: **6050** case-insensitive references to `plugin`. They split into
+Rename the frontend-actor concept from `plugin` to `surface`, in code, in the manifest, on the wire, in
+stored data and in the docs. Excluded: `pack`, the areas a surface fills (`canvas`, `panel`, `chat`,
+`settings`), and the three vocabularies in Decision 2.
 
-- the frontend actor concept — the thing this goal renames;
-- **77** references to tiptap/ProseMirror plugins (`TiptapPlugin`, `tiptapPluginRegistry`), which are
-  genuinely plugins of the editor;
-- Vite, rollup and PostCSS plugins in build configs, which are genuinely plugins of the bundler.
+Surveyed 2026-10-21 at `507b3b747`.
 
-It also collides with the idea one level up: a **pack** is what a user installs, so a pack is the
-extension. Naming a frontend actor a "plugin" puts the extension vocabulary on the wrong level.
+## Current handoff
 
-**What the thing actually is.** `Plugin.id` is a `FeatureRef` (`<packId>/<featureId>`), so a frontend
-plugin is the *frontend half of a feature* — the backend half being its system. It owns an XState
-machine and fills named areas:
+Not started. No `surface` identifier exists in `packages/` or `scripts/`; the concept is spelled
+`plugin` everywhere. Phase 1 is the next deliverable and depends on nothing.
 
-```ts
-export interface Plugin {
-  id: FeatureRef;      // `<packId>/<featureId>`, the host's own under `host`
-  label: string;
-  isPinned?: boolean;
-  state: AnyStateMachine;
-  icon?: Component;
-  canvas?: Component | RouteComponents;
-  panel?: Component;
-  fallbackPanel?: { label: string; isShown(…): boolean; toggle: { type: string } };
-  chat?: Component;
-  settings?: Component;
-  hotkeys?: PluginHotkeyDefinition[];
-  options?: { headerClass?: string };
-}
-```
+## Background
 
-**Why not `screen`.** It was the first candidate and it is wrong here, recorded so it isn't reopened:
+**`plugin` names three unrelated things, and collides with a fourth one level up.** Counted over
+`packages/`, `scripts/`, `tests/` and `drive/`, excluding Markdown and JSON: **6503 occurrences of 454
+distinct identifiers** containing `plugin`. Of those, **300 occurrences of 72 identifiers (4.6%) belong
+to another vocabulary** and must not move — tiptap/ProseMirror editor plugins, and Vite/rollup/PostCSS/
+esbuild bundler plugins. Including Markdown, the word appears on 5712 tracked lines in 654 files.
 
-- The platform's own hierarchy is screen → window → content (`screen.getAllDisplays()` in Electron,
-  `window.screen` on the web). A screen contains windows. "Screens in windows" inverts it.
-- This app has multiple windows for real: `new BrowserWindow` twice in
-  `packages/main/src/modules/window-manager/WindowManager.ts`, and popout is wired through
-  `renderer/src/main.ts`, `views/App.vue`, `views/WebApp.vue`, `views/layout/Toolbar.vue`,
-  `PopoutTitlebar.vue` and `ToolbarPluginContextMenu.vue`. A destination gets its own window today.
-- `Screen` is already taken in the opposite sense: `SplashScreen`, `createSplashScreen`,
-  `modules/splash-screen/` — a thing that *fills* a window.
+The collision one level up is with `pack`: a pack is what a user installs, so a pack is the extension.
+Calling a feature's frontend half a "plugin" puts extension vocabulary one level too low.
 
-`view` is the best English and has precedent, but it is occupied: 383 bare `view` plus 44 `View`,
-including `PackRegistryView` and `FePackRegistryView`, which are core SDK types. `surface` is free in
-practice — its 26 hits are the English verb ("we still want to surface the merge error") plus
-`surfaceControlRequests` in one Claude Code service. No type, no identifier, nothing structural.
+**What the thing actually is.** A plugin's id is a `FeatureRef` (`<packId>/<featureId>`), so it is the
+*frontend half of a feature* — the backend half being its system. It is declared as data in
+`apack.json` under `features.<id>.plugin` (`PluginDeclaration`,
+`packages/apack-sdk/src/framework/plugin-declaration.ts`), which codegen binds to an XState machine and
+components (`Plugin`, `packages/apack-sdk/src/fe/plugin.ts:53`). There is no `definePlugin`: a pack
+declares, and the host binds.
 
-**What is stored, and therefore not a code rename.** `AppState` (`packages/apack-host/src/app-state/index.ts`)
-holds two fields naming the concept, in the user's database:
+**Why `surface`.** It is shown in a window, or popped out into one. It says nothing about containment,
+so multiple windows never make it read backwards, and it pairs with `system` — both abstract, neither
+implying the other. As an identifier it is free: 86 occurrences in code, all the English verb in prose
+("we still want to surface the merge error") plus `surfaceControlRequests` in one Claude Code service
+option and `surfaceEdgeError`. One capitalized `Surface`, in a comment.
 
-```ts
-/** The plugins whose sidebar tab the user showed or hid, by ref. */
-pluginVisibility: Record<string, boolean>;
-/** The plugin the user last had open, by ref; a window opens on it once it connects */
-lastActivePlugin?: string;
-```
+**Why not `screen` or `view`.** Recorded so they are not reopened.
 
-There is a working precedent for the frontend half of this:
-`packages/apack-host/src/fe/migrations/0.4.0.ts` already removed a `localStorage` key
-(`apack-last-active-plugin`) when that state moved host-side. `runFrontendMigrations()` runs
-localStorage migrations before the actor reads its keys.
+- `screen`: the platform's hierarchy is screen → window → content (`screen.getAllDisplays()`,
+  `window.screen`). A screen contains windows, so "screens in windows" inverts it. This app has
+  multiple windows for real — `new BrowserWindow` twice in
+  `packages/main/src/modules/window-manager/WindowManager.ts`, with popout wired through the renderer's
+  `main.ts`, `App.vue`, `WebApp.vue`, `Toolbar.vue`, `PopoutTitlebar.vue` and
+  `ToolbarPluginContextMenu.vue` — and `Screen` is already taken in the opposite sense
+  (`SplashScreen`, `modules/splash-screen/`: a thing that *fills* a window).
+- `view`: the best English, and occupied — 1334 bare `view` and 96 `View` in code, including
+  `PackRegistryView` and `FePackRegistryView`, which are core SDK types.
 
-**What crosses the wire.** `sendToPlugin` stamps `pluginId` onto every backend→frontend event, the
-renderer routes on it, and the bus validates against `getPluginEventValidationMap()`. There are **294**
-`pluginId` references under `packages/`. The event type names that travel are `PLUGIN_ACTIVATED` (10),
-`PLUGIN_VISIBILITY_UPDATED` (5), `SET_LAST_ACTIVE_PLUGIN` (5), `PLUGIN_DEACTIVATED` (3), and the
-`*_PLUGIN_EVENT_TYPES` constants (5): `HOST_PLUGIN_EVENT_TYPES` is pinned to `HostPluginEvents` by a
-compile-time check, and `PACKS_PLUGIN_EVENT_TYPES` to `OutgoingPacksEvents`.
+**What is published.** `@apackdev/sdk` exports **28** entries naming the concept — `Plugin`,
+`PluginDeclaration`, `PluginDefinition`, `PluginEvent`, `PluginEvents`, `PluginInbox`,
+`PluginInboxAudiences`, `PluginInboxOf`, `PublicPluginInboxOf`, `PluginStateOf`,
+`PluginHotkeyDefinition`, `PluginScope`, `PackPluginEntry`, `PackPluginEvents`, `PackPluginState`,
+`PackFeaturePlugin`, `HostPluginEvents`, `OwnPluginEvents`, `QualifiedPluginEvents`,
+`TypedSendToPlugin`, `usePlugin`, `pluginIsRunning`, `useUntypedPluginState`,
+`readUntypedPluginState`, `untypedOpenPlugin`, `untypedBroadcastToPlugin`, `_sendToLocalPlugin`,
+`_pluginTargets` — and four that keep the name (Decision 2). `@apackdev/ui`'s plugin-named exports are
+all tiptap's; `@apackdev/ears` has none. `apack.schema.json` names `plugin` 19 times and is generated
+from `framework/declaration-schema.ts`.
 
-**What is published API.** The SDK's reports name, among others, `PluginDefinition`, `PluginEvent`,
-`PluginEvents`, `PluginInbox`, `PluginInboxAudiences`, `PluginHotkeyDefinition`, `PluginScope`,
-`PackPluginEntry`, `PackFeaturePlugin`, `HostPluginEvents`, `definePlugin`, `usePlugin`,
-`pluginIsRunning`, `useUntypedPluginState`, `readUntypedPluginState`, `untypedOpenPlugin`,
-`untypedBroadcastToPlugin`, `_sendToLocalPlugin` — and, not to be touched, `TiptapPlugin` and
-`tiptapPluginRegistry`. `definePlugin` and `usePlugin` are pack-facing, so this breaks every pack's
-frontend code; in the repo that is default-setup, `tests/packs/*` and the CLI's `add feature`
-scaffold. `apack.schema.json` names `plugin` 8 times and is generated from `manifest-schema.ts`. Six
-files under `docs/public-facing/` mention it.
+`usePlugin` is pack-facing, so Phase 2 breaks every pack's frontend: in-repo that is default-setup,
+`tests/packs/*`, and the CLI's `add feature` scaffold and `init` templates.
+
+**What crosses the wire.** `pluginId` (220 occurrences, plus `pluginIds`, `pendingPluginId`,
+`activePluginId` and friends) is stamped on every backend→frontend event, routed on by the renderer,
+and validated against `getPluginEventValidationMap()`. The travelling event type names are
+`PLUGIN_ACTIVATED`, `PLUGIN_DEACTIVATED`, `PLUGIN_VISIBILITY_UPDATED`, `SET_LAST_ACTIVE_PLUGIN` and
+`OPEN_PLUGIN`, with five `eventTypes<T>()` constants pinning them to their contracts:
+`PLUGIN_EVENT_TYPES` (`@apackdev/sdk/events`), `HOST_PLUGIN_EVENT_TYPES`,
+`APPLICATION_PLUGIN_EVENT_TYPES`, `PACKS_PLUGIN_EVENT_TYPES` and `SETTINGS_PLUGIN_EVENT_TYPES`.
+
+**What is stored.** Four things, in two places (Decision 4):
+
+- `AppState.pluginVisibility` and `AppState.lastActivePlugin`
+  (`packages/apack-host/src/app-state/index.ts:51,53`, both named in its attribute list), in the user's
+  database.
+- The window-storage keys `'code-plugin-open-tabs'`
+  (`packages/default-setup/src/features/code/fe/utils/persisted-tabs.ts:18`) and
+  `'apack-last-active-plugin'`, which `packages/apack-host/src/fe/migrations/0.4.0.ts` exists to
+  remove.
+
+Per-feature settings are keyed by feature (`forFeature`), not by plugin, so there is nothing else.
 
 ## Decisions
 
 Final.
 
-1. **The name is `surface`.** A surface is shown in a window, or popped out into one, which is the right
-   way round; it says nothing about containment, so multiple windows never make it read backwards. It
-   pairs with `system` — both abstract, neither implying the other. `screen` and `view` are rejected for
-   the reasons in Background; do not reopen them.
+1. **The name is `surface`.** `screen` and `view` are rejected for the reasons in Background; do not
+   reopen them.
 
-2. **What keeps the name `plugin`, because it really is one.** Rename nothing in these groups:
-   - tiptap/ProseMirror: `TiptapPlugin`, `tiptapPluginRegistry`, `tiptapPlugins` in a pack's frontend
-     registration, and anything under `apack-ui/src/components/tiptap/`;
-   - Vite, rollup and PostCSS: `VitePlugin`, `plugins: [...]` in any config, `packExternalsPlugin`,
-     `builtInPacksPlugin`, `hostSharedModulesPlugin`, `tailwindInjectPlugin`, `rejectHostImportsPlugin`,
-     `stubFrontendAssetsPlugin`, `collect-bare-imports`;
-   - `pack`, which is the extension unit and is not this concept;
-   Historical pre-0.4 backend conversion has been removed. Do not add migration-name exceptions or
-   recreate old-format readers; update current callers and fixtures together.
+2. **Three vocabularies keep the word `plugin`, because in each it really is one.** A guard allows
+   them per pattern, not per file, the way `identity-guard`'s exemptions work.
 
-   A blind find-and-replace over `plugin` breaks all four. Phase 1's guard is what keeps the boundary
-   after the rename, since the two vocabularies now live side by side on purpose.
+   **Editor plugins (tiptap/ProseMirror).** The manifest key `frontend.tiptapPlugins`, which sits in
+   the same schema as `features.<id>.plugin` — the rename touches one and must not touch its sibling.
+   Published: `TiptapPlugin`, `TiptapPluginBinding`, `TiptapPluginDeclaration`, `TiptapPluginSchema`,
+   `tiptapPluginRegistry` (`@apackdev/sdk`), and `searchPlugin`, `searchPluginKey`,
+   `SearchPluginState` plus the exports-map entry `./components/tiptap/extensions/search-plugin`
+   (`@apackdev/ui`) — an entry point, not only a symbol. In sources: `PluginKey`,
+   `addProseMirrorPlugins`, `editor.registerPlugin()`, `commandSuggestionPlugin(Key)`,
+   `referenceSuggestionPlugin(Key)`, `imagePastePlugin`, `inputRulesPlugin`, `editorPlugins`
+   (`generate-entries.ts`), everything under `apack-ui/src/components/tiptap/` and
+   `default-setup/src/extensions/tiptap/`, and the filenames `command-suggestion-plugin.ts`,
+   `reference-suggestion-plugin.ts`, `reference-plugin-key.ts`, `search-plugin.ts`, `tiptap-plugins.ts`
+   — the last beside `plugin-state.ts`, which does rename.
 
-3. **`pluginId` becomes `surfaceId`, in its own phase.** It is the field everything routes on — the
-   transport stamps it, the renderer routes on it, the bus validates against it, and generated
-   `#generated/events` carries it into every pack. Renaming it is consistent and there is no external
-   consumer to break, but it is the one change that can fail at runtime while typechecking, so it lands
-   separately from the type rename with the event-validation specs as its proof.
+   **Bundler plugins.** `VitePlugin`, `esbuild.Plugin`, `pluginContainer` (Vite's own API), every
+   `plugins: [...]` and `plugins.push(...)`, and the repo's own: `packExternalsPlugin`,
+   `hostSharedModulesPlugin`, `tailwindInjectPlugin`, `opaqueVendorPlugin`, `inputReportPlugin`,
+   `keepExternalsBarePlugin`, `importAnalysisPlugin`, `globWatchPlugin` (`apack-cli/src/build/
+   fe-bundler.ts`, `glob-watch.ts`); `rejectHostImportsPlugin`, `stubFrontendAssetsPlugin`,
+   `capturedSourcesPlugin` (`be-bundler.ts`); `createValidatorPlugin`
+   (`apack-sdk/src/build/compile-utils.ts`); `vueSfcPlugin`, `stubSfcPlugin`
+   (`apack-testing/src/vitest.ts`); `devPackFrontendsPlugin`, `postcssPlugin(s)`,
+   `tailwindPostcssPlugins` (renderer configs); `pluginVitest`, `pluginOxlint`
+   (`renderer/eslint.config.ts`); `collect-bare-imports` (`scripts/lib/published-imports.ts`). Plus
+   the dependency names `@vitejs/plugin-vue`, `vite-plugin-vue-devtools`, `vite-plugin-static-copy`,
+   `rollup-plugin-dts`, `eslint-plugin-vue`, `eslint-plugin-oxlint`, `@vitest/eslint-plugin`.
 
-4. **The `AppState` fields move with a host migration, not a rename.** `pluginVisibility` and
-   `lastActivePlugin` are in the user's database. Add a migration under
-   `packages/apack-host/src/migrations/app/` targeting the next unreleased version — append to the
-   latest target file rather than creating a new one, and guard it so it is idempotent across a
-   development boot, each beta and a reset (`packages/apack-host/src/migrations/CLAUDE.md`).
+   **Stored string literals.** `'code-plugin-open-tabs'` and `'apack-last-active-plugin'` are keys in
+   the user's window storage, not identifiers: rename either and the data is orphaned or the migration
+   that removes it stops finding it. Phase 4 decides each one; until then they keep their spelling.
 
-5. **Event type names move with the concept.** `PLUGIN_ACTIVATED`, `PLUGIN_DEACTIVATED`,
-   `PLUGIN_VISIBILITY_UPDATED`, `SET_LAST_ACTIVE_PLUGIN` and the `*_PLUGIN_EVENT_TYPES` constants
-   become `SURFACE_*` / `SET_LAST_ACTIVE_SURFACE`. Their compile-time pins (`HostPluginEvents`,
-   `OutgoingPacksEvents`) are what prove the rename is complete rather than half-applied.
+   `pack` is not in these groups because it is not this concept: it is the extension unit, one level up.
+
+3. **`pluginId` becomes `surfaceId`, in its own phase.** It is the field everything routes on, and the
+   one change that can typecheck and still fail at runtime, so it lands after the type rename with the
+   event-validation specs as its proof.
+
+4. **Stored data moves deliberately, and the two kinds move differently.**
+
+   The `AppState` fields need an **app-line migration** (`AppState.pluginVisibility` →
+   `surfaceVisibility`, `lastActivePlugin` → `lastActiveSurface`). The host declares none today —
+   `packages/apack-host/src/migrations/` holds only `index.ts` — so this creates the first one,
+   targeting the next unreleased version, idempotent across a development boot, each beta and a reset
+   (`packages/apack-host/src/migrations/CLAUDE.md`).
+
+   The two window-storage keys are the frontend's, and `runFrontendMigrations()` is the precedent.
+   `'apack-last-active-plugin'` is already being deleted by `fe/migrations/0.4.0.ts`, so it keeps its
+   spelling inside that migration and nowhere else. `'code-plugin-open-tabs'` is live and belongs to
+   default-setup's code feature: either keep the literal with a comment saying why, or rename it with a
+   frontend migration that moves the value. Decide which; do not rename it bare.
+
+   No backward compatibility beyond these migrations: no dual-read, no old-format fallback, no
+   grandfathering.
+
+5. **Event type names move with the concept.** `SURFACE_ACTIVATED`, `SURFACE_DEACTIVATED`,
+   `SURFACE_VISIBILITY_UPDATED`, `SET_LAST_ACTIVE_SURFACE`, `OPEN_SURFACE`, and the five
+   `*_PLUGIN_EVENT_TYPES` constants. Their `eventTypes<T>()` pins are what prove the rename is complete
+   rather than half-applied.
 
 6. **The manifest key becomes `features[].surface`.** It drives codegen, so it moves with the type
-   rename in Phase 2, together with `manifest-schema.ts`, the regenerated `apack.schema.json`, the CLI
-   scaffold and every in-repo pack.
+   rename in Phase 2, together with `framework/declaration-schema.ts`, the regenerated
+   `apack.schema.json`, the CLI scaffold and every in-repo pack.
 
 ## Phases
 
 ### Phase 1 — write the vocabulary down, and guard it
 
-- Record in `CLAUDE.md` (and `packages/renderer/CLAUDE.md`) that a backend actor is a **system**, a
-  frontend actor is a **surface**, and `plugin` is reserved for tiptap and bundler plugins.
-- Add the guard: a spec that fails when the frontend-actor vocabulary reappears as `plugin`
-  (`pluginId`, `definePlugin`, `usePlugin`, `features[].plugin`, `sendToPlugin`, `getRegisteredPlugins`)
-  anywhere outside the Decision 2 allowlist and `docs/archive`. Model it on
-  `apack-host/tests/removed-names-in-docs.spec.ts`, which already does this shape of check with a
-  per-file allowance and a reason.
+**Deliverable.** The vocabulary in `CLAUDE.md` and `packages/renderer/CLAUDE.md` — a backend actor is a
+**system**, a frontend actor is a **surface**, `plugin` belongs to Decision 2's three groups — and a
+guard that holds it.
 
-**Done when:** the guard passes on the tree as it will be after Phase 5, and fails when a kept name is
-added to the banned list or a banned name is reintroduced. Land the guard **last within this phase's
-commit ordering if it would fail mid-rename** — or mark it `it.fails` until Phase 5, and flip it there.
-Mutation: renaming `TiptapPlugin` must fail the guard's allowlist assertion, not pass silently.
+**The guard lives in `@app/repo-checks`**, modelled on `packages/repo-checks/tests/identity-guard.spec.ts`:
+patterns with per-pattern allowances carrying a reason, and a staleness case that fails an entry which
+no longer fires. It cannot live in `@apackdev/host`: a suite's project re-runs only when that project's
+inputs move, so a guard over the whole repo has to sit in a suite that declares the whole repo
+(`SUITE_READS`' `repo`), which `repo-checks`' `fingerprint-scope` and `chain-inputs` enforce.
+`identity-guard` learned this by missing a violation in `@apackdev/cli` through two green chain runs.
+
+**Dependencies.** None.
+
+**Done when:** the guard fails for each of `pluginId`, `usePlugin`, `features[].plugin`,
+`sendToPlugin`, `getRegisteredPlugins` outside its allowances, and passes for Decision 2's three
+groups. Mutation: renaming `TiptapPlugin` fails the allowlist's staleness assertion rather than passing
+silently. The guard cannot pass mid-rename, so park it as `it.fails` and flip it in Phase 5, or order
+it last in this phase's commits.
 
 ### Phase 2 — the concept: types, manifest key, codegen, host, renderer, packs
 
-- SDK: `Plugin` → `Surface`, `PluginDefinition` → `SurfaceDefinition`, `definePlugin` → `defineSurface`,
-  `usePlugin` → `useSurface`, `PluginHotkeyDefinition`, `PluginScope`, `PluginEvent(s)`, `PluginInbox`,
-  `PluginInboxAudiences`, `PackPluginEntry`, `PackFeaturePlugin`, `pluginIsRunning`,
-  `useUntypedPluginState`, `readUntypedPluginState`, `untypedOpenPlugin`, `untypedBroadcastToPlugin`,
-  `_sendToLocalPlugin` and their neighbours. Run `npm run api:update`.
-- Manifest: `features[].plugin` → `features[].surface` in `manifest-schema.ts`; regenerate
-  `apack.schema.json` (`npm run generate:schema`); update the CLI's `add feature` scaffold and
-  `init` templates.
+**Deliverable.** The 28 published SDK entries in Background, their unpublished neighbours
+(`PluginFrontendBinding`, `PluginCatalogEntry`, `ShellPluginCatalog`, `SendablePluginEvents`,
+`PluginName`, `OwnPluginName`, `DependencyPluginName`, `PluginPane.vue`, `PluginRouter.vue`,
+`ToolbarPluginContextMenu.vue` and the rest), the manifest key, codegen, and every caller.
+
+- Manifest: `features[].plugin` → `features[].surface` in `framework/declaration-schema.ts` and
+  `plugin-declaration.ts`; regenerate `apack.schema.json` (`npm run schema:update -w @apackdev/sdk`);
+  update the CLI's `add feature` scaffold and `init` templates.
 - Codegen: `generate-entries` emits `pack-entry-fe.ts` from the new key; `getRegisteredPlugins` →
   `getRegisteredSurfaces`, `registerPackFE`'s registration field, `FePackRegistryView`.
 - Renderer: the application actor's surface list, `packPluginIds`, `loadPackFrontend`, the popout query
-  (`?popout=plugin&pluginId=` → the surface spelling), `plugin:popout` IPC, `ToolbarPluginContextMenu.vue`
-  and the other `views/layout` components.
+  and `plugin:popout` IPC (Phase 3 owns those two strings), and the `views/layout` components.
 - Every in-repo pack: default-setup and `tests/packs/*`.
+- `npm run api:update`.
 
-**Done when:** `npm run typecheck`, `npm run api:check`, `npm run schema:check`, `npm run test:unit`,
-`npm run build:default-setup` and `npm run test:external-pack` pass. `grep -rIn 'definePlugin\|usePlugin\|features\[\]\.plugin'`
-finds nothing outside `docs/archive`.
+**Dependencies.** Phase 1's vocabulary; not its guard.
 
-### Phase 3 — the wire: `pluginId` and the event type names
+**Done when:** `npm run typecheck`, `npm run api:check`, `npm run schema:check -w @apackdev/sdk`,
+`npm run test:unit`, `npm run build:default-setup` and `npm run test:external-pack` pass.
+`git grep 'usePlugin\|PluginDeclaration\|features\[\]\.plugin'` finds nothing outside `docs/archive`.
 
-- `pluginId` → `surfaceId` across the transport, the bus, the renderer's routing, the registry's
-  validation map (`getPluginEventValidationMap` → `getSurfaceEventValidationMap`) and generated events.
-- The event types of Decision 5, with their compile-time pins updated.
-- Keep the standing warning in `CLAUDE.md` about the transport stamping this field, under its new name:
-  never use `surfaceId` as a field inside an event payload sent via `sendToSurface`.
+### Phase 3 — the wire: `surfaceId` and the event names
+
+**Deliverable.** `pluginId` → `surfaceId` across the transport, the bus, the renderer's routing, the
+registry's validation map (`getPluginEventValidationMap` → `getSurfaceEventValidationMap`) and
+generated events; Decision 5's event names with their pins updated. The three internal strings go here
+too, each with its consumer in the same commit: `'plugin:popout'` and `?popout=plugin&pluginId=`
+(`main/WindowManager.ts:144`, `preload/src/index.ts:35`), `data-active-plugin`
+(`renderer/src/views/WebApp.vue`, read by `apack-testing/src/index.ts:342`), and `'plugin-send'`
+(`api/src/transport/emitter.ts:64`).
+
+Keep the standing warning in `CLAUDE.md` under its new name: never use `surfaceId` as a field inside an
+event payload, since the transport stamps it.
+
+**Dependencies.** Phase 2's type names.
 
 **Done when:** `npm test -w @apackdev/host` passes, including `tests/bus/outgoing-events.spec.ts` and
-`tests/packs/event-validation-map.spec.ts`; `npm run test:unit` and `npm test` pass. Mutation: leaving
-one `pluginId` behind in the renderer's routing fails an event-validation or E2E spec rather than
-passing silently — if it doesn't, add the spec that catches it.
+`tests/packs/event-validation-map.spec.ts`; `npm run test:unit` and `npm run test:e2e -- smoke` pass.
+Mutation: one `pluginId` left in the renderer's routing fails an event-validation or smoke spec rather
+than passing silently — if it does not, add the spec that catches it.
 
-### Phase 4 — current stored identities
+### Phase 4 — stored identities
 
-Rename AppState visibility and last-active fields with their owned consumers, fixtures and tests.
-Do not add backwards compatibility for historical names. Current-format backup/import and reset must
-retain their behavior; any developer-backup conversion is a separate explicit operation on a copy.
-The frontend's existing window-storage cleanup is a separate concern from backend settings conversion.
+**Deliverable.** Decision 4, implemented: the app-line migration for the two `AppState` fields with
+their owned consumers, fixtures and tests; and the chosen treatment of each window-storage key.
+
+**Dependencies.** Phase 2's `AppState` consumers.
+
+**Done when:** a migration spec proves a database written before the change reads back the same
+visibility map and last-active ref under the new field names; current-format backup, import and reset
+keep their behaviour; `npm test -w @apackdev/host` and `npm run test:unit` pass.
 
 ### Phase 5 — docs, and turn the guard on
 
-- `CLAUDE.md`, `packages/renderer/CLAUDE.md`, `packages/apack-sdk/CLAUDE.md`,
-  `packages/apack-host/CLAUDE.md`, `tests/e2e/CLAUDE.md` and the six files under `docs/public-facing/`.
-- Flip Phase 1's guard from `it.fails` to live, if it was parked.
+**Deliverable.** `CLAUDE.md`, `packages/renderer/CLAUDE.md`, `packages/apack-sdk/CLAUDE.md`,
+`packages/apack-host/CLAUDE.md`, `packages/apack-cli/CLAUDE.md`, `packages/apack-ui/CLAUDE.md`,
+`packages/default-setup/CLAUDE.md`, `tests/e2e/CLAUDE.md`, and `docs/public-facing/` (`architecture.md`,
+`manifest.md`, `extensions.md`, `cli.md`, `testing.md`, `content.md`). Flip Phase 1's guard live.
 
-**Done when:** the full chain passes: `npm run typecheck`, `npm run api:check`, `npm run schema:check`,
-`npm run test:unit`, `npm run build:default-setup`, `npm run test:external-pack`, `npm test`. The `grep` in
-"Finished when" returns only Decision 2's names and `docs/archive`.
+**Dependencies.** Phases 2–4.
+
+**Done when:** `npm run chain` passes, and the guard reports only Decision 2's groups and
+`docs/archive`.
 
 ## Deferred
 
-- **Renaming `pack`.** A pack is the extension unit; this goal is about the level below it.
-- **Renaming `canvas`, `panel`, `chat`, `settings`.** They are the areas a surface fills, and they read
+- **Renaming `pack`**, the extension unit: this goal is the level below it.
+- **Renaming `canvas`, `panel`, `chat`, `settings`**: they are the areas a surface fills and read
   correctly already.
-- **`docs/archive`.** Archived goals record the vocabulary of their time and are not checked against the
-  code (`removed-names-in-docs.spec.ts` skips them).
+- **`docs/archive`**: archived documents record the vocabulary of their time and are not checked
+  against the code.
 
 ## Constraints
 
-- Commits only on request, in logical chunks, no attribution lines, `git diff --cached` first.
-- No publishing, releases or triggered workflows.
-- No real data dirs; no broad `pkill`; E2E in the `apack-test` namespace.
-- No bare `tsc` on `packages/preload`; no `npm install` in the example pack; no version or release
-  metadata edits — Phase 4's migration targets the next unreleased version by *appending to the latest
-  target file*, which is not a version bump.
+Standing repository rules apply as written (`CLAUDE.md`, `docs/AGENTS.md`): no backward-compat shims,
+commits only on request, the chain as the gate. Goal-specific:
+
+- **Never find-and-replace over `plugin`.** Decision 2 lists three vocabularies that keep it; one is
+  published API and one is stored user data.
+- Published packages: no `any`, the TypeScript floor, `npm run api:update` after export changes — Phase
+  2 renames 28 public entries and must update `etc/*.api.md`.
 - Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`). This goal renames a
-  frontend concept and must not change them; `AppState` is the host's entity and Phase 4 touches its
-  fields, not the typed-EARS contract.
-- Published packages: no `any`, the TypeScript floor, `api:update` after export changes — Phase 2
-  renames roughly eighteen public entries and must update `etc/*.api.md` and the declaration stamps.
-- `packages:build` before the CLI suite; `npm run build:default-setup` before the api suites and E2E.
-- Migrations follow `packages/apack-host/src/migrations/CLAUDE.md`: append to the latest unreleased
-  target, never create a new version file, and guard for idempotence.
-- Investigate a failing test rather than loosening it; mutation-check every new guard.
-- **Never run a blind find-and-replace over `plugin`.** Decision 2 lists three vocabularies that keep
-  the word, one of which (`tiptapPluginRegistry`, `TiptapPlugin`) is published API.
+  frontend concept and must not touch them; `AppState` is the host's entity, and Phase 4 touches its
+  fields rather than that contract.
+- Phase 4's migration targets the next unreleased version and is not a version bump; release metadata
+  stays untouched.
