@@ -52,6 +52,14 @@ See [worktree development](docs/references/worktree-development.md).
 - Name ambiguous inputs by what they hold: dispatch kind, input path and provenance are different contracts. Keep graph `source`/`target` and native/library APIs.
 - Review naming in context: the owner, operation and neighboring API family determine whether a name is clear. See [the naming goal](docs/archive/goals/goal-naming-conventions.md).
 
+**A feature's frontend half is a surface; its backend half is a system.** Reserve **plugin** for the two
+things that really are one: an editor plugin (tiptap/ProseMirror) and a bundler plugin (Vite, rollup,
+PostCSS, esbuild). `packages/repo-checks/tests/surface-vocabulary.spec.ts` is the rule, and it holds the
+list of what keeps the word — three vocabularies, one of them published API and one of them keys in the
+user's window storage, so never find-and-replace over `plugin`.
+The code still spells the concept `plugin`; [the rename](docs/goals/goal-plugins-to-surfaces.md) is the
+work, and the guard's scan over the tree is parked until it finishes.
+
 Reserve **artifact** for app artifact contributions and viewers. Use **build** for compiled pack/app output,
 **release file** for downloads, and **recorded file** or **report** for checked-in generated files. Preserve
 third-party API names such as electron-builder’s `artifactName` and GitHub’s `upload-artifact`.
