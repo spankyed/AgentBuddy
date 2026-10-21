@@ -563,7 +563,7 @@ newest; `--all` removes that one too, which is how you move to a newer Beta.
 
 `--prebuilt` installs the build already in `dist/` instead of making a new one, for a pipeline that built the
 pack in an earlier step. It verifies the sealed output and rechecks the recorded source, linked inputs,
-dependency bytes and resolution observations. Timestamp-only touches pass; changed or missing inputs
+the dependency files the build read, dependency package membership and resolution observations. Timestamp-only touches pass; changed or missing inputs
 and damaged output fail with a rebuild instruction. `--prebuilt --release` requires output made with
 `apack pack build --release`. The recorded compiler/execution context identifies the selected build;
 the Playwright runner's environment is not compared to the compiler's environment. Use this when an

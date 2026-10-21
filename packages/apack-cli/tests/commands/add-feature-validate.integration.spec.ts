@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { init } from '../../src/commands/init';
 import { addFeature } from '../../src/commands/add/feature';
 import { validate } from '../../src/commands/validate';
@@ -11,18 +11,31 @@ import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 let tmp: string;
 let pack: string;
+let template: string;
 const origCwd = process.cwd();
 
-beforeEach(async () => {
-  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-add-feature-'));
-  vi.spyOn(console, 'log').mockImplementation(() => {});
-  process.chdir(tmp);
+// One scaffold for the file; every test mutates its own copy of it
+beforeAll(async () => {
+  template = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-add-feature-template-'));
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+  process.chdir(template);
   try {
     await init(['demo-pack']);
   } finally {
     process.chdir(origCwd);
+    log.mockRestore();
   }
+});
+
+afterAll(() => {
+  if (template) fs.rmSync(template, { recursive: true, force: true });
+});
+
+beforeEach(() => {
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-add-feature-'));
+  vi.spyOn(console, 'log').mockImplementation(() => {});
   pack = path.join(tmp, 'demo-pack');
+  fs.cpSync(path.join(template, 'demo-pack'), pack, { recursive: true, verbatimSymlinks: true });
 });
 
 afterEach(async () => {

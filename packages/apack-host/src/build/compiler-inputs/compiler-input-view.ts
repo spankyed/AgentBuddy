@@ -20,6 +20,7 @@ export function createPackCompilerInputView(root: string, options: {
     const observationRoot = view.observations().root;
     const packageEntries = new Map<string, readonly string[]>();
     readPackageInputs([{ id: 'pack', directory: root, development: true }], {
+      dependencyContents: 'resolution',
       observe: (file, kind) => { view.captureDataLocation(file, kind); },
       onFile: (file, bytes) => { view.captureFile(file.source, bytes); },
       onDirectory(directory, names) {

@@ -2,7 +2,7 @@ import type { PackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 import { createHash } from 'node:crypto';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { buildToolHash, cliPackageDirectory } from './tool-identity.ts';
-import { readPackageInputs } from '@apackdev/host/build/package-inputs';
+import { readPackageInputs, type PackageInputOwner } from '@apackdev/host/build/package-inputs';
 import { parseNodeOptions, SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { isOwnedCompilerPath, readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
@@ -91,12 +91,14 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
   let tree: CompilerReadTree | undefined;
   let disposed = false;
   const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };
-  const owners = [{ id: 'pack', directory: packRoot, development: true }];
-  if (!compiler) owners.unshift({ id: 'cli', directory: cliRoot, development: false });
+  const owners: PackageInputOwner[] = [{ id: 'pack', directory: packRoot, development: true }];
+  // Without a captured installation the CLI's own graph is the compiler, read whole as an installation is
+  if (!compiler) owners.unshift({ id: 'cli', directory: cliRoot, development: false, dependencyContents: 'all' });
   const discovered = modules.packageDirectories.filter(directory => !capturedPackages.has(directory));
   const current = (capture = false) => {
     const inputs = readPackageInputs(owners, {
       discovered,
+      dependencyContents: 'resolution',
       onFile: capture ? (file, bytes) => modules.captureFile(file.source, bytes) : undefined,
     });
     const compilerIdentity = compiler?.hash ?? buildToolHash();

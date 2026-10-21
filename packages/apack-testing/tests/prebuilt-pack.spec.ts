@@ -29,6 +29,8 @@ function fixture(options: string[] = []) {
   fs.writeFileSync(path.join(dependencyDirectory, 'package.json'), JSON.stringify({ name: 'dependency', version: '1.0.0', main: 'index.js' }));
   const dependency = path.join(dependencyDirectory, 'index.js');
   fs.writeFileSync(dependency, 'module.exports = 1;');
+  const unread = path.join(dependencyDirectory, 'README.md');
+  fs.writeFileSync(unread, 'Not read by any compiler');
   fs.writeFileSync(source, 'FIRST');
   fs.writeFileSync(external, 'EXTERNAL');
   fs.symlinkSync(external, path.join(root, 'linked.txt'));
@@ -41,13 +43,14 @@ function fixture(options: string[] = []) {
   const view = createPackCompilerInputView(root);
   view.readBytes(source);
   view.readBytes(path.join(root, 'linked.txt'));
+  view.readBytes(dependency);
   const observations = view.observations().entries;
   view.dispose();
-  const packages = readPackageInputs([{ id: 'pack', directory: root }]);
+  const packages = readPackageInputs([{ id: 'pack', directory: root }], { dependencyContents: 'resolution' });
   writePackBuildInputs(dist, { compiler: 'a'.repeat(64), execution: 'b'.repeat(64), options,
     packages: { hash: packages.hash, owners: [{ id: 'pack', directory: '' }], discovered: [] }, observations });
   sealPackBuild(dist, manifest);
-  return { root, dist, source, external, dependency };
+  return { root, dist, source, external, dependency, unread };
 }
 
 it('accepts timestamp touches and exact restoration, but refuses same-mtime source edits', () => {
@@ -96,7 +99,13 @@ it('requires release options only when the test invocation requests release outp
 });
 
 it('refuses changed dependency bytes and a missing build before launching the app', () => {
-  const { root, dist, dependency } = fixture();
+  const { root, dist, dependency, unread } = fixture();
+  // A dependency file no compiler read is not an input; its package's membership is
+  fs.writeFileSync(unread, 'Edited');
+  expect(() => assertPrebuiltPackCurrent(root, false)).not.toThrow();
+  fs.writeFileSync(path.join(path.dirname(dependency), 'added.js'), 'module.exports = 3;');
+  expect(() => assertPrebuiltPackCurrent(root, false)).toThrow(/input changed.*package-entries.*node_modules\/dependency/);
+  fs.rmSync(path.join(path.dirname(dependency), 'added.js'));
   const bytes = fs.readFileSync(dependency);
   const stat = fs.statSync(dependency);
   fs.writeFileSync(dependency, 'module.exports = 2;');

@@ -46,6 +46,8 @@ it('captures once, rejects changed bytes, and accepts exact restoration without 
   const { root, file } = pack(), original = fs.readFileSync(file);
   const captured = captureCompilationInputs(root);
   expect(() => captured.assertCurrent()).not.toThrow();
+  // A dependency file is an input once a compiler reads it
+  expect(captured.readFile(file)?.toString()).toBe(original.toString());
   fs.writeFileSync(file, 'export type Value = number;');
   expect(() => captured.assertCurrent()).toThrow('Compiler or installed package inputs changed');
   fs.writeFileSync(file, original);

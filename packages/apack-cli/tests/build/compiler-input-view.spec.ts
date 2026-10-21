@@ -34,12 +34,16 @@ function declaredDependency() {
   return { ...input, dependency, entry };
 }
 
-it('owns declared dependency bytes before their first read or preload execution', () => {
+it('captures a dependency file at its first read and refuses a later change to it', () => {
   const { pack, entry } = declaredDependency();
   const view = createPackCompilerInputView(pack);
   views.push(view);
-  fs.writeFileSync(entry, 'LIVE');
-  expect(view.readBytes(entry)?.toString()).toContain('CAPTURED dependency');
+  // Dependency bytes are inputs once a compiler reads them; before that only package membership is
+  fs.writeFileSync(entry, 'READ');
+  expect(() => view.assertCurrent()).not.toThrow();
+  expect(view.readBytes(entry)?.toString()).toBe('READ');
+  fs.writeFileSync(entry, 'CHANGED');
+  expect(view.readBytes(entry)?.toString()).toBe('READ');
   expect(() => view.assertCurrent()).toThrow('namespace changed');
 });
 

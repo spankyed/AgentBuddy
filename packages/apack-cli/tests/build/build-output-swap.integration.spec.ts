@@ -229,7 +229,8 @@ describe('a pack whose content compiler modules fail to bundle', () => {
     });
     const exitCode = process.exitCode;
     try {
-      await expect(build([], root)).rejects.toThrow(/Content compiler bundle failed/);
+      // Nothing here concerns the frontend, and the build goes on to every phase after a failed bundle
+      await expect(build(['--skip-fe'], root)).rejects.toThrow(/Content compiler bundle failed/);
     } finally {
       process.exitCode = exitCode;
     }

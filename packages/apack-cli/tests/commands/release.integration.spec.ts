@@ -46,7 +46,7 @@ function sealBuild(root: string): void {
   view.dispose();
   writePackBuildInputs(path.join(root, 'dist'), {
     compiler: 'a'.repeat(64), execution: 'b'.repeat(64), options: ['--release'], observations,
-    packages: { hash: readPackageInputs([{ id: 'pack', directory: root }]).hash,
+    packages: { hash: readPackageInputs([{ id: 'pack', directory: root }], { dependencyContents: 'resolution' }).hash,
       owners: [{ id: 'pack', directory: '' }], discovered: [] },
   });
   sealPackBuild(path.join(root, 'dist'), JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')));

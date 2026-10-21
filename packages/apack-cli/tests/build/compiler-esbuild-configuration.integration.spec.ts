@@ -173,10 +173,11 @@ it.each(['configuration', 'sources', 'declarations', 'resolution'])('publishes c
     const replacements = change === 'configuration'
       ? [[config, JSON.stringify({ compilerOptions: { useDefineForClassFields: true, jsx: 'react-jsx', strict: true } })]]
       : change === 'resolution' ? [[path.join(root, 'node_modules/bare/package.json'), JSON.stringify({ name: 'bare', main: 'alternate.js', types: 'index.d.ts', type: 'module' })]]
+      // A dependency file's bytes become inputs at its first read, which here is this bundle: an edit spanning
+      // that read is refused rather than published (compiler-input-view.spec.ts), so only captured sources change
       : change === 'declarations' ? [] : [
         [path.join(pack, 'src/input.tsx'), fs.readFileSync(path.join(pack, 'src/input.tsx'), 'utf8').replace('field = 7', 'field = 99')],
         [path.join(root, 'external/value.ts'), 'export const value = "LIVE_ALIAS";'],
-        [path.join(root, 'node_modules/bare/index.js'), 'export const label = "LIVE_PACKAGE";'],
       ];
     const originals = replacements.map(([file]) => [file!, fs.readFileSync(file!)] as const);
     try {
@@ -203,6 +204,16 @@ it.each(['configuration', 'sources', 'declarations', 'resolution'])('publishes c
     try { return await bundleTypes(...args); }
     finally { fs.writeFileSync(shape, bytes); fs.writeFileSync(config, original); }
   });
+  if (change === 'resolution') {
+    // A dependency package is captured when the bundler first resolves into it, here during the edit, so the
+    // restored package.json differs from what that capture saw: refused, never published from live bytes
+    // The thrown summary keeps each failure's first line; the build prints the bundler's reason in full
+    const printed = vi.spyOn(console, 'error');
+    await expect(build(['--skip-fe'], pack)).rejects.toThrow(/Runtime bundle failed/);
+    expect(printed.mock.calls.flat().join('\n')).toMatch(/Compiler input changed during capture: .*node_modules\/bare\/package\.json/);
+    expect(transient).toHaveBeenCalledOnce();
+    return;
+  }
   await build(['--skip-fe'], pack);
   expect(transient).toHaveBeenCalledOnce();
   expect(trees).toHaveLength(1);

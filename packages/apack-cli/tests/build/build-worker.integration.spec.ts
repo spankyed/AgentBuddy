@@ -64,7 +64,7 @@ function fixture(files: Record<string, string> = {}, content = {}) {
   return root;
 }
 
-it('captures native launch identity and authored/dependency bytes before user preload changes', async () => {
+it('captures native launch identity and authored bytes before user preload changes, and dependency bytes at first read', async () => {
   vi.stubEnv('APACK_TEST_STARTUP_ENV', 'ORIGINAL');
   const root = fixture();
   fs.rmSync(path.join(root, 'node_modules'), { recursive: true, force: true });
@@ -97,7 +97,6 @@ it('captures native launch identity and authored/dependency bytes before user pr
     let refusal;
     try { startup.view.assertCurrent(); } catch (error) { refusal = error.message; }
     fs.writeFileSync(${JSON.stringify(valueFile)}, 'ORIGINAL');
-    fs.writeFileSync(${JSON.stringify(dependencyFile)}, ${JSON.stringify(dependencySource)});
     startup.view.assertCurrent();
     startup.stopReads(); startup.view.dispose();
     process.send({ identity, value, dependency, refusal }, () => process.exit(0));`);
@@ -111,7 +110,8 @@ it('captures native launch identity and authored/dependency bytes before user pr
   const closed = finished(child);
   try {
     expect(await _byDeadline(closed, 'native launch identity', 2_000), errors).toBe(0);
-    expect(result).toMatchObject({ value: 'ORIGINAL', dependency: 'DEPENDENCY_ORIGINAL', refusal: expect.stringContaining('Compiler resolution namespace changed') });
+    // The dependency was first read after the preload changed it, so its changed bytes are the input
+    expect(result).toMatchObject({ value: 'ORIGINAL', dependency: 'DEPENDENCY_CHANGED', refusal: expect.stringContaining('Compiler resolution namespace changed') });
     const identity = (result as { identity: string }).identity;
     const execution = JSON.parse(identity);
     expect(execution[3]).toEqual(['--conditions=launch-probe']);
