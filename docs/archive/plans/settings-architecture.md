@@ -2,7 +2,7 @@
 
 Status: completed 2026-10-19. Host, pack and feature settings now share declarative schemas, owner-bound handles and current-document validation; forms remain custom.
 See the [completed goal](../goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19) and
-[final requirement/source audit](../../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
+[final requirement/source audit](../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
 Dated checkpoint notes below are historical; deferred work keeps its separate owner.
 
 Sequencing: the [naming contracts goal](../goals/goal-naming-conventions.md) is complete.

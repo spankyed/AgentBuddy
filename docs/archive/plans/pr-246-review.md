@@ -1,7 +1,7 @@
 # Review PR #246 before merge
 
 Status: archived 2026-10-21; the review is complete and #246 is merged. Its findings and their repairs are in
-[the review evidence](../../references/evidence/pr-246-review.md); the budget findings it handed on are owned by the
+[the review evidence](../references/evidence/pr-246-review.md); the budget findings it handed on are owned by the
 [validation budget plan](validation-feedback-budget.md). Date: 2026-10-19.
 Subject: [#246](https://github.com/spankyed/apack/pull/246), `session/settings-pack-contracts` against
 `master` (merge base `d7e77829a`), the delivery of the
@@ -116,7 +116,7 @@ Check the public guides the PR edited (`docs/public-facing/`, the templates unde
    Deduplicate across areas.
 3. **Completeness.** Done last, by one reviewer reading the goal and the evidence links.
 4. **Report.** The output is one ranked list of defects and the completeness table, recorded in
-   `docs/references/evidence/pr-246-review.md`. A fix plan is a separate document.
+   `docs/archive/references/evidence/pr-246-review.md`. A fix plan is a separate document.
 
 Severity:
 

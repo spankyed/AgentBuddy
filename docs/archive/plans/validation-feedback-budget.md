@@ -255,7 +255,7 @@ review rules using existing reports, not new per-test metadata.
 
 ### Review findings this plan owns
 
-The [PR 246 review](../../references/evidence/pr-246-review.md) recorded four findings that are budget decisions, not
+The [PR 246 review](../references/evidence/pr-246-review.md) recorded four findings that are budget decisions, not
 defects with one fix, and its acceptance runs surfaced a fifth (R-F1). They stay as they are until this plan resolves them:
 
 | Finding | Current state | Resolve by |

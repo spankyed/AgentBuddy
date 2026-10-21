@@ -1,7 +1,7 @@
 # Build-input snapshot evaluation
 
 2026-10-16, source baseline `74890676d`. This evaluates a candidate for the remaining input-coherence
-work in the [discovery evidence](discovery-without-activation.md#execution-ownership-audit-after-phase-cache-publication).
+work in the [discovery evidence](../../archive/references/evidence/discovery-without-activation.md#execution-ownership-audit-after-phase-cache-publication).
 It is experimental evidence, not a completed source-input contract or a production implementation.
 
 ## Recommendation

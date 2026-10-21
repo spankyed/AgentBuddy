@@ -172,7 +172,7 @@ flags. Keep diagnostic overrides scoped to the selected case and preserve their 
 [async-loader budget evidence](docs/references/evidence/build-input-snapshot-proof.md#async-loader-namespace-observation-checkpoint-2026-10-18).
 
 Keep direct pool output live and integration fail-fast. Collect additional failures only in a deliberate
-diagnostic run; see [the early-failure checkpoint](docs/references/evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
+diagnostic run; see [the early-failure checkpoint](docs/archive/references/evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
 
 Freeze every captured input while a pack build runs, including pack-local guides. The chain skipping a
 documentation change does not mean that file is outside the pack compiler's captured namespace.

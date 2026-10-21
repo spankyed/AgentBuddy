@@ -52,7 +52,7 @@ the execution ledger preserves dated checkpoint history. Lazy activation remains
 Completed settings ownership, the full manifest redesign and static discovery, canonical entity
 navigation, frontend failure boundaries, consumed APIs, dependency provenance and shipped-pack
 replacement. Naming baseline **`3d389b9c8`** is included. The
-[final source/requirement audit](../../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19)
+[final source/requirement audit](../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19)
 accounts for Phases 0–7, all 17 manifest decisions and both naming questions, current implementation,
 actual external/runtime evidence, public contracts and final source deltas.
 
@@ -71,7 +71,7 @@ Normal unfiltered [39333769307](https://github.com/spankyed/apack/actions/runs/3
 passes on workflow-only **`06638811d`**, matching main **`1ba85b976`** except its workflow:
 **831 tests passed, zero failures, 29 platform skips, 66 passed files and two skipped files of 68**,
 exit 0, 4896.31s. All normal prerequisites pass, with no unhandled reporting or cleanup error.
-[The complete report](../../references/evidence/integration-deadline-inventory.md#normal-unfiltered-integration-accepted--2026-10-19)
+[The complete report](../references/evidence/integration-deadline-inventory.md#normal-unfiltered-integration-accepted--2026-10-19)
 attributes skips to their preserved Windows/Linux acceptance. The eight-file reporting/watch repair
 also passes 56/56 bodies. Later commits change only owning documentation.
 
@@ -153,14 +153,14 @@ budget/Nx/Wireit proposals remain outside this goal. A concurrent final-source a
 `plugin.default` schema description claiming registration-order selection; runtime and public docs
 already use deterministic catalog selection. The help-only source/generated-schema correction passes
 61 existing editor/schema checks, generation check and lint. Final strict must include it; the current
-normal run stays immutable. See [source audit](../../references/evidence/settings-and-pack-contracts.md#final-source-audit-default-plugin-schema-guidance--2026-10-19)
-and [accepted focused evidence](../../references/evidence/integration-deadline-inventory.md#complete-scaffold-files-accepted--2026-10-19).
+normal run stays immutable. See [source audit](../references/evidence/settings-and-pack-contracts.md#final-source-audit-default-plugin-schema-guidance--2026-10-19)
+and [accepted focused evidence](../references/evidence/integration-deadline-inventory.md#complete-scaffold-files-accepted--2026-10-19).
 
 Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
 containing repair **`d29612b7a`**: all **15/15** cases pass, zero pending, exit 0, 239.315s.
 All four transient-edit variants complete; declarations takes 26.195s. No unhandled reporting or
 cleanup error is reported. Resume normal unfiltered integration, then final committed-source strict
-`--all`. See [complete affected-file evidence](../../references/evidence/integration-deadline-inventory.md#complete-esbuild-configuration-file-accepted--2026-10-19).
+`--all`. See [complete affected-file evidence](../references/evidence/integration-deadline-inventory.md#complete-esbuild-configuration-file-accepted--2026-10-19).
 
 Previous normal **39289719265** finishes with 493 actual passes, one whole-scenario 60s declaration
 case timeout and one separate `onTaskUpdate` error. Its full-build scenario family and reporting
@@ -172,7 +172,7 @@ containing repair **`d07ccae99`**: all 18 scaffold cases and two facade typechec
 (20 actual passes, exit 0, 377.704s; two workers). The repaired trigger case takes 27.020s;
 eight other facade cases are intentionally filtered, not accepted by this focused run. No reported
 cleanup/runtime error. Resume normal unfiltered integration, then final committed-source strict
-`--all`. See [focused evidence](../../references/evidence/integration-deadline-inventory.md#trigger-scaffold-file-and-facade-controls-accepted--2026-10-19).
+`--all`. See [focused evidence](../references/evidence/integration-deadline-inventory.md#trigger-scaffold-file-and-facade-controls-accepted--2026-10-19).
 
 Previous normal **39281108805** finishes with 505 actual passes, one trigger whole-scenario timeout,
 and 26 Windows skips; all 41 native/worker bodies pass. Its unreached cases remain unaccepted.
@@ -182,26 +182,26 @@ Latest normal **39269209929** finishes with 425 actual passes and a native-threa
 that take 62.879s, 61.599s and 78.318s. Native thread refusal/cleanup completes at 126.668s; no value,
 cleanup or reporting failure is reported. Correct the enclosing budget from its three separately
 bounded attempts and cover the remaining cold OS-admission baseline. See
-[native composition evidence](../../references/evidence/integration-deadline-inventory.md#normal-gate-compose-native-capture-and-refusal-attempts--2026-10-19).
+[native composition evidence](../references/evidence/integration-deadline-inventory.md#normal-gate-compose-native-capture-and-refusal-attempts--2026-10-19).
 Repair **`f17d2e286`** is pushed. Run **39275701481** on workflow-only `449aac628` publishes
 41/41 passes, exit 0, 1199.532s, including both complete native/worker files and their cleanup checks.
 The downloaded log records completed upload/final runner cleanup, while GitHub's status API still
 reports the test step running. Preserve that unresolved finalization separately; do not change the
 working deadline implementation from the stale phase label. The acceptance command is complete:
 resume normal integration on its own disposable runner, then final strict `--all`. See the
-[verified report and status discrepancy](../../references/evidence/integration-deadline-inventory.md#complete-native-and-worker-commands-accepted-github-status-unresolved).
+[verified report and status discrepancy](../references/evidence/integration-deadline-inventory.md#complete-native-and-worker-commands-accepted-github-status-unresolved).
 
 Latest normal run **39262109257** finishes with 409 passing tests and one inherited-60s worker
 observation-refusal scenario timeout; all preparation passes. Its cancellation and earlier passing
 controls are preserved. The same-file audit repairs the remaining four cold-build scenario budgets
 and bounds their operations without changing production code or assertions. See the
-[classification and repair](../../references/evidence/integration-deadline-inventory.md#normal-gate-worker-observation-refusal-deadline--2026-10-19).
+[classification and repair](../references/evidence/integration-deadline-inventory.md#normal-gate-worker-observation-refusal-deadline--2026-10-19).
 Repair **`f93015282`** is pushed; focused run **39267061814** succeeds on workflow-only
 `25f51cf98`: all 16 worker cases plus four native controls pass (20/20, exit 0, 611.202s; two workers).
 No cleanup/reporting error. Normal run **39269209929** is now dispatched on workflow-only
 `e8c813028` containing main `d45a03faf`; it retains the ordinary unfiltered command and two cores.
 Await its result, then final committed-source strict `--all`.
-The [focused result](../../references/evidence/integration-deadline-inventory.md#remaining-worker-cold-build-cases-accepted)
+The [focused result](../references/evidence/integration-deadline-inventory.md#remaining-worker-cold-build-cases-accepted)
 records exact durations and preserved evidence.
 
 Runtime identity/publisher-policy repair is committed as **`7ce19661f`**, with focused acceptance
@@ -216,7 +216,7 @@ on **`bc0a4e91c`** after 1748.1s. The external contract (400.3s), fork producer 
 7 declared skips), but the pool fails on one obsolete LMDB `@slow` annotation. Source **`31a8e5a24`**
 removes only that seven-line header; all imports and test bodies remain byte-identical. The 70 marker
 scanner/placement checks and actual scan pass; the unchanged 48 LMDB cases passed in the hosted run.
-See [gate evidence](../../references/evidence/settings-and-pack-contracts.md#strict-host-tests-accepted-obsolete-annotation-removed--2026-10-19).
+See [gate evidence](../references/evidence/settings-and-pack-contracts.md#strict-host-tests-accepted-obsolete-annotation-removed--2026-10-19).
 The packaged author half, pack unit pool, integration/runtime/app halves were not reached. Authoring's
 new two-core reservation therefore still needs real acceptance. No deadline, assertion or gate changes.
 
@@ -234,7 +234,7 @@ API/schema/exports/types/lint, the external contract, fork producer and pack typ
 stops at one macOS native-watch recovery case's unchanged **120s** limit after 410 assertions pass.
 The repair rebuild starts; whether its late stage is slow or stuck is unproven. No authoring/runtime/
 smoke/app acceptance is claimed for unreached stages. Logs and next action are recorded in
-[terminal gate evidence](../../references/evidence/settings-and-pack-contracts.md#strict-convergence-reaches-pack-tests-native-watch-recovery-timeout--2026-10-19).
+[terminal gate evidence](../references/evidence/settings-and-pack-contracts.md#strict-convergence-reaches-pack-tests-native-watch-recovery-timeout--2026-10-19).
 Focused run [39194487906](https://github.com/spankyed/apack/actions/runs/39194487906) also
 fails at 120s on `b51556f8e`: initial watch readiness takes 72.453s, and dependency repair begins at
 93.507s. The final rebuild starts; its completion remains unproven. An isolated diagnostic on `146bc2b6e` completes every assertion in
@@ -251,7 +251,7 @@ schema/API/exports/types/lint, external contract and fork checks pass. Native-wa
 in **113.668s**, including owner closure. Integration stops after 420 passing assertions at the next
 case, `captures native preload libraries and retains the incumbent after outside-library refusal`,
 which reaches its unchanged **60s** outer limit. Its first build completes; later phase completion is
-unproven. The authoring/runtime/app halves remain unreached. Preserve [terminal evidence](../../references/evidence/settings-and-pack-contracts.md#strict-watch-recovery-accepted-next-preload-case-times-out--2026-10-19).
+unproven. The authoring/runtime/app halves remain unreached. Preserve [terminal evidence](../references/evidence/settings-and-pack-contracts.md#strict-watch-recovery-accepted-next-preload-case-times-out--2026-10-19).
 Isolated diagnostic [39199301017](https://github.com/spankyed/apack/actions/runs/39199301017)
 on **`9414d4f4e`** executes and passes both preload/thread cases in **44.652s/53.334s**, including
 all initialization, freshness/restoration, refusal, incumbent and teardown assertions. It establishes
@@ -275,7 +275,7 @@ and report different lifecycle metadata, which correctly participates in compile
 **`25a15d3de`** launches these two existing CLI phases directly from one parent environment and
 explicit workspace, preserving freshness checks rather than filtering environment inputs. A real inert
 subprocess regression fails with the old npm wrappers and passes with the repair; all **127** focused
-checks, scripts/repo types and lint pass. See [handoff evidence](../../references/evidence/settings-and-pack-contracts.md#standalone-typecheck-compiler-context-handoff--2026-10-19).
+checks, scripts/repo types and lint pass. See [handoff evidence](../references/evidence/settings-and-pack-contracts.md#standalone-typecheck-compiler-context-handoff--2026-10-19).
 Updated probe [39203080601](https://github.com/spankyed/apack/actions/runs/39203080601),
 source **`40a5b8e1f`**, includes that exact main repair and differs from it only in the isolated workflow.
 It stops before the report phase: generation exceeds its existing 60s reader-leg budget (62.0s
@@ -326,13 +326,13 @@ claim a normal/final gate from this control. That run reaches its 1,200s aggrega
 **495 actual passes in eight files**, plus one Windows-only skipped file; **59 files remain unproven**.
 The completed native file alone takes **906.983s**, exceeding main's 600s aggregate. No test
 assertion, individual-operation or cleanup failure is reported before termination; the driver's
-exit-code assertion is consequential. The [deadline inventory](../../references/evidence/integration-deadline-inventory.md)
+exit-code assertion is consequential. The [deadline inventory](../references/evidence/integration-deadline-inventory.md)
 owns the full per-file coverage and failure classification. All 59 remaining file reports are collected from six sequential batches in
 [39214676663](https://github.com/spankyed/apack/actions/runs/39214676663), workflow-only
 **`32ec489cf`** on main `1a6304827`. Every batch completed within 900s with two workers and unchanged
 main per-test deadlines: **251 passed, 38 failed, 50 pending**. Failed setup hooks blocked 47 pending
 bodies; three are declared platform/configuration skips. Preserve the eight earlier passing files.
-The complete [failure inventory](../../references/evidence/integration-deadline-inventory.md#completed-six-batch-inventory-2026-10-19)
+The complete [failure inventory](../references/evidence/integration-deadline-inventory.md#completed-six-batch-inventory-2026-10-19)
 classifies every case failure, additional setup failures, one cleanup failure and five Vitest reporting
 timeouts. The six complete invocations total 2,942.322s excluding shared preparation; this failed-run
 measurement does not certify a completed normal-suite budget.
@@ -362,7 +362,7 @@ defaults or event waits. It also makes facade-comparison commands asynchronous a
 between completed in-process compiler operations, and awaits actual Electron command closure with
 two-second abort escalation. An inert old/current Node control proves the early-rejection defect and
 repair; no captured runtime/addon runs locally. All 57 policy/inventory/wait checks, CLI/repo types and
-focused lint pass. The [inventory](../../references/evidence/integration-deadline-inventory.md#repair-boundaries-and-next-action)
+focused lint pass. The [inventory](../references/evidence/integration-deadline-inventory.md#repair-boundaries-and-next-action)
 records scope and proof limits. Next validate the affected files and changed native/worker cases on
 one prepared disposable runner, then settle normal grouping/aggregate allowance, pass normal integration
 and run final strict `--all`. No requirement or gate is waived by these focused repairs.
@@ -371,7 +371,7 @@ workflow-only **`8036d3014`** on exact main **`1f31d38fd`**. It prepares records
 fixtures once, runs the 24 failed files in three eight-file batches, then selected changed native and
 worker controls, all with two workers and committed test limits. It retains every group even on failure.
 All 24 files report **127 passed, 24 failed, zero pending**; six native controls and five worker controls
-pass. The complete [classification](../../references/evidence/integration-deadline-inventory.md#affected-acceptance-result--2026-10-19)
+pass. The complete [classification](../references/evidence/integration-deadline-inventory.md#affected-acceptance-result--2026-10-19)
 identifies four remaining 60s scenario timeouts, eight shared facade type assertions and twelve unchanged
 20s event waits, plus one retained-workspace cleanup failure and two runner reporting timeouts.
 No setup or aggregate cutoff blocked bodies. Next correct the shared undeclared service consumption,
@@ -432,7 +432,7 @@ scaffold/dependency group passes all 20 cases with exit 0, accepting the CLI seq
 those 38 passes. Isolated two-case [39247182439](https://github.com/spankyed/apack/actions/runs/39247182439)
 on `b6b3de3e0` now diagnoses only the timed publication rebuild beside CSS recovery. Its bounded
 completion observer retains failure against the original 60s allowance; temporary tracing and extended
-observation are not main source changes. See the [classified results](../../references/evidence/integration-deadline-inventory.md#committed-repair-acceptance-dispatched--2026-10-19).
+observation are not main source changes. See the [classified results](../references/evidence/integration-deadline-inventory.md#committed-repair-acceptance-dispatched--2026-10-19).
 Source `dbba1429f` adds pack/allowance/cause attribution to the helper's generic timeout; its seven
 mocked checks, CLI types and correctness lint pass. Main deadline values and cancellation stay unchanged.
 The two-case phase control `39247182439` passes with exit 0 and zero original-deadline crossings:
@@ -530,7 +530,7 @@ repairs before using the normal pool with declared prerequisites and two-core bu
 strict `--all`. The current affected reports above keep both gates open.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict command is unchanged and remains required after integration converges. See
-[measured acceptance](../../references/evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
+[measured acceptance](../references/evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
 The bound-only refusal boundary is user-approved and repaired separately below.
 Earlier broad run `39191666077` predates `31ed0dcad` and `eb552cf65`; run `39196299955` includes
 both repairs. Final accepted source must additionally include the later bound-only repair below.
@@ -604,13 +604,13 @@ Completion review finds and repairs an authoring ownership defect in **`31ed0dca
 `constructor` declarations no longer collide with inherited properties, inherited features cannot
 receive services, and refused feature-service scaffolding writes no source files. All nine focused
 authoring/writer checks, CLI types and lint pass. The first manifest/settings source review is recorded
-[here](../../references/evidence/settings-and-pack-contracts.md#completion-review-manifest-and-settings-source-contracts--2026-10-19);
+[here](../references/evidence/settings-and-pack-contracts.md#completion-review-manifest-and-settings-source-contracts--2026-10-19);
 no whole-goal completion, final runtime acceptance or requirement exclusion is claimed.
 
 Phase 6 source review repairs nested service-array semantics in **`eb552cf65`** while preserving
 caller/provider retirement, private receivers and ordinary result/stream settlement. All 46 focused
 binding/cache/replacement cases, host types and lint pass. Current provenance publication and shipped
-ownership review identifies no additional demonstrated implementation gap. See [Phase 6 review](../../references/evidence/settings-and-pack-contracts.md#completion-review-consumed-apis-provenance-and-shipped-ownership--2026-10-19).
+ownership review identifies no additional demonstrated implementation gap. See [Phase 6 review](../references/evidence/settings-and-pack-contracts.md#completion-review-consumed-apis-provenance-and-shipped-ownership--2026-10-19).
 The completed strict run predates both review repairs; final committed-source and external-runtime acceptance
 remain required, and no unresolved requirement is waived.
 
@@ -647,12 +647,12 @@ so completed implementation is not repeatedly scheduled as new work.
 | Build input/publication and freshness (Phase 3) | B2, B4 and B5 implemented and locally accepted; generation-cache ownership repaired in `caf57cb0e`; B1/B3 closure and B6 outstanding | Close remaining native/platform/thread ownership acceptance and converged checks; preserve the common record and four migrated passive consumers. Installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
-| Consumed APIs (Phase 6) | A1–A4 implemented through `bb6df4a45`; A5 authoring/harness `45f2a3458` / `1fbc1e223`, complete external app/fork acceptance on `031e3a521`, and schema/API/export agreement on `b62da5c72` locally accepted. See [A4–A5 evidence](../plans/declared-capabilities.md#bounded-implementation-checkpoints). | Preserve accepted selection, lifetimes, content-target checks, settings policy and typed/untyped EARS through final producer/app convergence and strict acceptance. The [current-source settings/API review](../../references/evidence/settings-and-pack-contracts.md#settingsapi-current-source-review-and-callable-service-repair-2026-10-18) repairs callable-service retirement bypasses through the existing owner; all 14 binding and 81 focused settings checks, host types and lint pass. Preserve this repair through the final gate. No separate unexecuted local app migration is identified. Declaration availability remains distinct from executable readiness. |
+| Consumed APIs (Phase 6) | A1–A4 implemented through `bb6df4a45`; A5 authoring/harness `45f2a3458` / `1fbc1e223`, complete external app/fork acceptance on `031e3a521`, and schema/API/export agreement on `b62da5c72` locally accepted. See [A4–A5 evidence](../plans/declared-capabilities.md#bounded-implementation-checkpoints). | Preserve accepted selection, lifetimes, content-target checks, settings policy and typed/untyped EARS through final producer/app convergence and strict acceptance. The [current-source settings/API review](../references/evidence/settings-and-pack-contracts.md#settingsapi-current-source-review-and-callable-service-repair-2026-10-18) repairs callable-service retirement bypasses through the existing owner; all 14 binding and 81 focused settings checks, host types and lint pass. Preserve this repair through the final gate. No separate unexecuted local app migration is identified. Declaration availability remains distinct from executable readiness. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588` and inspection `d6fa2c6dc`; current reader/producer audit confirms exact origin/version/content and read-only reuse acceptance | Local provenance acceptance closed by the existing real producer/consumer proof and current passing cache/resolution/inspection cases. Preserve through the final gate. Compiler input/output freshness remains separately owned by B1–B6; frozen resolution stays conditional on a distribution requirement. |
 | Shipped-pack replacement (Phase 6) | Implemented ownership/suppression/replacement/source updates; refreshed complete external app and normal fork lifecycle acceptance passes | Local restart/reload, two-window fork preservation, disable/remove/restore and settings preservation are accepted on current source. Preserve existing managed-update and failure-retention cases for the final gate; no replacement redesign remains identified. |
 | Final review/acceptance (Phase 7) | Outstanding | Audit every phase and reconciled manifest requirement on committed source, run final strict `--all`, record evidence and archive only completed work. |
 
-Current-source review `dcf2493e5` repairs [content declaration existence](../../references/evidence/settings-and-pack-contracts.md#explicit-content-declarations-in-schema-and-resolution-2026-10-18)
+Current-source review `dcf2493e5` repairs [content declaration existence](../references/evidence/settings-and-pack-contracts.md#explicit-content-declarations-in-schema-and-resolution-2026-10-18)
 in both schema validation and local/dependency resolution. Inherited object names cannot masquerade as
 formats/dependencies or cause false source/dataset collisions; explicitly declared names remain valid.
 All 72 focused declaration/resolution checks, the existing codegen consumer, SDK types, schema check
@@ -662,19 +662,19 @@ failed after 411.1s at external authoring: its declared inputs omitted the selec
 snapshot, allowing authoring before that producer. Source `268533807` declares `PACK_OUTPUTS` as
 inputs, restoring ordering and cache invalidation through the existing graph. The new regression
 fails before the repair; all 68 focused authoring/graph/scheduler cases, repo/scripts types and lint
-pass afterward. See [checkpoint evidence](../../references/evidence/settings-and-pack-contracts.md#external-authoring-host-build-dependency-2026-10-18).
+pass afterward. See [checkpoint evidence](../references/evidence/settings-and-pack-contracts.md#external-authoring-host-build-dependency-2026-10-18).
 Push authorization is resolved. [Strict run `39166185325`](https://github.com/spankyed/apack/actions/runs/39166185325)
 tested exact checkpoint `31cb54f4d` and stopped at the facade's unchanged 60s budget; the concurrent
 external-contract consumer refused changed generated-directory observations after 38 passing cases.
 Source `ccf86ad3a` makes the chain facade check a verified current-build reader through the existing
 input record, removing regeneration beside consumers. All 115 focused facade/graph/input cases,
-CLI/scripts/repo types and lint pass. [Evidence and remaining acceptance](../../references/evidence/settings-and-pack-contracts.md#read-only-facade-verification-after-publication-2026-10-18)
+CLI/scripts/repo types and lint pass. [Evidence and remaining acceptance](../references/evidence/settings-and-pack-contracts.md#read-only-facade-verification-after-publication-2026-10-18)
 retain the exact failure boundaries. Hosted acceptance of that source, remaining native/platform
 obligations and Phase 7 stay open. [Strict run `39167659691`](https://github.com/spankyed/apack/actions/runs/39167659691)
 tested exact checkpoint `fcb037442`: the facade passes in 27.7s under its unchanged 60s bound, and
 the full packaged-authoring author half passes in 690.1s. The external-contract suite instead reaches
 its unchanged 600s bound while building the default-pack fork, after both ordinary fixture builds and
-38 memo cases pass. Its remaining cause is unproven. Preserve [hosted acceptance and failure evidence](../../references/evidence/settings-and-pack-contracts.md#hosted-facade-and-author-half-acceptance-2026-10-18);
+38 memo cases pass. Its remaining cause is unproven. Preserve [hosted acceptance and failure evidence](../references/evidence/settings-and-pack-contracts.md#hosted-facade-and-author-half-acceptance-2026-10-18);
 do not repeat broad gates or raise deadlines to diagnose it.
 The app half and final strict acceptance remain open. A [bounded Windows profile](../../references/evidence/build-input-snapshot-proof.md#bounded-windows-build-profile-2026-10-18)
 retained only supervisor samples. A [short follow-up](../../references/evidence/build-input-snapshot-proof.md#short-windows-diagnostic-cleanup--2026-10-18)
@@ -688,11 +688,11 @@ integrity and freshness checks, per-operation suite deadlines and the final stri
 This corrects producer/cache and aggregate-budget ownership; it does not establish that a standalone
 fork build fits its unchanged limit or that compiler performance is resolved. All 120 focused graph/input/scheduler cases,
 scripts/repo/E2E types, tiers, lint and shell checks pass; the regression rejects the restored combined
-producer. See [producer evidence](../../references/evidence/settings-and-pack-contracts.md#independent-default-fork-producer--2026-10-18).
+producer. See [producer evidence](../references/evidence/settings-and-pack-contracts.md#independent-default-fork-producer--2026-10-18).
 Checkpoint `e24103ebf` gives fork preparation the full pack build's existing two-core reservation; the initial split
 incorrectly inherited the one-core default. All 84 scheduler/graph/budget cases and scripts/repo types
 pass; the new regression reproduces the old one-core reservation and proves serialization at two cores.
-See [reservation evidence](../../references/evidence/settings-and-pack-contracts.md#fork-producer-core-reservation--2026-10-18). The required hosted
+See [reservation evidence](../references/evidence/settings-and-pack-contracts.md#fork-producer-core-reservation--2026-10-18). The required hosted
 strict gate must exercise the independent producers and exact archive/app handoff. If the standalone
 fork still fails, use its retained phase output; do not restart broad runs without a demonstrated repair.
 [Strict run `39172886664`](https://github.com/spankyed/apack/actions/runs/39172886664) finished on
@@ -701,7 +701,7 @@ unchanged suite bounds; packaged authoring's author half passes in 431.6s. Host 
 already-repaired helper expectation plus eager host validation during driver/session imports and a
 real-checkout-dependent spawning unit. The latter repair defers host validation to actual fixture setup
 and gives the spawning test its own inert checkout; all 70 focused checks pass with an unusable pinned
-host. See [accepted producers and cold-import repair](../../references/evidence/settings-and-pack-contracts.md#independent-producers-accepted-cold-helper-imports-repaired--2026-10-18).
+host. See [accepted producers and cold-import repair](../references/evidence/settings-and-pack-contracts.md#independent-producers-accepted-cold-helper-imports-repaired--2026-10-18).
 No further performance profiling follows from the accepted producers. The next strict gate must cover
 the remaining runtime/integration/app legs on the corrected source. Its whole-job cap is 60m because
 this cold run consumed 28m before those legs; individual step bounds remain unchanged. Windows is
@@ -719,7 +719,7 @@ observations from copy callbacks, delivering selected OS policies and missing/fa
 the existing tooling/watch owner. All 89 focused pure cases, mutation checks and CLI types/lint pass;
 the existing real Windows Node application-context case passes in 22.610s with added selector assertions.
 That Windows selector run was deallocated afterward; its useful overlay is preserved in a scoped stash.
-See [selector evidence](../../references/evidence/settings-and-pack-contracts.md#runtime-selection-inputs-reach-compiler-watches--2026-10-18).
+See [selector evidence](../references/evidence/settings-and-pack-contracts.md#runtime-selection-inputs-reach-compiler-watches--2026-10-18).
 Broader installed publisher-policy mutations and registry notifications are not proven by this check;
 retain the finite closure register and final platform/strict obligations. No new watcher framework,
 registry polling or profiling effort is authorized.
@@ -1211,7 +1211,7 @@ Current Phase 4 source checkpoint: `cd9c57de6`, following producer `94148c9e0` a
 `479c75e01`. One child actor owns entity intent, the invoked existence query and final delivery;
 readiness carries a token. Feature handlers are direct, reference callbacks are removed, verified test
 metadata is captured once, and offline inspection shows compiled destinations. Sixty shell checks and
-the real external-pack Electron reference click pass. See [checkpoint evidence](../../references/evidence/settings-and-pack-contracts.md#entity-opening-lifecycle-checkpoint-2026-10-16).
+the real external-pack Electron reference click pass. See [checkpoint evidence](../references/evidence/settings-and-pack-contracts.md#entity-opening-lifecycle-checkpoint-2026-10-16).
 Strict run `2026-10-16T22-31-16Z-68388` failed the import boundary and facade report; both are corrected
 and individually verified. Its authoring and external contract steps pass. Later gate steps and final
 committed-source strict `--all` remain unproven; no passing broad gate is claimed.
@@ -1223,7 +1223,7 @@ types, lint, import boundaries, facade check and real default-pack build pass. S
 `2026-10-16T23-05-19Z-85766` stopped at packaged authoring: `lstat` could not find a default-pack runtime
 source map while its build overlapped the authoring step. The disappearance's exact cause is not
 established. No broad rerun or tooling change; preserve this for B6. See
-[feature checkpoint evidence](../../references/evidence/settings-and-pack-contracts.md#feature-navigation-checkpoint-2026-10-16).
+[feature checkpoint evidence](../references/evidence/settings-and-pack-contracts.md#feature-navigation-checkpoint-2026-10-16).
 
 Acceptance checkpoint `95ff95ab3` closes the six-handler and stored-message gaps. Eight reproduced
 Actions/Prompts failures now pass: leaving detail, deactivation and returning to a cached selection
@@ -1231,7 +1231,7 @@ retire pending calls. Three reproduced shell failures now pass: breadcrumb/Back/
 cancels pending entity opening. All 105 shell cases and 159 affected feature cases pass, as do host,
 pack and E2E types and lint. The rebuilt runtime passes the real saved-message cross-feature click:
 import a thread, reload its persisted message, click the rendered reference, verify the destination
-note's title and content. See [acceptance evidence](../../references/evidence/settings-and-pack-contracts.md#entity-navigation-acceptance-checkpoint-2026-10-16).
+note's title and content. See [acceptance evidence](../references/evidence/settings-and-pack-contracts.md#entity-navigation-acceptance-checkpoint-2026-10-16).
 The preserved authoring gate failure remains open; no passing broad gate is claimed for this source.
 
 Next: complete the remaining discovery inventory against current registration fields, native
@@ -1245,7 +1245,7 @@ run exposed queued sends outliving their inbox; bus stop completion now drains e
 retiring authority. All 110 bus/lifecycle cases and the exact Electron disable/remove/restore case pass.
 All 5,168 host and 888 pack unit cases pass (two pack cases remain intentionally skipped), as do five
 dependent-runtime integration cases. CLI/testing types and lint pass after the last fixture repair.
-The strict gate remains incomplete as recorded above; see the [checkpoint evidence](../../references/evidence/discovery-without-activation.md#static-endpoint-contracts-2026-10-17).
+The strict gate remains incomplete as recorded above; see the [checkpoint evidence](../references/evidence/discovery-without-activation.md#static-endpoint-contracts-2026-10-17).
 Viewer checkpoint `be5a9344b` closes native backend artifact/block admission with the existing authored
 checks. All 705 affected registry/runtime/fixture/frontend cases, host/SDK types and lint pass; no broad
 rerun follows the recorded disk failure. Content checkpoint `2e1701fad` adds native content declarations,
@@ -1259,12 +1259,12 @@ Display-name audit/cleanup `123efbd6f` removes unused registration metadata rath
 native field. Required-entry checkpoint `b916d0e5e` refuses missing backend entries and frontend entries
 required by declared bindings before staging, installation or build publication. All 705 affected
 pack/CLI cases, two real build cases, host/CLI types and lint pass. Backend-only builds remain valid;
-source-free discovery does not import authored modules. See [entry evidence](../../references/evidence/discovery-without-activation.md#required-build-entries-and-display-metadata-2026-10-17).
+source-free discovery does not import authored modules. See [entry evidence](../references/evidence/discovery-without-activation.md#required-build-entries-and-display-metadata-2026-10-17).
 Compiled-content checkpoint `3119205be` centralizes verified index capture in `readPackBuild`, shared
 by staging and installer admission; CLI inspection drops its independent checks. Missing index entries,
 wrong owners/policies and missing compiled data files refuse; missing specialty source paths fail the
 compiler. Focused cases, types/lint and real shipped/external output reads pass; final layout acceptance
-passes 110 cases including installation and capture races. See [content evidence](../../references/evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17).
+passes 110 cases including installation and capture races. See [content evidence](../references/evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17).
 Reader cleanup `e6ce3f1e4` removes the unused declaration-only reader; all 110 layout cases, host types
 and lint pass. The [asset producer audit](../../references/evidence/build-input-snapshot-proof.md#asset-producer-audit-and-bounded-follow-through-2026-10-17)
 classifies remaining media, CSS, lazy/worker chunks and public-file copying. Proofs show returned Vite
@@ -1431,55 +1431,55 @@ during external authoring after its completed package/report/type checks passed;
 Its exact evidence and terminal cleanup are recorded at the link above. A1's first interface slice is
 committed as `b39c189b8`: host onboarding is separate from appData administration, with owning-engine,
 actual reset/restore, published-pack action and type/report acceptance. See
-[onboarding evidence](../../references/evidence/settings-and-pack-contracts.md#onboarding-api-separation-2026-10-17).
+[onboarding evidence](../references/evidence/settings-and-pack-contracts.md#onboarding-api-separation-2026-10-17).
 A1's combined codegen/host-binding/provider/lifetime/action prototype now passes; see
-[prototype evidence](../../references/evidence/settings-and-pack-contracts.md#consumed-service-prototype-2026-10-17).
+[prototype evidence](../references/evidence/settings-and-pack-contracts.md#consumed-service-prototype-2026-10-17).
 The A2 declaration/codegen foundation is committed as `1a0de64fb`: shared grammar/host baseline,
 direct provider ownership/selection, build validation, schema assistance and catalog preservation pass.
-See [declaration evidence](../../references/evidence/settings-and-pack-contracts.md#consumed-service-declaration-foundation-2026-10-17).
+See [declaration evidence](../references/evidence/settings-and-pack-contracts.md#consumed-service-declaration-foundation-2026-10-17).
 A2's pre-import/admission and read-only validation/inspection checkpoint is committed as `558b42220`.
 Missing/disabled/invalid providers, direct ownership, dependency versions and nested requirements are
 checked from catalog data; poisoned consumer modules remain unexecuted. See
-[admission evidence](../../references/evidence/settings-and-pack-contracts.md#consumed-service-admission-2026-10-17).
+[admission evidence](../references/evidence/settings-and-pack-contracts.md#consumed-service-admission-2026-10-17).
 A3 root retirement is implemented in `3ccd27614`: retained generated roots cannot regain settings
 authority after rebind, and cleanup failure still refreshes the exported root. See
-[root lifetime evidence](../../references/evidence/settings-and-pack-contracts.md#generated-service-root-retirement-2026-10-17).
+[root lifetime evidence](../references/evidence/settings-and-pack-contracts.md#generated-service-root-retirement-2026-10-17).
 A3 core binding/filtering/lifetimes are implemented in `cccc12d5d`: backend `bindServices` receives
 the host-selected facade, types select the same APIs, accepted provider/host generations guard
 retained methods and nested objects, and inference agent methods retain their lifetime. Registry-local
 mock overrides cannot expand the selection or cross registries. The coordinator still owns caller
 retirement after actor cleanup; scheduling failure revokes immediately. See
-[core binding evidence](../../references/evidence/settings-and-pack-contracts.md#selected-service-bindings-2026-10-17).
+[core binding evidence](../references/evidence/settings-and-pack-contracts.md#selected-service-bindings-2026-10-17).
 A4 service/action routes are implemented in `bb6df4a45`: the public ambient SDK service value is
 removed, ActionService/LLM use generated bindings, and action logger/emitter views preserve accepted
 selection, lifetime and sender labels. Root flows capture the action factory once; child flows inherit
 it. Scoped settings and registry-owned harness overrides retain their contracts. Actual shipped-pack
 action, inference, onboarding and reset cases pass; see
-[action access evidence](../../references/evidence/settings-and-pack-contracts.md#bound-action-access-and-ambient-route-removal-2026-10-17).
+[action access evidence](../references/evidence/settings-and-pack-contracts.md#bound-action-access-and-ambient-route-removal-2026-10-17).
 The named B4/B6 marker mutation is reproduced and repaired in `caf57cb0e`; see
-[generation cache evidence](../../references/evidence/settings-and-pack-contracts.md#generation-cache-ownership-2026-10-17).
+[generation cache evidence](../references/evidence/settings-and-pack-contracts.md#generation-cache-ownership-2026-10-17).
 A4 content-target validation already uses the normalized entity registry; retain its checks rather than
 reimplementing it. Authoring acceptance on source `1fbc1e223` passes: default build, standalone facade report with
 preserved build freshness, five dependent runtime cases, seven unchanged harness cases, and the real
 external authoring contract (38 fixture cases, bundled UI build/typecheck and default-fork archive).
 `45f2a3458` gives the dependent fixture real generated registration/bindings; `1fbc1e223` types a
 scheduler test double from its provider without granting the consumer unused APIs. See
-[current authoring evidence](../../references/evidence/settings-and-pack-contracts.md#current-build-service-authoring-acceptance-2026-10-17).
+[current authoring evidence](../references/evidence/settings-and-pack-contracts.md#current-build-service-authoring-acceptance-2026-10-17).
 The app run then passed 26 cases, including fork reload, and exposed premature caller retirement
 when disabling default-setup. `3769e930f` fixes that owner mismatch; 64 focused cases and the actual
 formerly failing disable/remove/replace/restore window pass. See
-[teardown evidence](../../references/evidence/settings-and-pack-contracts.md#disabled-caller-retirement-2026-10-17).
+[teardown evidence](../references/evidence/settings-and-pack-contracts.md#disabled-caller-retirement-2026-10-17).
 The two-core checkpoint stopped at `typecheck:api` after 24.7s: four API composition test files still
 used dynamic imports of the removed ambient SDK service value. `5f5970e6e` migrates those tests to
 bound host ports/engine/registry and the baseline emitter. All 30 affected cases, all three API typecheck
 projects and focused lint pass. See
-[API test migration evidence](../../references/evidence/settings-and-pack-contracts.md#api-composition-test-migration-2026-10-17).
+[API test migration evidence](../references/evidence/settings-and-pack-contracts.md#api-composition-test-migration-2026-10-17).
 The resumed two-core checkpoint then passed the current default build, facade, all reached type/schema/
 export/specifier/tier/lint checks and external contract/fork preparation, but failed packaged authoring:
 the generated demo service called inference without declaring it. `a0911a017` adds `host/inference`
 to that fixture and checks authored types before running its unit tests. Its retained tarball-installed
 workspace passes types and all seven harness cases. See
-[packaged fixture evidence](../../references/evidence/settings-and-pack-contracts.md#packaged-inference-declaration-2026-10-17).
+[packaged fixture evidence](../references/evidence/settings-and-pack-contracts.md#packaged-inference-declaration-2026-10-17).
 The corrected complete author half passes in 263s and its app half in 21s, including both browser
 cases, offline database export and no workspace symlinks. Logs:
 `/private/tmp/apack-packaged-consumption-author-full.log` and
@@ -1501,8 +1501,8 @@ diagnosis or treat the generic timeout message's historical 60s estimate as evid
 The bounded cost diagnostic is complete: `858120200` removes duplicate namespace-admission work;
 actual captured-resolution cases pass, but whole-build/aggregate capacity is not claimed improved.
 `ac964c348` makes pool output live and integration fail at its first failure, retaining verdict and
-coverage rules. See [cost and failure evidence](../../references/evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
-The [public contract audit](../../references/evidence/settings-and-pack-contracts.md#public-contract-documentation-audit-2026-10-17)
+coverage rules. See [cost and failure evidence](../references/evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
+The [public contract audit](../references/evidence/settings-and-pack-contracts.md#public-contract-documentation-audit-2026-10-17)
 aligns current default selection, static versus executable contributions, caller-bound services,
 migrations, settings and shell-test guidance with inspected implementation. Manifest decision 12 now
 records catalog-based selection as the explicit replacement for registration-order selection.
@@ -1511,11 +1511,11 @@ one help-case timeout and two resulting cwd/temporary-directory failures. `a8531
 cwd mutation, skips unrelated frontend work in the help-only case, and forwards `--bail=1` through the
 pool CLI because root configuration was not inherited by independent projects. All 14 affected cases
 and 62 pool checks pass; the real separate-project/control proof and types/lint pass. See
-[repair evidence](../../references/evidence/settings-and-pack-contracts.md#project-fail-fast-and-publication-test-isolation-2026-10-17).
+[repair evidence](../references/evidence/settings-and-pack-contracts.md#project-fail-fast-and-publication-test-isolation-2026-10-17).
 The broad run remains incomplete. Do not repeat it for diagnosis: aggregate execution/budget must be
 resolved before another whole-pool attempt. `b366ae4d5` also corrects the historical healthy-cost diagnostic and isolated retry reports: neither
 elapsed time nor a passing retry identifies the original cause. All 185 affected checks and types/lint
-pass; [diagnostic evidence](../../references/evidence/settings-and-pack-contracts.md#evidence-only-timeout-and-retry-diagnostics-2026-10-17).
+pass; [diagnostic evidence](../references/evidence/settings-and-pack-contracts.md#evidence-only-timeout-and-retry-diagnostics-2026-10-17).
 No budget is changed and no broad rerun follows. Next: resolve native/platform and aggregate validation boundaries, then finish converged
 acceptance, the final requirement audit and strict gate. Do not
 repeat the accepted tarball producer just to restate its status. No whole-gate pass is claimed from the focused repairs.
@@ -1523,7 +1523,7 @@ After the captured pack-test edits, refreshed default-setup, both external fixtu
 the real authoring contract. The complete external app command now passes all 27 fixture cases, the
 bundled-UI editor case and all four normal fork launch/restart/removal/restoration cases:
 `/private/tmp/apack-editor-checkpoint-external-app.log`. See
-[current app evidence](../../references/evidence/settings-and-pack-contracts.md#refreshed-external-app-and-normal-fork-acceptance-2026-10-17).
+[current app evidence](../references/evidence/settings-and-pack-contracts.md#refreshed-external-app-and-normal-fork-acceptance-2026-10-17).
 This is current local app convergence, not a whole strict-gate pass. Keep B1/B3 native/platform
 requirements and the final committed-source strict `--all` open. The user subsequently approved bounded
 native support in `711565757`. `cc186a0d0` enforces declared outside-library refusal for selected macOS
@@ -1628,7 +1628,7 @@ requirement remains required even before a failing reproducer exists; investigat
 to implement an unlimited generalization. Proposals expanding the agreed scope require an explicit user
 decision. Keep research hypotheses separate from demonstrated defects and required acceptance checks.
 
-Keep detailed historical logs in [the evidence record](../../references/evidence/settings-and-pack-contracts.md) for traceability. Update this ledger when a checkpoint closes;
+Keep detailed historical logs in [the evidence record](../references/evidence/settings-and-pack-contracts.md) for traceability. Update this ledger when a checkpoint closes;
 do not append a new competing live backlog or repeatedly copy all remaining work into every evidence
 entry. No scope is dropped, validation weakened, deferred work revived or implementation certified by
 this documentation change.
@@ -1651,7 +1651,7 @@ historical strict-gate references in this register retain their original evidenc
 | Build ownership/freshness | Finite B1/B3 path matrices, frontend generation replacement/HMR, atomic successful input/output association, four passive consumers, preserved failure retention and deterministic reuse | B2/B4/B5 are implemented and locally accepted. B1/B3 retain their recorded platform, runtime, admission and lifetime evidence; bound-only refusal is user-approved in `c38c36301` and has focused verification in `12447893a`. Main native-watch repair `bc53fed70` passes in strict run `39196299955`; that run stops at the later preload case's 60s limit. Diagnostic `39199301017` proves both cases complete; main scoped repair is `24dc840c1`, with previously unreached native-tail acceptance in `39199767205`. The strict run predates the PE repair and does not reach authoring/runtime/app halves; final committed-source acceptance remains required. Preserve the complete closure register and every required final gate. |
 | Entity navigation | Build-checked destinations, conflicts/disabled/missing/retired delivery, typed guard, complete caller migration and stored-reference Electron case | Locally accepted through `95ff95ab3`; retain the complete handler, cancellation and real-window evidence for final acceptance. |
 | Frontend containment | Pane/form failures preserve other panes, host settings/defaults; retries reject retired instances in main/popout paths | Locally accepted in `713a6c1fd`; preserve through final gate. |
-| API consumption | Audited declaration granularity, generated/runtime facade agreement, undeclared/unavailable API diagnostics, content/dependency contracts and settings policy | A1–A4 service routes are implemented through `bb6df4a45`; A4 content checks already exist. Refreshed authoring/harness and complete external app/fork acceptance pass; A5 schema/API/export agreement passes on `b62da5c72`, with public guides and templates reconciled; see [agreement evidence](../../references/evidence/settings-and-pack-contracts.md#a5-schema-and-api-agreement-2026-10-17). Converged and final strict acceptance remain open. |
+| API consumption | Audited declaration granularity, generated/runtime facade agreement, undeclared/unavailable API diagnostics, content/dependency contracts and settings policy | A1–A4 service routes are implemented through `bb6df4a45`; A4 content checks already exist. Refreshed authoring/harness and complete external app/fork acceptance pass; A5 schema/API/export agreement passes on `b62da5c72`, with public guides and templates reconciled; see [agreement evidence](../references/evidence/settings-and-pack-contracts.md#a5-schema-and-api-agreement-2026-10-17). Converged and final strict acceptance remain open. |
 | Provenance/replacement | Exact origin/version/content through reuse/inspection; explicit linked development; fork restart/reload, managed updates, disable/remove/restore, override retention and failed-publication incumbent | Locally accepted real external app/fork lifecycle and cache/resolution/inspection cases remain the authority. No provenance or replacement code changed after their accepted checkpoint; retain exact producer/archive/app consumption in the strict gate. |
 | External package consumer and release preparation | Real CLI/SDK/testing package tarballs installed outside the monorepo; real scaffold/build, release preparation, verified archive and exact archive execution against isolated host data; preserve relevant release-sequence checks | Use the existing packaged-authoring author/app halves and release tests. Apply the evidence boundaries below; local success is not public release readiness. |
 | Final committed tree | Requirement-by-requirement audit, reviewed schema/API/docs/templates, passing normal integration and mapped prior/focused checks on recorded committed source; actual authoring/app evidence | Outstanding; the user waived repeating the full strict gate, not the audit or uncovered behavior. Archive only after every row is proven. |
@@ -1702,12 +1702,12 @@ from unverified acceptance. An old “partial” label is not evidence that impl
 
 | Closure item | Existing implementation to reconcile | Pass condition / missing evidence to resolve |
 |---|---|---|
-| Discovery readers and fields | Common catalog and reader migrations; current registration/native/snapshot field inventory rechecked | Supported registration-field classification is closed in the [current audit](../../references/evidence/settings-and-pack-contracts.md#registration-and-reader-closure-audit-2026-10-17). Lifecycle, offline schema, CLI and UI metadata use accepted declarations; activation eligibility is separate. Final all-kind and asset/producer acceptance remain required; no new duplicate reader is identified by this audit. |
+| Discovery readers and fields | Common catalog and reader migrations; current registration/native/snapshot field inventory rechecked | Supported registration-field classification is closed in the [current audit](../references/evidence/settings-and-pack-contracts.md#registration-and-reader-closure-audit-2026-10-17). Lifecycle, offline schema, CLI and UI metadata use accepted declarations; activation eligibility is separate. Final all-kind and asset/producer acceptance remain required; no new duplicate reader is identified by this audit. |
 | Installed discovery and replacement | Verified build admission, checked bindings and catalog publication | Every supported kind remains inspectable with authored sources absent and throwing executable entries unimported. Disabled/failed owners remain explainable; collisions name owners; invalid replacements retain accepted metadata/bindings. Inspection writes no user data. Reuse existing per-kind proof and add only uncovered cases. |
-| Compiled flow references | Static index/reader checkpoint `7196d61d3`; actual source-free external build inspected at `df1a937a8` | Local acceptance closed: verified external output reports two incoming memo-action edges; rename/removal analysis retains those edges as `not-indexed`. Existing computed/unavailable cases remain explicit. See [external flow evidence](../../references/evidence/settings-and-pack-contracts.md#source-free-external-flow-inspection-2026-10-17). Final committed-source gate remains required. |
-| Cold editor and worker readiness | Catalog-driven composition `8863043a6`; compiled DSL readers/offline Monaco; real worker acceptance `d1c38bc58` | Local acceptance closed: cold document gains actual worker completions from a disabled source-free build; replacement changes completions/diagnostics without replacing its model or losing typed draft/selection. Removal yields missing-provider diagnostics. See [window evidence](../../references/evidence/settings-and-pack-contracts.md#real-cold-monaco-worker-and-editor-lifetimes-2026-10-17); preserve for the final gate. |
+| Compiled flow references | Static index/reader checkpoint `7196d61d3`; actual source-free external build inspected at `df1a937a8` | Local acceptance closed: verified external output reports two incoming memo-action edges; rename/removal analysis retains those edges as `not-indexed`. Existing computed/unavailable cases remain explicit. See [external flow evidence](../references/evidence/settings-and-pack-contracts.md#source-free-external-flow-inspection-2026-10-17). Final committed-source gate remains required. |
+| Cold editor and worker readiness | Catalog-driven composition `8863043a6`; compiled DSL readers/offline Monaco; real worker acceptance `d1c38bc58` | Local acceptance closed: cold document gains actual worker completions from a disabled source-free build; replacement changes completions/diagnostics without replacing its model or losing typed draft/selection. Removal yields missing-provider diagnostics. See [window evidence](../references/evidence/settings-and-pack-contracts.md#real-cold-monaco-worker-and-editor-lifetimes-2026-10-17); preserve for the final gate. |
 | Editor replacement and shared-library lifetime | Generation-checked composition and owned DSL libraries; five real host-only window cases pass at `d1c38bc58` | Monaco local acceptance closed: typed document/model/selection survive replacement and shared assistance survives one editor closing; Tiptap activation/removal preserves draft/selection/update count. Compiler five-build publication/refusal/reuse/removal is locally accepted in `3913fe196`, with explicit invocation-versus-published identity and a measured per-case deadline. Preserve for final all-kind/strict acceptance. |
-| Dependency origin and inspection | Immutable cache/admission `ff4358588`, read-only inspection `d6fa2c6dc`; current reader/producer audit | Local acceptance closed: cache reuse retains original origin/version/content, differing repositories cannot reuse one another's cache, changed same-version builds retain prior paths, and explicit links remain identifiable. Existing real producer/consumer inspection survives source removal without cache writes or activation. See [provenance reconciliation](../../references/evidence/settings-and-pack-contracts.md#dependency-provenance-closure-audit-2026-10-17). Final strict acceptance remains required. |
+| Dependency origin and inspection | Immutable cache/admission `ff4358588`, read-only inspection `d6fa2c6dc`; current reader/producer audit | Local acceptance closed: cache reuse retains original origin/version/content, differing repositories cannot reuse one another's cache, changed same-version builds retain prior paths, and explicit links remain identifiable. Existing real producer/consumer inspection survives source removal without cache writes or activation. See [provenance reconciliation](../references/evidence/settings-and-pack-contracts.md#dependency-provenance-closure-audit-2026-10-17). Final strict acceptance remains required. |
 | Dependency/replacement consistency | Existing receipt admission, common freshness record and shipped-pack replacement checkpoints | A consumer cannot mix declarations and executable bytes from different accepted builds. Failed publication preserves the incumbent; captured paths remain coherent across replacement. Reconcile restart/reload, overrides and disable/remove/restore against existing real handoff evidence before adding cases. |
 
 Close each row by linking sufficient evidence or fixing its named omission, then update the owning
@@ -1777,7 +1777,7 @@ then incorporate only the tested result. No repeating naming-branch fetch/merge 
 ### Each implementation checkpoint
 
 Run focused checks and the required checkpoint validation, inspect the staged diff, and commit a usable
-logical change before starting the next. Record its commit and validation in [the evidence record](../../references/evidence/settings-and-pack-contracts.md), then update the live ledger. Large phases have
+logical change before starting the next. Record its commit and validation in [the evidence record](../references/evidence/settings-and-pack-contracts.md), then update the live ledger. Large phases have
 multiple checkpoints; Phase 6's three workstreams each have their own commits and evidence.
 
 Follow [bounded validation](../../../CLAUDE.md#keep-validation-bounded). Define the checkpoint's claims
@@ -1982,13 +1982,13 @@ instead of calling it complete.
 
 ## Evidence
 
-Checkpoint history and validation logs live in [the evidence record](../../references/evidence/settings-and-pack-contracts.md).
+Checkpoint history and validation logs live in [the evidence record](../references/evidence/settings-and-pack-contracts.md).
 The live ledger and acceptance register above own current work and closure. Preserve unresolved
 requirements recorded in that history; moving evidence does not complete or exclude them.
 
 ## Outcome
 
-Pending completion. The [first current-source manifest audit](../../references/evidence/settings-and-pack-contracts.md#current-source-manifest-audit-first-pass-2026-10-18)
+Pending completion. The [first current-source manifest audit](../references/evidence/settings-and-pack-contracts.md#current-source-manifest-audit-first-pass-2026-10-18)
 passes 68 focused schema/editor/reference/writer/selector checks and confirms schema generation agrees.
 It corrects stale roadmap claims without completing Phase 7. API-report checking refuses stale local
 published output; matching-output CI verification, the remaining native/platform work and final strict

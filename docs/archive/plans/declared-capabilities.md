@@ -2,7 +2,7 @@
 
 Status: completed 2026-10-19. A1–A5 deliver explicit supported API consumption, generated/runtime agreement, unavailable-provider diagnostics and retired caller/provider credentials.
 See the [completed goal](../goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19) and
-[final requirement/source audit](../../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
+[final requirement/source audit](../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
 Dated checkpoint notes below are historical; deferred work keeps its separate owner.
 
 Historical checkpoint status: A1 selection and A2 declaration, pre-import/admission and read-only diagnostics are implemented.
@@ -234,7 +234,7 @@ views preserve selection, caller/provider/host lifetime and `from`/`via`. Root f
 children inherit it. Retained factories and escaped callbacks refuse after retirement or rebind.
 Harness overrides remain explicit on the registry/test-host owners, with canonical settings policy.
 Actual action/inference/onboarding/reset cases pass; see the
-[action access evidence](../../references/evidence/settings-and-pack-contracts.md#bound-action-access-and-ambient-route-removal-2026-10-17).
+[action access evidence](../references/evidence/settings-and-pack-contracts.md#bound-action-access-and-ambient-route-removal-2026-10-17).
 A4's content-target audit finds the required implementation already present: `generateAppliers()`
 checks own formats (even unused ones) and resolved dependency formats against `packRegistry()`'s
 normalized own/dependency/SDK entity projection. Both ordinary and tree branch targets are checked;
@@ -245,13 +245,13 @@ A5 current-build authoring/harness acceptance passes: real generated dependent r
 provider-typed scheduler doubles without widening consumer APIs (`1fbc1e223`), the external fixture's
 38 cases, bundled UI fixture and default-fork build/archive. Templates already use generated Services;
 public testing guidance now explains selected APIs and provider-owned doubles. See
-[current authoring evidence](../../references/evidence/settings-and-pack-contracts.md#current-build-service-authoring-acceptance-2026-10-17).
+[current authoring evidence](../references/evidence/settings-and-pack-contracts.md#current-build-service-authoring-acceptance-2026-10-17).
 The real default build remains current after facade generation, and fork preparation passes after
 `caf57cb0e`. The refreshed complete external app command passes all 27 fixture cases, the bundled-UI case and
 four normal fork launch/restart/removal/restoration cases; see the owning goal's
-[app evidence](../../references/evidence/settings-and-pack-contracts.md#refreshed-external-app-and-normal-fork-acceptance-2026-10-17).
+[app evidence](../references/evidence/settings-and-pack-contracts.md#refreshed-external-app-and-normal-fork-acceptance-2026-10-17).
 The subsequent public-guide audit and current schema/API/export checks establish contract agreement;
-see [A5 agreement evidence](../../references/evidence/settings-and-pack-contracts.md#a5-schema-and-api-agreement-2026-10-17).
+see [A5 agreement evidence](../references/evidence/settings-and-pack-contracts.md#a5-schema-and-api-agreement-2026-10-17).
 The later compiler change still belongs to final producer/app convergence. The required strict gate
 remains open; these local results do not certify the full goal.
 

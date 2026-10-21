@@ -2,7 +2,7 @@
 
 Status: completed 2026-10-19. The shared catalog discovers every supported declaration and static asset without executing pack/dependency entries; binding and build freshness remain checked.
 See the [completed goal](../goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19) and
-[final requirement/source audit](../../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
+[final requirement/source audit](../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
 Dated checkpoint notes below are historical; deferred work keeps its separate owner.
 
 Historical checkpoint status: implementation in progress. Written 2026-10-12 on `AS/feature-settings-rework`.
@@ -66,7 +66,7 @@ Follow [bounded validation](../../../CLAUDE.md#keep-validation-bounded): diagnos
 evidence and focused reproducers; broaden for a named coverage gap or the required converged gate.
 No deadline/assertion change or repeated focused pass substitutes for final acceptance.
 
-**How to read the history:** dated audits, designs and checkpoint handoffs in [the evidence record](../../references/evidence/discovery-without-activation.md) record what was known
+**How to read the history:** dated audits, designs and checkpoint handoffs in [the evidence record](../references/evidence/discovery-without-activation.md) record what was known
 at that time. Their “remaining,” “next” and “not yet implemented” statements are superseded for current
 status by this checklist. Preserve their evidence and unresolved acceptance requirements; supersession
 does not waive a requirement. The acceptance section remains normative. An old failure log is neither
@@ -83,8 +83,8 @@ proof of a current failure nor proof that the failure was subsequently fixed.
 | Shell navigation/default selection | **Default/dispatch and navigation metadata implemented.** `cfcbb53f9` moves toolbar/menu/keyboard inventories, labels, order and visibility to declarations and removes backend runtime visibility copies. `69860e4be` selects defaults from declarations, uses checked owner/build/runtime plugin bindings for new navigation/delivery, preserves native host availability and reconciles frontend-before-frame ordering. The runtime default selector is removed. | Complete loader coordination cleanup and final real-window navigation acceptance. Preserve saved/popout/explicit precedence, unknown/disabled/loading/failed distinctions, actor-event readiness and stale completion refusal. `wantsDefaultPlugin` still records user intent; `pendingPluginId` and request queues retain actual readiness work. |
 | Declared slash-command listing | **Implemented, awaiting final acceptance.** `ff48438cd` projects native/installed/source commands through the common catalog in stable admission order. SDK execution selection matches enabled declarations to accepted runtime identities; the old command store is removed. Chat subscribes to catalog changes and retains user-content/runtime notifications. | Include this metadata/eligibility split in final all-kind acceptance. Focused checks cover poisoned source-free inspection, inactive/stale/build-replaced owners, collisions, ordering, real pack refresh and actor stop. User-document precedence and user.command flow dispatch remain unchanged. |
 | Block and artifact metadata | **Consumer checkpoint implemented.** `3e4e10c8f` publishes native/installed/source metadata; `a278d4116` adds checked frontend bindings and scoped catalog readers, migrating thread icons, input kinds and components together. Mounted views follow independent catalog/binding changes and refuse stale implementations. Backend transcript callbacks remain execution. | Finish the all-kind audit, including backend/native fields and superseded metadata readers. Active low-level registries retain runtime lookup lifetimes; do not count them as static discovery. Keep source-free installed inspection and ownership/readiness checks in final acceptance. |
-| DSL/editor assistance | **Implemented, awaiting final acceptance.** `8ed188046` publishes compiled text and `39e48e66e` / `eb7d0995b` migrate SDK/Monaco to static catalog data with shared owned libraries and live replacement/removal. The frontend registration/store, generated raw module and staged-import resolver are removed. `07d544606` supplies offline Monaco. | Real worker/cold-document/window acceptance passes in `d1c38bc58`: source-free disabled metadata arrives after document opening, actual completions/diagnostics follow replacement/removal, typed drafts/models/selections survive, and libraries remain until their final consumer releases them. [Window evidence](../../references/evidence/settings-and-pack-contracts.md#real-cold-monaco-worker-and-editor-lifetimes-2026-10-17). Retain the existing producer, prefix-policy and deterministic-build evidence for final all-kind acceptance. Five-build publication/refusal/recovery/reuse/removal is locally accepted in `3913fe196`; it compares publishable bytes separately from invocation metadata and has a measured 120s scenario exception. [DSL evidence](../../references/evidence/settings-and-pack-contracts.md#dsl-reuse-identity-and-measured-five-build-acceptance-2026-10-17). Preserve final B6/all-kind acceptance. |
-| Compiled-content inventory and dependencies | **Flow-edge local acceptance closed; final inventory audit remains.** `7196d61d3` publishes flow reference fields/targets in the verified content index; build-only codegen, offline inspection and known incoming-edge queries cover nested/custom/computed targets. [Real source-free external inspection](../../references/evidence/settings-and-pack-contracts.md#source-free-external-flow-inspection-2026-10-17) verifies incoming edges and rename/removal findings. | Audit every remaining inventory reader and retain the accepted flow cases for the final gate. Preserve explicit unavailable/non-exhaustive analysis and indexed-target semantics; finish all-kind external/installed acceptance. Distinguish declared content from rows created by appliers; no user-data writes during inspection. |
+| DSL/editor assistance | **Implemented, awaiting final acceptance.** `8ed188046` publishes compiled text and `39e48e66e` / `eb7d0995b` migrate SDK/Monaco to static catalog data with shared owned libraries and live replacement/removal. The frontend registration/store, generated raw module and staged-import resolver are removed. `07d544606` supplies offline Monaco. | Real worker/cold-document/window acceptance passes in `d1c38bc58`: source-free disabled metadata arrives after document opening, actual completions/diagnostics follow replacement/removal, typed drafts/models/selections survive, and libraries remain until their final consumer releases them. [Window evidence](../references/evidence/settings-and-pack-contracts.md#real-cold-monaco-worker-and-editor-lifetimes-2026-10-17). Retain the existing producer, prefix-policy and deterministic-build evidence for final all-kind acceptance. Five-build publication/refusal/recovery/reuse/removal is locally accepted in `3913fe196`; it compares publishable bytes separately from invocation metadata and has a measured 120s scenario exception. [DSL evidence](../references/evidence/settings-and-pack-contracts.md#dsl-reuse-identity-and-measured-five-build-acceptance-2026-10-17). Preserve final B6/all-kind acceptance. |
+| Compiled-content inventory and dependencies | **Flow-edge local acceptance closed; final inventory audit remains.** `7196d61d3` publishes flow reference fields/targets in the verified content index; build-only codegen, offline inspection and known incoming-edge queries cover nested/custom/computed targets. [Real source-free external inspection](../references/evidence/settings-and-pack-contracts.md#source-free-external-flow-inspection-2026-10-17) verifies incoming edges and rename/removal findings. | Audit every remaining inventory reader and retain the accepted flow cases for the final gate. Preserve explicit unavailable/non-exhaustive analysis and indexed-target semantics; finish all-kind external/installed acceptance. Distinguish declared content from rows created by appliers; no user-data writes during inspection. |
 | Services, repositories, events and remaining native contributions | **Partially implemented; field-by-field completion audit outstanding.** `506582b94` adds native service/repository ownership data and common binding-name validation. `774b0844c` publishes compiled endpoint contracts for authored/native discovery and checks runtime event membership; inactive native shell inboxes remain independent of UI panes. | Classify every supported registration field as discoverable data or executable binding, including nested members and static assets. Discover contracts without constructing services. Verify ownership/collision rules and native/authored parity; do not infer completion from schema acceptance. Phase 6 owns consumed-API enforcement. |
 | Shared readers and all-kind acceptance | **Partially implemented; final consumer audit outstanding.** Snapshot/catalog admission is shared; individual migrations above have checkpoint coverage. | Recheck lifecycle, offline database schema, CLI inspection and refresh subscriptions for duplicate parsing or active-only inventory. Preserve each consumer's enablement/execution policy. Exercise every supported kind with poisoned executable entries, source files absent, disabled/failed owners, collisions and atomic replacement; remove superseded discovery stores without deleting real runtime machinery. |
 
@@ -96,7 +96,7 @@ of superseded discovery projections. A passing producer test alone does not esta
 
 Archive creation, prebuilt tests, default-pack fork preparation and drive are **build-freshness
 consumers**, not additional discovery UIs. Their common input/publication contract and migration remain
-required under [content-based source freshness](../../references/evidence/discovery-without-activation.md#required-content-based-source-freshness-correction-2026-10-15).
+required under [content-based source freshness](../references/evidence/discovery-without-activation.md#required-content-based-source-freshness-correction-2026-10-15).
 Shared authored inputs landed in `882d2a50b`; compiler capture/session reuse landed in `aba660aed`
 after strict checkpoint validation. Captured TypeScript query views and retained read-set validation land
 in `e171b3acf`, with full checkpoint evidence in the evidence record. Whole-build input/output association and passive consumers are implemented as recorded above;
@@ -118,7 +118,7 @@ This inventory follows `PackRegistration`, `PackFeature`, `PackFERegistration` a
 as implemented now, not the original survey. Existing declarations are retained; a runtime lookup is
 not a discovery defect when its caller needs an executing implementation.
 
-The 2026-10-17 [closure audit](../../references/evidence/settings-and-pack-contracts.md#registration-and-reader-closure-audit-2026-10-17)
+The 2026-10-17 [closure audit](../references/evidence/settings-and-pack-contracts.md#registration-and-reader-closure-audit-2026-10-17)
 rechecks every current field in those four interfaces against this table and the native declaration.
 No unclassified registration field remains. This closes field classification, not the outstanding
 compiler input/lifetime requirements or final all-kind acceptance.
@@ -180,7 +180,7 @@ Applier-only sources intentionally contribute no compiled entry; they still prod
 Missing declared specialty source paths now refuse compilation instead of silently disappearing from
 the index. Explicit native imports and source-free installed reads are preserved. Filesystem/compiler
 regressions, installation/refusal and real shipped/external output checks pass; see [content admission
-evidence](../../references/evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17). Producer media-byte and missing-output checks are implemented in the content/media checkpoint
+evidence](../references/evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17). Producer media-byte and missing-output checks are implemented in the content/media checkpoint
 linked below; declared directories alone cannot establish required file membership.
 
 The common source-build association is now `dist/build-inputs.json`, written only after loader/thread
@@ -253,7 +253,7 @@ Execute the identified gaps in this order:
 2. Compiled endpoint contracts are implemented in `774b0844c`, using the existing TypeScript contract
    reader and checked admission. Preserve static discovery, native partial composition, immutable
    effective receive sets and the shell inbox/UI distinction. Static event names do not authorize a
-   sender or validate payloads. See the [checkpoint evidence](../../references/evidence/discovery-without-activation.md#static-endpoint-contracts-2026-10-17)
+   sender or validate payloads. See the [checkpoint evidence](../references/evidence/discovery-without-activation.md#static-endpoint-contracts-2026-10-17)
    for passing checks and the incomplete strict gate; do not restart this implementation.
 3. Close native backend contribution parity for migrations, content writers/appliers and artifact/block
    facets. Reuse shared binding checks instead of growing a second native validator. Any unsupported
@@ -261,16 +261,16 @@ Execute the identified gaps in this order:
    Viewer checkpoint `be5a9344b` shares authored/native backend checks; 705 affected cases, host/SDK
    types and lint pass. Discovery/unload, atomic refusal before authority, callback identity and existing
    frontend lookup coverage pass. No new public grammar or inventory was introduced. Preserve this
-   implementation and its [evidence](../../references/evidence/discovery-without-activation.md#native-backend-viewer-parity-2026-10-17);
+   implementation and its [evidence](../references/evidence/discovery-without-activation.md#native-backend-viewer-parity-2026-10-17);
    the resource-failed strict gate remains incomplete.
 
    Content checkpoint `2e1701fad` declares native writers/appliers and preserves explicit native
    `importCompiledContent`; 761 affected cases, 46 authored-manifest cases, types, lint, package builds
    and schema/API generation pass. Migration checkpoint `f72cb8756` adds checked native declarations
    and real targeting through the existing runners; 840 affected cases, types, lint, package builds and
-   schema/API generation pass. Preserve app/pack version separation and captured accepted bindings. See [content evidence](../../references/evidence/discovery-without-activation.md#native-content-declarations-2026-10-17).
+   schema/API generation pass. Preserve app/pack version separation and captured accepted bindings. See [content evidence](../references/evidence/discovery-without-activation.md#native-content-declarations-2026-10-17).
 4. Display-name cleanup `123efbd6f` and required-entry admission `b916d0e5e` are implemented; preserve
-   their [evidence](../../references/evidence/discovery-without-activation.md#required-build-entries-and-display-metadata-2026-10-17).
+   their [evidence](../references/evidence/discovery-without-activation.md#required-build-entries-and-display-metadata-2026-10-17).
    Compiled index/data admission is implemented in `3119205be`; reader cleanup in `e6ce3f1e4` removes
    the unused weaker reader. Asset classes are classified in the linked producer audit; complete its
    concrete B1/B4 requirements and remaining consumer checks, then all-kind source-free/external
@@ -281,7 +281,7 @@ No completion is claimed from this table. It identifies inspected implementation
 and the bounded checks needed to close them. Historical checkpoint evidence is not a second backlog.
 
 Native migration checkpoint `f72cb8756` implements this contract; see the
-[migration evidence](../../references/evidence/discovery-without-activation.md#native-migration-targeting-2026-10-17).
+[migration evidence](../references/evidence/discovery-without-activation.md#native-migration-targeting-2026-10-17).
 
 Native migration checkpoint contract: reuse `migrations.app` / `migrations.pack`, with the same
 keyed target/description/export grammar and shared checked callable bindings as authored packs.
@@ -720,7 +720,7 @@ access or prove that executable pack code is confined.
 ## Checkpoint evidence
 
 Build-input investigations, historical foundation surveys and implementation/validation checkpoints
-live in [the discovery evidence record](../../references/evidence/discovery-without-activation.md).
+live in [the discovery evidence record](../references/evidence/discovery-without-activation.md).
 This plan retains the supported contract, current checklist and acceptance requirements. The
 [execution goal](../goals/goal-settings-and-pack-contracts.md) owns the remaining B1–B6 build work
 and checkpoint order. Unresolved requirements in the evidence remain in scope; history is not a

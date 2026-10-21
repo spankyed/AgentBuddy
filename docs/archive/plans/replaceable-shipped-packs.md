@@ -2,7 +2,7 @@
 
 Status: completed 2026-10-19. Shipped packs use the ordinary installation/catalog contract; explicit forks, managed updates, restoration, override retention and incumbent preservation are accepted.
 See the [completed goal](../goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19) and
-[final requirement/source audit](../../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
+[final requirement/source audit](../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
 Dated checkpoint notes below are historical; deferred work keeps its separate owner.
 
 Historical checkpoint status: in progress, using [settings architecture](settings-architecture.md) and the
