@@ -23,14 +23,21 @@ const WORK_VOLUME = `apack-linux-work-${short(REPO_ROOT)}`;
 const NPM_CACHE_VOLUME = 'apack-linux-npm-cache';
 
 /**
- * What the copy leaves out: every `node_modules` (the container installs its own), the package builds
- * `packages:ensure` owns there, and per-checkout caches. Excluded paths in the volume are kept across copies,
- * so the container's own installs and builds survive.
+ * What the copy carries and leaves out, as rsync filters in order. Every `node_modules` stays out (the container
+ * installs its own), except the typecheck legs' build infos — `node_modules/.cache/tsbuildinfo` and the renderer's
+ * `node_modules/.tmp`: the Mac's legs write them, the integration specs read them, and they hold relative paths.
+ * Everything else the Mac's steps produced is carried too — build outputs, `.apack` build records — because the
+ * suites read them. Also out: the package builds `packages:ensure` owns, which the container makes for itself.
+ * Excluded paths in the volume survive each copy, so the container's own installs and builds are kept.
  */
-const EXCLUDES = [
-  'node_modules', '.apack',
+const FILTERS = [
+  '--include=/node_modules/', '--include=/node_modules/.cache/', '--include=/node_modules/.cache/tsbuildinfo/***',
+  '--exclude=/node_modules/.cache/*', '--exclude=/node_modules/*',
+  '--include=/packages/renderer/node_modules/', '--include=/packages/renderer/node_modules/.tmp/***',
+  '--exclude=/packages/renderer/node_modules/*',
+  '--exclude=node_modules',
   ...['apack-ears', 'apack-sdk', 'apack-ui', 'apack-testing', 'apack-cli'].flatMap((pkg) =>
-    [`/packages/${pkg}/dist`, `/packages/${pkg}/publish`]),
+    [`--exclude=/packages/${pkg}/dist`, `--exclude=/packages/${pkg}/publish`]),
 ];
 
 const docker = (args: string[], stdio: 'inherit' | 'pipe' = 'pipe') => spawnSync('docker', args, { stdio, encoding: 'utf8' });
@@ -77,7 +84,7 @@ const quote = (arg: string): string => `'${arg.replace(/'/g, `'\\''`)}'`;
  * The containers share the Linux VM's kernel, so `flock` on a file in the volume holds across them.
  */
 const sync = [
-  `rsync -a --delete --exclude=/.apack-sync.lock ${EXCLUDES.map((pattern) => `--exclude=${quote(pattern)}`).join(' ')} /src/ /work/`,
+  `rsync -a --delete --exclude=/.apack-sync.lock ${FILTERS.map(quote).join(' ')} /src/ /work/`,
   'lock=$(sha256sum package-lock.json | cut -d" " -f1)',
   'if [ "$(cat node_modules/.apack-installed-lock 2>/dev/null)" != "$lock" ]; then',
   '  npm ci --no-audit --no-fund',
@@ -91,7 +98,9 @@ const script = [
 ].join('\n');
 
 const child = spawn('docker', [
-  'run', '--rm', '--init',
+  // IPv4 loopback only, as on CI's Linux runners: with IPv6 up, `localhost` resolves to ::1 first here, so a
+  // dev server binds where a client dialling 127.0.0.1 cannot reach it
+  'run', '--rm', '--init', '--sysctl', 'net.ipv6.conf.all.disable_ipv6=1',
   '-v', `${REPO_ROOT}:/src:ro`, '-v', `${WORK_VOLUME}:/work`, '-v', `${NPM_CACHE_VOLUME}:/root/.npm`,
   ...gitDirMount(),
   ...forwarded.flatMap((key) => ['-e', key]),
