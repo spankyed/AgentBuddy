@@ -2786,6 +2786,34 @@ Remote CI clarification: cancellation was submitted before the user's follow-up 
 `39075394015` was restored with `gh run rerun` as attempt 2 on the same `4b4d820fa` source. Do not cancel
 GitHub runs as part of this local-machine investigation.
 
+### Shared compiler store: syspolicyd readings (2026-10-21)
+
+The bounded follow-up above, measured. Compiler installations now live in a machine-wide store, one entry
+per input (`2f7566291`): every build with the same compiler, runtime and esbuild selection executes the same
+paths. Readings stream `subsystem == "com.apple.syspolicy.exec"` with `/usr/bin/log` and count
+`evaluateScanResult` rows by executable id and distinct path hash, on the developer's Mac (Darwin 25.3.0).
+
+- **Ten consecutive builds against the shared store:** no Node, esbuild or rollup assessment, and two
+  `fsevents.node` assessments. The runtime and compiler executables are assessed once per store entry,
+  not once per build.
+- **The CLI integration half run directly on the Mac** (44 files, 360 tests, 551s, `813fa6844`): 48 rows;
+  distinct paths were 8 `node`, 15 `fsevents.node`, 6 `a.out`, 3 `libbindings_napi.dylib`, one `lmdb.node`
+  and one `extract.node`. Against the incident's capture: no notarization-daemon errors were logged, and no
+  launch stalls were reported during the run.
+- **These test counts are the test isolation, not a per-build cost.** Each vitest worker captures into its
+  own store under the run's directory, and specs that damage an entry create their own, so a run holds
+  several store entries and each assesses its executables once. The `a.out` and `libbindings_napi.dylib`
+  rows are native fixtures the specs compile, new by construction.
+- **`fsevents.node` belongs to the compiler installation**, not to a pack dependency: both copies on disk sit
+  inside store entries (`<store>/<key>/tree/…/node_modules/fsevents/`), from Vite's package graph. A second
+  store for pack dependencies' native addons was built (`750ed76c1`, `ffd9e5ceb`) on the opposite assumption;
+  a repeat of the integration half with it in place (485s) showed the same 15 `fsevents.node` and 8 `node`
+  paths among 38 rows, and it was reverted (`b7c9f8e44`).
+
+Consequence: the integration half runs directly on a Mac; the native half, which executes fresh fixtures
+and runtime copies by design, still runs in the Linux container. The incident's cause remains unproven;
+these readings show only that the per-build stream of new executable paths is gone.
+
 
 ### Recovery, Windows acceptance and isolated macOS execution (2026-10-17)
 
