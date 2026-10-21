@@ -23,7 +23,9 @@ concurrency:
 jobs:
   compiler:
     runs-on: windows-latest
-    timeout-minutes: 20
+    # A bound on a hung runner, not a speed check: the native DLL step alone measured 15.5 minutes (run 39644219721),
+    # and three native steps follow it, each test bounded by its own case budget
+    timeout-minutes: 60
     env:
       APACK_CHAIN_CORES: 2
     steps:
