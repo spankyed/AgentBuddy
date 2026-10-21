@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findComponentSends, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findReservedEventKeys, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, repoRootDir, findUnimportedDependencies, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
+import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findComponentSends, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findReservedEventKeys, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findSyncSpawnsInSlowSpecs, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, repoRootDir, findUnimportedDependencies, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { population } from '@apackdev/sdk/testing';
@@ -673,6 +673,11 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
   findRawGitListings: () => {
     write('caller.ts', "execFileSync('git', ['ls-files']);");
     return findRawGitListings(['src'], root, {});
+  },
+  findSyncSpawnsInSlowSpecs: () => {
+    // Aliased, so the case also shows the import is read by its exported name
+    write('slow.integration.spec.ts', "import { execFileSync as run } from 'node:child_process'; run('true');");
+    return findSyncSpawnsInSlowSpecs([path.join(root, 'src', 'slow.integration.spec.ts')], root, {});
   },
   findSharedPackageLists: () => {
     write('consumer.ts', "const EXTERNALS = ['@apackdev/sdk'];");

@@ -1,10 +1,13 @@
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { componentContracts } from '../../../scripts/component-contracts.ts';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * scripts/component-contracts.ts: the contract report behind etc/<entry>.component.md. The fixture
@@ -40,10 +43,10 @@ function write(file: string, content: string): void {
 }
 
 /** The contract of `src/<name>.vue`, as `src/<name>.ts` publishes it, after vue-tsc emits it. */
-function contractOf(name: string): string {
+async function contractOf(name: string): Promise<string> {
   write(`src/${name}.ts`, `export { default } from './${name}.vue';\n`);
-  execFileSync(path.join(REPO_ROOT, 'node_modules/.bin/vue-tsc'), ['-p', 'tsconfig.json', '--outDir', '.temp/api-types'], {
-    cwd: root, stdio: 'pipe',
+  await execFileAsync(path.join(REPO_ROOT, 'node_modules/.bin/vue-tsc'), ['-p', 'tsconfig.json', '--outDir', '.temp/api-types'], {
+    cwd: root, encoding: 'utf8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024,
   });
   return componentContracts({
     packageName: '@fixture/ui',
@@ -59,7 +62,7 @@ function contractOf(name: string): string {
 }
 
 describe('componentContracts', () => {
-  it("reports a component's props, emits, slots and exposed members", () => {
+  it("reports a component's props, emits, slots and exposed members", async () => {
     write('src/types.ts', 'export interface WidgetItem { id: string; label: string }\n');
     write('src/Widget.vue', `<script setup lang="ts">
 import type { WidgetItem } from './types.ts';
@@ -71,7 +74,7 @@ defineExpose({ focus: () => {}, isOpen: true });
 <template><div><slot name="header" :title="'x'" /></div></template>
 `);
 
-    const contract = contractOf('Widget');
+    const contract = await contractOf('Widget');
     expect(contract).toContain('## Component contract for "@fixture/ui/Widget"');
     // A type the component's own declaration imports prints by name, not as a path into .temp
     expect(contract).toContain('item: WidgetItem;');
@@ -88,14 +91,14 @@ defineExpose({ focus: () => {}, isOpen: true });
     expect(contract).not.toMatch(/import\("[./]/);
   });
 
-  it('reports a component with no props as having none, rather than failing', () => {
+  it('reports a component with no props as having none, rather than failing', async () => {
     write('src/Bare.vue', `<script setup lang="ts">
 defineExpose({ ping: () => 'pong' });
 </script>
 <template><div /></template>
 `);
 
-    const contract = contractOf('Bare');
+    const contract = await contractOf('Bare');
     expect(contract).toContain('props {\n}');
     expect(contract).toContain("ping: () => string;");
   });

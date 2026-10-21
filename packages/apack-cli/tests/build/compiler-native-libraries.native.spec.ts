@@ -10,7 +10,7 @@ import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/hos
 import { createPackBuilder } from '../../src/build/build-process.ts';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
-import { nativeFixture, ordinaryNativeLoad, nativeLoad, nativeWorkerCompiler } from '../_support/native-libraries.ts';
+import { nativeFixture, ordinaryNativeLoad, nativeLoad, nativeWorkerCompiler, type NativeFixture } from '../_support/native-libraries.ts';
 import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
 
 // The native-library proofs are split by subject so the native half's shards can spread them; this one is
@@ -19,7 +19,7 @@ import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
 const sharedCompiler = shareCompilerInstallation();
 
 it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitive'] as const)('checks %s native libraries before addon initialization', async mode => {
-  const { root, pack, library, marker, outside, entry } = nativeFixture(mode);
+  const { root, pack, library, marker, outside, entry } = await nativeFixture(mode);
   let compilation: ReturnType<typeof captureCompilationInputs> | undefined;
   let modules: ReturnType<typeof createCompilerModuleLoader> | undefined;
   try {
@@ -58,13 +58,13 @@ it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitiv
 it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['preload', 'thread'] as const)('captures native %s libraries and retains the incumbent after outside-library refusal', async site => {
   const started = performance.now();
   const checkpoint = (phase: string) => console.info(`Native ${site}: ${phase} (${Math.round(performance.now() - started)}ms)`);
-  const supported = nativeFixture('relative');
-  const refused = [nativeFixture('absolute'), nativeFixture('transitive')];
+  const supported = await nativeFixture('relative');
+  const refused = [await nativeFixture('absolute'), await nativeFixture('transitive')];
   const builder = createPackBuilder(supported.pack, { captureCompiler: sharedCompiler.capture });
   const previous = process.env.NODE_OPTIONS;
   const preload = path.join(supported.pack, 'native-preload.cjs');
   const proof = path.join(supported.root, 'preload-proof.json');
-  const writeLoader = (fixture: ReturnType<typeof nativeFixture>) => {
+  const writeLoader = (fixture: NativeFixture) => {
     const load = nativeLoad(fixture, proof);
     if (site === 'preload') fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) { ${load} }`);
     else fs.writeFileSync(path.join(supported.pack, 'src/compiler.ts'), nativeWorkerCompiler(load));
@@ -117,7 +117,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
     checkpoint('freshness and restoration checked');
     const revision = readPackBuild(path.join(supported.pack, 'dist')).revision;
     for (const [index, fixture] of refused.entries()) {
-      const ordinary = ordinaryNativeLoad(fixture, { ...process.env, NODE_OPTIONS: previous });
+      const ordinary = await ordinaryNativeLoad(fixture, { ...process.env, NODE_OPTIONS: previous });
       checkpoint(`refusal ${index + 1} ordinary control completed`);
       expect(ordinary.value).toBe(11);
       expect(ordinary.libraries).toContain(fixture.library);
@@ -139,7 +139,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
 }, 120_000 + 2 * 60_000 + 60_000);
 
 it.runIf(process.platform === 'darwin' || process.platform === 'linux')('retains launch-time native search paths across preload changes and compiler workers', async () => {
-  const fixture = nativeFixture(process.platform === 'linux' ? 'runpath' : 'relative');
+  const fixture = await nativeFixture(process.platform === 'linux' ? 'runpath' : 'relative');
   const builder = createPackBuilder(fixture.pack, { captureCompiler: sharedCompiler.capture });
   const previousOptions = process.env.NODE_OPTIONS;
   const variable = process.platform === 'linux' ? 'LD_LIBRARY_PATH' : 'DYLD_LIBRARY_PATH';
@@ -172,7 +172,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux')('retains
     // An unused directory was harmless; this new matching library would now override the owned copy.
     const selected = path.join(search, path.basename(fixture.library));
     fs.copyFileSync(fixture.library, selected);
-    const ordinary = ordinaryNativeLoad(fixture, { ...process.env, NODE_OPTIONS: previousOptions });
+    const ordinary = await ordinaryNativeLoad(fixture, { ...process.env, NODE_OPTIONS: previousOptions });
     expect(ordinary.value).toBe(11);
     expect(ordinary.libraries).toContain(selected);
     expect(fs.existsSync(fixture.marker)).toBe(true);

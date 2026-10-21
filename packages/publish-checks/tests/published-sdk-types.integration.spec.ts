@@ -1,10 +1,13 @@
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { publishedManifest } from '@apackdev/host/build/published-manifest';
 import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, compileConsumer, installPublishedPackages, type TscVersion } from '../src/published-packages.ts';
+
+const execFileAsync = promisify(execFile);
 
 let consumer: string | undefined;
 beforeAll(() => {
@@ -130,30 +133,30 @@ describe.skipIf(!PACKAGES_BUILT)('published @apackdev/sdk', () => {
     }
   });
 
-  it('ships no host-only module', () => {
+  it('ships no host-only module', async () => {
     const sdk = path.join(consumer!, 'node_modules', '@apackdev', 'sdk');
     // A plain Node process, as a pack's runtime resolves (test workers run with extra conditions)
-    const resolveFromConsumer = (specifier: string) => execFileSync(
+    const resolveFromConsumer = async (specifier: string) => (await execFileAsync(
       process.execPath,
       ['--input-type=module', '-e', `process.stdout.write(import.meta.resolve(${JSON.stringify(specifier)}))`],
-      { cwd: consumer!, env: { PATH: process.env.PATH }, stdio: 'pipe' },
-    ).toString();
-    expect(resolveFromConsumer('@apackdev/sdk/repositories')).toBe(pathToFileURL(fs.realpathSync(path.join(sdk, 'dist', 'repositories', 'index.js'))).href);
+      { cwd: consumer!, env: { PATH: process.env.PATH }, encoding: 'utf8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024 },
+    )).stdout;
+    expect(await resolveFromConsumer('@apackdev/sdk/repositories')).toBe(pathToFileURL(fs.realpathSync(path.join(sdk, 'dist', 'repositories', 'index.js'))).href);
     const ears = path.join(consumer!, 'node_modules', '@apackdev', 'ears');
-    expect(resolveFromConsumer('@apackdev/ears')).toBe(pathToFileURL(fs.realpathSync(path.join(ears, 'dist', 'index.js'))).href);
+    expect(await resolveFromConsumer('@apackdev/ears')).toBe(pathToFileURL(fs.realpathSync(path.join(ears, 'dist', 'index.js'))).href);
     const shipped = fs.readdirSync(path.join(sdk, 'dist'), { recursive: true }).map(String);
     expect(fs.readdirSync(sdk).sort()).toEqual(['apack.schema.json', 'dist', 'package.json']);
     // Source maps would point at src, which isn't published
     expect(shipped.filter((f) => f.endsWith('.map'))).toEqual([]);
   });
 
-  it('loads the SDK on the installed @apackdev/ears', () => {
+  it('loads the SDK on the installed @apackdev/ears', async () => {
     // The SDK's EARS namespace and its repositories import the engine: a plain Node process resolves it from the consumer
-    const output = execFileSync(
+    const { stdout: output } = await execFileAsync(
       process.execPath,
       ['--input-type=module', '-e', "const { EARS } = await import('@apackdev/sdk/types'); const { flowRepository } = await import('@apackdev/sdk/repositories'); process.stdout.write(EARS.Entity.Flow + ' ' + typeof EARS.RelKind.Custom + ' ' + typeof flowRepository)"],
-      { cwd: consumer!, env: { PATH: process.env.PATH }, stdio: 'pipe' },
-    ).toString();
+      { cwd: consumer!, env: { PATH: process.env.PATH }, encoding: 'utf8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024 },
+    );
     expect(output).toBe('Flow function object');
     const ears = fs.readdirSync(path.join(consumer!, 'node_modules', '@apackdev', 'ears')).sort();
     expect(ears).toEqual(['dist', 'package.json']);

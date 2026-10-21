@@ -22,6 +22,7 @@ import {
   DECLARES_SOURCE_BY_DESIGN, findMissingSourceConditions, RESOLVES_DIST_BY_DESIGN, sourceConditionPackages,
 } from './lib/import-source-conditions.ts';
 import { backed, type ImportRule, type PackParity, packRule } from './lib/import-rules.ts';
+import { loadedByThePools, syncSpawnImportsIn } from './lib/process-spawns.ts';
 import { listLines, ruleRows as rowsOf, type RuleRow, ruleTable } from './lib/import-list.ts';
 
 // Re-exported so the consumers of this file keep importing from it: it is the command, and the command is the
@@ -505,6 +506,41 @@ export function findRawGitListings(dirs: readonly string[] = CHECKED_DIRS, root 
   return problems.sort();
 }
 
+/**
+ * Modules the integration and native pools load that start a synchronous process on purpose, with why.
+ *
+ * An entry that stops applying is reported, so the list cannot outlive its reasons.
+ */
+const SYNC_SPAWN_ALLOWED: Record<string, string> = {
+  'packages/repo-checks/tests/_support/repo-files.ts':
+    '`git ls-files` takes milliseconds, and many fast specs read the repo\'s files synchronously at module and describe time',
+};
+
+/**
+ * `file: execFileSync, spawnSync` for each module the integration or native pools load that imports a synchronous
+ * `child_process` export, and each `SYNC_SPAWN_ALLOWED` entry that no longer does.
+ *
+ * A synchronous process blocks the vitest worker for as long as it runs, so the case's own timeout cannot fire and
+ * vitest's fixed 60s RPC window expires, failing as an anonymous timeout rather than naming the slow command.
+ */
+export function findSyncSpawnsInSlowSpecs(files: readonly string[] = loadedByThePools(repoRoot), root = repoRoot,
+  allowed = SYNC_SPAWN_ALLOWED): string[] {
+  const applied = new Set<string>();
+  const problems = files.flatMap((file) => {
+    const found = syncSpawnImportsIn(file);
+    if (found.length === 0) return [];
+    const relative = repoRelative(root, file);
+    if (allowed[relative] !== undefined) { applied.add(relative); return []; }
+    return [`${relative}: ${[...new Set(found)].join(', ')}`];
+  });
+  for (const [relative, reason] of Object.entries(allowed)) {
+    if (!applied.has(relative)) {
+      problems.push(`${relative}: listed in SYNC_SPAWN_ALLOWED (${reason}) but it no longer imports a synchronous spawn`);
+    }
+  }
+  return problems.sort();
+}
+
 /** The consumers of SHARED_INSTANCE_PACKAGES (@apackdev/host/build/shared-deps), which must not list the packages themselves */
 export const SHARED_LIST_CONSUMERS = [
   'packages/apack-cli/src/build/be-bundler.ts',
@@ -727,6 +763,12 @@ const RULE_LIST = [
     repoOnly: { kind: 'inapplicable', note: "Its subject is this repo's own checks asking git what files the repo has, a question no pack asks and a command no pack ships" },
     find: findRawGitListings,
     rule: "Ask repoFiles() what files this repo has, not git ls-files directly: the index holds a file deleted and not staged, and omits one written and not staged",
+  },
+  {
+    id: 'findSyncSpawnsInSlowSpecs',
+    repoOnly: { kind: 'inapplicable', note: "Its subject is this repo's integration and native test pools, which no pack has" },
+    find: findSyncSpawnsInSlowSpecs,
+    rule: 'Start a process asynchronously in the integration and native halves — promisify(execFile) with a timeout, or runCommand (apack-cli tests/_support/run-command.ts) for a CLI or vitest process tree: a synchronous one blocks the worker, so no timeout fires and the RPC window expires',
   },
   {
     id: 'findSharedPackageLists',

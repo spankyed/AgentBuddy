@@ -1,25 +1,34 @@
 import { spawn } from 'node:child_process';
 import { stopCompilerProcessGroup } from '../../src/build/compiler-process-group.ts';
 
-/** Keep the real authoring toolchain off Vitest's event loop, including its awaited shutdown. */
-export async function runScaffoldCommand(command: string, args: string[], cwd: string,
-  { signal, timeout = 60_000 }: { signal?: AbortSignal; timeout?: number } = {},
-): Promise<{ code: number; output: string }> {
+/**
+ * Runs a command that starts a process tree — the CLI, a nested `vitest run` — off Vitest's event loop, and
+ * stops its whole process group however it ends. A synchronous call would block the worker, so no case
+ * timeout could fire and Vitest's RPC window would expire.
+ *
+ * Resolves with the exit code, the combined output and stdout alone (for a caller that parses it); rejects, naming the command, when it exceeds `timeout`,
+ * is cancelled through `signal`, or cannot start. A single short-lived process needs none of this:
+ * `promisify(execFile)` with a `timeout` is enough.
+ */
+export async function runCommand(command: string, args: string[], cwd: string,
+  { signal, timeout = 60_000, env }: { signal?: AbortSignal; timeout?: number; env?: NodeJS.ProcessEnv } = {},
+): Promise<{ code: number; output: string; stdout: string }> {
   signal?.throwIfAborted();
   const started = performance.now();
   const label = [command, ...args].join(' ');
   const grouped = process.platform !== 'win32';
   const child = spawn(command, args, {
-    cwd, detached: grouped, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '0' },
+    cwd, detached: grouped, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...env, FORCE_COLOR: '0' },
   });
   let output = '';
+  let stdout = '';
   let failure: Error | undefined;
   let escalation: ReturnType<typeof setTimeout> | undefined;
   let shutdown: ReturnType<typeof setTimeout> | undefined;
   let budget: ReturnType<typeof setTimeout> | undefined;
   let abort: (() => void) | undefined;
   let forced: Promise<void> | undefined;
-  child.stdout.on('data', chunk => { output += chunk.toString(); });
+  child.stdout.on('data', chunk => { output += chunk.toString(); stdout += chunk.toString(); });
   child.stderr.on('data', chunk => { output += chunk.toString(); });
   try {
     const code = await new Promise<number>((resolve, reject) => {
@@ -51,12 +60,12 @@ export async function runScaffoldCommand(command: string, args: string[], cwd: s
     // The compiler has its own process owner; this group covers direct toolchain descendants.
     if (grouped && child.pid) await stopCompilerProcessGroup(child.pid);
     if (failure) throw failure;
-    return { code, output };
+    return { code, output, stdout };
   } finally {
     clearTimeout(budget);
     clearTimeout(escalation);
     clearTimeout(shutdown);
     if (abort) signal?.removeEventListener('abort', abort);
-    console.info(`[scaffold] ${label}: ${Math.round(performance.now() - started)}ms`);
+    console.info(`[run] ${label}: ${Math.round(performance.now() - started)}ms`);
   }
 }

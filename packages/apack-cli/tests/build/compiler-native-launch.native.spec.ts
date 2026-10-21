@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { expect, it } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
@@ -17,9 +18,11 @@ import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
 // outside launch overrides: OS libraries, the DYLD_* variables and the selected image suffix.
 
 const sharedCompiler = shareCompilerInstallation();
+const execFileAsync = promisify(execFile);
+const PROBE_MS = 60_000;
 
 it.runIf(process.platform === 'darwin')('admits OS libraries and refuses outside launch overrides before build or frontend launch', async () => {
-  const fixture = nativeFixture('relative');
+  const fixture = await nativeFixture('relative');
   const builder = createPackBuilder(fixture.pack, { captureCompiler: sharedCompiler.capture });
   const previous = process.env.DYLD_INSERT_LIBRARIES;
   const previousCache = process.env.DYLD_SHARED_CACHE_DIR;
@@ -28,7 +31,7 @@ it.runIf(process.platform === 'darwin')('admits OS libraries and refuses outside
   const started = performance.now();
   const checkpoint = (phase: string) => console.info(`Native launch admission: ${phase} (${Math.round(performance.now() - started)}ms)`);
   try {
-    fixture.buildLibrary(outside, `#include <stdio.h>
+    await fixture.buildLibrary(outside, `#include <stdio.h>
 __attribute__((constructor)) static void initialize(void) {
   FILE *marker = fopen(${JSON.stringify(marker)}, "w"); if (marker) fclose(marker);
 }`, outside);
@@ -68,7 +71,7 @@ __attribute__((constructor)) static void initialize(void) {
 it.runIf(process.platform === 'darwin').each(['DYLD_FALLBACK_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', 'DYLD_FALLBACK_FRAMEWORK_PATH'] as const)(
   'refuses external %s before native initialization after preload mutation', async variable => {
     const framework = variable !== 'DYLD_FALLBACK_LIBRARY_PATH';
-    const fixture = nativeFixture(framework ? 'framework' : 'fallback');
+    const fixture = await nativeFixture(framework ? 'framework' : 'fallback');
     const builder = createPackBuilder(fixture.pack, { captureCompiler: sharedCompiler.capture });
     const previousOptions = process.env.NODE_OPTIONS;
     const previousSearch = process.env[variable];
@@ -83,9 +86,9 @@ it.runIf(process.platform === 'darwin').each(['DYLD_FALLBACK_LIBRARY_PATH', 'DYL
         if (variable === 'DYLD_FALLBACK_FRAMEWORK_PATH') fs.rmSync(fixture.library);
       }
       // First prove dyld really selects the external bytes in a fresh process.
-      const loaded = JSON.parse(execFileSync(process.execPath, ['-e', `const value = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))}).read(); console.log(JSON.stringify({ value, libraries: process.report.getReport().sharedObjects }));`], {
-        encoding: 'utf8', env: { ...process.env, [variable]: search },
-      })) as { value: number; libraries: string[] };
+      const loaded = JSON.parse((await execFileAsync(process.execPath, ['-e', `const value = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))}).read(); console.log(JSON.stringify({ value, libraries: process.report.getReport().sharedObjects }));`], {
+        encoding: 'utf8', env: { ...process.env, [variable]: search }, timeout: PROBE_MS,
+      })).stdout) as { value: number; libraries: string[] };
       expect(loaded.value).toBe(11);
       expect(loaded.libraries).toContain(fs.realpathSync.native(selected));
       expect(fs.existsSync(fixture.marker)).toBe(true);
@@ -119,7 +122,7 @@ it.runIf(process.platform === 'darwin').each(['DYLD_FALLBACK_LIBRARY_PATH', 'DYL
 
 it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH'] as const)(
   'refuses selected external %s libraries before retained frontend initialization', async variable => {
-    const fixture = nativeFixture('relative');
+    const fixture = await nativeFixture('relative');
     const previousOptions = process.env.NODE_OPTIONS;
     const previousSearch = process.env[variable];
     let compiler: CompilerInstallation | undefined;
@@ -127,11 +130,11 @@ it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DY
     try {
       const directory = path.join(fixture.root, 'overrides');
       const selected = path.join(directory, variable === 'DYLD_VERSIONED_FRAMEWORK_PATH' ? 'Value.framework/Value' : 'liboverride.dylib');
-      fixture.buildLibrary(selected, 'int native_value(void) { return 22; }', '@loader_path/../lib/libvalue.dylib');
+      await fixture.buildLibrary(selected, 'int native_value(void) { return 22; }', '@loader_path/../lib/libvalue.dylib');
       const addon = path.join(fixture.native, 'binding/addon.node');
-      const loaded = JSON.parse(execFileSync(process.execPath, ['-e', `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects }));`], {
-        encoding: 'utf8', env: { ...process.env, [variable]: directory },
-      })) as { value: number; libraries: string[] };
+      const loaded = JSON.parse((await execFileAsync(process.execPath, ['-e', `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects }));`], {
+        encoding: 'utf8', env: { ...process.env, [variable]: directory }, timeout: PROBE_MS,
+      })).stdout) as { value: number; libraries: string[] };
       expect(loaded.value).toBe(22);
       expect(loaded.libraries).toContain(selected);
       fs.rmSync(fixture.marker);
@@ -159,7 +162,7 @@ it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DY
 );
 
 it.runIf(process.platform === 'darwin')('captures the selected native image suffix and refuses its later transitive escape', async () => {
-  const fixture = nativeFixture('relative');
+  const fixture = await nativeFixture('relative');
   const builder = createPackBuilder(fixture.pack, { captureCompiler: sharedCompiler.capture });
   const previousOptions = process.env.NODE_OPTIONS;
   const previousSuffix = process.env.DYLD_IMAGE_SUFFIX;
@@ -169,10 +172,10 @@ it.runIf(process.platform === 'darwin')('captures the selected native image suff
   const proof = path.join(fixture.root, 'selected.json');
   const attempted = path.join(fixture.root, 'owned-attempt');
   try {
-    fixture.buildLibrary(selected, 'int native_value(void) { return 37; }', reference);
-    const loaded = JSON.parse(execFileSync(process.execPath, ['-e', `const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))}); console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects }));`], {
-      encoding: 'utf8', env: { ...process.env, DYLD_IMAGE_SUFFIX: '_apack' },
-    })) as { value: number; libraries: string[] };
+    await fixture.buildLibrary(selected, 'int native_value(void) { return 37; }', reference);
+    const loaded = JSON.parse((await execFileAsync(process.execPath, ['-e', `const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))}); console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects }));`], {
+      encoding: 'utf8', env: { ...process.env, DYLD_IMAGE_SUFFIX: '_apack' }, timeout: PROBE_MS,
+    })).stdout) as { value: number; libraries: string[] };
     expect(loaded.value).toBe(37);
     expect(loaded.libraries).toContain(selected);
     fs.rmSync(fixture.marker);
@@ -197,8 +200,8 @@ it.runIf(process.platform === 'darwin')('captures the selected native image suff
     fs.rmSync(fixture.marker);
     fs.rmSync(proof);
     fs.rmSync(attempted);
-    fixture.buildLibrary(fixture.outside, 'int outside_value(void) { return 37; }', fixture.outside);
-    fixture.buildLibrary(selected, 'extern int outside_value(void); int native_value(void) { return outside_value(); }', reference, [fixture.outside]);
+    await fixture.buildLibrary(fixture.outside, 'int outside_value(void) { return 37; }', fixture.outside);
+    await fixture.buildLibrary(selected, 'extern int outside_value(void); int native_value(void) { return outside_value(); }', reference, [fixture.outside]);
     expect(() => assertPackBuildInputsCurrent(fixture.pack, inputs)).toThrow();
     await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
     expect(fs.readFileSync(attempted, 'utf8')).toBe('owned');

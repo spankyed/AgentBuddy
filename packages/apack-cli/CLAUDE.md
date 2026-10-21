@@ -345,6 +345,10 @@ drains disposal. Both the public watch command and dev session await `done`. Syn
 remain recoverable on a later edit; a broken subscription cancels the operation with its input path and
 cause. Frontend replacement retains retiring subscriptions until asynchronous disposal settles.
 
+Integration and native specs start processes asynchronously: `promisify(execFile)` with a timeout for one
+short process, `runCommand` (`tests/_support/run-command.ts`) for the CLI or a nested vitest, which bounds each
+command, stops its process group and names it when it fails. `check:specifiers` refuses a synchronous spawn there.
+
 Real watcher integration edits use `tests/_support/watch-builds.ts`: wait at most 20s for a rebuild
 request, bound its compiler operation at 60s, then retain the original 20s notification/output checks.
 Initial capture keeps its 120s bound and cleanup has its own 20s bound. `rebuildAfter` does not replace assertions; preflight refusals

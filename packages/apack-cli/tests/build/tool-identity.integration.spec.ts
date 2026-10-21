@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { preparePack, packageJson, tsconfig } from '../_support/pack-builds.ts';
-import { runScaffoldCommand } from '../_support/scaffold-process.ts';
+import { runCommand } from '../_support/run-command.ts';
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
@@ -37,7 +37,7 @@ it('refuses skipped generation after a packaged helper chunk changes at the same
     'package.json': packageJson('tool-consumer'), 'tsconfig.json': tsconfig,
   }, modules);
   const entry = path.join(cli, 'bin/apack.mjs');
-  const generate = () => runScaffoldCommand(process.execPath, [entry, 'pack', 'generate-entries'], pack);
+  const generate = () => runCommand(process.execPath, [entry, 'pack', 'generate-entries'], pack);
   const first = await generate();
   expect(first.code, first.output).toBe(0);
   const unchanged = await generate();
@@ -47,7 +47,7 @@ it('refuses skipped generation after a packaged helper chunk changes at the same
   const manifest = fs.readFileSync(path.join(cli, 'package.json'));
   const helper = fs.readdirSync(path.join(cli, 'dist')).find(file => file.startsWith('chunk-') && file.endsWith('.js'))!;
   fs.appendFileSync(path.join(cli, 'dist', helper), '\n// Changed helper implementation, unchanged CLI version.\n');
-  const refused = await runScaffoldCommand(process.execPath, [entry, 'pack', 'build', '--skip-generate', '--skip-fe'], pack);
+  const refused = await runCommand(process.execPath, [entry, 'pack', 'build', '--skip-generate', '--skip-fe'], pack);
   expect(refused.code, refused.output).toBe(1);
   expect(refused.output).toContain('Generated pack files are stale: inputs changed');
   expect(fs.readFileSync(path.join(pack, 'src/__generated__/ears.ts'))).toEqual(generated);

@@ -1,6 +1,6 @@
 // `apack pack add step|artifact|block|migration` scaffold what the host uses: flow helpers generate valid names
 // and types for a kebab-case step, and components declare the props and emits the host passes
-import { execFileSync } from 'node:child_process';
+
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -10,6 +10,7 @@ import { init } from '../../src/commands/init';
 import { generateEntries } from '../../src/commands/generate-entries';
 import { packRuleProblems } from '../../src/build/pack-rules.ts';
 import { callCli, typecheckPack } from '../_support/pack-builds.ts';
+import { runCommand } from '../_support/run-command.ts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const BIN = path.join(REPO_ROOT, 'node_modules', '.bin');
@@ -29,14 +30,6 @@ const writeManifest = (manifest: unknown) => write('apack.json', JSON.stringify(
 async function add(kind: string, args: string[], root: string): Promise<void> {
   const result = await callCli(root, 'add', [kind, ...args]);
   if (result.code !== 0) throw new Error(result.output);
-}
-
-function run(cmd: string, args: string[]): { code: number; output: string } {
-  try {
-    return { code: 0, output: execFileSync(cmd, args, { cwd: pack, stdio: ['ignore', 'pipe', 'pipe'] }).toString() };
-  } catch (err: any) {
-    return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
-  }
 }
 
 beforeAll(async () => {
@@ -204,9 +197,9 @@ describe('apack pack add artifact and block', () => {
     expect(readManifest()).toEqual(before);
   });
 
-  it('scaffolds single-file components and register files that typecheck with vue-tsc', () => {
+  it('scaffolds single-file components and register files that typecheck with vue-tsc', async () => {
     write('tsconfig.sfc.json', JSON.stringify({ extends: './tsconfig.json', include: ['env.d.ts', 'src/**/*.ts', 'src/**/*.vue'] }));
-    const vueTsc = run(path.join(BIN, 'vue-tsc'), ['--noEmit', '-p', 'tsconfig.sfc.json']);
+    const vueTsc = await runCommand(path.join(BIN, 'vue-tsc'), ['--noEmit', '-p', 'tsconfig.sfc.json'], pack);
     expect(vueTsc.code, vueTsc.output).toBe(0);
   });
 });

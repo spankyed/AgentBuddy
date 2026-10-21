@@ -1,5 +1,6 @@
 import { _declarationRevision } from '@apackdev/sdk/build';
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -253,20 +254,22 @@ describe('publishRelease', () => {
   });
 });
 
-const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
+const execFileAsync = promisify(execFile);
+const git = async (cwd: string, ...args: string[]) =>
+  (await execFileAsync('git', args, { cwd, encoding: 'utf8', timeout: 60_000 })).stdout.trim();
 
 /** A committed pack repo pushed to a local bare origin, and the runner runRelease drives it with. */
-function packRepo(): { root: string; origin: string; run: Runner } {
+async function packRepo(): Promise<{ root: string; origin: string; run: Runner }> {
   const origin = path.join(tmp, 'origin.git');
   fs.mkdirSync(origin);
-  git(origin, 'init', '--quiet', '--bare', '-b', 'main');
+  await git(origin, 'init', '--quiet', '--bare', '-b', 'main');
   const root = builtPack();
-  git(root, 'init', '--quiet', '-b', 'main');
-  git(root, 'add', '-A');
-  git(root, '-c', 'user.name=author', '-c', 'user.email=author@example.com', 'commit', '--quiet', '-m', 'initial pack');
-  git(root, 'remote', 'add', 'origin', origin);
-  git(root, 'push', '--quiet', '-u', 'origin', 'main');
-  git(root, 'remote', 'set-head', 'origin', 'main');
+  await git(root, 'init', '--quiet', '-b', 'main');
+  await git(root, 'add', '-A');
+  await git(root, '-c', 'user.name=author', '-c', 'user.email=author@example.com', 'commit', '--quiet', '-m', 'initial pack');
+  await git(root, 'remote', 'add', 'origin', origin);
+  await git(root, 'push', '--quiet', '-u', 'origin', 'main');
+  await git(root, 'remote', 'set-head', 'origin', 'main');
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   // Real git (commit, tag, push to the local origin); verification commands do nothing
@@ -376,21 +379,21 @@ describe('runRelease', () => {
   });
 
   it('packs after the version commit, so integrity.json records the tagged commit', async () => {
-    const { root, origin, run } = packRepo();
+    const { root, origin, run } = await packRepo();
     const { version } = await runRelease(root, { ...releaseOptions, run, env: {} });
 
     expect(runPackBuild).toHaveBeenLastCalledWith(root, { args: ['--release'], signal: expect.any(AbortSignal) });
     expect(version).toBe('1.2.4');
-    const tagged = git(root, 'rev-parse', 'v1.2.4^{commit}');
-    expect(git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');
+    const tagged = await git(root, 'rev-parse', 'v1.2.4^{commit}');
+    expect(await git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');
     expect(readPackIntegrity(path.join(root, '.apack', 'staged', 'demo-pack')).provenance?.commit).toBe(tagged);
-    expect(git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(tagged);
+    expect(await git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(tagged);
   });
 
   // The dry run writes no version files, so a --version override on the staged pack would make its
   // apack.json disagree with the snapshot built beside it
   it('packs the version on disk on a dry run, not the one a real release would cut', async () => {
-    const { root, run } = packRepo();
+    const { root, run } = await packRepo();
 
     const { version, archive } = await runRelease(root, { ...releaseOptions, dryRun: true, run, env: {} });
 
@@ -398,13 +401,13 @@ describe('runRelease', () => {
     expect(path.basename(archive)).toBe('demo-pack-1.2.3.tgz');
     expect(readPackIntegrity(path.join(root, '.apack', 'staged', 'demo-pack')).version).toBe('1.2.3');
     expect(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')).version).toBe('1.2.3');
-    expect(git(root, 'log', '-1', '--format=%s')).toBe('initial pack');
+    expect(await git(root, 'log', '-1', '--format=%s')).toBe('initial pack');
   });
 
   // A release that moved only the two manifests tagged a commit whose lockfile disagreed with it, and
   // the author's next `npm install` rewrote the lockfile and dirtied the tree
   it('bumps every version file, the lockfile included, and commits them together', async () => {
-    const { root, run } = packRepo();
+    const { root, run } = await packRepo();
 
     await runRelease(root, { ...releaseOptions, run, env: {} });
 
@@ -412,39 +415,39 @@ describe('runRelease', () => {
     expect(read('apack.json').version).toBe('1.2.4');
     expect(read('package.json').version).toBe('1.2.4');
     expect(read('package-lock.json')).toMatchObject({ version: '1.2.4', packages: { '': { version: '1.2.4' } } });
-    expect(git(root, 'show', '--name-only', '--format=', 'HEAD').split('\n').sort())
+    expect((await git(root, 'show', '--name-only', '--format=', 'HEAD')).split('\n').sort())
       .toEqual(['apack.json', 'package-lock.json', 'package.json']);
     // No tracked file left modified; .apack/ and dist/ build output are ignored in generated packs.
-    expect(git(root, 'status', '--porcelain', '--untracked-files=no')).toBe('');
+    expect(await git(root, 'status', '--porcelain', '--untracked-files=no')).toBe('');
   });
 
   // A finished release sits at HEAD with its own commit subject. Reading that as one to resume would
   // re-run it and never cut the next version — the beta cycle (-beta.0 → -beta.1) is exactly this shape.
   it('cuts the next version after a release that finished, with no commits in between', async () => {
-    const { root, run } = packRepo();
+    const { root, run } = await packRepo();
 
     expect((await runRelease(root, { ...releaseOptions, run, env: {} })).version).toBe('1.2.4');
     expect((await runRelease(root, { ...releaseOptions, run, env: {} })).version).toBe('1.2.5');
-    expect(git(root, 'tag', '--list').split('\n').sort()).toEqual(['v1.2.4', 'v1.2.5']);
+    expect((await git(root, 'tag', '--list')).split('\n').sort()).toEqual(['v1.2.4', 'v1.2.5']);
   });
 
   it('resumes the committed version instead of bumping past it', async () => {
-    const { root, origin, run } = packRepo();
+    const { root, origin, run } = await packRepo();
     // The state a failed pack, tag or push leaves: the version is committed, nothing else happened
     fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), version: '1.2.4' }, null, 2) + '\n');
-    git(root, 'add', 'apack.json');
-    git(root, '-c', 'user.name=author', '-c', 'user.email=author@example.com', 'commit', '--quiet', '-m', 'release: v1.2.4');
+    await git(root, 'add', 'apack.json');
+    await git(root, '-c', 'user.name=author', '-c', 'user.email=author@example.com', 'commit', '--quiet', '-m', 'release: v1.2.4');
 
     const { version } = await runRelease(root, { ...releaseOptions, run, env: {} });
 
     expect(version).toBe('1.2.4');
-    expect(git(root, 'rev-list', '--count', 'HEAD')).toBe('2');
-    expect(git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(git(root, 'rev-parse', 'HEAD'));
-    expect(git(root, 'tag', '--list')).toBe('v1.2.4');
+    expect(await git(root, 'rev-list', '--count', 'HEAD')).toBe('2');
+    expect(await git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(await git(root, 'rev-parse', 'HEAD'));
+    expect(await git(root, 'tag', '--list')).toBe('v1.2.4');
   });
 
   it('reports what the release left behind when a step after the commit fails', async () => {
-    const { root, run } = packRepo();
+    const { root, run } = await packRepo();
     const errors: string[] = [];
     vi.spyOn(console, 'error').mockImplementation(msg => void errors.push(String(msg)));
     // No origin: preflight passes on the first pass through, the push at the end does not

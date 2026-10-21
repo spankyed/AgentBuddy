@@ -1,6 +1,5 @@
 // A pack depending on default-setup runs default-setup's systems in its unit tests: the harness loads
 // the dependency's cached runtime (runtime/index.cjs, with its compiled content) on the pack's SDK.
-import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -8,6 +7,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { ALLOW_UNBUILT } from '@apackdev/host/build/packages-built';
 import { generatePackFiles, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
 import { PACK_LAYOUT, cacheDependency, readCachedDependency, sealPackBuild } from '@apackdev/host/packs';
+import { runCommand } from '../_support/run-command.ts';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 const DEFAULT_SETUP_DIST = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist');
@@ -83,9 +83,8 @@ export default { spec, machine };`);
 }
 
 function vitest(root: string) {
-  return spawnSync(process.execPath, [path.join(REPO_ROOT, 'node_modules', 'vitest', 'vitest.mjs'), 'run'], {
-    cwd: root, encoding: 'utf-8', env: { ...process.env, CI: '', NO_COLOR: '1', FORCE_COLOR: '0' }, timeout: 120_000,
-  });
+  return runCommand(process.execPath, [path.join(REPO_ROOT, 'node_modules', 'vitest', 'vitest.mjs'), 'run'], root,
+    { env: { CI: '', NO_COLOR: '1' }, timeout: 120_000 });
 }
 
 describe.skipIf(!built)("a dependent pack's unit tests on the harness runtime tier", () => {
@@ -102,9 +101,9 @@ describe.skipIf(!built)("a dependent pack's unit tests on the harness runtime ti
       `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed'); throw new Error('Poisoned runtime');`);
     sealPackBuild(source, snapshot.manifest);
     cacheDependency(root, 'default-setup', source, '*', { kind: 'file', directory: source, selection: 'fixture' });
-    const result = vitest(root);
-    expect(result.status).not.toBe(0);
-    expect(result.stdout + result.stderr).toContain('its snapshot is format');
+    const result = await vitest(root);
+    expect(result.code).not.toBe(0);
+    expect(result.output).toContain('its snapshot is format');
     expect(fs.existsSync(marker)).toBe(false);
   });
 
@@ -130,8 +129,8 @@ it("connects to default-setup's notes and the app's settings", async () => {
   expect(noteQueries).toBeDefined();
   expect(services.repository.noteQueries.all()).toEqual(noteQueries.all());
 });`);
-    const result = vitest(root);
-    expect(result.stdout + result.stderr, 'the dependent pack test run').toMatch(/Tests\s+1 passed/);
+    const result = await vitest(root);
+    expect(result.output, 'the dependent pack test run').toMatch(/Tests\s+1 passed/);
   });
 
   it("drops a system's sends to its plugin until a client connects", async () => {
@@ -145,8 +144,8 @@ it('delivers only what the system sends once connected', async () => {
   await app.send('memos', { type: 'NOTIFY' });
   expect(app.emitted('memos').map((e) => e.type)).toEqual(['MEMOS_NOTIFIED']);
 });`);
-    const result = vitest(root);
-    expect(result.stdout + result.stderr, 'the dependent pack test run').toMatch(/Tests\s+1 passed/);
+    const result = await vitest(root);
+    expect(result.output, 'the dependent pack test run').toMatch(/Tests\s+1 passed/);
   });
 
   it("fails a test when a system reports an error the test didn't take", async () => {
@@ -163,7 +162,7 @@ it('reports and takes', async () => {
   await save();
   expect(takeSystemErrors()).toEqual([expect.objectContaining({ type: 'SYSTEM_ERROR', source: 'memos', message: 'lost memo' })]);
 });`);
-    const output = (({ stdout, stderr }) => stdout + stderr)(vitest(root));
+    const { output } = await vitest(root);
     expect(output).toMatch(/Tests\s+1 failed \| 1 passed/);
     expect(output).toContain("Systems reported errors the test didn't take (takeSystemErrors()):");
     expect(output).toContain('memos: lost memo');

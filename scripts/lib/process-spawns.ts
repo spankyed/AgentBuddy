@@ -24,8 +24,11 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import ts from 'typescript';
+import { INTEGRATION_SUITES, NATIVE_SUITES } from './chain-steps.ts';
 import { importedCallsIn } from './imported-calls.ts';
 import { reachableFrom } from './module-graph.ts';
+import { halfOfPath } from './spec-halves.ts';
 
 /** However the module is spelled */
 const CHILD_PROCESS = new Set(['node:child_process', 'child_process']);
@@ -38,7 +41,49 @@ const CHILD_PROCESS = new Set(['node:child_process', 'child_process']);
  * is not a subprocess, and a file that only re-exports a type from it is not a spawner.
  */
 export const spawnCallsIn = (absFile: string): string[] =>
-  importedCallsIn(absFile, { fromModules: CHILD_PROCESS });
+  [...importedCallsIn(absFile, { fromModules: CHILD_PROCESS }), ...indirectSpawnCallsIn(absFile)];
+
+/** The test-support runner for process trees (`apack-cli tests/_support/run-command.ts`), however it is imported */
+const RUN_COMMAND = /(^|\/)run-command(\.ts)?$/;
+
+/**
+ * The spawns a file makes without calling a `child_process` export by name: through `promisify(execFile)` — bound
+ * to a const or called inline — and through `runCommand`. Both are how the integration and native halves start a
+ * process, since a synchronous call is refused there, so a count that missed them would read as no spawning.
+ */
+function indirectSpawnCallsIn(absFile: string): string[] {
+  const source = ts.createSourceFile(absFile, fs.readFileSync(absFile, 'utf-8'), ts.ScriptTarget.Latest, true);
+  const fromChildProcess = new Set<string>();
+  const runners = new Set<string>();
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (bindings === undefined || !ts.isNamedImports(bindings)) continue;
+    const specifier = statement.moduleSpecifier.text;
+    for (const element of bindings.elements) {
+      if (CHILD_PROCESS.has(specifier)) fromChildProcess.add(element.name.text);
+      else if (RUN_COMMAND.test(specifier) && (element.propertyName ?? element.name).text === 'runCommand') runners.add(element.name.text);
+    }
+  }
+  const promisified = (node: ts.Node): boolean => ts.isCallExpression(node)
+    && (ts.isIdentifier(node.expression) ? node.expression.text : ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : '') === 'promisify'
+    && node.arguments.length === 1 && ts.isIdentifier(node.arguments[0]!) && fromChildProcess.has(node.arguments[0].text);
+  const bound = new Set<string>();
+  const calls: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined && promisified(node.initializer)) {
+      bound.add(node.name.text);
+    }
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      if (promisified(callee)) calls.push('promisify');
+      else if (ts.isIdentifier(callee) && (bound.has(callee.text) || runners.has(callee.text))) calls.push(callee.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return calls;
+}
 
 /** Every `.ts` under a directory — the whole tree, not only its specs: a support module is where a spawn hides */
 export function tsFilesUnder(dir: string): string[] {
@@ -50,6 +95,41 @@ export function tsFilesUnder(dir: string): string[] {
 }
 
 export { reachableFrom };
+
+/** The `tests/` trees of the suites with an expensive half, integration or native, from their one definitions */
+export const expensiveSuiteTests = (root: string): string[] =>
+  [...new Set([...INTEGRATION_SUITES, ...NATIVE_SUITES])].map((suite) => path.join(root, 'packages', suite.dir, 'tests'));
+
+/**
+ * What the integration and native pools load: their specs, and every module of those trees they reach. One
+ * population for the subprocess inventory and for the rule refusing synchronous spawns, so the two cannot
+ * disagree about which files run in those pools.
+ */
+export const loadedByThePools = (root: string): string[] => {
+  const trees = expensiveSuiteTests(root);
+  return reachableFrom(trees.flatMap((dir) => tsFilesUnder(dir)).filter((file) => halfOfPath(file) !== 'fast'), trees);
+};
+
+/**
+ * The synchronous `child_process` exports a file imports (`execFileSync`, `spawnSync`, `execSync`), by their
+ * exported name — so an alias cannot hide one. Asked of the import rather than the calls, because importing
+ * one is already the decision to block the worker.
+ */
+export function syncSpawnImportsIn(absFile: string): string[] {
+  const source = ts.createSourceFile(absFile, fs.readFileSync(absFile, 'utf-8'), ts.ScriptTarget.Latest, true);
+  const found: string[] = [];
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)
+      || !CHILD_PROCESS.has(statement.moduleSpecifier.text)) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (bindings === undefined || !ts.isNamedImports(bindings)) continue;
+    for (const element of bindings.elements) {
+      const exported = (element.propertyName ?? element.name).text;
+      if (exported.endsWith('Sync')) found.push(exported);
+    }
+  }
+  return found;
+}
 
 /** A file that starts a subprocess, and how */
 export interface SpawnSite {

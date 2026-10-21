@@ -208,6 +208,10 @@ Rules that pay for themselves:
 - **Measure before you optimise, and before you accept someone else's measurement.**
 - **Attribute a concurrent pipeline's cost with a CPU profile, not by timing its stages.** Per-stage wall
   clock double-counts overlap; use `node --cpu-prof` with self time per package.
+- **Start a process asynchronously in an integration or native spec.** A synchronous one blocks the worker, so
+  no case timeout fires and vitest's 60s RPC window expires. Use `promisify(execFile)` with a timeout, or
+  `runCommand` (`packages/apack-cli/tests/_support/run-command.ts`) for a CLI or vitest process tree;
+  `check:specifiers` refuses the rest (`findSyncSpawnsInSlowSpecs`).
 - **A mutation check is worth more than a re-run.**
 - **But a mutation check does not redeem a test that mirrors the code.** Ask whether the code could be
   correct but different; a case every behaviour-preserving rewrite fails encodes the code. A pure re-route

@@ -2,7 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { Readable } from 'node:stream';
 import { expect, it, vi } from 'vitest';
 import { manageInstalledApp, installedVersion } from '../../src/app/installed-app.ts';
@@ -22,9 +23,9 @@ it.skipIf(process.platform !== 'darwin' || process.arch !== 'arm64')('installs, 
     fs.writeFileSync(data, 'keep me');
     const archive = path.join(root, 'fixture.zip');
     let version = '0.4.0';
-    const prepare = () => {
+    const prepare = async () => {
       fs.writeFileSync(path.join(contents, 'Info.plist'), `<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>dev.apack.app</string><key>CFBundleShortVersionString</key><string>${version}</string></dict></plist>`);
-      execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', source, archive]);
+      await promisify(execFile)('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', source, archive], { timeout: 60_000 });
     };
     const quit = vi.fn(async () => {});
     const deps = {
@@ -39,7 +40,7 @@ it.skipIf(process.platform !== 'darwin' || process.arch !== 'arm64')('installs, 
         ? Readable.from([createHash('sha256').update(fs.readFileSync(archive)).digest('hex')])
         : fs.createReadStream(archive),
     };
-    prepare();
+    await prepare();
     await manageInstalledApp({ action: 'install', channel: 'production', version }, deps);
     const app = path.join(applications, 'apack.app');
     expect(installedVersion(app)).toBe('0.4.0');
@@ -48,7 +49,7 @@ it.skipIf(process.platform !== 'darwin' || process.arch !== 'arm64')('installs, 
     await expect(manageInstalledApp({ action: 'install', channel: 'production' }, deps)).rejects.toThrow('--replace');
 
     version = '0.4.1';
-    prepare();
+    await prepare();
     await manageInstalledApp({ action: 'upgrade', channel: 'production' }, deps);
     expect(installedVersion(app)).toBe('0.4.1');
     expect(quit).toHaveBeenCalledOnce();

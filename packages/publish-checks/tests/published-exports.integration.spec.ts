@@ -1,4 +1,5 @@
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -32,8 +33,10 @@ function nonCodeExports(name: string): string[] {
 }
 
 
+const execFileAsync = promisify(execFile);
+
 describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
-  it.each(CONSUMER_MATRIX)('all resolve to declarations under TypeScript $tsc, moduleResolution $moduleResolution', ({ tsc, moduleResolution }) => {
+  it.each(CONSUMER_MATRIX)('all resolve to declarations under TypeScript $tsc, moduleResolution $moduleResolution', async ({ tsc, moduleResolution }) => {
     const specifiers = [...codeExports('ears'), ...codeExports('sdk'), ...codeExports('ui')];
     // Every export is code but these: the manifests and the schema. A new export without declarations lands
     // in this list and fails here. The SDK's source-only `./runtime/internals` is not among them because the
@@ -59,8 +62,11 @@ describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
 
     let output = '';
     try {
-      execFileSync(process.execPath, [TSC_VERSIONS[tsc], '-p', consumer!], { stdio: 'pipe' });
+      await execFileAsync(process.execPath, [TSC_VERSIONS[tsc], '-p', consumer!],
+        { encoding: 'utf8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024 });
     } catch (err: any) {
+      // A compiler that exited with errors reports them; a timeout, a signal or a failed spawn has no exit code
+      if (typeof err.code !== 'number') throw err;
       output = `${err.stdout ?? ''}${err.stderr ?? ''}`;
     }
     expect(output).toBe('');

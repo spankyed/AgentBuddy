@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createRequire } from 'node:module';
 import { expect, it, onTestFinished, vi } from 'vitest';
@@ -33,6 +33,7 @@ import { spawnCompilerWorker } from '../../src/build/compiler-process.ts';
 import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
 
 const sharedCompiler = shareCompilerInstallation();
+const execFileAsync = promisify(execFile);
 
 it.runIf(process.platform === 'win32')('reads Windows loader state concurrently across owned threads without native corruption', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-report-'));
@@ -121,8 +122,8 @@ function bindValueImport(bytes: Buffer, address: bigint, timeStamp: number) {
   throw new Error('Fixture has no value DLL import');
 }
 
-function createPeNativeFixture(root: string, pack: string, bound = false) {
-  const compile = (args: string[]) => execFileSync('cl.exe', ['/nologo', '/MT', ...args], { cwd: root, timeout: 15_000 });
+async function createPeNativeFixture(root: string, pack: string, bound = false) {
+  const compile = (args: string[]) => execFileAsync('cl.exe', ['/nologo', '/MT', ...args], { cwd: root, timeout: 15_000 });
   const headers = process.env.APACK_TEST_NODE_HEADERS;
   const importLibrary = process.env.APACK_TEST_NODE_IMPORT_LIBRARY;
   expect(headers, 'run the disposable Windows native SDK setup').toBeTruthy();
@@ -133,7 +134,7 @@ function createPeNativeFixture(root: string, pack: string, bound = false) {
   const addon = path.join(binding, 'addon.node');
   const dllMarker = path.join(root, 'dll-initialized');
   const addonMarker = path.join(root, 'addon-initialized');
-  const buildLibrary = (file: string, value: number, { manifest, symbol = 'native_value' }: { manifest?: string; symbol?: string } = {}) => {
+  const buildLibrary = async (file: string, value: number, { manifest, symbol = 'native_value' }: { manifest?: string; symbol?: string } = {}) => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const source = file + '.c';
     fs.writeFileSync(source, `#include <windows.h>
@@ -146,24 +147,24 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
   }
   return TRUE;
 }`);
-    compile(['/LD', source, '/Fo' + path.join(root, 'value.obj'), '/link', '/INCREMENTAL:NO',
+    await compile(['/LD', source, '/Fo' + path.join(root, 'value.obj'), '/link', '/INCREMENTAL:NO',
       ...(manifest ? ['/MANIFEST:EMBED,ID=1', '/MANIFESTUAC:NO', '/MANIFESTINPUT:' + manifest] : []),
       ...(bound ? ['/DYNAMICBASE:NO', '/FIXED'] : []),
       '/OUT:' + file, '/IMPLIB:' + path.join(root, 'value.lib')]);
   };
-  buildLibrary(library, 11);
+  await buildLibrary(library, 11);
   const source = path.join(root, 'addon.c');
   fs.writeFileSync(source, nativeAddonSource(addonMarker));
   const buildAddon = (manifest?: string, hostLink: readonly string[] = []) => compile([
     '/LD', '/I' + headers!, source, '/Fo' + path.join(root, 'addon.obj'), '/link', '/INCREMENTAL:NO',
     ...(manifest ? ['/MANIFEST:EMBED,ID=2', '/MANIFESTUAC:NO', '/MANIFESTINPUT:' + manifest] : []),
     '/OUT:' + addon, path.join(root, 'value.lib'), importLibrary!, ...hostLink]);
-  buildAddon();
+  await buildAddon();
   return { library, addon, dllMarker, addonMarker, buildLibrary, buildAddon };
 }
 
 /** Change only a private runtime: an embedded application manifest takes precedence over sidecars. */
-function createPeRuntimeWithoutApplicationManifest(root: string, runtime: 'Node' | 'Electron' = 'Node') {
+async function createPeRuntimeWithoutApplicationManifest(root: string, runtime: 'Node' | 'Electron' = 'Node') {
   const electron = runtime === 'Electron';
   const executable = electron ? copyPeRuntimeFixture(createRequire(import.meta.url)('electron') as string, root, true)
     : path.join(root, 'node.exe');
@@ -185,10 +186,10 @@ int wmain(int argc, wchar_t **argv) {
   }
   return EndUpdateResourceW(update, FALSE) ? 0 : 5;
 }`);
-  execFileSync('cl.exe', ['/nologo', '/MT', source, '/Fo' + path.join(root, 'remove-manifest.obj'),
+  await execFileAsync('cl.exe', ['/nologo', '/MT', source, '/Fo' + path.join(root, 'remove-manifest.obj'),
     '/link', '/OUT:' + tool], { cwd: root, timeout: 15_000 });
   for (const manifest of manifests) expect(typeof manifest.path[2]).toBe('number');
-  execFileSync(tool, [executable, ...manifests.map(manifest => String(manifest.path[2]))], { timeout: 5_000 });
+  await execFileAsync(tool, [executable, ...manifests.map(manifest => String(manifest.path[2]))], { timeout: 5_000 });
   expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.filter(item => item.path[1] === 1)).toEqual([]);
   return executable;
 }
@@ -209,7 +210,7 @@ function copyPeRuntimeFixture(executable: string, destination: string, electron 
   return copied;
 }
 
-it.runIf(process.platform === 'win32')('preserves Windows system assembly selection and manifest freshness in copied runtimes', () => {
+it.runIf(process.platform === 'win32')('preserves Windows system assembly selection and manifest freshness in copied runtimes', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-system-assembly-')));
   let completed = false;
   try {
@@ -228,13 +229,13 @@ int wmain(void) {
   if (!bytes) return 4;
   fwrite(utf8, 1, bytes, stdout); return 0;
 }`);
-    execFileSync('cl.exe', ['/nologo', '/MT', source, '/Fo' + path.join(root, 'probe.obj'),
+    await execFileAsync('cl.exe', ['/nologo', '/MT', source, '/Fo' + path.join(root, 'probe.obj'),
       '/link', '/MANIFEST:NO', '/OUT:' + executable, 'comctl32.lib'], { cwd: root, timeout: 15_000 });
-    const observe = (program = executable) => pePath(fs.realpathSync.native(execFileSync(program, [], {
+    const observe = async (program = executable) => pePath(fs.realpathSync.native((await execFileAsync(program, [], {
       cwd: root, encoding: 'utf8', timeout: 5_000,
-    }))).toLowerCase();
+    })).stdout)).toLowerCase();
     const baseline = readCompilerRuntimeInputs(executable);
-    const ordinary = observe();
+    const ordinary = await observe();
     const manifest = executable + '.manifest';
     // The OS supplies Common Controls 6; no system installation or policy mutation is involved.
     fs.writeFileSync(manifest, `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.controls" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly><assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="amd64" publicKeyToken="6595b64144ccf1df" language="*"/></dependentAssembly></dependency></assembly>`);
@@ -242,7 +243,7 @@ int wmain(void) {
     const selected = environment.applicationContext.redirections.find(item => item.name.toLowerCase() === 'comctl32.dll')?.file;
     expect(selected).toBeTruthy();
     // Windows can retain a launched image's context. A compiler launches its fresh captured copy.
-    const actual = observe(copyPeRuntimeFixture(executable, path.join(root, 'copy')));
+    const actual = await observe(copyPeRuntimeFixture(executable, path.join(root, 'copy')));
     expect(actual).toBe(pePath(fs.realpathSync.native(selected!)).toLowerCase());
     expect(actual).not.toBe(ordinary);
     const selectors = new Set<string>(), copied = new Set<string>();
@@ -256,7 +257,7 @@ int wmain(void) {
     }
     fs.rmSync(manifest);
     expect(readCompilerRuntimeInputs(executable).hash).toBe(baseline.hash);
-    expect(observe()).toBe(ordinary);
+    expect(await observe()).toBe(ordinary);
     completed = true;
   } finally {
     if (completed) fs.rmSync(root, { recursive: true, force: true });
@@ -264,14 +265,14 @@ int wmain(void) {
   }
 });
 
-it.runIf(process.platform === 'win32')('invalidates recorded inputs when Windows installs a publisher policy', () => {
+it.runIf(process.platform === 'win32')('invalidates recorded inputs when Windows installs a publisher policy', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-publisher-policy-')));
-  let fixture: ReturnType<typeof createWindowsPublisherPolicyFixture> | undefined;
+  let fixture: Awaited<ReturnType<typeof createWindowsPublisherPolicyFixture>> | undefined;
   let view: ReturnType<typeof createCompilerFileView> | undefined;
   let completed = false;
-  onTestFinished(() => {
+  onTestFinished(async () => {
     try {
-      try { view?.dispose(); } finally { fixture?.dispose(); }
+      try { view?.dispose(); } finally { await fixture?.dispose(); }
     } catch (error) {
       console.error(`Retained publisher-policy fixture: ${root}`);
       throw error;
@@ -279,8 +280,8 @@ it.runIf(process.platform === 'win32')('invalidates recorded inputs when Windows
     if (completed) fs.rmSync(root, { recursive: true, force: true });
     else console.error(`Retained publisher-policy fixture: ${root}`);
   });
-  fixture = createWindowsPublisherPolicyFixture(root);
-  fixture.install('v1'); fixture.install('v2');
+  fixture = await createWindowsPublisherPolicyFixture(root);
+  await fixture.install('v1'); await fixture.install('v2');
   const source = path.join(root, 'probe.c');
   fs.writeFileSync(source, `#include <windows.h>
 #include <stdio.h>
@@ -296,14 +297,14 @@ int wmain(void) {
 }`);
   const runtime = path.join(root, 'runtime'); fs.mkdirSync(runtime);
   const executable = path.join(runtime, 'app.exe');
-  execFileSync('cl.exe', ['/nologo', '/MT', source, '/Fo' + path.join(root, 'probe.obj'),
+  await execFileAsync('cl.exe', ['/nologo', '/MT', source, '/Fo' + path.join(root, 'probe.obj'),
     '/link', '/MANIFEST:NO', '/OUT:' + executable], { cwd: root, timeout: 15_000 });
   fs.writeFileSync(executable + '.manifest', `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly><assemblyIdentity type="win32" name="${fixture.name}" version="1.0.0.0" processorArchitecture="amd64" publicKeyToken="${fixture.token}"/></dependentAssembly></dependency></assembly>`);
-  const actual = (program: string) => {
-    const [value, file] = execFileSync(program, [], { encoding: 'utf8', timeout: 5_000 }).trim().split(/\r?\n/);
+  const actual = async (program: string) => {
+    const [value, file] = (await execFileAsync(program, [], { encoding: 'utf8', timeout: 5_000 })).stdout.trim().split(/\r?\n/);
     return { value: Number(value), file: fs.realpathSync.native(file!).toLowerCase() };
   };
-  const before = actual(executable);
+  const before = await actual(executable);
   expect(before.value).toBe(11);
   view = createCompilerFileView(runtime, { authoredFiles: ['app.exe', 'app.exe.manifest'] });
   const beforeHash = readCompilerRuntimeInputs(executable, false, undefined, (file, kind) => {
@@ -313,10 +314,10 @@ int wmain(void) {
   }).hash;
   const observations = view.observations();
   expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
-  fixture.install('policy');
+  await fixture.install('policy');
   expect(() => assertNativeCompilerObservations(observations)).toThrow('Compiler startup input changed');
   const copied = copyPeRuntimeFixture(executable, path.join(root, 'copied'));
-  const after = actual(copied);
+  const after = await actual(copied);
   expect(after.value).toBe(22);
   expect(after.file).not.toBe(before.file);
   expect(readCompilerRuntimeInputs(copied).hash).not.toBe(beforeHash);
@@ -335,16 +336,16 @@ it.runIf(process.platform === 'win32')('refuses Node .local overrides through th
     fs.mkdirSync(runtime);
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
       files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>LOCAL</template>' } });
-    const { addon, dllMarker, addonMarker, buildLibrary } = createPeNativeFixture(root, pack);
-    const executable = createPeRuntimeWithoutApplicationManifest(runtime);
+    const { addon, dllMarker, addonMarker, buildLibrary } = await createPeNativeFixture(root, pack);
+    const executable = await createPeRuntimeWithoutApplicationManifest(runtime);
     const library = path.join(runtime, 'apack_value.dll');
-    buildLibrary(library, 22);
+    await buildLibrary(library, 22);
     fs.writeFileSync(executable + '.local', '');
     // Removing the manifest also removes Windows-version declarations; the runner is supported Windows.
     const environment = { ...process.env, NODE_SKIP_PLATFORM_CHECK: '1' };
-    const ordinary = JSON.parse(execFileSync(executable, ['-e',
+    const ordinary = JSON.parse((await execFileAsync(executable, ['-e',
       `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({ value:addon.read(), file:addon.libraryPath() }));`],
-    { cwd: pack, env: environment, encoding: 'utf8', timeout: 5_000 })) as { value: number; file: string };
+    { cwd: pack, env: environment, encoding: 'utf8', timeout: 5_000 })).stdout) as { value: number; file: string };
     expect(ordinary.value).toBe(22);
     expect(fs.realpathSync.native(ordinary.file).toLowerCase()).toBe(fs.realpathSync.native(library).toLowerCase());
     expect(fs.existsSync(dllMarker)).toBe(true);
@@ -398,9 +399,9 @@ it.runIf(process.platform === 'win32').each([
     const pack = path.join(root, 'pack'), runtime = path.join(root, 'runtime'), copied = path.join(root, 'copied');
     fs.mkdirSync(runtime);
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} } });
-    const { addon, dllMarker, addonMarker, buildLibrary, buildAddon } = createPeNativeFixture(root, pack);
-    const executable = kind !== 'module' ? createPeRuntimeWithoutApplicationManifest(runtime, runtimeName)
-      : electron ? createRequire(import.meta.url)('electron') as string : createPeRuntimeWithoutApplicationManifest(runtime);
+    const { addon, dllMarker, addonMarker, buildLibrary, buildAddon } = await createPeNativeFixture(root, pack);
+    const executable = kind !== 'module' ? await createPeRuntimeWithoutApplicationManifest(runtime, runtimeName)
+      : electron ? createRequire(import.meta.url)('electron') as string : await createPeRuntimeWithoutApplicationManifest(runtime);
     const runtimeSource = electron ? path.dirname(executable) : runtime;
     const library = kind === 'local' ? path.join(runtime, 'apack_value.dll')
       : path.join(kind === 'application' ? runtime : path.join(path.dirname(addon), 'alternate'), 'apack.fixture.value/apack_value.dll');
@@ -408,13 +409,13 @@ it.runIf(process.platform === 'win32').each([
     const hostLink: string[] = [];
     if (electron) {
       const hook = path.join(root, 'host-hook.obj');
-      execFileSync('cl.exe', ['/nologo', '/MT', '/c', path.join(REPO_ROOT, 'node_modules/node-gyp/src/win_delay_load_hook.cc'),
+      await execFileAsync('cl.exe', ['/nologo', '/MT', '/c', path.join(REPO_ROOT, 'node_modules/node-gyp/src/win_delay_load_hook.cc'),
         '/DHOST_BINARY="node.exe"', '/Fo' + hook], { cwd: root, timeout: 15_000 });
       hostLink.push(hook, 'delayimp.lib', '/DELAYLOAD:node.exe');
-      if (kind !== 'module') buildAddon(undefined, hostLink);
+      if (kind !== 'module') await buildAddon(undefined, hostLink);
     }
 
-    buildLibrary(library, 22);
+    await buildLibrary(library, 22);
     if (kind === 'local') fs.writeFileSync(executable + '.local', '');
     else {
       const identity = '<assemblyIdentity type="win32" name="apack.fixture.value" version="1.0.0.0" processorArchitecture="amd64"/>';
@@ -426,11 +427,11 @@ it.runIf(process.platform === 'win32').each([
       else {
         const manifestFile = path.join(root, 'addon.manifest');
         fs.writeFileSync(manifestFile, manifest);
-        buildAddon(manifestFile, hostLink);
-        buildLibrary(outsideLibrary, 22, { symbol: 'outside_value' });
+        await buildAddon(manifestFile, hostLink);
+        await buildLibrary(outsideLibrary, 22, { symbol: 'outside_value' });
         const dependencySource = path.join(root, 'dependency.c');
         fs.writeFileSync(dependencySource, '__declspec(dllimport) int outside_value(void); __declspec(dllexport) int native_value(void) { return outside_value(); }');
-        execFileSync('cl.exe', ['/nologo', '/MT', '/LD', dependencySource, '/Fo' + path.join(root, 'dependency.obj'),
+        await execFileAsync('cl.exe', ['/nologo', '/MT', '/LD', dependencySource, '/Fo' + path.join(root, 'dependency.obj'),
           '/link', '/INCREMENTAL:NO', '/OUT:' + library, path.join(root, 'value.lib')], { cwd: root, timeout: 15_000 });
         // Successful captured startup must retain this selector, not just the DLL it selects.
         fs.writeFileSync(addon + '.2.config', `<?xml version="1.0"?><configuration><windows><assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">${ownerIdentity}<probing privatePath="alternate"/></assemblyBinding></windows></configuration>`);
@@ -466,9 +467,9 @@ it.runIf(process.platform === 'win32').each([
       const key = Object.keys(environment).find(key => key.toUpperCase() === 'PATH') ?? 'PATH';
       environment[key] = path.dirname(outsideLibrary) + ';' + (environment[key] ?? '');
     }
-    const ordinary = JSON.parse(execFileSync(copiedExecutable, ['-e',
+    const ordinary = JSON.parse((await execFileAsync(copiedExecutable, ['-e',
       `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({value:addon.read(),file:addon.libraryPath(),electron:process.versions.electron ?? null}));`],
-    { cwd: pack, env: environment, encoding: 'utf8', timeout: 5_000 })) as { value: number; file: string; electron: string | null };
+    { cwd: pack, env: environment, encoding: 'utf8', timeout: 5_000 })).stdout) as { value: number; file: string; electron: string | null };
     expect(ordinary.electron).toBe(electron ? createRequire(import.meta.url)('electron/package.json').version : null);
     const copiedLibrary = kind !== 'module' ? path.join(copied, path.relative(runtime, library)) : library;
     expect(ordinary.value).toBe(22);
@@ -530,13 +531,13 @@ it.runIf(process.platform === 'win32').each([
 // Ordinary Windows loader controls: these deliberately bypass compiler admission. A failed
 // control invalidates the fixture; it does not establish a production admission defect.
 it.runIf(process.platform === 'win32').each(['local', 'assembly', 'assembly-resource', 'image-assembly', 'image-assembly-api', 'image-assembly-transitive', 'image-assembly-localized', 'image-assembly-wildcard', 'image-assembly-outside'] as const)(
-  'identifies ordinary PE %s redirection while loading a native image', kind => {
+  'identifies ordinary PE %s redirection while loading a native image', async kind => {
     const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-redirection-')));
     let completed = false;
     try {
       const pack = path.join(root, 'pack');
       fs.mkdirSync(pack);
-      const { library, dllMarker, buildLibrary } = createPeNativeFixture(root, pack);
+      const { library, dllMarker, buildLibrary } = await createPeNativeFixture(root, pack);
       fs.writeFileSync(path.join(path.dirname(library), 'mémber-💾.txt'), 'namespace encoding');
       const emptyLanguage = path.join(root, 'empty-language');
       fs.mkdirSync(emptyLanguage);
@@ -552,7 +553,7 @@ __declspec(dllexport) HMODULE probe_library(void) {
   return GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
     (LPCWSTR)&native_value, &module) ? module : NULL;
 }`);
-      execFileSync('cl.exe', ['/nologo', '/MT', '/LD', bridge, '/Fo' + path.join(root, 'bridge.obj'), '/link',
+      await execFileAsync('cl.exe', ['/nologo', '/MT', '/LD', bridge, '/Fo' + path.join(root, 'bridge.obj'), '/link',
         '/INCREMENTAL:NO', '/OUT:' + entry, path.join(root, 'value.lib')], { cwd: root, timeout: 15_000 });
       expect(parsePeLibraryMetadata(fs.readFileSync(entry)).imports.map(imported => imported.name)).toContain('apack_value.dll');
       const runtime = path.join(root, 'runtime');
@@ -582,24 +583,24 @@ int wmain(int argc, wchar_t **argv) {
   fwrite(utf8, 1, bytes, stdout);
   return FreeLibrary(module) ? 0 : 7;
 }`);
-      const compile = (manifest?: string) => execFileSync('cl.exe', ['/nologo', '/MT', source,
+      const compile = (manifest?: string) => execFileAsync('cl.exe', ['/nologo', '/MT', source,
         '/Fo' + path.join(root, 'probe.obj'), '/link', '/INCREMENTAL:NO', '/OUT:' + executable,
         ...(manifest ? ['/MANIFEST:EMBED', '/MANIFESTINPUT:' + manifest] : ['/MANIFEST:NO'])],
       { cwd: root, timeout: 15_000 });
-      const observe = (program = executable, image = entry) => {
-        const [value, file] = execFileSync(program, [image], { encoding: 'utf8', timeout: 5_000, cwd: root }).split(/\r?\n/);
+      const observe = async (program = executable, image = entry) => {
+        const [value, file] = (await execFileAsync(program, [image], { encoding: 'utf8', timeout: 5_000, cwd: root })).stdout.split(/\r?\n/);
         return { value: Number(value), file: fs.realpathSync.native(file!).toLowerCase() };
       };
-      compile();
+      await compile();
       expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests).toEqual([]);
-      expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
+      expect(await observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
       const assemblyName = kind === 'assembly-resource' ? 'apack_value' : 'apack.fixture.value';
       const imageContext = kind.startsWith('image-assembly');
       const outsideContext = kind === 'image-assembly-outside';
       const language = kind === 'image-assembly-localized' || kind === 'image-assembly-wildcard' ? ['en-US'] : [];
       const selected = path.join(imageContext ? path.dirname(entry) : runtime,
         ...language, ...(kind === 'local' ? [] : [assemblyName]), kind === 'image-assembly-api' ? 'psapi.dll' : 'apack_value.dll');
-      buildLibrary(selected, 22);
+      await buildLibrary(selected, 22);
       if (outsideContext) {
         const outside = path.join(root, 'outside-assembly');
         fs.mkdirSync(outside);
@@ -608,7 +609,7 @@ int wmain(int argc, wchar_t **argv) {
         fs.symlinkSync(target, selected, 'file');
       }
       // Merely placing a same-name DLL next to the executable must not change explicit loading.
-      expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
+      expect(await observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
       let configured = executable;
       if (kind === 'local') {
         // Configure before first launch: Windows can retain an image's initial .local absence.
@@ -621,7 +622,7 @@ int wmain(int argc, wchar_t **argv) {
         fs.writeFileSync(assemblyManifest,
           `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="${path.basename(selected)}"/></assembly>`);
         if (kind === 'assembly-resource') {
-          buildLibrary(selected, 22, { manifest: assemblyManifest });
+          await buildLibrary(selected, 22, { manifest: assemblyManifest });
           fs.rmSync(assemblyManifest);
         }
         let dependency = kind === 'image-assembly-wildcard' ? identity.replace('language="en-US"', 'language="*"') : identity;
@@ -635,16 +636,16 @@ int wmain(int argc, wchar_t **argv) {
         fs.writeFileSync(manifest,
           `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly>${dependency}</dependentAssembly></dependency></assembly>`);
         if (imageContext) {
-          execFileSync('cl.exe', ['/nologo', '/MT', '/LD', bridge, '/Fo' + path.join(root, 'bridge.obj'), '/link',
+          await execFileAsync('cl.exe', ['/nologo', '/MT', '/LD', bridge, '/Fo' + path.join(root, 'bridge.obj'), '/link',
             '/INCREMENTAL:NO', '/MANIFEST:EMBED,ID=2', '/MANIFESTUAC:NO', '/MANIFESTINPUT:' + manifest,
             '/OUT:' + entry, path.join(root, 'value.lib')], { cwd: root, timeout: 15_000 });
           expect(parsePeLibraryMetadata(fs.readFileSync(entry)).manifests.some(item => item.path[1] === 2)).toBe(true);
         } else {
-          compile(manifest);
+          await compile(manifest);
           expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.length).toBeGreaterThan(0);
         }
       }
-      expect(observe(configured)).toEqual({ value: 22, file: fs.realpathSync.native(selected).toLowerCase() });
+      expect(await observe(configured)).toEqual({ value: 22, file: fs.realpathSync.native(selected).toLowerCase() });
       fs.rmSync(dllMarker);
       const reads: string[] = [];
       const environment = capturePeLibraryEnvironment(configured);
@@ -690,7 +691,7 @@ int wmain(int argc, wchar_t **argv) {
         fs.copyFileSync(entry, configuredImage);
         const relocated = path.join(alternate, path.basename(selected));
         // Establish real DLL configuration behavior before assessing metadata or admission.
-        expect(observe(executable, configuredImage)).toEqual({ value: 22, file: fs.realpathSync.native(relocated).toLowerCase() });
+        expect(await observe(executable, configuredImage)).toEqual({ value: 22, file: fs.realpathSync.native(relocated).toLowerCase() });
         fs.rmSync(dllMarker);
         const after = context(configuredImage);
         expect(after.inputs).toContainEqual({ file: configuration, kind: 'file', hash: expect.any(String) });
@@ -717,9 +718,9 @@ int wmain(int argc, wchar_t **argv) {
           fs.mkdirSync(preferred, { recursive: true });
           fs.copyFileSync(path.join(alternate, assemblyName + '.manifest'), path.join(preferred, assemblyName + '.manifest'));
           const preferredLibrary = path.join(preferred, path.basename(selected));
-          buildLibrary(preferredLibrary, 33);
+          await buildLibrary(preferredLibrary, 33);
           // Use a fresh image for the next process, as a new compiler snapshot does.
-          expect(observe(executable, nextImage)).toEqual({ value: 33, file: fs.realpathSync.native(preferredLibrary).toLowerCase() });
+          expect(await observe(executable, nextImage)).toEqual({ value: 33, file: fs.realpathSync.native(preferredLibrary).toLowerCase() });
           fs.rmSync(dllMarker);
           expect(context(nextImage).redirections).toContainEqual({ name: 'apack_value.dll', file: preferredLibrary });
           expect(context(configuredImage).redirections).toContainEqual({ name: 'apack_value.dll', file: preferredLibrary });
@@ -758,23 +759,23 @@ int wmain(int argc, wchar_t **argv) {
         expect(readCompilerRuntimeInputs(configured, false).hash).not.toBe(before.hash);
         fs.rmSync(configured + '.config');
         const alternate = path.join(runtime, 'alternate/apack.fixture.alternate/apack_value.dll');
-        buildLibrary(alternate, 33);
+        await buildLibrary(alternate, 33);
         const alternateIdentity = '<assemblyIdentity type="win32" name="apack.fixture.alternate" version="1.0.0.0" processorArchitecture="amd64"/>';
         fs.writeFileSync(path.join(path.dirname(alternate), 'apack.fixture.alternate.manifest'),
           `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${alternateIdentity}<file name="apack_value.dll"/></assembly>`);
         const applicationManifest = path.join(root, 'alternate-probe.manifest');
         fs.writeFileSync(applicationManifest, `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly>${alternateIdentity}</dependentAssembly></dependency></assembly>`);
         const originalExecutable = fs.readFileSync(configured);
-        compile(applicationManifest);
+        await compile(applicationManifest);
         fs.writeFileSync(configured + '.config', `<?xml version="1.0"?><configuration><windows><assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><probing privatePath="alternate"/></assemblyBinding></windows></configuration>`);
-        expect(observe(configured)).toEqual({ value: 33, file: fs.realpathSync.native(alternate).toLowerCase() });
+        expect(await observe(configured)).toEqual({ value: 33, file: fs.realpathSync.native(alternate).toLowerCase() });
         expect(capturePeLibraryEnvironment(configured).applicationContext.redirections).toContainEqual({ name: 'apack_value.dll', file: alternate });
         expect(readCompilerRuntimeInputs(configured, false).hash).not.toBe(before.hash);
         fs.rmSync(dllMarker);
         const policyRoot = path.join(root, 'copied-policy');
         const policyExecutable = copyPeRuntimeFixture(configured, policyRoot);
         expect(fs.existsSync(dllMarker)).toBe(false);
-        expect(observe(policyExecutable)).toEqual({ value: 33,
+        expect(await observe(policyExecutable)).toEqual({ value: 33,
           file: fs.realpathSync.native(path.join(policyRoot, path.relative(runtime, alternate))).toLowerCase() });
         fs.rmSync(configured + '.config');
         fs.writeFileSync(configured, originalExecutable);
@@ -787,7 +788,7 @@ int wmain(int argc, wchar_t **argv) {
         expect(readCompilerRuntimeInputs(configured, false).hash).toBe(before.hash);
         const copiedRoot = path.join(root, 'copied');
         const copiedExecutable = copyPeRuntimeFixture(configured, copiedRoot);
-        expect(observe(copiedExecutable)).toEqual({ value: 22,
+        expect(await observe(copiedExecutable)).toEqual({ value: 22,
           file: fs.realpathSync.native(path.join(copiedRoot, path.relative(runtime, selected))).toLowerCase() });
       }
       completed = true;
@@ -815,17 +816,17 @@ it.runIf(process.platform === 'win32').each([
   try {
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
       files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>PE_BEFORE</template>' } });
-    const { library, addon, dllMarker, addonMarker, buildLibrary } = createPeNativeFixture(root, pack, bound);
+    const { library, addon, dllMarker, addonMarker, buildLibrary } = await createPeNativeFixture(root, pack, bound);
     const metadata = parsePeLibraryMetadata(fs.readFileSync(addon));
     expect(metadata.machine).toBe(0x8664);
     expect(metadata.imports.map(imported => imported.name.toLowerCase())).toContain('apack_value.dll');
     expect(metadata.exports.some(exported => exported.names.includes('napi_register_module_v1'))).toBe(true);
     expect(parsePeLibraryMetadata(fs.readFileSync(library)).exports.some(exported => exported.names.includes('native_value'))).toBe(true);
-    const observe = () => JSON.parse(execFileSync(process.execPath, ['-e',
+    const observe = async () => JSON.parse((await execFileAsync(process.execPath, ['-e',
       `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({value:addon.read(),libraries:process.report.getReport().sharedObjects}));`],
-    { encoding: 'utf8', timeout: 10_000 })) as { value: number; libraries: string[] };
+    { encoding: 'utf8', timeout: 10_000 })).stdout) as { value: number; libraries: string[] };
     if (bound) {
-      expect(observe().value).toBe(11);
+      expect((await observe()).value).toBe(11);
       fs.rmSync(dllMarker); fs.rmSync(addonMarker);
       const target = parsePeLibraryMetadata(fs.readFileSync(library));
       const exported = target.exports.find(exported => exported.names.includes('native_value'))!;
@@ -835,7 +836,7 @@ it.runIf(process.platform === 'win32').each([
       expect(parsePeLibraryMetadata(bytes).imports.find(imported => imported.name === 'apack_value.dll')?.symbols)
         .toEqual([{ name: 'native_value' }]);
     }
-    const ordinary = observe();
+    const ordinary = await observe();
     expect(ordinary.value).toBe(11);
     expect(ordinary.libraries.map(normalize)).toContain(normalize(library));
     expect(fs.existsSync(dllMarker)).toBe(true);
@@ -869,7 +870,7 @@ it.runIf(process.platform === 'win32').each([
     expect(await frontend.isCurrent(signal)).toBe(true);
     const original = fs.readFileSync(library), mode = fs.statSync(library).mode & 0o777;
     const replacement = path.join(root, 'replacement/apack_value.dll');
-    buildLibrary(replacement, 22);
+    await buildLibrary(replacement, 22);
     fs.renameSync(replacement, library);
     expect(await frontend.isCurrent(signal)).toBe(false);
     fs.writeFileSync(replacement, original, { mode }); fs.renameSync(replacement, library);
@@ -883,7 +884,7 @@ it.runIf(process.platform === 'win32').each([
     const selected = path.join(outside, 'apack_value.dll');
     fs.renameSync(library, selected);
     process.env[pathKey] = [outside, previousPath].filter(Boolean).join(path.delimiter);
-    const escaped = observe();
+    const escaped = await observe();
     expect(escaped.value).toBe(11);
     expect(escaped.libraries.map(normalize)).toContain(normalize(selected));
     fs.rmSync(dllMarker); fs.rmSync(addonMarker);
@@ -917,7 +918,7 @@ it.runIf(process.platform === 'win32').each(['preload', 'thread', 'preload-and-t
         ...(site !== 'preload' ? { content: { formats: { rows: { compiler: site === 'preload-and-module' ? 'src/compiler.cjs' : 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
           sources: { rows: { path: 'src/value.txt', format: 'rows' } } } } : {}) },
         files: { 'src/value.txt': 'input', 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
-      const { library, addon, dllMarker, addonMarker } = createPeNativeFixture(root, pack);
+      const { library, addon, dllMarker, addonMarker } = await createPeNativeFixture(root, pack);
       const ordinaryLoad = `const addon = require(${JSON.stringify(addon)}); const result = {value:addon.read(),library:addon.libraryPath()};`;
       const ordinaryScript = site === 'preload-and-thread'
         ? `${ordinaryLoad} new (require('node:worker_threads').Worker)(${JSON.stringify(ordinaryLoad + " require('node:worker_threads').parentPort.postMessage(result);")}, {eval:true})
@@ -925,11 +926,11 @@ it.runIf(process.platform === 'win32').each(['preload', 'thread', 'preload-and-t
         : site === 'preload-and-module'
           ? ordinaryLoad + ` const compiler = require(${JSON.stringify(addon)}); console.log(JSON.stringify({...result,compiler:{value:compiler.read(),library:compiler.libraryPath()}}));`
           : ordinaryLoad + ' console.log(JSON.stringify(result));';
-      const ordinary = () => JSON.parse(execFileSync(process.execPath, ['-e',
-        ordinaryScript], { encoding: 'utf8', timeout: 10_000, env: { ...process.env, NODE_OPTIONS: previousOptions } })) as {
+      const ordinary = async () => JSON.parse((await execFileAsync(process.execPath, ['-e',
+        ordinaryScript], { encoding: 'utf8', timeout: 10_000, env: { ...process.env, NODE_OPTIONS: previousOptions } })).stdout) as {
         value: number; library: string; worker?: { value: number; library: string }; compiler?: { value: number; library: string };
       };
-      const baseline = ordinary();
+      const baseline = await ordinary();
       expect(baseline.value).toBe(11);
       expect(fs.realpathSync.native(baseline.library).toLowerCase()).toBe(fs.realpathSync.native(library).toLowerCase());
       if (site === 'preload-and-thread') {
@@ -1008,7 +1009,7 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true}
       const selected = path.join(outside, 'apack_value.dll');
       fs.renameSync(library, selected);
       process.env[pathKey] = [outside, previousPath].filter(Boolean).join(path.delimiter);
-      const escaped = ordinary();
+      const escaped = await ordinary();
       expect(escaped.value).toBe(11);
       expect(fs.realpathSync.native(escaped.library).toLowerCase()).toBe(fs.realpathSync.native(selected).toLowerCase());
       if (site === 'preload-and-thread') {
@@ -1065,7 +1066,7 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
       'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }),
     } });
     fs.mkdirSync(native); fs.writeFileSync(path.join(native, 'package.json'), '{"name":"native-fixture"}');
-    const { addon, dllMarker, buildLibrary, buildAddon } = createPeNativeFixture(root, native);
+    const { addon, dllMarker, buildLibrary, buildAddon } = await createPeNativeFixture(root, native);
     const assembly = 'apack.fixture.watch.value';
     const identity = `<assemblyIdentity type="win32" name="${assembly}" version="1.0.0.0" processorArchitecture="amd64"/>`;
     const manifest = path.join(root, 'addon.manifest');
@@ -1073,8 +1074,8 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
     const initial = path.join(path.dirname(addon), 'initial', assembly);
     fs.mkdirSync(initial, { recursive: true });
     fs.writeFileSync(path.join(initial, assembly + '.manifest'), `<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="apack_value.dll"/></assembly>`);
-    buildLibrary(path.join(initial, 'apack_value.dll'), 11);
-    buildAddon(manifest);
+    await buildLibrary(path.join(initial, 'apack_value.dll'), 11);
+    await buildAddon(manifest);
     const configure = (directory: string) => fs.writeFileSync(addon + '.2.config', `<configuration><windows><assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1"><assemblyIdentity type="win32" name="apack.fixture.watch" version="1.0.0.0" processorArchitecture="amd64"/><probing privatePath="${directory}"/></assemblyBinding></windows></configuration>`);
     configure('initial');
     fs.mkdirSync(preloadRoot);
@@ -1116,7 +1117,7 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
     const staged = path.join(root, 'repair-stage', assembly);
     fs.mkdirSync(staged, { recursive: true });
     fs.copyFileSync(path.join(initial, assembly + '.manifest'), path.join(staged, assembly + '.manifest'));
-    buildLibrary(path.join(staged, 'apack_value.dll'), 22);
+    await buildLibrary(path.join(staged, 'apack_value.dll'), 22);
     builds.mockClear();
     fs.mkdirSync(path.dirname(repair), { recursive: true });
     fs.renameSync(staged, repair);

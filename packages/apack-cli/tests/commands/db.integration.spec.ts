@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Readable } from 'node:stream';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { installEngine, installedEngine, untypedTx, type EARS } from '@apackdev/ears';
 import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@apackdev/host/database';
@@ -524,8 +524,7 @@ describe('apack db script', () => {
       '};',
     ].join('\n'));
 
-    const cli = path.resolve(import.meta.dirname, '..', '..', 'bin', 'apack.mjs');
-    const run = spawnSync(process.execPath, [cli, 'db', 'script', file, '--data-dir', dir], { encoding: 'utf-8' });
+    const run = await runCli([file, '--data-dir', dir]);
     expect(run.status, run.stderr).toBe(0);
     expect(fs.existsSync(marker), 'the script finished before the process exited').toBe(true);
     expect(run.stdout.trim().split('\n')).toEqual(['started', 'done']);
@@ -566,10 +565,9 @@ describe('apack db script', () => {
     ].join('\n'));
 
     // In this process vitest compiles the script; the CLI has to do it itself, so drive the binary
-    const cli = path.resolve(import.meta.dirname, '..', '..', 'bin', 'apack.mjs');
     const compiledDirs = () => fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('apack-db-script-'));
     const before = compiledDirs();
-    const run = spawnSync(process.execPath, [cli, 'db', 'script', file, '--data-dir', dir, '-o', 'json', '--', 'Note-a'], { encoding: 'utf-8' });
+    const run = await runCli([file, '--data-dir', dir, '-o', 'json', '--', 'Note-a']);
     expect(run.stderr).toContain(`Database: ${dir} (offline)`);
     expect(run.status, run.stderr).toBe(0);
     expect(JSON.parse(run.stdout)).toEqual({ title: 'Alpha', notes: 2 });
@@ -593,8 +591,7 @@ describe('apack db script', () => {
     fs.chmodSync(scripts, 0o555);
 
     try {
-      const cli = path.resolve(import.meta.dirname, '..', '..', 'bin', 'apack.mjs');
-      const run = spawnSync(process.execPath, [cli, 'db', 'script', file, '--data-dir', dir, '-o', 'json'], { encoding: 'utf-8' });
+      const run = await runCli([file, '--data-dir', dir, '-o', 'json']);
       expect(run.status, run.stderr).toBe(0);
       // The package next to the script loaded, and import.meta still points at the script's own directory
       expect(JSON.parse(run.stdout)).toEqual({ greeting: 'hello Alpha', here: 'read-only-scripts' });
@@ -605,10 +602,21 @@ describe('apack db script', () => {
 
   const cliBin = () => path.resolve(import.meta.dirname, '..', '..', 'bin', 'apack.mjs');
 
-  /** The CLI as a user runs it: its own process, so a script's pending work and the exit code are the real ones */
-  function runCli(args: string[], input = ''): { status: number | null; stdout: string; stderr: string } {
-    const run = spawnSync(process.execPath, [cliBin(), 'db', 'script', ...args], { encoding: 'utf-8', input });
-    return { status: run.status, stdout: run.stdout, stderr: run.stderr };
+  /**
+   * The CLI as a user runs it: its own process, so a script's pending work and the exit code are the real ones.
+   * Asynchronous, so the worker's event loop keeps turning while it runs.
+   */
+  function runCli(args: string[], input = ''): Promise<{ status: number | null; stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [cliBin(), 'db', 'script', ...args], { stdio: ['pipe', 'pipe', 'pipe'] });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.setEncoding('utf-8').on('data', (chunk: string) => { stdout += chunk; });
+      child.stderr.setEncoding('utf-8').on('data', (chunk: string) => { stderr += chunk; });
+      child.once('error', reject);
+      child.once('close', (status) => resolve({ status, stdout, stderr }));
+      child.stdin.end(input);
+    });
   }
 
   /**
@@ -648,7 +656,7 @@ describe('apack db script', () => {
       '};',
     ].join('\n'));
 
-    const run = runCli([file, '--data-dir', dir]);
+    const run = await runCli([file, '--data-dir', dir]);
     expect(run.status, run.stderr).toBe(0);
     expect(run.stdout.trim().split('\n')).toEqual(['first', 'second', 'finished']);
     expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Written late');
@@ -669,7 +677,7 @@ describe('apack db script', () => {
       '};',
     ].join('\n'));
 
-    const run = runCli([file, '--data-dir', dir], 'y\n');
+    const run = await runCli([file, '--data-dir', dir], 'y\n');
     expect(run.status, run.stderr).toBe(0);
     expect(run.stdout).toContain('renamed');
     expect(run.stdout.trim().endsWith('done')).toBe(true);

@@ -3,9 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
-import { INTEGRATION_SUITES, NATIVE_SUITES } from '../../../scripts/lib/chain-steps.ts';
-import { halfOfPath } from '../../../scripts/lib/spec-halves.ts';
-import { reachableFrom, spawnCallsIn, spawnSitesIn, tsFilesUnder } from '../../../scripts/lib/process-spawns.ts';
+import { loadedByThePools, spawnCallsIn, spawnSitesIn } from '../../../scripts/lib/process-spawns.ts';
 
 /**
  * Which files in the pooled integration and native runs start a subprocess, and how many times.
@@ -32,15 +30,7 @@ import { reachableFrom, spawnCallsIn, spawnSitesIn, tsFilesUnder } from '../../.
  * rather than fanning out to its importers, most of which want the in-process `callCli` and never spawn.
  */
 
-/** The `tests/` trees of the suites with an expensive half, integration or native, from their one definitions */
-const SUITE_TESTS = [...new Set([...INTEGRATION_SUITES, ...NATIVE_SUITES])]
-  .map((suite) => path.join(REPO_ROOT, 'packages', suite.dir, 'tests'));
-
-/** What the two pooled runs load: their specs, and what they import. A fast spec spawns into another pool's budget */
-const loadedByThePool = (): string[] => reachableFrom(
-  SUITE_TESTS.flatMap((dir) => tsFilesUnder(dir)).filter((file) => halfOfPath(file) !== 'fast'),
-  SUITE_TESTS,
-);
+const loadedByThePool = (): string[] => loadedByThePools(REPO_ROOT);
 
 /**
  * Every spawn the pooled run makes, with why it is a subprocess rather than an in-process call.
@@ -52,7 +42,7 @@ const loadedByThePool = (): string[] => reachableFrom(
 const INVENTORY: Record<string, { calls: number; why: string }> = {
   'packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts': { calls: 1,
     why: 'Separate Vite processes scan a live pack while its output is published. The Windows directory-sharing failure does not reproduce in a same-process server; each child owns a private cache and closes with the test' },
-  'packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts': { calls: 17,
+  'packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts': { calls: 20,
     why: 'MSVC and ordinary loader fixtures prove actual DLL selection, copied-runtime SxS, pre-initialization refusal, OS assemblies and publisher-policy invalidation. Real Node/compiler processes retain their separate runtime proofs; these loader boundaries cannot be proved in-process' },
   'packages/apack-cli/tests/_support/windows-publisher-policy.ts': { calls: 3,
     why: 'The Windows SDK builds signed fixture assemblies with a process-owned test key. A compiled COM cache utility installs and removes only their unique identities; real OS publication and cleanup cannot be replaced by mocks' },
@@ -64,26 +54,34 @@ const INVENTORY: Record<string, { calls: number; why: string }> = {
     why: 'the Electron driver must run under Electron to capture and launch its real framework distribution, which Node cannot emulate, and `codesign` verifies a signed copy; the Mach-O cases compile and launch real images, and an ordinary Node load is the default-fallback control, because only the OS loader shows what it selects' },
   'packages/apack-cli/tests/build/compiler-native-launch.native.spec.ts': { calls: 3,
     why: 'outside launch overrides (DYLD_* variables, an image suffix) are honoured by the OS loader alone, so their controls are real processes started with them set; in-process checks cannot establish what the loader selects' },
-  'packages/apack-cli/tests/build/build-worker.native.spec.ts': { calls: 8,
+  'packages/apack-cli/tests/build/build-worker.native.spec.ts': { calls: 7,
     why: 'private worker IPC lifetime and refusal, public shutdown, native preload identity, loader-startup refusal and natural shutdown under signal refusal require their own processes; two OS process-state queries verify inherited subprocess termination' },
   'packages/repo-checks/tests/bounded-spawn.integration.spec.ts': { calls: 1,
     why: 'a separate orchestrator process receives real signals so cancellation proves its whole child tree is reaped without signaling the test worker' },
   'packages/repo-checks/tests/session.integration.spec.ts': { calls: 2,
     why: 'real Git worktrees verify separate files and indexes; the session command runs as a process to verify gate failures and exit codes' },
-  'packages/apack-cli/tests/_support/pack-builds.ts': { calls: 1,
-    why: 'the shared `run` spawns the repo\'s own bin/apack.mjs, for the cases that need argv dispatch and a real process boundary; callCli covers the rest in-process' },
+  'packages/apack-cli/tests/commands/pack-doctor.integration.spec.ts': { calls: 9,
+    why: 'pack doctor and validate as a user runs them: their exit codes and printed diagnostics are the subject, and they must not execute pack source, which only a separate process shows' },
+  'packages/apack-cli/tests/commands/info.integration.spec.ts': { calls: 3,
+    why: '`pack info --json` and `pack doctor --json` through argv dispatch, whose printed JSON and exit codes are what the spec reads' },
+  'packages/apack-cli/tests/build/dependency-graph.integration.spec.ts': { calls: 1,
+    why: 'a build refused for a dependency clash, checked through the real process\'s exit code and output' },
+  'packages/apack-cli/tests/build/tool-identity.integration.spec.ts': { calls: 2,
+    why: 'a copied packaged CLI is the subject: its helper chunk is edited between runs, which only separate processes loading that copy can observe' },
+  'packages/apack-cli/tests/commands/scaffold.integration.spec.ts': { calls: 1,
+    why: 'the scaffolded pack\'s own toolchain — the CLI bin and then its vitest — run as a pack author runs them, through the test-signal wrapper around runCommand' },
   'packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts': { calls: 1,
     why: 'two `apack pack build` runs whose outputs are compared, and two builds sharing one process would share its module state — which is the thing under test' },
   'packages/apack-cli/tests/commands/add-extensions.integration.spec.ts': { calls: 1,
     why: 'vue-tsc, which needs the Vue language service that ts.createProgram is not; its two plain tsc spawns became the in-process typecheckPack' },
   'packages/apack-cli/tests/commands/app-install.integration.spec.ts': { calls: 1,
     why: 'macOS ditto creates real release-style ZIPs so installation verifies native extraction, executable permissions and bundle symlinks' },
-  'packages/apack-cli/tests/commands/db.integration.spec.ts': { calls: 5,
+  'packages/apack-cli/tests/commands/db.integration.spec.ts': { calls: 2,
     why: 'the CLI\'s db command against a data dir: it opens LMDB and exits, and neither survives being run in the worker' },
   'packages/apack-cli/tests/commands/release.integration.spec.ts': { calls: 1,
     why: 'git, in a throwaway repository' },
-  'packages/apack-cli/tests/_support/scaffold-process.ts': { calls: 1,
-    why: 'the scaffolded pack\'s own toolchain — the CLI bin and then its vitest — run as a pack author runs them, which is the fidelity the spec is for. Async owned processes keep 59–116s compiler operations off the runner event loop' },
+  'packages/apack-cli/tests/_support/run-command.ts': { calls: 1,
+    why: 'the runner for process trees: the CLI and nested vitest, started off the worker\'s event loop with their process group stopped however they end' },
   'packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts': { calls: 1,
     why: 'a nested `vitest run`: the harness under test is what launches a run, so it cannot be the run that is launching it' },
   'packages/apack-cli/tests/harness/harness-setup.integration.spec.ts': { calls: 1,
@@ -135,7 +133,7 @@ describe('a subprocess in the integration pool is one that has to be', () => {
    * whatever the detector does: it passed with the detector stubbed to return nothing.
    */
   it('fails when a file that spawns is dropped from the population', () => {
-    const dropped = 'packages/apack-cli/tests/_support/pack-builds.ts';
+    const dropped = 'packages/apack-cli/tests/_support/run-command.ts';
     const whole = spawnSitesIn(loaded, REPO_ROOT).map((site) => site.file);
     expect(whole, 'the file this drops is not in the answer to begin with, so nothing is being mutated')
       .toContain(dropped);
@@ -155,6 +153,9 @@ describe('a subprocess in the integration pool is one that has to be', () => {
     ['the binary hoisted to a const', "import { execFileSync } from 'node:child_process';\nconst TSC = j(B, 'tsc');\nexecFileSync(TSC, []);", 1],
     ['an aliased import', "import { execFileSync as sh } from 'node:child_process';\nsh(a, b);", 1],
     ['the async execFile', "import { execFile } from 'node:child_process';\nawait execFile(a, b);", 1],
+    ['a promisified execFile bound to a const', "import { execFile } from 'node:child_process';\nimport { promisify } from 'node:util';\nconst run = promisify(execFile);\nawait run(a, b);\nawait run(c, d);", 2],
+    ['a promisified execFile called inline', "import { execFile } from 'node:child_process';\nimport { promisify } from 'node:util';\nawait promisify(execFile)(a, b);", 1],
+    ['the process-tree runner', "import { runCommand } from '../_support/run-command.ts';\nawait runCommand(a, b, c);", 1],
     ['a namespace import', "import * as cp from 'node:child_process';\ncp.spawn(a, b);", 1],
     // The honest version of "a mention is not a spawn": this file has the import, which is the only way to
     // have the capability, and never calls it. Asserting it of a file with no import proves nothing, since

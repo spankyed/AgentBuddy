@@ -4,7 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
-import { buildPack, preparePack, packageJson, tsconfig, run, CLI } from '../_support/pack-builds.ts';
+import { buildPack, preparePack, packageJson, tsconfig, CLI } from '../_support/pack-builds.ts';
+import { runCommand } from '../_support/run-command.ts';
 
 let root: string | undefined;
 afterEach(() => { if (root) fs.rmSync(root, { recursive: true, force: true }); root = undefined; });
@@ -32,25 +33,25 @@ describe('external pack offline inspection', () => {
     await buildPack(consumer);
     fs.rmSync(path.join(producer, 'src'), { recursive: true });
     fs.rmSync(path.join(producer, 'content'), { recursive: true });
-    const inspected = run(process.execPath, [CLI, 'pack', 'info', '--json'], producer);
+    const inspected = await runCommand(process.execPath, [CLI, 'pack', 'info', '--json'], producer);
     expect(inspected.code, inspected.output).toBe(0);
-    expect(JSON.parse(inspected.output).build.content.entries).toMatchObject([
+    expect(JSON.parse(inspected.stdout).build.content.entries).toMatchObject([
       { key: 'memos', count: 2, items: [{ key: 'one', description: 'First memo' }, { key: 'two' }] },
     ]);
     const record = path.join(consumer, '.apack/deps/info-provider/resolution.json');
     const recorded = fs.readFileSync(record);
     fs.rmSync(producer, { recursive: true });
     fs.writeFileSync(path.join(consumer, 'apack.json'), JSON.stringify({ ...consumerManifest, dependencies: { 'info-provider': '^1.0.0' } }));
-    const cached = run(process.execPath, [CLI, 'pack', 'info', '--json'], consumer);
+    const cached = await runCommand(process.execPath, [CLI, 'pack', 'info', '--json'], consumer);
     expect(cached.code, cached.output).toBe(0);
-    expect(JSON.parse(cached.output).dependencies).toMatchObject([
+    expect(JSON.parse(cached.stdout).dependencies).toMatchObject([
       { id: 'info-provider', version: '1.0.0', delivery: 'cache', origin: { kind: 'file', directory: producer } },
     ]);
-    const doctor = run(process.execPath, [CLI, 'pack', 'doctor', '--json'], consumer);
+    const doctor = await runCommand(process.execPath, [CLI, 'pack', 'doctor', '--json'], consumer);
     expect(doctor.code, doctor.output).toBe(0);
-    const report = JSON.parse(doctor.output);
+    const report = JSON.parse(doctor.stdout);
     expect(report.status).toBe('valid');
-    expect(report.dependencies).toEqual(JSON.parse(cached.output).dependencies);
+    expect(report.dependencies).toEqual(JSON.parse(cached.stdout).dependencies);
     expect(fs.readFileSync(record)).toEqual(recorded);
     expect(inspected.output + cached.output + doctor.output).not.toContain('Inspection activated');
   }, 5 * 60_000 + 20_000);

@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
@@ -15,7 +16,8 @@ import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
 
 const sharedCompiler = shareCompilerInstallation();
 
-const compile = (args: string[]) => execFileSync('cc', args, { timeout: 15_000 });
+const execFileAsync = promisify(execFile);
+const compile = (args: string[]) => execFileAsync('cc', args, { timeout: 15_000 });
 
 it.runIf(process.platform === 'linux')('owns retained ELF libraries, preserves Vue updates and refuses absolute outside dependencies', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-elf-libraries-')));
@@ -32,23 +34,23 @@ it.runIf(process.platform === 'linux')('owns retained ELF libraries, preserves V
     const addon = path.join(pack, 'binding/addon.node');
     const marker = path.join(root, 'initialized');
     const reference = '$ORIGIN/../lib/libvalue.so';
-    const buildLibrary = (file: string, value: number, name: string) => {
+    const buildLibrary = async (file: string, value: number, name: string) => {
       fs.mkdirSync(path.dirname(file), { recursive: true });
       fs.writeFileSync(file + '.c', `int native_value(void) { return ${value}; }`);
-      compile(['-fPIC', '-shared', file + '.c', '-Wl,-soname,' + name, '-o', file]);
+      await compile(['-fPIC', '-shared', file + '.c', '-Wl,-soname,' + name, '-o', file]);
     };
     const source = path.join(root, 'addon.c');
     fs.writeFileSync(source, nativeAddonSource(marker));
-    const buildAddon = (file: string, dependency: string) => {
+    const buildAddon = async (file: string, dependency: string) => {
       fs.mkdirSync(path.dirname(file), { recursive: true });
-      compile(['-fPIC', '-shared', '-I', path.resolve(path.dirname(process.execPath), '../include/node'), source, dependency, '-o', file]);
+      await compile(['-fPIC', '-shared', '-I', path.resolve(path.dirname(process.execPath), '../include/node'), source, dependency, '-o', file]);
     };
-    const observe = () => JSON.parse(execFileSync(process.execPath, ['-e',
+    const observe = async () => JSON.parse((await execFileAsync(process.execPath, ['-e',
       `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects.map(file => require('node:path').normalize(file)) }));`],
-    { encoding: 'utf8', timeout: 10_000 })) as { value: number; libraries: string[] };
-    buildLibrary(library, 11, reference);
-    buildAddon(addon, library);
-    const ordinary = observe();
+    { encoding: 'utf8', timeout: 10_000 })).stdout) as { value: number; libraries: string[] };
+    await buildLibrary(library, 11, reference);
+    await buildAddon(addon, library);
+    const ordinary = await observe();
     expect(ordinary.value).toBe(11);
     expect(ordinary.libraries).toContain(library);
     fs.rmSync(marker);
@@ -69,7 +71,7 @@ it.runIf(process.platform === 'linux')('owns retained ELF libraries, preserves V
     const original = fs.readFileSync(library);
     const originalMode = fs.statSync(library).mode & 0o777;
     const replacement = path.join(root, 'replacement.so');
-    buildLibrary(replacement, 22, reference);
+    await buildLibrary(replacement, 22, reference);
     fs.renameSync(replacement, library);
     expect(await frontend.isCurrent(signal)).toBe(false);
     fs.writeFileSync(replacement, original, { mode: originalMode });
@@ -81,11 +83,11 @@ it.runIf(process.platform === 'linux')('owns retained ELF libraries, preserves V
     await vi.waitFor(async () => expect(await (await fetch(view)).text()).toContain('ELF_AFTER'), { timeout: 2_000 });
     expect(await frontend.isCurrent(signal)).toBe(true);
     const outside = path.join(root, 'outside/liboutside.so');
-    buildLibrary(outside, 22, outside);
+    await buildLibrary(outside, 22, outside);
     const candidate = path.join(root, 'candidate.node');
-    buildAddon(candidate, outside);
+    await buildAddon(candidate, outside);
     fs.renameSync(candidate, addon);
-    const escaped = observe();
+    const escaped = await observe();
     expect(escaped.value).toBe(22);
     expect(escaped.libraries).toContain(outside);
     fs.rmSync(marker);
@@ -134,13 +136,13 @@ it.runIf(process.platform === 'linux')('refuses outside runtime-linked libraries
 __attribute__((constructor)) static void initialize(void) {
   FILE *marker = fopen(${JSON.stringify(marker)}, "w"); if (marker) fclose(marker);
 }`);
-    compile(['-fPIC', '-shared', '-Wl,-soname,libstdc++.so.6', '-Wl,--no-as-needed', source, provider, '-o', shim]);
+    await compile(['-fPIC', '-shared', '-Wl,-soname,libstdc++.so.6', '-Wl,--no-as-needed', source, provider, '-o', shim]);
     expect(parseElfLibraryCommands(fs.readFileSync(shim)).dependencies).toContain('$ORIGIN/r.so');
     const search = [outside, previous].filter(Boolean).join(':');
-    const control = JSON.parse(execFileSync(process.execPath, ['-e',
+    const control = JSON.parse((await execFileAsync(process.execPath, ['-e',
       'console.log(JSON.stringify({version:process.version,libraries:process.report.getReport().sharedObjects}))'], {
       encoding: 'utf8', env: { ...process.env, LD_LIBRARY_PATH: search }, timeout: 10_000,
-    })) as { version: string; libraries: string[] };
+    })).stdout) as { version: string; libraries: string[] };
     expect(control.version).toBe(process.version);
     expect(control.libraries).toContain(shim);
     expect(fs.existsSync(marker)).toBe(true);

@@ -1,7 +1,6 @@
 // Building real packs in a temp dir by running the CLI, for the specs that need a build rather than a
 // hand-written snapshot. A pack here is a directory of files plus a `node_modules` symlink, which is
 // what lets sibling packs resolve each other through `resolveFromWorkspace`.
-import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
@@ -10,15 +9,6 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 /** The CLI these specs build with: the repo's own bin, run from source */
 export const CLI = path.join(REPO_ROOT, 'packages', 'apack-cli', 'bin', 'apack.mjs');
-
-/** Runs a command, returning its status and combined output instead of throwing, so a spec can assert on both */
-export function run(cmd: string, args: string[], cwd: string): { code: number; output: string } {
-  try {
-    return { code: 0, output: execFileSync(cmd, args, { cwd, stdio: 'pipe', env: { ...process.env, FORCE_COLOR: '0' } }).toString() };
-  } catch (err: any) {
-    return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
-  }
-}
 
 /**
  * The commands `callCli` can run, by the name the CLI's argv dispatch uses (`src/index.ts`). `build`
@@ -48,10 +38,11 @@ async function registerTsx(): Promise<void> {
 }
 
 /**
- * Runs a CLI command in this process against `dir`, returning what `run` returns so a call site reads
- * the same either way. For the spawns that exist to *produce* something — a built pack, a scaffold —
- * where the process boundary is cost rather than coverage; a test asserting on an exit code, stderr or
- * argv keeps `run`, because that is what it is testing.
+ * Runs a CLI command in this process against `dir`, returning `{ code, output }` as `runCommand` does so a
+ * call site reads the same either way. For the spawns that exist to *produce* something — a built pack, a
+ * scaffold — where the process boundary is cost rather than coverage; a test asserting on an exit code,
+ * stderr or argv runs the real process through `runCommand` (`_support/run-command.ts`), because that is
+ * what it is testing.
  *
  * Measured on a minimal pack: three builds cost 14.1s spawned and 7.4s here, because esbuild, vite and
  * tailwind load once for the file instead of once per build.
@@ -89,7 +80,7 @@ export async function callCli(dir: string, command: keyof typeof COMMANDS, args:
 }
 
 /**
- * Typechecks a pack with the TypeScript API instead of a `tsc` spawn, returning what `run` returns.
+ * Typechecks a pack with the TypeScript API instead of a `tsc` spawn, returning `{ code, output }`.
  * The same program the compiler would build, from the same tsconfig — `tsc -p` and `tsc --noEmit` in
  * the pack both reduce to this — without paying process start and lib loading each time, and reusing
  * those lib files across calls within a file.

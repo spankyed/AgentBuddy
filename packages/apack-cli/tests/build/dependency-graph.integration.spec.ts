@@ -12,7 +12,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
-import { CLI, buildPack, callCli, packageJson, preparePack, run, tsconfig } from '../_support/pack-builds';
+import { CLI, buildPack, callCli, packageJson, preparePack, tsconfig } from '../_support/pack-builds';
+import { runCommand } from '../_support/run-command.ts';
 import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
@@ -82,13 +83,13 @@ const snapshotOf = (id: string) => {
 };
 
 describe.skipIf(!PACKAGES_BUILT)('a pack depending on two packs that share an ancestor', () => {
-  it('builds, rather than reporting the ancestor as a collision', () => {
+  it('builds, rather than reporting the ancestor as a collision', async () => {
     expect(built!.output).not.toContain('Type conflicts');
     expect(built!.code, built!.output).toBe(0);
   });
 
   // The generated union is what a pack author sees: the ancestor's entity once, not twice and not missing
-  it("names the ancestor's entity exactly once in the dependent's EntityName", () => {
+  it("names the ancestor's entity exactly once in the dependent's EntityName", async () => {
     const ears = fs.readFileSync(path.join(parent, 'app-pack', 'src', '__generated__', 'ears.ts'), 'utf-8');
     const entityName = ears.slice(ears.indexOf('export type EntityName'));
     const line = entityName.slice(0, entityName.indexOf(';'));
@@ -99,13 +100,13 @@ describe.skipIf(!PACKAGES_BUILT)('a pack depending on two packs that share an an
   });
 
   // What the dependent read to get that right, written by the middle packs' own builds
-  it("attributes the ancestor's entity to the ancestor in each side's snapshot", () => {
+  it("attributes the ancestor's entity to the ancestor in each side's snapshot", async () => {
     for (const side of ['left-pack', 'right-pack']) {
       expect(snapshotOf(side).provenance.entities, side).toMatchObject({ Memo: DEEP });
     }
   });
 
-  it("attributes each pack's own entity to itself", () => {
+  it("attributes each pack's own entity to itself", async () => {
     expect(snapshotOf('left-pack').provenance.entities).toMatchObject({ LeftNote: 'left-pack' });
     expect(snapshotOf(DEEP).provenance.entities).toEqual({ Memo: DEEP });
   });
@@ -121,7 +122,7 @@ describe.skipIf(!PACKAGES_BUILT)('a collision that is real', () => {
 
     const clashDir = preparePack(parent, 'clash-pack', pack('clash-pack', {}, on(DEEP, rival)), modules);
     // process: the exit code and the colliding-entity message are the assertion
-    const clash = run(process.execPath, [CLI, 'pack', 'build'], clashDir);
+    const clash = await runCommand(process.execPath, [CLI, 'pack', 'build'], clashDir);
 
     expect(clash.code, clash.output).not.toBe(0);
     expect(clash.output).toMatch(/entity "Memo" declared by both/);

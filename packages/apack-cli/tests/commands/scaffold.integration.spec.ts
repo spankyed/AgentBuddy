@@ -7,7 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { extractPackArchive, verifyPack, PACK_LAYOUT } from '@apackdev/host/packs';
 import { parse as parseYaml } from 'yaml';
 import { typecheckPack } from '../_support/pack-builds';
-import { runScaffoldCommand } from '../_support/scaffold-process.ts';
+import { runCommand } from '../_support/run-command.ts';
 
 import { COMMANDS, type Command } from '../../src/command-tree.ts';
 
@@ -24,7 +24,7 @@ let pack: string;
 let initOutput: string;
 
 
-let active: ReturnType<typeof runScaffoldCommand> | undefined;
+let active: ReturnType<typeof runCommand> | undefined;
 let testSignal: AbortSignal | undefined;
 
 beforeEach(async ({ signal }) => {
@@ -33,7 +33,7 @@ beforeEach(async ({ signal }) => {
 });
 
 function run(cmd: string, args: string[], cwd: string, timeout = 60_000) {
-  return active = runScaffoldCommand(cmd, args, cwd, { signal: testSignal, timeout });
+  return active = runCommand(cmd, args, cwd, { signal: testSignal, timeout });
 }
 
 function callCli(cwd: string, command: string, args: string[] = []) {

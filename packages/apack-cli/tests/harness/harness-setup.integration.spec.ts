@@ -1,12 +1,12 @@
 // Where the harness finds the pack, and which tests it runs: a pack's unit tests run from anywhere with --root,
 // tests that run concurrently, or test files sharing the harness, fail naming why, and a pack scaffolded before the harness gets its setup from `apack pack add feature`.
-import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { callCli } from '../_support/pack-builds';
+import { runCommand } from '../_support/run-command.ts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO_ROOT, 'packages', 'apack-cli', 'bin', 'apack.mjs');
@@ -29,12 +29,9 @@ function write(root: string, file: string, content: string): void {
   fs.writeFileSync(path.join(root, file), content);
 }
 
-function run(command: string, args: string[], cwd: string) {
-  const result = spawnSync(command, args, {
-    cwd, encoding: 'utf-8', env: { ...process.env, CI: '', NO_COLOR: '1', FORCE_COLOR: '0' }, timeout: 180_000,
-  });
-  return { code: result.status, output: `${result.stdout}${result.stderr}` };
-}
+/** A nested vitest or CLI run, off this worker's event loop */
+const run = (command: string, args: string[], cwd: string) =>
+  runCommand(command, args, cwd, { env: { CI: '', NO_COLOR: '1' }, timeout: 180_000 });
 
 /** A pack with no dependencies whose unit tests run its data code on the harness */
 function dataPack(spec: string, manifest: Record<string, unknown> = {}): string {
@@ -54,20 +51,20 @@ await setupPackTests({ contentRuntime: { id: 'data-pack', declarationRevision: $
 }
 
 describe("a pack's unit tests on the harness", () => {
-  it('runs without a bundled build and refuses stale source declarations before starting the harness', () => {
+  it('runs without a bundled build and refuses stale source declarations before starting the harness', async () => {
     const root = dataPack(`import { expect, it } from 'vitest'; it('source works', () => expect(true).toBe(true));`);
     expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
-    expect(run(process.execPath, [VITEST, 'run'], root).output).toMatch(/Tests\s+1 passed/);
+    expect((await run(process.execPath, [VITEST, 'run'], root)).output).toMatch(/Tests\s+1 passed/);
     const manifestFile = path.join(root, 'apack.json');
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf-8'));
     fs.writeFileSync(manifestFile, JSON.stringify({ ...manifest, name: 'Edited source' }));
-    const refused = run(process.execPath, [VITEST, 'run'], root);
+    const refused = await run(process.execPath, [VITEST, 'run'], root);
     expect(refused.code).toBe(1);
     expect(refused.output).toContain('generated declarations are stale');
     expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
   });
 
-  it('find the pack from the vitest project root when run from another directory (--root)', () => {
+  it('find the pack from the vitest project root when run from another directory (--root)', async () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';
 import { importContent } from '@apackdev/testing/harness';
@@ -75,12 +72,12 @@ it('writes nothing', async () => {
   expect(await importContent()).toEqual({});
 });`);
     // inherent: runs a pack's own vitest suite from another cwd — the nested runner is the thing under test
-    const result = run(process.execPath, [VITEST, 'run', '--root', root], tempDir('apack-elsewhere-'));
+    const result = await run(process.execPath, [VITEST, 'run', '--root', root], tempDir('apack-elsewhere-'));
     expect(result.output).toMatch(/Tests\s+1 passed/);
   });
 
   // A content runtime registers no features, yet an action the test runs sends to the pack's own through services.emitter
-  it("let services.emitter send to the features the pack's manifest declares", () => {
+  it("let services.emitter send to the features the pack's manifest declares", async () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';
 import { createActionEmitter } from '@apackdev/sdk/services';
@@ -90,11 +87,11 @@ it('sends to its own system and plugin', () => {
   expect(() => createActionEmitter().broadcastToPlugin('data-pack/ghost', { type: 'MEMOS_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
 });`, { features: { memos: { description: 'Exercise the harness system.', system: { entry: 'src/features/memos/be/system.ts' }, plugin: { label: 'Fixture', state: 'src/features/memos/fe/index.ts' } } } });
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
-    const result = run(process.execPath, [VITEST, 'run'], root);
+    const result = await run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+1 passed/);
   });
 
-  it('fail naming why when test files share the harness (vitest isolate off)', () => {
+  it('fail naming why when test files share the harness (vitest isolate off)', async () => {
     const spec = `
 import { expect, it } from 'vitest';
 import { importContent } from '@apackdev/testing/harness';
@@ -110,23 +107,23 @@ import { definePackTestConfig } from '@apackdev/testing/vitest';
 const base = await definePackTestConfig({ dataDirPrefix: 'harness-setup-' });
 export default { ...base, test: { ...base.test, isolate: false, fileParallelism: false } };`);
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
-    const result = run(process.execPath, [VITEST, 'run'], root);
+    const result = await run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toContain('setupPackTests() already ran in this process');
     expect(result.output).toContain('`isolate` on (the default)');
   });
 
-  it('fail concurrent tests, naming why', () => {
+  it('fail concurrent tests, naming why', async () => {
     const root = dataPack(`
 import { it } from 'vitest';
 it.concurrent('one', async () => {});
 it.concurrent('two', async () => {});`);
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
-    const result = run(process.execPath, [VITEST, 'run'], root);
+    const result = await run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+2 failed/);
     expect(result.output).toContain('"one" runs concurrently: harness tests share one database, service mocks and apps per file');
   });
 
-  it("run a concurrent test nothing runs alongside: alone in its group, or next to skipped ones", () => {
+  it("run a concurrent test nothing runs alongside: alone in its group, or next to skipped ones", async () => {
     const root = dataPack(`
 import { describe, it } from 'vitest';
 it.concurrent('alone', async () => {});
@@ -136,7 +133,7 @@ describe.concurrent('a concurrent suite', () => {
   it.skip('skipped', async () => {});
 });`);
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
-    const result = run(process.execPath, [VITEST, 'run'], root);
+    const result = await run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+3 passed \| 1 skipped/);
   });
 });
@@ -156,7 +153,7 @@ describe('apack pack add feature in a pack without the unit test setup', () => {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
     // process: the report the command prints, line by line, is the assertion
-    const added = run(process.execPath, [CLI, 'pack', 'add', 'feature', 'memos', '--description', 'Manage memos.'], pack);
+    const added = await run(process.execPath, [CLI, 'pack', 'add', 'feature', 'memos', '--description', 'Manage memos.'], pack);
 
     expect(added.code, added.output).toBe(0);
     expect(added.output).toContain('+ tests/setup.ts');
@@ -166,7 +163,7 @@ describe('apack pack add feature in a pack without the unit test setup', () => {
     expect(JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).devDependencies['@apackdev/testing']).toMatch(/^\^/);
     // The kept config is the scaffold's, which loads tests/setup.ts
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
-    const unit = run(process.execPath, [VITEST, 'run'], pack);
+    const unit = await run(process.execPath, [VITEST, 'run'], pack);
     expect(unit.output).toMatch(/tests\/features\/memos\/be\/system\.spec\.ts/);
     expect(unit.output).toMatch(/Tests\s+1 passed/);
   });

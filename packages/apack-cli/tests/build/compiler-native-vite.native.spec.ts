@@ -209,7 +209,7 @@ it('retains independent captured Vite owners through replacement and close', asy
 });
 
 it.runIf(process.platform === 'darwin')('watches external Vite native changes and repairs a failed generation through newly discovered inputs', async ({ onTestFinished }) => {
-  const fixture = nativeFixture('relative');
+  const fixture = await nativeFixture('relative');
   const builder = createPackBuilder(fixture.pack, { captureCompiler: sharedCompiler.capture });
   const previous = process.env.NODE_OPTIONS;
   let watcher: Awaited<ReturnType<typeof startPackBuildWatcher>> | undefined;
@@ -265,8 +265,8 @@ it.runIf(process.platform === 'darwin')('watches external Vite native changes an
     const staging = path.join(fixture.root, 'replacement');
     const helper = path.join(staging, 'libhelper.dylib');
     const replacement = path.join(staging, 'libvalue.dylib');
-    fixture.buildLibrary(helper, 'int helper_value(void) { return 22; }', '@loader_path/new/libhelper.dylib');
-    fixture.buildLibrary(replacement, 'extern int helper_value(void); int native_value(void) { return helper_value(); }',
+    await fixture.buildLibrary(helper, 'int helper_value(void) { return 22; }', '@loader_path/new/libhelper.dylib');
+    await fixture.buildLibrary(replacement, 'extern int helper_value(void); int native_value(void) { return helper_value(); }',
       '@loader_path/../lib/libvalue.dylib', [helper]);
     builds.mockClear();
     fs.rmSync(fixture.marker);
@@ -306,8 +306,8 @@ it.runIf(process.platform === 'darwin')('watches external Vite native changes an
 
 it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)(
   'owns retained Vite native %s inputs while authored Vue sources stay live', async site => {
-    const fixture = nativeFixture('relative');
-    const refused = nativeFixture('absolute');
+    const fixture = await nativeFixture('relative');
+    const refused = await nativeFixture('absolute');
     const previous = process.env.NODE_OPTIONS;
     let compiler: CompilerInstallation | undefined;
     let frontend: PackFrontend | undefined;

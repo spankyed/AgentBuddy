@@ -5,7 +5,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { execFileSync, fork, spawn, type ChildProcess } from 'node:child_process';
+import { execFile, fork, spawn, type ChildProcess } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createRequire } from 'node:module';
 import { afterEach, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
@@ -33,6 +34,13 @@ import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
 
 const roots: string[] = [];
 const sharedCompiler = shareCompilerInstallation();
+const execFileAsync = promisify(execFile);
+
+/** A process's `ps` state, or '' once it has gone (`ps` exits 1 for a pid it cannot find) */
+async function processState(pid: number): Promise<string> {
+  try { return (await execFileAsync('/bin/ps', ['-p', String(pid), '-o', 'stat='], { encoding: 'utf8', timeout: 10_000 })).stdout.trim(); }
+  catch (error) { if ((error as { code?: unknown }).code !== 1) throw error; return ''; }
+}
 const builders: PackBuilder[] = [];
 afterEach(async () => {
   for (const root of roots) {
@@ -380,9 +388,7 @@ it('terminates pack-created background work before accepting its candidate', asy
   expect(output.records[0].name).toBe('COMPLETE');
   if (process.platform !== 'win32') {
     const pid = Number(fs.readFileSync(path.join(root, '.apack/compiler-child-pid'), 'utf8'));
-    let state = '';
-    try { state = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'stat='], { encoding: 'utf8' }).trim(); }
-    catch (error) { if ((error as { status?: number }).status !== 1) throw error; }
+    const state = await processState(pid);
     expect(state === '' || state.startsWith('Z'), `Compiler subprocess ${pid} is still ${state}`).toBe(true);
   }
 }, 120_000 + 20_000);
@@ -485,10 +491,8 @@ it('terminates a compiling worker when its parent IPC disconnects without publis
     if (grouped) {
       expect(child.signalCode).toBe('SIGKILL');
       const pid = Number(fs.readFileSync(path.join(root, '.apack/compiler-child-pid'), 'utf8'));
-      await vi.waitFor(() => {
-        let state = '';
-        try { state = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'stat='], { encoding: 'utf8' }).trim(); }
-        catch (error) { if ((error as { status?: number }).status !== 1) throw error; }
+      await vi.waitFor(async () => {
+        const state = await processState(pid);
         expect(state === '' || state.startsWith('Z')).toBe(true);
       }, { timeout: 2_000 });
     }

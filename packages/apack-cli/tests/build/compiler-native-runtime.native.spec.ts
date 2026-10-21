@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { promisify } from 'node:util';
 import { expect, it, onTestFinished } from 'vitest';
 import { ManifestSchema } from '@apackdev/sdk/build';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
@@ -16,6 +17,8 @@ import { nativeFixture } from '../_support/native-libraries.ts';
 
 // The native-library proofs are split by subject so the native half's shards can spread them; this one is
 // the captured Electron runtime, runtime-linked Mach-O libraries and default-fallback lookup.
+
+const execFileAsync = promisify(execFile);
 
 const electronRuntimes: Array<[string, string | undefined]> = [['captured', undefined]];
 if (process.env.APACK_TEST_SIGNED_ELECTRON) electronRuntimes.push(['strictly signed captured', process.env.APACK_TEST_SIGNED_ELECTRON]);
@@ -43,9 +46,10 @@ phase('captured');
 let output;
 try {
   if (process.env.APACK_TEST_SIGNED_ELECTRON) {
-    const {spawnSync} = await import('node:child_process');
-    const signature = spawnSync('codesign', ['--verify','--strict','--verbose=4',installation.executable], {encoding:'utf8'});
-    if (signature.status !== 0) throw new Error('Captured runtime signature failed: ' + signature.stdout + signature.stderr);
+    const {execFile} = await import('node:child_process');
+    const {promisify} = await import('node:util');
+    await promisify(execFile)('codesign', ['--verify','--strict','--verbose=4',installation.executable], {encoding:'utf8',timeout:60000})
+      .catch(error => { throw new Error('Captured runtime signature failed: ' + (error.stdout ?? '') + (error.stderr ?? error.message)); });
   }
   const child = spawnCompilerWorker(installation, [installation.bin], {cwd:${JSON.stringify(compiler)},
     env:{...process.env,ELECTRON_RUN_AS_NODE:'1',NODE_OPTIONS:undefined},stdio:['ignore','pipe','pipe','ipc'],signal:AbortSignal.timeout(15000)}, ${JSON.stringify(root)});
@@ -179,11 +183,11 @@ __attribute__((constructor)) static void initialize(void) {
 }
 int native_value(void) { return 11; }`);
     fs.writeFileSync(executable + '.c', '#include <stdio.h>\nextern int native_value(void);\nint main(void) { printf("%d\\n", native_value()); return 0; }');
-    const compile = (args: string[]) => execFileSync('clang', args, { timeout: 15_000 });
-    compile(['-dynamiclib', library + '.c', '-Wl,-install_name,' + library, '-o', library]);
-    compile([executable + '.c', library, '-o', executable]);
+    const compile = (args: string[]) => execFileAsync('clang', args, { timeout: 15_000 });
+    await compile(['-dynamiclib', library + '.c', '-Wl,-install_name,' + library, '-o', library]);
+    await compile([executable + '.c', library, '-o', executable]);
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('DYLD_')));
-    expect(execFileSync(executable, [], { env, encoding: 'utf8', timeout: 5_000 }).trim()).toBe('11');
+    expect((await execFileAsync(executable, [], { env, encoding: 'utf8', timeout: 5_000 })).stdout.trim()).toBe('11');
     expect(fs.existsSync(marker)).toBe(true);
     fs.rmSync(marker);
     // A minimal executable exercises the real shared launch boundary without another Node copy.
@@ -192,9 +196,9 @@ int native_value(void) { return 11; }`);
     expect(launch).toThrow(library);
     expect(fs.existsSync(marker)).toBe(false);
     const contained = path.join(runtime, 'libvalue.dylib');
-    compile(['-dynamiclib', library + '.c', '-Wl,-install_name,@executable_path/libvalue.dylib', '-o', contained]);
-    compile([executable + '.c', contained, '-o', executable]);
-    expect(execFileSync(executable, [], { env, encoding: 'utf8', timeout: 5_000 }).trim()).toBe('11');
+    await compile(['-dynamiclib', library + '.c', '-Wl,-install_name,@executable_path/libvalue.dylib', '-o', contained]);
+    await compile([executable + '.c', contained, '-o', executable]);
+    expect((await execFileAsync(executable, [], { env, encoding: 'utf8', timeout: 5_000 })).stdout.trim()).toBe('11');
     expect(fs.existsSync(marker)).toBe(true);
     fs.rmSync(marker);
     const child = launch();
@@ -209,8 +213,8 @@ int native_value(void) { return 11; }`);
 it.runIf(process.platform === 'darwin').each([
   ['fallback', '13.0'], ['fallback', '14.0'], ['framework', '13.0'], ['framework', '14.0'],
 ] as const)(
-  'matches native default-fallback lookup for %s / SDK %s without touching system directories', (mode, sdk) => {
-    const fixture = nativeFixture(mode, sdk);
+  'matches native default-fallback lookup for %s / SDK %s without touching system directories', async (mode, sdk) => {
+    const fixture = await nativeFixture(mode, sdk);
     try {
       fs.rmSync(fixture.library);
       const entry = path.join(fixture.native, 'binding/addon.node');
@@ -219,9 +223,9 @@ it.runIf(process.platform === 'darwin').each([
       const variable = mode === 'framework' ? 'DYLD_FALLBACK_FRAMEWORK_PATH' : 'DYLD_FALLBACK_LIBRARY_PATH';
       for (const setting of [undefined, '']) {
         const env = { ...environment, [variable]: setting };
-        const actual = execFileSync(process.execPath, ['-e', `try { require(${JSON.stringify(entry)}) } catch (error) { console.log(error.message) }`], {
-          encoding: 'utf8', env,
-        });
+        const actual = (await execFileAsync(process.execPath, ['-e', `try { require(${JSON.stringify(entry)}) } catch (error) { console.log(error.message) }`], {
+          encoding: 'utf8', env, timeout: 60_000,
+        })).stdout;
         const probes: string[] = [];
         assertCapturedMachOLibraries(entry, fixture.native, { arch: process.arch,
           environment: captureMachOLibraryEnvironment(env), realpath: file => fs.realpathSync.native(file),

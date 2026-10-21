@@ -1,10 +1,13 @@
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { CHECKS } from '../../../scripts/check-import-specifiers.ts';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * The one check on `scripts/check-import-specifiers.ts` that runs it as a process. Every other test of it
@@ -20,10 +23,11 @@ afterEach(() => {
 });
 
 describe('check-import-specifiers as a script', () => {
-  it('runs as a script through a symlinked path', () => {
+  it('runs as a script through a symlinked path', async () => {
     const link = path.join(root, 'check.ts');
     fs.symlinkSync(path.join(REPO_ROOT, 'scripts', 'check-import-specifiers.ts'), link);
-    const output = execFileSync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [link], { cwd: REPO_ROOT, stdio: 'pipe' }).toString();
+    const { stdout: output } = await execFileAsync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [link],
+      { cwd: REPO_ROOT, encoding: 'utf8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024 });
     expect(output).toMatch(/Import specifiers and pack rules pass/);
     // It checks the whole repo, parsing every file
   });
@@ -34,9 +38,10 @@ describe('check-import-specifiers as a script', () => {
    * over the rows as data, because every rule's key appears somewhere in this output whatever it is paired with,
    * so a table rendered one row out reads as correct from here.
    */
-  it('prints the rule table over every rule', () => {
-    const list = execFileSync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx'),
-      [path.join(REPO_ROOT, 'scripts', 'check-import-specifiers.ts'), '--list'], { cwd: REPO_ROOT, stdio: 'pipe' }).toString();
+  it('prints the rule table over every rule', async () => {
+    const { stdout: list } = await execFileAsync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx'),
+      [path.join(REPO_ROOT, 'scripts', 'check-import-specifiers.ts'), '--list'],
+      { cwd: REPO_ROOT, encoding: 'utf8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024 });
 
     expect(CHECKS.length, 'no rules, so this would pass over nothing').toBeGreaterThan(0);
     expect(list).toMatch(/^rule\s+paths\?\s+a pack too\?\s+what it reports$/m);
