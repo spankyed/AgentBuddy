@@ -1,6 +1,6 @@
 # Settings and pack contracts — checkpoint evidence
 
-Historical evidence for [the active goal](../archive/goals/goal-settings-and-pack-contracts.md).
+Historical evidence for [the active goal](../../archive/goals/goal-settings-and-pack-contracts.md).
 The goal’s live ledger owns current status, execution order and acceptance. Dated instructions,
 “next” steps and incomplete-state claims below describe their checkpoint; they do not restart work
 subsequently completed. Unmet requirements remain owned by the active goal and subsystem plans.
@@ -759,7 +759,7 @@ The user requested a design review after the assistant draft introduced an unjus
 entity and event contract. Implementation is held at `29431f57b`; the uncommitted draft is not an accepted
 checkpoint. Continue the full goal, beginning with this review rather than building on that draft.
 See the corrected responsibility and lifecycle requirements in
-[settings architecture](../archive/plans/settings-architecture.md#onboarding-design-correction-2026-10-12).
+[settings architecture](../../archive/plans/settings-architecture.md#onboarding-design-correction-2026-10-12).
 
 This is an architectural disposition, not a claim that all 220 changed files have been reviewed:
 
@@ -791,7 +791,7 @@ boundary. Delete that directory, `content/default-settings.ts`, their aliases an
 types together with `settingsSections` and arbitrary section addressing. Do not rename/rearrange the
 assembly or commit catalog integration as a substitute for removing it. Follow the audited deletion and
 integrated owner-contract checkpoint in
-[settings architecture](../archive/plans/settings-architecture.md#remove-the-packs-app-settings-abstraction).
+[settings architecture](../../archive/plans/settings-architecture.md#remove-the-packs-app-settings-abstraction).
 
 The rejected assistant draft has been removed and bindings regenerated. Before further implementation,
 settle real root/client readiness semantics in the settings plan. Do not invent a lifecycle field to
@@ -2274,7 +2274,7 @@ its owner-only policy as complete, and do not archive its plans.
 ### PR review: completeness audit (2026-10-13)
 
 **Historical audit.** Its discovery gaps are superseded for current status by the
-[current discovery checklist](../archive/plans/discovery-without-activation.md#current-discovery-checklist).
+[current discovery checklist](../../archive/plans/discovery-without-activation.md#current-discovery-checklist).
 In particular, installed-pack information, reference/editor consumers and step palettes subsequently
 migrated, and hook/migration metadata and frontend membership gained declaration checks. Retain the
 original findings and evidence below; consult current acceptance before treating a finding as unresolved
@@ -2625,7 +2625,7 @@ Focused checks pass 92 tests and the host typecheck. Omitting the acceptance cal
 refusal tests; the source was restored before strict validation. Initial strict validation failed after
 all 21 external app assertions passed: fixture cleanup raced API shutdown and raised `ENOTEMPTY`.
 The surviving API log and non-awaited child shutdown are recorded in
-[the replacement audit](../archive/plans/replaceable-shipped-packs.md#installed-publication-audit-2026-10-13).
+[the replacement audit](../../archive/plans/replaceable-shipped-packs.md#installed-publication-audit-2026-10-13).
 The unchanged-source recheck passes the strict chain in 115.8s (25 cached gates), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T17-52-50Z-12522`; the cleanup race remains unresolved.
 All unfinished phases and final strict `--all` acceptance remain required.
@@ -2644,7 +2644,7 @@ All 163 focused tests pass, with four refusal/cache/ownership/enablement mutatio
 Strict checkpoint validation passes all 30 gates in 393.9s (one cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T18-05-22Z-18099`. The separate API/fixture shutdown
 cleanup race remains unresolved despite passing this run. See
-[the coordinated installation evidence](../archive/plans/replaceable-shipped-packs.md#coordinated-app-installation-2026-10-13).
+[the coordinated installation evidence](../../archive/plans/replaceable-shipped-packs.md#coordinated-app-installation-2026-10-13).
 
 Next remove the now-unused teardown replacement flag and its registry/bus suppression state, and
 replace teardown's obsolete extension projection with its lifecycle lookup. Explicit shipped update
@@ -2666,7 +2666,7 @@ restored checks pass. The initial strict host unit timeout coincided with 1,454 
 (14:19:10–14:43:24), not a reported test assertion. The unchanged-source awake recheck passes all 30
 gates in 247.3s (21 cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T18-48-01Z-55317`. Evidence and limits are in
-[the replacement cleanup checkpoint](../archive/plans/replaceable-shipped-packs.md#removal-of-teardown-first-replacement-glue-2026-10-13).
+[the replacement cleanup checkpoint](../../archive/plans/replaceable-shipped-packs.md#removal-of-teardown-first-replacement-glue-2026-10-13).
 
 Next implement explicit shipped-pack update ownership and uninstall suppression, then deliberate
 replace/restore operations with restart/reload verification. Every other unfinished discovery,
@@ -2691,7 +2691,7 @@ All 169 focused host tests, seven CLI caller tests and CLI/testing typechecks pa
 suppression, pruning, record-write and rollback mutations fail and were restored. Strict validation
 passes all 30 gates in 356.8s (one cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T19-24-50Z-88047`. See
-[the selected ownership contract and evidence](../archive/plans/replaceable-shipped-packs.md#explicit-update-ownership-and-removal-suppression-2026-10-13).
+[the selected ownership contract and evidence](../../archive/plans/replaceable-shipped-packs.md#explicit-update-ownership-and-removal-suppression-2026-10-13).
 
 Next deliver explicit replace/restore operations, app-source update offers, provenance-only controls,
 archive eligibility and the replacement plan's complete restart/reload acceptance. All other unfinished
@@ -2716,7 +2716,7 @@ missing/duplicate ids and cached-only beta selection. Twenty-eight focused CLI a
 five identity/intent/enablement/offline mutations fail and were restored. Host and CLI/testing typechecks
 pass. Strict validation passes all 30 gates in 325.8s (one cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T20-01-02Z-23338`. See
-[the CLI replacement evidence](../archive/plans/replaceable-shipped-packs.md#cli-replacerestore-checkpoint-2026-10-13).
+[the CLI replacement evidence](../../archive/plans/replaceable-shipped-packs.md#cli-replacerestore-checkpoint-2026-10-13).
 
 Next complete the advertised shipped-id/source identity catalog, live app UI controls, app-source update
 offers, archive eligibility and the full restart/reload acceptance matrix. All remaining discovery,
@@ -2738,7 +2738,7 @@ of the freshly rebuilt real default-setup, verifies its checksum, extracts it an
 The controlled SDK report has exactly six obsolete field declarations removed. Strict validation passes
 all 30 gates in 381.0s (none cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T20-15-31Z-55624`. No release/version metadata changes.
-See [the removal evidence and remaining controls](../archive/plans/replaceable-shipped-packs.md#manifest-shipping-privilege-removal-2026-10-13).
+See [the removal evidence and remaining controls](../../archive/plans/replaceable-shipped-packs.md#manifest-shipping-privilege-removal-2026-10-13).
 
 Next complete the app source/advertised-id catalog and provenance contract, live replace/restore and
 uninstall/toggle controls, app-source update offers, optional Threads selection when no pack supplies
@@ -2761,7 +2761,7 @@ the host typecheck pass. A hardcoded default-setup role mutation fails and was r
 extra availability guard was removed because selection already handles absence. Strict validation
 passes all 30 gates in 331.9s (one cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T20-32-47Z-87954`. See
-[the optional-role evidence](../archive/plans/replaceable-shipped-packs.md#optional-threads-during-onboarding-2026-10-13).
+[the optional-role evidence](../../archive/plans/replaceable-shipped-packs.md#optional-threads-during-onboarding-2026-10-13).
 
 Next continue the app source/advertised-id catalog and provenance contract, live pack controls and
 app-source update offers, followed by the complete replacement restart/reload acceptance matrix.
@@ -2783,7 +2783,7 @@ revision guard fails its specific assertion; the restored source/catalog suite p
 Strict validation passes all 30 gates in 355.4s (one cached), including actual external-pack app and
 packaged authoring. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T20-52-16Z-20954`;
 `/private/tmp/apack-app-sources-strict-chain.log`. See
-[the source contract and remaining consumers](../archive/plans/replaceable-shipped-packs.md#shipped-source-catalog-prototype-2026-10-13).
+[the source contract and remaining consumers](../../archive/plans/replaceable-shipped-packs.md#shipped-source-catalog-prototype-2026-10-13).
 
 Next integrate advertised-id installation guards, live pack replace/restore controls, app-source update
 offers and provenance-only uninstall/toggle decisions, then complete the external fork/restart/reload
@@ -2811,7 +2811,7 @@ three advertisement/id/retirement mutations fail and were restored. Strict valid
 gates in 357.0s (one cached), including the real disable/remove/user-replace/app-restore cycle and
 packaged authoring. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T21-28-44Z-84566`;
 `/private/tmp/apack-live-controls-strict-chain-final.log`. Detailed failures, contract corrections and
-limits are in [the replacement plan](../archive/plans/replaceable-shipped-packs.md#actor-and-binding-retirement-correction-2026-10-13).
+limits are in [the replacement plan](../../archive/plans/replaceable-shipped-packs.md#actor-and-binding-retirement-correction-2026-10-13).
 
 Next finish app-source update offers, standalone CLI advertised-id/host selection, selected-copy
 provenance cleanup and the full cloned-source edit/build/restart/reload/multiple-window matrix. All
@@ -2835,7 +2835,7 @@ remote-exclusion mutations fail and were restored. Strict validation passes all 
 (one cached), including real app and packaged authoring. Evidence:
 `node_modules/.cache/apack-chain/runs/2026-10-13T21-47-31Z-16865`;
 `/private/tmp/apack-source-updates-strict-chain.log`. See
-[the app-source update contract](../archive/plans/replaceable-shipped-packs.md#app-source-update-working-implementation-2026-10-13).
+[the app-source update contract](../../archive/plans/replaceable-shipped-packs.md#app-source-update-working-implementation-2026-10-13).
 
 Next finish standalone CLI host/advertised-id selection, selected-copy provenance cleanup and the full
 cloned-source edit/build/restart/reload/multiple-window matrix. Every remaining all-kind discovery,
@@ -2860,7 +2860,7 @@ now supplies the known build host. Final strict validation passes all 30 gates i
 with fresh packaged authoring/app acceptance. Evidence:
 `node_modules/.cache/apack-chain/runs/2026-10-13T22-12-00Z-78713`;
 `/private/tmp/apack-cli-source-guard-strict-chain-final.log`. See
-[the CLI selection/reservation contract](../archive/plans/replaceable-shipped-packs.md#cli-source-selection-and-reservation-working-implementation-2026-10-13).
+[the CLI selection/reservation contract](../../archive/plans/replaceable-shipped-packs.md#cli-source-selection-and-reservation-working-implementation-2026-10-13).
 
 Next finish selected-copy provenance cleanup and the actual cloned-source edit/build/restart/reload/
 multiple-window acceptance matrix. Every remaining all-kind discovery, navigation/stale delivery,
@@ -3303,7 +3303,7 @@ text, so later metadata cannot recover its entity id. Evidence:
 The temporary red assertion was removed by exact byte restoration; source remains at the validated
 consumer checkpoint. The audit also found hardcoded pack schemes in the shared UI Link configuration.
 
-The owning [entity-opening plan](../archive/plans/open-entity.md#reference-wire-identity-correction-2026-10-14)
+The owning [entity-opening plan](../../archive/plans/open-entity.md#reference-wire-identity-correction-2026-10-14)
 and discovery plan now specify one internal reference URI carrying encoded reference type and
 canonical entity id. Parse/write identity without metadata; use declarations for presentation and
 accepted bindings for execution. Keep existing node attributes, without a provisional entity or
@@ -3366,7 +3366,7 @@ in this checkpoint. Final committed-source --all, full requirement audit and arc
 ### Original manifest scope reconciliation (2026-10-14)
 
 Documentation commit `7f7c75749` restores concrete manifest outcomes that consolidation had weakened
-to audits/deferrals. [Manifest consolidation](../archive/plans/manifest-consolidation.md) maps all 17 original
+to audits/deferrals. [Manifest consolidation](../../archive/plans/manifest-consolidation.md) maps all 17 original
 decisions, both naming questions, all seven original phases and their checks, plus convention-first,
 declarative-contribution and facade requirements. Current schema/tool/reader inspection corroborates
 unfinished entity/shape maps, relation identity maps, lifecycle root, check sidecar, missing feature
@@ -5436,7 +5436,7 @@ Evidence:
   its existing working-tree link correction is retained and its staged content is preserved.
 
 Required next: correct the independently reproduced keyed-declaration loss in
-[manifest consolidation](../archive/plans/manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15),
+[manifest consolidation](../../archive/plans/manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15),
 then checkpoint 3's live palette/style/default/layout readers and permanent-cache removal. A current
 valid `__proto__` entity key disappears during Zod decoding; the opaque-default fix did not cover keyed
 contributions. Audit and preserve all keyed declarations with accurate schema/type/diagnostic behavior;
@@ -6715,7 +6715,7 @@ an accidentally bundled second unaccepted facade, and an unregistered flow query
 composition was corrected without changing product validation or running broad suites.
 
 The route matrix and selected contract are recorded in
-[A1 decisions](../archive/plans/declared-capabilities.md#a1-prototype-decisions-2026-10-17): qualified refs under
+[A1 decisions](../../archive/plans/declared-capabilities.md#a1-prototype-decisions-2026-10-17): qualified refs under
 `consumes.services`, four intentional baseline APIs, direct provider ownership, host-accepted facades,
 generation-specific retained handles and explicit started-operation/returned-resource boundaries.
 The runtime selection prototype used a provider-keyed map; qualified authored refs normalize to that
@@ -8046,7 +8046,7 @@ console is `/private/tmp/apack-strict-39182963669-failed.log`.
 
 Review baseline `945e80c15`; usable repair checkpoint **`31ed0dcad`**. This is a current-source audit,
 not a declaration of whole-goal completion. The complete 17-decision/two-question inventory remains
-[manifest consolidation](../archive/plans/manifest-consolidation.md); no phase, check or unfinished requirement
+[manifest consolidation](../../archive/plans/manifest-consolidation.md); no phase, check or unfinished requirement
 is removed here.
 
 | Decisions inspected | Current source evidence / result |
@@ -8627,7 +8627,7 @@ plugin selection. `_packEntities` preserves flat wire names and both collision o
 `lifecycleBindingProblem` checks declared callable membership without invoking hooks. Init, every
 manifest-writing add command and release use the schema-derived `writeManifest`. Production/source
 searches find no `entityShapes`, `settingsSections`, `typesEntry`, `$manifestVersion` or checks-sidecar
-reader. This supplements the [17-decision audit](../archive/plans/manifest-consolidation.md#current-source-consolidation-review-2026-10-18),
+reader. This supplements the [17-decision audit](../../archive/plans/manifest-consolidation.md#current-source-consolidation-review-2026-10-18),
 not a replacement for final runtime acceptance.
 
 Compared with that audit's source `a74bbd88a`, the consolidated framework contracts, entry generator,

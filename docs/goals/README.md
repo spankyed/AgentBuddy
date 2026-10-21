@@ -2,7 +2,7 @@
 
 A goal lets someone resume delivery without the conversation that produced it. It owns the required
 outcomes, execution order and completion criteria. [Subsystem plans](../plans/) own detailed designs;
-[evidence records](../evidence/) own investigations and checkpoint history. See the
+[evidence records](../references/evidence/) own investigations and checkpoint history. See the
 [documentation guide](../README.md) for the full layout and [maintenance rules](../AGENTS.md).
 
 Write a goal for work spanning sessions, requiring coordinated checkpoints or awaiting important
@@ -110,7 +110,7 @@ can close a requirement when it actually covers that requirement and its relevan
 Reopen it when new evidence or changed inputs invalidate the claim. Required final integrated gates
 remain required; a focused pass cannot stand in for broader acceptance.
 
-Checkpoint logs belong in `docs/evidence/<topic>.md`. Date entries, record source commits, exact
+Checkpoint logs belong in `docs/references/evidence/<topic>.md`. Date entries, record source commits, exact
 commands/results and limitations. Failed checks remain visible until resolved; old failures alone do
 not establish a current failure. Evidence records are history, not another implementation queue.
 

@@ -2,7 +2,7 @@
 
 Status: completed 2026-10-19. Canonical entity references open through declared destinations with one readiness/cancellation owner and attributed refusal; node revealing keeps its separate purpose.
 See the [completed goal](../goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19) and
-[final requirement/source audit](../../evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
+[final requirement/source audit](../../references/evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
 Dated checkpoint notes below are historical; deferred work keeps its separate owner.
 
 Historical checkpoint status: in progress on the accepted declaration/catalog and actor-readiness contracts. The
@@ -31,7 +31,7 @@ matching reply and retires it on supersession or navigation; graph identity also
 delivery. Library accepts document data only in the editor for its current target; replies do not
 navigate. All 99 affected Flows/Library tests and pack types pass. The strict checkpoint stopped at an
 authoring read of a missing runtime source map during an overlapping default-pack build; the default
-build passed. See the [checkpoint evidence](../../evidence/settings-and-pack-contracts.md#feature-navigation-checkpoint-2026-10-16).
+build passed. See the [checkpoint evidence](../../references/evidence/settings-and-pack-contracts.md#feature-navigation-checkpoint-2026-10-16).
 
 Acceptance checkpoint `95ff95ab3` covers all six real handlers, including unrelated entity types,
 nested notes, unlisted threads, superseded replies, abandoned editors and cached selection. Actions
@@ -39,7 +39,7 @@ and Prompts retire pending selection calls on detail exit/deactivation. The shel
 breadcrumb/Back/Forward input. All 105 shell and 159 affected feature cases pass. A real Electron case
 imports a thread, reloads its persisted message, clicks the rendered reference and verifies the note's
 title and content in another feature; this closes the stored-message gap left by the preview test.
-See [acceptance evidence](../../evidence/settings-and-pack-contracts.md#entity-navigation-acceptance-checkpoint-2026-10-16).
+See [acceptance evidence](../../references/evidence/settings-and-pack-contracts.md#entity-navigation-acceptance-checkpoint-2026-10-16).
 Implementation and local acceptance are complete; the execution goal retains the failed authoring
 checkpoint and final committed-source strict gate. Do not archive this plan until final validation.
 

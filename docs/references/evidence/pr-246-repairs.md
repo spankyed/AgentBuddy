@@ -33,13 +33,13 @@ recovery state across window reconnects until relaunch. See [settings recovery e
 for focused checks, the startup-related S.1/S.2 resolution, and native/packaged acceptance limits.
 
 **5.2: preserve explicit intent; correct the guide.** The
-[settings plan](../archive/plans/settings-architecture.md) expressly requires whole-document replacement
+[settings plan](../../archive/plans/settings-architecture.md) expressly requires whole-document replacement
 to record every supplied value, including default-equal values. Reset opts back into future defaults.
 The writer and its test implement that decision. The contrary "only what changed" guide was stale and
 is corrected; no default-pruning behavior is introduced.
 
 **2.5: factual correction.** `packFileHashes` exists in
-[assets.ts](../../packages/apack-host/src/packs/assets.ts) and is re-exported through layout. The defects
+[assets.ts](../../../packages/apack-host/src/packs/assets.ts) and is re-exported through layout. The defects
 were the guide's parameter/usage description and obsolete `publishing` staging kind, not a missing
 function. The updated guide distinguishes sealing hashes, verified receipt projections, source revision
 comparison and installed verification.

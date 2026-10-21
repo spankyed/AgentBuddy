@@ -62,7 +62,7 @@ of registration; known addresses and event contracts do not replace readiness ha
 
 The retained schema, generated-contract, catalog, poisoned-entry, source-free, lifetime, watch and
 external-consumer checks enforce this boundary. [Recorded files](../archive/references/recorded-files.md) describes schema/API
-report derivation; [the final audit](../evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19)
+report derivation; [the final audit](evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19)
 links acceptance evidence. Historical plans preserve earlier proposals, while current public docs and
 schemas specify what authors write. See the [security goal](../goals/goal-pack-security-isolation.md)
 for deferred confinement work.

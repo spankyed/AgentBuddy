@@ -48,74 +48,74 @@ operations and declarations; completed console case counts are the execution evi
 
 | File | Current execution evidence | Remaining batch |
 |---|---|---|
-| [packages/apack-cli/tests/build/build-output-swap.integration.spec.ts](../../packages/apack-cli/tests/build/build-output-swap.integration.spec.ts) | 12 passed, 2 failed, 0 pending; 561.752s. | 1 |
-| [packages/apack-cli/tests/build/build-registry.integration.spec.ts](../../packages/apack-cli/tests/build/build-registry.integration.spec.ts) | 1 passed, 1 failed, 0 pending; 82.811s. | 4 |
-| [packages/apack-cli/tests/build/build-worker.native.spec.ts](../../packages/apack-cli/tests/build/build-worker.native.spec.ts) | 16 passed; 574.740s. | — |
-| [packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts) | 6 passed, 3 failed, 0 pending; 90.714s. | 6 |
-| [packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 31.078s. | 1 |
-| [packages/apack-cli/tests/build/compiler-elf-libraries.native.spec.ts](../../packages/apack-cli/tests/build/compiler-elf-libraries.native.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 4 |
-| [packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts) | 15 passed; 232.409s. | — |
-| [packages/apack-cli/tests/build/compiler-file-reads.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-file-reads.integration.spec.ts) | 12 passed; 243.862s. | — |
-| [packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts](../../packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts) | 25 passed; 906.983s. | — |
-| [packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts](../../packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts) | 26 Windows-only cases skipped; retain the owning goal’s Windows evidence. | — |
-| [packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts](../../packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 1.592s. | 2 |
-| [packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts) | 3 passed, 0 failed, 0 pending; 3.631s. | 2 |
-| [packages/apack-cli/tests/build/dependency-graph.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-graph.integration.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 1 |
-| [packages/apack-cli/tests/build/dependency-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-inputs.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 71.279s. | 2 |
-| [packages/apack-cli/tests/build/dsl-defs.integration.spec.ts](../../packages/apack-cli/tests/build/dsl-defs.integration.spec.ts) | 6 passed, 0 failed, 0 pending; 5.138s. | 1 |
-| [packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts](../../packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 50.806s. | 6 |
-| [packages/apack-cli/tests/build/editor-declarations.integration.spec.ts](../../packages/apack-cli/tests/build/editor-declarations.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 60.067s. | 4 |
-| [packages/apack-cli/tests/build/facade-gate-system-contract.integration.spec.ts](../../packages/apack-cli/tests/build/facade-gate-system-contract.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 6.533s. | 6 |
-| [packages/apack-cli/tests/build/facade-gate.integration.spec.ts](../../packages/apack-cli/tests/build/facade-gate.integration.spec.ts) | 5 passed, 0 failed, 0 pending; 10.598s. | 6 |
-| [packages/apack-cli/tests/build/facade-type-data.integration.spec.ts](../../packages/apack-cli/tests/build/facade-type-data.integration.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 3 |
-| [packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts](../../packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 3 |
-| [packages/apack-cli/tests/build/facade-typing.integration.spec.ts](../../packages/apack-cli/tests/build/facade-typing.integration.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 1 |
-| [packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 0.094s. | 5 |
-| [packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts) | 20 passed, 0 failed, 0 pending; 27.754s. | 4 |
-| [packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts) | 3 passed, 0 failed, 0 pending; 0.534s. | 6 |
-| [packages/apack-cli/tests/build/frontend-generation.native.spec.ts](../../packages/apack-cli/tests/build/frontend-generation.native.spec.ts) | 0 passed, 1 failed, 0 pending; 125.561s. | 5 |
-| [packages/apack-cli/tests/build/frontend-globs.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-globs.integration.spec.ts) | 7 passed, 0 failed, 0 pending; 6.573s. | 6 |
-| [packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 0.646s. | 2 |
-| [packages/apack-cli/tests/build/frontend-resources.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-resources.integration.spec.ts) | 6 passed, 5 failed, 0 pending; 354.313s. | 3 |
-| [packages/apack-cli/tests/build/frontend-workers.native.spec.ts](../../packages/apack-cli/tests/build/frontend-workers.native.spec.ts) | 3 passed, 1 failed, 0 pending; 88.360s. | 2 |
-| [packages/apack-cli/tests/build/own-declarations.integration.spec.ts](../../packages/apack-cli/tests/build/own-declarations.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 42.247s. | 2 |
-| [packages/apack-cli/tests/build/package-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/package-inputs.integration.spec.ts) | 5 passed, 4 failed, 0 pending; 290.747s. | 4 |
-| [packages/apack-cli/tests/build/staged-dsl.integration.spec.ts](../../packages/apack-cli/tests/build/staged-dsl.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 146.979s. | 5 |
-| [packages/apack-cli/tests/build/tool-identity.integration.spec.ts](../../packages/apack-cli/tests/build/tool-identity.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 38.718s. | 5 |
-| [packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts](../../packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 102.867s. | 1 |
-| [packages/apack-cli/tests/build/watch-external-types.native.spec.ts](../../packages/apack-cli/tests/build/watch-external-types.native.spec.ts) | 0 passed, 1 failed, 0 pending; 89.473s. | 3 |
-| [packages/apack-cli/tests/build/watch-module-freshness.native.spec.ts](../../packages/apack-cli/tests/build/watch-module-freshness.native.spec.ts) | 0 passed, 2 failed, 0 pending; 120.017s. | 2 |
-| [packages/apack-cli/tests/build/watch-publication.native.spec.ts](../../packages/apack-cli/tests/build/watch-publication.native.spec.ts) | 0 passed, 2 failed, 0 pending; 120.047s. | 6 |
-| [packages/apack-cli/tests/build/watch-worker-inputs.native.spec.ts](../../packages/apack-cli/tests/build/watch-worker-inputs.native.spec.ts) | 0 passed, 1 failed, 0 pending; 120.082s. | 4 |
-| [packages/apack-cli/tests/commands/add-extensions.integration.spec.ts](../../packages/apack-cli/tests/commands/add-extensions.integration.spec.ts) | 15 passed, 3 failed, 0 pending; 484.585s. | 5 |
-| [packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts](../../packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts) | 13 passed, 0 failed, 0 pending; 128.273s. | 1 |
-| [packages/apack-cli/tests/commands/app-install.integration.spec.ts](../../packages/apack-cli/tests/commands/app-install.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 0.224s. | 1 |
-| [packages/apack-cli/tests/commands/db.integration.spec.ts](../../packages/apack-cli/tests/commands/db.integration.spec.ts) | 64 passed; 46.855s. | — |
-| [packages/apack-cli/tests/commands/default-pack-archive.integration.spec.ts](../../packages/apack-cli/tests/commands/default-pack-archive.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 30.428s. | 4 |
-| [packages/apack-cli/tests/commands/dev-build.integration.spec.ts](../../packages/apack-cli/tests/commands/dev-build.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 49.975s. | 3 |
-| [packages/apack-cli/tests/commands/doctor.integration.spec.ts](../../packages/apack-cli/tests/commands/doctor.integration.spec.ts) | 9 passed, 0 failed, 0 pending; 0.670s. | 3 |
-| [packages/apack-cli/tests/commands/facade-report.integration.spec.ts](../../packages/apack-cli/tests/commands/facade-report.integration.spec.ts) | 10 passed, 1 failed, 0 pending; 149.049s. | 5 |
-| [packages/apack-cli/tests/commands/info.integration.spec.ts](../../packages/apack-cli/tests/commands/info.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 60.195s. | 4 |
-| [packages/apack-cli/tests/commands/pack-doctor.integration.spec.ts](../../packages/apack-cli/tests/commands/pack-doctor.integration.spec.ts) | 14 passed, 0 failed, 0 pending; 32.240s. | 3 |
-| [packages/apack-cli/tests/commands/release.integration.spec.ts](../../packages/apack-cli/tests/commands/release.integration.spec.ts) | 31 passed; 5.375s. | — |
-| [packages/apack-cli/tests/commands/scaffold.integration.spec.ts](../../packages/apack-cli/tests/commands/scaffold.integration.spec.ts) | 6 passed, 5 failed, 0 pending; 558.005s. | 2 |
-| [packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts](../../packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts) | 5 passed, 0 failed, 0 pending; 32.239s. | 6 |
-| [packages/apack-cli/tests/harness/harness-setup.integration.spec.ts](../../packages/apack-cli/tests/harness/harness-setup.integration.spec.ts) | 7 passed, 0 failed, 0 pending; 59.812s. | 6 |
-| [packages/repo-checks/tests/bounded-spawn.integration.spec.ts](../../packages/repo-checks/tests/bounded-spawn.integration.spec.ts) | 4 passed, 0 failed, 0 pending; 6.831s. | 2 |
-| [packages/repo-checks/tests/component-contracts.integration.spec.ts](../../packages/repo-checks/tests/component-contracts.integration.spec.ts) | 3 passed, 0 failed, 0 pending; 6.665s. | 5 |
-| [packages/repo-checks/tests/dep-files.integration.spec.ts](../../packages/repo-checks/tests/dep-files.integration.spec.ts) | 30 passed; 2.598s. | — |
-| [packages/repo-checks/tests/dev-pack-hmr.integration.spec.ts](../../packages/repo-checks/tests/dev-pack-hmr.integration.spec.ts) | 2 passed, 1 failed, 0 pending; 0.008s. | 3 |
-| [packages/repo-checks/tests/fingerprint-scope.integration.spec.ts](../../packages/repo-checks/tests/fingerprint-scope.integration.spec.ts) | 10 passed, 0 failed, 0 pending; 5.974s. | 2 |
-| [packages/repo-checks/tests/import-specifiers-script.integration.spec.ts](../../packages/repo-checks/tests/import-specifiers-script.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 9.040s. | 4 |
-| [packages/repo-checks/tests/import-specifiers.integration.spec.ts](../../packages/repo-checks/tests/import-specifiers.integration.spec.ts) | 302 passed; 11.278s. | — |
-| [packages/repo-checks/tests/session.integration.spec.ts](../../packages/repo-checks/tests/session.integration.spec.ts) | 10 passed, 0 failed, 0 pending; 4.820s. | 3 |
-| [packages/repo-checks/tests/spec-durations-reporter.integration.spec.ts](../../packages/repo-checks/tests/spec-durations-reporter.integration.spec.ts) | 11 passed, 0 failed, 0 pending; 46.642s. | 6 |
-| [packages/publish-checks/tests/published-declarations.integration.spec.ts](../../packages/publish-checks/tests/published-declarations.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 4.197s. | 3 |
-| [packages/publish-checks/tests/published-exports.integration.spec.ts](../../packages/publish-checks/tests/published-exports.integration.spec.ts) | 4 passed, 0 failed, 0 pending; 7.090s. | 5 |
-| [packages/publish-checks/tests/published-manifest-paths.integration.spec.ts](../../packages/publish-checks/tests/published-manifest-paths.integration.spec.ts) | 5 passed, 0 failed, 0 pending; 4.780s. | 5 |
-| [packages/publish-checks/tests/published-sdk-any.integration.spec.ts](../../packages/publish-checks/tests/published-sdk-any.integration.spec.ts) | 14 passed, 0 failed, 0 pending; 7.866s. | 3 |
-| [packages/publish-checks/tests/published-sdk-types.integration.spec.ts](../../packages/publish-checks/tests/published-sdk-types.integration.spec.ts) | 10 passed, 0 failed, 0 pending; 20.639s. | 4 |
-| [packages/publish-checks/tests/published-ui-types.integration.spec.ts](../../packages/publish-checks/tests/published-ui-types.integration.spec.ts) | 4 passed, 0 failed, 0 pending; 6.228s. | 5 |
+| [packages/apack-cli/tests/build/build-output-swap.integration.spec.ts](../../../packages/apack-cli/tests/build/build-output-swap.integration.spec.ts) | 12 passed, 2 failed, 0 pending; 561.752s. | 1 |
+| [packages/apack-cli/tests/build/build-registry.integration.spec.ts](../../../packages/apack-cli/tests/build/build-registry.integration.spec.ts) | 1 passed, 1 failed, 0 pending; 82.811s. | 4 |
+| [packages/apack-cli/tests/build/build-worker.native.spec.ts](../../../packages/apack-cli/tests/build/build-worker.native.spec.ts) | 16 passed; 574.740s. | — |
+| [packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts](../../../packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts) | 6 passed, 3 failed, 0 pending; 90.714s. | 6 |
+| [packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts](../../../packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 31.078s. | 1 |
+| [packages/apack-cli/tests/build/compiler-elf-libraries.native.spec.ts](../../../packages/apack-cli/tests/build/compiler-elf-libraries.native.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 4 |
+| [packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts](../../../packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts) | 15 passed; 232.409s. | — |
+| [packages/apack-cli/tests/build/compiler-file-reads.integration.spec.ts](../../../packages/apack-cli/tests/build/compiler-file-reads.integration.spec.ts) | 12 passed; 243.862s. | — |
+| [packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts](../../../packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts) | 25 passed; 906.983s. | — |
+| [packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts](../../../packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts) | 26 Windows-only cases skipped; retain the owning goal’s Windows evidence. | — |
+| [packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts](../../../packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 1.592s. | 2 |
+| [packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts](../../../packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts) | 3 passed, 0 failed, 0 pending; 3.631s. | 2 |
+| [packages/apack-cli/tests/build/dependency-graph.integration.spec.ts](../../../packages/apack-cli/tests/build/dependency-graph.integration.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 1 |
+| [packages/apack-cli/tests/build/dependency-inputs.integration.spec.ts](../../../packages/apack-cli/tests/build/dependency-inputs.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 71.279s. | 2 |
+| [packages/apack-cli/tests/build/dsl-defs.integration.spec.ts](../../../packages/apack-cli/tests/build/dsl-defs.integration.spec.ts) | 6 passed, 0 failed, 0 pending; 5.138s. | 1 |
+| [packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts](../../../packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 50.806s. | 6 |
+| [packages/apack-cli/tests/build/editor-declarations.integration.spec.ts](../../../packages/apack-cli/tests/build/editor-declarations.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 60.067s. | 4 |
+| [packages/apack-cli/tests/build/facade-gate-system-contract.integration.spec.ts](../../../packages/apack-cli/tests/build/facade-gate-system-contract.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 6.533s. | 6 |
+| [packages/apack-cli/tests/build/facade-gate.integration.spec.ts](../../../packages/apack-cli/tests/build/facade-gate.integration.spec.ts) | 5 passed, 0 failed, 0 pending; 10.598s. | 6 |
+| [packages/apack-cli/tests/build/facade-type-data.integration.spec.ts](../../../packages/apack-cli/tests/build/facade-type-data.integration.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 3 |
+| [packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts](../../../packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 3 |
+| [packages/apack-cli/tests/build/facade-typing.integration.spec.ts](../../../packages/apack-cli/tests/build/facade-typing.integration.spec.ts) | 0 passed, 0 failed, 0 pending; 0.000s. | 1 |
+| [packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts](../../../packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 0.094s. | 5 |
+| [packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts](../../../packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts) | 20 passed, 0 failed, 0 pending; 27.754s. | 4 |
+| [packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts](../../../packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts) | 3 passed, 0 failed, 0 pending; 0.534s. | 6 |
+| [packages/apack-cli/tests/build/frontend-generation.native.spec.ts](../../../packages/apack-cli/tests/build/frontend-generation.native.spec.ts) | 0 passed, 1 failed, 0 pending; 125.561s. | 5 |
+| [packages/apack-cli/tests/build/frontend-globs.integration.spec.ts](../../../packages/apack-cli/tests/build/frontend-globs.integration.spec.ts) | 7 passed, 0 failed, 0 pending; 6.573s. | 6 |
+| [packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts](../../../packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 0.646s. | 2 |
+| [packages/apack-cli/tests/build/frontend-resources.integration.spec.ts](../../../packages/apack-cli/tests/build/frontend-resources.integration.spec.ts) | 6 passed, 5 failed, 0 pending; 354.313s. | 3 |
+| [packages/apack-cli/tests/build/frontend-workers.native.spec.ts](../../../packages/apack-cli/tests/build/frontend-workers.native.spec.ts) | 3 passed, 1 failed, 0 pending; 88.360s. | 2 |
+| [packages/apack-cli/tests/build/own-declarations.integration.spec.ts](../../../packages/apack-cli/tests/build/own-declarations.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 42.247s. | 2 |
+| [packages/apack-cli/tests/build/package-inputs.integration.spec.ts](../../../packages/apack-cli/tests/build/package-inputs.integration.spec.ts) | 5 passed, 4 failed, 0 pending; 290.747s. | 4 |
+| [packages/apack-cli/tests/build/staged-dsl.integration.spec.ts](../../../packages/apack-cli/tests/build/staged-dsl.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 146.979s. | 5 |
+| [packages/apack-cli/tests/build/tool-identity.integration.spec.ts](../../../packages/apack-cli/tests/build/tool-identity.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 38.718s. | 5 |
+| [packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts](../../../packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 102.867s. | 1 |
+| [packages/apack-cli/tests/build/watch-external-types.native.spec.ts](../../../packages/apack-cli/tests/build/watch-external-types.native.spec.ts) | 0 passed, 1 failed, 0 pending; 89.473s. | 3 |
+| [packages/apack-cli/tests/build/watch-module-freshness.native.spec.ts](../../../packages/apack-cli/tests/build/watch-module-freshness.native.spec.ts) | 0 passed, 2 failed, 0 pending; 120.017s. | 2 |
+| [packages/apack-cli/tests/build/watch-publication.native.spec.ts](../../../packages/apack-cli/tests/build/watch-publication.native.spec.ts) | 0 passed, 2 failed, 0 pending; 120.047s. | 6 |
+| [packages/apack-cli/tests/build/watch-worker-inputs.native.spec.ts](../../../packages/apack-cli/tests/build/watch-worker-inputs.native.spec.ts) | 0 passed, 1 failed, 0 pending; 120.082s. | 4 |
+| [packages/apack-cli/tests/commands/add-extensions.integration.spec.ts](../../../packages/apack-cli/tests/commands/add-extensions.integration.spec.ts) | 15 passed, 3 failed, 0 pending; 484.585s. | 5 |
+| [packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts](../../../packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts) | 13 passed, 0 failed, 0 pending; 128.273s. | 1 |
+| [packages/apack-cli/tests/commands/app-install.integration.spec.ts](../../../packages/apack-cli/tests/commands/app-install.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 0.224s. | 1 |
+| [packages/apack-cli/tests/commands/db.integration.spec.ts](../../../packages/apack-cli/tests/commands/db.integration.spec.ts) | 64 passed; 46.855s. | — |
+| [packages/apack-cli/tests/commands/default-pack-archive.integration.spec.ts](../../../packages/apack-cli/tests/commands/default-pack-archive.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 30.428s. | 4 |
+| [packages/apack-cli/tests/commands/dev-build.integration.spec.ts](../../../packages/apack-cli/tests/commands/dev-build.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 49.975s. | 3 |
+| [packages/apack-cli/tests/commands/doctor.integration.spec.ts](../../../packages/apack-cli/tests/commands/doctor.integration.spec.ts) | 9 passed, 0 failed, 0 pending; 0.670s. | 3 |
+| [packages/apack-cli/tests/commands/facade-report.integration.spec.ts](../../../packages/apack-cli/tests/commands/facade-report.integration.spec.ts) | 10 passed, 1 failed, 0 pending; 149.049s. | 5 |
+| [packages/apack-cli/tests/commands/info.integration.spec.ts](../../../packages/apack-cli/tests/commands/info.integration.spec.ts) | 0 passed, 1 failed, 0 pending; 60.195s. | 4 |
+| [packages/apack-cli/tests/commands/pack-doctor.integration.spec.ts](../../../packages/apack-cli/tests/commands/pack-doctor.integration.spec.ts) | 14 passed, 0 failed, 0 pending; 32.240s. | 3 |
+| [packages/apack-cli/tests/commands/release.integration.spec.ts](../../../packages/apack-cli/tests/commands/release.integration.spec.ts) | 31 passed; 5.375s. | — |
+| [packages/apack-cli/tests/commands/scaffold.integration.spec.ts](../../../packages/apack-cli/tests/commands/scaffold.integration.spec.ts) | 6 passed, 5 failed, 0 pending; 558.005s. | 2 |
+| [packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts](../../../packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts) | 5 passed, 0 failed, 0 pending; 32.239s. | 6 |
+| [packages/apack-cli/tests/harness/harness-setup.integration.spec.ts](../../../packages/apack-cli/tests/harness/harness-setup.integration.spec.ts) | 7 passed, 0 failed, 0 pending; 59.812s. | 6 |
+| [packages/repo-checks/tests/bounded-spawn.integration.spec.ts](../../../packages/repo-checks/tests/bounded-spawn.integration.spec.ts) | 4 passed, 0 failed, 0 pending; 6.831s. | 2 |
+| [packages/repo-checks/tests/component-contracts.integration.spec.ts](../../../packages/repo-checks/tests/component-contracts.integration.spec.ts) | 3 passed, 0 failed, 0 pending; 6.665s. | 5 |
+| [packages/repo-checks/tests/dep-files.integration.spec.ts](../../../packages/repo-checks/tests/dep-files.integration.spec.ts) | 30 passed; 2.598s. | — |
+| [packages/repo-checks/tests/dev-pack-hmr.integration.spec.ts](../../../packages/repo-checks/tests/dev-pack-hmr.integration.spec.ts) | 2 passed, 1 failed, 0 pending; 0.008s. | 3 |
+| [packages/repo-checks/tests/fingerprint-scope.integration.spec.ts](../../../packages/repo-checks/tests/fingerprint-scope.integration.spec.ts) | 10 passed, 0 failed, 0 pending; 5.974s. | 2 |
+| [packages/repo-checks/tests/import-specifiers-script.integration.spec.ts](../../../packages/repo-checks/tests/import-specifiers-script.integration.spec.ts) | 2 passed, 0 failed, 0 pending; 9.040s. | 4 |
+| [packages/repo-checks/tests/import-specifiers.integration.spec.ts](../../../packages/repo-checks/tests/import-specifiers.integration.spec.ts) | 302 passed; 11.278s. | — |
+| [packages/repo-checks/tests/session.integration.spec.ts](../../../packages/repo-checks/tests/session.integration.spec.ts) | 10 passed, 0 failed, 0 pending; 4.820s. | 3 |
+| [packages/repo-checks/tests/spec-durations-reporter.integration.spec.ts](../../../packages/repo-checks/tests/spec-durations-reporter.integration.spec.ts) | 11 passed, 0 failed, 0 pending; 46.642s. | 6 |
+| [packages/publish-checks/tests/published-declarations.integration.spec.ts](../../../packages/publish-checks/tests/published-declarations.integration.spec.ts) | 1 passed, 0 failed, 0 pending; 4.197s. | 3 |
+| [packages/publish-checks/tests/published-exports.integration.spec.ts](../../../packages/publish-checks/tests/published-exports.integration.spec.ts) | 4 passed, 0 failed, 0 pending; 7.090s. | 5 |
+| [packages/publish-checks/tests/published-manifest-paths.integration.spec.ts](../../../packages/publish-checks/tests/published-manifest-paths.integration.spec.ts) | 5 passed, 0 failed, 0 pending; 4.780s. | 5 |
+| [packages/publish-checks/tests/published-sdk-any.integration.spec.ts](../../../packages/publish-checks/tests/published-sdk-any.integration.spec.ts) | 14 passed, 0 failed, 0 pending; 7.866s. | 3 |
+| [packages/publish-checks/tests/published-sdk-types.integration.spec.ts](../../../packages/publish-checks/tests/published-sdk-types.integration.spec.ts) | 10 passed, 0 failed, 0 pending; 20.639s. | 4 |
+| [packages/publish-checks/tests/published-ui-types.integration.spec.ts](../../../packages/publish-checks/tests/published-ui-types.integration.spec.ts) | 4 passed, 0 failed, 0 pending; 6.228s. | 5 |
 
 ## Execution setup (completed)
 

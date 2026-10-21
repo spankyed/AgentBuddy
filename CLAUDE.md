@@ -144,7 +144,7 @@ daily-use Mac: `gh workflow run ci.yml --ref <branch> -f compiler_macos=true` (o
 fixtures, repeated captured-runtime execution and startup/cancellation batches. Stop local testing
 immediately if unrelated apps stop launching; preserve
 evidence without changing macOS security settings. Cause remains unproven in the
-[launch incident](docs/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
+[launch incident](docs/references/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
 The CLI integration and native configs refuse macOS runs outside GitHub-hosted runners before loading test
 modules. Do not bypass that guard with fabricated runner variables; use disposable CI. This also applies
 when the root integration project or chain selects the CLI suite. Live watcher cases share this boundary
@@ -169,10 +169,10 @@ required final gate once fixes converge, and retain any unresolved acceptance ex
 
 With Vitest projects, verify the effective deadline: project test/hook settings can override CLI
 flags. Keep diagnostic overrides scoped to the selected case and preserve their exact source. See the
-[async-loader budget evidence](docs/evidence/build-input-snapshot-proof.md#async-loader-namespace-observation-checkpoint-2026-10-18).
+[async-loader budget evidence](docs/references/evidence/build-input-snapshot-proof.md#async-loader-namespace-observation-checkpoint-2026-10-18).
 
 Keep direct pool output live and integration fail-fast. Collect additional failures only in a deliberate
-diagnostic run; see [the early-failure checkpoint](docs/evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
+diagnostic run; see [the early-failure checkpoint](docs/references/evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
 
 Freeze every captured input while a pack build runs, including pack-local guides. The chain skipping a
 documentation change does not mean that file is outside the pack compiler's captured namespace.
