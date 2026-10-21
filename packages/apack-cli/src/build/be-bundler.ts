@@ -339,7 +339,7 @@ export function rejectHostImportsPlugin(): import('esbuild').Plugin {
 }
 
 /**
- * Step and plugin definitions reference Vue components and styles for the renderer.
+ * Step and surface definitions reference Vue components and styles for the renderer.
  * The backend runtime never renders them, so they become empty modules.
  */
 function stubFrontendAssetsPlugin(): import('esbuild').Plugin {

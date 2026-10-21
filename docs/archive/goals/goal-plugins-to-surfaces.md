@@ -86,6 +86,16 @@ regex, is what found them. The guard now holds the guides to the same identifier
 precisely because no group is the bare word: a guide says "tiptap plugins" and "a Vite plugin"
 legitimately. Mutation: restoring the stale event name fails that case.
 
+**Prose is the one part no guard covers, and it took two complete reads to finish.** The guard's groups
+are identifier lists, so a comment that calls a surface a plugin in words is invisible to it by design —
+widening it to the bare word would fire on every "tiptap plugins" and "a Vite plugin" a guide writes
+legitimately. What settles that condition is reading, and reading all of it: **48** guide lines and
+**47** source prose mentions, each judged on its own text. Classifying the 241 occurrences by regex
+instead kept lines it never read, and `be-bundler.ts:342` — "Step and plugin definitions reference Vue
+components and styles" — survived four passes, the enumeration and a chain inside that blind spot,
+because the file had been reverted whole for its bundler vocabulary and the one concept sentence in it
+was never revisited.
+
 **The sampled grep is what let residue through.** Four passes, a live guard and a green chain all held
 while eight concept names survived — `SettingsPluginEvents`, `ApplicationPluginEvents`,
 `DependencyPluginState`, `SendToPlugin`, `setPluginVisible`, `setPluginVisibility`,
