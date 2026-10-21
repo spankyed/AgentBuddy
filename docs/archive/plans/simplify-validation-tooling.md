@@ -1,8 +1,7 @@
 # Simplify the validation tooling
 
-**Status:** ready, not started. Written 2026-10-21. Do it after [PR #249](https://github.com/spankyed/apack/pull/249)
-merges, as **one change on one branch**, committed phase by phase in the order below. It absorbs the
-[stretch-projection removal](../archive/plans/drop-the-stretch-projection.md).
+**Status:** done 2026-10-21 on `session/simplify-validation-tooling`, one commit per phase. It absorbed the
+[stretch-projection removal](drop-the-stretch-projection.md).
 
 ## Why
 
@@ -147,5 +146,21 @@ Last, because it is easier once the code it describes is smaller.
 ## Out of scope
 
 - Unifying the cache layers. Phase 6 documents them; changing them is a separate decision.
-- [Affected-only selection](deferred/affected-selection.md), which stays deferred.
+- [Affected-only selection](../../plans/deferred/affected-selection.md), which stays deferred.
 - Any change to what a test asserts, or to a rung's deadline.
+
+## Outcome
+
+- **Phase 1** (`f9c310626`): stretch projection deleted; a rung is only its deadline.
+- **Phase 2** (`aa1e02fc7`): step costs are a machine-local window of passing runs (`step-durations.ts`);
+  declared `seconds`, `POOL_SECONDS`, the drift report and the measured-machine predicates are gone.
+- **Phase 3** (`3370eba21`): busy-machine retry and `--no-classify` deleted.
+- **Phase 4** (`6170bd1ed`): `npm run chain -- --help` generated from `chain-flags.ts`; the guide-pinning
+  specs are gone.
+- **Phase 5** (`ea3034388`): a compiler's read of a file's time field is recorded as the file's content
+  hash; the strict gate no longer pins source times or uses pax. Bundled-ui fixture: 80 content facts, a
+  touch stays current, a byte change refuses; `check:repro` 1751/1751 identical.
+- **Phase 6** (`bf0c48ede`): [cache layers](../../reference/cache-layers.md) written down. No two layers do
+  one job; unification is not worth its cost.
+- **Phase 7** (`b36ac76a4`, `0e4e6ded0`): root guide 980 -> 546 lines; tooling comments lose their edit
+  history; the pipeline evidence references move to `docs/archive/references/`.
