@@ -4,6 +4,6 @@ import { createFePackRegistry } from '@apackdev/host/fe';
 
 /**
  * This window's registered pack frontends: the built-in packs' (main.ts) and the external packs' the pack loader
- * loads. The SDK's frontend lookups (steps, designations, tiptap surfaces, DSL types) read it once bound.
+ * loads. The SDK's frontend lookups (steps, designations, tiptap plugins, DSL types) read it once bound.
  */
 export const fePacks = createFePackRegistry();

@@ -67,11 +67,11 @@ export function _packModuleTargets(manifest: Partial<PackManifest>): ModuleTarge
   }
   for (const [name, entry] of Object.entries(manifest.extensions?.artifacts ?? {})) add(['extensions', 'artifacts', name, 'fe'], entry.fe, 'component', 'module');
   for (const [name, entry] of Object.entries(manifest.extensions?.dsl ?? {})) add(['extensions', 'dsl', name, 'entry'], entry.entry, 'types', 'module');
-  for (const [id, surface] of Object.entries(manifest.extensions?.tiptapPlugins ?? {})) {
+  for (const [id, editorPlugin] of Object.entries(manifest.extensions?.tiptapPlugins ?? {})) {
     const prefix = ['extensions', 'tiptapPlugins', id];
-    for (const [name, target] of Object.entries(surface.extensions ?? {})) add([...prefix, 'extensions', name], target);
-    for (const [name, target] of Object.entries(surface.popups ?? {})) add([...prefix, 'popups', name], target, 'component', 'module');
-    add([...prefix, 'isSuggestionActive'], surface.isSuggestionActive);
+    for (const [name, target] of Object.entries(editorPlugin.extensions ?? {})) add([...prefix, 'extensions', name], target);
+    for (const [name, target] of Object.entries(editorPlugin.popups ?? {})) add([...prefix, 'popups', name], target, 'component', 'module');
+    add([...prefix, 'isSuggestionActive'], editorPlugin.isSuggestionActive);
   }
   for (const [name, target] of Object.entries(manifest.extensions?.appExtensions ?? {})) add(['extensions', 'appExtensions', name], target, 'component', 'module');
   for (const [name, target] of Object.entries(manifest.lifecycle ?? {})) add(['lifecycle', name], target);

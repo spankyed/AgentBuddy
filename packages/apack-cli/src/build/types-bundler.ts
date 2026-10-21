@@ -133,7 +133,7 @@ export async function bundleDeclarations(
   }
 }
 
-/** Keep the declaration surface's emission defaults authoritative, as with its own tsconfig reader. */
+/** Keep the declaration plugin's emission defaults authoritative, as with its own tsconfig reader. */
 function declarationOptions(options: ts.CompilerOptions): ts.CompilerOptions {
   const result = { ...options };
   for (const key of ['declaration', 'noEmit', 'emitDeclarationOnly', 'noEmitOnError', 'checkJs',

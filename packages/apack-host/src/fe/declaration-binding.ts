@@ -171,19 +171,19 @@ export function frontendBindingProblem(manifest: DeclarationData<Pick<PackManife
   const declaredEditors = extensions?.tiptapPlugins ?? {};
   if (!optionalKeys(registration.tiptapPlugins, Object.keys(declaredEditors))) return problem('tiptapPlugins');
   for (const [id, declaration] of Object.entries(declaredEditors)) {
-    const surface = (registration.tiptapPlugins as Record<string, unknown>)[id];
+    const editorPlugin = (registration.tiptapPlugins as Record<string, unknown>)[id];
     const at = `tiptapPlugins.${id}`;
-    if (!isPlainObject(surface) || Object.keys(surface).some(key => !hasOwn(TIPTAP_KEYS, key))) return problem(at);
-    if (!optionalKeys(surface.extensions, Object.keys(declaration.extensions ?? {}))) return problem(`${at}.extensions`);
-    for (const [name, binding] of Object.entries((surface.extensions ?? {}) as Record<string, unknown>)) {
+    if (!isPlainObject(editorPlugin) || Object.keys(editorPlugin).some(key => !hasOwn(TIPTAP_KEYS, key))) return problem(at);
+    if (!optionalKeys(editorPlugin.extensions, Object.keys(declaration.extensions ?? {}))) return problem(`${at}.extensions`);
+    for (const [name, binding] of Object.entries((editorPlugin.extensions ?? {}) as Record<string, unknown>)) {
       if (!binding || typeof binding !== 'object' || !('name' in binding) || binding.name !== name
         || !('type' in binding) || typeof binding.type !== 'string' || !['node', 'mark', 'extension'].includes(binding.type)
         || !('config' in binding) || !isPlainObject(binding.config)
         || !('configure' in binding) || typeof binding.configure !== 'function') return problem(`${at}.extensions.${name}`);
     }
-    if (!optionalKeys(surface.popups, Object.keys(declaration.popups ?? {}))
-      || Object.values((surface.popups ?? {}) as Record<string, unknown>).some(component => !isComponent(component))) return problem(`${at}.popups`);
-    if ((surface.isSuggestionActive !== undefined) !== !!declaration.isSuggestionActive
-      || (declaration.isSuggestionActive && typeof surface.isSuggestionActive !== 'function')) return problem(`${at}.isSuggestionActive`);
+    if (!optionalKeys(editorPlugin.popups, Object.keys(declaration.popups ?? {}))
+      || Object.values((editorPlugin.popups ?? {}) as Record<string, unknown>).some(component => !isComponent(component))) return problem(`${at}.popups`);
+    if ((editorPlugin.isSuggestionActive !== undefined) !== !!declaration.isSuggestionActive
+      || (declaration.isSuggestionActive && typeof editorPlugin.isSuggestionActive !== 'function')) return problem(`${at}.isSuggestionActive`);
   }
 }

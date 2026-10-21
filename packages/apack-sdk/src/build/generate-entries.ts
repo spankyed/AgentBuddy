@@ -1132,17 +1132,17 @@ ${contractCheck}`;
       extraImports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
       return local;
     };
-    const editorPlugins = Object.entries(frontend.tiptapPlugins ?? {}).map(([id, surface]) => {
+    const editorPlugins = Object.entries(frontend.tiptapPlugins ?? {}).map(([id, editorPlugin]) => {
       const label = `extensions.tiptapPlugins.${id}`;
       const parts: string[] = [];
-      if (surface.extensions) parts.push(`extensions: { ${Object.entries(surface.extensions).map(([name, target]) =>
+      if (editorPlugin.extensions) parts.push(`extensions: { ${Object.entries(editorPlugin.extensions).map(([name, target]) =>
         `${propertyKey(name)}: ${editorBinding(`${label}.extensions.${name}`, target)}`).join(', ')} }`);
-      if (surface.popups) parts.push(`popups: { ${Object.entries(surface.popups).map(([name, target]) => {
+      if (editorPlugin.popups) parts.push(`popups: { ${Object.entries(editorPlugin.popups).map(([name, target]) => {
         const local = `__editor_${nextEditorBinding++}`;
         extraImports.push(`import ${local} from '${toImportPath(root, componentFile(`${label}.popups.${name}`, target))}';`);
         return `${propertyKey(name)}: ${local}`;
       }).join(', ')} }`);
-      if (surface.isSuggestionActive) parts.push(`isSuggestionActive: ${editorBinding(`${label}.isSuggestionActive`, surface.isSuggestionActive, true)}`);
+      if (editorPlugin.isSuggestionActive) parts.push(`isSuggestionActive: ${editorBinding(`${label}.isSuggestionActive`, editorPlugin.isSuggestionActive, true)}`);
       return `${propertyKey(id)}: { ${parts.join(', ')} }`;
     });
     extraImports.push(...steps.imports, ...artifacts.imports, ...blocks.imports);

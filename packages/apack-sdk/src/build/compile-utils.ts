@@ -38,7 +38,7 @@ export interface CompileResult {
   errors: string[];
 }
 
-// --- esbuild Surface ---
+// --- esbuild Plugin ---
 
 /**
  * Bare specifiers that content sources may import. These resolve to sandbox-safe

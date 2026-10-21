@@ -156,7 +156,7 @@ describe("a pack's frontend", () => {
 });
 
 // Pack and group insertion order determines the order presented to the editor.
-describe('tiptap surface groups', () => {
+describe('tiptap plugin groups', () => {
   const mentions: TiptapPlugin = { extensions: {} };
   const slashes: TiptapPlugin = { extensions: {} };
 

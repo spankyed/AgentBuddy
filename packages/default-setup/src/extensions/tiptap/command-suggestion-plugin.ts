@@ -158,11 +158,11 @@ export function commandSuggestionPlugin(
       const firstText = newState.doc.firstChild?.textContent ?? ''
       if (!firstText.trimStart().startsWith('/')) return null
 
-      const surfaceState = commandSuggestionPluginKey.getState(newState)
-      if (!surfaceState?.active) return null
+      const pluginState = commandSuggestionPluginKey.getState(newState)
+      if (!pluginState?.active) return null
       // Only strip trailing whitespace in query phase — in selected phase the
       // body after the command prefix is free-form and whitespace is intentional.
-      const inQueryPhase = surfaceState?.active && !surfaceState.selectedCommand
+      const inQueryPhase = pluginState?.active && !pluginState.selectedCommand
 
       // Determine desired text: strip leading whitespace always, trailing in query phase
       const targetText = inQueryPhase ? firstText.trim() : firstText.trimStart()
@@ -197,8 +197,8 @@ export function commandSuggestionPlugin(
       handleKeyDown(view, event) {
         if (event.key !== 'Escape') return false
 
-        const surfaceState = commandSuggestionPluginKey.getState(view.state)
-        if (!surfaceState?.active) return false
+        const pluginState = commandSuggestionPluginKey.getState(view.state)
+        if (!pluginState?.active) return false
 
         const { tr } = view.state
         tr.setMeta(commandSuggestionPluginKey, { deactivate: true })
@@ -207,13 +207,13 @@ export function commandSuggestionPlugin(
       },
 
       decorations(state) {
-        const surfaceState = commandSuggestionPluginKey.getState(state)
-        if (!surfaceState?.active) return DecorationSet.empty
+        const pluginState = commandSuggestionPluginKey.getState(state)
+        if (!pluginState?.active) return DecorationSet.empty
 
         const docText = state.doc.textContent
-        const commandPrefix = surfaceState.selectedCommand
-          ? `/${surfaceState.selectedCommand.name}`
-          : `/${surfaceState.query}`
+        const commandPrefix = pluginState.selectedCommand
+          ? `/${pluginState.selectedCommand.name}`
+          : `/${pluginState.query}`
 
         const decos: Decoration[] = []
 
@@ -226,11 +226,11 @@ export function commandSuggestionPlugin(
 
         // Only show placeholder if a command is selected and there's no body text after it
         const afterCommand = docText.slice(commandPrefix.length).replace(/^\s/, '')
-        if (surfaceState.selectedCommand && !afterCommand) {
+        if (pluginState.selectedCommand && !afterCommand) {
           const firstChild = state.doc.firstChild
           if (firstChild) {
             decos.push(Decoration.node(0, firstChild.nodeSize, {
-              'data-command-placeholder': surfaceState.selectedCommand.placeholder,
+              'data-command-placeholder': pluginState.selectedCommand.placeholder,
               'class': 'has-command-placeholder',
             }))
           }

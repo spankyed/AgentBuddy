@@ -16,7 +16,7 @@
  * is being checked is that *the page reaches it*: a module transformed on its own is in the graph with no
  * importers, which is not the condition HMR needs and not what a browser does.
  *
- * What is **not** here: which payload Vite then sends. That is Vite's and surface-vue's behaviour over a
+ * What is **not** here: which payload Vite then sends. That is Vite's and plugin-vue's behaviour over a
  * self-accepting module, identical for every module in the graph, and asserting it would be testing Vite.
  * The map's own contents — which packs are in it, and why a directory is not — are `@apackdev/host`'s
  * `tests/build/dev-pack-frontends.spec.ts`, where they cost nothing.

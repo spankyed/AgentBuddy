@@ -203,14 +203,14 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     for (const [key, value] of pack.artifacts) artifacts.set(key, value);
     for (const [key, value] of pack.blocks) blocks.set(key, value);
     for (const [key, value] of pack.appExtensions) appExtensions.set(key, value);
-    for (const [id, surface] of pack.tiptapPlugins) {
+    for (const [id, editorPlugin] of pack.tiptapPlugins) {
       const owner = `${pack.id}/${id}`;
-      for (const name of Object.keys(surface.extensions ?? {})) {
+      for (const name of Object.keys(editorPlugin.extensions ?? {})) {
         const previous = editorOwners.get(name);
         if (previous !== undefined) throw new Error(`Tiptap extension "${name}" declared by both "${previous}" and "${owner}"`);
         editorOwners.set(name, owner);
       }
-      tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: surface }));
+      tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: editorPlugin }));
     }
   }
   return { surfaces, surfaceBindings, designations, steps, artifacts, blocks, appExtensions, forms, tiptapPlugins, referenceTypes, referenceCategories };

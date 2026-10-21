@@ -86,7 +86,7 @@ const LAYOUT_CHECKS: Record<string, string> = {
     + 'discovery and a pack under tests/packs, and would be a suite declaring none of the others wherever '
     + 'else it sat',
   'tests/surface-vocabulary.spec.ts': 'that the frontend actor is named a surface and `surface` is left to '
-    + 'editor and bundler surfaces — a property of every tracked file, read from git, with no scripts/ module '
+    + 'editor and bundler plugins — a property of every tracked file, read from git, with no scripts/ module '
     + 'behind it. Here for the same reason as identity-guard: a suite whose project does not declare the repo '
     + 'is not re-run when the thing it checks moves',
   'tests/repo-files.spec.ts': 'what "the files this repo has" means for the checks above — the working tree '

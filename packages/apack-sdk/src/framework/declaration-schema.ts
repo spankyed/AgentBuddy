@@ -122,8 +122,8 @@ function checkDefaultSurfaceClaims(features: Record<string, { surface?: { defaul
 
 function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.RefinementCtx, prefix: string[]): void {
   const owners = new Map<string, string>();
-  for (const [id, surface] of Object.entries(frontend?.tiptapPlugins ?? {})) {
-    for (const name of Object.keys(surface.extensions ?? {})) {
+  for (const [id, editorPlugin] of Object.entries(frontend?.tiptapPlugins ?? {})) {
+    for (const name of Object.keys(editorPlugin.extensions ?? {})) {
       const previous = owners.get(name);
       if (previous !== undefined) ctx.addIssue({ code: 'custom', path: [...prefix, 'tiptapPlugins', id, 'extensions', name],
         message: `Tiptap extension "${name}" declared by both groups "${previous}" and "${id}"` });

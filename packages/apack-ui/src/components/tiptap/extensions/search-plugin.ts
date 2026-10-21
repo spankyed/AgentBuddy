@@ -128,14 +128,14 @@ export function searchPlugin(): Plugin<SearchPluginState> {
       },
 
       decorations(state) {
-        const surfaceState = searchPluginKey.getState(state)
-        if (!surfaceState || !surfaceState.isOpen || surfaceState.matches.length === 0) {
+        const pluginState = searchPluginKey.getState(state)
+        if (!pluginState || !pluginState.isOpen || pluginState.matches.length === 0) {
           return DecorationSet.empty
         }
 
-        const decorations = surfaceState.matches.map((match, i) =>
+        const decorations = pluginState.matches.map((match, i) =>
           Decoration.inline(match.from, match.to, {
-            class: i === surfaceState.currentIndex
+            class: i === pluginState.currentIndex
               ? 'search-highlight search-highlight-current'
               : 'search-highlight',
           }),

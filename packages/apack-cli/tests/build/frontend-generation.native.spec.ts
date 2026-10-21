@@ -48,13 +48,13 @@ function fixture() {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.symlinkSync(inputs.nodes[index]!.directory, destination, 'dir');
   }
-  const surface = path.join(compiler, 'node_modules/@vitejs/plugin-vue');
-  const original = fs.realpathSync(surface);
-  fs.unlinkSync(surface);
-  fs.cpSync(original, surface, { recursive: true });
-  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(surface, 'node_modules'), 'dir');
-  const entry = path.join(surface, 'dist/index.mjs');
-  fs.renameSync(entry, path.join(surface, 'dist/original.mjs'));
+  const plugin = path.join(compiler, 'node_modules/@vitejs/plugin-vue');
+  const original = fs.realpathSync(plugin);
+  fs.unlinkSync(plugin);
+  fs.cpSync(original, plugin, { recursive: true });
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(plugin, 'node_modules'), 'dir');
+  const entry = path.join(plugin, 'dist/index.mjs');
+  fs.renameSync(entry, path.join(plugin, 'dist/original.mjs'));
   const generation = (value: string) => fs.writeFileSync(entry, `import vue from './original.mjs';
     export * from './original.mjs'; export default options => [vue(options), {name:'generation-test',
     transform(code,id){if(id.split('?')[0].endsWith('.vue')) return code.replaceAll('VIEW',${JSON.stringify(value)})+'\\n//${value}';}}];`);

@@ -73,18 +73,18 @@ function getCategoryIcon(id: ReferenceCategory) {
   return getReferenceCategoryBinding(id)?.binding.icon
 }
 
-const surfaceState = shallowRef<ReferenceSuggestionState>()
+const pluginState = shallowRef<ReferenceSuggestionState>()
 watch(() => props.editor, (editor, _previous, onCleanup) => {
-  const update = () => { surfaceState.value = referenceSuggestionPluginKey.getState(editor.state) }
+  const update = () => { pluginState.value = referenceSuggestionPluginKey.getState(editor.state) }
   update()
   editor.on('transaction', update)
   onCleanup(() => { editor.off('transaction', update) })
 }, { immediate: true })
 
-const isActive = computed(() => surfaceState.value?.active ?? false)
-const level = computed(() => surfaceState.value?.level ?? 'category')
-const query = computed(() => surfaceState.value?.query ?? '')
-const selectedCategory = computed(() => surfaceState.value?.selectedCategory ?? null)
+const isActive = computed(() => pluginState.value?.active ?? false)
+const level = computed(() => pluginState.value?.level ?? 'category')
+const query = computed(() => pluginState.value?.query ?? '')
+const selectedCategory = computed(() => pluginState.value?.selectedCategory ?? null)
 
 const activeCategoryLabel = computed(() => {
   const cat = categories.value.find((c) => c.id === selectedCategory.value)
@@ -104,7 +104,7 @@ watch([query, level], ([q, lvl]) => {
     (c) => c.declaration.label.toLowerCase().replace(/\s+/g, '') === typed
   )
   if (!match) return
-  const state = surfaceState.value
+  const state = pluginState.value
   if (!state) return
   const { tr } = props.editor.state
   tr.setMeta(referenceSuggestionPluginKey, {
@@ -127,10 +127,10 @@ watch([filteredCategories, items, level], () => {
 })
 
 function updatePosition() {
-  if (!isActive.value || !surfaceState.value) return
+  if (!isActive.value || !pluginState.value) return
 
   try {
-    const coords = props.editor.view.coordsAtPos(surfaceState.value.triggerPos)
+    const coords = props.editor.view.coordsAtPos(pluginState.value.triggerPos)
     const left = `${coords.left}px`
 
     if (props.variant === 'full') {
@@ -155,7 +155,7 @@ watch(isActive, (active) => {
   }
 })
 
-watch(() => surfaceState.value?.triggerPos, () => {
+watch(() => pluginState.value?.triggerPos, () => {
   if (isActive.value) nextTick(updatePosition)
 })
 
@@ -260,7 +260,7 @@ function selectCategory(id: ReferenceCategory) {
   const cat = categories.value.find((c) => c.id === id)
   if (!cat) return
 
-  const state = surfaceState.value
+  const state = pluginState.value
   if (!state) return
 
   const { tr } = props.editor.state
@@ -283,7 +283,7 @@ function selectCategory(id: ReferenceCategory) {
 }
 
 function goBackToCategories() {
-  const state = surfaceState.value
+  const state = pluginState.value
   if (!state) return
 
   const { tr } = props.editor.state
@@ -304,7 +304,7 @@ function goBackToCategories() {
 }
 
 function insertReference(item: ReferenceItem) {
-  const state = surfaceState.value
+  const state = pluginState.value
   if (!state) return
 
   const from = state.triggerPos
@@ -334,7 +334,7 @@ function insertReference(item: ReferenceItem) {
 }
 
 function deactivateAndClean() {
-  const state = surfaceState.value
+  const state = pluginState.value
   if (!state) return
 
   const from = state.triggerPos
