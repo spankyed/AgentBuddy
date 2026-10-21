@@ -87,7 +87,7 @@ built-in pack, with four concerns interleaved at the same level, three different
 and two maps that carry no information. It is now 19 keys over 711 lines: one of the four concerns is a
 section, and the growth is `extensions`' entries carrying what seven barrels used to. This goal gives it
 a shape a pack author can hold in their head: 15 top-level keys, worked out in full in
-`docs/goals/goal-manifest-redesign.example.json`, which is default-setup's manifest rewritten to the
+`goal-manifest-redesign.example.json` (beside this file), which is default-setup's manifest rewritten to the
 shape the Decisions specify — with the keys that have landed shown as they really are. That file is the
 target; read it beside them.
 
