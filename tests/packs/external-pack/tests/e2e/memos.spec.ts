@@ -2,6 +2,7 @@
 // host-shared SDK proxies, pack Tailwind, prefixed bus IDs, and the test packs dir.
 // Run via `npm run test:external-pack` from the repo root.
 import { test, expect, waitForAppReady, type AppDriver } from '@apackdev/testing';
+import { acceptedRuntime, frontendAccepted } from './_support/pack-frontend.ts';
 
 test('advanced settings JSON provides offline declared completion, descriptions and validated saves', async ({ appPage, app }) => {
   const externalRequests: string[] = [];
@@ -264,11 +265,13 @@ test('same-named pack preferences stay independent through save, disable and res
 
   const toggle = () => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
     .send({ type: 'UI.TOGGLE_ENABLED', packId: 'e2e-fixture' }));
+  const runtime = await acceptedRuntime(appPage, 'e2e-fixture');
   await toggle();
   await expect(fixture).toHaveCount(0);
   await expect(appPage.getByRole('button', { name: 'Edit in JSON', exact: true })).toBeVisible();
   await expect(appPage.getByText('e2e-fixture/assistant', { exact: true })).toBeVisible();
   await toggle();
+  await frontendAccepted(appPage, 'e2e-fixture', runtime);
   await expect(fixture).toHaveValue('Morgan');
   await appPage.getByTitle('Reset to defaults', { exact: true }).click();
   await appPage.getByRole('button', { name: 'Reset', exact: true }).click();

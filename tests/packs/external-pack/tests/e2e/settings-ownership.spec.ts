@@ -8,6 +8,7 @@ import { createTRPCUntypedClient, createWSClient, wsLink } from '@trpc/client';
 import type { SettingsSnapshot } from '@apackdev/sdk/types';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { test, expect } from '@apackdev/testing';
+import { acceptedRuntime, frontendAccepted } from './_support/pack-frontend.ts';
 
 const companion = fileURLToPath(new URL('../../../bundled-ui-pack/', import.meta.url));
 test('backup import restores all settings owners and updates an open window', async ({ app, appPage, electronApp }) => {
@@ -52,8 +53,7 @@ test('backup import restores all settings owners and updates an open window', as
     }), companion);
     await app.waitForPlugin('bundled-ui-fixture/scribbles');
     const original = await change('Saved');
-    const companionRuntime = await appPage.evaluate(() => (window as any).applicationState.getSnapshot()
-      .context.acceptedPackRuntimes['bundled-ui-fixture']);
+    const companionRuntime = await acceptedRuntime(appPage, 'bundled-ui-fixture');
     const opened = electronApp.waitForEvent('window');
     await appPage.evaluate(() => (window as any).electronAPI.plugins.popout('host/settings', 'Settings'));
     second = await opened;
@@ -124,10 +124,7 @@ test('backup import restores all settings owners and updates an open window', as
     expect(restored.packs['bundled-ui-fixture'].assistant.name).toBe('Saved Scribbles assistant');
     expect(restored.features['e2e-fixture/memos'].listTitle).toBe('Saved Memos');
     await toggleCompanion();
-    await expect.poll(() => appPage.evaluate(previous => {
-      const current = (window as any).applicationState.getSnapshot().context.acceptedPackRuntimes['bundled-ui-fixture'];
-      return !!current && current !== previous;
-    }, companionRuntime), { timeout: 30_000, message: 'companion frontend accepted after reactivation' }).toBe(true);
+    await frontendAccepted(appPage, 'bundled-ui-fixture', companionRuntime);
     await appPage.locator('[data-onboarding-id="settings-packs-tab"]').click();
     await appPage.getByText('bundled-ui-fixture/assistant', { exact: true }).click();
     await expect(appPage.getByLabel('Scribbles assistant name', { exact: true })).toHaveValue('Saved Scribbles assistant');
@@ -176,26 +173,16 @@ test('two external assistant groups survive independent edits, disable, reset an
 
   const toggle = (packId: string) => appPage.evaluate(packId => (window as any).applicationState.system.get('host/packs')
     .send({ type: 'UI.TOGGLE_ENABLED', packId }), packId);
-  const acceptedRuntime = (packId: string) => appPage.evaluate(packId => (window as any).applicationState.getSnapshot()
-    .context.acceptedPackRuntimes[packId], packId);
-  // Re-enabling registers, activates and reloads the pack's frontend, which renders its settings form only once
-  // the shell has accepted the new runtime
-  const reenable = async (packId: string, previous: unknown) => {
-    await toggle(packId);
-    await expect.poll(async () => {
-      const current = await acceptedRuntime(packId);
-      return !!current && current !== previous;
-    }, { timeout: 30_000, message: `${packId} frontend accepted after reactivation` }).toBe(true);
-  };
   for (const owner of ['e2e-fixture', 'bundled-ui-fixture']) {
     await select(owner);
-    const runtime = await acceptedRuntime(owner);
+    const runtime = await acceptedRuntime(appPage, owner);
     await toggle(owner);
     await expect(appPage.getByRole('button', { name: 'Edit in JSON', exact: true })).toBeVisible();
     await expect(appPage.getByText(`${owner}/assistant`, { exact: true })).toBeVisible();
     await select(owner === 'e2e-fixture' ? 'bundled-ui-fixture' : 'e2e-fixture');
     await expect(owner === 'e2e-fixture' ? scribbles : memo).toHaveValue(owner === 'e2e-fixture' ? 'Sydney' : 'Morgan');
-    await reenable(owner, runtime);
+    await toggle(owner);
+    await frontendAccepted(appPage, owner, runtime);
     await select(owner);
     await expect(owner === 'e2e-fixture' ? memo : scribbles).toHaveValue(owner === 'e2e-fixture' ? 'Morgan' : 'Sydney');
   }
