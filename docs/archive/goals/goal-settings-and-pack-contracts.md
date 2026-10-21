@@ -550,7 +550,7 @@ reproducer now invalidates. Batched directory attributes retain the existing fiv
 The durable regression exposes a separate identity-contract boundary: source/copy files and owned
 directories are identical, but Windows runs the original executable with DLL v1 and the fresh copy
 with v2. The current `runtime.hash` combines distribution integrity with effective OS binding state.
-The existing accepted [native boundary ADR](../../reference/adr/native-compiler-input-boundary.md)
+The existing accepted [native boundary ADR](../../references/adr/native-compiler-input-boundary.md)
 already requires normal OS resolution for the actual fresh process, distinct from the supervisor's
 loaded libraries. The earlier request for a new user choice was unnecessary; no exclusion or narrowed
 contract is introduced. The implementation candidate separates copied distribution integrity from
@@ -584,7 +584,7 @@ not replaces, existing real frontend/native/HMR acceptance. See [preload evidenc
 **Bound-only Windows import decision: approved by the user on 2026-10-18.** Native compiler imports
 containing only bound addresses, without recoverable import names or ordinals, are unsupported and
 must receive an attributed refusal. Ordinary imports and bound imports retaining lookup information
-remain supported. The [native-boundary ADR](../../reference/adr/native-compiler-input-boundary.md#decision)
+remain supported. The [native-boundary ADR](../../references/adr/native-compiler-input-boundary.md#decision)
 owns the contract; the [decision evidence](../../evidence/build-input-snapshot-proof.md#bound-only-pe-support-decision--2026-10-18)
 retains the rationale and proof limits. Source **`12447893a`** moves refusal before dependency
 resolution, closing OS-library and missing-target bypasses. All 68 focused CLI and 22 loader-hook
@@ -1091,7 +1091,7 @@ dev/watch execution and relevant platform differences; do not invent a broader r
 #### B1/B3 closure register and decisions
 
 This register distinguishes implemented owners, demonstrated defects and missing acceptance.
-The [native compiler input boundary ADR](../../reference/adr/native-compiler-input-boundary.md)
+The [native compiler input boundary ADR](../../references/adr/native-compiler-input-boundary.md)
 records the user-approved bounded contract (2026-10-17): captured package-contained and OS libraries,
 with attributed refusal of identifiable outside-library dependencies. Arbitrary external native capture
 and native file I/O retain their explicitly approved boundary. Computed runtime loading remains an

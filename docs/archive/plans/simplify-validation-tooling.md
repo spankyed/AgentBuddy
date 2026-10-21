@@ -108,7 +108,7 @@ needs exact times; otherwise default tar is enough.
 
 The chain's stamps, the pools' per-suite stamps, the package-build stamps and a pack's phase cache are each
 justified, and together they are the hardest part of the tooling to reason about. One page in
-`docs/reference/` gives, for each layer:
+`docs/references/` gives, for each layer:
 - what it caches;
 - its key;
 - what invalidates it;
@@ -121,7 +121,7 @@ No unification in this plan. If the page shows two layers doing one job, that be
 Last, because it is easier once the code it describes is smaller.
 
 - **Root `CLAUDE.md`:** the rules in imperative form with one citation each, as its preamble asks.
-  - Measurements, histories and stories move to `docs/reference/` (`pipeline-lessons.md`,
+  - Measurements, histories and stories move to `docs/references/` (`pipeline-lessons.md`,
     `pipeline-commands.md`, `recorded-files.md`).
   - The `Commands` block becomes one line per command plus its flags, with no essays inside the code fence.
   - No line-count gate, as the preamble says.
@@ -160,7 +160,7 @@ Last, because it is easier once the code it describes is smaller.
 - **Phase 5** (`ea3034388`): a compiler's read of a file's time field is recorded as the file's content
   hash; the strict gate no longer pins source times or uses pax. Bundled-ui fixture: 80 content facts, a
   touch stays current, a byte change refuses; `check:repro` 1751/1751 identical.
-- **Phase 6** (`bf0c48ede`): [cache layers](../../reference/cache-layers.md) written down. No two layers do
+- **Phase 6** (`bf0c48ede`): [cache layers](../../references/cache-layers.md) written down. No two layers do
   one job; unification is not worth its cost.
 - **Phase 7** (`b36ac76a4`, `0e4e6ded0`): root guide 980 -> 546 lines; tooling comments lose their edit
   history; the pipeline evidence references move to `docs/archive/references/`.

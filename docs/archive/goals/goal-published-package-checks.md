@@ -2,7 +2,7 @@
 
 > **Done** (`9e0eb7891`..`3d0d0da8d` on `AS/chain-inputs`). The text below is the plan as written, with its
 > Background's importer count corrected during Phase 1. For the suite as it is now, see
-> [`docs/reference/test-inventory.md`](../../reference/test-inventory.md).
+> [`docs/references/test-inventory.md`](../../references/test-inventory.md).
 
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 

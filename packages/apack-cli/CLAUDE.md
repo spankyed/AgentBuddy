@@ -183,7 +183,7 @@ installation's `include/node` headers. These are developer test requirements, no
 dependencies. It verifies package-relative loading from captured bytes and refuses direct/transitive
 absolute-library escapes before addon initialization. The binary reader is dependency-free; it does not
 run `otool` or require developer tools at CLI runtime. The approved native support boundary is in
-`docs/reference/adr/native-compiler-input-boundary.md`; startup/thread/Vite and other-platform closure
+`docs/references/adr/native-compiler-input-boundary.md`; startup/thread/Vite and other-platform closure
 remain separate from this module-reader checkpoint.
 
 Use `splitCompilerModulePath` for tsx filename scope queries; the `?` in a Windows device prefix
@@ -400,7 +400,7 @@ chain run both halves (`.github/workflows/ci.yml`), after `packages:build`. The 
 - `tests/commands/installed-app-deps.spec.ts`: resolving a pack's declared dependency from an installed app, which is the packs installed in that app's data dir.
 
 A spec's path under `tests/` mirrors the source it covers, as it does in every package
-([`test-inventory.md`](../../docs/reference/test-inventory.md)); `commands/`, `build/` and `app/` are
+([`test-inventory.md`](../../docs/references/test-inventory.md)); `commands/`, `build/` and `app/` are
 `src/`'s own folders. `harness/` and `packs/` are the two that name a *dependency's* module instead —
 `@apackdev/testing`'s harness and `@apackdev/host/packs` — which this package holds because it is where a
 pack's whole toolchain is driven from, and `repo-checks/tests/spec-placement.spec.ts` records both with

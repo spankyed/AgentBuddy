@@ -2,7 +2,7 @@
 //
 // The matrix is data (`src/testing/serialisation-matrix.ts`) because no package can import all five passes —
 // the encoder is `@app/api`'s and `toJSON` is `@apackdev/cli`'s, and each asserts its row in its own suite. What
-// that buys is that a cell cannot drift from the code: `docs/reference/value-serialisation.md` is the same
+// that buys is that a cell cannot drift from the code: `docs/references/value-serialisation.md` is the same
 // answers in prose, and these are the ones that fail.
 //
 // The differences between the rows are deliberate and the doc says why. What this file is for is that they stay

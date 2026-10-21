@@ -70,7 +70,7 @@ npm run build:preview -- --version 0.4.0
 
 This builds unsigned **apack Preview** in `dist/preview`, with a separate app identity and data
 location. The version is a local build input; the command does not change release metadata or publish
-anything. See [preview builds](docs/reference/preview-builds.md) for details.
+anything. See [preview builds](docs/references/preview-builds.md) for details.
 
 For automation against existing source builds, use `npm run dev:open` and `npm run dev:drive`.
 They do not start the development build/watch workflow. See [drive](drive/README.md) for preparation

@@ -117,7 +117,7 @@ schema 22 — against 552 and 23/28 at the survey.
 facets by `"path#export"`. The step, block and artifact barrels and the step `index.ts` files are gone,
 a duplicate id or type is unrepresentable, and a contribution key found at the root is refused with the
 name it moved to (`_MOVED_ROOT_KEYS`, `manifest-schema.ts`).
-[`docs/reference/declarative-contributions.md`](../../reference/declarative-contributions.md) records the
+[`docs/references/declarative-contributions.md`](../../references/declarative-contributions.md) records the
 shape; [`extensions.md`](../../public-facing/extensions.md) and
 [`manifest.md`](../../public-facing/manifest.md) document each key.
 

@@ -1,6 +1,6 @@
 # Drop the stretch projection: keep the deadline, delete the prediction
 
-**Status:** archived 2026-10-21, absorbed into [Simplify the validation tooling](../../plans/simplify-validation-tooling.md)
+**Status:** archived 2026-10-21, absorbed into [Simplify the validation tooling](simplify-validation-tooling.md)
 as its first phase. The audit below was refreshed against the code the same day.
 
 ## What this is about
@@ -55,8 +55,8 @@ wrong one cost a session.
 
 The docs that describe them change with them:
 - the root `CLAUDE.md`'s `measure:stretch` entry;
-- `docs/reference/pipeline-commands.md` (the `declaredShare` and `outgrownRungs` lines);
-- `docs/reference/recorded-files.md` (its list of readers that tolerate half-to-double);
+- `docs/references/pipeline-commands.md` (the `declaredShare` and `outgrownRungs` lines);
+- `docs/references/recorded-files.md` (its list of readers that tolerate half-to-double);
 - `packages/repo-checks/CLAUDE.md`'s `chain-graph` row and its description of the bound;
 - the comment in `typecheck-legs.spec.ts` that cites the `ASSUMED_RUNGS` check.
 

@@ -38,7 +38,7 @@ describe('a field that cannot be read', () => {
    * The row must survive one, because this output is the only record of what a step returned.
    *
    * A throwing getter throws in four of the five value-serialising passes
-   * (`docs/reference/value-serialisation.md`); this is the one whose contract forbids it. `JSON.stringify`
+   * (`docs/references/value-serialisation.md`); this is the one whose contract forbids it. `JSON.stringify`
    * reaches such a field while the size is still being measured, which is before any key has been read.
    */
   it('marks the field and keeps the rest of the row', () => {

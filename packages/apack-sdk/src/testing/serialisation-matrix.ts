@@ -1,7 +1,7 @@
 // What each of the repo's value-serialising passes decided, as data.
 //
 // Five passes turn an arbitrary runtime value into something storable or sendable, and they differ — mostly on
-// purpose. `docs/reference/value-serialisation.md` explains why; this is the same answers in a form the specs
+// purpose. `docs/references/value-serialisation.md` explains why; this is the same answers in a form the specs
 // can check, so a cell cannot drift from the code it describes.
 //
 // **Why it is data here rather than one spec somewhere.** The passes live in `@app/api`, `@apackdev/cli` and

@@ -113,7 +113,7 @@ runs anything at all: it used to run nothing and exit 0).
 
 ### Almost nothing renders, so almost nothing needs the real plugin
 
-**Exactly one spec in this repo mounts a Vue component** (`docs/reference/test-inventory.md` lists it as a
+**Exactly one spec in this repo mounts a Vue component** (`docs/references/test-inventory.md` lists it as a
 coverage gap), and no pack spec imports a `.vue` at all — which is precisely why `npm test` passes in
 default-setup while `vitest related` dies. What every pack needs is a module graph that resolves. What almost
 no pack needs is rendering. That asymmetry is what makes the stub the default and the plugin opt-in.

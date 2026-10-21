@@ -136,7 +136,7 @@ from it. Avoid a second handwritten contribution inventory. Reuse the existing b
 provenance machinery instead of building a generic extension framework.
 
 Targets: SDK manifest schema, snapshot model, `generate-entries.ts`, host registration and frontend
-contribution loading. The [reference inventory](../../reference/declarative-contributions.md) explains the
+contribution loading. The [reference inventory](../../references/declarative-contributions.md) explains the
 current gap; the discovery plan is the implementation contract, not the archived contribution plan.
 
 Evidence: a pack with a runtime that throws on import can still be described from its built declarations.

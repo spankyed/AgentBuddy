@@ -6351,7 +6351,7 @@ No VM/native build, daily-use Mac captured executable, broad suite or deadline c
 The user explicitly approved refusing Windows native compiler imports containing only bound
 addresses when import names or ordinals cannot be recovered. Ordinary imports and ordinary bound
 imports retaining usable lookup information remain supported. The
-[native-boundary ADR](../reference/adr/native-compiler-input-boundary.md#decision) owns this contract;
+[native-boundary ADR](../references/adr/native-compiler-input-boundary.md#decision) owns this contract;
 the [active goal](../archive/goals/goal-settings-and-pack-contracts.md) owns remaining verification.
 
 Rationale: admission needs symbol identity to follow forwarded exports and inspect native dependency

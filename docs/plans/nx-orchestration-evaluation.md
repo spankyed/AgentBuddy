@@ -11,7 +11,7 @@ without weakening apack's dependency, build-integrity or process-lifetime guaran
 This evaluation precedes further orchestration development in the
 [fast-validation plan](../archive/plans/validation-feedback-budget.md). That plan retains the workflow, runtime and
 coverage goals; this plan decides who implements generic orchestration. The
-[Nx assessment](../reference/nx-validation-assessment.md) records the supporting discussion.
+[Nx assessment](../references/nx-validation-assessment.md) records the supporting discussion.
 
 Do not put Nx over `npm run chain` and retain both systems. Adoption must retire identified generic
 machinery. Nx is not a replacement for compiler input capture, native admission or sealed publication.
@@ -172,9 +172,9 @@ fast-validation runtime target remains a later implementation outcome, not a pil
 ## References
 
 - [Nx affected execution](https://nx.dev/docs/concepts/ci-concepts/building-blocks-fast-ci).
-- [Task caching](https://nx.dev/docs/concepts/how-caching-works) and [input declarations](https://nx.dev/docs/reference/inputs).
-- [Project configuration and parallelism](https://nx.dev/docs/reference/project-configuration).
-- [Command execution semantics](https://nx.dev/docs/reference/nx/executors).
+- [Task caching](https://nx.dev/docs/concepts/how-caching-works) and [input declarations](https://nx.dev/docs/references/inputs).
+- [Project configuration and parallelism](https://nx.dev/docs/references/project-configuration).
+- [Command execution semantics](https://nx.dev/docs/references/nx/executors).
 
 Check the selected version's behavior during the pilot; documentation is not proof of compatibility
 with this repository's compiler contract. Remote caching and distributed execution are outside the

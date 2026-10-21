@@ -40,7 +40,7 @@ explicit profile/storage overrides are intentional sharing, so use them only whe
 Before combining concurrent branches, run `npm run session:check -- <branch> [branch...]` from
 the clean target checkout. It pins the committed inputs, merges in a detached worktree and runs the
 full strict chain. Merge only those tested commits; rerun if any input advances.
-See [worktree development](docs/reference/worktree-development.md).
+See [worktree development](docs/references/worktree-development.md).
 
 ## Naming
 
@@ -200,7 +200,7 @@ Things that waste the most time, in order:
   decisive; the run you already did wrote the app's output to `tests/results/app-<workerIndex>.log`
   (`tests/e2e/CLAUDE.md`).
 - **Reading a chain step's `cached` as "the thing it guarantees is true".** It means only that its declared
-  inputs have not moved ([cache layers](docs/reference/cache-layers.md)).
+  inputs have not moved ([cache layers](docs/references/cache-layers.md)).
 - **Running suites concurrently before the packages are built.** Run `npm run packages:ensure` once first.
 
 Rules that pay for themselves:
@@ -223,7 +223,7 @@ Rules that pay for themselves:
 - **A stamp directory has one writer, held by a lock beside it** (`holdExclusiveLock`; `holdChainLock` is the
   worked example). The lock file must not end in `.json`.
 - **A cache needs a key that cannot go stale, or a scope in which it cannot — and a reset hatch is neither.**
-  Content-key a file, scope a tree ([cache layers](docs/reference/cache-layers.md)).
+  Content-key a file, scope a tree ([cache layers](docs/references/cache-layers.md)).
 - **A comment is for whoever opens the file cold, not for whoever reads the diff.** Write the state of the
   thing, never its edit history — `it was X until <date>`, `renamed from`, `this used to be` belong in the git
   log. This governs a guide's prose as much as a `//` comment.
@@ -505,7 +505,7 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 `APACK_ENV` and `APACK_USER_DATA_DIR` are the **handoff**, not the selector: how a parent process tells a child what it is and where its data is. `--host`/`APACK_HOST` is what a person types, and the two are deliberately different names — collapsing them would put the choice and the answer under one word, which is the confusion the resolver exists to end.
 
 - The log directory is the one app path the resolver doesn't give you: only the Electron process can ask the platform for it. `packages/main/src/app-environment.ts` resolves it once — `app.getPath('logs')`, or `<userDataDir>/logs` when the run was given its own data dir — and hands it to electron-log, to the API (`APACK_LOG_DIR`) and to the IPC that opens the log file, so none of them decides it for itself.
-- The Electron main process infers the environment once at startup (`packages/main/src/app-environment.ts`): Playwright → `test`; packaged builds → the channel from `build/build-metadata.ts` (`production` | `beta` | `preview`; an unstamped packaged build refuses to start); source runs → `APACK_ENV` if set, else `development`. It passes `APACK_ENV` and `APACK_USER_DATA_DIR` to the API process. `npm run build:preview -- --version 0.4.0` creates a local unsigned preview with separate data and shared main/API version metadata; see `docs/reference/preview-builds.md`.
+- The Electron main process infers the environment once at startup (`packages/main/src/app-environment.ts`): Playwright → `test`; packaged builds → the channel from `build/build-metadata.ts` (`production` | `beta` | `preview`; an unstamped packaged build refuses to start); source runs → `APACK_ENV` if set, else `development`. It passes `APACK_ENV` and `APACK_USER_DATA_DIR` to the API process. `npm run build:preview -- --version 0.4.0` creates a local unsigned preview with separate data and shared main/API version metadata; see `docs/references/preview-builds.md`.
 - Anything started without them throws instead of falling back to production. Manual API boots must pass both, pointing at a copy of user data: `cd packages/api && APACK_ENV=development APACK_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 SHIPPED_PACKS_DIR=$PWD/.. node ../../scripts/with-source.mjs node dist/server.js`. Such an API makes up its own token and writes it to `<copy>/api-token`; send that to call it.
 - The API takes calls only with a token. Electron main creates one per app run and passes it to the API (`APACK_API_TOKEN`); an API started without one makes up its own; the app's windows read it through the preload (`api:token`) and send it when connecting, and in development (or when it made up its own) the API writes it to `apiTokenFile` for local tools (`apack pack dev`, default-setup's watcher), which send it in `API_TOKEN_HEADER`. That header and the address the API listens on (`API_HOST`, `127.0.0.1` only) are defined once, in `@apackdev/sdk/utils/pure`, so the renderer's client uses the same ones.
 - CLI commands pass `{ env }` explicitly (`install`/`uninstall`/`list`/`open` default to production; `--profile` selects storage; installed-app commands use `--channel`).

@@ -2,7 +2,7 @@
 
 > **Done** (`731d1e2d9`..`64ba820c5` on `AS/test-pipeline`). The text below is the plan as written. For
 > the rule and the suite as it is now, see
-> [`docs/reference/test-inventory.md`](../../reference/test-inventory.md); the two directories that still
+> [`docs/references/test-inventory.md`](../../references/test-inventory.md); the two directories that still
 > name no `src/` counterpart, and why that is a property rather than pending work, are in
 > `repo-checks/tests/spec-placement.spec.ts`'s `NOT_MIRRORED_YET`.
 
@@ -174,7 +174,7 @@ every pack created by the CLI.
 
 ### Phase 1 — the rule, written where it is read
 
-Add the rule to `packages/default-setup/CLAUDE.md` and to `docs/reference/test-inventory.md`, and state it
+Add the rule to `packages/default-setup/CLAUDE.md` and to `docs/references/test-inventory.md`, and state it
 in one line in the root `CLAUDE.md` beside the spec commands. It is currently inferable from six packages
 and written in none.
 
@@ -247,7 +247,7 @@ than work not yet done.
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — the rule, written where it is read | **done** | `731d1e2d9`. `default-setup/CLAUDE.md` (new `## Tests`), `docs/reference/test-inventory.md`, root `CLAUDE.md` beside the spec commands |
+| 1 — the rule, written where it is read | **done** | `731d1e2d9`. `default-setup/CLAUDE.md` (new `## Tests`), `docs/references/test-inventory.md`, root `CLAUDE.md` beside the spec commands |
 | 2 — the guard | **done** | `6af519dd3`. `spec-placement.spec.ts`, landed with nine entries so it was green before anything moved; mutation-checked again at the end (a planted `apack-ears/tests/nonsense/` is named) |
 | 3 — `@app/default-setup` | **done** | `811d76e38`, with its 141 renames in `e27338c6d`. 87 files / 720 tests unchanged |
 | 4 — `@app/api` | **done** | `ac5b4cd10`. No `unit/`; 15 files / 70 tests unchanged |

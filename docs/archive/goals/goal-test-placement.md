@@ -2,7 +2,7 @@
 
 > **Done** (`8932ece71`..`b87c22fd2` on `AS/chain-inputs`). The text below is the plan as written, with
 > Finding 1's table corrected during Phase 2 where an import scan had implied the wrong verdict for two
-> specs. For the suite as it is now, see [`docs/reference/test-inventory.md`](../../reference/test-inventory.md).
+> specs. For the suite as it is now, see [`docs/references/test-inventory.md`](../../references/test-inventory.md).
 
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
@@ -30,7 +30,7 @@ Finished when:
   fails when that stops being true.
 - No spec imports another package's `src/` by relative path, or the exception is recorded with a reason
   and a stale-entry check.
-- `docs/reference/test-inventory.md` exists and describes the suite as it is; `docs/archive/plans/test-inventory.md`
+- `docs/references/test-inventory.md` exists and describes the suite as it is; `docs/archive/plans/test-inventory.md`
   is archived.
 - npm run typecheck; npm run spec-cost:check; the suites this goal touches; npm run chain once at the end.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
@@ -226,7 +226,7 @@ Final.
 6. **Deleting is not this goal's job.** `goal-test-cleanup.md` did that sweep. Where a move exposes a
    duplicate, apply its Decision 10 — a duplicate that names the level it adds is not a duplicate — and
    merge only then.
-7. **The inventory becomes a reference doc, not a plan.** `docs/reference/test-inventory.md` describes the
+7. **The inventory becomes a reference doc, not a plan.** `docs/references/test-inventory.md` describes the
    suite as it is and is the standing answer to "what tests do we have and where do they belong".
    `docs/archive/plans/test-inventory.md` is archived, since its purpose was to feed a goal that is finished.
 8. **Don't regenerate the per-test provenance.** The 2026-09-19 survey `git blame`d every `it(` line
@@ -250,7 +250,7 @@ Settle with the user before Phase 4.
 
 ### Phase 1 — record the suite as it is
 
-Write `docs/reference/test-inventory.md`: the location table above, the seven categories the tree actually
+Write `docs/references/test-inventory.md`: the location table above, the seven categories the tree actually
 distinguishes (package unit; contract over build output; command/process; repo tooling; app runtime;
 fixture pack; E2E), and the five verdict classes from the old inventory, with `MOVE` defined as this
 goal's subject. Date it and name the base. Archive `docs/archive/plans/test-inventory.md` with a
@@ -350,7 +350,7 @@ covers behaviour nothing else covers.
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — record the suite as it is | **done** | `8932ece71`. `docs/reference/test-inventory.md`; the 2026-09-19 survey archived with what superseded it |
+| 1 — record the suite as it is | **done** | `8932ece71`. `docs/references/test-inventory.md`; the 2026-09-19 survey archived with what superseded it |
 | 2 — a suite for `@apackdev/testing` and `@apackdev/ui` | **done** | `c58c086eb`. 19 and 2 tests; the host pool runs 10 projects |
 | 3 — the guards | **done** | `993e8f8c2`. `spec-placement.spec.ts`, both halves mutation-checked |
 | 4 — `@app/api` | **done** | `d7de9f5fb`. `unit/` 5 specs, `runtime/` 10; `@apackdev/host` publishes `./secrets/vault` |

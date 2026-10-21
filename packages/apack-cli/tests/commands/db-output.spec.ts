@@ -90,7 +90,7 @@ describe('the chosen format', () => {
  * The row this pass answers in the shared matrix (`@apackdev/sdk/testing/serialisation-matrix`).
  *
  * The cases above say why each answer is what it is; this says that it still *is*. The matrix is the data behind
- * `docs/reference/value-serialisation.md`, declared once because no package can import all five passes, and
+ * `docs/references/value-serialisation.md`, declared once because no package can import all five passes, and
  * asserted from the three suites that can each reach their own.
  */
 describe('the row it answers in the serialisation matrix', () => {

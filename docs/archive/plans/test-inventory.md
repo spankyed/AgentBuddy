@@ -1,6 +1,6 @@
 # Test inventory: every test in the repo, with provenance and a verdict class
 
-> **Superseded in part** by [`docs/reference/test-inventory.md`](../../reference/test-inventory.md), which
+> **Superseded in part** by [`docs/references/test-inventory.md`](../../references/test-inventory.md), which
 > describes the suite as it is. The text below is the survey as written, 2026-09-19 against
 > `AS/package-boundaries` at `1dd69172e`: its counts (279 spec files, 2,211 tests) predate
 > `@app/repo-checks`, the CLI suite's two halves and the cost records, and its per-file paths name specs that

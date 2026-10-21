@@ -43,7 +43,7 @@ There is a further risk: splitting every scenario into a separate task can repea
 
 **Nx gives us a better framework for expressing and inspecting dependencies. It does not establish that those dependencies are complete.**
 
-Its input model supports file sets, environment variables and runtime observations. Its affected execution uses the project graph to avoid unrelated work. [Nx inputs](https://nx.dev/docs/reference/inputs), [affected execution](https://nx.dev/docs/concepts/ci-concepts/building-blocks-fast-ci)
+Its input model supports file sets, environment variables and runtime observations. Its affected execution uses the project graph to avoid unrelated work. [Nx inputs](https://nx.dev/docs/references/inputs), [affected execution](https://nx.dev/docs/concepts/ci-concepts/building-blocks-fast-ci)
 
 That could replace some of our custom configuration and selection logic.
 
@@ -77,7 +77,7 @@ The main danger is **an outer cache bypassing the inner verification**.
 
 Suppose Nx considers a task unchanged, but Windows loader policy or an external dependency has changed. A cache hit could skip the command that would detect that change.
 
-Nx supports runtime inputs, but we would have to prove that the selected inputs faithfully represent the relevant state. [Nx input configuration](https://nx.dev/docs/reference/inputs)
+Nx supports runtime inputs, but we would have to prove that the selected inputs faithfully represent the relevant state. [Nx input configuration](https://nx.dev/docs/references/inputs)
 
 My initial rule would be:
 
@@ -101,7 +101,7 @@ The pilot must verify:
 - Failure evidence remains available.
 - Windows and Unix invocation behave correctly.
 
-One concrete footgun: Nx’s `run-commands` supports `readyWhen`, which can consider a task finished when a matching output string appears rather than when its command exits. That is useful for some development-server arrangements, but inappropriate as proof that an acceptance scenario completed and cleaned up. [Nx executors](https://nx.dev/docs/reference/nx/executors)
+One concrete footgun: Nx’s `run-commands` supports `readyWhen`, which can consider a task finished when a matching output string appears rather than when its command exits. That is useful for some development-server arrangements, but inappropriate as proof that an acceptance scenario completed and cleaned up. [Nx executors](https://nx.dev/docs/references/nx/executors)
 
 Likewise, a list of commands defaults to parallel execution unless configured otherwise. We must not accidentally parallelize a sequential scenario.
 
@@ -129,7 +129,7 @@ This distinction matters for our two targets:
 - **Warm incremental performance:** affected selection and caching can help substantially.
 - **Cold-result performance:** selection, shared preparation and reduced duplication matter; verdict caching contributes nothing because the tests must execute.
 
-Scheduling also needs care. Nx’s ordinary `--parallel` setting limits concurrent tasks. It is not equivalent to our weighted core reservations: one task may spawn multiple test workers and compiler processes. Nx also supports disabling task parallelism on a machine, but that is a coarser control. [Nx parallel execution](https://nx.dev/docs/kb/run-tasks-in-parallel), [target parallelism](https://nx.dev/docs/reference/project-configuration)
+Scheduling also needs care. Nx’s ordinary `--parallel` setting limits concurrent tasks. It is not equivalent to our weighted core reservations: one task may spawn multiple test workers and compiler processes. Nx also supports disabling task parallelism on a machine, but that is a coarser control. [Nx parallel execution](https://nx.dev/docs/kb/run-tasks-in-parallel), [target parallelism](https://nx.dev/docs/references/project-configuration)
 
 So we must test nested resource demand. “Two tasks” does not mean “two cores.”
 

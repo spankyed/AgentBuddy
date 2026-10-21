@@ -138,7 +138,7 @@ Audit every required outcome against current source and appropriate evidence. Re
 proof, run the required final checks on recorded source, and write Outcome. A checkpoint or a smaller
 passing subset does not complete the goal.
 
-Document the resulting implemented contract in [reference](../reference/) or
+Document the resulting implemented contract in [reference](../references) or
 [public-facing docs](../public-facing/) before archiving completed plans. Update existing documentation
 where it already owns that contract; do not manufacture a new reference document for every goal.
 

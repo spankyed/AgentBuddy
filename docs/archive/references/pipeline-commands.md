@@ -185,7 +185,7 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # (scripts/lib/spec-plan.ts), asserted by repo-checks' spec-plan.spec.ts.
                          # Where a spec belongs: its path under tests/ mirrors the source it covers, no
                          # directory names a level or a cost half, and support dirs take a _ prefix
-                         # (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts)
+                         # (docs/references/test-inventory.md; repo-checks' spec-placement.spec.ts)
 ```
 
 ## Test commands
@@ -262,7 +262,7 @@ Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
 `--bail 1` and `--changed HEAD~1` work. The routing is data
 (scripts/lib/spec-plan.ts), asserted by repo-checks' spec-plan.spec.ts.
 Where a spec belongs: its path under tests/ mirrors the source it covers
-(docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts).
+(docs/references/test-inventory.md; repo-checks' spec-placement.spec.ts).
 **A pack suite and an integration half are not in a plain run's answer** — one
 resolves the published dist, the other is a second config the root projects
 exclude. docs/archive/references/pipeline-commands.md has the blast-radius figures.

@@ -8,7 +8,7 @@ For repository implementation and validation rules, read [CLAUDE.md](../CLAUDE.m
 | Directory | Purpose | What belongs here |
 |---|---|---|
 | [public-facing/](public-facing/) | User and pack-author documentation | Supported workflows, APIs, CLI commands and manifest contracts |
-| [reference/](reference/) | How the current system works | Architecture, internal contracts, operational guidance and reusable lessons |
+| [reference/](references) | How the current system works | Architecture, internal contracts, operational guidance and reusable lessons |
 | [references/guides/](references/guides/) | Development environment guides | Agent access, practical workflows, resource ownership and operational safeguards |
 | [goals/](goals/) | Delivery scope and completion | Required outcomes, execution order, remaining checkpoints and acceptance |
 | [plans/](plans/) | Intended designs | Proposed contracts, decisions, dependencies and acceptance cases |

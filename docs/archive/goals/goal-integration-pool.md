@@ -324,7 +324,7 @@ Only meaningful once Phase 3 has moved the bound onto a single file.
 
 - Split `facade-typing.integration.spec.ts` at its `describe` boundary so its two independent fixtures build
   concurrently in two files rather than in series in one. Its path under `tests/` still has to mirror what it
-  covers (`docs/reference/test-inventory.md`).
+  covers (`docs/references/test-inventory.md`).
 - **Split that file and no other.** Vitest parallelizes per file and runs suites within a file in series, so
   what is being fixed is one file doing two fixtures' work — not a package's tests sharing a file, which they
   already do not: the CLI's integration half is 15 files. The schedule says the second and third splits are

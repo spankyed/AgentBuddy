@@ -4440,7 +4440,7 @@ identifier only; third-party `artifactName` and `upload-artifact` APIs and relea
 Two overlooked content fixtures now declare/clear `content.datasets` instead of `content.artifacts`.
 
 Current public documentation, subsystem plans and repository guides adopt the same vocabulary.
-`docs/reference/recorded-files.md` replaces the misleading recorded-artifacts filename with its incoming
+`docs/references/recorded-files.md` replaces the misleading recorded-artifacts filename with its incoming
 links updated. Archived history, existing validation log paths and the unrelated issue draft remain
 untouched. No aliases, format conversion, release/version metadata changes or app artifact renames.
 

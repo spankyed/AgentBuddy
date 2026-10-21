@@ -285,7 +285,7 @@ covered by `tests/features/brain/be/trigger-dedupe.spec.ts`. No directory names 
 history — which half a spec runs in is its `.integration.spec.ts` suffix, decided by measured cost — and
 support directories take a `_` prefix. `repo-checks/tests/spec-placement.spec.ts` fails a directory here
 that names no directory under `src/`. The reference is
-[`docs/reference/test-inventory.md`](../../docs/reference/test-inventory.md).
+[`docs/references/test-inventory.md`](../../docs/references/test-inventory.md).
 
 ## Flow steps
 

@@ -292,7 +292,7 @@ pack's.
   `apack-host/src/packs/runtime/CLAUDE.md`, `apack-cli/CLAUDE.md`, `apack-sdk/CLAUDE.md`,
   `default-setup/CLAUDE.md`, `api/CLAUDE.md`, `docs/public-facing/architecture.md`, `cli.md`, `manifest.md`,
   `content.md` and `extensions.md`.
-- Record the five rules, and the "check the word first" instruction, in `docs/reference/naming.md` (new), so
+- Record the five rules, and the "check the word first" instruction, in `docs/references/naming.md` (new), so
   the next name is chosen by the rule rather than by precedent. Both words this goal had to reject —
   `contract`, and the `contributions`/`extensions` pair — belong in it as worked examples.
 
