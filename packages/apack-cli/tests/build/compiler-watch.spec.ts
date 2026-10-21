@@ -3,6 +3,7 @@ import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createCompilerWatchMatcher, createCompilerWatchTools, compilerWatchPaths, compilerWatchTargets, mergeCompilerWatchPaths, additionalCompilerObservations } from '../../src/build/compiler-watch.ts';
 import { assertNativeCompilerObservations, createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
+import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 import * as runtime from '../../src/build/compiler-runtime.ts';
 import { compilerWatchFixture } from '../_support/compiler-watch-fixture.ts';
 
@@ -66,6 +67,19 @@ it('keeps runtime probes distinct from the static fingerprint across refreshes',
   expect(first.staticPaths.has(outside)).toBe(false);
   fs.writeFileSync(outside, 'SECOND');
   expect(compilerWatchPaths(pack, undefined, probes).staticPaths.has(outside)).toBe(false);
+});
+
+it('replays a pack root listing clean after the build writes its own outputs beside the authored files', () => {
+  const { pack } = fixture();
+  const view = createCompilerFileView(pack, { authoredFiles: packInputFiles(pack) });
+  try {
+    view.captureLocation(pack, 'entries');
+    const observed = additionalCompilerObservations(view.observations(), new Map([[pack, 'entries']]), new Map());
+    fs.mkdirSync(path.join(pack, 'dist')); fs.mkdirSync(path.join(pack, '.apack'));
+    expect(() => assertNativeCompilerObservations(observed)).not.toThrow();
+    fs.writeFileSync(path.join(pack, 'added.ts'), 'export {};');
+    expect(() => assertNativeCompilerObservations(observed)).toThrow();
+  } finally { view.dispose(); }
 });
 
 it('replays worker bytes and native metadata while leaving ordinary static bytes to their fingerprint', () => {

@@ -36,7 +36,6 @@ export function additionalCompilerObservations(observations: CompilerInputObserv
   }
   return { root: observations.root, entries: observations.entries.filter(([encoded]) => {
     const [kind, file] = JSON.parse(encoded);
-    if (kind === 'authored-files') return false;
     if (['file', 'namespace', 'entries', 'package-entries'].includes(kind)) return additional.has(path.resolve(observations.root, file));
     // Preserve native metadata/representation queries and refuse unknown future kinds in the replayer.
     return true;
