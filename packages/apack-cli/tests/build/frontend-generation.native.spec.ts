@@ -74,7 +74,33 @@ function fixture() {
   return { root, entry, generation, captures };
 }
 
+/**
+ * Resolves once Vite tells a browser the component changed — the message it sends after invalidating its modules,
+ * which is when a browser re-imports them. Connected before the edit, so the message cannot be missed.
+ */
+async function nextComponentUpdate(address: PackFrontendAddress): Promise<{ readonly received: Promise<void> }> {
+  const client = await (await fetch(`http://localhost:${address.port}/@vite/client`, { signal: AbortSignal.timeout(2_000) })).text();
+  const token = /const wsToken = "([^"]+)"/.exec(client)?.[1];
+  if (!token) throw new Error('The Vite client names no HMR token');
+  const socket = new WebSocket(`ws://localhost:${address.port}/?token=${token}`, 'vite-hmr');
+  const messages = (handle: (message: { type: string; updates?: { path: string }[] }) => boolean) => new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => { socket.close(); reject(new Error('Vite sent no HMR message within 20s')); }, 20_000);
+    socket.addEventListener('error', () => { clearTimeout(timer); reject(new Error('Vite HMR socket failed')); }, { once: true });
+    socket.addEventListener('message', function receive(event) {
+      if (!handle(JSON.parse(String(event.data)))) return;
+      clearTimeout(timer); socket.removeEventListener('message', receive); resolve();
+    });
+  });
+  await messages(message => message.type === 'connected');
+  // Wrapped: an async function adopts a returned promise, which would wait here for an edit not yet made
+  return { received: messages(message => message.type === 'full-reload'
+    || (message.type === 'update' && !!message.updates?.some(update => update.path === '/src/View.vue'))).finally(() => socket.close()) };
+}
+
 async function response(address: PackFrontendAddress, template = false): Promise<string> {
+  // A browser re-imports the component before its template after an update: plugin-vue's main module re-reads the
+  // file, and the template module is compiled from what that read cached
+  if (template) await response(address);
   const suffix = template ? '?vue&type=template&id=generation' : '';
   const result = await fetch(`http://localhost:${address.port}/src/View.vue${suffix}`, { signal: AbortSignal.timeout(2_000) });
   const text = await result.text();
@@ -82,9 +108,7 @@ async function response(address: PackFrontendAddress, template = false): Promise
   return text;
 }
 
-// On Linux the live frontend never serves the edited source (docs/issues/ISSUE-linux-live-frontend-reload.md);
-// macOS runs it, in the strict gate's native jobs
-it.skipIf(process.platform === 'linux')('refreshes backend and live frontend together, retains failed incumbents and awaits retirement', async () => {
+it('refreshes backend and live frontend together, retains failed incumbents and awaits retirement', async () => {
   const { root, entry, generation, captures } = pack;
   const addresses: PackFrontendAddress[] = [];
   await builder!.serveFrontend(address => { if (address) addresses.push(address); });
@@ -93,8 +117,10 @@ it.skipIf(process.platform === 'linux')('refreshes backend and live frontend tog
   expect(fs.readFileSync(path.join(root, 'dist/runtime/fe.js'), 'utf8')).toContain('GENERATION_A');
   const revision = readPackBuild(path.join(root, 'dist')).revision;
 
+  const update = await nextComponentUpdate(first);
   fs.writeFileSync(path.join(root, 'src/View.vue'), '<template><p>VIEW_SECOND</p></template>');
-  await vi.waitFor(async () => expect(await response(first, true)).toContain('GENERATION_A_SECOND'), { timeout: 2_000 });
+  await update.received;
+  expect(await response(first, true)).toContain('GENERATION_A_SECOND');
   fs.writeFileSync(entry, `throw new Error('BROKEN FRONTEND GENERATION'); export default () => {};`);
   await expect(builder!.build()).rejects.toThrow('Pack frontend exited before readiness');
   expect(readPackBuild(path.join(root, 'dist')).revision).toBe(revision);
@@ -116,9 +142,10 @@ it.skipIf(process.platform === 'linux')('refreshes backend and live frontend tog
 
   await builder!.close();
   expect(() => process.kill(second.pid, 0)).toThrow();
+  // Closing the builder releases every installation it captured; each stays in the store for the next build
   for (const result of captures.mock.results) {
     const installation = await result.value;
-    expect(fs.existsSync(installation.bin)).toBe(false);
+    expect(fs.existsSync(installation.bin)).toBe(true);
   }
   expect(workspaces.length).toBeGreaterThanOrEqual(3);
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
