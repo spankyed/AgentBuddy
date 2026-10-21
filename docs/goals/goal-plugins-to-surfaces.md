@@ -38,6 +38,12 @@ Surveyed 2026-10-21 at `507b3b747`.
 **Active, unstarted.** On `master`; nothing implemented. Phase 1 is the next deliverable and depends
 on nothing.
 
+**One thing to settle in Phase 2, not during it.** `PROVENANCE_KINDS.plugins` (`build/manifest.ts:162`)
+is a snapshot key a dependent pack reads, and `packages/apack-sdk/CLAUDE.md` says to bump
+`PACK_SNAPSHOT_FORMAT` for any change to what a dependent reads from a snapshot that another CLI would
+misread. There is one CLI and every pack is in this tree, rebuilt together, so a bump guards against
+nothing here — but the rule says otherwise, so do not bump it quietly either way.
+
 ## What this touches
 
 **6503 occurrences of 454 distinct identifiers** containing `plugin`, over `packages/`, `scripts/`,
@@ -60,13 +66,29 @@ a machine and components (`Plugin`, `packages/apack-sdk/src/fe/plugin.ts:53`). T
 `usePlugin` is pack-facing, so this breaks default-setup, `tests/packs/*` and the CLI's `add feature`
 scaffold and `init` templates.
 
+**`@apackdev/testing` is pack-facing too**, and has no `etc/` report to catch it: `app.navigate(pluginId)`
+and `app.waitForPlugin(pluginId)` are what every pack's E2E suite calls, documented in
+`packages/apack-testing/CLAUDE.md`, `tests/e2e/CLAUDE.md` and `docs/public-facing/testing.md`, and
+`__PLUGIN_ID__` is the placeholder `apack pack init-tests` scaffolds into a pack's smoke spec.
+
+**16 of default-setup's content sources send to a plugin** (`src/content/actions/**`,
+`services.emitter.broadcastToPlugin('default-setup/threads', …)`). Their text is compiled by
+`apack pack build`, so renaming the send moves each one's `contentHash` and the run needs
+`npm run content-parity:update -w @app/default-setup`.
+
 **The wire.** `pluginId` (220 occurrences, plus `pluginIds`, `pendingPluginId`, `activePluginId`) is
 stamped on every backend→frontend event, routed on by the renderer, and validated against
-`getPluginEventValidationMap()`. The travelling names are `PLUGIN_ACTIVATED`, `PLUGIN_DEACTIVATED`,
-`PLUGIN_VISIBILITY_UPDATED`, `SET_LAST_ACTIVE_PLUGIN` and `OPEN_PLUGIN`, with five `eventTypes<T>()`
-constants pinning them to their contracts: `PLUGIN_EVENT_TYPES` (`@apackdev/sdk/events`),
-`HOST_PLUGIN_EVENT_TYPES`, `APPLICATION_PLUGIN_EVENT_TYPES`, `PACKS_PLUGIN_EVENT_TYPES` and
-`SETTINGS_PLUGIN_EVENT_TYPES`.
+`getPluginEventValidationMap()`. **22 event names travel**: `OPEN_PLUGIN`, `SEND_TO_PLUGIN`,
+`SELECT_PLUGIN`, `SELECT_PLUGIN_BY_SHELL`, `SET_PLUGIN_VISIBILITY`, `PLUGIN_VISIBILITY_UPDATED`,
+`PLUGIN_ACTIVATED`, `PLUGIN_DEACTIVATED`, `PLUGIN_PICKED`, `PLUGIN_DECLARATIONS_CHANGED`,
+`PACK_PLUGINS_UNLOADED`, `REQUEST_PLUGIN_DATA`, `RECEIVE_PLUGIN_DATA`, `DELIVER_PLUGIN_EVENTS`,
+`SET_LAST_ACTIVE_PLUGIN`, `TRAIL_NEW_PLUGIN`, `SWITCH_PLUGIN_UP`, `SWITCH_PLUGIN_DOWN`,
+`OPEN_PLUGIN_FROM_APP`, `APP_OPEN_PLUGIN_HELP`, `APP_POPOUT_PLUGIN`, and the scaffold placeholder
+`__PLUGIN_ID__`. Five `eventTypes<T>()` constants pin them to their contracts: `PLUGIN_EVENT_TYPES`
+(`@apackdev/sdk/events`), `HOST_PLUGIN_EVENT_TYPES`, `APPLICATION_PLUGIN_EVENT_TYPES`,
+`PACKS_PLUGIN_EVENT_TYPES` and `SETTINGS_PLUGIN_EVENT_TYPES`.
+
+No pack rule changes: `reserved-event-keys` guards `_call` alone, and no rule key names `plugin`.
 
 **Stored data**, which moves by migration and not by rename (Phase 4):
 
@@ -145,8 +167,11 @@ it last in this phase's commits.
   `getRegisteredSurfaces`, `registerPackFE`'s registration field, `FePackRegistryView`.
 - Renderer: the application actor's surface list, `packPluginIds`, `loadPackFrontend`, and the
   `views/layout` components. Phase 3 owns the popout query and `plugin:popout` IPC.
-- Every in-repo pack: default-setup and `tests/packs/*`.
-- `npm run api:update`.
+- Every in-repo pack: default-setup and `tests/packs/*`; `@apackdev/testing`'s driver and the
+  `init-tests` scaffold.
+- `npm run api:update`, `npm run facade:update -w @app/default-setup` (its `etc/pack-types.api.md`
+  names the concept throughout), and `npm run content-parity:update -w @app/default-setup` for the 16
+  action sources.
 
 **Dependencies.** Phase 1's vocabulary; not its guard.
 
