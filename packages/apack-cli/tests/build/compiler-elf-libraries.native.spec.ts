@@ -6,11 +6,14 @@ import { expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
-import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import type { CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { parseElfLibraryCommands } from '../../src/build/compiler-elf-libraries.ts';
 import { isElfSystemLibrary } from '../../src/build/compiler-elf-environment.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
+import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
+
+const sharedCompiler = shareCompilerInstallation();
 
 const compile = (args: string[]) => execFileSync('cc', args, { timeout: 15_000 });
 
@@ -55,7 +58,7 @@ it.runIf(process.platform === 'linux')('owns retained ELF libraries, preserves V
       const addon = require(${JSON.stringify(addon)});
       require('node:fs').writeFileSync(${JSON.stringify(proof)}, JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects.map(file => require('node:path').normalize(file)) }));
     }`);
-    compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
+    compiler = await sharedCompiler.installation({ cwd: pack });
     process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
     frontend = await startPackFrontend(pack, compiler, signal);
     const loaded = JSON.parse(fs.readFileSync(proof, 'utf8')) as { value: number; libraries: string[] };
@@ -142,7 +145,7 @@ __attribute__((constructor)) static void initialize(void) {
     expect(control.libraries).toContain(shim);
     expect(fs.existsSync(marker)).toBe(true);
     fs.rmSync(marker);
-    compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
+    compiler = await sharedCompiler.installation({ cwd: pack });
     process.env.LD_LIBRARY_PATH = search;
     let refusal: unknown;
     try { frontend = await startPackFrontend(pack, compiler, new AbortController().signal); }
