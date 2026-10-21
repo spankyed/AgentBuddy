@@ -35,8 +35,18 @@ Surveyed 2026-10-21 at `507b3b747`.
 
 ## Outcome
 
-**Done**, on `session/plugins-to-surfaces`, six commits, `npm run chain` passing in 1468.8s with all 32
-steps ok (`node_modules/.cache/apack-chain/runs/2026-10-21T20-52-54Z-10193`).
+**Done**, on `session/plugins-to-surfaces`, ten commits, `npm run chain` passing at the final commit in
+1017.6s with no failing step (`node_modules/.cache/apack-chain/runs/2026-10-21T21-50-18Z-20165`; the
+full cold run was 1468.8s, `…T20-52-54Z-10193`).
+
+**One load-sensitive spec, reported rather than patched.** A chain run in between failed
+`tests/packs/external-pack/tests/e2e/app-default-controls.spec.ts:37`, whose `expect.poll` for
+`updatesWith === 'app'` after a pack restore gets Playwright's **5s** default while the test's own
+budget is 60s — it died at 28.4s, so the poll gave up, not the test. The case passes in isolation
+(43.5s) and its whole step passes (`test:external-pack:app`, 32 specs); this work changed only three
+`waitForPlugin` → `waitForSurface` call sites in that file and nothing the assertion reads. Giving that
+poll a deadline matched to what a restore costs is the fix; raising it to obtain a pass is what
+`CLAUDE.md` refuses, and load inflates a duration without ever deflating it.
 
 | Phase | Commit | Evidence for its "Done when" |
 |---|---|---|
