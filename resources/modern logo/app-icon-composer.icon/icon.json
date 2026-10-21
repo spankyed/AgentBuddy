@@ -2,7 +2,7 @@
   "fill-specializations" : [
     {
       "value" : {
-        "automatic-gradient" : "extended-gray:0.00000,1.00000",
+        "automatic-gradient" : "extended-gray:0.08322,1.00000",
         "orientation" : {
           "start" : {
             "x" : 0.5,
@@ -37,6 +37,7 @@
       "layers" : [
         {
           "fill" : "none",
+          "glass" : false,
           "image-name" : "plain-simple.svg",
           "name" : "plain-simple",
           "position" : {
