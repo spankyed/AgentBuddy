@@ -7,11 +7,11 @@ Dated checkpoint notes below are historical; deferred work keeps its separate ow
 
 Historical checkpoint status: implementation in progress. Written 2026-10-12 on `AS/feature-settings-rework`.
 
-This is the discovery workstream of [manifest maturity](../../plans/manifest-maturity.md). It builds on the
+This is the discovery workstream of [manifest maturity](manifest-maturity.md). It builds on the
 [settings extraction](settings-architecture.md) and replaces the older
 [declarative contributions plan](declarative-contributions.md) as the target for complete discovery.
 The older inventory remains historical evidence. This plan owns the current implementation target;
-[manifest maturity](../../plans/manifest-maturity.md) records decisions transferred from the other archived designs.
+[manifest maturity](manifest-maturity.md) records decisions transferred from the other archived designs.
 The [naming contracts goal](../goals/goal-naming-conventions.md) is complete. Re-audit code
 names on that result rather than applying the old naming survey or renaming a surface twice.
 
@@ -650,7 +650,7 @@ not become a second coordination layer alongside the old shell actions.
 
 Each implementation checkpoint remains usable with migrated callers. Apply the existing snapshot-format
 rule for contract changes; do not bump package release versions. This work does not require making pack
-execution lazy. Link the resulting catalog boundary into the [deferred lazy activation plan](../../plans/lazy-activation.md)
+execution lazy. Link the resulting catalog boundary into the [deferred lazy activation plan](../../plans/deferred/lazy-activation.md)
 without changing migration/content execution order here.
 
 ## Handoff to subsequent plans

@@ -7,7 +7,7 @@ Dated checkpoint notes below are historical; deferred work keeps its separate ow
 
 Sequencing: the [naming contracts goal](../goals/goal-naming-conventions.md) is complete.
 Re-audit names against its result; settings-specific names remain owned here.
-The [manifest maturity roadmap](../../plans/manifest-maturity.md) orders this work with the common discovery
+The [manifest maturity roadmap](manifest-maturity.md) orders this work with the common discovery
 foundation. This plan must not introduce a separate settings-only catalog.
 
 Historical checkpoint status: in progress on `session/settings-pack-contracts`. The integrated extraction passes checkpoint
@@ -819,7 +819,7 @@ the shared route that those consumers will use rather than replacing their requi
 ## Delivery sequence
 
 These steps implement the shared-foundation and settings checkpoints in
-[manifest maturity](../../plans/manifest-maturity.md). Start with discovery’s full inventory, then deliver a settings
+[manifest maturity](manifest-maturity.md). Start with discovery’s full inventory, then deliver a settings
 projection of the common catalog. Before any reader switches, that kind’s descriptor, generated bindings
 and refresh path must agree. This does not require finishing other contribution kinds first.
 

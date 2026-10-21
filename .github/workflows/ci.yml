@@ -32,7 +32,7 @@ on:
         options: [all, app, external, cli, build, integration, packaged]
         default: all
       app_acceptance_test:
-        description: Playwright name pattern; integration requires space-separated spec file paths
+        description: Playwright name pattern; integration requires space-separated integration or native spec file paths
         type: string
         default: ''
       strict_chain:

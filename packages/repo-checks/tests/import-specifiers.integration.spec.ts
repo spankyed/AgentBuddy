@@ -8,18 +8,6 @@ import { packFixture as buildPackFixture } from '@apackdev/sdk/testing/pack-fixt
 import { population } from '@apackdev/sdk/testing';
 import { RUNTIME_ONLY_DEPS, workspaceDeps } from '../../../scripts/lib/workspace-deps.ts';
 
-/**
- * Turn the event loop between tests.
- *
- * A pool worker runs each case synchronously and `await`ing a resolved promise only drains microtasks, so a
- * file of synchronous cases is **one** event-loop block however many `it`s it holds — measured here, 42s of
- * tests as a single 38s block. Nothing in the file is then able to read the reply to the `onTaskUpdate` it
- * has already sent, and birpc's 60s window, which no config can widen, expires against a main process that
- * answered in milliseconds: `[vitest-worker]: Timeout calling "onTaskUpdate"`, with every test passing.
- *
- * This caps the block at the longest single case rather than their sum, and costs one macrotask per test.
- */
-afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
 
 /** scripts/check-import-specifiers.ts, over a temp tree holding the modules the checks resolve against */
 let root: string;

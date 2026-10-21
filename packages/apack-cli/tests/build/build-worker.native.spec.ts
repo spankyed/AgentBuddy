@@ -20,18 +20,19 @@ vi.mock('../../src/build/be-bundler', async importOriginal => ({
   bundlePackRuntime: vi.fn(() => { throw new Error('Supervisor retained its old compiler'); }),
 }));
 import { bundlePackRuntime } from '../../src/build/be-bundler';
-import { createPackBuilder, type PackBuilder, type PackBuildOptions } from '../../src/build/build-process.ts';
+import { createPackBuilder, type PackBuilder, type PackBuilderOptions, type PackBuildOptions } from '../../src/build/build-process.ts';
 import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from '../../src/build/compiler-startup-options.ts';
 import type { BuildWatchInputs } from '../../src/build/build-watch-inputs.ts';
 import { readPhaseCache } from '../../src/build/phase-cache.ts';
 import { ensureCheckoutPackages } from '../../src/build/checkout-packages.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from '../../src/build/compiler-read-tree.ts';
 import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from '../../src/build/compiler-process-group.ts';
-import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import { compilerPackageDirectory } from '../../src/build/compiler-installation.ts';
 import { compilerEnvironmentIdentity } from '../../src/build/compiler-environment.ts';
+import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
 
 const roots: string[] = [];
-const compilers: CompilerInstallation[] = [];
+const sharedCompiler = shareCompilerInstallation();
 const builders: PackBuilder[] = [];
 afterEach(async () => {
   for (const root of roots) {
@@ -42,14 +43,13 @@ afterEach(async () => {
     }
   }
   await Promise.all(builders.splice(0).map(builder => builder.close()));
-  await Promise.all(compilers.splice(0).map(compiler => compiler.dispose()));
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
 });
 
-async function buildFixture(root: string, options: PackBuildOptions & { signal: AbortSignal }): Promise<void> {
-  const builder = createPackBuilder(root);
+async function buildFixture(root: string, options: PackBuildOptions & { signal: AbortSignal }, builderOptions: PackBuilderOptions = {}): Promise<void> {
+  const builder = createPackBuilder(root, builderOptions);
   builders.push(builder);
   const signal = AbortSignal.any([options.signal, AbortSignal.timeout(120_000)]);
   try { await builder.build({ ...options, signal }); }
@@ -228,7 +228,7 @@ it('records external inputs read by content compiler worker threads', async ({ s
   }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   vi.spyOn(process, 'cwd').mockReturnValue(root);
-  await buildFixture(root, { args: ['--skip-fe'], signal });
+  await buildFixture(root, { args: ['--skip-fe'], signal }, { captureCompiler: sharedCompiler.capture });
   console.info('Worker input build completed', Math.round(performance.now() - started));
   const content = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
   expect(content.records.map((record: {name: string}) => record.name)).toEqual(modes);
@@ -259,7 +259,7 @@ it('refuses publication when a compiler worker cannot return its observations', 
   fs.mkdirSync(path.dirname(marker));
   fs.writeFileSync(marker, 'KEEP');
   vi.spyOn(process, 'cwd').mockReturnValue(root);
-  await expect(buildFixture(root, { args: ['--skip-fe'], signal })).rejects.toThrow(/Pack build process exited/);
+  await expect(buildFixture(root, { args: ['--skip-fe'], signal }, { captureCompiler: sharedCompiler.capture })).rejects.toThrow(/Pack build process exited/);
   expect(fs.readFileSync(marker, 'utf8')).toBe('KEEP');
   expect(fs.readdirSync(path.dirname(marker))).toEqual(['incumbent.txt']);
 }, 120_000 + 20_000);
@@ -311,7 +311,7 @@ it('compiles content through the captured worker and invalidates changed loader 
         ? {...result, source: 'globalThis.apackLoaderProbe = ' + JSON.stringify(marker) + ';\\n' + result.source} : result;
     }`);
   vi.stubEnv('NODE_OPTIONS', formatNodeOptions([...parseNodeOptions(process.env.NODE_OPTIONS), '--require', preload, '--import', pathToFileURL(imported).href, '--experimental-loader', pathToFileURL(loader).href]));
-  const builder = createPackBuilder(root);
+  const builder = createPackBuilder(root, { captureCompiler: sharedCompiler.capture });
   builders.push(builder);
   await builder.build({ args: ['--skip-fe'] });
 
@@ -375,7 +375,7 @@ it('terminates pack-created background work before accepting its candidate', asy
     'src/value.txt': 'DATA',
   }, { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
-  await buildFixture(root, { args: ['--skip-fe'], signal });
+  await buildFixture(root, { args: ['--skip-fe'], signal }, { captureCompiler: sharedCompiler.capture });
   const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
   expect(output.records[0].name).toBe('COMPLETE');
   if (process.platform !== 'win32') {
@@ -400,7 +400,7 @@ it('refuses candidate output changed by a compiler exit handler and retains the 
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   fs.mkdirSync(path.join(root, 'dist'));
   fs.writeFileSync(path.join(root, 'dist/incumbent.txt'), 'ACCEPTED');
-  const builder = createPackBuilder(root);
+  const builder = createPackBuilder(root, { captureCompiler: sharedCompiler.capture });
   builders.push(builder);
   await expect(builder.build({ args: ['--skip-fe'], signal })).rejects.toThrow();
   await builder.close();
@@ -465,8 +465,7 @@ it('terminates a compiling worker when its parent IPC disconnects without publis
     'src/data.ts': 'export default [];',
   }, { formats: { waiting: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { waiting: { path: 'src/data.ts', format: 'waiting' } } });
   ensureCheckoutPackages(REPO_ROOT);
-  const compiler = await captureCompilerInstallation();
-  compilers.push(compiler);
+  const compiler = await sharedCompiler.installation();
   const inputs = path.join(root, '.apack/compiler-inputs');
   fs.mkdirSync(inputs, { recursive: true });
   const grouped = process.platform !== 'win32';

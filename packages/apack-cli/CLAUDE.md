@@ -317,15 +317,24 @@ Because host code is inlined, `@apackdev/host` imports are fine in `src/`. The C
 
 ## Tests
 
-Two suites, split by what a spec costs:
+Three suites, split by what a spec costs and needs:
 
 - **`npm test -w @apackdev/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`). The
   per-change loop.
 - **`npm run test:integration -w @apackdev/cli`** — the expensive half (`tests/**/*.integration.spec.ts`,
   `vitest.integration.config.ts`, which caps worker threads because many of these specs spawn compilers of
   their own).
+- **The native half** (`tests/**/*.native.spec.ts`, `vitest.native.config.ts`, run by the root
+  `npm run test:native`) — specs that execute a captured native compiler runtime or hold live filesystem
+  watchers: the compiler native/ELF/PE library specs, `build-worker`, the `watch-*` specs and the watcher
+  cases of the frontend and package-input specs. Its own run so the gate can schedule it beside integration.
+  It runs one file at a time, and a case gets 300s (the `enormous` size), since each composes cold captures,
+  builds and watcher cycles; a case needing longer still declares a reviewed per-test budget.
+  A native case whose subject is not the compiler installation shares one per file
+  (`tests/_support/shared-compiler.ts`, passed to `createPackBuilder` as `captureCompiler`); a case about
+  capture, the captured runtime, an esbuild override or an installation's removal captures its own.
 
-On macOS the integration config requires a GitHub-hosted runner and refuses before importing specs.
+On macOS the integration and native configs require a GitHub-hosted runner and refuse before importing specs.
 Use the root guide's disposable compiler workflows for focused native checks; full integration and
 strict gates also belong on disposable CI. A generic `CI=true` or a self-hosted runner is insufficient.
 Live filesystem-watcher cases use the same runner guard even in unit files; mocked watcher-error

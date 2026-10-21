@@ -260,12 +260,15 @@ fixtures, repeated captured-runtime execution and startup/cancellation batches. 
 immediately if unrelated apps stop launching; preserve
 evidence without changing macOS security settings. Cause remains unproven in the
 [launch incident](docs/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
-The CLI integration config refuses macOS runs outside GitHub-hosted runners before loading test
+The CLI integration and native configs refuse macOS runs outside GitHub-hosted runners before loading test
 modules. Do not bypass that guard with fabricated runner variables; use disposable CI. This also applies
 when the root integration project or chain selects the CLI suite. Live watcher cases share this boundary
 even inside a unit suite; use the runner guard before opening their watchers. Pure unit checks remain local.
-Run required final strict acceptance with `gh workflow run ci.yml --ref <branch> -f strict_chain=true`: the
-disposable macOS runner runs strict `--all` with two cores and retains per-step evidence.
+Run required final strict acceptance with `gh workflow run ci.yml --ref <branch> -f strict_chain=true`: it
+runs strict `--all` on disposable macOS runners as parallel jobs (`strict-chain.yml`): a producers job, then
+two integration shards, two native shards, and the app half with the remaining checks, beside each other on
+its outputs — five, the most macOS jobs a free account runs at once — each with two cores and its own
+per-step evidence.
 
 Before a checkpoint's broad run, state what it must prove and which required checks cover it. Run the
 chain after the focused checks converge. On failure, inspect the preserved evidence and reproduce the
@@ -562,7 +565,7 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # retry of a failed step beside its first attempt rather than over it. So piping a
                          # run is harmless and the output is still answerable after the terminal has gone.
                          # Beside each `<step>.log` of what it said, a **failed** step's `<step>.files/`
-                         # holds what it wrote (`keepsOnFailure`, scripts/lib/chain-steps.ts), copied in
+                         # holds what it wrote (`keepsOnFailure` and `evidence`, scripts/lib/chain-steps.ts), copied in
                          # before the re-run — which is what would overwrite it, since a runner that clears
                          # its output directory on the way in takes the files of the attempt being
                          # diagnosed. That is how an app's own log survives the retry.
@@ -601,6 +604,14 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #              up to 10 minutes — a bound, not a schedule: it starts the moment
                          #              that run ends, and says what it is waiting for so a wait does not
                          #              read as a hang
+                         #   --only a,b run just the named steps, for one job of a split gate. Each producer
+                         #              left out must already be current here — its outputs and stamps
+                         #              downloaded from the job that ran it — or the run refuses, naming it
+                         #   --shard k/N  with --only naming pool steps: one vitest shard of their specs. A
+                         #              shard records no stamp, since it is part of each suite
+                         #   --job J    one job of the parallel strict gate, its steps derived from the graph
+                         #              (scripts/lib/chain-only.ts): producers, integration, native, app or rest,
+                         #              or a comma list run as one (`--job app,rest`)
                          # docs/reference/pipeline-commands.md: what each flag replaced and what was
                          # measured to choose it, including the three guards that do not separate a
                          # correlated drift from one step's.
@@ -610,6 +621,10 @@ npm run test:unit        # Vitest, as two pools: the host suites as one root run
                          # @apackdev/source condition, and the pack suite on its own resolving the published
                          # dist. Serial, measured — a second lane buys 3% for 87% more work.
                          # The list is scripts/lib/unit-suites.ts, which the chain reads too
+npm run test:native      # The native half (*.native.spec.ts): native compiler runtime and live-watcher specs,
+                         # one vitest run over vitest.native.config.ts, beside integration rather than in it.
+                         # One file at a time (two compiler-heavy files starve each other), at the `enormous`
+                         # size: 300s a case (`SIZE_MS`), since each composes cold captures and builds
 npm run test:integration # The expensive half of every suite that has one (@apackdev/cli, @app/repo-checks,
                          # @app/publish-checks), as **one vitest run** over vitest.integration.config.ts's
                          # projects rather than three `npm -w` invocations in series: measured 2026-09-29,
@@ -636,8 +651,10 @@ npm run test:integration # The expensive half of every suite that has one (@apac
                          # knob for; vitest-dev/vitest#4497, #6479, #8164). Every test passes and the run
                          # exits 1.
                          # The fix is to turn the loop: `afterEach(() => new Promise(r => setImmediate(r)))`
-                         # caps a file's *cases* at the longest of them. Six files have it, and
-                         # `npm run measure:loop` found the last two — measured 2026-10-06,
+                         # caps a file's *cases* at the longest of them. Every integration and native spec
+                         # gets it from its config's setup file (`tests/_support/turn-event-loop.ts`), since
+                         # any all-synchronous file can breach the window on a slow runner.
+                         # `npm run measure:loop` found the first such files — measured 2026-10-06,
                          # `published-sdk-any` was the half's worst block at 13.6s over eight ~200ms cases
                          # and `published-exports` 9.1s over four. Neither was slow; each was a sum being
                          # reported as a block, which is the shape to look for.

@@ -1,6 +1,6 @@
 # PR #246 review — findings
 
-Findings of the review planned in [the review plan](../plans/pr-246-review.md), for
+Findings of the review planned in [the review plan](../archive/plans/pr-246-review.md), for
 [#246](https://github.com/spankyed/apack/pull/246) (`session/settings-pack-contracts` against `master`,
 merge base `d7e77829a`). Each finding was checked against the source by reading the cited code. A finding
 marked *plausible* is argued from the code but was not reproduced. Severity levels are the plan's.
@@ -58,7 +58,7 @@ focused verification; remaining application/native acceptance is listed separate
 | 8.5, 8.6 | Completed: correct import lifecycle documentation and reset/import refusal text | `c960deca3` |
 | Completeness: source-coverage claim | Completed: historical acceptance is explicitly bounded to its tested source | `278661695` |
 | Completeness: fresh integrated acceptance | Recorded with explicit limits: requested app/native/smoke/packaged checks pass; integration inventory passes across retained runs; no single full strict pass claimed | [Current acceptance runs and exact source pins](pr-246-acceptance.md) |
-| 3a.1 | Deferred: a cache-validity decision for check steps | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
+| 3a.1 | Deferred: a cache-validity decision for check steps | [Validation feedback budget](../archive/plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
 | 3a.2, 3a.3 | Completed: resolve a dangling link from its physical directory; name a broken authored link | "fix(build): resolve dangling watch links physically, name broken authored links, restart dev servers after publication" |
 | 6.1 | Completed: unloaded tabs open through the shell's wait, are dimmed, and the switch hotkeys skip them | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
 | 6.3 | Completed: a refused replacement unloads the frontend it would have replaced | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
@@ -71,7 +71,7 @@ focused verification; remaining application/native acceptance is listed separate
 | 4.1, 4.2, 4.3, 4.4 | Completed: guide examples and names match the schema and exports; every whole-manifest fence parses | "docs: align public pack guides with the manifest schema and exports" |
 | 9.1, 9.3, 9.4 | Completed: symlinked documents open; reopening refetches; a rebuilt graph keeps its layout | "fix(default-setup): open symlinked documents, refetch reopened items, keep layouts of rebuilt graphs" |
 | 9.2 | Completed: each `FLOWS_CONNECTED` asks for the shown flow again, keeping its node selection and editor while the node exists; a flow that is gone gives way to the published root flow | "fix(flows): refresh the shown flow when the backend republishes, falling back to the root flow" |
-| 10.1, 10.2, 10.7 | Deferred: deadline and declared-cost decisions; no change until measured | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
+| 10.1, 10.2, 10.7 | Deferred: deadline and declared-cost decisions; no change until measured | [Validation feedback budget](../archive/plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
 | 10.3–10.6 | Completed: strict runs keep their own group; each filtered step's report is verified; the fixture build precedes repo-checks integration; uploads point at `.apack` output | "ci: keep strict runs, verify each filtered step, build fixtures first, upload .apack output" |
 | S.1, S.2 | Completed for startup-invalid settings: persisted-row preflight and host-only recovery | `3a6b649b5`; real recovery/reopen passed; [acceptance evidence](pr-246-acceptance.md) |
 | S.4 | Closed by 6.3: no kept frontend is left with a dropped settings binding | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
@@ -87,7 +87,7 @@ focused verification; remaining application/native acceptance is listed separate
    record. The complete app and packaged routes have fresh passing runs.
 3. Deferred findings 3a.1, 10.1, 10.2 and 10.7 remain with their owning plan. R-D2 remains the accepted
    physical-watch-path limitation; R-D1's restart path is source-reviewed without a dedicated spec.
-   The cold-build cost finding [R-F1](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) remains with the validation-feedback budget plan.
+   The cold-build cost finding [R-F1](../archive/plans/validation-feedback-budget.md#review-findings-this-plan-owns) remains with the validation-feedback budget plan.
 
 ## Repair-diff review (2026-10-20)
 

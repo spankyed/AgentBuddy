@@ -18,7 +18,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { diffableStamp, firstChange, freshnessSweep, REPO_ROOT, stampRecord } from '@apackdev/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
-import { holdPoolLock, poolWorkers, POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
+import { DIAGNOSTIC_RUN_ENV, holdPoolLock, poolWorkers, POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
 import type { ReportedRun } from './lib/spec-durations-reporter.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from './lib/chain-steps.ts';
@@ -28,6 +28,7 @@ import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 import { asDuration, durationsOf, halfTotal, markedSpecs, trendOf, placementOf, pruneDurationCache, slowestFiles, tailBar, uncheckedNote, UNMARKED_NOTE, writeDurations } from './lib/spec-durations.ts';
 import { readReportedRun, SPEC_DURATIONS_FILE } from './lib/spec-durations-reporter.ts';
 import { HALVES } from './lib/spec-halves.ts';
+import { parseShard, shardArg } from './lib/chain-only.ts';
 
 exitOnEpipe();
 
@@ -178,12 +179,16 @@ async function main(): Promise<void> {
   const { half, suites: suitesOf, run } = POOLS[kind];
   const suites = suitesOf();
   const all = process.argv.includes('--all');
+  // One shard of the pool's specs (`chain-only.ts`), passed to vitest as given. A shard is part of each suite,
+  // so it records no stamp and runs every suite whatever their stamps say
+  const shardFlag = process.argv.find((arg) => arg.startsWith('--shard='));
+  const shard = shardFlag === undefined ? undefined : parseShard(shardFlag.slice('--shard='.length));
 
   // Under what conditions this run counts. A pass by itself is not a pass under the chain, so the two keep
   // separate records — `CHAIN_RUN_ENV` has the sequence that made this necessary.
   const provenance = provenanceOf();
   // The sweep lives and dies inside this call, and what comes back is text
-  const running = decide(suites, kind, all, provenance, workers);
+  const running = decide(suites, kind, all || shard !== undefined, provenance, workers);
   const stale = running.map(({ suite }) => suite);
   if (stale.length === 0) {
     console.log(`${kind} pool: all ${suites.length} project(s) up to date`);
@@ -200,10 +205,11 @@ async function main(): Promise<void> {
   }
 
   // What each run covers is the pool's to say; a suite is stamped only by the run that included it.
-  const runs = run(stale, workers);
+  const runs = run(stale, workers).map((each) => shard === undefined ? each : { ...each, args: [...each.args, shardArg(shard)] });
   // Said out loud, because a run that records nothing looks exactly like one that does until the next run
   // repeats it. `recordsVerdict` has why.
   if (!recordsVerdict()) console.log(`${kind} pool: recording nothing — this is a diagnostic run`);
+  else if (shard !== undefined) console.log(`${kind} pool: shard ${shard.index} of ${shard.total}, recording nothing — a shard is part of each suite`);
 
   for (const { suites: covered, command, args } of runs) {
     // `stampedRunAll`, under `recordRun`, fingerprints every suite this run covers before it starts and writes
@@ -243,12 +249,14 @@ async function main(): Promise<void> {
         if (reported === undefined) {
           throw new Error(`${kind} pool ran and its durations reporter wrote nothing to ${reportFile} — the reporter did not run, so nothing in this run was measured, no @slow: marker was checked and no project was confirmed to have reported. scripts/lib/spec-durations-reporter.ts pins its hooks against vitest's own interface, so a typecheck will name the cause`);
         }
-        const absent = projectsThatDidNotRun(covered.map((suite) => suite.workspace), reported);
+        // A shard can hold no file of a project at all, so only a whole run can expect every project to report
+        const absent = shard === undefined ? projectsThatDidNotRun(covered.map((suite) => suite.workspace), reported) : [];
         if (absent.length > 0) {
           throw new Error(`${kind} pool asked vitest for ${covered.length} projects and ${absent.join(', ')} never reported — a --project filter matched nothing, so their names and vitest's project names have diverged`);
         }
         reportDurations(kind, covered, reported);
       },
+      shard === undefined ? process.env : { ...process.env, [DIAGNOSTIC_RUN_ENV]: '1' },
     );
   }
 }

@@ -24,8 +24,8 @@ its requirements are complete.
 ## Current work
 
 The [completed settings and pack contracts goal](archive/goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19)
-records the delivered architecture and acceptance. [Manifest maturity](plans/manifest-maturity.md) remains
-the roadmap for contract evolution and separate/deferred tracks. Consult document status rather than
+records the delivered architecture and acceptance, and the archived [manifest maturity](archive/plans/manifest-maturity.md)
+roadmap the decisions behind it. Consult document status rather than
 treating historical handoffs as additional instructions. Other goals and plans carry their own status;
 this index is not a second backlog.
 

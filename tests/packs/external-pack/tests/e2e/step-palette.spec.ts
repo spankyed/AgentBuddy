@@ -1,4 +1,5 @@
 import { test, expect } from '@apackdev/testing';
+import { acceptedRuntime, frontendAccepted } from './_support/pack-frontend.ts';
 
 /** Installed declarations remain visible while their executable frontend is disabled. */
 test('an open flow palette follows external step disable and re-enable', async ({ app, appPage }) => {
@@ -23,6 +24,7 @@ test('an open flow palette follows external step disable and re-enable', async (
   }).toPass({ timeout: 5_000 });
   const toggle = () => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
     .send({ type: 'UI.TOGGLE_ENABLED', packId: 'e2e-fixture' }));
+  const runtime = await acceptedRuntime(appPage, 'e2e-fixture');
   let disabled = false;
   try {
     await toggle(); disabled = true;
@@ -31,6 +33,7 @@ test('an open flow palette follows external step disable and re-enable', async (
     await expect(stamp).toHaveAttribute('draggable', 'false');
     await expect(stamp).toHaveClass(/bg-purple-900/);
     await toggle(); disabled = false;
+    await frontendAccepted(appPage, 'e2e-fixture', runtime);
     await expect(stamp).toBeEnabled(); await expect(pulse).toBeEnabled();
     await expect(stamp).toHaveAttribute('draggable', 'true');
   } finally {

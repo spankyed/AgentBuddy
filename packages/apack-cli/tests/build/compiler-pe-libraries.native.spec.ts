@@ -14,7 +14,7 @@ import { createCompilerWatchMatcher, type CompilerWatchPaths } from '../../src/b
 import { createPackBuilder } from '../../src/build/build-process.ts';
 import { assertNativeCompilerObservations, createCompilerFileView, relativeCompilerPath } from '@apackdev/host/build/compiler-inputs';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
-import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import { compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
 import { createWindowsPublisherPolicyFixture } from '../_support/windows-publisher-policy.ts';
@@ -30,6 +30,9 @@ import { readCompilerRuntimeInputs } from '../../src/build/compiler-runtime.ts';
 import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from '../../src/build/compiler-startup-options.ts';
 import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
 import { spawnCompilerWorker } from '../../src/build/compiler-process.ts';
+import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
+
+const sharedCompiler = shareCompilerInstallation();
 
 it.runIf(process.platform === 'win32')('reads Windows loader state concurrently across owned threads without native corruption', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-report-'));
@@ -850,7 +853,7 @@ it.runIf(process.platform === 'win32').each([
       const owner = receipt.modules.find(module => fs.realpathSync.native(module.source).toLowerCase() === fs.realpathSync.native(${JSON.stringify(addon)}).toLowerCase());
       fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({value:addon.read(),workspace,owner}));
     }`);
-    compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
+    compiler = await sharedCompiler.installation({ cwd: pack });
     process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
     frontend = await startPackFrontend(pack, compiler, signal);
     const loaded = JSON.parse(fs.readFileSync(proof, 'utf8')) as { value: number; workspace: string; owner: CapturedNativeModule };
@@ -962,7 +965,7 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true}
   worker.once('exit', code => { if (code) reject(new Error('Native thread exited with ' + code)); });
 });`);
       }
-      builder = createPackBuilder(pack);
+      builder = createPackBuilder(pack, { captureCompiler: sharedCompiler.capture });
       await builder.build({ args: ['--skip-fe'] });
       checkpoint('initial build completed');
       const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line)) as {
@@ -1087,7 +1090,7 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
     checkpoint('fixture ready');
     // Drain runner messages before cold synchronous compiler inventory work.
     await new Promise<void>(resolve => setImmediate(resolve));
-    builder = createPackBuilder(pack);
+    builder = createPackBuilder(pack, { captureCompiler: sharedCompiler.capture });
     let observed: CompilerWatchPaths = new Map();
     unsubscribe = builder.subscribeFrontendInputs(update => { observed = update.paths; });
     const builds = vi.spyOn(builder, 'build'), publications = vi.fn(async () => {});

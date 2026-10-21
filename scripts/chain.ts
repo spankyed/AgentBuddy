@@ -39,7 +39,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason } from '@apackdev/host/build/packages-built';
-import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, keptOnFailure, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { stampFor, STAMP_DIR, unitFor } from './lib/chain-stamps.ts';
 import { evidenceLine, openRunEvidence, pruneRunEvidence, type RunEvidence } from './lib/chain-evidence.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
@@ -53,6 +53,8 @@ import { driftedSteps, measurementsFrom, outgrownRungs, willNotCache } from './l
 import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { CHAIN_RUN_ENV, CHAIN_CORES_ENV, DIAGNOSTIC_RUN_ENV, poolWorkerLimit, measureCommandFor, poolForStep, poolDurationLines } from './lib/unit-pool.ts';
+import { parseShard, selectOnly, shardArg, STRICT_JOBS, strictJobSteps, type Shard, type StrictJob } from './lib/chain-only.ts';
+import { TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
@@ -267,9 +269,10 @@ class StepFailed extends Error {
  * The step, with its stamp written only where it passed. The fingerprint is taken before it runs, so a
  * source edited mid-run records as not done rather than as covered.
  */
-async function runAndStamp(step: ChainStep, all: boolean, budget: number): Promise<Result> {
-  const force = all ? step.forceArgs ?? [] : [];
-  if (step.neverCachedBecause !== undefined) return run(step.name, step.timeout, force, envFor(step, budget));
+async function runAndStamp(step: ChainStep, all: boolean, budget: number, extra: readonly string[] = []): Promise<Result> {
+  const force = [...all ? step.forceArgs ?? [] : [], ...extra];
+  // A shard of a step passed part of it, which is not the step: it records nothing, as the pool beneath it does
+  if (step.neverCachedBecause !== undefined || extra.length > 0) return run(step.name, step.timeout, force, envFor(step, budget));
   let result: Result | undefined;
   try {
     await stampedRun(step.name, unitFor(step, budget), stampFor(step.name), async () => {
@@ -352,12 +355,34 @@ async function main(): Promise<void> {
   // the chain fails on it. Opt-in because the honest answer can be a long list — `api:check` rebuilding
   // `@apackdev/testing` mid-chain once left twenty passed steps stale, every one of them correctly named
   const strict = args.flags.has('strict');
+  // Part of the chain in one job (`chain-only.ts`): the steps named, with their producers' outputs required
+  // to be current here already, and for pool steps one shard of their specs
+  // Refusals rather than failures, printed as the lock's is: a throw would read as the chain itself failing
+  const refuse = (message: string): void => { console.error(`\n${message}`); process.exitCode = 1; };
+  // Several jobs run as one when the runners are fewer than the jobs: `--job app,rest`
+  const jobs = args.values.job?.split(',').map((name) => name.trim()).filter((name) => name !== '');
+  const unknownJob = jobs?.find((name) => !(STRICT_JOBS as readonly string[]).includes(name));
+  if (unknownJob !== undefined) return refuse(`--job takes ${STRICT_JOBS.join(', ')} or a comma list of them, not '${unknownJob}'`);
+  if (jobs !== undefined && args.values.only !== undefined) return refuse('--job and --only both choose the steps; give one');
+  let only = args.values.only?.split(',').map((name) => name.trim()).filter((name) => name !== '');
+  let shard: Shard | undefined;
+  try { shard = args.values.shard === undefined ? undefined : parseShard(args.values.shard); }
+  catch (err) { return refuse((err as Error).message); }
+  const shardArgs = shard === undefined ? [] : [shardArg(shard)];
   let cached = 0;
 
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
   // than halfway through a six-minute run
-  const steps = orderedSteps(chainSteps(e2e ? ['test:e2e'] : []));
+  let steps = orderedSteps(chainSteps(e2e ? ['test:e2e'] : []));
   const budget = budgetFrom(args.values.cores);
+  if (jobs !== undefined) {
+    const chosen = new Set(jobs.flatMap((name) => strictJobSteps(steps, name as StrictJob, TYPECHECK_LEGS.map((leg) => leg.name),
+      (step) => steps.some((candidate) => candidate.name === step && needsApp(candidate)))));
+    only = steps.map((step) => step.name).filter((name) => chosen.has(name));
+  }
+  if (shard !== undefined && (only === undefined || only.some((name) => poolForStep(name) === undefined))) {
+    return refuse('--shard splits a pool\'s specs, so it needs --only or --job naming pool steps and nothing else');
+  }
 
   /** Its verdict, asked at dispatch — see `dispatch` for why that timing is load-bearing */
   /**
@@ -376,6 +401,18 @@ async function main(): Promise<void> {
     step.neverCachedBecause !== undefined
       ? `never cached: ${step.neverCachedBecause}`
       : asking.staleReason(unitFor(step, budget), stampFor(step.name));
+
+  if (only !== undefined) {
+    // A never-cached producer is verified by its readers instead: `packages:ensure`'s are told the packages are
+    // built (`PACKAGES_PREBUILT_ENV`) and refuse a stale one rather than rebuilding it
+    const sweep = freshnessSweep();
+    try {
+      steps = selectOnly(steps, only, (producer) => {
+        const step = steps.find((candidate) => candidate.name === producer)!;
+        return step.neverCachedBecause !== undefined ? null : staleReason(step, sweep);
+      });
+    } catch (err) { return refuse((err as Error).message); }
+  }
 
   if (dry) {
     // One question about every step, and nothing runs while it is asked, so one reading of the tree answers it all
@@ -498,7 +535,7 @@ async function main(): Promise<void> {
       return false;
     },
     run: async (step) => {
-      const result = await runAndStamp(step, all, budget);
+      const result = await runAndStamp(step, all, budget, shardArgs);
       // A net rather than the mechanism: the graph already orders every reader of these paths after this
       // step, so nothing has read them yet. It costs a map scan and it is what a step reading something it
       // is *not* ordered after would need — see `freshnessSweep`'s note on what it cannot distinguish.
@@ -567,7 +604,7 @@ async function main(): Promise<void> {
     // clears its output directory on the way in overwrites what the attempt being diagnosed wrote — the
     // same reason the sweep above is read here rather than after. Kept on any failure, not only a
     // classified one: a step that ran alone or timed out leaves the same files and nobody re-runs it.
-    const left = evidence?.keepFiles(step.name, step.keepsOnFailure ?? []) ?? [];
+    const left = evidence?.keepFiles(step.name, keptOnFailure(step)) ?? [];
     if (left.length > 0) console.log(dim(`  kept what it left behind: ${left.join(', ')}`));
     if (classifying) {
       // `run`, never `runAndStamp`: a step that passes alone has not passed the chain, and stamping it here
@@ -582,14 +619,14 @@ async function main(): Promise<void> {
       // failure of `test:unit:host` was re-run here, the re-run wrote all eleven project stamps, and the next
       // chain ran zero tests and called the step green. `recordsVerdict` (`scripts/lib/unit-pool.ts`) carries
       // the evidence and why a *build* under the same re-run still records.
-      const retry = await run(step.name, step.timeout, all ? step.forceArgs ?? [] : [],
+      const retry = await run(step.name, step.timeout, [...all ? step.forceArgs ?? [] : [], ...shardArgs],
         { ...envFor(step, budget), [DIAGNOSTIC_RUN_ENV]: '1' }, `${step.name}.retry`);
       // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
       // land on the one number a reader compares between runs.
       classifyMs = retry.ms;
       // The retry's own, beside the first attempt's rather than over them — a re-run that passed and one
       // that failed wrote different files, and which it was is the question being asked
-      evidence?.keepFiles(`${step.name}.retry`, step.keepsOnFailure ?? []);
+      evidence?.keepFiles(`${step.name}.retry`, keptOnFailure(step));
       console.log(classifyLine(retry, beside));
     }
   }

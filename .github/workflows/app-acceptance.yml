@@ -9,7 +9,7 @@ on:
         options: [all, app, external, cli, build, integration, packaged]
         default: all
       test:
-        description: Playwright name pattern; integration requires space-separated spec file paths
+        description: Playwright name pattern; integration requires space-separated integration or native spec file paths
         type: string
         default: ''
   workflow_call:
@@ -85,14 +85,24 @@ jobs:
           APACK_INTEGRATION_FILES: ${{ inputs.test }}
         run: |
           read -r -a files <<< "$APACK_INTEGRATION_FILES"
-          if (( ${#files[@]} == 0 )); then echo 'Name explicit integration spec files'; exit 1; fi
+          if (( ${#files[@]} == 0 )); then echo 'Name explicit integration or native spec files'; exit 1; fi
+          integration=(); native=()
           for file in "${files[@]}"; do
-            if [[ "$file" != packages/*/*.integration.spec.ts || ! -f "$file" ]]; then
-              echo "Not an integration spec: $file"; exit 1
+            if [[ ! -f "$file" ]]; then echo "No such spec: $file"; exit 1
+            elif [[ "$file" == packages/*/*.integration.spec.ts ]]; then integration+=("$file")
+            elif [[ "$file" == packages/*/*.native.spec.ts ]]; then native+=("$file")
+            else echo "Not an integration or native spec: $file"; exit 1
             fi
           done
           mkdir -p .apack/tests/results
-          node scripts/with-source.mjs node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts "${files[@]}" --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1 --poolOptions.forks.maxForks=2 --poolOptions.forks.minForks=1 --bail=1 --reporter=default --reporter=json --outputFile=.apack/tests/results/integration.json
+          # Each half runs under its own root config, which is what includes its files. The native half's live
+          # watchers run one at a time, as the strict gate's native job runs them: two at once on this runner
+          # starve each other's rebuild deadlines
+          run() {
+            node scripts/with-source.mjs node node_modules/vitest/vitest.mjs run --config "vitest.$1.config.ts" "${@:3}" --poolOptions.threads.maxThreads=$2 --poolOptions.threads.minThreads=1 --poolOptions.forks.maxForks=$2 --poolOptions.forks.minForks=1 --bail=1 --reporter=default --reporter=json --outputFile=".apack/tests/results/$1.json"
+          }
+          if (( ${#integration[@]} )); then run integration 2 "${integration[@]}"; fi
+          if (( ${#native[@]} )); then run native 1 "${native[@]}"; fi
       - name: Prepare external default fork
         if: ${{ inputs.suite == 'all' || inputs.suite == 'external' }}
         run: npm run test:external-pack:fork

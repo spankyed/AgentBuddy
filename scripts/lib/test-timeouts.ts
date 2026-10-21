@@ -14,7 +14,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
-import { INTEGRATION_SUITES } from './chain-steps.ts';
+import { INTEGRATION_SUITES, NATIVE_SUITES } from './chain-steps.ts';
 import { CONFIG_BY_HALF, halfOfPath } from './spec-halves.ts';
 import type { Size } from './unit-suites.ts';
 
@@ -45,6 +45,27 @@ export const overrideKey = (override: Pick<TimeoutOverride, 'file' | 'runner' | 
  * The callable is found by walking to the leftmost identifier, so `it`, `it.only`, `it.skipIf(x)(…)` and
  * `it.each(table)(…)` all resolve to `it` and are read at the same argument position.
  */
+/**
+ * A timeout written as arithmetic over numeric literals — `2 * 60_000 + 20_000`, the way a case composes its
+ * phases — evaluated exactly; anything naming a value (a constant, a call) is `undefined`, which the budget
+ * check treats as needing review rather than guessing.
+ */
+export function constantMs(node: ts.Expression): number | undefined {
+  if (ts.isNumericLiteral(node)) return Number(node.text.replace(/_/g, ''));
+  if (ts.isParenthesizedExpression(node)) return constantMs(node.expression);
+  if (!ts.isBinaryExpression(node)) return undefined;
+  const left = constantMs(node.left);
+  const right = constantMs(node.right);
+  if (left === undefined || right === undefined) return undefined;
+  switch (node.operatorToken.kind) {
+    case ts.SyntaxKind.PlusToken: return left + right;
+    case ts.SyntaxKind.MinusToken: return left - right;
+    case ts.SyntaxKind.AsteriskToken: return left * right;
+    case ts.SyntaxKind.SlashToken: return left / right;
+    default: return undefined;
+  }
+}
+
 export function timeoutOverrides(absFile: string, repoRoot: string): TimeoutOverride[] {
   const source = ts.createSourceFile(absFile, fs.readFileSync(absFile, 'utf8'), ts.ScriptTarget.Latest, true);
   const found: TimeoutOverride[] = [];
@@ -61,7 +82,7 @@ export function timeoutOverrides(absFile: string, repoRoot: string): TimeoutOver
             file: path.relative(repoRoot, absFile),
             runner: head.text,
             name: first && ts.isStringLiteralLike(first) ? first.text : '',
-            ms: ts.isNumericLiteral(argument) ? Number(argument.text.replace(/_/g, '')) : undefined,
+            ms: ts.isSpreadElement(argument) ? undefined : constantMs(argument),
             line: source.getLineAndCharacterOfPosition(argument.getStart(source)).line + 1,
           });
         }
@@ -196,14 +217,15 @@ export function bareWaits(absFile: string, repoRoot: string): BareWait[] {
 export function sizeOf(file: string): Size {
   // The E2E suite is its own target and belongs to no package
   if (file.endsWith('playwright.config.ts')) return 'large';
-  // Integration first: the two names are read from `CONFIG_BY_HALF`, which is where the convention lives
+  // The expensive halves first: the names are read from `CONFIG_BY_HALF`, which is where the convention lives
+  if (file.endsWith(CONFIG_BY_HALF.native)) return 'enormous';
   if (file.endsWith(CONFIG_BY_HALF.integration)) return 'large';
   if (file.endsWith(CONFIG_BY_HALF.fast)) return 'small';
   if (file.endsWith('.spec.ts')) {
     const dir = file.split('/')[1];
-    return halfOfPath(file) === 'integration' && INTEGRATION_SUITES.some((suite) => suite.dir === dir)
-      ? 'large'
-      : 'small';
+    const half = halfOfPath(file);
+    if (half === 'native' && NATIVE_SUITES.some((suite) => suite.dir === dir)) return 'enormous';
+    return half === 'integration' && INTEGRATION_SUITES.some((suite) => suite.dir === dir) ? 'large' : 'small';
   }
   // Refused rather than answered. Every other file would get `small` — a confident wrong answer, and the
   // budget is a ceiling, so the confident wrong answer is the permissive one.

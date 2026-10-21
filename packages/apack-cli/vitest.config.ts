@@ -19,6 +19,6 @@ export default defineConfig({
     // another process are `*.integration.spec.ts` and run from `vitest.integration.config.ts`.
     // `CLAUDE.md` has the rule for choosing, which is a judgement rather than a measured threshold.
     include: ['tests/**/*.spec.ts'],
-    exclude: ['**/*.integration.spec.ts', '**/node_modules/**'],
+    exclude: ['**/*.integration.spec.ts', '**/*.native.spec.ts', '**/node_modules/**'],
   },
 });

@@ -243,7 +243,7 @@ Final.
 
 **Done when:**
 - `packages/renderer/src/core/actors/application.ts` holds no machine.
-- `git grep -E "from ['\"](vue|@/)|window\.|localStorage" packages/apack-host/src/fe` matches nothing, with a boundary spec in `packages/apack-host/tests` enforcing it.
+- `git grep -E "from ['\"](vue|@)|window\.|localStorage" packages/apack-host/src/fe` matches nothing, with a boundary spec in `packages/apack-host/tests` enforcing it.
 - The host shell specs pass with no `vi.mock`.
 - A link to an external pack's plugin clicked before that pack's frontend loads opens it once it loads (the host shell spec above, and the E2E link case with the pack's load delayed).
 - The full E2E suite passes.

@@ -21,7 +21,10 @@ try {
       process.env, { prebuilt: true }), E2E_DATA_DIR: data,
       APACK_KEEP_FORK: phase ? '' : '1', APACK_FORK_BOOT_CHECK: phase ?? '',
     };
-    const result = await run(process.execPath, [playwright, 'test', '-g', phase ? 'default lifecycle survives normal boot' : 'externally built default fork'],
+    // Its own output directory: the fixture packs' suites run beside this one in the same pack directory, and
+    // Playwright clears its output directory as it starts
+    const result = await run(process.execPath, [playwright, 'test', '-g', phase ? 'default lifecycle survives normal boot' : 'externally built default fork',
+      '--output', path.join(pack, '.apack', 'tests', 'fork-results')],
       { cwd: pack, env, maxBuffer: 16 * 1024 * 1024 });
     process.stdout.write(result.stdout);
     process.stderr.write(result.stderr);

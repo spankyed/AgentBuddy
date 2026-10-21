@@ -5,7 +5,7 @@ import { PUBLISH_TREE } from '@apackdev/host/build/published-manifest';
 import { coresFor } from './core-budget.ts';
 import type { TimeoutClass } from './step-timeouts.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
-import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-halves.ts';
+import { CONFIG_BY_HALF, hasHalf, type Half } from './spec-halves.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
 import { LEG_TIMEOUT, scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
 import { API_CHECK_TIMEOUT } from './api-report-packages.ts';
@@ -77,6 +77,17 @@ export interface ChainStep {
    * learn you wanted it only after the failure.
    */
   readonly keepsOnFailure?: readonly string[];
+  /**
+   * What a step writes as an account of its run — test results, an app's log, traces — that no step reads.
+   *
+   * Two writers of one evidence path conflict, as two writers of an output do, and a failed step's evidence
+   * is kept like `keepsOnFailure` (`keptOnFailure` below). **It is no part of the step's cache key**, which is
+   * the difference from `outputs`: an output's bytes are what a later step consumes, so another writer
+   * changing them makes the step stale; a result directory another run rewrote says nothing about whether
+   * this step's inputs moved. Declared as an output, every E2E run turned `test:smoke` stale with no input
+   * changed, since both write Playwright's output directory.
+   */
+  readonly evidence?: readonly string[];
   /**
    * A step the chain does not cache, and why. Set means uncached; the chain prints this sentence where a
    * cache verdict would go, so it is a reason and not a flag — the one line it replaced was hardcoded about
@@ -340,12 +351,16 @@ export function conflictsOf(step: ChainStep, steps: readonly ChainStep[] = CHAIN
   // --pack` packing a tarball inside each tree it checked, and that is a mutex against 29 of 30 steps for a
   // tool that takes a tarball path. `scripts/packages-check.ts` packs outside the repository instead, so the
   // distinction has no subject here; it is written down because it is what a future transient writer needs.
+  const writes = (one: ChainStep) => [...(one.outputs ?? []), ...(one.evidence ?? [])];
   return steps
-    .filter((other) => other.name !== step.name
-      && overlaps(other.outputs ?? [], step.outputs ?? []))
+    .filter((other) => other.name !== step.name && overlaps(writes(other), writes(step)))
     .map((other) => other.name)
     .sort();
 }
+
+/** What the chain copies aside when a step fails: what it declares keeping, and all of its evidence */
+export const keptOnFailure = (step: ChainStep): readonly string[] =>
+  [...new Set([...(step.keepsOnFailure ?? []), ...(step.evidence ?? [])])];
 
 /** A step with its edges worked out: what it waits for, and what it may not run beside. */
 export interface PlannedStep extends ChainStep {
@@ -428,7 +443,7 @@ const ROOT = ['package-lock.json'];
 /**
  * The root vitest config a run of one half uses — which projects it pools is an input to every suite in it.
  *
- * `CONFIG_BY_HALF` is the one record of which file runs which half, and it is the one `hasSplit` and so
+ * `CONFIG_BY_HALF` is the one record of which file runs which half, and it is the one `hasHalf` and so
  * `INTEGRATION_SUITES` already derive from. The same two names stood here as a `Record<Half, string>` of
  * their own until 2026-10-02 — a second copy one line from a use of its own derivative. The names are a
  * convention rather than a computation, and they are the same convention at both levels: the root config
@@ -624,7 +639,7 @@ const SOURCE_RUNNER = ['scripts/with-source.mjs', 'packages/apack-host/src/build
 const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-pool.ts', 'scripts/lib/unit-suites.ts',
   'scripts/lib/exit-on-epipe.ts', ...SOURCE_RUNNER, 'scripts/lib/spec-durations.ts',
   'scripts/lib/spec-durations-reporter.ts',
-  'scripts/lib/spec-halves.ts', ...BOUNDED_RUNNER];
+  'scripts/lib/spec-halves.ts', 'scripts/lib/chain-only.ts', ...BOUNDED_RUNNER];
 /**
  * What `build:default-setup` writes. `src/__generated__` is under the `src` it also reads, so it has to be declared:
  * `fingerprintUnit` excludes a unit's own output from its own fingerprint, and that is what stops the step
@@ -730,7 +745,7 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
  * rather than the code is the reason that is a judgement rather than a rewrite — `driftedSteps` reports both
  * directions and neither is self-evidently the code's.
  */
-export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 34, pack: 19, integration: 60 };
+export const POOL_SECONDS: Record<'host' | 'pack' | 'integration' | 'native', number> = { host: 34, pack: 19, integration: 60, native: 60 };
 
 /**
  * The files a chain step is declared in — the two tables, as one list, repo-relative.
@@ -781,7 +796,7 @@ export function suiteInputs(suite: UnitSuite, half: Half): string[] {
     ...suiteWorkspace(suite.dir),
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
     ...(reads.inputs ?? []),
-    ...(half === 'integration' ? reads.integrationInputs ?? [] : []),
+    ...(half !== 'fast' ? reads.integrationInputs ?? [] : []),
     ...(reads.packages ? PACKAGE_BUILD_READS : []),
     ...(reads.pack ? PACK_OUTPUTS : []),
     ...(reads.repo ? EVERY_SOURCE : []),
@@ -796,7 +811,10 @@ export function suiteInputs(suite: UnitSuite, half: Half): string[] {
  * by the first automatically, and `chain-inputs.spec.ts` fails the second until it names the package too —
  * which is the half a derivation cannot do for itself, an npm script being text.
  */
-export const INTEGRATION_SUITES = UNIT_SUITES.filter((suite) => hasSplit(path.join(REPO_ROOT, 'packages', suite.dir)));
+export const INTEGRATION_SUITES = UNIT_SUITES.filter((suite) => hasHalf(path.join(REPO_ROOT, 'packages', suite.dir), 'integration'));
+
+/** The suites with a native half (`NATIVE_SUFFIX`), derived the same way: one step runs them, `npm run test:native` */
+export const NATIVE_SUITES = UNIT_SUITES.filter((suite) => hasHalf(path.join(REPO_ROOT, 'packages', suite.dir), 'native'));
 
 /**
  * The cache key of a step that runs suites: the union of what each of them reads, and nothing else.
@@ -814,7 +832,7 @@ function inputsForSuites(suites: readonly UnitSuite[], half: Half): Pick<ChainSt
   return {
     inputs: [...new Set(suites.flatMap((suite) => suiteInputs(suite, half)))].sort(),
     ...(suites.some((suite) => SUITE_READS[suite.dir]?.repo)
-      ? { excludes: [...(half === 'integration' ? [] : FIXTURE_OUTPUTS), ...FIXTURE_TEST_OUTPUT] }
+      ? { excludes: [...(half !== 'fast' ? [] : FIXTURE_OUTPUTS), ...FIXTURE_TEST_OUTPUT] }
       : {}),
   };
 }
@@ -910,8 +928,8 @@ const TYPECHECK_STEPS: readonly ChainStep[] = TYPECHECK_LEGS
  * literals; this is the reverse lookup, and `unit-pool.spec.ts` holds the two to each other so neither can
  * be renamed alone.
  */
-export const poolStepName = (pool: 'host' | 'pack' | 'integration'): string =>
-  (pool === 'integration' ? 'test:integration' : `test:unit:${pool}`);
+export const poolStepName = (pool: 'host' | 'pack' | 'integration' | 'native'): string =>
+  (pool === 'integration' || pool === 'native' ? `test:${pool}` : `test:unit:${pool}`);
 
 const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) => {
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
@@ -1047,9 +1065,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/apack-host/src/replace-dir.ts'] },
   // Build the built-in pack before build:runtime reads its outputs.
   // Includes cold compiler capture, codegen, all bundles and final source/input verification.
-  // 120s warm or cold (118-122s, 4 runs, 71-76% idle, 2026-10-20): capturing and re-checking the
-  // dependency inputs dominates, so the phase cache saves little.
-  { name: 'build:default-setup', timeout: 'scenario', seconds: 120, outputs: PACK_OUTPUTS,
+  // 59.0s median of 3 (58.7-72.1s, 60% idle, 2026-10-21), measured on a busy box, which can only inflate it.
+  { name: 'build:default-setup', timeout: 'suite', seconds: 60, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `apack pack build` never reads those
     //
     // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the
@@ -1075,17 +1092,17 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // grow to cover the typecheck or the specs, it would have the shape the pool steps had — stale for a
   // reason its inner layer cannot see, so it runs, skips everything and stamps green.
   //
-  // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default
-  // admission, because that is the schedule the drift report compares against. Raising the lane default from
-  // two to three moved this one and nothing else past the drift band, which is `driftedSteps` doing its job.
-  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 36, outputs: FIXTURE_OUTPUTS,
+  // 97s, not the 73s it takes alone (2026-10-21, 73% idle): `seconds` is what a step costs under the chain's
+  // own default admission, because that is the schedule the drift report compares against, and beside its two
+  // peers there it took 97s.
+  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 97, outputs: FIXTURE_OUTPUTS,
     // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-contract.sh',
       'tests/scripts/lib', ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   // A full shipped-pack fork is a separate producer, not work charged to the fixture contract suite.
-  // Its cost borrows the shipped build's measured 120s; its archive phase is not measured separately yet.
+  // Its 120s is the shipped build's measured 60s with as much again for the archive phase, which is not measured separately.
   // A 600s build, 180s archive and 120s housekeeping compose the existing 900s scenario bound.
   { name: 'test:external-pack:fork', timeout: 'scenario', seconds: 120, outputs: [DEFAULT_FORK_OUTPUT],
     inputs: [...PACK_DERIVED_READS, ...BOUNDED_RUNNER, 'tests/scripts/prepare-default-pack-fork.ts',
@@ -1107,6 +1124,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
+  // Native runtime and live-watcher scenarios, beside integration rather than inside it: same reads, and a
+  // run of its own so it can be scheduled, selected and sharded apart from the ordinary integration specs.
+  // Its cost is declared like the integration pool's, until a completed run refreshes it
+  { name: 'test:native', timeout: 'acceptance', stretches: 1.94, seconds: POOL_SECONDS.native,
+    forceArgs: ['--all'],
+    ...inputsForSuites(NATIVE_SUITES, 'native') },
   // build:default-setup owns pack outputs; build:runtime only builds the four app workspaces.
   // **No pack's `src` here, and that is a property of the build rather than an omission.** Nothing compiles a
   // pack into the app any more: a pack's backend is loaded at run time from its own `dist/runtime/index.cjs`
@@ -1115,13 +1138,16 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `need`. It declared `PACK_SOURCES` while the renderer's plugin and the api's tsup each traced a generated
   // entry into the pack's `src`; `check:tiers` and the app build's own header are what keep that from coming
   // back quietly
-  { name: 'build:runtime', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
+  // 29.2s run alone (2026-10-21, 80% idle).
+  { name: 'build:runtime', timeout: 'suite', seconds: 29, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload', 'apack-host'].flatMap(workspace),
       'packages/api/tsup.config.ts', 'build/build-metadata.ts', 'package.json', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   // App checks load the shipped pack separately at runtime. Its bytes can change while every
   // app workspace bundle stays identical, so their cache keys must include PACK_OUTPUTS too.
-  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,
+  // 83.4s (2026-10-21, 76% idle): each fixture pack's Playwright suite on one worker per three cores, with
+  // the default-fork lifecycle running beside them.
+  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 84,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@apackdev/testing` resolves to its
@@ -1153,11 +1179,10 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
   { name: 'test:smoke', timeout: 'suite', seconds: 16,
-    outputs: ['.apack/tests/results'],
     // The fixture writes the app's stdout and stderr here (`app-<workerIndex>.log`), which is the only
     // account of why an app did not start or did not close. Playwright clears the directory on the way in,
     // so the retry would take it
-    keepsOnFailure: ['.apack/tests/results'],
+    evidence: ['.apack/tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       ...SOURCE_RUNNER, ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
   // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
@@ -1169,8 +1194,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:e2e', timeout: 'suite', seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
-    outputs: ['.apack/tests/results'],
-    keepsOnFailure: ['.apack/tests/results'],
+    evidence: ['.apack/tests/results'],
     // The published trees, because the fixture every spec imports resolves `@apackdev/testing`'s built bundle
     // from one of them — and `packages:check` packs a tarball inside those trees and recreates them, which a
     // reader must not observe. Declaring them is what makes that a mutex instead of a scheduling accident;

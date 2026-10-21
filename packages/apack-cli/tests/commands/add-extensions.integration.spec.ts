@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { init } from '../../src/commands/init';
 import { generateEntries } from '../../src/commands/generate-entries';
@@ -17,8 +17,6 @@ const BIN = path.join(REPO_ROOT, 'node_modules', '.bin');
 let tmp: string;
 let pack: string;
 
-// Synchronous toolchain cases must let Vitest receive task-update replies between tests.
-afterEach(() => new Promise<void>(resolve => { setImmediate(resolve); }));
 
 const read = (file: string) => fs.readFileSync(path.join(pack, file), 'utf-8');
 const write = (file: string, content: string) => {

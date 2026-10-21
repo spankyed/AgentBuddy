@@ -9,7 +9,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
-import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, orderedSteps, STEP_TABLES, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, keptOnFailure, orderedSteps, STEP_TABLES, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
+import { unitFor } from '../../../scripts/lib/chain-stamps.ts';
 import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@apackdev/sdk/testing';
@@ -79,7 +80,7 @@ describe('the chain graph', () => {
    * A mutex has no direction, so this one is a preference — and it was held by nothing but the order the
    * two happen to sit in the table.
    *
-   * `test:smoke` and `test` both write `.apack/tests/results`, which makes them a derived mutex: the scheduler will
+   * `test:smoke` and `test:e2e` both write `.apack/tests/results`, which makes them a derived mutex: the scheduler will
    * not overlap them, and either order satisfies it. Running the six-second gate before the twenty-six
    * second harness is what anyone wants, and until this case existed, reordering the table would have
    * silently swapped them. Named here rather than declared on a step, because a preference between two
@@ -94,14 +95,22 @@ describe('the chain graph', () => {
     expect(order.indexOf('test:smoke')).toBeLessThan(order.indexOf('test:e2e'));
   });
 
-  it('declares and preserves the output directory used by the actual Playwright config', () => {
+  it('declares and keeps the output directory used by the actual Playwright config', () => {
     expect(e2eConfig.outputDir).toBeDefined();
     const output = path.relative(REPO_ROOT, path.resolve(REPO_ROOT, e2eConfig.outputDir!)).split(path.sep).join('/');
     for (const name of ['test:smoke', 'test:e2e']) {
       const step = CHAIN_STEPS.find(step => step.name === name)!;
-      expect(step.outputs, name).toContain(output);
-      expect(step.keepsOnFailure, name).toContain(output);
+      expect(step.evidence, name).toContain(output);
+      expect(keptOnFailure(step), name).toContain(output);
     }
+  });
+
+  it('keeps evidence out of the cache key, so another writer of it does not make a step stale', () => {
+    const smoke = CHAIN_STEPS.find((step) => step.name === 'test:smoke')!;
+    const unit = unitFor(smoke);
+    expect(smoke.evidence?.length, 'smoke declares evidence, so this case has a subject').toBeGreaterThan(0);
+    expect([...unit.outputs, ...unit.inputs].some((file) => smoke.evidence!.some((written) =>
+      file === path.join(REPO_ROOT, written) || file.startsWith(path.join(REPO_ROOT, written) + path.sep)))).toBe(false);
   });
 
 
@@ -381,16 +390,19 @@ describe('every spawn an orchestrator makes is bounded', () => {
   describe('the rung matches the kind of work', () => {
     /** A step whose rung the facts cannot derive, and why. An entry that stops applying is reported. */
     const DECLARED_AGAINST_THE_FACTS: Record<string, string> = {
-      'build:default-setup': 'the first cold shipped-pack compiler capture, codegen and serial bundle phases '
-        + 'are followed by source verification and compiler-input recording; this whole pipeline is a scenario',
       'test:external-pack:fork': 'composes a cold shipped-pack build, separately bounded archive verification '
         + 'and owned temporary-tree cleanup; a single bundle deadline does not cover these serial operations',
       'test:integration': 'complete compiler/runtime acceptance includes repeated cold builds, watchers '
         + 'and lifecycle combinations across projects; generic fan-out facts cannot distinguish that '
-        + 'workload from an ordinary unit suite. Only this pool uses the acceptance aggregate bound',
+        + 'workload from an ordinary unit suite. Only this pool and the native one use the acceptance aggregate bound',
+      'test:native': 'native runtime and live-watcher scenarios: cold compiler captures, watcher rebuild cycles and '
+        + 'native loader probes across one pooled run, the same acceptance aggregate the integration pool takes',
       'test:external-pack:app': 'drives the built app once per fixture pack, where `test:smoke` also launches '
         + 'an app and is a suite — no fact in the table separates them, so this is a judgement rather than a '
         + 'rule to widen',
+      'test:smoke': 'launches the built Electron app and drives it through Playwright; its results are evidence '
+        + 'rather than outputs, so no fact in the table records the app launch that makes it a suite',
+      'test:e2e': 'launches the built Electron app for every spec, as `test:smoke` does for its four',
       'test:packaged-authoring:app': 'launches the app through `apack pack test`, and the install that would '
         + 'derive its rung is in the author half — so the facts read it as a bare check where it is one '
         + 'Electron launch. A suite, as `test:smoke` is for launching one',

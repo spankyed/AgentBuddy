@@ -63,9 +63,11 @@ export const unitStepName = (suite: UnitSuite): string => `test:unit:${suite.kin
  * What one test may take, by the size of the target that runs it — Bazel's `size`, which is a bucket
  * whose whole purpose is a default timeout.
  *
- * **Two buckets, because two is what has consumers.** Bazel has four; three of them here would be values
- * nothing distinguishes, which is the defect this replaced: `tier` had three values and two consumers,
- * each using it as a different binary.
+ * **One bucket per half, because each half is what consumes one.** The fast half is `small`, the integration
+ * half `large`, and the native half `enormous`: its specs compose cold compiler captures, builds and watcher
+ * cycles, which a 60s case could not hold, so a `large` budget there made nearly every native case a reviewed
+ * exception. A bucket nothing distinguishes is the defect this replaced: `tier` had three values and two
+ * consumers, each using it as a different binary.
  *
  * The point is the ceiling, not the number. `testTimeout: 120_000` on a unit suite turns a hang into a
  * slow pass — a load-induced stall reached a chain summary as two unexplained errors rather than as a
@@ -77,16 +79,16 @@ export const unitStepName = (suite: UnitSuite): string => `test:unit:${suite.kin
  * declare, checked by `suite-timeouts.spec.ts`, not a value the configs import: a vitest config importing
  * across package layers is the thing `check:specifiers` exists to prevent.
  */
-export const SIZE_MS = { small: 15_000, large: 60_000 } as const;
+export const SIZE_MS = { small: 15_000, large: 60_000, enormous: 300_000 } as const;
 export type Size = keyof typeof SIZE_MS;
 
 /**
  * Which size a given test file runs at is `sizeOf` (`scripts/lib/test-timeouts.ts`), not a field here.
  *
  * It is derived rather than declared, because what it would declare is already decided elsewhere: a spec
- * lives in the fast half or the integration half, declared by its filename, and the halves *are* size
- * classes. A per-suite `size` field would be a constant — every fast half small,
- * every integration half large — and a list whose every entry is the same value is one nobody maintains.
+ * lives in the fast, integration or native half, declared by its filename, and the halves *are* size
+ * classes. A per-suite `size` field would be a constant — every fast half small, every integration half
+ * large, every native half enormous — and a list whose every entry is the same value is one nobody maintains.
  *
  * It lives there rather than here so this module stays a leaf: answering for a *spec* needs
  * `INTEGRATION_SUITES`, and importing that would point this file at `chain-steps.ts`, which imports it.

@@ -83,14 +83,20 @@ function bundlesUi(packDir: string): boolean {
  * one of them unstyled, with no error. An unresolvable package and a package whose build is missing are
  * the same fault to the pack author: what they get is an unstyled app.
  */
-/** Whether any file under `dir`, at any depth, has this extension */
-function hasFile(dir: string, ext: string): boolean {
-  return fs.readdirSync(dir, { withFileTypes: true }).some((entry) => (entry.isDirectory()
-    ? hasFile(path.join(dir, entry.name), ext)
-    : entry.name.endsWith(ext)));
+/** Every file under `dir`, at any depth, with this extension */
+function filesWith(dir: string, ext: string): string[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory()
+    ? filesWith(path.join(dir, entry.name), ext)
+    : entry.name.endsWith(ext) ? [path.join(dir, entry.name)] : []));
 }
 
-function uiTailwindContent(packDir: string): string[] {
+/**
+ * The files Tailwind scans for @apackdev/ui's class names are compiler inputs like any other a build reads,
+ * and a build captures a dependency file when it is first read. Reading them through the compilation before
+ * Vite runs is what puts them in the build's read tree, where Tailwind's scan resolves; unread, the scan
+ * finds nothing and the bundle ships the components unstyled.
+ */
+function uiTailwindContent(packDir: string, compilation?: CompilationInputs): string[] {
   let uiDir: string;
   try {
     uiDir = path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@apackdev/ui/package.json')));
@@ -103,11 +109,13 @@ function uiTailwindContent(packDir: string): string[] {
   const content = path.join(built, '**/*.js');
   // Tailwind reads class names out of the built modules and silently generates nothing when it finds no
   // file to read — so check for what the glob actually matches, not merely that the directory is non-empty
-  if (!fs.existsSync(built) || !hasFile(built, '.js')) {
+  const modules = fs.existsSync(built) ? filesWith(built, '.js') : [];
+  if (modules.length === 0) {
     throw new Error(
       `This pack sets build.bundleUi, but @apackdev/ui has no built modules at ${content}, so Tailwind would generate none of its components' classes. Build the packages first: npm run packages:ensure`,
     );
   }
+  for (const file of modules) compilation?.readFile(file);
   return [content];
 }
 
@@ -475,7 +483,7 @@ async function uiTailwindPresets(packDir: string): Promise<unknown[]> {
   return preset ? [preset] : [];
 }
 
-async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
+async function tailwindPostcssPlugins(packDir: string, compilation?: CompilationInputs): Promise<any[]> {
   const packTwConfig = [path.join(packDir, 'tailwind.config.ts'), path.join(packDir, 'tailwind.config.js')]
     .find((f) => fs.existsSync(f));
   const bundleUi = bundlesUi(packDir);
@@ -500,7 +508,7 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
     return [];
   }
 
-  const uiContent = bundleUi ? uiTailwindContent(packDir) : [];
+  const uiContent = bundleUi ? uiTailwindContent(packDir, compilation) : [];
   // Scanning @apackdev/ui's files finds the class names; the theme behind them (primary-*) is defined
   // only in a Tailwind config, so without its preset those classes match nothing and Tailwind emits
   // no CSS for them — the component renders with its accent silently missing.
@@ -554,7 +562,7 @@ async function bundleFrontend(options: BundleFEOptions): Promise<{ success: bool
 
   let postcssPlugins: any[];
   try {
-    postcssPlugins = await tailwindPostcssPlugins(packDir);
+    postcssPlugins = await tailwindPostcssPlugins(packDir, compilation);
   } catch (err) {
     return { success: false, error: errorMessage(err) };
   }

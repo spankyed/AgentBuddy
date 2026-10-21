@@ -34,6 +34,11 @@ gives for vitest, for the same reason. There were six copies (the repo's own E2E
 already drifted to a `use` block giving it screenshots and traces the three packs' lacked. Nobody decided
 that; it is what six copies do. `@app/repo-checks`' `playwright-config.spec.ts` is the gate.
 
+`definePackE2EConfig` runs one worker per three cores (`e2eWorkers`): each worker launches its own app on its
+own temporary data dir, and the app's single-instance lock is scoped by data dir, so workers do not contend.
+A run that pins one data dir (`E2E_DATA_DIR`) gets one worker. Tests in one file stay on one worker and share its
+app; tests in different files may run at once, so a file must not depend on state another file left.
+
 One helper per kind of run, and there are two kinds:
 
 | Helper | For | Overrides |

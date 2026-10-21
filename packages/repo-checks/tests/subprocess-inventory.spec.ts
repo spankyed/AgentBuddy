@@ -3,11 +3,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
-import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
+import { INTEGRATION_SUITES, NATIVE_SUITES } from '../../../scripts/lib/chain-steps.ts';
+import { halfOfPath } from '../../../scripts/lib/spec-halves.ts';
 import { reachableFrom, spawnCallsIn, spawnSitesIn, tsFilesUnder } from '../../../scripts/lib/process-spawns.ts';
 
 /**
- * Which files in the pooled integration run start a subprocess, and how many times.
+ * Which files in the pooled integration and native runs start a subprocess, and how many times.
  *
  * The pool caps itself below one worker per core because half the cores is *faster* than all of them —
  * 48.2s against 52.4s, measured — and because subprocess compilers are what make a suite sensitive to a
@@ -31,12 +32,13 @@ import { reachableFrom, spawnCallsIn, spawnSitesIn, tsFilesUnder } from '../../.
  * rather than fanning out to its importers, most of which want the in-process `callCli` and never spawn.
  */
 
-/** The three suites' `tests/` trees, from the one definition of which suites have an expensive half */
-const SUITE_TESTS = INTEGRATION_SUITES.map((suite) => path.join(REPO_ROOT, 'packages', suite.dir, 'tests'));
+/** The `tests/` trees of the suites with an expensive half, integration or native, from their one definitions */
+const SUITE_TESTS = [...new Set([...INTEGRATION_SUITES, ...NATIVE_SUITES])]
+  .map((suite) => path.join(REPO_ROOT, 'packages', suite.dir, 'tests'));
 
-/** What the pooled run loads: its specs, and what they import. A fast spec spawns into another pool's budget */
+/** What the two pooled runs load: their specs, and what they import. A fast spec spawns into another pool's budget */
 const loadedByThePool = (): string[] => reachableFrom(
-  SUITE_TESTS.flatMap((dir) => tsFilesUnder(dir)).filter((file) => file.endsWith('.integration.spec.ts')),
+  SUITE_TESTS.flatMap((dir) => tsFilesUnder(dir)).filter((file) => halfOfPath(file) !== 'fast'),
   SUITE_TESTS,
 );
 
@@ -50,15 +52,19 @@ const loadedByThePool = (): string[] => reachableFrom(
 const INVENTORY: Record<string, { calls: number; why: string }> = {
   'packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts': { calls: 1,
     why: 'Separate Vite processes scan a live pack while its output is published. The Windows directory-sharing failure does not reproduce in a same-process server; each child owns a private cache and closes with the test' },
-  'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts': { calls: 17,
+  'packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts': { calls: 17,
     why: 'MSVC and ordinary loader fixtures prove actual DLL selection, copied-runtime SxS, pre-initialization refusal, OS assemblies and publisher-policy invalidation. Real Node/compiler processes retain their separate runtime proofs; these loader boundaries cannot be proved in-process' },
   'packages/apack-cli/tests/_support/windows-publisher-policy.ts': { calls: 3,
     why: 'The Windows SDK builds signed fixture assemblies with a process-owned test key. A compiled COM cache utility installs and removes only their unique identities; real OS publication and cleanup cannot be replaced by mocks' },
-  'packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts': { calls: 3,
+  'packages/apack-cli/tests/build/compiler-elf-libraries.native.spec.ts': { calls: 3,
     why: 'the Linux proofs compile private NAPI/shared-library fixtures; ordinary Node controls establish actual addon and pre-JavaScript runtime library selection before captured ownership and pre-initialization refusal' },
-  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 11,
-    why: 'clang/cc and ordinary runtime controls prove actual native loading and pre-initialization refusal. The Electron driver must run under Electron to capture and launch its real framework distribution; Node cannot emulate it. The live-watch case compiles a replacement graph. In-process checks cannot establish OS loading, runtime identity or pre-initialization refusal' },
-  'packages/apack-cli/tests/build/build-worker.integration.spec.ts': { calls: 8,
+  'packages/apack-cli/tests/_support/native-libraries.ts': { calls: 3,
+    why: 'clang/cc compile the native fixtures, and an ordinary Node load is the control for which libraries the OS actually selects; in-process checks cannot establish OS loading or pre-initialization refusal' },
+  'packages/apack-cli/tests/build/compiler-native-runtime.native.spec.ts': { calls: 5,
+    why: 'the Electron driver must run under Electron to capture and launch its real framework distribution, which Node cannot emulate, and `codesign` verifies a signed copy; the Mach-O cases compile and launch real images, and an ordinary Node load is the default-fallback control, because only the OS loader shows what it selects' },
+  'packages/apack-cli/tests/build/compiler-native-launch.native.spec.ts': { calls: 3,
+    why: 'outside launch overrides (DYLD_* variables, an image suffix) are honoured by the OS loader alone, so their controls are real processes started with them set; in-process checks cannot establish what the loader selects' },
+  'packages/apack-cli/tests/build/build-worker.native.spec.ts': { calls: 8,
     why: 'private worker IPC lifetime and refusal, public shutdown, native preload identity, loader-startup refusal and natural shutdown under signal refusal require their own processes; two OS process-state queries verify inherited subprocess termination' },
   'packages/repo-checks/tests/bounded-spawn.integration.spec.ts': { calls: 1,
     why: 'a separate orchestrator process receives real signals so cancellation proves its whole child tree is reaped without signaling the test worker' },

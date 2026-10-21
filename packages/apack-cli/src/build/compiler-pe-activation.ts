@@ -8,6 +8,13 @@ import { pePath } from './compiler-pe-paths.ts';
 import { cliPackageDirectory } from './tool-identity.ts';
 import { withoutCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 
+/**
+ * How long a Windows metadata helper may run before it counts as hung. Each call starts PowerShell and compiles
+ * the helper's C# with `Add-Type`, a cost set by the machine rather than the query: a cold hosted runner passes
+ * five seconds. So this bounds a hang and asserts nothing about speed.
+ */
+export const PE_HELPER_TIMEOUT_MS = 60_000;
+
 export interface CompilerPeActivationInput {
   readonly file: string;
   readonly kind: 'file' | 'directory' | 'missing' | 'entries';
@@ -78,7 +85,7 @@ export function readPeActivationContext(image: string, { systemDirectory, applic
     const owner = cliPackageDirectory(typeof __filename === 'string' ? pathToFileURL(__filename).href : import.meta.url);
     const text = execFileSync(path.join(systemDirectory, 'WindowsPowerShell/v1.0/powershell.exe'),
       ['-NoProfile', '-NonInteractive', '-File', path.join(owner, 'bin/compiler-pe-context.ps1')],
-      { input: payload, encoding: 'utf8', timeout: 5_000, maxBuffer: 1024 * 1024, windowsHide: true });
+      { input: payload, encoding: 'utf8', timeout: PE_HELPER_TIMEOUT_MS, maxBuffer: 1024 * 1024, windowsHide: true });
     const value = JSON.parse(text.replace(/^\ufeff/, '')) as CompilerPeActivationContext & { error?: number };
     if (typeof value.error === 'number') {
       if (!Array.isArray(value.inputs) || value.inputs.some(item => !isActivationInput(item))) {

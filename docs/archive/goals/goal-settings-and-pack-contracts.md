@@ -1686,9 +1686,9 @@ Required closure for this goal:
 
 No permanent external pack repository, monorepo release, public npm/Homebrew publication or GitHub
 release token is required for these local checks. The
-[external-pack release readiness plan](../../plans/external-pack-release-readiness.md) owns fresh public
+[external-pack release readiness plan](../../plans/deferred/external-pack-release-readiness.md) owns fresh public
 workflow bootstrap, release-readiness semantics/recovery and the separately authorized GitHub release
-round trip. The [distribution plan](../../plans/npm-and-homebrew-distribution.md) owns npm/Homebrew.
+round trip. The [distribution plan](../../plans/deferred/npm-and-homebrew-distribution.md) owns npm/Homebrew.
 Record these public paths as unverified; do not silently claim them from local tarballs or make them
 prerequisites for finishing this goal. No existing manifest, settings, discovery or external runtime
 requirement is moved out of this goal by that distinction.
@@ -1808,7 +1808,7 @@ and baseline failures or stale survey claims are investigated and accounted for 
 
 Follow the inventory and foundation checkpoints in
 [discovery without activation](../plans/discovery-without-activation.md), shared diagnostics in
-[manifest maturity](../../plans/manifest-maturity.md#2-share-precise-validation-and-diagnostics), and the
+[manifest maturity](../plans/manifest-maturity.md#2-share-precise-validation-and-diagnostics), and the
 settings contract prototype in [settings architecture](../plans/settings-architecture.md).
 
 Cover every supported registration/extension field, its owners, static metadata/assets, dynamic results
@@ -1909,7 +1909,7 @@ live ledger and recorded source rather than treating all three workstreams as un
 | Workstream | Implementation owner | Done when |
 |---|---|---|
 | Consumed APIs | [API consumption](../plans/declared-capabilities.md) | Actual APIs/granularity are audited; generated and host-bound facades agree; undeclared supported APIs and unavailable required providers fail usefully; content targets respect supported SDK/dependency contracts; settings policy remains intact |
-| Dependency provenance | [Manifest maturity, section 4](../../plans/manifest-maturity.md#4-preserve-dependency-provenance-and-reproducibility) | Exact version, origin and content identity survive cache reuse and inspection; linked development remains explicit; differing resolutions are explainable. A new frozen-resolution mode is conditional on distribution needing it, not required speculatively |
+| Dependency provenance | [Manifest maturity, section 4](../plans/manifest-maturity.md#4-preserve-dependency-provenance-and-reproducibility) | Exact version, origin and content identity survive cache reuse and inspection; linked development remains explicit; differing resolutions are explainable. A new frozen-resolution mode is conditional on distribution needing it, not required speculatively |
 | Shipped-pack replacement | [Replacement](../plans/replaceable-shipped-packs.md) | Deliberate forks survive restart/reload; app-managed updates remain supported; disable, uninstall and restoration stay distinct; overrides survive; pre-publication failure retains the old build/catalog; activation failure does not claim rollback of arbitrary user-data effects |
 
 These share catalog identities and existing caller/refresh contracts; no new inventory or sandbox is
@@ -1957,14 +1957,14 @@ do not archive unfinished or deferred work as completed. Publishing or PR merge 
 
 ## Deferred
 
-- [Lazy activation](../../plans/lazy-activation.md), including boot-performance implementation.
+- [Lazy activation](../../plans/deferred/lazy-activation.md), including boot-performance implementation.
 - [Security isolation](../../goals/goal-pack-security-isolation.md) and out-of-process backend execution.
 - Storage/LMDB, advisory-lock and console-transaction redesign; plugins-to-surfaces, logs extraction
   and distribution work outside the required dependency provenance contract.
 - A new registry/package manager, speculative optional integrations, generated settings forms and new
   preference scopes. The package-dist watcher follow-up is separate; required descriptor freshness is not.
-- [External-pack public release readiness](../../plans/external-pack-release-readiness.md) and
-  [npm/Homebrew distribution](../../plans/npm-and-homebrew-distribution.md); required local
+- [External-pack public release readiness](../../plans/deferred/external-pack-release-readiness.md) and
+  [npm/Homebrew distribution](../../plans/deferred/npm-and-homebrew-distribution.md); required local
   packaged-authoring/archive/runtime acceptance remains in this goal.
 
 ## Constraints

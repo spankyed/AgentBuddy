@@ -5,9 +5,10 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import { vueRuntimePack } from './frontend-pack.ts';
 import { filesUnder } from '../../src/build/phase-cache.ts';
 import type { WatchOptions } from '../../src/build/watch.ts';
+import type { PackBuilderOptions } from '../../src/build/build-process.ts';
 import { startTestPackBuildWatcher } from './watch-builds.ts';
 
-export function createFrontendResourceFixture() {
+export function createFrontendResourceFixture({ captureCompiler }: PackBuilderOptions = {}) {
   let root: string | undefined;
   let signal: AbortSignal | undefined;
   const watchers: ReturnType<typeof startTestPackBuildWatcher>[] = [];
@@ -26,7 +27,7 @@ export function createFrontendResourceFixture() {
   });
   return {
     startWatcher(pack: string, options: Omit<WatchOptions, 'signal' | 'builder'> = {}) {
-      const starting = startTestPackBuildWatcher(pack, { ...options, signal });
+      const starting = startTestPackBuildWatcher(pack, { ...options, signal, captureCompiler });
       watchers.push(starting);
       return starting;
     },
