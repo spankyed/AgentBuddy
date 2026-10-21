@@ -48,11 +48,12 @@ on top of [PR #248](https://github.com/spankyed/apack/pull/248) (merged).
 | The strict gate runs as a producers job plus five consumer jobs | #249 | Two integration shards, two native shards, and the app half with the remaining checks. Five is the free plan's cap on concurrent macOS jobs, account-wide; a sixth job waits for a slot and pays its setup again |
 | Every integration and native case turns the event loop afterwards (`tests/_support/turn-event-loop.ts`) | #249 | Ends `Timeout calling onTaskUpdate` failing runs whose tests all passed |
 | Native files run one at a time | #249 | Contention, not cost: one case took 14.4s alone (run `39553670513`) and passed 60s beside another native file on a 3-vCPU runner |
-| Native cases whose subject is not capture share one compiler installation per file (`shareCompilerInstallation`) | #249 | About 23 fewer captures on the macOS gate. Before: strict run `39554079038`; after: strict run `39556379585` (pending) |
+| Native cases whose subject is not capture share one compiler installation per file (`shareCompilerInstallation`) | #249 | About 23 fewer captures on the macOS gate. Native job time 48.5 → 42.2 min, and its slowest job 27.6 → 19.7 min (strict runs `39554079038` before, `39557857402` after) |
 
-**Gate wall time:** the single-job strict gate was an estimated 2–2.5h. Parallel runs on #249 took 34–37
-minutes, including runner queueing, and each job has passed in at least one run. No run is yet green end to
-end; `39556379585` is expected to be the first.
+**Gate wall time:** the single-job strict gate was an estimated 2–2.5h. The parallel gate is green end to end:
+strict run `39554079038` took about 42 minutes (one job waited 10 minutes for a runner) and `39557857402`, with
+the shared installations, about 36: producers 10.4 min, then integration 25.9 and 11.6, native 19.7 and 22.5,
+and the app half with the remaining checks 23.9.
 
 **Measured and dropped:**
 - **A per-run cache of dependency hashes:** after #248 it would save about 2–4s per build, for a new cache
@@ -64,18 +65,20 @@ Both conflict with "no other cache protocol" in decision 5 for little return. Th
 installation above is not one of these: it lives inside one spec file and is disposed with it.
 
 **Next actions:**
-1. Merge #249 once `39556379585` passes, and record its per-job times and the native before/after here.
+1. Merge #249 after a strict run on its head passes; `39557857402` passed on `0a98d1767`.
 2. R-F1 is resolved on #249: `build:default-setup` is back on `suite`, at 105–166s on the runner against
    600s. `test:external-pack:fork` stays on `scenario` by construction: it composes a `suite`-sized build
    (600s) with archive verification (180s) and cleanup (120s) in `DEFAULT_FORK_BUDGET_MS`, so its outer
    bound has to exceed `suite`.
-3. 10.7: refresh `test:external-pack:app`'s declared `seconds` (18). It took 211s on the two-core runner in
-   `39554079038`, but `seconds` describes the 10-core machine `chain-steps.ts` was measured on, so the new figure
-   has to come from a completed local chain run, which reports the measured cost beside the declared one.
-4. Checkpoint 1 and decision 3: affected-target selection, so that an ordinary edit runs only the
+3. Checkpoint 1 and decision 3: affected-target selection, so that an ordinary edit runs only the
    acceptance it needs, and the full strict gate runs only at the boundaries in decision 4. Designed for the CI
    strict route and deferred: [deferred/affected-selection.md](deferred/affected-selection.md).
-5. 10.1, 10.2 and 3a.1 as in their rows.
+4. 10.2's remaining 46 exceptions: the 31 integration ones would need the integration half sized to its
+   cold-build specs, which would loosen its fast specs too, so they stay reviewed per case. Native cases over
+   300s, or whose budget names a constant, stay as well.
+5. The contract step (36s declared) and `build:runtime` (13s) ran at 97s and 37s locally beside two peers on
+   2026-10-21. Re-declare them from a run where each runs alone; contention inflates a duration and cannot
+   deflate one.
 
 ## Problem
 
@@ -235,11 +238,11 @@ defects with one fix, and its acceptance runs surfaced a fifth (R-F1). They stay
 
 | Finding | Current state | Resolve by |
 |---|---|---|
-| 10.1 | The `suite` rung is 600s (`scripts/lib/step-timeouts.ts`), double its earlier 300s. The reason recorded for raising it, the integration pool, now has its own `acceptance` class. On the two-core runner, strict run `39450690425` (2026-10-20) measured `test:external-pack:contract` at 345s and `test:unit:host` at 294s, both `suite` members, so returning to 300s would kill or nearly kill passing steps | Measure the remaining `suite` members, then set the rung from that measurement or return it to 300s. No change before then |
-| 10.2 | `TIMEOUT_EXCEPTIONS` (`packages/repo-checks/tests/suite-timeouts.spec.ts`) holds 69 per-test overrides of 120–540s, many justified only by a run that hit the old limit | Apply "reduce title-keyed timeout exceptions" above: move recurring patterns to a fitting project, keep reviewed overrides for genuinely different scenarios |
-| 10.7 | `test:external-pack:app` declares `seconds: 18` but now also runs the default-fork lifecycle (four app launches, four `apack pack` commands) | Refresh the declared cost from a completed run |
+| 10.1 | **Decided 2026-10-21: the `suite` rung stays at 600s.** Its slowest member on the two-core runner is `test:unit:host` at 323–370s (strict runs `39542948538`, `39547245467`), so 300s would kill a passing step. The rest measure 13–274s. The history: the `suite` rung is 600s (`scripts/lib/step-timeouts.ts`), double its earlier 300s. The reason recorded for raising it, the integration pool, now has its own `acceptance` class. On the two-core runner, strict run `39450690425` (2026-10-20) measured `test:external-pack:contract` at 345s and `test:unit:host` at 294s, both `suite` members, so returning to 300s would kill or nearly kill passing steps | Measure the remaining `suite` members, then set the rung from that measurement or return it to 300s. No change before then |
+| 10.2 | **Reduced 2026-10-21, 69 → 46.** The native half is its own project now, so it got its own size: `enormous`, 300s (`SIZE_MS`), which its config declares. The 23 native exceptions whose composed budgets fit it are gone, and two checks stop them coming back: composed literal budgets are now evaluated rather than read as unknown, and an exception whose case fits its budget is reported as stale. The native configs were also missing from the budget check's population. The history: `TIMEOUT_EXCEPTIONS` (`packages/repo-checks/tests/suite-timeouts.spec.ts`) holds 69 per-test overrides of 120–540s, many justified only by a run that hit the old limit | Apply "reduce title-keyed timeout exceptions" above: move recurring patterns to a fitting project, keep reviewed overrides for genuinely different scenarios |
+| 10.7 | **Refreshed 2026-10-21: 168s**, measured at 167.5s running alone on the 10-core machine the table describes (79% idle). The history: `test:external-pack:app` declared `seconds: 18` but now also runs the default-fork lifecycle (four app launches, four `apack pack` commands) | Refresh the declared cost from a completed run |
 | R-F1 | **Decided and implemented (PR #248): a build captures only the dependency files its compilers read.** On the runner `build:default-setup` now takes 105–166s. `build:default-setup` is back on `suite`; the fork stays on `scenario` (next action 2). The history: a cold `apack pack build` of default-setup took 522s on the two-core hosted macOS runner (strict run `39430263642`), with 175s in finalization (run `39427595920`). Finalization re-checked every captured input twice and replayed the startup threads' observations from disk; removing those repeats cut it to 63s on the runner (run `39489689366`, 2026-10-20) and a local cold build from 149s to 122s (interleaved, 2 runs each, 71-76% idle). The runner's whole pack build is still 473s, because the phases before finalization take about 400s and varied by 52s between two runs; capturing and re-checking the dependency inputs is a large share of it in the local profile. The observation set is about 104,000 entries, including the whole package directory of every dependency and devDependency (36,800 files). Warm local builds cost the same as cold (118-120s), so `seconds` is now 120. Both steps stay on `scenario`: 473s leaves too little margin under `suite`'s 600s | Decide whether the build's inputs should include whole dependency package trees (devDependencies in particular), or only the files the compilers actually read. That is a change to the freshness contract, so it needs a decision before any code. Then re-measure on the runner and return both steps to `suite` if the cold build fits with margin |
-| 3a.1 | `test:smoke` and `test:e2e` both declare `.apack/tests/results` as an output, and output digests are now part of a step's cache key, so any E2E run makes `test:smoke` stale with no input moved | Decide what a check step's declared outputs mean for cache validity, in the chain target and planner, rather than special-casing one step |
+| 3a.1 | **Resolved 2026-10-21: a step's `evidence`.** What a step writes as an account of its run (results, an app's log) and no step reads is `evidence`, not an output. It orders writers and is kept on failure like an output, but is no part of the cache key, so an E2E run no longer makes `test:smoke` stale. Both steps declare their results directory that way. The history: `test:smoke` and `test:e2e` both declared `.apack/tests/results` as an output, and output digests are now part of a step's cache key, so any E2E run makes `test:smoke` stale with no input moved | Decide what a check step's declared outputs mean for cache validity, in the chain target and planner, rather than special-casing one step |
 
 ## Implementation checkpoints
 

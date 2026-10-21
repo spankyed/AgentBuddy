@@ -1144,7 +1144,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   // App checks load the shipped pack separately at runtime. Its bytes can change while every
   // app workspace bundle stays identical, so their cache keys must include PACK_OUTPUTS too.
-  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,
+  // 167.5s run alone (2026-10-21, 79% idle): each fixture pack's Playwright suite plus the default-fork lifecycle.
+  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 168,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@apackdev/testing` resolves to its
