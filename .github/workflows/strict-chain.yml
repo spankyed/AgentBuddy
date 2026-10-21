@@ -32,6 +32,14 @@ jobs:
         with:
           node-version: 23.11.1
           cache: npm
+      # Recorded build inputs can include a source file's modification time, which a fresh checkout sets to
+      # now: pin every tracked file and directory to the commit's time, so each job's tree reads the same
+      - name: Pin source modification times to the commit
+        run: |
+          stamp=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M.%S)
+          git ls-files -z | TZ=UTC xargs -0 touch -h -t "$stamp"
+          git ls-files | sed 's|/[^/]*$||' | sort -u | tr '\n' '\0' | TZ=UTC xargs -0 touch -t "$stamp"
+          TZ=UTC touch -t "$stamp" .
       - name: Record source and platform
         run: |
           git rev-parse HEAD
@@ -90,6 +98,14 @@ jobs:
         with:
           node-version: 23.11.1
           cache: npm
+      # Recorded build inputs can include a source file's modification time, which a fresh checkout sets to
+      # now: pin every tracked file and directory to the commit's time, so each job's tree reads the same
+      - name: Pin source modification times to the commit
+        run: |
+          stamp=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M.%S)
+          git ls-files -z | TZ=UTC xargs -0 touch -h -t "$stamp"
+          git ls-files | sed 's|/[^/]*$||' | sort -u | tr '\n' '\0' | TZ=UTC xargs -0 touch -t "$stamp"
+          TZ=UTC touch -t "$stamp" .
       - name: Record source
         run: git rev-parse HEAD
       - name: Install dependencies
