@@ -242,16 +242,40 @@ keep their behaviour; `npm test -w @apackdev/host` and `npm run test:unit` pass.
 
 ### Phase 5 — docs, and turn the guard on
 
-**Deliverable.** `CLAUDE.md`, `packages/renderer/CLAUDE.md`, `packages/apack-sdk/CLAUDE.md`,
-`packages/apack-host/CLAUDE.md`, `packages/apack-cli/CLAUDE.md`, `packages/apack-ui/CLAUDE.md`,
-`packages/default-setup/CLAUDE.md`, `tests/e2e/CLAUDE.md`, and `docs/public-facing/` (`architecture.md`,
-`manifest.md`, `extensions.md`, `cli.md`, `testing.md`, `content.md`). Everything under "What the user
-sees". Flip Phase 1's guard live.
+**Deliverable.** Every tracked Markdown outside `docs/archive` that names the concept, which is what
+the guard reports rather than a list to keep in step: **14 `CLAUDE.md` files** (186 lines, the biggest
+being `packages/default-setup/`, the root, `tests/e2e/`, `packages/apack-host/` and
+`packages/renderer/`) and **24 files under `docs/` (269 lines)** — all nine of `docs/public-facing/`,
+four under `docs/references/`, four plans, two issues and the sibling goals. Everything under "What the
+user sees". Flip Phase 1's guard live.
 
 **Dependencies.** Phases 2–4.
 
 **Done when:** `npm run chain` passes — which includes `content-parity:check` over the re-recorded
 `welcome.md` — and the guard reports only the groups above and `docs/archive`.
+
+### Phase 6 — the prose pass
+
+**Deliverable.** A read, not a replace. The guard can only find the word; what it cannot find is a
+sentence that has gone wrong because the noun moved. **4774 lines of source name the concept**, most of
+them comments, and this repo comments heavily: a comment explaining why a plugin cannot answer a
+by-ref send, or what a pane belongs to, often needs rewriting rather than substituting. Read every file
+the rename touched and fix what now reads wrong, including each guide's prose.
+
+Also the agent memory at
+`~/.claude/projects/-Users-spankyed-Develop-Projects-AgentBuddy/memory/`, which no guard can see
+because it is outside the repo. Four files name something this goal retires:
+`feedback_no_mirror_or_text_tests.md` and `feedback_no_silent_design_calls.md` use `sendToPlugin` and
+`usePlugin` as their worked examples, `feedback_prefer_flows_over_systems.md` says "its own frontend
+plugin", and `hermes-integration.md` names `packages/renderer/src/plugins/hermes/` and
+`packages/api/src/systems/hermes/` — **already stale, both paths gone, independent of this goal.**
+Update `MEMORY.md`'s pointers with them. `launch-film-edit-system.md` is a separate project's
+vocabulary; leave it.
+
+**Dependencies.** Phase 5.
+
+**Done when:** `npm run chain` passes, no comment or guide sentence describes a surface as a plugin,
+and the four memory files name current symbols and paths.
 
 ## Deferred
 
