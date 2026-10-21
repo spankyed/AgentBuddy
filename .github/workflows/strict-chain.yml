@@ -13,7 +13,7 @@ concurrency:
 
 # The strict chain as parallel jobs. `npm run chain -- --job <name>` derives each job's steps from the chain
 # graph (`scripts/lib/chain-only.ts`): `producers` runs what the expensive pools read, then the integration
-# and native shards, the app half and the remaining checks run beside each other on its outputs. Each consumer
+# and native shards, and the app half with the remaining checks, run beside each other on its outputs. Each consumer
 # refuses unless the producers' outputs and stamps it downloaded are current, so no job can pass over
 # missing preparation.
 jobs:
@@ -81,15 +81,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { job: integration, shard: '1/4', name: integration-1 }
-          - { job: integration, shard: '2/4', name: integration-2 }
-          - { job: integration, shard: '3/4', name: integration-3 }
-          - { job: integration, shard: '4/4', name: integration-4 }
-          - { job: native, shard: '1/3', name: native-1 }
-          - { job: native, shard: '2/3', name: native-2 }
-          - { job: native, shard: '3/3', name: native-3 }
-          - { job: app, shard: '', name: app }
-          - { job: rest, shard: '', name: rest }
+          # Five, because a free account runs at most five macOS jobs at once: a sixth waits for one of these
+          # to finish and pays its own setup on top, so more shards lengthen the gate rather than shorten it
+          - { job: integration, shard: '1/2', name: integration-1 }
+          - { job: integration, shard: '2/2', name: integration-2 }
+          - { job: native, shard: '1/2', name: native-1 }
+          - { job: native, shard: '2/2', name: native-2 }
+          - { job: 'app,rest', shard: '', name: app-and-rest }
     name: ${{ matrix.name }}
     timeout-minutes: 60
     env:

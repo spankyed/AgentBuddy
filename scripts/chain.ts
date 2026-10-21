@@ -359,11 +359,11 @@ async function main(): Promise<void> {
   // to be current here already, and for pool steps one shard of their specs
   // Refusals rather than failures, printed as the lock's is: a throw would read as the chain itself failing
   const refuse = (message: string): void => { console.error(`\n${message}`); process.exitCode = 1; };
-  const job = args.values.job;
-  if (job !== undefined && !(STRICT_JOBS as readonly string[]).includes(job)) {
-    return refuse(`--job is one of ${STRICT_JOBS.join(', ')}, not '${job}'`);
-  }
-  if (job !== undefined && args.values.only !== undefined) return refuse('--job and --only both choose the steps; give one');
+  // Several jobs run as one when the runners are fewer than the jobs: `--job app,rest`
+  const jobs = args.values.job?.split(',').map((name) => name.trim()).filter((name) => name !== '');
+  const unknownJob = jobs?.find((name) => !(STRICT_JOBS as readonly string[]).includes(name));
+  if (unknownJob !== undefined) return refuse(`--job takes ${STRICT_JOBS.join(', ')} or a comma list of them, not '${unknownJob}'`);
+  if (jobs !== undefined && args.values.only !== undefined) return refuse('--job and --only both choose the steps; give one');
   let only = args.values.only?.split(',').map((name) => name.trim()).filter((name) => name !== '');
   let shard: Shard | undefined;
   try { shard = args.values.shard === undefined ? undefined : parseShard(args.values.shard); }
@@ -375,9 +375,10 @@ async function main(): Promise<void> {
   // than halfway through a six-minute run
   let steps = orderedSteps(chainSteps(e2e ? ['test:e2e'] : []));
   const budget = budgetFrom(args.values.cores);
-  if (job !== undefined) {
-    only = strictJobSteps(steps, job as StrictJob, TYPECHECK_LEGS.map((leg) => leg.name),
-      (name) => steps.some((step) => step.name === name && needsApp(step)));
+  if (jobs !== undefined) {
+    const chosen = new Set(jobs.flatMap((name) => strictJobSteps(steps, name as StrictJob, TYPECHECK_LEGS.map((leg) => leg.name),
+      (step) => steps.some((candidate) => candidate.name === step && needsApp(candidate)))));
+    only = steps.map((step) => step.name).filter((name) => chosen.has(name));
   }
   if (shard !== undefined && (only === undefined || only.some((name) => poolForStep(name) === undefined))) {
     return refuse('--shard splits a pool\'s specs, so it needs --only or --job naming pool steps and nothing else');

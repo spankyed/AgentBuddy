@@ -266,8 +266,9 @@ when the root integration project or chain selects the CLI suite. Live watcher c
 even inside a unit suite; use the runner guard before opening their watchers. Pure unit checks remain local.
 Run required final strict acceptance with `gh workflow run ci.yml --ref <branch> -f strict_chain=true`: it
 runs strict `--all` on disposable macOS runners as parallel jobs (`strict-chain.yml`): a producers job, then
-four integration shards, three native shards, the app half and the remaining checks beside each other on its
-outputs, each with two cores and its own per-step evidence.
+two integration shards, two native shards, and the app half with the remaining checks, beside each other on
+its outputs — five, the most macOS jobs a free account runs at once — each with two cores and its own
+per-step evidence.
 
 Before a checkpoint's broad run, state what it must prove and which required checks cover it. Run the
 chain after the focused checks converge. On failure, inspect the preserved evidence and reproduce the
@@ -609,7 +610,8 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #   --shard k/N  with --only naming pool steps: one vitest shard of their specs. A
                          #              shard records no stamp, since it is part of each suite
                          #   --job J    one job of the parallel strict gate, its steps derived from the graph
-                         #              (scripts/lib/chain-only.ts): producers, integration, native, app or rest
+                         #              (scripts/lib/chain-only.ts): producers, integration, native, app or rest,
+                         #              or a comma list run as one (`--job app,rest`)
                          # docs/reference/pipeline-commands.md: what each flag replaced and what was
                          # measured to choose it, including the three guards that do not separate a
                          # correlated drift from one step's.
