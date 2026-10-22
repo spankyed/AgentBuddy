@@ -129,7 +129,7 @@ Ordinary pack source imports its own `services` and `Services` from `#generated/
 | `services.chat` | Chat messages and blocks (`sendBlockMessage`, `sendSystemMessage`, `sendChoiceBlock`, `sendQuestionBlock`, `createThreadAndNotify`, …) |
 | `services.threads` | Thread chat state (`updateChatState`) |
 | `services.artifact` | Artifact creation and updates (`createAndNotify`, `updateAndNotify`, `findOrCreateByType`) |
-| `services.library` | Library documents and folders (`find`, `findByCode`, `findByName`, `findByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`), and the chat's slash commands (`commands`; see [Slash commands](#slash-commands)) |
+| `services.library` | Library documents and folders (`find`, `findByCode`, `findByName`, `findByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`), and the chat's slash commands (`commands`, which it serves as the `commands` designation's owner; see [Slash commands](#slash-commands)) |
 | `services.prompt` | Prompt templates (`usePrompt`, `findByLabel`) |
 | `services.action` | Look up and run actions (`findByLabel`, `executeAction`, `executeIfFound`) |
 | `services.brain` | Ad-hoc brain event listeners (`listen`, `unlisten`) |
@@ -747,20 +747,41 @@ An edited item you stopped shipping is kept, and under an `offer` entry it is na
 
 ## Slash commands
 
-A slash command is a `/name` the chat composer recognizes. The composer's list is two sources merged:
+A slash command is a `/name` an editor's command popup offers. **A command is content**, like an action, a
+prompt or a flow: a pack ships them in a content source, the apply writes them into the user's data, and the
+user edits them afterwards — with the three-way merge and the offers every other content entry gets. There is
+no manifest key that lists commands, and nothing to merge: one source, so a name cannot shadow another.
 
-1. **The manifest**: `"commands": { "standup": { "placeholder": "Topic" } }` under `extensions` in `apack.json`, keyed by the name. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `apack pack build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
-2. **The library**: every document in the `internal/commands` folder, each with a field section of `**name**: placeholder` lines. Users edit those from the Library, so a pack content there what it wants them to change; default-setup content `Claude Code commands` and `Codex commands` from `src/content/library/internal/commands/`, and declares its own `pr2md` and `instructions` in the manifest.
+A command lives in a document that says it is a command list — `type: commands` in a content file's
+frontmatter — whose field section is `**name**: placeholder` lines. default-setup's are
+`src/content/commands/internal/*.md`, written with its `commands` format; a pack depending on it names that format
+(`{ "path": "src/content/commands", "format": "default-setup:commands" }`) and gets the same rows. A name two
+documents define keeps the first.
 
-Declared commands come first, in stable catalog admission order (a pack rebuilt or updated keeps its place). Inspection lists commands without activating their packs; the composer offers only enabled declarations matching accepted active runtimes. In the composer, a document repeating a declared name is ignored, and a name two documents define keeps the first. The threads system refreshes on catalog changes and when it is asked to publish, sending only changed lists. A pack changing while the app runs (installed, updated, enabled, disabled, uninstalled or rebuilt, or its content imported from Settings; the bus's `PACK_CHANGED`) or a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted).
+**One feature owns them, by role.** Whichever feature plays the `commands` designation
+(`features.<id>.designation: "commands"`) serves the list from whatever documents are in the database, and the
+app asks it rather than naming a pack. A second claimant is refused when its pack registers. In default-setup
+that feature is `library`, so the documents are the user's library and they edit them there.
 
-Uninstalling a pack removes its declared commands but not the documents it wrote: they're the user's library now, so their commands stay listed, with no flow handling them, until the user deletes them.
+**Every window holds the list, whatever surface is open.** The app publishes it to the shell — beside which
+tabs show and which surface was last open — so an editor's popup reads it from there and never from a feature's
+surface. Frontend code that needs it reads `useShell().commands` (`@apackdev/sdk/fe`), or `getCommands()`
+(`@apackdev/sdk/commands`) where there is no scope to follow it in. The app republishes whenever it is asked to
+publish: on each connection, and after a pack is installed, updated, enabled, disabled, uninstalled or rebuilt
+(the bus's `PACK_CHANGED`), or the data is replaced. The owner says only *that* the list moved, when a write of
+its own altered it.
+
+`/` is the chat input's affordance: the popup is in the `input:chat` editor and nowhere else, so a slash in a
+note or a document is ordinary text.
+
+Uninstalling a pack does not remove the commands it wrote: those documents are the user's now, so their
+commands stay listed, with no flow handling them, until the user deletes them.
 
 Sending `/name args` fires a `user.command` event (`$.event.data.payload.command` is the name); there's no routing from a name to an action. To add a command:
 
 1. Write the action that does the work (its `category` only groups it in the Actions UI).
 2. Handle it in a flow: an `on("user.command", ...)` branch whose switch compares `payload.command` (`command-listener-flow.ts` for standalone commands; the Claude Code and Codex flows route `cc-*` and `cdx-*`).
-3. List it: add it to `extensions.commands` in `apack.json`, or add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/content/library/internal/commands/`).
+3. List it: add `**name**: placeholder` to a command document — one of your pack's `commands` content files, or, in the running app, one in the Library.
 
 A command listed without a handler does nothing, and a handled command that isn't listed is sent as a plain message.
 

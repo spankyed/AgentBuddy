@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { importContent } from '@apackdev/testing/harness';
-import { getPackCommands } from '@apackdev/sdk/framework';
+import { getCommands } from '@apackdev/sdk/commands';
 import { untypedQx } from '@apackdev/ears';
 import { repository } from '#generated/repository.ts';
 
 describe('memo content', () => {
   it('content memos from its markdown format and its compiler module format', async () => {
     const counts = await importContent();
-    // This pack's own content, exactly. The run also content default-setup's library, whose count is that
-    // pack's business and moves when its folders do, so this matches rather than equals.
+    // This pack's own content, exactly. The run also writes its command document through default-setup's
+    // `commands` format, whose count is that pack's business, so this matches rather than equals.
     expect(counts).toMatchObject({
       memos: { created: 1, updated: 0, skipped: 0 },
       'quick-memos': { created: 1, updated: 0, skipped: 0 },
@@ -23,15 +23,15 @@ describe('memo content', () => {
   });
 });
 
-// The chat lists a pack's commands from two places: its manifest, and the documents it content into
-// default-setup's internal/commands folder for users to edit
+// A pack contributes slash commands as content, through default-setup's `commands` format: its document
+// nests in that pack's folders, and whichever feature plays the `commands` designation then serves its
+// commands beside its own. There is no manifest key for one.
 describe('slash commands', () => {
-  it("registers the pack's declared command, and content its command document", async () => {
-    expect(getPackCommands()).toContainEqual({ name: 'memo-note', placeholder: 'Memo text' });
-
-    await importContent({ keys: ['library'] });
+  it("writes its command document and has its command served", async () => {
+    await importContent({ keys: ['commands'] });
 
     const document = untypedQx('Document').where('name', 'Memo commands').pickAll()[0];
     expect(document.content).toEqual([{ type: 'field', fields: [{ key: 'memo-list', value: 'Tag (optional)' }] }]);
+    expect(getCommands()).toContainEqual({ name: 'memo-list', placeholder: 'Tag (optional)' });
   });
 });

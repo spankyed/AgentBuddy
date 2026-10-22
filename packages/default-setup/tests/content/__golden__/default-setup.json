@@ -1525,7 +1525,7 @@
         "shortCode": "ACT-60"
       },
       "Collection:internal": {
-        "contentHash": "c26e452daf07cce3",
+        "contentHash": "f6e45bbf1184b243",
         "displayOrder": 1000,
         "entityType": "Collection",
         "name": "internal"
@@ -1547,7 +1547,7 @@
           }
         ],
         "contentHash": "8324bcfddff904b6",
-        "displayOrder": 2000,
+        "displayOrder": 1000,
         "documentType": "commands",
         "entityType": "Document",
         "name": "Chat commands",
@@ -1649,7 +1649,7 @@
           }
         ],
         "contentHash": "0d0f41d5c5359149",
-        "displayOrder": 3000,
+        "displayOrder": 2000,
         "documentType": "commands",
         "entityType": "Document",
         "name": "Claude Code commands",
@@ -1723,7 +1723,7 @@
           }
         ],
         "contentHash": "a3cd25cf0087c8ad",
-        "displayOrder": 4000,
+        "displayOrder": 3000,
         "documentType": "commands",
         "entityType": "Document",
         "name": "Codex commands",
@@ -1838,7 +1838,11 @@
         "shortCode": "PRO-6"
       }
     },
-    "relations": [],
+    "relations": [
+      "Collection:internal --contains--> Document:Chat commands",
+      "Collection:internal --contains--> Document:Claude Code commands",
+      "Collection:internal --contains--> Document:Codex commands"
+    ],
     "media": [],
     "counts": {
       "actions": {
@@ -1847,12 +1851,12 @@
         "skipped": 0
       },
       "commands": {
-        "created": 3,
+        "created": 4,
         "updated": 0,
         "skipped": 0
       },
       "library": {
-        "created": 1,
+        "created": 0,
         "updated": 0,
         "skipped": 0
       },

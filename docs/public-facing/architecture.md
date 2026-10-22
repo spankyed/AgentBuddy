@@ -125,7 +125,7 @@ export const registration: PackRegistration = {
   blocks?: BlockDefinition[];
   content.writers?: Record<string, ContentWriter>;  // apack.json `content.writers`, keyed by entity type
   appliers?: ContentApplier[];              // one per content.sources key, which applying the pack's compiled content runs
-  commands?: PackCommand[];        // apack.json `extensions.commands`
+  commandProvider?: () => PackCommand[];   // features.<id>.commands, the `commands` designation's owner only
 };
 ```
 
