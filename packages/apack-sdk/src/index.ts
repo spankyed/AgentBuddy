@@ -9,8 +9,6 @@ export type { Simplify } from './helpers/index.ts';
 export {
   EARS, type SdkEntityShapes, type RelationEntity, type FlowEntity, type NodeBase, type TNodeEntity, type TNodeKind,
   type ActionEntity, type ActionParameter, type PromptEntity, type TemplateInput,
-  type DocumentEntity, type DocumentShortCode, type ContentSection, type ContentType,
-  type FieldContent, type ListContent, type MarkdownContent, type TextContent, type CodeContent,
 } from './types/index.ts';
 export { ROOT_FLOW_ROLE } from './types/index.ts';
 
