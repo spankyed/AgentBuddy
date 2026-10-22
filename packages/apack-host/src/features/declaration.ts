@@ -19,7 +19,7 @@ export const hostDeclaration: NativePackDeclaration = {
   id: HOST_PACK_ID,
   migrations: { app: { '0.4.0': {
     description: "Move AppState's surface visibility and last-active surface off their plugin names",
-    up: '@apackdev/host/migrations/app/0.4.0#up',
+    up: '@apackdev/host/migrations#moveSurfaceStateOffPluginNames',
   } } },
   eventContracts: hostEventContracts,
   tiptapPlugins: { references: { extensions: {

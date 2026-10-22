@@ -2,10 +2,13 @@
 // last-active ref under the names AppState now has. Its subject is the data, so every case goes through
 // `appState` after writing the old attributes raw — which is the only way to produce a pre-rename row,
 // `update()` having no name for them any more.
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { untypedQx, untypedTx, type EARS } from '@apackdev/ears';
 import { resetTestData, startTestRuntime } from '@apackdev/sdk/testing';
 import { APP_STATE_ENTITY, HOST_ENTITY_TYPES, appState } from '../../src/app-state/index.ts';
+import { hostDeclaration, hostRegistration } from '../../src/features/index.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
+import { runAppMigrations } from '../../src/migrations/index.ts';
 import { up } from '../../src/migrations/app/0.4.0.ts';
 
 const APP_STATE_ID = `${APP_STATE_ENTITY}-app` as EARS.EntityId;
@@ -78,4 +81,36 @@ it('does nothing to a row that never held them, or to no row at all', () => {
 
   expect(appState.get().surfaceVisibility).toEqual({ 'a/b': true });
   expect(appState.get().hasOnboarded).toBe(true);
+});
+
+/**
+ * The cases above call `up()` directly, which says nothing about whether the app would ever call it. The
+ * host declares this migration in `hostDeclaration` and binds the callable in `hostRegistration`, two
+ * halves `migrationBindingProblem` compares — so dropping either leaves the data unmigrated with every
+ * case above still green.
+ */
+it('is reached by the app-line runner when the host is registered', () => {
+  vi.stubEnv('APACK_ENV', 'test');
+  writtenBeforeTheRename({ pluginVisibility: { 'default-setup/notes': false } });
+  appState.update({ version: '0.3.14' });
+  const registry = createPackRegistry({ nativeDeclarations: [hostDeclaration] });
+  registry.registerPack(hostRegistration());
+
+  expect(runAppMigrations(registry)).toBe(true);
+
+  expect(appState.get().surfaceVisibility).toEqual({ 'default-setup/notes': false });
+  expect(appState.get().version).toBe('0.4.0');
+  vi.unstubAllEnvs();
+});
+
+/**
+ * And the declaration's `up` names a module path, which nothing resolves for a native pack — the runner
+ * takes the callable from the registration. A path that does not resolve is therefore inert and silent,
+ * which is how this one shipped as `@apackdev/host/migrations/app/0.4.0#up`, a subpath the exports map
+ * does not carry.
+ */
+it('names an up target that resolves', async () => {
+  const [specifier, name] = hostDeclaration.migrations!.app!['0.4.0']!.up.split('#');
+  const module = await import(specifier) as Record<string, unknown>;
+  expect(typeof module[name!], `${specifier} has no export ${name}`).toBe('function');
 });

@@ -6,7 +6,7 @@ import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import { hostFeatureIds } from './declaration.ts';
 import { helpSystem } from './help/be/system.ts';
 import { hostEventContracts } from './event-contracts.ts';
-import { up as moveSurfaceStateOffPluginNames } from '../migrations/app/0.4.0.ts';
+import { moveSurfaceStateOffPluginNames } from '../migrations/index.ts';
 
 /** The host's registration: its surfaces, and the systems in `systems` */
 export function hostRegistration(systems: { application?: PackFeatureSystem; packs?: PackFeatureSystem; settings?: PackFeatureSystem } = {}): PackRegistration {
