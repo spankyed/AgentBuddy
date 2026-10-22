@@ -56,9 +56,14 @@ A wrong answer, not an error. Three things make it worse than it first looks:
   (`getAllEntityTypes`), and selecting one generates `qx(EARS.Entity.<thatName>)`
   (`default-setup/src/features/database/fe/constants.ts:19`). Any type present on disk that no registered
   pack declares is one click from a whole-database query.
-- **`qx` is not the problem.** `qx('Note')` with `Note` undeclared returns `[]` — harmless, because
-  `resolveStart` falls through to the id branch (`query.ts:66-68`). Only `undefined` returns everything. The
-  defect is the namespace handing back `undefined`, so `EARS` is the layer to fix.
+- **`qx` is not where this plan fixes it.** `qx('Note')` with `Note` undeclared returns `[]` — harmless,
+  because `resolveStart` falls through to the id branch (`query.ts:66-68`). Only `undefined` returns
+  everything. There are two defects behind that: the namespace hands back `undefined`, which this plan
+  removes, and the engine accepts it, which
+  [`ears-public-api.md`](ears-public-api.md#2-one-argument-one-meaning) removes by splitting the
+  no-argument form into `qx.all()`. They are complementary — the namespace is where a usable message can be
+  written, the engine is the backstop — and this plan lands first (see
+  [Deliberately not doing](#deliberately-not-doing)).
 
 **Why observation cannot replace declaration.** The appealing idea is that the data describes itself: after
 hydrating, the entity types present are derivable from id prefixes, so no schema need be supplied at all.
@@ -184,9 +189,16 @@ these counts, and nothing declares them" is more use than today's one-paragraph 
 - **Not making `--schema-from` repeatable.** A directory covers N packs with one flag, and the case
   repeatability was for — a second built-in pack — does not exist. `multiple: true` has precedent one file
   away (`apack-cli/src/commands/db/export.ts:9`) if that changes.
-- **Not making `qx` reject `undefined`.** `qx()` with no start is a declared overload, documented, used by
-  eight callers and by the console's shipped examples, and `setIds` re-enters with `start === undefined` on
-  every chained step (`query.ts:74-75`). The namespace is the layer.
+- **Not making `qx` reject `undefined` _here_.** `qx()` with no start is a declared overload, documented,
+  and used by eight callers and by the console's shipped examples, so retiring it is a public-API change
+  with its own call-site migration. [`ears-public-api.md`](ears-public-api.md#2-one-argument-one-meaning)
+  owns it, splitting the no-argument form into `qx.all()` so that `qx(undefined)` is an unregistered type
+  and throws. Nothing about `qx` prevents that: `setIds` re-enters with `start === undefined` on every
+  chained step (`query.ts:74-75`), but it re-enters the internal `qxImpl` with `known` already resolved,
+  and the public `qx` is a one-argument wrapper over it (`query.ts:276`), so the chained path never reaches
+  the public entry. What decides the layer is sequencing, not capability — this plan fixes a wrong answer
+  that ships today, in two files; that one rewrites every `qx`/`tx` call site in 59 files behind four
+  phases.
 - **Not swapping `getRegisteredEntityTypes` or `readBackup`'s yardstick to observed** — the regression is
   concrete and named in part 2.
 
@@ -197,6 +209,8 @@ Same family, each deserving its own change:
 - **`TypedQx` accepts `undefined` as a start by design** (`apack-ears/src/typed.ts:32-33`, "Starts that may
   be undefined at the call site"), so typed pack code can reach the whole database with no compile error.
   That is a wider surface than the console and the namespace fix does not touch it.
+  [`ears-public-api.md`](ears-public-api.md#2-one-argument-one-meaning) closes it as a consequence of the
+  same split, so it needs no change of its own.
 - **Monaco types `EARS` as the SDK-only namespace** (`default-setup/dist/defs/monaco/database-defs.d.ts`,
   members Relation/Flow/Node/TNode/Action/Prompt) while the runtime object carries all 17. So the editor
   flags `EARS.Entity.Thread` — the shipped default example (`features/database/fe/constants.ts:3`) — as

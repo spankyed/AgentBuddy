@@ -90,8 +90,30 @@ The typed facade already gives ids and names different types (`TypedTx`'s two ov
 splitting the functions makes the compiler list every typed call site. Only `untyped*` calls with a
 `string` argument need reading by hand.
 
+**The current permissiveness is documented as deliberate, and the split is the answer to its reason.**
+`packages/apack-ears/CLAUDE.md` states it outright — an unknown name "could equally be a typo, an id with no
+type prefix, or a type whose pack isn't installed, and the engine can't tell which" — and names the specs
+that pin both sides (`tests/engine/queries.spec.ts:36` pins `qx('Memo').ids()` as `[]`, and
+`transactions.spec.ts` the write). That reason is a statement about *one* entry point carrying two meanings:
+the engine cannot tell which was meant because the caller was never asked. Separate entry points ask, which
+is what makes refusing correct rather than merely stricter — `qx(type)` is a claim about a type and
+`qx.ids(…)` a claim about ids, and each can be held to its own claim. So that paragraph and those cases move
+in this change, with their rationale replaced rather than deleted.
+
 This makes [Part 1 of `undeclared-entity-names.md`](undeclared-entity-names.md#part-1--ears-refuses-a-name-it-cannot-account-for)
 the engine's default behaviour; that plan's Parts 2–3 (the console's schema) are unaffected.
+
+**That plan lands first, and this does not wait for it.** Retiring `qx()` costs a migration of every
+`qx`/`tx` call site (Phase 3, 59 files); the console's wrong answer ships today and costs two files. The two
+are complementary rather than redundant: the engine's refusal is the backstop, and the console's `Proxy` is
+where a message naming the known types and `--schema-from` can be written, which an engine that sees only
+`undefined` cannot produce. It also closes that plan's first recorded adjacent bug — `TypedQx` accepting
+`undefined` as a start — for free, since the no-argument overload is what the typed facade widens.
+
+Nothing in `qx` stands in the way: `setIds` re-enters with `start === undefined` on every chained step
+(`query.ts:74-75`), but it re-enters the internal `qxImpl` with `known` already resolved, and the public
+`qx` is a one-argument wrapper over it (`query.ts:276`). So `qx.all()` is a change to the public entry
+alone, and the chaining is untouched.
 
 ### 3. The type is stored, not parsed from the id
 
@@ -110,6 +132,14 @@ stamps from the id (`transaction.ts`), whose comment records the bug that the tw
 
 - Storage holds `typeOf: Map<EntityId, Entity>`, set by `create` and by hydration, and the index is keyed
   from it. `entityTypeOf` and `entTypeOf` are deleted; nothing parses an id.
+- **`getAllEntityTypes()` changes meaning, for the better**: it is `entityIndex.keys()`
+  (`attribute-storage.ts:310`), so today it answers "every prefix seen on an attribute key" and afterwards
+  "every type something was created as". That retires one of the three objections in
+  [`undeclared-entity-names.md`](undeclared-entity-names.md#context) to deriving a schema from the data —
+  that observation launders a junk row whose id is literally `Note` into the entity type `Note`
+  (`entityTypeOf` returns the whole id when it holds no dash, `attribute-storage.ts:21-24`). Its Part 2 merges this
+  list into the console's namespace, so that part's cases assert on created types rather than on id
+  prefixes, whichever plan lands first.
 - Hydration reads the `entities` table first, so an entity exists because it was created, not because it
   has a value.
 - `entityType` and `createdAt` become engine-owned metadata: present on every row a query returns
