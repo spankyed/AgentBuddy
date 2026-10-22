@@ -22,8 +22,8 @@ it('provides and resets app preferences without default-setup and owns returned 
   const settings = store();
   expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
   expect(untypedQx(id).pickOne(['data'])).toBeNull();
-  const first = settings.get<{ hotkeys: { switchPluginUp: { modifiers: string[] } } }>({ kind: 'app' });
-  first.hotkeys.switchPluginUp.modifiers.push('changed');
+  const first = settings.get<{ hotkeys: { switchSurfaceUp: { modifiers: string[] } } }>({ kind: 'app' });
+  first.hotkeys.switchSurfaceUp.modifiers.push('changed');
   expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
   settings.set({ kind: 'app' }, ['personal', 'name'], 'Ada');
   expect(settings.getOverrides()).toEqual({ app: { personal: { name: 'Ada' } } });
@@ -33,7 +33,7 @@ it('provides and resets app preferences without default-setup and owns returned 
 
 it.each([
   [['projects'], [{ name: 'Missing directories and color' }]],
-  [['hotkeys', 'switchPluginUp', 'modifiers'], 1],
+  [['hotkeys', 'switchSurfaceUp', 'modifiers'], 1],
   [['personal', 'name'], undefined],
   [['unknown'], true],
 ])('refuses invalid app writes at %j without storing them', (path, value) => {

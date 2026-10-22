@@ -1,9 +1,9 @@
-// The logs plugin's contract: the state it publishes and what other plugins may send it.
+// The logs surface's contract: the state it publishes and what other surfaces may send it.
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
-// `apack.json` names it at `features[].plugin.contract`.
-import type { PluginInbox } from '@apackdev/sdk/fe'
+// `apack.json` names it at `features[].surface.contract`.
+import type { SurfaceInbox } from '@apackdev/sdk/fe'
 import type { LogEntry } from '../be/types.ts'
 
 export interface LogsContext {
@@ -19,12 +19,12 @@ export interface LogsContext {
   };
 }
 
-/** A log line any pack's system may hand the logs plugin */
+/** A log line any pack's system may hand the logs surface */
 export type LogsInboxEvent = { type: 'LOG_ADDED'; log: LogEntry }
 
-// `public`, alone among this pack's plugins: a log line is the one thing a dependent pack has business sending,
+// `public`, alone among this pack's surfaces: a log line is the one thing a dependent pack has business sending,
 // and the logs system doesn't send it — whoever logged it does.
 export type Contract = {
   state: LogsContext
-  inbox: PluginInbox<{ public: LogsInboxEvent }>
+  inbox: SurfaceInbox<{ public: LogsInboxEvent }>
 }

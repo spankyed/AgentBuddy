@@ -1,7 +1,7 @@
 /**
  * The Database console's code runners. Console code is the body of a function that returns its result; a query
  * sees the read helpers, a transaction the read and write helpers, all acting on the installed engine. The
- * Database plugin runs its console's code with them, and `apack db query`/`exec` run theirs, so the same code
+ * Database surface runs its console's code with them, and `apack db query`/`exec` run theirs, so the same code
  * means the same thing in both.
  *
  * @packageDocumentation

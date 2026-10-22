@@ -14,7 +14,7 @@ test('advanced settings JSON provides offline declared completion, descriptions 
   });
   await appPage.reload();
   await waitForAppReady(appPage);
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await app.navigate('host/settings');
   await appPage.evaluate(() => {
     const settings = (window as any).applicationState.system.get('host/settings');
@@ -82,7 +82,7 @@ test('advanced settings JSON provides offline declared completion, descriptions 
   expect(externalRequests).toEqual([]);
 });
 
-test('pack plugin renders with its own styles', async ({ appPage, app }) => {
+test('pack surface renders with its own styles', async ({ appPage, app }) => {
   const network = await appPage.context().newCDPSession(appPage);
   const resources: string[] = [];
   network.on('Network.requestWillBeSent', event => {
@@ -93,7 +93,7 @@ test('pack plugin renders with its own styles', async ({ appPage, app }) => {
   try {
     await appPage.reload();
     await waitForAppReady(appPage);
-    await app.waitForPlugin('memos');
+    await app.waitForSurface('memos');
     await app.navigate('memos');
 
     const canvas = appPage.getByTestId('memos-canvas');
@@ -115,7 +115,7 @@ test('pack plugin renders with its own styles', async ({ appPage, app }) => {
 });
 
 test('add memo round-trip through the pack backend', async ({ appPage, app }) => {
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await app.navigate('memos');
 
   const text = `memo ${Date.now()}`;
@@ -127,7 +127,7 @@ test('add memo round-trip through the pack backend', async ({ appPage, app }) =>
 });
 
 test("renders the host's @apackdev/ui editor inside the pack", async ({ appPage, app }) => {
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await app.navigate('memos');
 
   const preview = appPage.getByTestId('memo-preview');
@@ -137,7 +137,7 @@ test("renders the host's @apackdev/ui editor inside the pack", async ({ appPage,
 });
 
 test('content memos from apack.json: a markdown entry and a compiler module', async ({ appPage, app }) => {
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await app.navigate('memos');
 
   const list = appPage.getByTestId('memo-list');
@@ -157,26 +157,26 @@ async function openMemoPreferences(page: import('@playwright/test').Page, app: A
 }
 
 test("the pack's feature settings are defaults in the app", async ({ appPage, app }) => {
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await expect(await openMemoPreferences(appPage, app)).toHaveValue('Memos');
-  // Its settings hide its sidebar tab by default; the plugin is still there to open
+  // Its settings hide its sidebar tab by default; the surface is still there to open
   const visibleIds = () => appPage.evaluate(() => {
-    const { plugins, pluginVisibility } = (window as any).applicationState.getSnapshot().context;
-    return (plugins as Array<{ id: string }>).filter((p) => pluginVisibility[p.id] !== false).map((p) => p.id);
+    const { surfaces, surfaceVisibility } = (window as any).applicationState.getSnapshot().context;
+    return (surfaces as Array<{ id: string }>).filter((p) => surfaceVisibility[p.id] !== false).map((p) => p.id);
   });
   await expect.poll(visibleIds).toContain('default-setup/threads');
   await expect.poll(visibleIds).not.toContain('e2e-fixture/memos');
 });
 
-test("a re-enabled pack's plugin gets its startup data again", async ({ appPage, app }) => {
-  await app.waitForPlugin('memos');
-  const pluginIds = () => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.plugins.map((p: { id: string }) => p.id) as string[]);
+test("a re-enabled pack's surface gets its startup data again", async ({ appPage, app }) => {
+  await app.waitForSurface('memos');
+  const surfaceIds = () => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.surfaces.map((p: { id: string }) => p.id) as string[]);
   const toggle = () => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs').send({ type: 'UI.TOGGLE_ENABLED', packId: 'e2e-fixture' }));
 
-  // Disabled while active: its plugin actor must stop, or re-enabling can't spawn it again
+  // Disabled while active: its surface actor must stop, or re-enabling can't spawn it again
   await app.navigate('memos');
   await toggle();
-  await expect.poll(pluginIds, { timeout: 15_000 }).not.toContain('e2e-fixture/memos');
+  await expect.poll(surfaceIds, { timeout: 15_000 }).not.toContain('e2e-fixture/memos');
   // Disabled declarations remain available; their executable forms are unloaded.
   await openMemoPreferences(appPage, app);
   await expect(appPage.getByText('e2e-fixture/memos', { exact: true })).toBeVisible();
@@ -185,14 +185,14 @@ test("a re-enabled pack's plugin gets its startup data again", async ({ appPage,
 
   // Loaded after the connection: its data comes from the pack's client-ready handshake
   await toggle();
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await expect(await openMemoPreferences(appPage, app)).toHaveValue('Memos');
   await app.navigate('memos');
   await expect(appPage.getByTestId('memo-list').getByText('Written from markdown', { exact: true })).toBeVisible({ timeout: 10_000 });
 });
 
 test('writes through @apackdev/ears and reads back through the SDK, on the app\'s engine', async ({ appPage, app }) => {
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await app.navigate('memos');
   const text = `memo note ${Date.now()}`;
   // The memos system writes a note with @apackdev/ears (bridged to the app's) and reads it through services.repository
@@ -203,7 +203,7 @@ test('writes through @apackdev/ears and reads back through the SDK, on the app\'
 });
 
 test('a custom feature form persists under its declared owner across a window reload', async ({ appPage, app }) => {
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   const title = await openMemoPreferences(appPage, app);
   await expect(title).toHaveValue('Memos');
   await title.fill('Renamed memos');
@@ -213,7 +213,7 @@ test('a custom feature form persists under its declared owner across a window re
 
   await appPage.reload();
   await waitForAppReady(appPage);
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await expect(await openMemoPreferences(appPage, app)).toHaveValue('Renamed memos');
 });
 
@@ -223,7 +223,7 @@ test('feature edits and reset reach another settings window', async ({ appPage, 
   await first.blur();
   await expect(appPage.getByText('Settings saved', { exact: true })).toBeVisible();
   const opened = electronApp.waitForEvent('window');
-  await appPage.evaluate(() => (window as any).electronAPI.plugins.popout('host/settings', 'Settings'));
+  await appPage.evaluate(() => (window as any).electronAPI.surfaces.popout('host/settings', 'Settings'));
   const second = await opened;
   try {
     await second.waitForLoadState('domcontentloaded');
@@ -285,7 +285,7 @@ test('host personal settings follow edits in another window', async ({ appPage, 
   await appPage.getByRole('button', { name: 'General', exact: true }).click();
   await appPage.getByRole('button', { name: 'Personal', exact: true }).click();
   const opened = electronApp.waitForEvent('window');
-  await appPage.evaluate(() => (window as any).electronAPI.plugins.popout('host/settings', 'Settings'));
+  await appPage.evaluate(() => (window as any).electronAPI.surfaces.popout('host/settings', 'Settings'));
   const second = await opened;
   try {
     await second.waitForLoadState('domcontentloaded');
@@ -301,7 +301,7 @@ test('host personal settings follow edits in another window', async ({ appPage, 
 
 
 test('external reference declarations feed the existing editor and picker with canonical navigation', async ({ appPage, app }) => {
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await app.navigate('memos');
   const editor = appPage.getByTestId('memo-reference-editor').locator('.tiptap');
   await expect(editor).toBeVisible();

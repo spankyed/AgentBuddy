@@ -139,7 +139,7 @@ Machine-readable sidecars are also written for timeline tooling:
 tail -f ~/Library/Logs/apack/app-events.log
 ```
 
-This is a JSONL sidecar for backend/in-app log events emitted through the app event bus. It survives renderer crashes and is useful when the in-app Logs plugin is unavailable.
+This is a JSONL sidecar for backend/in-app log events emitted through the app event bus. It survives renderer crashes and is useful when the in-app Logs surface is unavailable.
 
 For a terminal-captured production run, use:
 

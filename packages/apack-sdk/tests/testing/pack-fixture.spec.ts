@@ -6,7 +6,7 @@ import { packFixture } from '../../src/testing/pack-fixture.ts';
 import * as testing from '../../src/testing/index.ts';
 import manifest from '../../package.json' with { type: 'json' };
 import type { PackManifest } from '../../src/build/manifest.ts';
-import { _pluginTargets } from '../../src/framework/plugin-declaration.ts';
+import { _surfaceTargets } from '../../src/framework/surface-declaration.ts';
 import { population } from '../../src/testing/population.ts';
 
 const read = (dir: string, file: string) => JSON.parse(fs.readFileSync(path.join(dir, file), 'utf-8'));
@@ -23,8 +23,8 @@ describe('packFixture', () => {
     const features = read(dir, 'apack.json').features as NonNullable<PackManifest['features']>;
     const declared = Object.values(features).flatMap(feature => [
       feature.system!.entry, feature.system!.contract!.split('#')[0]!,
-      ..._pluginTargets(feature.plugin!).map(([, target]) => target.split('#')[0]!),
-      feature.plugin!.contract!.split('#')[0]!,
+      ..._surfaceTargets(feature.surface!).map(([, target]) => target.split('#')[0]!),
+      feature.surface!.contract!.split('#')[0]!,
     ]);
 
     population('the paths the fixture manifest declares', declared, { atLeast: 4 });

@@ -1,6 +1,6 @@
 # @app/main
 
-The Electron main process. It decides the app environment, spawns the API server as a child process, owns every window, registers the custom protocols and answers the renderer's IPC calls. It holds no app logic: pack systems run in the API process (`packages/api`), plugins in the renderer. The root `CLAUDE.md` covers environment inference in brief, and `docs/public-facing/architecture.md` covers the data dir layout and the `pack://` protocol from a pack author's side.
+The Electron main process. It decides the app environment, spawns the API server as a child process, owns every window, registers the custom protocols and answers the renderer's IPC calls. It holds no app logic: pack systems run in the API process (`packages/api`), surfaces in the renderer. The root `CLAUDE.md` covers environment inference in brief, and `docs/public-facing/architecture.md` covers the data dir layout and the `pack://` protocol from a pack author's side.
 
 ## Entry
 
@@ -33,7 +33,7 @@ Modules, in order (`src/modules/`):
 | `createSpeechRecognition` | `speech-recognition/` | `speech:*` IPC; spawns the native helper (`native/speech/…`) on first `speech:start` |
 | `createWindowManagerModule` | `window-manager/` | Main and popout windows, most IPC handlers (see Windows) |
 | `terminateAppOnLastWindowClose` | `ApplicationTerminatorOnLastWindowClose.ts` | Quits on `window-all-closed` except on macOS |
-| `createBrowserModule` | `browser/` | The browser plugin's tabs: `WebContentsView`s in the `persist:browser` session, driven by `browser:*` IPC (`BrowserTabManager.ts`) |
+| `createBrowserModule` | `browser/` | The browser surface's tabs: `WebContentsView`s in the `persist:browser` session, driven by `browser:*` IPC (`BrowserTabManager.ts`) |
 | `createMacOSAppMenu` | `MacOSAppMenu.ts` | macOS menu: Cmd+Q hides, Cmd+Shift+Q quits; packaged builds add "Install 'apack' command in PATH" (`cli-command.ts`, symlinks `Resources/cli/apack` into `/usr/local/bin`, `apack-beta` for beta, via `osascript` on EACCES) |
 | `allowInternalOrigins` | `BlockNotAllowdOrigins.ts` | Blocks `will-navigate` to origins other than the dev server's |
 | `allowExternalUrls` | `ExternalUrls.ts` | `setWindowOpenHandler` always denies, and sends the URL to the system browser through `shell-access.ts` (see Shell access) |
@@ -92,7 +92,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 - `WindowManager.enable` waits for `apiServer.waitForReady()` (60 s). On failure it shows a Relaunch/Quit dialog and exits.
 - `restoreOrCreateWindow` creates the main window (title `apack-Main`, the key `isMainWindow` matches on) and waits for the renderer's `renderer:ready` IPC (15 s timeout) before showing it and closing the splash. `second-instance` and macOS `activate` restore or recreate it.
 - Windows get `contextIsolation: true`, `nodeIntegration: false`, `sandbox: false`, the preload script, and `additionalArguments` `--api-port=<port>` and `--startup-id=<id>`, which the preload reads. The port is read when the window is created; later moves reach the renderer through `api:started`.
-- `plugin:popout` opens one popout per plugin id (`apack-Popout-<id>`), loading the renderer with `?popout=plugin&pluginId=…&title=…`; Cmd/Ctrl+W closes it.
+- `surface:popout` opens one popout per surface id (`apack-Popout-<id>`), loading the renderer with `?popout=surface&surfaceId=…&title=…`; Cmd/Ctrl+W closes it.
 - Size: 1400×900 in a dev build, 1920×1200 otherwise (`constants.ts`, `import.meta.env.DEV`).
 - Under Playwright, windows are never shown or focused unless `PLAYWRIGHT_VISIBLE=1`; the same check guards the splash and protocol handler.
 - `attachRendererDiagnostics` logs console messages, crashes, hangs, load and preload failures to the renderer log. `getWindowIcon()` (`helpers.ts`) uses `build/resources/icon-dev.png` from source.
@@ -110,7 +110,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 ## Build and dev
 
 - `vite build` (`vite.config.js`) produces a single SSR ES bundle `dist/index.js`. `@apackdev/sdk` and `@apackdev/host` are bundled in (`ssr.noExternal`), because packaged builds strip `.ts`. They resolve under `@apackdev/source`. Splash assets and `resources/logo.svg` are copied to `dist/assets`.
-- `npm run dev` (`packages/dev-mode.js`) starts the renderer dev server, builds the API, then builds preload and main in watch mode with the `@app/renderer-watch-server-provider` plugin. Main's `handleHotReload` restarts Electron after each rebuild (`ELECTRON_INSPECT=true`, via `npm run dev:inspect`, adds `--inspect`).
+- `npm run dev` (`packages/dev-mode.js`) starts the renderer dev server, builds the API, then builds preload and main in watch mode with the `@app/renderer-watch-server-provider` surface. Main's `handleHotReload` restarts Electron after each rebuild (`ELECTRON_INSPECT=true`, via `npm run dev:inspect`, adds `--inspect`).
 - `npm run typecheck -w @app/main` runs `tsc --noEmit`. Root `npm run typecheck` runs it as `typecheck:main`.
 
 ## Tests

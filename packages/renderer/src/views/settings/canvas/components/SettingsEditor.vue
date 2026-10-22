@@ -10,9 +10,9 @@
     <p v-if="description" class="mb-6 text-sm text-neutral-400">{{ description }}</p>
     <ContributionBoundary v-if="form && formOwner" :pack-id="formOwner" :owner="formRef" area="settings form"
       :current="isCurrentForm">
-      <PluginScope v-if="plugin" :plugin="plugin">
+      <SurfaceScope v-if="surface" :surface="surface">
         <component :is="form" :settings="value" @update-setting="update" />
-      </PluginScope>
+      </SurfaceScope>
       <component v-else :is="form" :settings="value" @update-setting="update" />
     </ContributionBoundary>
     <div v-else class="text-sm text-neutral-400">
@@ -33,7 +33,7 @@
 <script setup lang="ts">
 import { computed, ref, type Component } from 'vue';
 import ContributionBoundary from '@/views/layout/ContributionBoundary.vue';
-import { PluginScope, usePlugin } from '@apackdev/sdk/fe';
+import { SurfaceScope, useSurface } from '@apackdev/sdk/fe';
 import type { SettingUpdate, SettingsTarget } from '@apackdev/sdk/types';
 import { splitRef, type FeatureRef } from '@apackdev/sdk/ids';
 import { fePacks } from '@/runtime/packs';
@@ -44,14 +44,14 @@ import { useSettingsSaveStatus } from '@/views/settings/save';
 
 const props = defineProps<{
   target: SettingsTarget; title: string; description?: string;
-  form?: Component; value: unknown; plugin?: FeatureRef;
+  form?: Component; value: unknown; surface?: FeatureRef;
 }>();
 const formOwner = computed(() => props.target.kind === 'pack' ? props.target.packId
   : props.target.kind === 'feature' ? splitRef(props.target.featureRef)?.packId : undefined);
 const formRef = computed(() => props.target.kind === 'feature' ? props.target.featureRef
   : props.target.kind === 'pack' ? `${props.target.packId}/${props.target.groupId}` : 'host/app');
 const isCurrentForm = () => fePacks.settingsForm(props.target) === props.form;
-const actor: SettingsState = usePlugin();
+const actor: SettingsState = useSurface();
 const confirmReset = ref(false);
 const { saveStatus, problems, updateSettings, resetSettings } = useSettingsSaveStatus();
 const update = (event: SettingUpdate) => updateSettings({

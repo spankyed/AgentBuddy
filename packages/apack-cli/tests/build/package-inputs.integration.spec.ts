@@ -60,13 +60,13 @@ async function consumer() {
   fs.writeFileSync(path.join(library, 'index.d.ts'), declarations('BEFORE'));
   const manifest = { id: 'type-consumer', name: 'Type Consumer', version: '1.0.0',
     features: { view: { description: 'Imported event contract.', system: { entry: 'src/system.ts', contract: 'src/contract.ts#Contract' },
-      plugin: { label: 'View', state: 'src/plugin.ts' } } } };
+      surface: { label: 'View', state: 'src/surface.ts' } } } };
   const pack = preparePack(root, manifest.id, {
     'apack.json': JSON.stringify(manifest),
     'package.json': JSON.stringify({ ...JSON.parse(packageJson(manifest.id)), dependencies: {
       'external-events': '1.0.0', '@apackdev/sdk': '0.1.0', '@apackdev/ears': '0.1.0', xstate: '^5.19.2' } }),
     'tsconfig.json': tsconfig, 'src/contract.ts': "export type { Contract } from 'external-events';",
-    'src/plugin.ts': "import { createMachine } from 'xstate'; export default createMachine({ id: 'view' });",
+    'src/surface.ts': "import { createMachine } from 'xstate'; export default createMachine({ id: 'view' });",
     'src/system.ts': `import { setup } from 'xstate'; import { defineSystem } from '@apackdev/sdk/framework';
 import type { Contract } from './contract.ts'; const spec = defineSystem<Contract>();
 export default { spec, machine: setup({ types: spec.types }).createMachine({ id: 'view' }) };`,

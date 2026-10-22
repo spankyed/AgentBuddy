@@ -1,6 +1,6 @@
 # @app/renderer
 
-The Vue 3 app every apack window runs. It hosts plugins; it doesn't implement them. Built-in plugins come from `packages/default-setup` (compiled in), and external packs' plugins load at runtime from `pack://`. The renderer owns the window: the tRPC client, the shared-dependency globals packs import through, the layout and Packs views, and the composition that ties them to the host's machines. What decides anything — the app shell, the Packs plugin's machine, pack-frontend loading, the install a deep link asks for — is `@apackdev/host/fe`, as the app runtime behind the API is `@apackdev/host`. The root `CLAUDE.md` covers the plugin model; `docs/public-facing/architecture.md` ("Frontend boot", "Host dependency sharing") covers pack loading from a pack author's side, and `packages/apack-host/src/packs/runtime/CLAUDE.md` covers the backend half.
+The Vue 3 app every apack window runs. It hosts surfaces; it doesn't implement them. Built-in surfaces come from `packages/default-setup` (compiled in), and external packs' surfaces load at runtime from `pack://`. The renderer owns the window: the tRPC client, the shared-dependency globals packs import through, the layout and Packs views, and the composition that ties them to the host's machines. What decides anything — the app shell, the Packs surface's machine, pack-frontend loading, the install a deep link asks for — is `@apackdev/host/fe`, as the app runtime behind the API is `@apackdev/host`. What this package renders is a feature's frontend half, which is a **surface**; `plugin` is reserved for a ProseMirror `Plugin` or a bundler plugin, and `packages/repo-checks/tests/surface-vocabulary.spec.ts` is the rule. The root `CLAUDE.md` covers the model; `docs/public-facing/architecture.md` ("Frontend boot", "Host dependency sharing") covers pack loading from a pack author's side, and `packages/apack-host/src/packs/runtime/CLAUDE.md` covers the backend half.
 
 ## Layout
 
@@ -24,15 +24,15 @@ Tests live in `tests/`, mirroring `src/`, as in every other package.
 
 Its static imports are evaluated first, `virtual:host-shared-modules` among them — which has no runtime effect and is imported for the two side effects of its modules being in this window's graph (see the Vite section). The body then runs with a top-level `await`, in this order:
 
-1. `installGlobalErrorHandling()` (`src/boot/errors.ts`): the Monaco error filter, then this window's `window.error` / `unhandledrejection` reporters (`electronAPI.rendererLog.write`, `fatal: true`). One call, because the filter only works when it is registered first. Reads `?popout=plugin&pluginId=…` (set by main's `plugin:popout`).
-2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runFrontendMigrations(localStorage, __APP_VERSION__)` (`@apackdev/host/fe`), which moves what this window keeps in its storage forward before the shell reads those keys. The migrations are the host's (`src/fe/migrations/`); the window only says where its storage is and which version it is.
-3. The host's own frontend: `fePacks.registerPackFE(hostFrontend)`, without a pack id, so it can't be unregistered. **No pack's frontend is registered here** — every one, the app's own included, is loaded by the shell once the bus says which packs are running. `fePacks` (`src/runtime/packs.ts`) is this window's registered pack frontends, `createFePackRegistry()` from `@apackdev/host/fe`: the pack loader registers each pack's in it, `App.vue` reads the `welcome` app extension from it, and the SDK's frontend registries (steps, designations, tiptap plugins, DSL types) read it once bound.
-4. Creates the app shell, `createAppShell()` (`src/runtime/shell.ts`), with `systemId: 'host/application'` (its machine id stays `application`, which its `#application.…` targets name) and input `{ initialPluginId, ownsLastActivePlugin: !popout }` (a main window opens on the plugin last open and records the one it opens; a popout does neither). It starts with the plugins registered in `fePacks` and the default a pack claims. It is exported as `applicationState`.
-5. Binds the SDK's frontend port, `bindRendererHost(applicationState)` (`src/runtime/index.ts`: `bindFeHost({ application, secrets, client: feClient, packs: fePacks })`), then starts the actor, so the binding is in place before any plugin runs or any external pack frontend loads:
-   - `application` backs `@apackdev/sdk/fe`'s `untypedOpenPlugin` and its neighbours;
+1. `installGlobalErrorHandling()` (`src/boot/errors.ts`): the Monaco error filter, then this window's `window.error` / `unhandledrejection` reporters (`electronAPI.rendererLog.write`, `fatal: true`). One call, because the filter only works when it is registered first. Reads `?popout=surface&surfaceId=…` (set by main's `surface:popout`).
+2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runWindowStorageMigrations(localStorage, __APP_VERSION__)` (`@apackdev/host/fe`), which moves what this window keeps in its storage forward before the shell reads those keys. The migrations are the host's (`src/fe/window-storage/`); the window only says where its storage is and which version it is.
+3. The host's own frontend: `fePacks.registerPackFE(hostFrontend)`, without a pack id, so it can't be unregistered. **No pack's frontend is registered here** — every one, the app's own included, is loaded by the shell once the bus says which packs are running. `fePacks` (`src/runtime/packs.ts`) is this window's registered pack frontends, `createFePackRegistry()` from `@apackdev/host/fe`: the pack loader registers each pack's in it, `App.vue` reads the `welcome` app extension from it, and the SDK's frontend registries (steps, designations, text editor extensions, DSL types) read it once bound.
+4. Creates the app shell, `createAppShell()` (`src/runtime/shell.ts`), with `systemId: 'host/application'` (its machine id stays `application`, which its `#application.…` targets name) and input `{ initialSurfaceId, ownsLastActiveSurface: !popout }` (a main window opens on the surface last open and records the one it opens; a popout does neither). It starts with the surfaces registered in `fePacks` and the default a pack claims. It is exported as `applicationState`.
+5. Binds the SDK's frontend port, `bindRendererHost(applicationState)` (`src/runtime/index.ts`: `bindFeHost({ application, secrets, client: feClient, packs: fePacks })`), then starts the actor, so the binding is in place before any surface runs or any external pack frontend loads:
+   - `application` backs `@apackdev/sdk/fe`'s `untypedOpenSurface` and its neighbours;
    - `secrets` is `src/transport/secrets.ts`, the API's secrets procedures behind `secretsClient` (the only ones pack frontends call directly);
    - `settings` is `src/runtime/settings.ts`, the `SettingsPort` behind `@apackdev/sdk/fe`'s settings composables. It reads the running Settings view's actor, found by the `settings` role rather than by name, so what a feature reads of its own settings doesn't name the view that draws them;
-   - `client` is `feClient` (`src/transport/client.ts`), the window's one client to the API: the `ShellClient` from `@apackdev/host/fe`. Its `send` is how `@apackdev/sdk/events`' `sendToSystem` sends here, over `bus.send`, reporting a rejected send to the console, the app's log (`fe-client` source) and a toast, without the payload. The shell (`createAppShell()`) subscribes through it, and reads the loaded packs and asks for packs' startup data through it; it follows the API across a restart on a new port (Electron's API status). Views do not call `trpc.bus` or `trpc.packs`. `runtime/catalog.ts` owns the independent `packs.catalog` declaration subscription; the shell client starts/stops its connection lifetime without gating pack activation on it. Plugin sends and subscriptions throw (no backend app is bound in the renderer).
+   - `client` is `feClient` (`src/transport/client.ts`), the window's one client to the API: the `ShellClient` from `@apackdev/host/fe`. Its `send` is how `@apackdev/sdk/events`' `sendToSystem` sends here, over `bus.send`, reporting a rejected send to the console, the app's log (`fe-client` source) and a toast, without the payload. The shell (`createAppShell()`) subscribes through it, and reads the loaded packs and asks for packs' startup data through it; it follows the API across a restart on a new port (Electron's API status). Views do not call `trpc.bus` or `trpc.packs`. `runtime/catalog.ts` owns the independent `packs.catalog` declaration subscription; the shell client starts/stops its connection lifetime without gating pack activation on it. Surface sends and subscriptions throw (no backend app is bound in the renderer).
 6. Sets the globals:
    - `window.applicationState` is the actor. The E2E fixture (`@apackdev/testing`) finds the main window by it and drives it.
    - `window.__disableOnboardingUI()` sends `ONBOARDING_COMPLETE`.
@@ -40,7 +40,7 @@ Its static imports are evaluated first, `virtual:host-shared-modules` among them
 7. Subscribes to `protocolAction`: `apack://install?pack=…&sourceKind=…` → `installFromProtocol` (`@apackdev/host/fe`), which reads the parameters and sends `INSTALL_PACK` to the `packs` system.
 8. Mounts `views/App.vue`, sets a Vue `errorHandler`, then calls `electronAPI.rendererReady()`, which tells main to show the window.
 
-`App.vue` renders `PluginPopoutApp.vue` (one plugin, `PopoutTitlebar`) for popouts, else `WebApp.vue` (toolbar, canvas and chat areas, inspection panel), plus the `welcome` app extension while the actor has the `welcome` tag, and an overlay while it has `connecting`. `index.html` defines `window.__showErrorPage(title, detail)`, the static error page, whose buttons call `electronAPI.apiStatus.reload/relaunch/openLogFile`.
+`App.vue` renders `SurfacePopoutApp.vue` (one surface, `PopoutTitlebar`) for popouts, else `WebApp.vue` (toolbar, canvas and chat areas, inspection panel), plus the `welcome` app extension while the actor has the `welcome` tag, and an overlay while it has `connecting`. `index.html` defines `window.__showErrorPage(title, detail)`, the static error page, whose buttons call `electronAPI.apiStatus.reload/relaunch/openLogFile`.
 
 ## Vite (`vite.config.ts`)
 
@@ -50,7 +50,7 @@ Its static imports are evaluated first, `virtual:host-shared-modules` among them
 - **`hostSharedModulesPlugin`** is how a pack gets *this app's* Vue, XState and SDK instance (with the
   frontend host it binds): **by resolution**, not through a global. `sharedFeModules()`
   (`@apackdev/host/build/shared-deps`) maps every specifier a pack may leave external to the module the host
-  loads for it — the shared deps, `getSdkFeModules()`, and every `@apackdev/ui` export. The plugin then:
+  loads for it — the shared deps, `getSdkFeModules()`, and every `@apackdev/ui` export. The surface then:
   - serves each distinct module. In `vite build` each is an extra `rollupOptions.input` entry with
     `preserveEntrySignatures: 'exports-only'`; **only when building**, because naming `input` also makes the
     dev server crawl those entries for dependency discovery in place of `index.html`, and a bare specifier
@@ -83,14 +83,14 @@ The shell's machine is the host's: `createShellMachine` in `@apackdev/host/fe` (
 
 | Option | The renderer's |
 |---|---|
-| `packs` | `fePacks` (`src/runtime/packs.ts`): the plugins the shell starts with, and its default |
+| `packs` | `fePacks` (`src/runtime/packs.ts`): the surfaces the shell starts with, and its default |
 | `client` | `feClient` (`src/transport/client.ts`): the bus subscription, sends, the loaded packs, `packClientReady`, and the connection's description for the error page (Electron's `apiStatus`) |
 | `packFrontends` | `createPackFrontends(packFrontendIO, fePacks)` (`@apackdev/host/fe`), over this window's `import()` and stylesheets (`src/adapters/pack-frontends.ts`) |
 | `storage` | `windowStorage` (`src/adapters/storage.ts`): `localStorage`, under `apack-panel-sizes` |
 | `notify` | `windowNotify` (`src/adapters/notify.ts`), over `globalToast` (`src/adapters/toast.ts`, which queues until `WebApp` registers the toast component) and `window.__showErrorPage` |
 | `target` | `window`, which the hotkey and mouse listeners attach to |
 
-It re-exports nothing: `WebApp.vue` takes `visiblePluginsOf` from `@apackdev/host/fe`. Saved panel sizes that aren't JSON fall back to the defaults rather than failing the window's shell (`tests/runtime/shell.spec.ts`).
+It re-exports nothing: `WebApp.vue` takes `neighbourOf` from `@apackdev/host/fe`. Saved panel sizes that aren't JSON fall back to the defaults rather than failing the window's shell (`tests/runtime/shell.spec.ts`).
 
 ## External pack frontends
 
@@ -102,26 +102,26 @@ a browser can do, as `PackFrontendIO` (`src/adapters/pack-frontends.ts`):
 - `styles.add(packId, href)` adds a `<link data-pack-id>` once per href and resolves when it has loaded or failed;
   `styles.remove(packId)` takes that pack's stylesheets out.
 
-On `PACK_DEACTIVATED` the Packs machine tells the shell `PACK_PLUGINS_UNLOADED`, and the shell unloads the pack's
-frontend and drops its plugins — it loads them, so it takes them out.
+On `PACK_DEACTIVATED` the Packs machine tells the shell `PACK_SURFACES_UNLOADED`, and the shell unloads the pack's
+frontend and drops its surfaces — it loads them, so it takes them out.
 
 ## Packs view (`src/views/packs/`)
 
-The Packs tab's components, and the one module that composes them: `plugin.ts` pairs the host's `packsMachine`
+The Packs tab's components, and the one module that composes them: `surface.ts` pairs the host's `packsMachine`
 (`@apackdev/host/fe`) with the view (`index.vue`, the list, and `PackDetail.vue`) and registers it as the `host` pack's frontend.
 Nothing here decides anything about packs: what would is the host's, and `tests/source-layout.spec.ts` keeps the
-view and its one composition module the only things here. `plugin.ts` is where `hostFrontend` lives, so the Settings
+view and its one composition module the only things here. `surface.ts` is where `hostFrontend` lives, so the Settings
 view registers there too.
 
 ## Settings view (`src/views/settings/`)
 
-The Settings tab, laid out as the Packs view is: the canvas, its three tabs (General, Plugins, Help) and the General
+The Settings tab, laid out as the Packs view is: the canvas, its three tabs (General, Surfaces, Help) and the General
 components, over the host's `createSettingsMachine` (`@apackdev/host/fe`). The settings themselves are the app's
 (`packages/apack-host/src/features/settings/`) — this is only what draws them. Two sections a pack contributes,
 `general` and `assistant`, are default-setup's content; the components read them as data and the host stores them
 opaquely. `feature-settings.ts` reads a slice by name from settings in hand, `save.ts` is the composable the forms
-use for a change and whether the store stored it, and the Plugins tab renders each plugin's own `settings` component
-in a `PluginScope` for that plugin, so a form's `usePlugin()` reaches the plugin it configures.
+use for a change and whether the store stored it, and the Surfaces tab renders each surface's own `settings` component
+in a `SurfaceScope` for that surface, so a form's `useSurface()` reaches the surface it configures.
 
 ## Tests and checks
 

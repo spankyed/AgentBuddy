@@ -28,7 +28,7 @@ const ACTION = `
 
 // What an action sends, and who it says sent it
 const SENDING = `
-  services.emitter.broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
+  services.emitter.broadcastToSurface('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
   return 'sent';
 `;
 
@@ -75,7 +75,7 @@ describe('the action sandbox', () => {
   it('stamps the pack and the action on what the action sends', async () => {
     vi.spyOn(repository.actionQueries, 'all').mockReturnValue([{ label: 'Summarise Thread', actionFn: SENDING } as ActionEntity]);
     const sent: unknown[] = [];
-    const stop = testRootEvents.onPluginSend((message) => sent.push(message));
+    const stop = testRootEvents.onSurfaceSend((message) => sent.push(message));
 
     try {
       expect(await actionService.executeIfFound('Summarise Thread', {})).toBe('sent');
@@ -98,7 +98,7 @@ describe('the action sandbox', () => {
     try {
       const escaped = await runActionCode(`return {
         log: services.logger.info,
-        send: () => services.emitter.broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' })
+        send: () => services.emitter.broadcastToSurface('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' })
       };`, { label: 'Escaped', params: {}, servicesForAction: access.servicesForAction }) as { log(message: string): void; send(): void };
       escaped.log('accepted');
       expect(logs).toContainEqual(expect.objectContaining({ message: 'accepted', source: 'action:Escaped' }));

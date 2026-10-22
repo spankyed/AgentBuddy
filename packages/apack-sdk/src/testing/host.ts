@@ -32,13 +32,13 @@ class TestEventBus extends EventEmitter implements TestRootEvents {
   emitConnected(): void { this.emit('connected'); }
   emitPackClientConnected(packId: string): void { this.emit('pack-connected', packId); }
   emitIncoming(message: Message): void { this.emit('incoming', message); }
-  emitPluginSend(message: Message): void { this.emit('plugin-send', message); }
+  emitSurfaceSend(message: Message): void { this.emit('surface-send', message); }
   emitOutgoing(message: Message): void { this.emit('outgoing', message); }
   onLog(callback: (event: LogEvent) => void): () => void { return this.subscribe('log', callback); }
   onConnected(callback: () => void): () => void { return this.subscribe('connected', callback); }
   onPackClientConnected(callback: (packId: string) => void): () => void { return this.subscribe('pack-connected', callback); }
   onIncoming(callback: (message: Message) => void): () => void { return this.subscribe('incoming', callback); }
-  onPluginSend(callback: (message: Message) => void): () => void { return this.subscribe('plugin-send', callback); }
+  onSurfaceSend(callback: (message: Message) => void): () => void { return this.subscribe('surface-send', callback); }
   onOutgoing(callback: (message: Message) => void): () => void { return this.subscribe('outgoing', callback); }
 }
 

@@ -20,7 +20,7 @@ Finished when:
 - Console code that throws leaves the database as it was, in memory and in the files; code that returns
   leaves every write it made; a commit reaches the files in one LMDB transaction.
 - No doc or message says a failed console transaction keeps the writes it already made:
-  docs/public-facing/cli.md, runTransactionCode's failure, and the Database plugin's console agree.
+  docs/public-facing/cli.md, runTransactionCode's failure, and the Database surface's console agree.
 - npm run typecheck, schema:check, api:check (sdk, ui), packages:build + packages:check,
   facade:check -w @app/default-setup, and the api, sdk, ears, host, cli, default-setup and renderer unit
   suites pass.
@@ -47,7 +47,7 @@ Never:
 The Database console's transaction code is called a transaction but isn't one. It runs in three places,
 all through one runner:
 
-- the Database plugin's console (`packages/default-setup/src/features/database/be/execute/transaction.ts`);
+- the Database surface's console (`packages/default-setup/src/features/database/be/execute/transaction.ts`);
 - the `query` flow step in write mode (`packages/default-setup/src/extensions/steps/query/runtime.ts`);
 - `apack db exec` and `apack db repl --write` (`packages/apack-cli/src/commands/db/code.ts`, `repl.ts`).
 
@@ -161,11 +161,11 @@ memory changes after a failed flush, fails those specs.
   (Decision 5); `runQueryCode` is unchanged.
 - `apack db exec` and `repl --write` report a rollback as part of the failure; `withDatabase` keeps
   reporting a close failure without hiding what the command hit first.
-- The Database plugin's console and the `query` step's write mode inherit it through the runner.
+- The Database surface's console and the `query` step's write mode inherit it through the runner.
 
 **Done when:** `packages/apack-cli/tests/commands/db.integration.spec.ts` asserts the database is untouched after failing
 console code (replacing "keeps what the code wrote before it threw"), a default-setup spec covers the
-plugin's console, and `packages/apack-sdk/tests/database-console/` covers the runner. Mutation: running
+surface's console, and `packages/apack-sdk/tests/database-console/` covers the runner. Mutation: running
 the code outside the boundary fails all three.
 
 ### Phase 4 — Docs and reports

@@ -216,7 +216,7 @@ export async function endAppHolding(dir: string, pid: number, timeoutMs = 20_000
  * logins first.
  *
  * **What is deliberately not here is the rest of the list**, and each exclusion is something a user would
- * notice: `Local Storage` holds the panel sizes and whatever `runFrontendMigrations` moved, `Partitions`
+ * notice: `Local Storage` holds the panel sizes and whatever `runWindowStorageMigrations` moved, `Partitions`
  * holds the in-app browser's logged-in sessions (`persist:browser`, 292MB of that same dir), and
  * `Preferences`, `Cookies`, `Session Storage` and `Trust Tokens` are state rather than cache. The app
  * writes none of the names below — `getDataDirPath` refuses them outright so a pack cannot shadow one —

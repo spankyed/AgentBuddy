@@ -153,7 +153,7 @@ describe('a lint disable that names a rule nothing enables', () => {
     for (const file of files) {
       const source = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
       for (const [, named] of source.matchAll(DISABLE)) {
-        // `-- reason` is the comment's own, and a plugin prefix is not part of the name oxlint lists
+        // `-- reason` is the comment's own, and a surface prefix is not part of the name oxlint lists
         for (const rule of named.split('--')[0]!.split(',').map((name) => name.trim().replace(/^.*\//, '')).filter(Boolean)) {
           seen += 1;
           if (enabled.has(rule)) continue;

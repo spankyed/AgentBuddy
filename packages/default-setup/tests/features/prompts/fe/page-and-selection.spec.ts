@@ -1,4 +1,4 @@
-// The prompts plugin's half of the same question the actions plugin answers: a reply that already names
+// The prompts surface's half of the same question the actions surface answers: a reply that already names
 // what it answers, and a second request in flight.
 //
 // `PROMPTS_PAGE_LOADED` carries its page and `PROMPT_SELECTED` its prompt, so neither needs a new field
@@ -18,7 +18,7 @@ const { default: promptsState } = await import('#features/prompts/fe/state.ts');
 /** A prompt as the view reads it; only the fields these assertions touch are real */
 const aPrompt = (id: string) => ({ id, label: id, description: '', category: '', template: '' }) as unknown as PromptEntity;
 
-/** A started plugin showing page 1, which is the state a double-click starts from */
+/** A started surface showing page 1, which is the state a double-click starts from */
 function connected() {
   const actor = createActor(promptsState).start();
   actor.send({
@@ -96,7 +96,7 @@ it('shows the prompt last asked for, not the answer that arrived last', () => {
 /**
  * The answer another window got, which the prompt id could not tell from this window's.
  *
- * A broadcast `PROMPT_SELECTED` reaches every window showing the prompts plugin, and a guard on the prompt id
+ * A broadcast `PROMPT_SELECTED` reaches every window showing the prompts surface, and a guard on the prompt id
  * alone admits it in all of them — two people looking at the same prompt take each other's answers. Replying
  * narrows it to the asker, and the call narrows it to the ask: one from elsewhere matches nothing here.
  */
@@ -112,7 +112,7 @@ it('ignores an answer for an ask it did not make', () => {
 /**
  * Settled, so the answer just taken cannot be taken again.
  *
- * A slot that is only ever set names the last ask for the life of the plugin. Cleared on the answer, the
+ * A slot that is only ever set names the last ask for the life of the surface. Cleared on the answer, the
  * same answer arriving twice — a reconnect replaying it, a double delivery — matches nothing the second
  * time, and an ask made since is still outstanding.
  */
@@ -181,7 +181,7 @@ it.each(['list', 'create', 'deactivate'] as const)('retires an entity selection 
   try {
     actor.send({ type: 'OPEN_ENTITY', id: 'Prompt-p1' });
     const abandoned = selectCall(0);
-    if (destination === 'deactivate') actor.send({ type: 'PLUGIN_DEACTIVATED' });
+    if (destination === 'deactivate') actor.send({ type: 'SURFACE_DEACTIVATED' });
     else actor.send({ type: 'TRAIL_CLICK', target: destination });
     actor.send(answerTo(abandoned, { type: 'PROMPT_SELECTED', promptId: 'Prompt-p1', data: aPrompt('Prompt-p1') }));
     expect(actor.getSnapshot().context.selectedPromptId).toBeUndefined();

@@ -38,7 +38,7 @@ test('real onboarding writes app and feature preferences without a settings asse
         threads: qx().withRole('assistant_birth').pick(['context', 'topic'])
       };` });
     });
-    // The component's usePlugin send supplies the reply address. Sending a raw actor event from
+    // The component's useSurface send supplies the reply address. Sending a raw actor event from
     // evaluate would bypass that delivery context and leave the query without an asker.
     await appPage.getByRole('button', { name: 'Execute', exact: true }).click();
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system

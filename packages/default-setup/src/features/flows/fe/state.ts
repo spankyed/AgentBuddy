@@ -146,7 +146,7 @@ type UIEvent =
   // Canvas error
   | { type: 'CANVAS.CLEAR_ERROR' }
   // Layout events
-  | { type: 'PLUGIN_DEACTIVATED' }
+  | { type: 'SURFACE_DEACTIVATED' }
   | { type: 'LAYOUT_COMPUTED'; graph: FlowsContext['graph']; positions: Record<string, { x: number; y: number }> }
 
 export type FlowsEvents = OpenEntity | UIEvent | SystemEvent | TrailClickEvent
@@ -168,7 +168,7 @@ const flowsState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setPluginData: enqueueActions(({ context, event, self, enqueue }) => {
+    setSurfaceData: enqueueActions(({ context, event, self, enqueue }) => {
       const ev = typeOf('FLOWS_CONNECTED', event);
       const flows = (ev.data.flows || []) as FlowEntity[];
       enqueue.assign({
@@ -1173,9 +1173,9 @@ const flowsState = setup({
     OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Flow' } }, target: '.view', actions: 'selectFlow' },
     'FLOW.SELECT': { target: '.view', actions: 'selectFlow' },
     'NODE.REVEAL': { target: '.view', actions: 'selectFlow' },
-    PLUGIN_DEACTIVATED: { actions: 'cancelFlowSelection' },
+    SURFACE_DEACTIVATED: { actions: 'cancelFlowSelection' },
     FLOWS_CONNECTED: {
-      actions: 'setPluginData',
+      actions: 'setSurfaceData',
       // target: '.view' // Go directly to view since we have the selected flow's data
     },
     FEATURE_SETTINGS_UPDATED: {

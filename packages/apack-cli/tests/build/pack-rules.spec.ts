@@ -92,6 +92,15 @@ const FIRES: Record<PackRuleKey, { onFile?: [code: string, problem: string][]; e
     onFile: [['export const send = () => _rootEvents.emitOutgoing(event);\n', 'src/f.ts:1: _rootEvents']],
   },
   // Two shapes and eleven allowed ones, transcribed when the repo script's console rule moved here
+  'window-storage': {
+    onFile: [
+      ["const raw = localStorage.getItem('open-tabs');\n", 'src/f.ts:1: localStorage'],
+      ["sessionStorage.setItem('draft', text);\n", 'src/f.ts:1: sessionStorage'],
+      // The long spelling, which is the first thing reached for once the bare name is refused
+      ["window.localStorage.setItem('draft', text);\n", 'src/f.ts:1: localStorage'],
+      ["globalThis.sessionStorage.removeItem('draft');\n", 'src/f.ts:1: sessionStorage'],
+    ],
+  },
   'backend-console': { elsewhere: 'backend-console fires under a backend path and not under a frontend one' },
   // A `_`-prefixed import from an @apackdev package, which needs no pack fixture to be offending
   'internal-package-imports': { elsewhere: 'internal-package-imports' },
@@ -216,20 +225,20 @@ describe('every rule', () => {
   /**
    * The exclusion is half the rule, so it is half the case.
    *
-   * A feature's component has `usePlugin()` and so has somewhere else to send; an extension's does not —
+   * A feature's component has `useSurface()` and so has somewhere else to send; an extension's does not —
    * `#generated/fe` gives it no actor type and `cross-feature-imports` refuses it the feature's own — so
-   * `sendToPlugin` is the only route it has. Flagging it would leave an author told to do something the
+   * `sendToSurface` is the only route it has. Flagging it would leave an author told to do something the
    * pack contract does not let them do.
    */
   it("component-sends flags a feature's component and allows an extension's", () => {
-    const send = "import { sendToPlugin } from '#generated/events.ts';\nsendToPlugin('notes', { type: 'X' });\n";
+    const send = "import { sendToSurface } from '#generated/events.ts';\nsendToSurface('notes', { type: 'X' });\n";
     const dir = completePack({
       'src/features/memos/fe/panel.vue': `<script setup lang="ts">\n${send}</script>\n`,
       'src/extensions/blocks/display/card.vue': `<script setup lang="ts">\n${send}</script>\n`,
       // A feature's own machine is where the send belongs, and it is not a component
       'src/features/memos/fe/state.ts': send,
     });
-    expect(problems(dir, 'component-sends')).toEqual(['src/features/memos/fe/panel.vue:3: sendToPlugin(…)']);
+    expect(problems(dir, 'component-sends')).toEqual(['src/features/memos/fe/panel.vue:3: sendToSurface(…)']);
   });
 
   it("cross-feature-imports flags another feature's frontend and allows a feature its own", () => {
@@ -281,7 +290,7 @@ describe('every rule', () => {
   it('contract-leaves flags a contract leaf that reaches its own machine', () => {
     const dir = completePack({
       'src/features/memos/fe/contract.ts': "import type { Ctx } from './state.ts';\nexport type Contract = { state: Ctx };\n",
-      'src/features/memos/fe/state.ts': "import { sendToPlugin } from '#generated/events.ts';\nexport type Ctx = { sent: typeof sendToPlugin };\n",
+      'src/features/memos/fe/state.ts': "import { sendToSurface } from '#generated/events.ts';\nexport type Ctx = { sent: typeof sendToSurface };\n",
     });
     expect(problems(dir, 'contract-leaves')).toEqual(['src/features/memos/fe/contract.ts:1: ./state.ts']);
   });
@@ -329,7 +338,7 @@ describe('every rule', () => {
   it('reports a contract leaf reaching another feature under one rule, not two', () => {
     const dir = completePack({
       'src/features/memos/fe/contract.ts': "import type { T } from '../../calendar/fe/state.ts';\nexport type Contract = { state: { t: T } };\n",
-      'src/features/memos/fe/plugin.ts': 'export type P = { id: string };\n',
+      'src/features/memos/fe/surface.ts': 'export type P = { id: string };\n',
       'src/features/calendar/fe/state.ts': 'export type T = { id: string };\n',
     });
     const offence = 'src/features/memos/fe/contract.ts:1: ../../calendar/fe/state.ts';
@@ -347,7 +356,7 @@ describe('every rule', () => {
       'src/features/memos/fe/contract.ts':
         "import type { T } from '../../calendar/fe/state.ts'; import { untypedSendToSystem } from '@apackdev/sdk/events';\n"
         + 'export type Contract = { state: { t: T; send: typeof untypedSendToSystem } };\n',
-      'src/features/memos/fe/plugin.ts': 'export type P = { id: string };\n',
+      'src/features/memos/fe/surface.ts': 'export type P = { id: string };\n',
       'src/features/calendar/fe/state.ts': 'export type T = { id: string };\n',
     });
     expect(problems(dir, 'contract-leaves')).toEqual(['src/features/memos/fe/contract.ts:1: ../../calendar/fe/state.ts']);
@@ -474,9 +483,9 @@ describe('when several rules are right about one site', () => {
    * a precedence change would have moved what an author is told and nothing would have failed.
    */
   it('gives an @internal send to the rule about @internal names, not the one about sends', () => {
-    // `_sendToLocalPlugin` is the one EVENT_SENDS member that is also `_`-prefixed
-    expect(offender("import { _sendToLocalPlugin } from '@apackdev/sdk/events';\n")).toEqual([
-      'internal-package-imports: src/extensions/steps/x.ts:1: _sendToLocalPlugin from @apackdev/sdk/events',
+    // `_sendToLocalSurface` is the one EVENT_SENDS member that is also `_`-prefixed
+    expect(offender("import { _sendToLocalSurface } from '@apackdev/sdk/events';\n")).toEqual([
+      'internal-package-imports: src/extensions/steps/x.ts:1: _sendToLocalSurface from @apackdev/sdk/events',
     ]);
   });
 
@@ -590,7 +599,9 @@ describe('when several rules are right about one site', () => {
       'cross-feature-imports', 'own-modules', 'pack-own-aliases',
       'internal-package-imports',
       // component-sends sits beside untyped-sends: both answer "which send, from where"
-      'untyped-sends', 'component-sends', 'raw-transport', 'backend-console', 'repository-casts',
+      // window-storage sits beside backend-console: both say which API to reach for instead of a global
+      'untyped-sends', 'component-sends', 'raw-transport', 'backend-console', 'window-storage',
+      'repository-casts',
       // reserved-event-keys is last and contests nothing: no other rule reads a property name, so where it
       // sits is free, and a convention belongs after the rules about what a module imports
       'reserved-event-keys',

@@ -19,9 +19,9 @@ The `INSTALL_PACK` handler is a stub. The CLI's `install` only takes local paths
 
 1. **In-app install pipeline** -- when `INSTALL_PACK` fires, download from a remote source and copy to `~/.apack/packs/`
 2. **Packs BE system** -- a dedicated backend system owning pack management (install, uninstall, enable/disable, list)
-3. **Packs FE plugin** -- a dedicated toolbar plugin for the pack management UI
+3. **Packs FE surface** -- a dedicated toolbar surface for the pack management UI
 4. **Remote source resolution** -- GitHub release download (CLI only handles local dir/zip)
-5. **FE feedback** -- progress/status in the packs plugin canvas
+5. **FE feedback** -- progress/status in the packs surface canvas
 
 The registry reconciliation at boot already handles adding/removing entries -- once files land in the packs dir, the next boot picks them up automatically.
 
@@ -34,7 +34,7 @@ A new `packs` BE system owns all pack management events instead of piggybacking 
 **Why a separate system:**
 - Settings system is already the largest system (settings CRUD, secrets, CLI testing, setup pack import/preview, app reset)
 - Pack management is a distinct domain -- install, uninstall, enable/disable, list
-- Clean event routing: FE packs plugin sends directly to `packs` system, receives events back from `packs` system
+- Clean event routing: FE packs surface sends directly to `packs` system, receives events back from `packs` system
 - The installer module (`pack-installer.ts`) is called by the packs system, not settings
 
 **Host-registered system pattern:**
@@ -64,7 +64,7 @@ Incoming:
 - `{ type: 'TOGGLE_PACK_ENABLED'; packId: string }` -- flip enabled flag in registry
 - `{ type: 'GET_INSTALLED_PACKS' }` -- re-fetch and send pack list
 
-Outgoing (to FE packs plugin):
+Outgoing (to FE packs surface):
 - `{ type: 'PACKS_LIST'; packs: PackInfo[] }` -- full installed packs list
 - `{ type: 'PACK_INSTALL_STARTED'; packSlug: string }`
 - `{ type: 'PACK_INSTALL_COMPLETE'; packSlug: string; packId: string; packName: string; version: string }`
@@ -99,9 +99,9 @@ The registry already has `enabled: boolean`. `reconcileExternalRegistry()` alrea
 
 For v1, publish stays manual -- `apack pack` creates the `.tgz`, author uploads to GitHub releases. A centralized pack registry/store is a later concern.
 
-### 7. Packs FE plugin (internal toolbar plugin)
+### 7. Packs FE surface (internal toolbar surface)
 
-A hardcoded, internal plugin that lives in `packages/renderer/` (not in default-setup). It appears in the pinned section of the toolbar, below Settings, as the very last item.
+A hardcoded, internal surface that lives in `packages/renderer/` (not in default-setup). It appears in the pinned section of the toolbar, below Settings, as the very last item.
 
 **Why internal, not in default-setup:**
 - Pack management is host-level infrastructure, not a feature pack contributes
@@ -110,24 +110,24 @@ A hardcoded, internal plugin that lives in `packages/renderer/` (not in default-
 
 **How it works:**
 
-The plugin follows the standard `Plugin` interface (`id`, `label`, `icon`, `state`, `canvas`, `isPinned: true`). It has an XState state machine and a canvas component. No `settings` component -- pack management IS the settings for packs.
+The surface follows the standard `Surface` interface (`id`, `label`, `icon`, `state`, `canvas`, `isPinned: true`). It has an XState state machine and a canvas component. No `settings` component -- pack management IS the settings for packs.
 
 **Toolbar ordering:**
 
-The toolbar renders pinned items in array order. Currently Settings is last in the plugins array. The packs plugin is appended after all pack-registered plugins in `main.ts`, after `getRegisteredPlugins()` returns. This guarantees it's always the last pinned item regardless of what packs register.
+The toolbar renders pinned items in array order. Currently Settings is last in the surfaces array. The packs surface is appended after all pack-registered surfaces in `main.ts`, after `getRegisteredSurfaces()` returns. This guarantees it's always the last pinned item regardless of what packs register.
 
 ```
 main.ts:
-  const plugins = getRegisteredPlugins();       // default-setup plugins (Settings is last)
-  const allPlugins = [...plugins, packsPlugin]; // packs plugin appended at the end
+  const surfaces = getRegisteredSurfaces();       // default-setup surfaces (Settings is last)
+  const allSurfaces = [...surfaces, packsSurface]; // packs surface appended at the end
 ```
 
-The application actor spawns all plugins from its `plugins` array, including the packs plugin. This means:
-- It gets a state machine actor spawned like any other plugin
-- `SELECT_PLUGIN` works for switching to/from it
-- Context menu works (via `ToolbarPluginContextMenu`)
-- Plugin visibility toggle works (can be hidden but not by default)
-- Hotkey-based plugin switching (up/down) includes it
+The application actor spawns all surfaces from its `surfaces` array, including the packs surface. This means:
+- It gets a state machine actor spawned like any other surface
+- `SELECT_SURFACE` works for switching to/from it
+- Context menu works (via `ToolbarSurfaceContextMenu`)
+- Surface visibility toggle works (can be hidden but not by default)
+- Hotkey-based surface switching (up/down) includes it
 
 **FE state machine events:**
 
@@ -138,7 +138,7 @@ The application actor spawns all plugins from its `plugins` array, including the
 - `PACK_ENABLED_CHANGED` -- update local state
 - Internal events for UI state (install form, confirmation dialogs)
 
-The FE plugin sends commands to the `packs` BE system via the bus:
+The FE surface sends commands to the `packs` BE system via the bus:
 ```typescript
 trpc.bus.send.mutate({ systemId: 'packs', type: 'INSTALL_PACK', packSlug, source })
 ```
@@ -154,7 +154,7 @@ trpc.bus.send.mutate({ systemId: 'packs', type: 'INSTALL_PACK', packSlug, source
 
 ```
 packages/renderer/src/core/packs/
-  plugin.ts          -- Plugin definition (id, label, icon, state, canvas, isPinned)
+  surface.ts          -- Surface definition (id, label, icon, state, canvas, isPinned)
   state.ts           -- XState state machine
   canvas/
     index.vue        -- Main canvas component
@@ -189,16 +189,16 @@ The settings system no longer handles any pack operations.
 3. Register in `backend.ts` before `loadBuiltInPacks()`
 4. Start with `CLIENT_CONNECTED` -> read pack-registry.json -> emit `PACKS_LIST`
 
-### Phase 2: Packs FE plugin scaffold
+### Phase 2: Packs FE surface scaffold
 
-Create the internal packs plugin in `packages/renderer/src/core/packs/`:
-- `plugin.ts` -- plugin definition with `isPinned: true`
+Create the internal packs surface in `packages/renderer/src/core/packs/`:
+- `surface.ts` -- surface definition with `isPinned: true`
 - `state.ts` -- XState machine handling `PACKS_LIST` and pack events
 - `canvas/index.vue` -- placeholder canvas that lists installed packs from state
 
 Wire into `main.ts`:
-- Import the packs plugin
-- Append it to the plugins array after `getRegisteredPlugins()`
+- Import the packs surface
+- Append it to the surfaces array after `getRegisteredSurfaces()`
 - Pass the combined array to `createApplicationState()`
 
 ### Phase 3: `pack-installer.ts`
@@ -235,7 +235,7 @@ Connect the packs system actions to the installer module:
 
 ### Phase 6: Pack management UI
 
-Build out the packs plugin canvas:
+Build out the packs surface canvas:
 - Pack list with name, version, enabled toggle, uninstall button
 - Install form (GitHub slug input, local file picker)
 - "Restart to apply" banner when changes are pending
@@ -254,20 +254,20 @@ Add `installPackFromGitHub()` to the installer module. This is the remote downlo
 | `packages/api/src/core/packs/pack-registration.ts` | Add `registerHostSystem()` |
 | `packages/api/src/setup/backend.ts` | Register packs system before pack loading |
 | `packages/default-setup/src/features/settings/be/system.ts` | Remove `INSTALL_PACK` events/actions/transitions |
-| `packages/renderer/src/core/packs/plugin.ts` | **NEW** -- packs FE plugin definition |
+| `packages/renderer/src/core/packs/surface.ts` | **NEW** -- packs FE surface definition |
 | `packages/renderer/src/core/packs/state.ts` | **NEW** -- packs FE state machine |
 | `packages/renderer/src/core/packs/canvas/index.vue` | **NEW** -- packs management canvas |
 | `packages/renderer/src/core/packs/canvas/PackList.vue` | **NEW** -- installed packs list component |
 | `packages/renderer/src/core/packs/canvas/InstallForm.vue` | **NEW** -- pack install form component |
 | `packages/renderer/src/core/packs/pack-install.ts` | Update to send to `packs` system instead of settings |
-| `packages/renderer/src/main.ts` | Append packs plugin to plugins array |
+| `packages/renderer/src/main.ts` | Append packs surface to surfaces array |
 
 No changes needed to: `pack-loader.ts`, `pack-registry.ts`, `pack-api.ts`.
 
 ## Sequencing
 
 1. Packs BE system + `registerHostSystem()` (Phase 1) -- establish the host system pattern
-2. Packs FE plugin scaffold (Phase 2) -- get it showing in the toolbar with data from BE
+2. Packs FE surface scaffold (Phase 2) -- get it showing in the toolbar with data from BE
 3. `pack-installer.ts` with local-path support (Phase 3)
 4. Wire installer into packs system (Phase 4)
 5. Settings cleanup + deep link update (Phase 5)

@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { createEarsEngine, untypedQx, untypedTx } from '@apackdev/ears';
 import { bindHost, unbindHost, boundHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
-import { onConnected, onIncoming, untypedBroadcastToPlugin, untypedSendToSystem } from '../../src/events/index.ts';
+import { onConnected, onIncoming, untypedBroadcastToSurface, untypedSendToSystem } from '../../src/events/index.ts';
 import { createLogger, onLog, reportError } from '../../src/logger/index.ts';
 import { _createPackServices, _settingsHandle } from '../../src/services/index.ts';
 import * as serviceModule from '../../src/services/index.ts';
@@ -22,7 +22,7 @@ import { _contentWriterRegistry } from '../../src/content/writers.ts';
 import { getPackCommands, getSettingsCatalog, onPackCatalogChanged } from '../../src/framework/index.ts';
 import { importCompiledContent, registeredContentKeys } from '../../src/utils/apply.ts';
 import { getDslDeclarations } from '../../src/fe/dsl-reader.ts';
-import { tiptapPluginRegistry } from '../../src/fe/tiptap-plugins.ts';
+import { textEditorExtensionsRegistry } from '../../src/fe/text-editor-extensions.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
 
 const serviceAccess = (settings: SettingsService): PackServiceAccess => ({ services: { settings }, servicesForAction: () => ({ settings }) });
@@ -62,7 +62,7 @@ afterEach(() => {
 describe('with no app bound', () => {
   it('throws, naming bindHost, for what needs the app', async () => {
     const needsApp: Array<[string, () => unknown]> = [
-      ['untypedBroadcastToPlugin', () => untypedBroadcastToPlugin('memos', { type: 'MEMO_ADDED' })],
+      ['untypedBroadcastToSurface', () => untypedBroadcastToSurface('memos', { type: 'MEMO_ADDED' })],
       ['untypedSendToSystem', () => untypedSendToSystem('memos', { type: 'ADD_MEMO' })],
       ['onConnected', () => onConnected(() => {})],
       ['onIncoming', () => onIncoming(() => {})],
@@ -111,7 +111,7 @@ describe('with no app bound', () => {
       ['getPackCommands', () => getPackCommands()],
     ];
     for (const [name, use] of backendLookups) expect(use, name).toThrow('bindHost(runtime)');
-    for (const [name, use] of [['getDslDeclarations', () => getDslDeclarations()], ['tiptapPluginRegistry.getAll', () => tiptapPluginRegistry.getAll()]] as const) {
+    for (const [name, use] of [['getDslDeclarations', () => getDslDeclarations()], ['textEditorExtensionsRegistry.getAll', () => textEditorExtensionsRegistry.getAll()]] as const) {
       expect(use, name).toThrow('bindFeHost(runtime)');
     }
   });

@@ -51,12 +51,12 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
 export const id = 'library' as const;
 import type { ContentSection } from '#features/library/be/types.ts';
 
-/** The library plugin's actor, as its own components reach it with `usePlugin<LibraryActor>()` */
+/** The library surface's actor, as its own components reach it with `useSurface<LibraryActor>()` */
 export type LibraryActor = ActorRefFrom<typeof librarySystem>
 
 export type LibraryEvents =
   | OpenEntity
-  | { type: 'PLUGIN_ACTIVATED' }
+  | { type: 'SURFACE_ACTIVATED' }
   | { type: 'TRAIL_CLICK'; trail: string[] }
   | { type: 'VIEW_BROWSER' }
 
@@ -379,7 +379,7 @@ export const librarySystem = setup({
     },
     updateDocument: ({ context, event }) => {
       if (event.type === 'SAVE_DOCUMENT' && context.editingDocument) {
-        // Update tags in localStorage
+        // Update tags in this surface's storage
         const oldTags = context.editingDocument.tags || []
         const newTags = event.tags || []
 
@@ -782,7 +782,7 @@ export const librarySystem = setup({
       { guard: { type: 'entityIs', params: { entity: 'Collection' } }, target: '.browser', actions: ['navigateToFolder', 'clearSelection', 'selectFolder'] },
     ],
     EDIT_DOCUMENT: { target: '.edit', actions: ['setEditingDocument', 'requestEditingDocument', 'clearSelection'] },
-    PLUGIN_ACTIVATED: {
+    SURFACE_ACTIVATED: {
       actions: ['requestFolderContents', 'requestIndex'],
     },
     LIBRARY_CONNECTED: {

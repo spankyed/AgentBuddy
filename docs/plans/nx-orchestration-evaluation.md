@@ -116,7 +116,7 @@ exit after cleanup; readiness strings such as `readyWhen` are not completion evi
 
 Nx task concurrency is not our weighted core budget. Prove nested workers/builds do not oversubscribe
 the machine, and preserve conflicting-writer exclusion. Prefer a simple adequate execution policy;
-rebuilding the custom scheduler inside an Nx plugin is a reason to reconsider adoption.
+rebuilding the custom scheduler inside an Nx surface is a reason to reconsider adoption.
 
 Diagnostic runs cannot populate normal acceptance verdicts. Explicit exhaustive execution must bypass
 Nx and any retained inner test-verdict caches without unnecessarily rebuilding unchanged compiler
@@ -143,7 +143,7 @@ Vitest and package-manager versions before installing. Do not silently upgrade t
 4. **Compare cost and decide.** Record preparation, runtime, cold/warm conditions, nested concurrency,
    configuration burden, retained adapter code and concrete deletions. Use focused failures to resolve
    only demonstrated blockers. Stop when the decision matrix below is answered; do not build a
-   general plugin suite or run repeated full-chain diagnostics to make the candidate fit.
+   general surface suite or run repeated full-chain diagnostics to make the candidate fit.
 
 ## Go/no-go criteria
 

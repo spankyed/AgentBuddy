@@ -14,10 +14,10 @@ keeping here is the background: the two refuted arguments for deleting the rule,
 
 ## What the rule is for
 
-From the origin commit, `3d79fed34` (2026-09-23, *"a plugin declares one contract — its state and its inbox"*):
+From the origin commit, `3d79fed34` (2026-09-23, *"a surface declares one contract — its state and its inbox"*):
 
 > Codegen reads it with `declaredTypeOf` over `checker.getDeclaredTypeOfSymbol` rather than resolving a value,
-> which is what lets it live outside `fe/plugin.ts`: reading it there pulls in the machine, whose imports cycle
+> which is what lets it live outside `fe/surface.ts`: reading it there pulls in the machine, whose imports cycle
 > back through `#generated/events`.
 
 Two properties, not one:
@@ -42,7 +42,7 @@ this rule as the guard), and `manifest-schema.ts:130` and `:138` (the `.describe
 | 1 | `:764` (`viaLeaf`) | the leaf importing any `#generated/*` but `types` and `ears` | **nothing**, in a warm tree |
 | 2 | `:764` (closure) | any module the leaf reaches importing one of the five generated modules a contract is behind (`GENERATED_BEHIND_A_CONTRACT`, derived by `repo-checks/tests/generated-behind-contract.spec.ts`) | the reader, **only where the collapse lands in a position it reads** — see below |
 | 3 | `:771` | the leaf importing *any* other feature, `be/` included | **nothing** |
-| 4 | `:775` | anything in the closure reaching a declared `plugin.entry`/`system.entry` | **nothing** |
+| 4 | `:775` | anything in the closure reaching a declared `surface.entry`/`system.entry` | **nothing** |
 | 5 | `:780` | the leaf importing a file named `state`/`system` | **nothing** outside the rule |
 
 Claim 3 is intended, not an artefact: the origin commit records hitting it for real — *"seven inboxes were
@@ -65,7 +65,7 @@ retired this week.
 - It only fires in a **cold tree**. With `src/__generated__/` present from an earlier run — every tree
   `apack build` sees after the first — the imports resolve and nothing throws.
 - A **value** import of `#generated/events` never affects the declared type, so it never collapses one. That is
-  the rule's own fixture shape (`import { untypedBroadcastToPlugin } from '#generated/events'`).
+  the rule's own fixture shape (`import { untypedBroadcastToSurface } from '#generated/events'`).
 
 **And that is why the mutations looked harmless.** On 2026-09-26 two mutations of
 `tests/fixtures/external-pack/src/features/memos/be/contract.ts` — a value import of `#generated/events`, then a
@@ -157,7 +157,7 @@ as the second reason the rule exists, since the cycle is the only one currently 
 
 ## What the cycle actually does — measured 2026-09-27
 
-Two mutations of `tests/fixtures/external-pack`'s plugin contract, each from a cold tree, each a shape a pack
+Two mutations of `tests/fixtures/external-pack`'s surface contract, each from a cold tree, each a shape a pack
 author writes: the contract deriving its `state` from the machine (`SnapshotFrom<typeof memosState>['context']`),
 and deriving its inbox as `Extract<>` over the machine's event union — the shape the origin commit records finding
 seven times. **Both built with exit 0 and a byte-identical `src/__generated__/events.ts`.** No collapse, no wrong

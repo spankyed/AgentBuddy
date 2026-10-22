@@ -24,7 +24,7 @@ function binding() {
 
 const registration = (name: string, hook?: PackFERegistration['bindSettings']): PackFERegistration => ({
   id: 'owner', bindSettings: hook,
-  features: { code: { designation: 'editor', plugin: { label: name, state: createMachine({}) } } },
+  features: { code: { designation: 'editor', surface: { label: name, state: createMachine({}) } } },
   settingsForms: { preferences: { name } }, appExtensions: { toolbar: { name } },
 });
 
@@ -39,7 +39,7 @@ describe('prepared frontend replacement', () => {
     const next = binding();
     expect(() => packs.replaceFixture(registration('New', port => { next.hook(port); throw new Error('refused'); }), next.transport)).toThrow('refused');
     expect(packs.settingsForm(formTarget)).toBe(previous);
-    expect(packs.getRegisteredPlugins()[0].label).toBe('Old');
+    expect(packs.getRegisteredSurfaces()[0].label).toBe('Old');
     expect(old.dispose).not.toHaveBeenCalled();
     expect(old.cleanup).not.toHaveBeenCalled();
     expect(old.port.get(target)).toEqual({ limit: 1 });
@@ -61,7 +61,7 @@ describe('prepared frontend replacement', () => {
     expect(old.cleanup).not.toHaveBeenCalled();
     expect(old.port.get(target)).toEqual({ limit: 1 });
     expect(step.fe?.components).toBeUndefined();
-    expect(packs.getRegisteredPlugins()[0].label).toBe('Old');
+    expect(packs.getRegisteredSurfaces()[0].label).toBe('Old');
   });
 
   it('publishes a successful replacement before retirement, and observers see only active new authority', () => {
@@ -156,7 +156,7 @@ describe('prepared frontend replacement', () => {
     else expect(() => candidate.commit(beforePublish)).toThrow('style commit refused');
     await Promise.resolve(); await Promise.resolve();
     expect(writes.filter(message => message.event.type === 'UPDATE_SETTINGS')).toHaveLength(sent);
-    expect(packs.getRegisteredPlugins()[0].label).toBe(sent ? 'New' : 'Old');
+    expect(packs.getRegisteredSurfaces()[0].label).toBe(sent ? 'New' : 'Old');
     candidate.dispose();
     window.dispose();
   });
@@ -271,7 +271,7 @@ it('preserves the incumbent when candidate activation throws before host resourc
   }), next.transport, true);
   expect(() => candidate.commit(beforePublish)).toThrow('activation refused');
   expect(beforePublish).not.toHaveBeenCalled();
-  expect(packs.getRegisteredPlugins()[0].label).toBe('Old');
+  expect(packs.getRegisteredSurfaces()[0].label).toBe('Old');
   expect(old.port.get(target)).toEqual({ limit: 1 });
   expect(old.dispose).not.toHaveBeenCalled();
   expect(dispose).toHaveBeenCalledOnce();

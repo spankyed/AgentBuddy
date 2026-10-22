@@ -100,7 +100,7 @@ export function canGoBack<T>(history: NavHistory<T>): boolean;
 export function canGoForward<T>(history: NavHistory<T>): boolean;
 
 // @public (undocumented)
-export function clearTabGroups(key: string): void;
+export function clearTabGroups(storage: SurfaceStorage, name: string): void;
 
 // @public (undocumented)
 export function contextMenu(items: ContextMenuItem[]): {
@@ -366,10 +366,6 @@ export interface _HostBridge {
         deleteAll: (entityId: string) => Promise<void>;
     };
     // (undocumented)
-    plugins: {
-        popout: (pluginId: string, title?: string) => Promise<void>;
-    };
-    // (undocumented)
     protocolAction: {
         onAction: (callback: (data: {
             action: string;
@@ -407,6 +403,10 @@ export interface _HostBridge {
     // (undocumented)
     startupId?: string;
     // (undocumented)
+    surfaces: {
+        popout: (surfaceId: string, title?: string) => Promise<void>;
+    };
+    // (undocumented)
     windowControls: {
         minimize: () => void;
         maximize: () => void;
@@ -437,31 +437,31 @@ export interface HostShell {
 // @public
 export type HostShellEvent = OpenEntity
 | {
-    type: 'OPEN_PLUGIN';
-    plugin: string;
-    events: PluginEvent[];
+    type: 'OPEN_SURFACE';
+    surface: string;
+    events: SurfaceEvent[];
 }
 /**
-* Hands a plugin's actor `events` without opening it. The same wait as `OPEN_PLUGIN` — a plugin whose pack's
+* Hands a surface's actor `events` without opening it. The same wait as `OPEN_SURFACE` — a surface whose pack's
 * frontend is still loading is waited for, and one no pack provides is reported once loading settles — but the
-* plugin the user has open doesn't change: a send is not a navigation.
+* surface the user has open doesn't change: a send is not a navigation.
 *
-* `asker` is where an answer goes, so the receiving plugin's handler is handed a `reply` that reaches whoever
+* `asker` is where an answer goes, so the receiving surface's handler is handed a `reply` that reaches whoever
 * asked. `from`/`via` are labels a refusal names and deliberately not an address; this is the address.
 *
 * It is the address rather than a ref because the **channel** is known here and nowhere later: this send stays
 * inside the window, so what answers it answers an actor beside it. The shell carries the value whole from
-* here to the delivery, through the queue a plugin whose pack is still loading waits in — where a ref would
+* here to the delivery, through the queue a surface whose pack is still loading waits in — where a ref would
 * have had to be read back as a channel someone had to remember was a window's.
 *
 * `answering` says this send is an answer to a question rather than something a person asked for, which is
-* what decides how the shell reports a plugin that isn't there — a toast tells a user their command failed,
+* what decides how the shell reports a surface that isn't there — a toast tells a user their command failed,
 * and there is no user behind an answer. Only `reply` sets it.
 */
 | {
-    type: 'SEND_TO_PLUGIN';
-    plugin: string;
-    events: PluginEvent[];
+    type: 'SEND_TO_SURFACE';
+    surface: string;
+    events: SurfaceEvent[];
     from?: string;
     via?: string;
     asker?: _Asker;
@@ -474,8 +474,8 @@ export type HostShellEvent = OpenEntity
 } | {
     type: 'RESTORE_CHAT';
 } | {
-    type: 'SET_PLUGIN_VISIBILITY';
-    plugin: string;
+    type: 'SET_SURFACE_VISIBILITY';
+    surface: string;
     visible: boolean;
 } | {
     type: 'CLOSE_DEV_LETTER';
@@ -494,11 +494,11 @@ export interface HostShellSnapshot {
 
 // @public
 export interface HostShellState {
-    activePlugin: Plugin_2;
+    activeSurface: Surface;
     // (undocumented)
     panelSizes: ShellPanelSizes;
-    plugins: readonly Plugin_2[];
-    pluginVisibility: Readonly<Record<string, boolean>>;
+    surfaces: readonly Surface[];
+    surfaceVisibility: Readonly<Record<string, boolean>>;
 }
 
 // @public (undocumented)
@@ -540,7 +540,7 @@ export interface KeyboardShortcut {
 }
 
 // @public (undocumented)
-export function loadTabGroups(key: string): TabGroup[];
+export function loadTabGroups(storage: SurfaceStorage, name: string): TabGroup[];
 
 // @public (undocumented)
 export function matchesHotkey(event: HotkeyEvent, config: KeyboardShortcut): boolean;
@@ -575,10 +575,10 @@ export function openLink(url: string): void;
 export interface PackFEFeature {
     default?: true;
     designation?: string;
-    // (undocumented)
-    plugin?: PluginDefinition;
     references?: ReferenceBindings;
     settingsForm?: Component;
+    // (undocumented)
+    surface?: SurfaceDefinition;
 }
 
 // @public
@@ -600,97 +600,11 @@ export interface PackFERegistration {
     // (undocumented)
     steps?: StepDefinition[];
     // (undocumented)
-    tiptapPlugins?: Record<string, TiptapPlugin>;
+    textEditor?: Record<string, TextEditorExtensions>;
 }
 
 // @public (undocumented)
 export function pasteIntoElement(el: HTMLElement, text: string): void;
-
-// @public
-interface Plugin_2 {
-    // (undocumented)
-    canvas?: Component | RouteComponents;
-    // (undocumented)
-    chat?: Component;
-    fallbackPanel?: {
-        label: string;
-        isShown: (snapshot: SnapshotFrom<AnyStateMachine>) => boolean;
-        toggle: {
-            type: string;
-        };
-    };
-    // (undocumented)
-    hotkeys?: PluginHotkeyDefinition[];
-    // (undocumented)
-    icon?: Component;
-    id: FeatureRef;
-    // (undocumented)
-    isPinned?: boolean;
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    options?: {
-        headerClass?: string;
-    };
-    // (undocumented)
-    panel?: Component;
-    // (undocumented)
-    state: AnyStateMachine;
-}
-export { Plugin_2 as Plugin }
-
-// @public
-export type PluginDefinition = Omit<Plugin_2, 'id'>;
-
-// @public
-export type PluginEvent = {
-    type: string;
-    [key: string]: unknown;
-};
-
-// @public (undocumented)
-export interface PluginHotkeyDefinition {
-    // (undocumented)
-    action: string;
-    // (undocumented)
-    global?: boolean;
-}
-
-// @public
-export type PluginInbox<T extends PluginInboxAudiences> = T;
-
-// @public
-export interface PluginInboxAudiences {
-    pack?: {
-        type: string;
-    };
-    public?: {
-        type: string;
-    };
-}
-
-// @public
-export function pluginIsRunning(ref: string): boolean;
-
-// @public
-export const PluginScope: DefineComponent<ExtractPropTypes<    {
-plugin: {
-type: StringConstructor;
-required: true;
-};
-}>, () => VNode<RendererNode, RendererElement, {
-[key: string]: any;
-}> | null, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<    {
-plugin: {
-type: StringConstructor;
-required: true;
-};
-}>> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
-
-// @public
-export type PluginStateOf<C> = C extends {
-    state: infer State;
-} ? State : never;
 
 // @public (undocumented)
 export function processHotkeys<const T extends Record<string, string>, H = unknown>(event: HotkeyEvent, hotkeys: H | undefined, actionMap: T): T[keyof T] | undefined;
@@ -705,7 +619,7 @@ export interface ReadonlyFeSettingsHandle<T> {
 }
 
 // @public
-export function readUntypedPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected | undefined;
+export function readUntypedSurfaceState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected | undefined;
 
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
@@ -718,7 +632,7 @@ export { safeEvents as feSafeEvents }
 export { safeEvents }
 
 // @public (undocumented)
-export function saveTabGroups(key: string, groups: TabGroup[]): void;
+export function saveTabGroups(storage: SurfaceStorage, name: string, groups: TabGroup[]): void;
 
 // @public
 export interface SecretsClient {
@@ -794,7 +708,7 @@ export type SettingUpdate<T = unknown> = (unknown extends T ? {
 // @public
 export interface Shell {
     // (undocumented)
-    activePlugin: Readonly<Ref<Plugin_2>>;
+    activeSurface: Readonly<Ref<Surface>>;
     closeDevLetter(): void;
     // (undocumented)
     endHotkeyRecording(): void;
@@ -802,14 +716,14 @@ export interface Shell {
     isOnboarding: Readonly<Ref<boolean>>;
     // (undocumented)
     panelSizes: Readonly<Ref<ShellPanelSizes>>;
-    // (undocumented)
-    plugins: Readonly<Ref<readonly Plugin_2[]>>;
-    // (undocumented)
-    pluginVisibility: Readonly<Ref<Readonly<Record<string, boolean>>>>;
     resizeCanvas(size: number): void;
     restoreChat(): void;
-    setPluginVisible(ref: string, visible: boolean): void;
+    setSurfaceVisible(ref: string, visible: boolean): void;
     startHotkeyRecording(): void;
+    // (undocumented)
+    surfaces: Readonly<Ref<readonly Surface[]>>;
+    // (undocumented)
+    surfaceVisibility: Readonly<Ref<Readonly<Record<string, boolean>>>>;
 }
 
 // @public
@@ -865,6 +779,105 @@ export interface StepFrontendBinding {
     readonly registrationId?: string;
 }
 
+// @public
+export interface Surface {
+    // (undocumented)
+    canvas?: Component | RouteComponents;
+    // (undocumented)
+    chat?: Component;
+    fallbackPanel?: {
+        label: string;
+        isShown: (snapshot: SnapshotFrom<AnyStateMachine>) => boolean;
+        toggle: {
+            type: string;
+        };
+    };
+    // (undocumented)
+    hotkeys?: SurfaceHotkeyDefinition[];
+    // (undocumented)
+    icon?: Component;
+    id: FeatureRef;
+    // (undocumented)
+    isPinned?: boolean;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    options?: {
+        headerClass?: string;
+    };
+    // (undocumented)
+    panel?: Component;
+    // (undocumented)
+    state: AnyStateMachine;
+}
+
+// @public
+export type SurfaceDefinition = Omit<Surface, 'id'>;
+
+// @public
+export type SurfaceEvent = {
+    type: string;
+    [key: string]: unknown;
+};
+
+// @public (undocumented)
+export interface SurfaceHotkeyDefinition {
+    // (undocumented)
+    action: string;
+    // (undocumented)
+    global?: boolean;
+}
+
+// @public
+export type SurfaceInbox<T extends SurfaceInboxAudiences> = T;
+
+// @public
+export interface SurfaceInboxAudiences {
+    pack?: {
+        type: string;
+    };
+    public?: {
+        type: string;
+    };
+}
+
+// @public
+export function surfaceIsRunning(ref: string): boolean;
+
+// @public
+export const SurfaceScope: DefineComponent<ExtractPropTypes<    {
+surface: {
+type: StringConstructor;
+required: true;
+};
+}>, () => VNode<RendererNode, RendererElement, {
+[key: string]: any;
+}> | null, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<    {
+surface: {
+type: StringConstructor;
+required: true;
+};
+}>> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
+
+// @public
+export type SurfaceStateOf<C> = C extends {
+    state: infer State;
+} ? State : never;
+
+// @public
+export interface SurfaceStorage {
+    // (undocumented)
+    get(name: string): string | null;
+    names(): string[];
+    // (undocumented)
+    remove(name: string): void;
+    // (undocumented)
+    set(name: string, value: string): void;
+}
+
+// @public
+export function surfaceStorage(ref: FeatureRef, storage?: Storage): SurfaceStorage;
+
 // @public (undocumented)
 export interface TabGroup {
     // (undocumented)
@@ -894,7 +907,7 @@ export const targetIs: (input: {
 }) => boolean;
 
 // @public (undocumented)
-export interface TiptapPlugin {
+export interface TextEditorExtensions {
     // (undocumented)
     readonly extensions?: Readonly<Record<string, AnyExtension>>;
     // (undocumented)
@@ -904,9 +917,9 @@ export interface TiptapPlugin {
 }
 
 // @public
-export interface TiptapPluginBinding {
+export interface TextEditorExtensionsBinding {
     // (undocumented)
-    readonly binding: TiptapPlugin;
+    readonly binding: TextEditorExtensions;
     // (undocumented)
     readonly groupId: string;
     // (undocumented)
@@ -914,8 +927,8 @@ export interface TiptapPluginBinding {
 }
 
 // @public (undocumented)
-export const tiptapPluginRegistry: {
-    getAll(): TiptapPluginBinding[];
+export const textEditorExtensionsRegistry: {
+    getAll(): TextEditorExtensionsBinding[];
     onChanged(listener: () => void): () => void;
 };
 
@@ -940,7 +953,7 @@ export type TrailClickEvent<TInfo = unknown> = {
 };
 
 // @public
-export function untypedOpenPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
+export function untypedOpenSurface(ref: string, event?: SurfaceEvent | SurfaceEvent[]): void;
 
 // @public
 export function useAppSettings(): Readonly<Ref<AppSettings | undefined>>;
@@ -961,9 +974,6 @@ export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<R
 export function usePackSettings<T = unknown>(packId: string, groupId: string): Readonly<Ref<T | undefined>>;
 
 // @public
-export function usePlugin<T>(): T;
-
-// @public
 export function useSettingsDraft<T>(read: () => T): Ref<T>;
 
 // @public
@@ -982,11 +992,17 @@ export function useShell(): Shell;
 // @public
 export function useStepDeclarations(): ComputedRef<readonly StepCatalogEntry[]>;
 
+// @public
+export function useSurface<T>(): T;
+
+// @public
+export function useSurfaceStorage(): SurfaceStorage;
+
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;
 
 // @public
-export function useUntypedPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): Readonly<Ref<TSelected | undefined>>;
+export function useUntypedSurfaceState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): Readonly<Ref<TSelected | undefined>>;
 
 // (No @packageDocumentation comment for this package)
 

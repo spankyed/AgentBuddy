@@ -1,5 +1,5 @@
 import type { OutgoingPullRequestEvents } from '../contract.ts'
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup, assign, type AnyActorRef } from 'xstate'
 
@@ -9,7 +9,7 @@ import * as ghCli from '../services/gh-cli.ts'
 
 const logger = createLogger('pr')
 
-const pluginId = 'code' as const
+const surfaceId = 'code' as const
 
 // Incoming events from frontend
 
@@ -59,7 +59,7 @@ function humanizeBranchName(branch: string): string {
 }
 
 function emitToFrontend(event: OutgoingPullRequestEvents) {
-  broadcastToPlugin(pluginId, event)
+  broadcastToSurface(surfaceId, event)
 }
 
 function emitError(message: string) {

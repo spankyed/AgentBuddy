@@ -59,7 +59,7 @@ import ClaudeCompletionRows from './ClaudeCompletionRows.vue'
 import { getClaudeCompletionOffer } from './claude-completions.ts'
 import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { referenceSuggestionPluginKey, type ReferenceSuggestionState } from './reference-suggestion-plugin.ts'
+import { referenceSuggestionKey, type ReferenceSuggestionState } from './reference-suggestion.ts'
 import { useReferenceItems, type ReferenceCategory, type ReferenceItem } from './useReferenceItems.ts'
 import { getReferenceCategoryBinding, getReferenceTypeBinding } from '@apackdev/sdk/fe/references'
 
@@ -78,18 +78,18 @@ function getCategoryIcon(id: ReferenceCategory) {
   return getReferenceCategoryBinding(id)?.binding.icon
 }
 
-const pluginState = shallowRef<ReferenceSuggestionState>()
+const suggestionState = shallowRef<ReferenceSuggestionState>()
 watch(() => props.editor, (editor, _previous, onCleanup) => {
-  const update = () => { pluginState.value = referenceSuggestionPluginKey.getState(editor.state) }
+  const update = () => { suggestionState.value = referenceSuggestionKey.getState(editor.state) }
   update()
   editor.on('transaction', update)
   onCleanup(() => { editor.off('transaction', update) })
 }, { immediate: true })
 
-const isActive = computed(() => pluginState.value?.active ?? false)
-const level = computed(() => pluginState.value?.level ?? 'category')
-const query = computed(() => pluginState.value?.query ?? '')
-const selectedCategory = computed(() => pluginState.value?.selectedCategory ?? null)
+const isActive = computed(() => suggestionState.value?.active ?? false)
+const level = computed(() => suggestionState.value?.level ?? 'category')
+const query = computed(() => suggestionState.value?.query ?? '')
+const selectedCategory = computed(() => suggestionState.value?.selectedCategory ?? null)
 
 const activeCategoryLabel = computed(() => {
   const cat = categories.value.find((c) => c.id === selectedCategory.value)
@@ -109,10 +109,10 @@ watch([query, level], ([q, lvl]) => {
     (c) => c.declaration.label.toLowerCase().replace(/\s+/g, '') === typed
   )
   if (!match) return
-  const state = pluginState.value
+  const state = suggestionState.value
   if (!state) return
   const { tr } = props.editor.state
-  tr.setMeta(referenceSuggestionPluginKey, {
+  tr.setMeta(referenceSuggestionKey, {
     active: true,
     triggerPos: state.triggerPos,
     query: '',
@@ -136,10 +136,10 @@ watch(() => nativeOffer.value?.id, () => {
 })
 
 function updatePosition() {
-  if (!isActive.value || !pluginState.value) return
+  if (!isActive.value || !suggestionState.value) return
 
   try {
-    const coords = props.editor.view.coordsAtPos(pluginState.value.triggerPos)
+    const coords = props.editor.view.coordsAtPos(suggestionState.value.triggerPos)
     const left = `${coords.left}px`
 
     if (props.variant === 'full') {
@@ -164,7 +164,7 @@ watch(isActive, (active) => {
   }
 })
 
-watch(() => pluginState.value?.triggerPos, () => {
+watch(() => suggestionState.value?.triggerPos, () => {
   if (isActive.value) nextTick(updatePosition)
 })
 
@@ -271,7 +271,7 @@ function selectCategory(id: ReferenceCategory) {
   const cat = categories.value.find((c) => c.id === id)
   if (!cat) return
 
-  const state = pluginState.value
+  const state = suggestionState.value
   if (!state) return
 
   const { tr } = props.editor.state
@@ -280,7 +280,7 @@ function selectCategory(id: ReferenceCategory) {
   const categoryPrefix = cat.declaration.label.toLowerCase().replace(/\s+/g, '') + ':'
 
   tr.replaceWith(from, to, props.editor.state.schema.text(categoryPrefix))
-  tr.setMeta(referenceSuggestionPluginKey, {
+  tr.setMeta(referenceSuggestionKey, {
     active: true,
     triggerPos: state.triggerPos,
     query: '',
@@ -294,14 +294,14 @@ function selectCategory(id: ReferenceCategory) {
 }
 
 function goBackToCategories() {
-  const state = pluginState.value
+  const state = suggestionState.value
   if (!state) return
 
   const { tr } = props.editor.state
   const from = state.triggerPos + 1
   const to = props.editor.state.selection.head
   tr.delete(from, to)
-  tr.setMeta(referenceSuggestionPluginKey, {
+  tr.setMeta(referenceSuggestionKey, {
     active: true,
     triggerPos: state.triggerPos,
     query: '',
@@ -315,7 +315,7 @@ function goBackToCategories() {
 }
 
 function insertReference(item: ReferenceItem) {
-  const state = pluginState.value
+  const state = suggestionState.value
   if (!state) return
 
   const from = state.triggerPos
@@ -340,12 +340,12 @@ function insertReference(item: ReferenceItem) {
     .run()
 
   const { tr } = props.editor.state
-  tr.setMeta(referenceSuggestionPluginKey, { deactivate: true })
+  tr.setMeta(referenceSuggestionKey, { deactivate: true })
   props.editor.view.dispatch(tr)
 }
 
 function deactivateAndClean() {
-  const state = pluginState.value
+  const state = suggestionState.value
   if (!state) return
 
   const from = state.triggerPos
@@ -353,7 +353,7 @@ function deactivateAndClean() {
 
   const { tr } = props.editor.state
   tr.delete(from, to)
-  tr.setMeta(referenceSuggestionPluginKey, { deactivate: true })
+  tr.setMeta(referenceSuggestionKey, { deactivate: true })
   props.editor.view.dispatch(tr)
 }
 </script>

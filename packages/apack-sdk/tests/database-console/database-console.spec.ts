@@ -1,4 +1,4 @@
-// The Database console's code runners, which the Database plugin and `apack db query`/`exec` share
+// The Database console's code runners, which the Database surface and `apack db query`/`exec` share
 import * as os from 'node:os';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { untypedTx, untypedQx } from '@apackdev/ears';
@@ -93,7 +93,7 @@ describe('getSchemaStats', () => {
 });
 
 // Console code queries the whole database, so it names every installed pack's entity types, whichever pack runs the
-// console: the Database plugin and `apack db` read the same names
+// console: the Database surface and `apack db` read the same names
 describe('the EARS console code sees', () => {
   it("adds the packs' entity types and relation kinds to the SDK's, keeping the SDK's own", () => {
     const ears = consoleEars({ entities: { Memo: 'Memo' }, relKinds: { mentions: 'mentions' } }) as

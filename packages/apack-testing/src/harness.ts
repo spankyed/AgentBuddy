@@ -57,7 +57,7 @@ export function resetTestData(): void {
   resetSdkTestData();
   fs.rmSync(testMediaPath(), { recursive: true, force: true });
 }
-export { startApp, type StartAppOptions, type TestApp, type Message, type PluginEvent, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
+export { startApp, type StartAppOptions, type TestApp, type Message, type SurfaceEvent, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
 
 const serviceMocks = new Map<string, unknown>();
 /**
@@ -68,7 +68,7 @@ let inTest = false;
 
 /** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
 const registry = createPackRegistry({ nativeDeclarations: [hostDeclaration], serviceOverrides: serviceMocks, settingsForPack: (packId) => _settingsAdmin().forPack(packId) });
-// The app's own plugins (the shell, the Packs tab, Settings), which a pack's systems may send to. The harness runs
+// The app's own surfaces (the shell, the Packs tab, Settings), which a pack's systems may send to. The harness runs
 // two of the host's systems: settings, because a feature's own settings are the app's to store and hand back and a
 // pack's code reads them in almost every test, and packs, which owns content import and preview — a pack's tests write
 // their own compiled output constantly, and that is the system those events reach.
@@ -79,16 +79,16 @@ registry.registerPack(hostRegistration({
 setAppPacks(registry);
 
 /**
- * The systems and plugins the packs' manifests declare, when the harness registers content runtimes, which carry no
+ * The systems and surfaces the packs' manifests declare, when the harness registers content runtimes, which carry no
  * features: an action a test runs sends to them through `services.emitter`, which resolves against these
  */
-const declaredRefs = { systems: new Set<string>(), plugins: new Set<string>() };
+const declaredRefs = { systems: new Set<string>(), surfaces: new Set<string>() };
 
 /** Records the refs of the features `manifest` declares */
 function declareFeatures(manifest: Pick<PackManifest, 'id' | 'features'>): void {
   for (const [id, feature] of Object.entries(manifest.features ?? {})) {
     if (feature.system) declaredRefs.systems.add(`${manifest.id}/${id}`);
-    if (feature.plugin) declaredRefs.plugins.add(`${manifest.id}/${id}`);
+    if (feature.surface) declaredRefs.surfaces.add(`${manifest.id}/${id}`);
   }
 }
 
@@ -96,7 +96,7 @@ function declareFeatures(manifest: Pick<PackManifest, 'id' | 'features'>): void 
 const runtimePacks: PackRegistryView = {
   ...registry,
   systemIds: () => [...new Set([...registry.systemIds(), ...declaredRefs.systems])] as FeatureRef[],
-  pluginIds: () => [...new Set([...registry.pluginIds(), ...declaredRefs.plugins])] as FeatureRef[],
+  surfaceIds: () => [...new Set([...registry.surfaceIds(), ...declaredRefs.surfaces])] as FeatureRef[],
 };
 
 /**
@@ -353,12 +353,12 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   });
 }
 
-export type { StartShellOptions, TestShell, TestPlugin } from './shell.ts';
+export type { StartShellOptions, TestShell, TestSurface } from './shell.ts';
 
 /**
- * Starts the app shell, the host's own, with `options.plugins` registered as this pack's, and binds the frontend host
- * to it: `openPlugin`, `untypedOpenPlugin` and `useShell()` reach it, and a test app's systems (`startApp`) and the
- * plugins reach each other over the harness's bus. It stops after the test.
+ * Starts the app shell, the host's own, with `options.surfaces` registered as this pack's, and binds the frontend host
+ * to it: `openSurface`, `untypedOpenSurface` and `useShell()` reach it, and a test app's systems (`startApp`) and the
+ * surfaces reach each other over the harness's bus. It stops after the test.
  */
 export async function startShell(options: StartShellOptions): Promise<TestShell> {
   if (!context) throw new Error('startShell() runs in a test: call setupPackTests() from a vitest setup file first');

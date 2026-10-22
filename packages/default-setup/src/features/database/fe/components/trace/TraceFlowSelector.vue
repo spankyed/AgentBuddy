@@ -77,14 +77,14 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { useSelector } from '@xstate/vue'
 import type { DatabaseState } from '../../state.ts'
 import { GitBranch, Loader2, ArrowLeft } from 'lucide-vue-next'
 import type { TNodeEntity } from '@apackdev/sdk/steps'
 
-const databaseActor: DatabaseState = usePlugin()
+const databaseActor: DatabaseState = useSurface()
 
 // State selectors
 const traceFlows = useSelector(databaseActor, (state) => state.context.traceFlows)

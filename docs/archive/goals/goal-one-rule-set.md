@@ -129,7 +129,7 @@ Facts that constrain the design:
   workspaces (root `workspaces` is `["packages/*"]`), so `npm run lint:check -ws` cannot reach them — but
   `tests/scripts/test-external-pack-contract.sh:21` runs `apack validate` on each.
 - oxlint 1.8.0 supports config `overrides` (per-path `files` globs), has `no-console` in the `restriction`
-  category (not enabled by `-D correctness`), hosts **no** custom rule from the CLI (no `--js-plugins`, no
+  category (not enabled by `-D correctness`), hosts **no** custom rule from the CLI (no `--js-surfaces`, no
   `jsPlugins` schema key) and has **no `no-restricted-syntax`**. eslint runs only over `packages/renderer`.
 - `packages/repo-checks/tests/import-specifiers.integration.spec.ts` is 1,282 lines and 217 tests: one
   `describe` per rule, each case writing a temp tree and calling the rule with explicit `dirs`/`root`, plus the

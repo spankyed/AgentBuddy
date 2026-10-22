@@ -44,7 +44,7 @@ type UIEvent =
   | { type: 'FORM.UPDATE_TEMPLATE'; templateFn: string }
   | { type: 'FORM.UPDATE_OUTPUT_SCHEMA'; outputSchema: any }
   | { type: 'VIEW_LIST' }
-  | { type: 'PLUGIN_DEACTIVATED' }
+  | { type: 'SURFACE_DEACTIVATED' }
   | { type: 'TOGGLE_INPUTS_SECTION'; show: boolean }
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
@@ -67,7 +67,7 @@ const promptsState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setPluginData: assign(({ event }) => {
+    setSurfaceData: assign(({ event }) => {
       const ev = typeOf('PROMPTS_CONNECTED', event);
       return {
         prompts: ev.data.prompts,
@@ -487,13 +487,13 @@ const promptsState = setup({
     },
   },
   on: {
-    PLUGIN_DEACTIVATED: { actions: 'cancelSelection' },
+    SURFACE_DEACTIVATED: { actions: 'cancelSelection' },
     OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Prompt' } }, target: '.detail', actions: 'selectPrompt' },
     'PROMPT.SELECT': { target: '.detail', actions: 'selectPrompt' },
     'VIEW_LIST': {
       target: '.list',
     },
-    PROMPTS_CONNECTED: { actions: 'setPluginData' },
+    PROMPTS_CONNECTED: { actions: 'setSurfaceData' },
     PROMPT_SELECTED: { guard: 'answersPendingPrompt', actions: 'loadPromptData' },
     FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     PROMPT_CREATED: {

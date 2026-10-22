@@ -1,6 +1,6 @@
 # ChatGPT Subscription OAuth — Standalone Implementation Guide
 
-How to authenticate with OpenAI's Codex API using a ChatGPT Plus/Pro subscription, without the opencode SDK wrapper. Everything below is extracted from `opencode/packages/opencode/src/plugin/codex.ts`.
+How to authenticate with OpenAI's Codex API using a ChatGPT Plus/Pro subscription, without the opencode SDK wrapper. Everything below is extracted from `opencode/packages/opencode/src/surface/codex.ts`.
 
 ---
 

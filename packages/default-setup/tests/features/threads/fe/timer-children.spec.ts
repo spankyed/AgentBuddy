@@ -1,11 +1,11 @@
-// The threads plugin clears a new thread's flag and a flashed chat state on a timer, each a child actor. A timer
-// leaves the plugin's children once it fires, and a later timer for the same thread replaces the earlier one.
+// The threads surface clears a new thread's flag and a flashed chat state on a timer, each a child actor. A timer
+// leaves the surface's children once it fires, and a later timer for the same thread replaces the earlier one.
 import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 import { startFeTestRuntime } from '@apackdev/sdk/testing'
 import threadsState from '#features/threads/fe/state.ts'
 
-// The plugin's module tracks the mouse for its hotkeys as it loads; the test setup's window is a bare stand-in
+// The surface's module tracks the mouse for its hotkeys as it loads; the test setup's window is a bare stand-in
 vi.hoisted(() => { (globalThis as { addEventListener?: unknown }).addEventListener ??= () => {} })
 
 afterAll(startFeTestRuntime({ client: { send() {} } }))

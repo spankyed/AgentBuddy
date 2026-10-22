@@ -453,7 +453,7 @@ default-setup's threads feature provides `services.artifact` (declare `default-s
 
 | Call | Does |
 |---|---|
-| `createAndNotify({ artifactType, title, content, threadId?, color? })` | Creates the `Artifact` row, links it to the thread and sends `ARTIFACT_ADDED` to the threads plugin when `threadId` is given. Returns `{ artifactId }` |
+| `createAndNotify({ artifactType, title, content, threadId?, color? })` | Creates the `Artifact` row, links it to the thread and sends `ARTIFACT_ADDED` to the threads surface when `threadId` is given. Returns `{ artifactId }` |
 | `updateAndNotify(artifactId, { title?, content?, threadId? })` | Patches it; sends `ARTIFACT_UPDATED` when `threadId` is given |
 | `findOrCreateByType(threadId, artifactType, { title, content, color? })` | At most one artifact of the type per thread. Returns `{ artifactId, created }` |
 
@@ -549,7 +549,7 @@ the block and the path.
 
 ### Sending blocks from the backend
 
-default-setup's threads feature provides `services.chat.sendBlockMessage({ threadId, text, blocks, forkable?, autoHide?, asUser?, asideContext? })`: it adds an assistant message with the blocks and sends `MESSAGE_ADDED` to the threads plugin, returning `{ messageId }`. `autoHide: true` requires `asUser` (boolean); `asideContext` overrides the label used in the aside text.
+default-setup's threads feature provides `services.chat.sendBlockMessage({ threadId, text, blocks, forkable?, autoHide?, asUser?, asideContext? })`: it adds an assistant message with the blocks and sends `MESSAGE_ADDED` to the threads surface, returning `{ messageId }`. `autoHide: true` requires `asUser` (boolean); `asideContext` overrides the label used in the aside text.
 
 ```typescript
 services.chat.sendBlockMessage({
@@ -652,15 +652,15 @@ The block answers with a `ButtonGroupResponse` — `{ buttonId, state }`. Respon
 
 ## Other frontend extension points
 
-### Tiptap plugins
+### Text editor extensions
 
-`extensions.tiptapPlugins` declares named editor groups. Each group names its extensions,
+`extensions.textEditor` declares named editor groups. Each group names its extensions,
 popups and optional suggestion predicate without importing executable code:
 
 ```json
 {
   "extensions": {
-    "tiptapPlugins": {
+    "textEditor": {
       "suggestions": {
         "extensions": {
           "mention": "src/editor/mention.ts#Mention"
@@ -677,12 +677,12 @@ popups and optional suggestion predicate without importing executable code:
 
 Extension keys must match the exported Tiptap objects' names. Popup IDs belong to their group.
 The predicate receives an editor state and returns `true` while suggestions should handle Escape.
-Codegen imports each target and assembles keyed `TiptapPlugin` bindings (`@apackdev/sdk/fe`);
+Codegen imports each target and assembles keyed `TextEditorExtensions` bindings (`@apackdev/sdk/fe`);
 there is no registration module or aggregate array export. Binding admission checks exact group/member
 names and executable shapes without calling components or predicates. Conflicting active extension
 names are refused with both owners. Catalog metadata remains available for disabled packs.
 
-`tiptapPluginRegistry.getAll()` returns accepted `{ packId, groupId, binding }` rows in pack/group
+`textEditorExtensionsRegistry.getAll()` returns accepted `{ packId, groupId, binding }` rows in pack/group
 registration order. Each row is immutable and its binding holds captured extension/popup membership.
 The returned list is detached. `onChanged(listener)` observes committed frontend changes and returns
 an unsubscribe function; reread the projection to distinguish relevant editor changes from unrelated
@@ -711,9 +711,9 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 
 | Field | Source |
 |---|---|
-| `features` | Each feature with a `plugin`: its generated binding from declared state/views/presentation, its `designation`, and `default: true` on the one whose `plugin` sets `default`. Bindings must match the accepted declaration; startup selection follows the [declared default policy](manifest.md#features), independently of frontend delivery. Duplicate designation ownership refuses the pack |
+| `features` | Each feature with a `surface`: its generated binding from declared state/views/presentation, its `designation`, and `default: true` on the one whose `surface` sets `default`. Bindings must match the accepted declaration; startup selection follows the [declared default policy](manifest.md#features), independently of frontend delivery. Duplicate designation ownership refuses the pack |
 | `steps` / `artifacts` / `blocks` | each entry's `fe` facet, imported into the generated frontend entry (an artifact's `icon` with it) |
-| `tiptapPlugins` | `extensions.tiptapPlugins` |
+| `textEditor` | `extensions.textEditor` |
 | `appExtensions` | `extensions.appExtensions` |
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
@@ -733,10 +733,10 @@ lifecycle automatically. These data reads import no pack or compiler modules.
 
 ### Navigation discovery
 
-The shell lists enabled plugins from their declarations before loading their frontend. Labels, pinning,
+The shell lists enabled surfaces from their declarations before loading their frontend. Labels, pinning,
 visibility defaults and order come from the catalog; source-only previews are not app destinations.
 Native host tabs follow pack tabs within each pinned/unpinned group. Frontend delivery order cannot
-reorder tabs. User visibility choices override `features.<id>.plugin.defaultVisible` (which defaults
+reorder tabs. User visibility choices override `features.<id>.surface.defaultVisible` (which defaults
 to visible). Hidden destinations remain in the toolbar visibility menu.
 
 Accepted frontend bindings supply icons and executable behavior. Until an icon is available, the shell

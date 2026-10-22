@@ -99,7 +99,7 @@
 
 <script setup lang="ts">
 import { sendToSystem } from '#generated/events.ts'
-import { usePluginState } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
 import { ref, computed, watch } from 'vue';
 import { ListTodo, Check } from 'lucide-vue-next';
 import type { ArtifactItem } from '@apackdev/sdk/artifacts';
@@ -119,7 +119,7 @@ const props = defineProps<{
   artifact: ArtifactItem<Partial<TodoContent>>;
 }>();
 
-const currentThread = usePluginState('threads', (s) => s.currentThread);
+const currentThread = useSurfaceState('threads', (s) => s.currentThread);
 
 /**
  * The decision is the artifact's, read from it rather than kept here.

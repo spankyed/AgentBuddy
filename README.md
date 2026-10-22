@@ -87,7 +87,7 @@ helpers. npm/Homebrew availability and downloadable beta hosts are separate dist
 check the guide before assuming those installation paths are available.
 
 - [Manifest](docs/public-facing/manifest.md): declarations, settings, entities and contributions.
-- [Features](docs/public-facing/features.md): backend systems and frontend plugins.
+- [Features](docs/public-facing/features.md): backend systems and frontend surfaces.
 - [Content](docs/public-facing/content.md): actions, prompts, flows and entity rows.
 - [Testing](docs/public-facing/testing.md): pack unit tests and app acceptance.
 - [CLI reference](docs/public-facing/cli.md): app commands, pack commands and database tools.
@@ -96,7 +96,7 @@ check the guide before assuming those installation paths are available.
 
 apack separates the desktop host from the features it runs:
 
-- **Actor-based coordination.** XState machines manage backend systems, frontend plugins and flow
+- **Actor-based coordination.** XState machines manage backend systems, frontend surfaces and flow
   execution. Typed events connect the two sides through a tRPC/WebSocket transport.
 - **Declarative pack contracts.** Manifests describe contributions and dependencies; build tooling
   checks module bindings and generates typed access to services and repositories. Built declarations
@@ -104,7 +104,7 @@ apack separates the desktop host from the features it runs:
 - **Shared data and services.** EARS provides the entity-attribute-relation graph, persisted through
   LMDB. Host services supply common facilities such as inference and filesystem access; packs declare
   the additional services they consume.
-- **Extensible presentation.** Vue powers the shell and pack views. Packs contribute frontend plugins,
+- **Extensible presentation.** Vue powers the shell and pack views. Packs contribute frontend surfaces,
   editors, message blocks and artifact viewers. Settings declarations define schemas and defaults,
   while forms remain custom UI.
 

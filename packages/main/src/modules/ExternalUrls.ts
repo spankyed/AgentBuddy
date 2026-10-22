@@ -14,7 +14,7 @@ export class ExternalUrls implements AppModule {
 
   enable({app}: MainModuleScope): Promise<void> | void {
     app.on('web-contents-created', (_, contents) => {
-      // Browser plugin tabs handle their own window.open → new tab
+      // Browser surface tabs handle their own window.open → new tab
       if (contents.session === session.fromPartition('persist:browser')) return;
 
       contents.setWindowOpenHandler(({url}) => {

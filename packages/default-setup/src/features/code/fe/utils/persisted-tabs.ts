@@ -1,3 +1,8 @@
+import { surfaceStorage } from '@apackdev/sdk/fe'
+import { ref as featureRef } from '#generated/ref.ts'
+
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = surfaceStorage(featureRef('code'))
 import type { OpenFile, TerminalTab } from '../state.ts'
 import type { ActionTab } from '../features/actions/state.ts'
 import type { PromptTab } from '../features/prompts/state.ts'
@@ -15,7 +20,6 @@ export interface PersistedTab {
   isPreview?: boolean // Track preview state
 }
 
-const STORAGE_KEY = 'code-plugin-open-tabs'
 
 export interface PersistedTabState {
   tabs: PersistedTab[]
@@ -102,7 +106,7 @@ export function saveOpenTabs(
       panelTerminalId: sanitizedPanelTerminalId,
       panelTerminalExpanded: sanitizedPanelTerminalId ? panelTerminalExpanded : false,
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    storage.set('open-tabs', JSON.stringify(payload))
   } catch (error) {
     console.error('Failed to save open tabs:', error)
   }
@@ -138,7 +142,7 @@ function normalizeTabs(rawTabs: unknown[]): PersistedTab[] {
 
 export function loadPersistedTabs(): PersistedTabState {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = storage.get('open-tabs')
     if (!stored) return { tabs: [], activeFilePath: null, panelTerminalId: null, panelTerminalExpanded: false }
 
     const parsed = JSON.parse(stored)

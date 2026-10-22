@@ -15,7 +15,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import type { PackSnapshot } from '../../../src/build/manifest.ts';
-import { setupPackFixture, dependency, facade, generatePackFiles, manifest, root, system, withPlugin, withPluginState, write, writePluginState, writeSystemEntry  } from './_support/pack.ts';
+import { setupPackFixture, dependency, facade, generatePackFiles, manifest, root, system, withSurface, withSurfaceState, write, writeSurfaceState, writeSystemEntry  } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -90,7 +90,7 @@ function typedDependency(systems: Record<string, string>): PackSnapshot {
 
 describe('generated sends compile', () => {
   it('for feature ids that match generated names, beside a dependency with the same feature ids', async () => {
-    const ids = ['foo', 'fooEntry', 'specs', 'specEvents', 'ref', 'openPlugin', 'registration', 'steps'];
+    const ids = ['foo', 'fooEntry', 'specs', 'specEvents', 'ref', 'openSurface', 'registration', 'steps'];
     for (const id of ids) writeSystemEntry(id, "{ type: 'DONE' }", `{ type: '${id.toUpperCase()}_RUN'; n: number }`);
     const files = await generatePackFiles(manifest({ features: ids.map((id) => ({ ...system(id), designation: id === 'foo' ? 'foo' : undefined })) }), {
       packRoot: root,
@@ -107,7 +107,7 @@ describe('generated sends compile', () => {
   });
 
   it("for a pack without systems, sending to its dependencies'", async () => {
-    const files = await generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { label: 'Fixture', state: writePluginState('src/features/sidebar/fe/plugin.ts') } }] }), {
+    const files = await generatePackFiles(manifest({ features: [{ id: 'sidebar', surface: { label: 'Fixture', state: writeSurfaceState('src/features/sidebar/fe/surface.ts') } }] }), {
       packRoot: root,
       depSnapshots: new Map([['base-pack', typedDependency({ calendar: 'CALENDAR_RUN' })]]),
     });
@@ -122,28 +122,28 @@ describe('generated sends compile', () => {
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
   });
 
-  it("to a dependency's plugins and a host plugin, with the events their owner declares", async () => {
+  it("to a dependency's surfaces and a host surface, with the events their owner declares", async () => {
     writeSystemEntry('memos', "{ type: 'MEMO_ADDED'; text: string }");
     const base = dependency(
-      { features: [withPlugin(system('calendar')), withPlugin(system('code'))] },
-      withPluginState(facade({ PackPluginEvents: "{ 'calendar': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }), ['calendar', 'code']),
+      { features: [withSurface(system('calendar')), withSurface(system('code'))] },
+      withSurfaceState(facade({ PackSurfaceEvents: "{ 'calendar': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }), ['calendar', 'code']),
     );
     const files = await generatePackFiles(
-      manifest({ features: [withPlugin(system('memos'))] }),
+      manifest({ features: [withSurface(system('memos'))] }),
       { packRoot: root, depSnapshots: new Map([['base-pack', base]]) },
     );
     write('src/probe.ts', [
-      "import { sendToPlugin } from './__generated__/events.ts';",
-      "sendToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });",
-      "sendToPlugin('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });",
-      "sendToPlugin('base-pack/code', { type: 'FILE_OPENED', path: 'x' });",
-      "sendToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });",
-      "// @ts-expect-error a dependency's plugin takes only the events its own pack declares for it",
-      "sendToPlugin('base-pack/calendar', { type: 'MEMO_ADDED', text: 'x' });",
-      "// @ts-expect-error a dependency's plugin is named <pack>/<feature>, as the send resolves it",
-      "sendToPlugin('calendar', { type: 'TAG_ADDED', name: 'x' });",
-      '// @ts-expect-error the host declares what its application plugin receives',
-      "sendToPlugin('host/application', { type: 'MEMO_ADDED', text: 'x' });",
+      "import { sendToSurface } from './__generated__/events.ts';",
+      "sendToSurface('memos', { type: 'MEMO_ADDED', text: 'x' });",
+      "sendToSurface('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });",
+      "sendToSurface('base-pack/code', { type: 'FILE_OPENED', path: 'x' });",
+      "sendToSurface('host/application', { type: 'SURFACE_VISIBILITY_UPDATED', surfaceVisibility: { 'demo-pack/memos': false } });",
+      "// @ts-expect-error a dependency's surface takes only the events its own pack declares for it",
+      "sendToSurface('base-pack/calendar', { type: 'MEMO_ADDED', text: 'x' });",
+      "// @ts-expect-error a dependency's surface is named <pack>/<feature>, as the send resolves it",
+      "sendToSurface('calendar', { type: 'TAG_ADDED', name: 'x' });",
+      '// @ts-expect-error the host declares what its application surface receives',
+      "sendToSurface('host/application', { type: 'MEMO_ADDED', text: 'x' });",
     ].join('\n'));
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
   });
@@ -213,7 +213,7 @@ describe('generated settings compile', () => {
     }, defaults: { enabled: true, paths: {}, chat: {}, items: [] } };
     const files = await generatePackFiles(manifest({ features: [
       { id: 'notes', settings: declaration },
-      { id: 'hidden', plugin: { label: 'Fixture', state: writePluginState('src/hidden.ts'), defaultVisible: false } },
+      { id: 'hidden', surface: { label: 'Fixture', state: writeSurfaceState('src/hidden.ts'), defaultVisible: false } },
     ] }), { packRoot: root, depSnapshots: new Map([['base-pack', dependency({
       features: [{ id: 'calendar', settings: declaration }],
     }, facade({ PackFeatureSettings: "{ calendar: { weekStartsOn: number } }" }))]]) });

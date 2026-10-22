@@ -30,11 +30,11 @@ A landed result still needs its applicable regression checks in the final requir
 | 5 | Remove partition-policy machinery; proposed `volatile` addition needed a separate real storage requirement. Excluded under the settled storage scope. | The predecessor itself records removal and says not to add volatility without an actual need. Do not recreate it, widen entity values for it, or require its obsolete external-pack test. Retain existing storage behavior; general storage work remains separate. | Preservation |
 | 6 | Designation is a role distinct from feature id, with collision checks. Landed; preserve. | `validate.ts:validateFeatures` checks role collisions without requiring equality; `FeatureEntrySchema.designation` is a string. Recheck nonmatching role/id, within-pack and cross-pack conflicts through actual registration. | M4/final |
 | 7 | Explicit feature contributions, useful authoring layout and consistent type-module naming. The `provides`/inferred-existence mechanism is replaced, not its tool agreement. | Current keyed features and explicit targets are the authority. Retain pack-root-relative declared paths, ownership/import boundaries and named missing-target failures. Consolidate supported scaffold layout across add/doctor/validation/codegen/docs. Type-module authoring is implemented in `0e65ece42`: explicit `types`, shared resolution, no conventional/companion inference, unchanged public facade. Descriptions and declared scaffold forms are implemented in `ae7a995bd`; target/layout/export/default checks completed through `11bdc7faa`. | M4 |
-| 8 | Avoid duplicate contribution existence and meaningless annotations. Replaced by keyed declarations with metadata and checked bindings. | Schema has explicit system/plugin/settings/reference declarations; no `provides` list is needed. Do not introduce boolean authoring placeholders. Early validation checks known declaration/export errors; runtime admission checks dynamic binding membership. Unused utility exports are not undeclared contributions. | M4/discovery |
+| 8 | Avoid duplicate contribution existence and meaningless annotations. Replaced by keyed declarations with metadata and checked bindings. | Schema has explicit system/surface/settings/reference declarations; no `provides` list is needed. Do not introduce boolean authoring placeholders. Early validation checks known declaration/export errors; runtime admission checks dynamic binding membership. Unused utility exports are not undeclared contributions. | M4/discovery |
 | 9 | Contributions live under `extensions`; settle settings/help placement. Landed in part and deliberately redesigned. | SDK `ExtensionsSchema` has contribution fields, `extensions.settings`, `extensions.help`; host settings are independent. Preserve these and ordinary strict schema validation. Historical moved-key diagnostics were removed in `dd960261a`; unsupported fields use current-schema errors. Full metadata/binding migration for remaining kinds stays required. | Discovery/final |
 | 10 | Content is grouped and lifecycle has a coherent declaration. Content grouping landed; lifecycle root move required. | `ContentConfigSchema` groups sources/datasets/formats/writers. M3 (`e063ec1a5`) uses `LifecycleConfigSchema` and one native/installed checked binding guard for explicit targets. Use `lifecycle: { onInit: "path#export", onShutdown: "path#export" }`, replacing the historical opaque single-module proposal. Migrate discovery/codegen/native bindings; preserve actual execution/order and unchanged-content apply identity. | M3 |
 | 11 | Schema assistance and public docs specify the supported contract completely. Required. | Completed through `9e9a9ac0e` and `0994ae787`: all generated properties have behavior-specific help, real offline JSON completion/hover/diagnostics are checked, and public docs describe source/build/archive/installed/shipped/native differences and explicit null shapes. Shared semantic validation remains necessary beyond editor structure checks. Maintain docs when remaining discovery kinds change. | M6 |
-| 12 | Default selection belongs to its plugin, with uniqueness. Landed; preserve. | `PluginSchema.default`, schema refinement and generated plugin metadata hold the claim. No root `defaultPlugin`. M4 (`11bdc7faa`) shares authored/native default-claim validation and checks frontend claims atomically. Discovery checkpoint `69860e4be` replaces registration-order priority with static catalog selection: enabled native claims precede installed claims, then qualified feature refs sort using the English locale. Source previews are excluded; saved/popout/explicit navigation wins. This demonstrably better replacement removes frontend delivery races while preserving per-plugin declarations and uniqueness. Catalog navigation checks cover reversed frontend delivery; public docs describe the current policy. | M4/final |
+| 12 | Default selection belongs to its surface, with uniqueness. Landed; preserve. | `SurfaceSchema.default`, schema refinement and generated surface metadata hold the claim. No root `defaultSurface`. M4 (`11bdc7faa`) shares authored/native default-claim validation and checks frontend claims atomically. Discovery checkpoint `69860e4be` replaces registration-order priority with static catalog selection: enabled native claims precede installed claims, then qualified feature refs sort using the English locale. Source previews are excluded; saved/popout/explicit navigation wins. This demonstrably better replacement removes frontend delivery races while preserving per-surface declarations and uniqueness. Catalog navigation checks cover reversed frontend delivery; public docs describe the current policy. | M4/final |
 | 13 | Every feature explains its purpose; scaffolding collects it and validation requires it. Required. | Implemented in `ae7a995bd`: shared required/nonblank `description` validation, authored/native declarations, explicit required scaffold input, cold catalog summaries and feature UI. Real manifests and all fixture producers migrated; no runtime-binding metadata or `about` alias. | M4 |
 | 14 | Delete unused `$manifestVersion`; preserve build-format policy and release metadata. Required. | Removed outright in `9374189e5`, including schema/API/field audit/public docs. Snapshot/layout constants remain 1/2. Layout verification and asset delivery require exact stamps; independent mutations prove fractional rejection. Those installed-dependency checks prove exact-format refusal, not capability admission; the corrected discovery audit owns the required capability reader. No replacement format key or version accommodation. | M5 |
 | 15 | Finish deliberate naming now; preserve release discipline. Required maintenance, not blanket renaming. | Completed naming baseline `3d389b9c8` remains authoritative. Resolve the two questions below explicitly. Document later breaking/additive evolution against current build contracts; no release/version edits in this goal. | M4–M6/final |
@@ -43,7 +43,7 @@ A landed result still needs its applicable regression checks in the final requir
 
 ## Resolve the two naming questions
 
-- **Direct editor/app contributions: selected.** Declare `extensions.tiptapPlugins` and
+- **Direct editor/app contributions: selected.** Declare `extensions.textEditor` and
   `extensions.appExtensions` alongside the other contribution kinds. The user replaced the proposed
   `extensions.frontend` wrapper: artifacts/help and other extensions also serve the frontend, so that
   grouping adds nesting without an ownership or capability boundary. Keep `fe`/`be` directories,
@@ -160,7 +160,7 @@ M4 must retain type-only export-star semantics while making that contribution ex
 - Scaffold declares its generated module explicitly. Validation, doctor and generation share module
   path resolution, including extension handling, containment and missing-module diagnostics.
   Arbitrary declared locations remain supported; scaffold conventions are authoring defaults.
-- Required nonblank feature `description` describes purpose, separate from plugin display label.
+- Required nonblank feature `description` describes purpose, separate from surface display label.
   Native declarations and catalog summaries carry it; it does not belong in executable bindings.
   Scaffolding requires an explicit `--description` before writing files and validates it with the
   same field schema, rejecting missing/blank values and another flag consumed as the value. Keep
@@ -176,7 +176,7 @@ M4's scaffold audit also found an undeclared `fe/settings.vue`: `add feature` cr
 but omits `settings.form`. Declare the file the command writes rather than teach discovery to probe
 for it. Preserve the existing custom-form template; this does not introduce generated settings forms.
 Check the authored declaration and real external build/typecheck/pack/doctor paths together.
-Native `application` purpose describes shell visibility and the last active plugin, not process boot.
+Native `application` purpose describes shell visibility and the last active surface, not process boot.
 
 ### Remaining M4 target audit (2026-10-14)
 
@@ -195,7 +195,7 @@ symlinks), and unsupported or incomplete checks; dependency absence must not rep
 exports as valid. Derive any shared target inventory from declarations, never author another list.
 Use real external packs with nonconventional paths, extensionless/directory targets, missing
 modules/exports and type-only targets, proving validation never executes their modules. Preserve
-the existing designation/default-plugin collision and cross-pack selection behavior with evidence.
+the existing designation/default-surface collision and cross-pack selection behavior with evidence.
 
 
 Shared module parsing/resolution is implemented in `4285d748c`. `_parseModuleReference` supports
@@ -210,7 +210,7 @@ other unverified checks remain explicitly incomplete. The module inventory disti
 component, type-export and type-module purposes. `9b674ece3` makes whole-module paths, required named
 exports and optional default-export bindings explicit in schemas and source/codegen readers. Codegen
 checks grammar before emission even without named bindings. `fb9d212fc` checks the runtime exports
-of whole-module readers from the same target metadata (`default`, `apply`, `tiptapPlugins`), includes
+of whole-module readers from the same target metadata (`default`, `apply`, `textEditor`), includes
 JavaScript in static inspection and recognizes CommonJS default imports. Type-only barrels remain
 independent; Vue component exports belong to the frontend build. Real CLI cases prove system default
 checks do not activate modules. M4 remains open for scaffold/layout agreement and cross-pack default
@@ -223,7 +223,7 @@ The real external scaffold validates and passes doctor with a designation differ
 ID, then builds, typechecks and archives. Public layout documentation includes both contracts and
 describes declarative settings and role semantics accurately. Authored/native schemas share the
 one-default-per-pack rule. Frontend admission refuses duplicate defaults or a default without a
-plugin; failed replacement preserves the accepted view. Cross-pack first-registered selection is
+surface; failed replacement preserves the accepted view. Cross-pack first-registered selection is
 preserved, including replacement, winner removal and re-registration. Guard mutations fail their
 named assertions; all are restored. The later discovery checkpoint `69860e4be` supersedes this historical registration-order policy with the catalog selection described in decision 12. Strict validation and exact evidence are recorded in the goal.
 
@@ -255,7 +255,7 @@ Strict checkpoint passed all 30 steps in 532.9s; evidence and focused/mutation c
 the execution goal. EARS and compiled content identities are unchanged.
 
 M6 is unfinished. Current generated-schema inspection found 45 missing field descriptions, principally
-plugin presentation, reference presentation/providers, settings labels and help paths. Complete those
+surface presentation, reference presentation/providers, settings labels and help paths. Complete those
 with behavior-specific guidance and editor assistance checks, not a blanket description filler. npm
 range semantics remain checked by the shared validator rather than represented in generated JSON
 Schema. Native/source/installed/shipped build documentation and final M1–M6 acceptance audit remain
@@ -296,7 +296,7 @@ mutations. Generated EARS and compiled content remain byte-identical to the pres
 | 5: storage policy/volatile | No authored partition or volatile field was added. Explicit exclusion; existing SDK storage behavior remains. | Separate storage requirement only, as already instructed. |
 | 6: designation | Role/id distinction and duplicate-role checks in `validateFeatures`; real scaffold uses notebook for notes. Implemented replacement preserved. | Final whole-goal registration/collision review remains. |
 | 7: feature layout/types | Explicit feature `types`, shared CLI layout, checked export inventory and real add/doctor/build/typecheck/archive path. Implemented. | Keep helper conventions separate from inferred contribution existence. |
-| 8: declaration existence | Explicit keyed system/plugin/settings/reference declarations replace provides/booleans; checked bindings refuse mismatch. Better replacement implemented for migrated kinds. | Required full kind coverage and removal of runtime discovery glue in Phase 3. |
+| 8: declaration existence | Explicit keyed system/surface/settings/reference declarations replace provides/booleans; checked bindings refuse mismatch. Better replacement implemented for migrated kinds. | Required full kind coverage and removal of runtime discovery glue in Phase 3. |
 | 9: extensions | Settings/help placement and host settings ownership are implemented; ordinary strict schema errors have no historical-key inventory. | Required remaining extension declarations/bindings and direct editor/app declaration move in Phase 3. |
 | 10: content/lifecycle | `ContentConfigSchema` and explicit `LifecycleConfigSchema`; native/installed hook binding checks preserve execution order and unchanged content. Implemented. | Static content dependency graph remains required in discovery. |
 | 11: schema/docs | Complete field-help traversal plus actual editor completion/hover/range diagnostics; generated schema/API checks and public build guide. Implemented M6. | Regenerate and review documentation/reports for later contract changes. |
@@ -306,7 +306,7 @@ mutations. Generated EARS and compiled content remain byte-identical to the pres
 | 15: naming/release discipline | Completed naming baseline retained; current version/range parser and build documentation distinguish contract/version concepts. Implemented maintenance. | Frontend container/facade naming remains explicitly assigned below. |
 | 16: no compatibility | Current source search finds no entityShapes/settingsSections/typesEntry/boot-key/sidecar readers or moved-key hint inventory; strict current validation and migrated fixtures remain. Implemented rule, continuously enforced. | Every later contract move migrates all callers/readers outright. |
 | 17: checks/build | `checks.allow` shares SDK policy with CLI rules; sidecar removed; real CLI allowance/refusal coverage and existing build options preserved. Implemented. | Maintain scaffold/schema/guidance agreement. |
-| Naming: extensions.fe | Direct extensions.tiptapPlugins and extensions.appExtensions landed in `e40d157f9`, including schema, codegen, native declarations, catalog/CLI readers, fixtures and docs; no frontend wrapper or alias. | Preserve checked member identities and module-free discovery through remaining editor/provider work. |
+| Naming: extensions.fe | Direct extensions.textEditor and extensions.appExtensions landed in `e40d157f9`, including schema, codegen, native declarations, catalog/CLI readers, fixtures and docs; no frontend wrapper or alias. | Preserve checked member identities and module-free discovery through remaining editor/provider work. |
 | Naming: hostVersion | Resolved and retained as one nonempty npm host range; separate from SDK/build tool dependencies and build stamps. Implemented. | Keep one field, with no engines wrapper. |
 
 Original phases 1/3/4/5/6/7 now have their M1–M6 source checkpoints and validation evidence. Phase 2's
@@ -330,7 +330,7 @@ current implementations; it is a source review, not final runtime or strict-gate
 | 6, 8, 9, 12: roles, explicit contributions, extensions and defaults | Registry designation stores and catalog claims use explicit identities. Backend bindings compare declared/runtime names before registration. Source endpoint frames validate compiled contract coverage before catalog projection. `dcf2493e5` fixes the discovered inherited-property exception in content validation/resolution. | Retain inactive-owner, collision, exact binding, source-offer and default-selection tests; no new inventory or naming restriction. |
 | 10: content and lifecycle | `ContentConfigSchema` groups content. `LifecycleConfigSchema` declares named hooks, and `lifecycle-binding.ts` verifies exact callable membership. | Preserve hook ordering, content identity and native/installed admission through the gate. |
 | 11, 14, 17: schema assistance, format key and checks | Current generated JSON has no undocumented declared property, no authored format-version key, and the expected lifecycle/checks fields. `PackChecksSchema` shares the allowable-check vocabulary. `dcf2493e5` changes behavior without changing generated schema or API shape. | Keep editor completion/diagnostics, exact build stamps, API reports, public docs and actual allowance/refusal cases in strict acceptance. |
-| 15 and both naming questions | Completed naming baseline remains unchanged. Current schema retains `hostVersion` and places `tiptapPlugins`/`appExtensions` directly under extensions. Release metadata is untouched. | Preserve the settled contract; no new naming or release work. |
+| 15 and both naming questions | Completed naming baseline remains unchanged. Current schema retains `hostVersion` and places `textEditor`/`appExtensions` directly under extensions. Release metadata is untouched. | Preserve the settled contract; no new naming or release work. |
 
 The own-property repair passes 72 focused schema/declaration/resolution cases, the existing dependency
 format codegen consumer, SDK types, schema check and lint. See its

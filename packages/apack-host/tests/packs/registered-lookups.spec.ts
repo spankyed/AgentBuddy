@@ -14,10 +14,10 @@ import { blockRegistry } from '@apackdev/sdk/blocks';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
 import { getPackCommands, getSettingsCatalog, onPackCatalogChanged, type PackRegistration } from '@apackdev/sdk/framework';
 import { importCompiledContent, type ContentApplier } from '@apackdev/sdk/utils';
-import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import { SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 
-/** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
-const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
+/** The events a pack's surface receives: what its pack declares, and what the app sends every surface */
+const receives = (...types: string[]) => new Set([...types, ...SURFACE_EVENT_TYPES]);
 
 // How this spec registers and unregisters packs: a registry it creates, bound for the SDK's lookups
 const registry = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });
@@ -261,16 +261,16 @@ describe('step wire ownership', () => {
   });
 });
 
-// A plugin is addressed `<packId>/<featureId>`, so two packs with a `memos` feature have a plugin each and
+// A surface is addressed `<packId>/<featureId>`, so two packs with a `memos` feature have a surface each and
 // neither shadows the other.
 describe('two packs naming the same feature', () => {
-  const withPlugin = (id: string, featureId: string, receives: string[]) => ({ id, features: { [featureId]: { plugin: { receives } } } });
+  const withSurface = (id: string, featureId: string, receives: string[]) => ({ id, features: { [featureId]: { surface: { receives } } } });
 
-  it('both register, each addressing its own plugin', () => {
-    add({ ...withPlugin('first-pack', 'memos', ['FIRST_EVENT']), steps: [noteStep] });
-    add(withPlugin('second-pack', 'memos', ['SECOND_EVENT']));
+  it('both register, each addressing its own surface', () => {
+    add({ ...withSurface('first-pack', 'memos', ['FIRST_EVENT']), steps: [noteStep] });
+    add(withSurface('second-pack', 'memos', ['SECOND_EVENT']));
 
-    const map = registry.getPluginEventValidationMap();
+    const map = registry.getSurfaceEventValidationMap();
     expect(map.get('first-pack/memos')).toEqual(receives('FIRST_EVENT'));
     expect(map.get('second-pack/memos')).toEqual(receives('SECOND_EVENT'));
     expect(map.has('memos'), 'a bare feature id is nobody\'s address').toBe(false);
@@ -278,12 +278,12 @@ describe('two packs naming the same feature', () => {
   });
 
   // The host is the pack `host`; a pack naming a feature after one of its features still gets a ref of its own
-  it("leaves the host's own plugin alone when a feature is named after it", () => {
-    const host = registry.getPluginEventValidationMap().get('host/application');
-    add(withPlugin('impostor', 'application', ['HIJACKED']));
+  it("leaves the host's own surface alone when a feature is named after it", () => {
+    const host = registry.getSurfaceEventValidationMap().get('host/application');
+    add(withSurface('impostor', 'application', ['HIJACKED']));
 
-    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(host);
-    expect(registry.getPluginEventValidationMap().get('impostor/application')).toEqual(receives('HIJACKED'));
+    expect(registry.getSurfaceEventValidationMap().get('host/application')).toEqual(host);
+    expect(registry.getSurfaceEventValidationMap().get('impostor/application')).toEqual(receives('HIJACKED'));
   });
 });
 
@@ -309,7 +309,7 @@ describe('a pack whose registration is refused', () => {
       contentWriters: { Note: {} },
       appliers: [anApplier('notes')],
       commands: [{ name: 'standup', placeholder: 'Topic' }],
-      features: { notes: { plugin: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
+      features: { notes: { surface: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
     });
 
     // Every kind of its own, and a command the incumbent already declares — the candidate is refused atomically
@@ -322,7 +322,7 @@ describe('a pack whose registration is refused', () => {
       contentWriters: { Card: {} },
       appliers: [anApplier('cards')],
       commands: [{ name: 'standup', placeholder: 'Theirs' }],
-      features: { cards: { plugin: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },
+      features: { cards: { surface: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },
     })).toThrow('Command collision');
 
     // Nothing of the refused pack survives
@@ -359,19 +359,19 @@ describe('a pack whose registration is refused', () => {
 it('reads declared visibility before runtime registration and follows declaration replacement', () => {
   const isolated = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });
   isolated.catalog.setNative([{ id: 'static-pack', features: { view: {
-    description: 'A declared navigation destination.', plugin: {
+    description: 'A declared navigation destination.', surface: {
       label: 'View', state: 'unavailable.ts#state', defaultVisible: false,
     },
   } } }]);
   expect(isolated.getPackRegistration('static-pack')).toBeNull();
-  expect(isolated.pluginDefaults()).toEqual({ 'static-pack/view': false });
+  expect(isolated.surfaceDefaults()).toEqual({ 'static-pack/view': false });
   isolated.catalog.setNative([]);
-  expect(isolated.pluginDefaults()).toEqual({});
+  expect(isolated.surfaceDefaults()).toEqual({});
 });
 
 describe('feature settings defaults', () => {
-  const memos = { plugin: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
-  const cards = { plugin: { receives: [] } };
+  const memos = { surface: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
+  const cards = { surface: { receives: [] } };
 
   it('appear and disappear with their pack, each change announced with a new revision', () => {
     const changed = vi.fn();
@@ -381,18 +381,18 @@ describe('feature settings defaults', () => {
     add({ id: 'memo-pack', features: { memos } });
     add({ id: 'card-pack', features: { cards } });
     registry.catalog.setNative(registry.catalog.getSnapshot().native.map(pack => pack.id !== 'card-pack' ? pack : {
-      ...pack, features: { cards: { ...pack.features!.cards!, plugin: {
+      ...pack, features: { cards: { ...pack.features!.cards!, surface: {
         label: 'Cards', state: 'fixtures/cards.ts#state', defaultVisible: false,
       } } },
     }));
     expect(getSettingsCatalog().features).toEqual({ 'memo-pack/memos': memos.settings });
-    expect(registry.pluginDefaults()).toEqual({ 'card-pack/cards': false });
+    expect(registry.surfaceDefaults()).toEqual({ 'card-pack/cards': false });
     expect(getSettingsCatalog().revision).toBeGreaterThan(before);
     expect(changed).toHaveBeenCalled();
 
     remove('memo-pack');
     expect(getSettingsCatalog().features).toEqual({});
-    expect(registry.pluginDefaults()).toEqual({ 'card-pack/cards': false });
+    expect(registry.surfaceDefaults()).toEqual({ 'card-pack/cards': false });
     remove('card-pack');
     expect(getSettingsCatalog().features).toEqual({});
 

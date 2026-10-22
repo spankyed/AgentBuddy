@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
 import { resolveName } from '../../src/ids/index.ts';
-import { onIncoming, untypedBroadcastToPlugin, untypedSendToSystem } from '../../src/events/index.ts';
+import { onIncoming, untypedBroadcastToSurface, untypedSendToSystem } from '../../src/events/index.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { createLogger, onLog, type LogEvent } from '../../src/logger/index.ts';
 import { createActionEmitter } from '../../src/services/index.ts';
@@ -12,8 +12,8 @@ import type { Message } from '../../src/events/index.ts';
 
 process.env.APACK_ENV ??= 'test';
 process.env.APACK_USER_DATA_DIR ??= os.tmpdir();
-// services.emitter sends only to a registered plugin
-startTestRuntime({ packs: { ...testPacksView(), pluginIds: () => [resolveName('memo-pack/memos')] } });
+// services.emitter sends only to a registered surface
+startTestRuntime({ packs: { ...testPacksView(), surfaceIds: () => [resolveName('memo-pack/memos')] } });
 
 afterEach(() => {
   takeSystemErrors();
@@ -23,12 +23,12 @@ afterEach(() => {
 /** Everything `run` put on the bus */
 function onBus(run: () => void) {
   const logs: LogEvent[] = [];
-  const toPlugins: Message[] = [];
+  const toSurfaces: Message[] = [];
   const outgoing: Message[] = [];
   const incoming: Message[] = [];
   const stop = [
     testRootEvents.onLog((e) => logs.push(e)),
-    testRootEvents.onPluginSend((e) => toPlugins.push(e)),
+    testRootEvents.onSurfaceSend((e) => toSurfaces.push(e)),
     testRootEvents.onOutgoing((e) => outgoing.push(e)),
     testRootEvents.onIncoming((e) => incoming.push(e)),
   ];
@@ -37,17 +37,17 @@ function onBus(run: () => void) {
   } finally {
     stop.forEach((unsubscribe) => unsubscribe());
   }
-  return { logs, toPlugins, outgoing, incoming };
+  return { logs, toSurfaces, outgoing, incoming };
 }
 
 describe('on the bound bus', () => {
-  it('untypedBroadcastToPlugin and services.emitter.broadcastToPlugin go to the bus, which delivers them, not to the clients directly', () => {
+  it('untypedBroadcastToSurface and services.emitter.broadcastToSurface go to the bus, which delivers them, not to the clients directly', () => {
     const sent = onBus(() => {
-      // The untyped send takes the id a plugin runs under; the emitter takes the name an action writes
-      untypedBroadcastToPlugin('memo-pack/memos', { type: 'MEMO_ADDED' });
-      createActionEmitter().broadcastToPlugin('memo-pack/memos', { type: 'MEMO_REMOVED' });
+      // The untyped send takes the id a surface runs under; the emitter takes the name an action writes
+      untypedBroadcastToSurface('memo-pack/memos', { type: 'MEMO_ADDED' });
+      createActionEmitter().broadcastToSurface('memo-pack/memos', { type: 'MEMO_REMOVED' });
     });
-    expect(sent.toPlugins).toEqual([
+    expect(sent.toSurfaces).toEqual([
       { to: 'memo-pack/memos', call: expect.any(String), event: { type: 'MEMO_ADDED' } },
       { to: 'memo-pack/memos', call: expect.any(String), event: { type: 'MEMO_REMOVED' } },
     ]);
@@ -55,13 +55,13 @@ describe('on the bound bus', () => {
   });
 
   // Where a message goes is never a field of its event, so an event may carry any field of its own
-  it('delivers an event exactly as it was sent, a field named pluginId or systemId included', () => {
+  it('delivers an event exactly as it was sent, a field named surfaceId or systemId included', () => {
     const sent = onBus(() => {
-      untypedBroadcastToPlugin('memo-pack/memos', { type: 'PLUGIN_PICKED', pluginId: 'default-setup/notes' });
-      untypedSendToSystem('memo-pack/memos', { type: 'OPEN', systemId: 'kept', pluginId: 'also-kept' });
+      untypedBroadcastToSurface('memo-pack/memos', { type: 'SURFACE_PICKED', surfaceId: 'default-setup/notes' });
+      untypedSendToSystem('memo-pack/memos', { type: 'OPEN', systemId: 'kept', surfaceId: 'also-kept' });
     });
-    expect(sent.toPlugins).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'PLUGIN_PICKED', pluginId: 'default-setup/notes' } }]);
-    expect(sent.incoming).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'OPEN', systemId: 'kept', pluginId: 'also-kept' } }]);
+    expect(sent.toSurfaces).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'SURFACE_PICKED', surfaceId: 'default-setup/notes' } }]);
+    expect(sent.incoming).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'OPEN', systemId: 'kept', surfaceId: 'also-kept' } }]);
   });
 
   it('onIncoming and onLog hear the bus until unsubscribed', () => {
@@ -125,7 +125,7 @@ describe('with a frontend bound too', () => {
       secrets: {} as never,
     settings: {} as never,
       client: { send: (message) => sentByFrontend.push(message) },
-      packs: { designation: (role: string) => (role === 'brain' ? 'brain-plugin' : undefined) } as never,
+      packs: { designation: (role: string) => (role === 'brain' ? 'brain-surface' : undefined) } as never,
     });
     try {
       const sent = onBus(() => {
@@ -135,7 +135,7 @@ describe('with a frontend bound too', () => {
       expect(sent.incoming).toEqual([]);
       expect(sentByFrontend).toEqual([
         { to: 'memos', call: expect.any(String), event: { type: 'ADD_MEMO' } },
-        { to: 'brain-plugin', call: expect.any(String), event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' } },
+        { to: 'brain-surface', call: expect.any(String), event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' } },
       ]);
     } finally {
       unbindFeHost();

@@ -1,3 +1,8 @@
+import { surfaceStorage } from '@apackdev/sdk/fe'
+import { ref as featureRef } from '#generated/ref.ts'
+
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = surfaceStorage(featureRef('threads'))
 import { entityIs } from '@apackdev/sdk/fe'
 import type { OpenEntity } from '@apackdev/sdk/events'
 import { answersCall, newCall } from '@apackdev/sdk/events'
@@ -15,7 +20,7 @@ import { readClaudeComposerPhase, stageClaudeComposerPhase, commitClaudeComposer
 import { takeClaudeUiRetirements, rememberClaudeUiLease, forgetClaudeUiLease } from './chat/native-ui-retirement.ts';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@apackdev/sdk/fe';
-import { untypedOpenPlugin } from '@apackdev/sdk/fe'
+import { untypedOpenSurface } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host');
@@ -32,18 +37,16 @@ let mouseX = 0;
 let mouseY = 0;
 window.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; }, { passive: true });
 
-const THREADS_VIEW_KEY = 'threads-view-preference';
 
 function getInitialView(): 'list' | 'kanban' | 'dashboard' {
   try {
-    const stored = localStorage.getItem(THREADS_VIEW_KEY);
+    const stored = storage.get('view-preference');
     if (stored === 'kanban') return 'kanban';
     if (stored === 'dashboard') return 'dashboard';
   } catch {}
   return 'list';
 }
 
-const THREADS_TABS_KEY = 'threads-open-tabs';
 
 interface StoredTabData {
   tabs: { id: string; label: string; groupId?: string }[];
@@ -52,7 +55,7 @@ interface StoredTabData {
 
 function saveTabsToStorage(tabs: Tab[], activeTabId: string) {
   try {
-    localStorage.setItem(THREADS_TABS_KEY, JSON.stringify({
+    storage.set('open-tabs', JSON.stringify({
       tabs: tabs.filter(t => !t.pinned).map(t => ({ id: t.id, label: t.label, ...(t.groupId && { groupId: t.groupId }) })),
       activeTabId,
     } satisfies StoredTabData));
@@ -61,7 +64,7 @@ function saveTabsToStorage(tabs: Tab[], activeTabId: string) {
 
 function loadTabsFromStorage(): StoredTabData | null {
   try {
-    const raw = localStorage.getItem(THREADS_TABS_KEY);
+    const raw = storage.get('open-tabs');
     if (!raw) return null;
     return JSON.parse(raw);
   } catch { return null; }
@@ -324,7 +327,7 @@ function optimisticFieldUpdate(context: ThreadsContext, threadId: string, key: s
 
 /*
  * The timers below are callback actors, which never finish on their own: the handler of the event a timer sends
- * stops it, or it would stay among the plugin's children for the session. Spawning one stops the thread's
+ * stops it, or it would stay among the surface's children for the session. Spawning one stops the thread's
  * earlier timer first, since a spawn under an id already taken replaces the entry without stopping the actor,
  * which would then fire early.
  */
@@ -372,7 +375,7 @@ const threadsState = setup({
         }
       };
     }),
-    setPluginData: assign(({ event }) => {
+    setSurfaceData: assign(({ event }) => {
       const typedEvent = typeOf('THREAD_CONNECTED', event);
 
       return {
@@ -610,9 +613,9 @@ const threadsState = setup({
         activeTabId,
       };
     }),
-    persistListView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'list'); } catch {} },
-    persistKanbanView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'kanban'); } catch {} },
-    persistDashboardView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'dashboard'); } catch {} },
+    persistListView: () => { try { storage.set('view-preference', 'list'); } catch {} },
+    persistKanbanView: () => { try { storage.set('view-preference', 'kanban'); } catch {} },
+    persistDashboardView: () => { try { storage.set('view-preference', 'dashboard'); } catch {} },
     removeThreadFromList: assign(({ event, context }) => {
       const { threadId } = typeOf('THREAD_DELETED', event);
       const tabs = context.tabs.filter(t => t.id !== threadId);
@@ -785,7 +788,7 @@ const threadsState = setup({
       };
     }),
     navigateToSecrets: () => {
-      untypedOpenPlugin(HOST_SETTINGS, [
+      untypedOpenSurface(HOST_SETTINGS, [
         { type: 'TAB.SELECT', tab: 'general' },
         { type: 'GENERAL_NAV.SELECT', item: 'secrets' }
       ]);
@@ -1040,7 +1043,7 @@ const threadsState = setup({
         });
       }
 
-      // Load tab groups from localStorage
+      // Load tab groups from this surface's storage
       const restoredTabGroups = loadThreadTabGroups();
 
       const activeTabId = (stored?.activeTabId && allTabs.some(t => t.id === stored.activeTabId))
@@ -1702,7 +1705,7 @@ const threadsState = setup({
     },
     THREAD_CONNECTED: {
       guard: ({ context }) => !context.showArchived,
-      actions: ['setPluginData', 'refreshViewIfActive', ({ context }) => {
+      actions: ['setSurfaceData', 'refreshViewIfActive', ({ context }) => {
         // Startup data follows the accepted pack handshake; old actors could not send cleanup before it.
         for (const release of takeClaudeUiRetirements()) sendToSystem(id, { type: 'CLAUDE_UI_UNMOUNT', ...release })
         // Resume only this window's active native views.

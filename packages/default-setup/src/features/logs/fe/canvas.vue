@@ -340,13 +340,13 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 import { computed, ref, reactive, watch, onMounted, onUnmounted } from 'vue';
 import { Search, ChevronRight, AlertCircle, Info, AlertTriangle, Bug, FileWarning, Terminal, X, Trash, Radio, Copy, Check } from 'lucide-vue-next';
 import type { LogsState, LogEntry } from './state.ts';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from '@apackdev/ui/components/DataRenderer';
-import { untypedOpenPlugin } from '@apackdev/sdk/fe'
+import { untypedOpenSurface } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
@@ -398,7 +398,7 @@ const contextMenu = reactive({
   source: ''
 });
 
-const actor: LogsState = usePlugin()
+const actor: LogsState = useSurface()
 const logs = useSelector(actor, (s) => (s as any).context.logs);
 const filterLevel = useSelector(actor, (s) => (s as any).context.filter.level);
 const searchTerm = useSelector(actor, (s) => (s as any).context.filter.search);
@@ -484,7 +484,7 @@ const copyLogs = async () => {
 };
 
 const goToExcludedSourcesSettings = () => {
-  untypedOpenPlugin(HOST_SETTINGS, [
+  untypedOpenSurface(HOST_SETTINGS, [
     { type: 'TAB.SELECT', tab: 'features' },
     { type: 'FEATURE.SELECT', featureId: featureRef('logs') }
   ]);

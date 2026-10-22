@@ -1,5 +1,5 @@
 // Service mocks last one test: the harness restores services after each, and inference fails until a test mocks it.
-// A test app's waits and calls end when it stops, and its systems get events before a client connects, while their sends to plugins wait for one.
+// A test app's waits and calls end when it stops, and its systems get events before a client connects, while their sends to surfaces wait for one.
 import { describe, expect, it, vi } from 'vitest';
 import { mockInference, mockService, startApp } from '@apackdev/testing/harness';
 import { services } from '#generated/services.ts';
@@ -55,7 +55,7 @@ describe('a stopped test app', () => {
 });
 
 describe('events sent before a client connects', () => {
-  it('reach the systems, while what they send to plugins is dropped until a client connects', async () => {
+  it('reach the systems, while what they send to surfaces is dropped until a client connects', async () => {
     const app = await startApp({ systems: ['memos'] });
     sendToSystem('memos', { type: 'ADD_MEMO', text: 'before any client' });
     await app.settle();

@@ -1,4 +1,4 @@
-import { _entityDestinationsProblem } from '../framework/plugin-declaration.ts';
+import { _entityDestinationsProblem } from '../framework/surface-declaration.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import { dslDefinitionsProblem } from '../framework/dsl-declarations.ts';
 import { declarationRecord } from '../framework/declaration-record.ts';

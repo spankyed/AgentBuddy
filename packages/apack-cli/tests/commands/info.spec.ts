@@ -28,9 +28,9 @@ afterEach(() => {
 });
 
 function writeBuild(directory: string, declared = manifest, index?: object, entityDestinations: Record<string, string> = {}, eventContracts: PackEventContracts = Object.fromEntries(Object.entries(declared.features ?? {})
-  .filter(([, feature]) => feature.system || feature.plugin).map(([id, feature]) => [id, {
+  .filter(([, feature]) => feature.system || feature.surface).map(([id, feature]) => [id, {
     ...(feature.system && { system: { incoming: feature.system.events?.incoming ?? [], outgoing: [] } }),
-    ...(feature.plugin && { plugin: { receives: [] } }),
+    ...(feature.surface && { surface: { receives: [] } }),
   }]))): string {
   const output = path.join(directory, 'dist');
   fs.mkdirSync(path.join(output, 'types'), { recursive: true });
@@ -59,7 +59,7 @@ const index = { version: 1, packId: manifest.id, entries: [
 describe('read-only pack inspection', () => {
   it('attributes stale compiled endpoints to their built owner after an authored pack rename', async () => {
     const declared: PackManifest = { ...manifest, features: { memos: { ...manifest.features!.memos,
-      plugin: { label: 'Memos', state: 'src/missing.ts' },
+      surface: { label: 'Memos', state: 'src/missing.ts' },
     } } };
     writeBuild(root, declared, index, { Memo: 'memos' });
     fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ ...declared, id: 'renamed-pack' }));
@@ -74,9 +74,9 @@ describe('read-only pack inspection', () => {
   });
   it('inspects compiled endpoint events with no authored sources and a poisoned runtime', async () => {
     const declared: PackManifest = { ...manifest, features: { memos: { ...manifest.features!.memos,
-      system: { entry: 'src/missing-system.ts' }, plugin: { label: 'Memos', state: 'src/missing-state.ts' },
+      system: { entry: 'src/missing-system.ts' }, surface: { label: 'Memos', state: 'src/missing-state.ts' },
     } } };
-    const events = { memos: { system: { incoming: ['SAVE'], outgoing: ['SAVED'] }, plugin: { receives: ['SAVED', 'SHOW'] } } };
+    const events = { memos: { system: { incoming: ['SAVE'], outgoing: ['SAVED'] }, surface: { receives: ['SAVED', 'SHOW'] } } };
     fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declared));
     writeBuild(root, declared, index, {}, events);
     const report = await inspectPack(root);
@@ -100,7 +100,7 @@ describe('read-only pack inspection', () => {
   });
   it('lists frontend member identities without requiring authored modules or activating the build', async () => {
     const declaration: PackManifest = { ...manifest, extensions: {
-      appExtensions: { welcome: 'src/unavailable.vue' }, tiptapPlugins: { suggestions: {
+      appExtensions: { welcome: 'src/unavailable.vue' }, textEditor: { suggestions: {
         extensions: { mention: 'src/unavailable.ts#Mention' }, popups: { mention: 'src/unavailable.vue' },
         isSuggestionActive: 'src/unavailable.ts#isSuggestionActive',
       } },
@@ -128,7 +128,7 @@ describe('read-only pack inspection', () => {
 
   it('reports compiled entity destinations without source modules or runtime activation', async () => {
     const declared: PackManifest = { ...manifest, features: { memos: { ...manifest.features!.memos,
-      plugin: { label: 'Memos', state: 'src/missing-state.ts', canvas: 'src/missing-canvas.vue' },
+      surface: { label: 'Memos', state: 'src/missing-state.ts', canvas: 'src/missing-canvas.vue' },
     } } };
     fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declared));
     writeBuild(root, declared, index, { Memo: 'memos' });

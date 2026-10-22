@@ -69,7 +69,7 @@ export interface SettingsContext {
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'packs' | 'features' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' | 'json' }
-  // A plugin by its ref: other packs send it too, so a bare name would be read as this pack's
+  // A surface by its ref: other packs send it too, so a bare name would be read as this pack's
   | { type: 'FEATURE.SELECT'; featureId: FeatureRef }
   | { type: 'CLI.TEST'; provider: string }
   | { type: 'PACK_CONTENT.PREVIEW'; directory: string }
@@ -134,7 +134,7 @@ export function createSettingsMachine(io: SettingsIO) {
 
     selectFeature: assign(({ context, event }) => {
       const ev = typeOf('FEATURE.SELECT', event);
-      // Another pack may send it, so a bad one is reported and ignored rather than stopping the settings plugin
+      // Another pack may send it, so a bad one is reported and ignored rather than stopping the settings surface
       if (!splitRef(ev.featureId)) {
         console.error(`FEATURE.SELECT names "${ev.featureId}", which isn't a feature's ref, "<packId>/<featureId>"`);
         return { selectedFeatureId: context.selectedFeatureId };
@@ -170,7 +170,7 @@ export function createSettingsMachine(io: SettingsIO) {
 
     previewPackContent: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_CONTENT.PREVIEW'; directory: string };
-      // The packs system owns content orchestration; its answers come back to this plugin, which draws them
+      // The packs system owns content orchestration; its answers come back to this surface, which draws them
       sendToSystem('packs', {
         type: 'PREVIEW_PACK_CONTENT',
         directory: ev.directory,
@@ -455,7 +455,7 @@ export function createSettingsMachine(io: SettingsIO) {
 }
 
 /**
- * The Settings plugin's machine, over the two acts only a window can do: starting the app over once a reset has
+ * The Settings surface's machine, over the two acts only a window can do: starting the app over once a reset has
  * finished, and telling the user a reset failed. The renderer passes the window's; a test passes fakes.
  */
 

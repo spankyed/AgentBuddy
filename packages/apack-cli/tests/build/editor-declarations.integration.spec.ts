@@ -27,7 +27,7 @@ it('builds declared editor members and step presentation, then discovers a copie
         colorKey: 'blue', components: { form: { entry: 'src/Popup.vue', load: 'lazy' as const } },
         layout: { hasInput: true, getHeight: 'src/layout.ts#getHeight' } },
     } },
-    tiptapPlugins: { suggestions: {
+    textEditor: { suggestions: {
       extensions: { mention: 'src/editor.ts#Mention' }, popups: { mentions: 'src/Popup.vue' },
       isSuggestionActive: 'src/editor.ts#isSuggestionActive',
     } },
@@ -64,7 +64,7 @@ export const getHeight: NonNullable<StepLayoutDescriptor['getHeight']> = node =>
   fs.rmSync(path.join(root, 'src'), { recursive: true });
   const report = await inspectPack(installed);
   expect(report.build.status).toBe('verified');
-  expect(report.declared.extensions?.tiptapPlugins).toEqual(extensions.tiptapPlugins);
+  expect(report.declared.extensions?.textEditor).toEqual(extensions.textEditor);
   expect(report.declared.extensions?.appExtensions).toEqual(extensions.appExtensions);
   expect(report.declared.extensions?.steps).toEqual(extensions.steps);
   // Runtime code is tested separately after offline discovery. Only the host supplies shared dependencies.

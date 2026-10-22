@@ -1,5 +1,5 @@
 import { importClaudeSessionMessages } from '../claude-session-import.ts';
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import type { Reply } from '@apackdev/sdk/events';
 import { answer } from '../answer.ts';
 import { EARS } from '#generated/ears.ts';
@@ -83,7 +83,7 @@ export function sendBlockMessage(options: BlockMessageOptions): { messageId: EAR
   const result = createBlockMessage(options);
 
   // Emit granular event - only new message data (not entire thread)
-  broadcastToPlugin('threads', {
+  broadcastToSurface('threads', {
     type: 'MESSAGE_ADDED',
     threadId: result.threadId,
     message: result.message
@@ -117,7 +117,7 @@ export function sendSystemMessage(options: {
     updatedAt: result.timestamp,
   };
 
-  broadcastToPlugin('threads', {
+  broadcastToSurface('threads', {
     type: 'MESSAGE_ADDED',
     threadId,
     message,
@@ -270,7 +270,7 @@ export function updateMessageState(
   }
 
   // Emit UPDATE_MESSAGE_STATE event to frontend with all updated fields
-  broadcastToPlugin('threads', {
+  broadcastToSurface('threads', {
     type: 'UPDATE_MESSAGE_STATE',
     messageId: result.messageId,
     ...result.updates
@@ -288,7 +288,7 @@ export function createMarkerMessage(params: {
   const result = repository.chatCommands.createMarkerMessage(params);
 
   // Notify frontend: add the marker message
-  broadcastToPlugin('threads', {
+  broadcastToSurface('threads', {
     type: 'MESSAGE_ADDED',
     threadId: params.threadId,
     message: {
@@ -301,7 +301,7 @@ export function createMarkerMessage(params: {
 
   // Notify frontend: mark each compacted message
   for (const id of result.compactedMessageIds) {
-    broadcastToPlugin('threads', {
+    broadcastToSurface('threads', {
       type: 'UPDATE_MESSAGE_STATE',
       messageId: id,
       compacted: true,
@@ -353,8 +353,8 @@ export function createThreadAndNotify(
 ): { id: EARS.EntityId; shortCode: string; timestamp: number; status: string } {
   const result = repository.threadCommands.create(options);
 
-  // Notify threads plugin about new thread
-  broadcastToPlugin('threads', {
+  // Notify threads surface about new thread
+  broadcastToSurface('threads', {
     type: 'THREAD_CREATED',
     id: result.id,
     shortCode: result.shortCode,
@@ -459,7 +459,7 @@ export function openThreadTabAndRefresh(
  * - Thread visits (updates lastVisitedTimestamp)
  */
 export function sendRecentThreadsRefresh() {
-  broadcastToPlugin('threads', {
+  broadcastToSurface('threads', {
     type: 'REFRESH_RECENT_THREADS',
     data: repository.chatQueries.refreshThreadsData()
   });

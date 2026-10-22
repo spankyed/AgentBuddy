@@ -1,7 +1,7 @@
 // The library index (every document and folder by name) backs the panel's stats, its tag counts and the
 // tiptap reference picker. Nothing else refetches it, so every event that changes a name, a tag or the set
 // of rows has to ask the backend for it again — otherwise the picker keeps offering stale names until the
-// plugin is reactivated.
+// surface is reactivated.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 

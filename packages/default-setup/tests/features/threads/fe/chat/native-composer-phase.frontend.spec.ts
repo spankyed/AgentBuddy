@@ -7,7 +7,7 @@ it('keeps independent main, popout and thread choices and only consumes the subm
   stageClaudeComposerPhase(thread, 'Plan')
   const main = readClaudeComposerPhase(thread)!
   expect(readClaudeComposerPhase(crypto.randomUUID())).toBeUndefined()
-  history.replaceState({}, '', '/?popout=plugin&pluginId=threads')
+  history.replaceState({}, '', '/?popout=plugin&surfaceId=threads')
   expect(readClaudeComposerPhase(thread)).toBeUndefined()
   stageClaudeComposerPhase(thread, 'Edit')
   expect(readClaudeComposerPhase(thread)?.phase).toBe('Edit')

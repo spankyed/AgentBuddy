@@ -3,7 +3,7 @@ import { dslCatalogEntries } from './catalog-dsl.ts';
 import { eventCatalogEntries } from './catalog-events.ts';
 import { _parseEventContracts, type PackEventContracts } from '@apackdev/sdk/framework';
 import { captureData } from './captured-data.ts';
-import { assertCatalogClaims, catalogClaimConflicts, pluginCatalogEntries } from './catalog-plugins.ts';
+import { assertCatalogClaims, catalogClaimConflicts, surfaceCatalogEntries } from './catalog-surfaces.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
 import { commandCatalogEntries } from './catalog-commands.ts';
 import { artifactCatalogEntries } from './catalog-artifacts.ts';
@@ -17,7 +17,7 @@ import { appSettingsDefinition } from '../features/settings/be/app-definition.ts
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
 import { parseSnapshot, ManifestSchema, _declarationRevision, _helpDataProblem, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
-import { _compileSettingsDefinition, _settingsJsonProblems, _nativePackDeclarationProblem, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration, type PluginDeclaration } from '@apackdev/sdk/framework';
+import { _compileSettingsDefinition, _settingsJsonProblems, _nativePackDeclarationProblem, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration, type SurfaceDeclaration } from '@apackdev/sdk/framework';
 import type { FeatureRef } from '@apackdev/sdk/ids';
 import { createLogger } from '@apackdev/sdk/logger';
 
@@ -49,12 +49,12 @@ export interface SourcePackDeclaration {
   readonly eventContracts?: CatalogData<PackEventContracts>;
 }
 
-/** Known plugin data; availability and accepted executable bindings are separate. */
-export interface PluginCatalogEntry {
+/** Known surface data; availability and accepted executable bindings are separate. */
+export interface SurfaceCatalogEntry {
   readonly featureRef: FeatureRef;
   readonly packId: string;
   readonly origin: 'native' | 'installed' | 'source';
-  readonly declaration: CatalogData<PluginDeclaration>;
+  readonly declaration: CatalogData<SurfaceDeclaration>;
   /** Compiled claims; absent on authoring-source previews that have no built contracts. */
   readonly opens?: readonly string[];
   readonly declarationRevision?: string;
@@ -172,7 +172,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       checkSettings?.(settingsForDeclarations(app, declarations, settings.revision));
     },
     getSnapshot: (): PackCatalogSnapshot => current,
-    plugins: () => pluginCatalogEntries(current),
+    surfaces: () => surfaceCatalogEntries(current),
     references: () => referenceCatalogEntries(current),
     frontend: () => frontendCatalogEntries(current),
     steps: () => stepCatalogEntries(current),

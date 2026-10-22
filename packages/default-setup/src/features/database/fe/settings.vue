@@ -64,12 +64,12 @@
 
 <script setup lang="ts">
 import { HardDriveDownload } from 'lucide-vue-next'
-import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, useSurface } from '@apackdev/sdk/fe'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 import KeyboardShortcutInput from '@apackdev/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 
-import { openPlugin } from '#generated/fe.ts'
+import { openSurface } from '#generated/fe.ts'
 import type { DatabaseState } from './state.ts'
 
 interface Props {
@@ -92,11 +92,11 @@ const saveHotkey = () => {
 
 // Open backup & restore page
 const openBackupRestore = () => {
-  openPlugin('database', { type: 'VIEW_BACKUP' })
+  openSurface('database', { type: 'VIEW_BACKUP' })
 }
 
-// Resolved during setup: usePlugin reads the PluginScope this settings panel renders in, which a click handler can't reach
-const databaseActor: DatabaseState = usePlugin()
+// Resolved during setup: useSurface reads the SurfaceScope this settings panel renders in, which a click handler can't reach
+const databaseActor: DatabaseState = useSurface()
 
 // Reset database function
 const handleResetDatabase = () => {

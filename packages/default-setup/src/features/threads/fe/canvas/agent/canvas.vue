@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -34,7 +34,7 @@ defineProps<{
   inline?: boolean;
 }>();
 
-const actor: ThreadsState = usePlugin();
+const actor: ThreadsState = useSurface();
 
 const tabs = useSelector(actor, (state) => state.context.tabs);
 const activeTabId = useSelector(actor, (state) => state.context.activeTabId);

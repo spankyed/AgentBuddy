@@ -11,7 +11,7 @@ roadmap the decisions behind it.
 entities and optional shape references; `data.entities` holds entities without a feature owner.
 `data.relations` declares stable relation wires. Keyed extensions describe commands, services, steps,
 artifacts, blocks, references, help, settings, DSL and editor/app contributions. Features also declare
-purpose, systems/plugins, settings and destinations. Packs declare supported API consumption.
+purpose, systems/surfaces, settings and destinations. Packs declare supported API consumption.
 Lifecycle hooks and migrations have explicit declarations. The public [manifest](../public-facing/manifest.md),
 [features](../public-facing/features.md) and [extensions](../public-facing/extensions.md) guides define
 the supported grammar.

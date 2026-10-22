@@ -20,4 +20,4 @@ Two approaches were attempted and both reverted:
 
 ## Relevant area
 
-The `createNode` action in `packages/renderer/src/plugins/flows/state.ts`. This is where the node, auto-edge, and initial position are all computed within an `assign()` action.
+The `createNode` action in `packages/renderer/src/surfaces/flows/state.ts`. This is where the node, auto-edge, and initial position are all computed within an `assign()` action.

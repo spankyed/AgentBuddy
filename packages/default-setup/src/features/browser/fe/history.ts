@@ -1,4 +1,8 @@
-const STORAGE_KEY = 'browser:history';
+import { surfaceStorage } from '@apackdev/sdk/fe';
+import { ref as featureRef } from '#generated/ref.ts';
+
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = surfaceStorage(featureRef('browser'));
 
 export interface HistoryEntry {
   url: string;
@@ -34,7 +38,7 @@ let cache: HistoryEntry[] | null = null;
 function getHistory(): HistoryEntry[] {
   if (cache) return cache;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = storage.get('history');
     cache = raw ? JSON.parse(raw) : [];
   } catch {
     cache = [];
@@ -43,7 +47,7 @@ function getHistory(): HistoryEntry[] {
 }
 
 function persistHistory(): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cache ?? []));
+  storage.set('history', JSON.stringify(cache ?? []));
 }
 
 export function recordVisit(url: string, title: string, favicon: string, typed: boolean): void {

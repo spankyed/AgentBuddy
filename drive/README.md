@@ -89,16 +89,16 @@ is found. `npm run dev:open --` takes the directory back from an app a question 
 ## The verbs
 
 `docs/public-facing/cli.md` has them all; the short version is `/eval` `/send` `/query` `/transact`
-`/wait` `/navigate` `/plugin` `/click` `/fill` `/press` `/logs` `/set-setting` `/set-viewport`
+`/wait` `/navigate` `/surface` `/click` `/fill` `/press` `/logs` `/set-setting` `/set-viewport`
 `/screenshot` `/reload` `/events` `/drops` `/errors`, and `state`, `snapshot`, `settings` and `viewport`.
 The three the npm scripts expose are the three an agent reaches for most.
 
 `/query` and `/transact` reach the **live** database, so a write shows up in the next read —
 `apack db exec` cannot, because it refuses while the app holds the write lock.
 
-A write does **not** show up in the UI. A plugin holds what its system sent it, and a console write goes
-round every system, so nothing tells the view. `/reload` is what makes every plugin ask again; navigating
-between plugins does not, because the plugin's actor survives.
+A write does **not** show up in the UI. A surface holds what its system sent it, and a console write goes
+round every system, so nothing tells the view. `/reload` is what makes every surface ask again; navigating
+between surfaces does not, because the surface's actor survives.
 
 An attached session has no window of its own, so a viewport it sets is Playwright's emulated one. A script
 run, which shows the window, resizes the window itself — asking for a viewport there the other way would

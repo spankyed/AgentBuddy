@@ -235,7 +235,7 @@ export type SystemEvents =
 }
 /**
 * The feature's settings changed: `settings` as they now apply, and `changes` to what they list, when the store
-* tells them. The feature's plugin gets it too (`FeatureSettingsUpdated`).
+* tells them. The feature's surface gets it too (`FeatureSettingsUpdated`).
 */
 | {
     type: 'FEATURE_SETTINGS_UPDATED';
@@ -245,7 +245,7 @@ export type SystemEvents =
 /**
 * Every row the app holds was replaced — reset, or a backup imported — and the new world is built.
 *
-* Handling it is optional: the bus also asks every system for its startup data, so a plugin's view is
+* Handling it is optional: the bus also asks every system for its startup data, so a surface's view is
 * refreshed either way. Declare it only for what re-reading cannot fix, such as work held over rows that
 * are now gone.
 */

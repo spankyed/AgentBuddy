@@ -198,13 +198,13 @@
 
 <script setup lang="ts">
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, useSurface } from '@apackdev/sdk/fe'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
-import { untypedOpenPlugin } from '@apackdev/sdk/fe'
+import { untypedOpenSurface } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
-import { usePluginState } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 
@@ -228,7 +228,7 @@ const emit = defineEmits<{
 const enableFlowPreview = useSettingsDraft(() => props.settings?.enableFlowPreview ?? true)
 
 // Get flows actor and state via selectors
-const flowsActor: FlowsState = usePlugin()
+const flowsActor: FlowsState = useSurface()
 const flows = useSelector(flowsActor, (state) => state.context.flows || [])
 // The root flow is the flows system's (the flow with the root role), not a setting
 const rootFlowId = useSelector(flowsActor, (state) => state.context.rootFlowId)
@@ -248,7 +248,7 @@ const exportedFlowCount = useSelector(flowsActor, (state) => state.context.dslEx
 // A flow with no trigger cannot be written as DSL, so it is named here rather than missing from the file
 const skippedFlows = useSelector(flowsActor, (state) => state.context.dslExport.skipped)
 
-const runningRootFlowId = usePluginState('brain', (s) => s.runningRootFlowId)
+const runningRootFlowId = useSurfaceState('brain', (s) => s.runningRootFlowId)
 
 // Check if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {
@@ -285,8 +285,8 @@ const handleRootFlowChange = () => {
 }
 
 const goToBrainSettings = () => {
-  // Show the brain's settings beside these, in the settings plugin
-  untypedOpenPlugin(HOST_SETTINGS, { type: 'FEATURE.SELECT', featureId: featureRef('brain') })
+  // Show the brain's settings beside these, in the settings surface
+  untypedOpenSurface(HOST_SETTINGS, { type: 'FEATURE.SELECT', featureId: featureRef('brain') })
 }
 
 // DSL Import - file picker and emit to state machine

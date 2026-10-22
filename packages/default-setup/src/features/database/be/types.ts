@@ -76,7 +76,7 @@ export type OutgoingDatabaseEvents =
    *
    * **Its own event because it answers nothing.** It is broadcast, not replied, so it carries no call — and
    * the guard on `QUERY_ERROR` takes only an answer whose call is the one outstanding. Sent as a
-   * `QUERY_ERROR` it would be dropped by that guard every time and the plugin's loading flag would never
+   * `QUERY_ERROR` it would be dropped by that guard every time and the surface's loading flag would never
    * clear, which is the failure this split prevents. An answer and an announcement are different things,
    * and one event cannot be both.
    */

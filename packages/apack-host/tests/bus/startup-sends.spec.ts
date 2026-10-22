@@ -1,5 +1,5 @@
 import { createNativePackTestRegistry } from '@apackdev/host/testing';
-// A system sends as it starts — to another system, or its plugin's first report — and the bus hears the root
+// A system sends as it starts — to another system, or its surface's first report — and the bus hears the root
 // events before it starts any system, so nothing a system sends while starting is lost.
 import { afterEach, expect, it } from 'vitest';
 import { assign, createActor, setup, type AnyActorRef } from 'xstate';

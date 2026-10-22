@@ -1,4 +1,4 @@
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { repository } from '#generated/repository.ts';
 import { setup } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
@@ -20,7 +20,7 @@ export const browserSystem = setup({
         savedTabCount: savedTabs.length,
         savedBookmarkCount: savedBookmarks.length,
       });
-      broadcastToPlugin('browser', {
+      broadcastToSurface('browser', {
         type: 'BROWSER_CONNECTED',
         savedTabs,
         savedBookmarks,

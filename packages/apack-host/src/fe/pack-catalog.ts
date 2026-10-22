@@ -1,7 +1,7 @@
 import { dslCatalogEntries } from '../packs/catalog-dsl.ts';
 import { assertEventContracts, eventCatalogEntries } from '../packs/catalog-events.ts';
 import { captureData } from '../packs/captured-data.ts';
-import { assertCatalogClaims, pluginCatalogEntries, nativePluginCatalogEntries } from '../packs/catalog-plugins.ts';
+import { assertCatalogClaims, surfaceCatalogEntries, nativeSurfaceCatalogEntries } from '../packs/catalog-surfaces.ts';
 import { stepCatalogEntries } from '../packs/catalog-steps.ts';
 import type { PackCatalogFrame, PackCatalogSnapshot } from '../packs/catalog.ts';
 import type { NativePackDeclaration, PackCatalogView } from '@apackdev/sdk/framework';
@@ -28,7 +28,7 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO, native: readonl
     const problem = _nativePackDeclarationProblem(declaration);
     if (problem) throw new Error(`Invalid native declarations: ${problem}`);
   }
-  const localPlugins = nativePluginCatalogEntries(captureData(native));
+  const localSurfaces = nativeSurfaceCatalogEntries(captureData(native));
   const localEvents = eventCatalogEntries({ native: captureData(native), packs: [], sourcePacks: [] });
   let generation = 0;
   let stop: (() => void) | undefined;
@@ -79,7 +79,7 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO, native: readonl
   }
 
   const project = (snapshot: PackCatalogSnapshot) => ({ snapshot,
-    plugins: pluginCatalogEntries(snapshot), references: referenceCatalogEntries(snapshot), frontend: frontendCatalogEntries(snapshot), steps: stepCatalogEntries(snapshot),
+    surfaces: surfaceCatalogEntries(snapshot), references: referenceCatalogEntries(snapshot), frontend: frontendCatalogEntries(snapshot), steps: stepCatalogEntries(snapshot),
     artifacts: artifactCatalogEntries(snapshot), blocks: blockCatalogEntries(snapshot), dsl: dslCatalogEntries(snapshot), events: eventCatalogEntries(snapshot),
   });
   let projected: ReturnType<typeof project> | undefined;
@@ -102,7 +102,7 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO, native: readonl
 
   return {
     catalog,
-    plugins: () => status === 'disposed' ? [] : projection()?.plugins ?? localPlugins,
+    surfaces: () => status === 'disposed' ? [] : projection()?.surfaces ?? localSurfaces,
     getSnapshot: (): PackCatalogSnapshot | undefined => frame?.snapshot,
     status: () => status,
     problem: () => problem,

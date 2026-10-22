@@ -6,7 +6,7 @@ import { registerThreadTeardown } from './thread-teardown.ts';
 import { submitClaudeParentCommand, handleClaudeUiView, suspendClaudeUiThreadViews } from './claude-ui.ts';
 import { featureSettings } from '#generated/settings.ts';
 
-import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
+import { sendToSystem, broadcastToSurface } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { assign, setup, fromCallback, fromPromise, spawnChild } from 'xstate';
 import { runThreadHistoryOperation, type ThreadHistoryOperationInput } from './history-operation.ts';
@@ -94,7 +94,7 @@ export const threadsSystem = setup({
       const connectedData = repository.threadQueries.connectedData();
       const threadsSettings = featureSettings.forFeature('threads').get();
 
-      broadcastToPlugin('threads', {
+      broadcastToSurface('threads', {
         type: 'THREAD_CONNECTED',
         data: {
           ...connectedData,
@@ -103,7 +103,7 @@ export const threadsSystem = setup({
       });
     },
     sendArchivedThreads: () => {
-      broadcastToPlugin('threads', {
+      broadcastToSurface('threads', {
         type: 'ARCHIVED_THREADS_DATA',
         threads: repository.threadQueries.archivedThreads(),
       });
@@ -130,7 +130,7 @@ export const threadsSystem = setup({
         );
       }
 
-      broadcastToPlugin('threads', {
+      broadcastToSurface('threads', {
         type: 'THREAD_CREATED',
         id: newThreadId,
         entityType: EARS.Entity.Thread,
@@ -142,7 +142,7 @@ export const threadsSystem = setup({
 
       repository.threadCommands.markAsVisited(threadId);
 
-      broadcastToPlugin('threads', {
+      broadcastToSurface('threads', {
         type: 'SET_VIEW_DATA',
         id: threadId,
         data: repository.threadQueries.extendedData(threadId),
@@ -164,7 +164,7 @@ export const threadsSystem = setup({
       }
 
       if (key === 'status') {
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'THREAD_UPDATED',
           threadId,
           updates: { status: value as string },
@@ -173,7 +173,7 @@ export const threadsSystem = setup({
 
       if (key === 'archived') {
         // Refresh thread list and recent threads since thread visibility changed
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'THREAD_CONNECTED',
           data: {
             ...repository.threadQueries.connectedData(),
@@ -181,7 +181,7 @@ export const threadsSystem = setup({
           },
         });
         // Also refresh archived threads list so the change is visible immediately
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'ARCHIVED_THREADS_DATA',
           threads: repository.threadQueries.archivedThreads(),
         });
@@ -189,7 +189,7 @@ export const threadsSystem = setup({
       }
 
       if (key === 'pinned') {
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'THREAD_UPDATED',
           threadId,
           updates: { pinned: value as boolean },
@@ -212,7 +212,7 @@ export const threadsSystem = setup({
         return;
       }
 
-      broadcastToPlugin('threads', {
+      broadcastToSurface('threads', {
         type: 'THREAD_UPDATED',
         threadId,
         updates: { status },
@@ -266,13 +266,13 @@ export const threadsSystem = setup({
 
             if (Object.keys(patch).length) {
               repository.threadCommands.update(th.id, patch);
-              broadcastToPlugin('threads', { type: 'THREAD_UPDATED', threadId: th.id, updates: patch });
+              broadcastToSurface('threads', { type: 'THREAD_UPDATED', threadId: th.id, updates: patch });
               touched = true;
             }
           }
 
           if (touched) {
-            broadcastToPlugin('threads', {
+            broadcastToSurface('threads', {
                 type: 'THREAD_CONNECTED',
                 data: {
                   ...repository.threadQueries.connectedData(),
@@ -301,7 +301,7 @@ export const threadsSystem = setup({
       }
 
       // Refresh all thread data on the frontend
-      broadcastToPlugin('threads', {
+      broadcastToSurface('threads', {
         type: 'THREAD_CONNECTED',
         data: {
           ...repository.threadQueries.connectedData(),
@@ -323,7 +323,7 @@ export const threadsSystem = setup({
         return;
       }
 
-      broadcastToPlugin('threads', {
+      broadcastToSurface('threads', {
         type: 'THREAD_DELETED',
         threadId,
       });
@@ -373,7 +373,7 @@ export const threadsSystem = setup({
         const connectedData = repository.threadQueries.connectedData();
         const threadsSettings = featureSettings.forFeature('threads').get();
 
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'THREAD_CONNECTED',
           data: {
             ...connectedData,
@@ -394,12 +394,12 @@ export const threadsSystem = setup({
       const commands = services.library.commands();
       const sent = JSON.stringify(commands);
       if (sent === context.sentCommands) return {};
-      broadcastToPlugin('threads', { type: 'COMMANDS_UPDATED', commands });
+      broadcastToSurface('threads', { type: 'COMMANDS_UPDATED', commands });
       return { sentCommands: sent };
     }),
     sendChatConnectedData: () => {
       const data = repository.chatQueries.connectedData();
-      broadcastToPlugin('threads', {
+      broadcastToSurface('threads', {
         type: 'AGENT_CONNECTED',
         data: { ...data, commands: services.library.commands() },
       });
@@ -411,7 +411,7 @@ export const threadsSystem = setup({
         services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, { restore, reply });
       } catch (err) {
         logger.warn('Thread not found for chat open, skipping', { threadId });
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: threadId as string,
           error: errorMessage(err),
@@ -421,7 +421,7 @@ export const threadsSystem = setup({
     loadMoreMessages: ({ event }) => {
       const { threadId, cursor } = threadsSpec.typeOf('LOAD_MORE_MESSAGES', event);
       const result = repository.chatQueries.paginatedMessages(threadId as EARS.EntityId, cursor);
-      broadcastToPlugin('threads', {
+      broadcastToSurface('threads', {
         type: 'OLDER_MESSAGES_LOADED',
         threadId,
         ...result,
@@ -433,7 +433,7 @@ export const threadsSystem = setup({
         services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId, { reply });
       } catch (err) {
         logger.warn('Thread not found for tab open, skipping', { threadId });
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: threadId as string,
           error: errorMessage(err),
@@ -480,7 +480,7 @@ export const threadsSystem = setup({
         if (threadData) {
           const fullThreadData = repository.threadQueries.byId(threadData.id);
 
-          broadcastToPlugin('threads', {
+          broadcastToSurface('threads', {
             type: 'THREAD_CREATED',
             id: threadData.id,
             shortCode: threadData.shortCode,
@@ -491,7 +491,7 @@ export const threadsSystem = setup({
             status: fullThreadData?.status
           });
 
-          broadcastToPlugin('threads', {
+          broadcastToSurface('threads', {
             type: 'LOAD_CHAT_THREAD',
             data: repository.chatQueries.threadData(threadId)!
           });
@@ -507,7 +507,7 @@ export const threadsSystem = setup({
             ...(sanitizedRefs && { references: sanitizedRefs }),
           };
 
-          broadcastToPlugin('threads', {
+          broadcastToSurface('threads', {
             type: 'MESSAGE_ADDED',
             threadId: threadId as string,
             message: userMessage
@@ -532,7 +532,7 @@ export const threadsSystem = setup({
         });
       } catch (err) {
         logger.error('forwardUserMessage failed', { error: err });
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: 'threadId' in event && typeof event.threadId === 'string' ? event.threadId : '',
           error: errorMessage(err),
@@ -583,7 +583,7 @@ export const threadsSystem = setup({
       if (threadData) {
         const fullThreadData = repository.threadQueries.byId(threadData.id);
 
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'THREAD_CREATED',
           id: threadData.id,
           shortCode: threadData.shortCode,
@@ -594,7 +594,7 @@ export const threadsSystem = setup({
           status: fullThreadData?.status
         });
 
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'LOAD_CHAT_THREAD',
           data: repository.chatQueries.threadData(threadId)!
         });
@@ -612,7 +612,7 @@ export const threadsSystem = setup({
           command,
         };
 
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'MESSAGE_ADDED',
           threadId: threadId as string,
           message: userMessage
@@ -899,7 +899,7 @@ export const threadsSystem = setup({
         payload: { messageId, threadId, response }
       });
 
-      broadcastToPlugin('threads', {
+      broadcastToSurface('threads', {
         type: 'UPDATE_MESSAGE_STATE',
         messageId,
         responseTimestamp: result.responseTimestamp,
@@ -923,7 +923,7 @@ export const threadsSystem = setup({
         compacted,
       );
       for (const msgId of messageIds) {
-        broadcastToPlugin('threads', {
+        broadcastToSurface('threads', {
           type: 'UPDATE_MESSAGE_STATE',
           messageId: msgId as string,
           compacted,

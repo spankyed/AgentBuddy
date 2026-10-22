@@ -142,14 +142,14 @@
 <script setup lang="ts">
 import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide-vue-next'
 import type { SettingsOf } from '#generated/settings-fe.ts'
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 import { ref, computed } from 'vue'
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 
 import { sendToSystem } from '#generated/events.ts'
 import { useSelector } from '@xstate/vue'
 import type { BrainState } from '#features/brain/fe/state.ts'
-import { usePluginState } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
 
 interface Props {
   settings?: SettingsOf<'brain'>
@@ -160,12 +160,12 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // Get brain state from brain state machine
-const brainActor: BrainState = usePlugin();
+const brainActor: BrainState = useSurface();
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead)
 const startError = useSelector(brainActor, (state) => state.context.startError)
 const runningRootFlowId = useSelector(brainActor, (state) => state.context.runningRootFlowId)
-// The root flow is the flows plugin's (the flow with the root role)
-const rootFlowId = usePluginState('flows', (s) => s.rootFlowId)
+// The root flow is the flows surface's (the flow with the root role)
+const rootFlowId = useSurfaceState('flows', (s) => s.rootFlowId)
 
 // Compute if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {

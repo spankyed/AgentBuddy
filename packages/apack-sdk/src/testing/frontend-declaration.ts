@@ -1,6 +1,6 @@
-import type { PackFERegistration, PluginDefinition } from '../fe/index.ts';
+import type { PackFERegistration, SurfaceDefinition } from '../fe/index.ts';
 import type { NativePackDeclaration } from '../framework/pack-catalog.ts';
-import type { PluginDeclaration } from '../framework/plugin-declaration.ts';
+import type { SurfaceDeclaration } from '../framework/surface-declaration.ts';
 import type { StepFrontendDeclaration } from '../framework/step-frontend-declaration.ts';
 import type { StepFEFacet } from '../steps/types.ts';
 import type { StepEntry } from '../build/manifest.ts';
@@ -13,13 +13,13 @@ export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): N
     id: fixture.id,
     ...(fixture.settingsForms && { settings: Object.fromEntries(Object.keys(fixture.settingsForms).map(id => [id, form(id)])) }),
     features: Object.fromEntries(Object.entries(fixture.features ?? {}).map(([id, feature]) => {
-      if (feature.default && !feature.plugin) throw new Error(`Native feature fixture "${id}" claims a default without a plugin`);
+      if (feature.default && !feature.surface) throw new Error(`Native feature fixture "${id}" claims a default without a surface`);
       const references = feature.references;
       return [id, {
         description: `Frontend fixture for ${id}.`,
         ...(feature.designation !== undefined && { designation: feature.designation }),
         ...(feature.settingsForm !== undefined && { settings: form(id) }),
-        ...(feature.plugin && { plugin: { ...pluginDeclaration(feature.plugin), ...(feature.default && { default: true }) } }),
+        ...(feature.surface && { surface: { ...surfaceDeclaration(feature.surface), ...(feature.default && { default: true }) } }),
         ...(references && { references: {
           types: Object.fromEntries(Object.entries(references.types).map(([name, value]) => [name,
             { category: value.category, icon: 'Box', svgElements: value.svgElements }])),
@@ -40,7 +40,7 @@ export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): N
     ...(fixture.blocks && { blocks: Object.fromEntries(fixture.blocks.map(value => [value.type,
       { ...(value.kind !== undefined && { kind: value.kind }), ...(value.fe !== undefined && { fe: 'fixtures/block.vue' }) }])) }),
     ...(fixture.appExtensions && { appExtensions: Object.fromEntries(Object.keys(fixture.appExtensions).map(id => [id, 'fixtures/extension.vue'])) }),
-    ...(fixture.tiptapPlugins && { tiptapPlugins: Object.fromEntries(Object.entries(fixture.tiptapPlugins).map(([id, value]) => [id, {
+    ...(fixture.textEditor && { textEditor: Object.fromEntries(Object.entries(fixture.textEditor).map(([id, value]) => [id, {
       ...(value.extensions && { extensions: Object.fromEntries(Object.keys(value.extensions).map(name => [name, component])) }),
       ...(value.popups && { popups: Object.fromEntries(Object.keys(value.popups).map(name => [name, 'fixtures/popup.vue'])) }),
       ...(value.isSuggestionActive !== undefined && { isSuggestionActive: 'fixtures/editor.ts#isSuggestionActive' }),
@@ -48,18 +48,18 @@ export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): N
   };
 }
 
-function pluginDeclaration(plugin: PluginDefinition): PluginDeclaration {
+function surfaceDeclaration(surface: SurfaceDefinition): SurfaceDeclaration {
   return {
-    label: plugin.label, state: 'fixtures/frontend.ts#State',
-    ...(plugin.icon !== undefined && { icon: 'Box' }),
-    ...(plugin.canvas !== undefined && { canvas: 'fixtures/canvas.vue' }),
-    ...(plugin.panel !== undefined && { panel: 'fixtures/panel.vue' }),
-    ...(plugin.chat !== undefined && { chat: 'fixtures/chat.vue' }),
-    ...(plugin.isPinned !== undefined && { isPinned: plugin.isPinned }),
-    ...(plugin.hotkeys !== undefined && { hotkeys: plugin.hotkeys }),
-    ...(plugin.options !== undefined && { options: plugin.options }),
-    ...(plugin.fallbackPanel !== undefined && { fallbackPanel: { label: plugin.fallbackPanel.label,
-      toggle: plugin.fallbackPanel.toggle, isShown: 'fixtures/frontend.ts#isShown' } }),
+    label: surface.label, state: 'fixtures/frontend.ts#State',
+    ...(surface.icon !== undefined && { icon: 'Box' }),
+    ...(surface.canvas !== undefined && { canvas: 'fixtures/canvas.vue' }),
+    ...(surface.panel !== undefined && { panel: 'fixtures/panel.vue' }),
+    ...(surface.chat !== undefined && { chat: 'fixtures/chat.vue' }),
+    ...(surface.isPinned !== undefined && { isPinned: surface.isPinned }),
+    ...(surface.hotkeys !== undefined && { hotkeys: surface.hotkeys }),
+    ...(surface.options !== undefined && { options: surface.options }),
+    ...(surface.fallbackPanel !== undefined && { fallbackPanel: { label: surface.fallbackPanel.label,
+      toggle: surface.fallbackPanel.toggle, isShown: 'fixtures/frontend.ts#isShown' } }),
   };
 }
 

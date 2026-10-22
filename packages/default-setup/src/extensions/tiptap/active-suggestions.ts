@@ -1,8 +1,8 @@
 import type { EditorState } from '@tiptap/pm/state';
-import { commandSuggestionPluginKey } from './command-suggestion-plugin.ts';
-import { referenceSuggestionPluginKey } from './reference-plugin-key.ts';
+import { commandSuggestionKey } from './command-suggestion.ts';
+import { referenceSuggestionKey } from './reference-suggestion.ts';
 
 export function isSuggestionActive(state: EditorState): boolean {
-  return commandSuggestionPluginKey.getState(state)?.active === true
-    || referenceSuggestionPluginKey.getState(state)?.active === true;
+  return commandSuggestionKey.getState(state)?.active === true
+    || referenceSuggestionKey.getState(state)?.active === true;
 }

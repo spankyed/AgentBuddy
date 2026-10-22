@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, computed, watch, onMounted, onUnmounted, shallowRef } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -75,7 +75,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 // State Management
-const actor: DatabaseState = usePlugin();
+const actor: DatabaseState = useSurface();
 const queryResult = useSelector(actor, (state) => state.context.queryResult);
 
 // Component State

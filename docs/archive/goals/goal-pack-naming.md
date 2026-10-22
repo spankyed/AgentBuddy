@@ -139,7 +139,7 @@ The renames follow five rules. Prefer the rule over the table when they disagree
    only ever that; the thing it used to name becomes the pack's layout/archive.
 3. **`registry` is a live in-process collection things register into — never a file, never a wire route.**
    The remote sense is qualified (`resolveFromRemoteRegistry`). `stepRegistry`, `artifactRegistry`,
-   `blockRegistry`, `contentWriterRegistry` and `tiptapPluginRegistry` keep the word; the docs stop calling them
+   `blockRegistry`, `contentWriterRegistry` and `textEditorExtensionsRegistry` keep the word; the docs stop calling them
    "lookups" so prose and code agree.
 4. **`host` is the app; `machine` is the computer.**
 5. **A borrowed generic word is qualified by what it is *of*; if it describes *when* rather than *what*, it is
@@ -325,7 +325,7 @@ the argument for the guard.
   | Vue components filling named app-shell slots | `fe.appExtensions` | app extensions |
   | Which of a feature's things are linkable from an editor | `features[].contributions`, `@apackdev/sdk/fe/contributions` | references |
 
-  The third was the mis-named one. `ContributionTypeConfig` is `{ protocol, category, plugin, icon,
+  The third was the mis-named one. `ContributionTypeConfig` is `{ protocol, category, surface, icon,
   svgElements, navigate }` — typing `#` in an editor opens a picker, and choosing an item inserts a
   `note://ab12` link that `navigate()` opens. Its only consumers are `reference-config.ts`,
   `reference-node.ts` and `referenceSuggestionPlugin`, and the inserted node is literally `name: 'reference'`.

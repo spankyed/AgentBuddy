@@ -1,7 +1,7 @@
 import { setup } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
-// broadcastToPlugin is typed with the events each of this pack's plugins receives
-import { broadcastToPlugin } from '#generated/events.ts';
+// broadcastToSurface is typed with the events each of this pack's surfaces receives
+import { broadcastToSurface } from '#generated/events.ts';
 import type { Contract } from './contract.ts';
 
 export const __CAMEL__Spec = defineSystem<Contract>();
@@ -12,7 +12,7 @@ export const __CAMEL__System = setup({
   // named no sender. A handler that answers an ask uses it; one that publishes, like this, does not.
   actions: __CAMEL__Spec.actions({
     sendConnectedData: () => {
-      broadcastToPlugin('__NAME__', {
+      broadcastToSurface('__NAME__', {
         type: '__CONNECTED_EVENT__',
         data: {},
       });
@@ -25,7 +25,7 @@ export const __CAMEL__System = setup({
     idle: {
       on: {
         // The app asks every system for its state whenever anything could have changed it — a client
-        // connected, a pack changed, the data was replaced. Answer with what your plugin starts from, and
+        // connected, a pack changed, the data was replaced. Answer with what your surface starts from, and
         // you are correct for every one of those without handling any of them
         SEND_STATE: { actions: 'sendConnectedData' },
         // A contract's `incoming` says what may be sent; the bus routes an event to a system only if its

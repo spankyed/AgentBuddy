@@ -6,14 +6,14 @@ export const appSettingsDefinition: SettingsDefinition = {
   "description": "Host-owned application preferences.",
   "defaults": {
     "hotkeys": {
-      "switchPluginUp": {
+      "switchSurfaceUp": {
         "key": "ArrowUp",
         "modifiers": [
           "cmd",
           "option"
         ]
       },
-      "switchPluginDown": {
+      "switchSurfaceDown": {
         "key": "ArrowDown",
         "modifiers": [
           "cmd",
@@ -109,10 +109,10 @@ export const appSettingsDefinition: SettingsDefinition = {
       "ApplicationHotkeys": {
         "type": "object",
         "properties": {
-          "switchPluginUp": {
+          "switchSurfaceUp": {
             "$ref": "#/definitions/KeyboardShortcut"
           },
-          "switchPluginDown": {
+          "switchSurfaceDown": {
             "$ref": "#/definitions/KeyboardShortcut"
           },
           "toggleInspectionPanel": {

@@ -10,17 +10,17 @@
 // `answersCall`/`settleCall` refuse what a hand-written comparison would accept.
 import { describe, expect, it } from 'vitest';
 import {
-  _CALL_KEY, _callOf, answersCall, newCall, recordCall, settleCall, untypedBroadcastToPlugin,
+  _CALL_KEY, _callOf, answersCall, newCall, recordCall, settleCall, untypedBroadcastToSurface,
   untypedSendToSystem, _callOn, _replyTo, type Message,
 } from '../../src/events/index.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
 
-startTestRuntime({ packs: { pluginIds: () => ['pack/plugin'], systemIds: () => ['pack/system'] } as never });
+startTestRuntime({ packs: { surfaceIds: () => ['pack/surface'], systemIds: () => ['pack/system'] } as never });
 
 /** Everything the bus saw while `body` ran, both directions */
 function onBus(body: () => void): Message[] {
   const seen: Message[] = [];
-  const stops = [testRootEvents.onPluginSend((m) => seen.push(m)), testRootEvents.onIncoming((m) => seen.push(m))];
+  const stops = [testRootEvents.onSurfaceSend((m) => seen.push(m)), testRootEvents.onIncoming((m) => seen.push(m))];
   try { body(); } finally { for (const stop of stops) stop(); }
   return seen;
 }
@@ -35,7 +35,7 @@ describe('a call is minted by the send', () => {
    */
   it('names every send, asked for or not', () => {
     const seen = onBus(() => {
-      untypedBroadcastToPlugin('pack/plugin', { type: 'NEWS' });
+      untypedBroadcastToSurface('pack/surface', { type: 'NEWS' });
       untypedSendToSystem('pack/system', { type: 'DO_IT' });
     });
 
@@ -110,7 +110,7 @@ describe('the reserved key a door injects', () => {
 
   /**
    * **The key is reserved, and this is the case that says so.** An event is an open bag — a pack may put any
-   * field on one, which `outgoing-events.spec.ts` pins with a deliberate `pluginId` collision — so the one
+   * field on one, which `outgoing-events.spec.ts` pins with a deliberate `surfaceId` collision — so the one
    * field a door writes has to win, or a pack could make its own answer look like it belonged to another
    * call. A pack rule refuses one written in pack source; this is what the runtime does if one arrives.
    */

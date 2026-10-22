@@ -224,16 +224,16 @@ import StatusLine from './StatusLine.vue'
 import NativeComposerPlacements from './NativeComposerPlacements.vue'
 import NativeUiNotices from './NativeUiNotices.vue'
 import { setClaudeCompletionOffer } from '../../../../extensions/tiptap/claude-completions.ts'
-import { referenceSuggestionPluginKey } from '../../../../extensions/tiptap/reference-plugin-key.ts'
+import { referenceSuggestionKey } from '../../../../extensions/tiptap/reference-suggestion.ts'
 import { claudePromptThemeStyle } from './native-ui-paint.ts'
 import { useClaudeUiSelection, replyClaudeUiSelection } from './native-ui-selection.ts'
 import { copyClaudeUiText } from './native-ui-clipboard.ts'
 import { claudePromptSourceReferences } from './native-prompt-source.ts'
 import { bindClaudePromptEditor } from './native-prompt-editor.ts'
-import { Plugin } from '@tiptap/pm/state'
 import { useSpeechRecognition } from './composables/useSpeechRecognition.ts'
 import { DOUBLE_ESC_MS } from '@apackdev/ui/components/tiptap/composables/createEditorKeyboard'
-import { useAttachments, extractImageSrcsFromClipboard } from './composables/useAttachments.ts'
+import { useAttachments } from './composables/useAttachments.ts'
+import { imagePaste } from '#extensions/tiptap/image-paste.ts'
 import { useExternalFileDrag } from '@apackdev/ui/composables/useExternalFileDrag'
 import {
   DropdownMenuRoot,
@@ -250,8 +250,8 @@ import Button from '@apackdev/ui/design/button'
 import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
 import StatusIndicator from './status-indicator.vue'
 import type { ClaudeUiMountState, AgentThreadData, AgentMode, MessageReferences, ContextReference, QuickPrompt } from '#generated/types.ts'
-import { commandSuggestionPluginKey } from '../../../../extensions/tiptap/command-suggestion-plugin.ts'
-import { matchesHotkey, type HotkeyEvent, type HotkeysMap } from '@apackdev/sdk/fe'
+import { commandSuggestionKey } from '../../../../extensions/tiptap/command-suggestion.ts'
+import { matchesHotkey, useSurfaceStorage, type HotkeyEvent, type HotkeysMap } from '@apackdev/sdk/fe'
 import QuickPromptsPopup from './QuickPromptsPopup.vue'
 import RevertHistoryPopup from './RevertHistoryPopup.vue'
 
@@ -422,8 +422,8 @@ watch([() => tiptapRef.value?.editor, () => props.nativePrompt?.mountId, () => p
 watch(() => tiptapRef.value?.editor, (editor, _previous, onCleanup) => {
   if (!editor) { hostPopupActive.value = false; return }
   const update = () => {
-    const command = commandSuggestionPluginKey.getState(editor.state)
-    hostPopupActive.value = !!(command?.active && !command.selectedCommand) || referenceSuggestionPluginKey.getState(editor.state)?.active === true
+    const command = commandSuggestionKey.getState(editor.state)
+    hostPopupActive.value = !!(command?.active && !command.selectedCommand) || referenceSuggestionKey.getState(editor.state)?.active === true
   }
   update(); editor.on('transaction', update)
   onCleanup(() => { editor.off('transaction', update) })
@@ -514,12 +514,13 @@ watch(() => props.prefillReferences, (refs) => {
   if (refs) restoreFromReferences(refs)
 })
 
-const HISTORY_STORAGE_KEY = 'chat-sent-history'
+/** This surface's window storage: the prefix is its ref, so this name is scoped to it. */
+const storage = useSurfaceStorage()
 const MAX_HISTORY = 100
 
 function loadHistory(): string[] {
   try {
-    const stored = localStorage.getItem(HISTORY_STORAGE_KEY)
+    const stored = storage.get('chat-sent-history')
     if (!stored) return []
     const parsed = JSON.parse(stored)
     return Array.isArray(parsed) ? parsed : []
@@ -528,7 +529,7 @@ function loadHistory(): string[] {
 
 function saveHistory(history: string[]) {
   try {
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history.slice(-MAX_HISTORY)))
+    storage.set('chat-sent-history', JSON.stringify(history.slice(-MAX_HISTORY)))
   } catch { /* ignore */ }
 }
 
@@ -539,7 +540,7 @@ const lastClearedContent = ref<string | null>(null)
 const commandHighlight = computed(() => {
   const editor = tiptapRef.value?.editor
   if (!editor) return false
-  const state = commandSuggestionPluginKey.getState(editor.state)
+  const state = commandSuggestionKey.getState(editor.state)
   return state?.active === true
 })
 
@@ -568,25 +569,8 @@ const { isDragging: isDraggingFile, onDragEnter, onDragLeave, onDrop } = useExte
   onDrop: handleFileDrop,
 })
 
-// Handle image-URL paste (e.g. from notes) inside ProseMirror's pipeline
-const imagePastePlugin = new Plugin({
-  props: {
-    handlePaste(_view, event) {
-      if (!event.clipboardData) return false
-      // Skip raw image blobs — handled by the outer @paste handler
-      for (const item of event.clipboardData.items) {
-        if (item.type.startsWith('image/')) return false
-      }
-      const srcs = extractImageSrcsFromClipboard(event.clipboardData)
-      if (!srcs.length) return false
-      for (const src of srcs) addImageFromUrl(src)
-      return true
-    },
-  },
-})
-
 watch(tiptapRef, (ref) => {
-  if (ref?.editor) ref.editor.registerPlugin(imagePastePlugin)
+  if (ref?.editor) ref.editor.registerPlugin(imagePaste(addImageFromUrl))
 }, { immediate: true })
 
 const onContentUpdate = (md: string) => {
@@ -899,7 +883,7 @@ const handleSubmit = async () => {
     const entityId = props.currentThread?.id || 'chat-attachments'
     const attachments = captureAttachments()
     const contextRefs = collectContextReferences(editor)
-    const cmdState = commandSuggestionPluginKey.getState(editor.state)
+    const cmdState = commandSuggestionKey.getState(editor.state)
     const attachmentRefs = await attachments.collect(entityId)
     if (epoch !== composerEpoch || editor.isDestroyed || tiptapRef.value?.editor !== editor || props.disabled) return
     const references: MessageReferences = {
@@ -915,7 +899,7 @@ const handleSubmit = async () => {
       emit('send-command', commandName, bodyText.trim(), references)
       if (editor.state.doc === doc) {
         const { tr } = editor.state
-        tr.setMeta(commandSuggestionPluginKey, { deactivate: true })
+        tr.setMeta(commandSuggestionKey, { deactivate: true })
         editor.view.dispatch(tr)
       }
     } else if (props.nativeSubmit) {

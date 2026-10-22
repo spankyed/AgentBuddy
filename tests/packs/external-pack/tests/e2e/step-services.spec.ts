@@ -1,7 +1,7 @@
 import { test, expect } from '@apackdev/testing';
 
 test('the running brain gives an external step its own service scope', async ({ app, appPage }) => {
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   await app.navigate('default-setup/flows');
   await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system
     .get('default-setup/flows').getSnapshot().context.flows.some((flow: { label: string }) => flow.label === 'Stamp Flow'))).toBe(true);
@@ -21,7 +21,7 @@ test('the running brain gives an external step its own service scope', async ({ 
     await appPage.evaluate(() => (window as any).__sendToSystem('default-setup/brain', {
       type: 'TRIGGER_BRAIN_EVENT', eventType: 'stamp.requested',
     }));
-    // Ask for fresh memo state after the step writes; writes through a repository do not push plugin data.
+    // Ask for fresh memo state after the step writes; writes through a repository do not push surface data.
     await expect(async () => {
       await appPage.evaluate(() => (window as any).__sendToSystem('e2e-fixture/memos', { type: 'SEND_STATE' }));
       await expect(appPage.getByTestId('memo-list').getByText('step-owner service reached', { exact: true })).toBeVisible();

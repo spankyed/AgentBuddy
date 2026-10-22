@@ -20,9 +20,9 @@ export function nativePackDeclarationFixture(fixture: PackRegistration, metadata
       }]))]];
     })) }),
     eventContracts: Object.fromEntries(Object.entries(fixture.features ?? {})
-      .filter(([, feature]) => feature.system || feature.plugin).map(([id, feature]) => [id, {
+      .filter(([, feature]) => feature.system || feature.surface).map(([id, feature]) => [id, {
         ...(feature.system && { system: { incoming: [...feature.system.receives], outgoing: [] } }),
-        ...(feature.plugin && { plugin: { receives: [...feature.plugin.receives] } }),
+        ...(feature.surface && { surface: { receives: [...feature.surface.receives] } }),
       }])),
     ...((fixture.contentWriters !== undefined || fixture.appliers !== undefined) && { content: {
       ...(fixture.contentWriters !== undefined && { writers: target('writers', Object.keys(fixture.contentWriters)) }),

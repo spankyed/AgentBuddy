@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -89,7 +89,7 @@ import TNodeListItem from '@apackdev/ui/components/TNodeListItem'
 import type { TrackTree } from '@apackdev/sdk/steps'
 import { sendToSystem } from '#generated/events.ts'
 
-const brainActor: BrainState = usePlugin();
+const brainActor: BrainState = useSurface();
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead);
 const startError = useSelector(brainActor, (state) => state.context.startError);

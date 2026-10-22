@@ -12,8 +12,8 @@ Implement docs/goals/goal-actions-and-seams.md on AS/plugin-contract, at or afte
 its Background was surveyed at. It finishes docs/archive/plans/host-seams.md, whose steps 1, 2 and 5 have landed
 (a07b5c095, e5580d6b4, 4d649fc0b); this goal is its steps 3 and 4 plus the docs they falsify.
 Before Phase 1, confirm the base: `Message` in packages/apack-sdk/src/events/index.ts has `from?: string`
-and no `via`; `packages/apack-sdk/src/services/index.ts` declares `emitter.broadcastToPlugin` as
-`typeof untypedBroadcastToPlugin`; `packages/apack-host/src/features/packs/fe/frontends.ts` imports
+and no `via`; `packages/apack-sdk/src/services/index.ts` declares `emitter.broadcastToSurface` as
+`typeof untypedBroadcastToSurface`; `packages/apack-host/src/features/packs/fe/frontends.ts` imports
 `ShellPackFrontends` from `../../application/fe/public.ts`; and `HOST_SRC_ROOT` is in
 scripts/check-import-specifiers.ts. If they don't, stop and say so — the plan was surveyed somewhere else.
 That last file was being edited by hand when this was written, in `findContractLeafImports`, which this
@@ -70,7 +70,7 @@ names features by bare id like a pack (step 5). What is left is steps 3 and 4.
 
 ### Actions are the last sender that cannot say who it is
 
-`services.emitter.broadcastToPlugin` is declared `typeof untypedBroadcastToPlugin`
+`services.emitter.broadcastToSurface` is declared `typeof untypedBroadcastToSurface`
 (`packages/apack-sdk/src/services/index.ts:40`) — the unbound function — and an action runs outside any
 pack scope, reached through `runActionCode` (`packages/default-setup/src/extensions/steps/action/sandbox.ts:18`),
 which already takes a `label` and builds `createLogger('action:${label}')`.
@@ -138,7 +138,7 @@ Final.
 - The four sites that render a sender append `via` when present, exactly as they append `from`:
   `apack-host/src/bus/machine.ts` (two drops), `apack-host/src/bus/client-events.ts`, and the shell's
   `features/application/fe/machine.ts` and `fe/connection.ts`. The lines read:
-  `Dropped "MEMO_ADDED" sent by "default-setup" (action:summarise-thread) to the "memo-pack/memos" plugin, …`
+  `Dropped "MEMO_ADDED" sent by "default-setup" (action:summarise-thread) to the "memo-pack/memos" surface, …`
 - **Add `via` to the `bus.send` input schema** beside `from`
   (`packages/api/src/transport/bus.ts:20`), and a case to `packages/api/tests/unit/bus-send-sender.spec.ts`.
   This is not optional and it is easy to miss: that schema names its fields, and `.passthrough()` is only on
@@ -230,7 +230,7 @@ Details the doc left open, decided while implementing:
   bars a pack from importing an underscored export.
 - **Phase 2's replacement rule is derived, not listed:** a package may name its features' frontends from a module
   it publishes and that sits outside every feature, read from `package.json` `exports`. It fails closed.
-- **`OPEN_PLUGIN` was left without a sender** when the shell's refusals were unified. Giving it one is a change to
+- **`OPEN_SURFACE` was left without a sender** when the shell's refusals were unified. Giving it one is a change to
   a published event type, so it stayed a separate decision rather than riding along.
 
 ### Corrections to the Decisions
@@ -244,7 +244,7 @@ Details the doc left open, decided while implementing:
   import". It excused four: `features/packs/fe/frontends.ts` reaching the shell's types, *and* the three
   `fe/public.ts` re-exports in `fe/index.ts`. Folding the barrels in — which Decision 5 required — would have
   broken the gate rather than freed it. Nothing was registered in its place, as Decision 4 required.
-- **"The four sites that render a sender" were five.** The shell refuses a plugin at once *and* after waiting for
+- **"The four sites that render a sender" were five.** The shell refuses a surface at once *and* after waiting for
   pack frontends, and the deferred one carried no sender at all.
 
 ### Open items
@@ -253,9 +253,9 @@ Details the doc left open, decided while implementing:
   alone, so two actions of one pack collapsed into one report naming the wrong one (`29620c935`); the new gate
   excepted a published module *inside* a feature, which handed `host/settings` a licence no other feature had
   (`a8074ef93`); and the shell's deferred refusal named no sender (`931a4ce7c`).
-- **`_sendToLocalPlugin` has no caller.** Nothing in any package's source calls it — only its own definition and
+- **`_sendToLocalSurface` has no caller.** Nothing in any package's source calls it — only its own definition and
   `check:specifiers`' name list — while `packages/apack-host/CLAUDE.md` still describes it as the path the
-  renderer's `sendToPlugin` takes. The behaviour that doc describes is right; the function it credits is not
+  renderer's `sendToSurface` takes. The behaviour that doc describes is right; the function it credits is not
   involved. Removing an `@internal` export was left as a separate decision.
 
 ### Invariants, and what guards each
@@ -265,11 +265,11 @@ Details the doc left open, decided while implementing:
 | A message an action sends carries its pack in `from` and `action:<label>` in `via` | `default-setup/tests/unit/action-sandbox.spec.ts` |
 | A send made with no action carries no `via` | `apack-sdk/tests/services/emitter.spec.ts` |
 | An action names every feature `<packId>/<featureId>`; a bare name does not compile and does not resolve | `apack-cli/tests/build/facade-typing.spec.ts` (`@ts-expect-error`), `apack-sdk/tests/services/emitter.spec.ts` |
-| Every diagnostic naming a sender words it the same, and shows both fields | `apack-sdk/tests/events/envelope.spec.ts`, plus a case each in `outgoing-events`, `client-events` and `send-scope`, and one in `open-plugin` asserting the shell's two refusal branches say exactly the same thing |
+| Every diagnostic naming a sender words it the same, and shows both fields | `apack-sdk/tests/events/envelope.spec.ts`, plus a case each in `outgoing-events`, `client-events` and `send-scope`, and one in `open-surface` asserting the shell's two refusal branches say exactly the same thing |
 | `reportError` stamps the source it was given and never a pack | `apack-sdk/tests/logger/report-error.spec.ts` |
 | No host feature imports another feature's `fe/` | `findCrossFeatureImports` (`check:specifiers`) — with no exception for the host |
 | Only a module a package publishes from outside every feature may name its features' frontends | `findCrossFeatureImports`, and three cases in `apack-cli/tests/build/import-specifiers.spec.ts` |
-| A drop is reported once per plugin, event type **and sender** | `apack-host/tests/bus/outgoing-events.spec.ts` — the key is `senderSuffix`'s output, so it distinguishes whatever the report distinguishes |
+| A drop is reported once per surface, event type **and sender** | `apack-host/tests/bus/outgoing-events.spec.ts` — the key is `senderSuffix`'s output, so it distinguishes whatever the report distinguishes |
 | A field added to `Message` cannot be silently dropped at the tRPC boundary | the `Required<Message>` sample in `api/tests/unit/bus-send-sender.spec.ts`, which stops compiling until the new field is named. It sat in the SDK's tests until `ca8e7897d` made `npm run typecheck:be` cover this package's specs |
 
 Milestones, true when the work landed and not properties to hold: `git grep HOST_SRC_ROOT` returning nothing

@@ -1,8 +1,8 @@
-import { usePluginState } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
 import { NOTE_TYPE_TO_REFERENCE_TYPE } from '../reference-types.ts'
 import type { ReferenceItem } from '@apackdev/sdk/fe/references'
 
-export const useItems = () => usePluginState('notes', (state): ReferenceItem[] => {
+export const useItems = () => useSurfaceState('notes', (state): ReferenceItem[] => {
   const allNotes = state.notes
   return allNotes
     .filter((n: any) => n.noteType in NOTE_TYPE_TO_REFERENCE_TYPE)

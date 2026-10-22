@@ -1,6 +1,6 @@
 /**
  * A pack's feature is `<packId>/<featureId>`, one spelling everywhere: in code, on the bus, in storage, in logs
- * and in actions. A feature contributes at most one system and one plugin, and both run under it. The app is a
+ * and in actions. A feature contributes at most one system and one surface, and both run under it. The app is a
  * pack too, `host` (`host/application`, `host/bus`), so there is no namespace of bare ids. Neither a pack id
  * (`PACK_ID_PATTERN`) nor a feature id (`FEATURE_ID_PATTERN`) holds a `/`: a ref splits one way, and no pack can
  * produce one in another pack's namespace.
@@ -61,7 +61,7 @@ export interface RefLookup {
 
 /**
  * Why `name` doesn't stand for one of `registered` in pack `packId`, or undefined when it does. `kind` is the noun
- * the message names them by (`plugin`, `system`, `feature with settings`). Names the form to write, the ref it would
+ * the message names them by (`surface`, `system`, `feature with settings`). Names the form to write, the ref it would
  * be, the one of `registered` it probably meant, and what there is.
  */
 export function refProblem(kind: string, name: string, { registered: refs, packId, among = 'registered', form }: RefLookup): string | undefined {

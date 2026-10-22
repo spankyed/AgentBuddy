@@ -145,7 +145,7 @@ export function findRawPackHelpers(dirs: readonly string[] = PACK_SOURCE_DIRS, r
   return packRule('untyped-sends', dirs, root);
 }
 
-/** `file:line: sendToPlugin(…)` for each cross-plugin send a feature's component makes. Extensions are exempt. */
+/** `file:line: sendToSurface(…)` for each cross-surface send a feature's component makes. Extensions are exempt. */
 export function findComponentSends(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
   return packRule('component-sends', dirs, root);
 }
@@ -178,6 +178,15 @@ export function findPackBackendConsole(dirs: readonly string[] = PACK_SOURCE_DIR
 }
 
 /**
+ * `file:line: localStorage` for each raw window-storage use in a pack's source, which reaches its own
+ * storage through `surfaceStorage`/`useSurfaceStorage` from `@apackdev/sdk/fe` instead. Source only: a
+ * pack's test asserting what its surface stored has to read storage.
+ */
+export function findPackWindowStorage(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  return packRule('window-storage', dirs, root);
+}
+
+/**
  * `file:line: _call:` for each write of the reserved key a delivery door puts a call under.
  *
  * The key is the app's: `_callOn` writes it and `_callOf` reads it, so a property a pack writes under that
@@ -200,7 +209,7 @@ export function findReservedEventKeys(dirs: readonly string[] = PACK_CODE_DIRS, 
  * Vite and esbuild all resolve unaided and which is private to the declaring package. `@/…` is a TypeScript
  * `compilerOptions.paths` mapping that no runtime reads — and it was not even a static one here, meaning
  * *the importer's own pack*, so four separate bundler configs each carried an implementation of it: the
- * renderer's resolveId hook, the API's esbuild plugin, the pack's `vite-tsconfig-paths`, and `apack pack build`'s
+ * renderer's resolveId hook, the API's esbuild surface, the pack's `vite-tsconfig-paths`, and `apack pack build`'s
  * own reader, which had two copies that had each missed the other's fix.
  *
  * All four are gone (`goal-one-way-to-name-your-own-modules.md`), so a single `@/` reintroduced here does not
@@ -727,6 +736,7 @@ const RULE_LIST = [
   backed('findComponentSends', 'component-sends', findComponentSends, PACK_SOURCE_DIRS),
   backed('findRawTransport', 'raw-transport', findRawTransport, PACK_SOURCE_DIRS),
   backed('findPackBackendConsole', 'backend-console', findPackBackendConsole, PACK_SOURCE_DIRS),
+  backed('findPackWindowStorage', 'window-storage', findPackWindowStorage, PACK_SOURCE_DIRS),
   backed('findHostImports', 'host-imports', findHostImports, PACK_CODE_DIRS),
   backed('findPackOwnAliases', 'pack-own-aliases', findPackOwnAliases, PACK_CODE_DIRS),
   backed('findExtensionlessOwnModules', 'own-modules', findExtensionlessOwnModules, PACK_CODE_DIRS),

@@ -4,9 +4,9 @@ order: 1
 ---
 # Where can I view old brain traces?
 
-Brain traces are persisted directly in LMDB and can be browsed from the Database Explorer plugin.
+Brain traces are persisted directly in LMDB and can be browsed from the Database Explorer surface.
 
-1. Open the **Database Explorer** plugin.
+1. Open the **Database Explorer** surface.
 2. Click the **⋮** (three dots) menu in the top-left breadcrumbs row.
 3. Select **View Trace History**.
 

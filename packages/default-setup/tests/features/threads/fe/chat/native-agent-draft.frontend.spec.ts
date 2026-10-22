@@ -129,7 +129,7 @@ it('restores persisted structured input without any in-memory owner and clears i
   const restored = create(''), detach = bindClaudeWindowDraft(restored,owner)
   await new Promise(resolve => restored.on('create',resolve))
   expect(restored.getJSON()).toEqual(snapshot.doc); expect(restored.state.selection.toJSON()).toEqual(snapshot.selection)
-  expect(claudeWindowStorageKey('parent-draft', owner,'?popout=plugin&pluginId=default-setup/threads')).not.toBe(key)
+  expect(claudeWindowStorageKey('parent-draft', owner,'?popout=plugin&surfaceId=default-setup/threads')).not.toBe(key)
   restored.commands.clearContent(); detach(); expect(localStorage.getItem(key)).toBeNull()
 })
 

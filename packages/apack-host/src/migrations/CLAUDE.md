@@ -28,7 +28,7 @@ directory. Native and installed owners share dependency ordering before a caller
 Synthetic installed origins without accepted manifests cannot bind migration functions.
 
 The host and default-setup currently declare no migrations. Add one only for a concrete supported data change, not hypothetical
-old installations. The frontend runner (`src/fe/migrations`) operates separately on window storage.
+old installations. The frontend runner (`src/fe/window-storage`) operates separately on window storage.
 
 App migrations run when `stored < target <= app version`. A prerelease uses its release as the cap;
 development runs pending targets without a cap. No recorded app version means new data at the current

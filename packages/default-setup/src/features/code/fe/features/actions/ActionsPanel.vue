@@ -234,12 +234,12 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, computed, watch, nextTick } from 'vue'
 import { openEntity } from '@apackdev/sdk/fe'
 import type { CodeState } from '#features/code/fe/state.ts'
-import { usePluginState } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
 import { ExternalLink, Plus, X, Pencil, Trash2, Play, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
 import EmptyState from '#features/code/fe/features/EmptyState.vue'
@@ -257,15 +257,15 @@ import Button from '@apackdev/ui/design/button'
 import uFuzzy from '@leeoniya/ufuzzy'
 import { codeChild } from '../children.ts';
 
-// Get actors - use main actions plugin for state, codeActions for tab management
-const codeActor: CodeState = usePlugin()
+// Get actors - use main actions surface for state, codeActions for tab management
+const codeActor: CodeState = useSurface()
 const codeActionsActor = codeChild(codeActor, 'codeActions')!
 
-// State - the actions plugin's list (single source of truth)
-const actions = usePluginState('actions', (s) => s.actions)
-const page = usePluginState('actions', (s) => s.page)
-const totalPages = usePluginState('actions', (s) => s.totalPages)
-const loadingMore = usePluginState('actions', (s) => s.loadingMore)
+// State - the actions surface's list (single source of truth)
+const actions = useSurfaceState('actions', (s) => s.actions)
+const page = useSurfaceState('actions', (s) => s.page)
+const totalPages = useSurfaceState('actions', (s) => s.totalPages)
+const loadingMore = useSurfaceState('actions', (s) => s.loadingMore)
 const hasMore = computed(() => page.value < totalPages.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)

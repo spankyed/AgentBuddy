@@ -1,5 +1,5 @@
 import type { Reply } from '@apackdev/sdk/events';
-import { broadcastToPlugin } from '../../../events.ts';
+import { broadcastToSurface } from '../../../events.ts';
 import type { OutgoingSettingsEvents } from './types.ts';
 
 /** What a write answers with: it was stored, or it was refused and stored nothing */
@@ -9,8 +9,8 @@ export type SettingsAnswer = Extract<OutgoingSettingsEvents, { type: 'SETTINGS_S
  * Answers whoever asked for a write, and tells every Settings view when nobody did.
  *
  * A write arrives from the Settings view, from a drive session, or from code with no asker at all — and only
- * the outcome is the asker's. Broadcasting it to the `settings` plugin was the only path for a long time,
- * which meant a sender that was not that plugin learned nothing: a drive session's `/set-setting` reported
+ * the outcome is the asker's. Broadcasting it to the `settings` surface was the only path for a long time,
+ * which meant a sender that was not that surface learned nothing: a drive session's `/set-setting` reported
  * success for every refused write, because the send had been accepted and the refusal went somewhere it could
  * not see.
  *
@@ -22,6 +22,6 @@ export type SettingsAnswer = Extract<OutgoingSettingsEvents, { type: 'SETTINGS_S
  * thing a caller must handle rather than a global it might not think to probe.
  */
 export function answerSettings(reply: Reply<SettingsAnswer> | undefined, event: SettingsAnswer): void {
-  if (reply === undefined) broadcastToPlugin('settings', event);
+  if (reply === undefined) broadcastToSurface('settings', event);
   else reply(event);
 }

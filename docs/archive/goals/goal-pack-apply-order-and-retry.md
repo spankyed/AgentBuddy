@@ -95,7 +95,7 @@ the skip rule reads it as "the data we last ran *successfully*, and nothing else
 
 2. **Only the order packs are written and migrated in changes.** The sort goes in `externalPackTargets`,
    which feeds `runPackMigrations` and `applyPackContent` and nothing else. Load, registration and activation
-   order are untouched — they decide which pack wins a designation or a plugin id, and changing them is a
+   order are untouched — they decide which pack wins a designation or a surface id, and changing them is a
    different change with a different blast radius.
 
 3. **A failed content is retried when something that could change the outcome has changed**, which is its own

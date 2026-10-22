@@ -631,7 +631,7 @@
 
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { usePlugin, useShell } from '@apackdev/sdk/fe'
+import { useSurface, useShell } from '@apackdev/sdk/fe'
 import type { CodeState } from '#features/code/fe/state.ts'
 import type { GitStatusFile } from '#features/code/fe/features/commit/state.ts'
 import { GitBranch, GitBranchPlus, GitCommit, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
@@ -651,7 +651,7 @@ import { codeChild } from '../children.ts';
 
 // Get actors
 const shell = useShell()
-const codeActor: CodeState = usePlugin()
+const codeActor: CodeState = useSurface()
 const commitActor = codeChild(codeActor, 'commit')!
 
 // Settings from code actor

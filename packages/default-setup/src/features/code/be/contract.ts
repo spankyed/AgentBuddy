@@ -1,4 +1,4 @@
-// The code system's contract: what it receives, what its own children send it, what it sends its plugin,
+// The code system's contract: what it receives, what its own children send it, what it sends its surface,
 // and its context. Its own module, not the feature's types barrel: `#generated/types` star-exports that,
 // and one `Contract` per feature would collide there. Codegen reads this without running anything.
 import type { ActionEntity, PromptEntity } from '@apackdev/sdk';
@@ -13,7 +13,7 @@ import type { FileChangeInfo } from './services/gitwatcher.ts';
 // ── The child actors' events ─────────────────────────────────────────────────────────────────────
 // They live here rather than beside each child because this module is the contract leaf: codegen reads it as a
 // declared type, and `#generated/events` imports it — so anything it reaches must not import `#generated/events`
-// back, which every child does for `broadcastToPlugin`. Each child imports its own two from here.
+// back, which every child does for `broadcastToSurface`. Each child imports its own two from here.
 // ── explorer ─────────────────────────────────────────────────────────
 export type IncomingExplorerEvents =
   | { type: 'explorer.LIST_FILES'; path: string }
@@ -256,7 +256,7 @@ export type OutgoingCodeEvents =
   | OutgoingPromptsEvents
   // Broadcast events (sent to all child systems)
   | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
-  /** What testing a CLI found, for the Settings view that asked (the host declares its plugin takes it) */
+  /** What testing a CLI found, for the Settings view that asked (the host declares its surface takes it) */
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
 
 export type Contract = {

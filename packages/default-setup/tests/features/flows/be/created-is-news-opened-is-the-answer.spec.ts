@@ -15,7 +15,7 @@ const FLOWS = 'default-setup/flows'
 /** The connection the ask arrived on, which is what makes it a window's rather than the backend's */
 const WINDOW = 'c-main'
 
-/** Every message the bus carried for the flows plugin, with the address each went to */
+/** Every message the bus carried for the flows surface, with the address each went to */
 const addressed = (app: Awaited<ReturnType<typeof startApp>>) =>
   app.emitted('flows').map((event) => event.type)
 

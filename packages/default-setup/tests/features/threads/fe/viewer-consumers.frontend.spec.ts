@@ -2,7 +2,7 @@ import { afterEach, expect, it } from 'vitest';
 import { createApp, h, nextTick, type App } from 'vue';
 import { createActor, createMachine } from 'xstate';
 import { startFeTestRuntime, stopFeTestRuntime } from '@apackdev/sdk/testing';
-import { PluginScope, type ArtifactFrontendBinding, type BlockFrontendBinding } from '@apackdev/sdk/fe';
+import { SurfaceScope, type ArtifactFrontendBinding, type BlockFrontendBinding } from '@apackdev/sdk/fe';
 import type { ArtifactCatalogEntry, BlockCatalogEntry } from '@apackdev/sdk/framework';
 import ContentViewer from '#features/threads/fe/canvas/agent/content-viewer.vue';
 import InteractionContainer from '#features/threads/fe/chat/interactions/InteractionContainer.vue';
@@ -53,7 +53,7 @@ it('renders input props only with the current block declaration and drops a disa
   const f = fixture();
   const component = { props: ['disabled', 'response'], setup: (props: { disabled: boolean; response: { text: string } }) =>
     () => h('div', { class: 'custom-input' }, `${props.disabled}:${props.response.text}`) };
-  app = createApp({ render: () => h(PluginScope, { plugin: 'external/threads' }, {
+  app = createApp({ render: () => h(SurfaceScope, { surface: 'external/threads' }, {
     default: () => h(InteractionContainer, { blocks: [{ type: 'answer', props: {} }], messageId: 'message', isDisabled: true, response: { _source: 'answer', text: 'saved response' } }),
   }) });
   app.mount(f.root); expect(f.root.querySelector('.custom-input')).toBeNull();

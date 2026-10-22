@@ -97,7 +97,7 @@ function doorSpans(view: SourceView): { start: number; end: number }[] {
 
 /**
  * Each import of another feature's frontend this file makes. A feature reaches into no other feature's frontend at
- * all: what one offers the rest is its plugin's contract — its published state, which `#generated/fe` generates
+ * all: what one offers the rest is its surface's contract — its published state, which `#generated/fe` generates
  * typed readers for, and the inbox `#generated/events` types the sends with. Neither needs a module of the other
  * feature's, so there is nothing left for an exception to bless.
  *
@@ -105,7 +105,7 @@ function doorSpans(view: SourceView): { start: number; end: number }[] {
  * which would be a second door.
  *
  * Two modules are exempt, and both are the pack's own assembly rather than one feature reaching another: generated
- * code, which registers every feature's plugin, and what the package publishes (`publishedEntryPoints`).
+ * code, which registers every feature's surface, and what the package publishes (`publishedEntryPoints`).
  *
  * Which specifiers it can follow at all is `packTargetOf` (`@apackdev/host/build/own-module-specifiers`), not
  * restated here: a pack-internal one, relative or a `#` subpath of the pack's own.
@@ -168,11 +168,11 @@ export const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pac
 /**
  * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen.
  *
- * A leaf is a module `apack.json` names at `features[].plugin.contract` or `features[].system.contract`, and
+ * A leaf is a module `apack.json` names at `features[].surface.contract` or `features[].system.contract`, and
  * codegen reads the contract from it as a declared type — without resolving the actor it describes. Both actors
  * import `#generated/events`, and `#generated/events` imports both contracts, so reading a contract anywhere its
  * actor is reachable closes that loop again. The two sides are one rule with one machine module each: `fe/state`
- * for a plugin, `be/system` for a system.
+ * for a surface, `be/system` for a system.
  *
  * So a leaf imports neither machine, no other feature, and nothing generated but `types` and `ears`, which are
  * themselves leaves: a context needs both (`NoteDTO`, `EARS.EntityId`) and neither reaches `#generated/events`.
@@ -190,13 +190,13 @@ export const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pac
  *
  * - A contract's `state` or `context` from the machine, and an `incoming` as `Extract<>` over the machine's event
  *   union, **build with exit 0** and a byte-identical `src/__generated__/events.ts` — nothing reads those
- *   positions. So does a plugin `inbox` naming a plain union the machine module happens to declare.
+ *   positions. So does a surface `inbox` naming a plain union the machine module happens to declare.
  *   What moves is the published facade: `dist/types/pack-types.d.ts` grew by 41 lines, gaining `import * as xstate
  *   from 'xstate'` and the machine's whole declaration, every action name included, where a contract of its own
  *   contributes one interface — and a dependent's facade inlines its dependencies' verbatim, so it travels a hop
  *   further. Not a *disallowed* import: `apack-cli`'s `build/facade-gate.ts` allows `xstate` and `zod`, which
  *   every dependent has. The harm is size and coupling.
- * - A read position — the plugin's `inbox`, the system's `outgoing` — resolving *through the machine's own type
+ * - A read position — the surface's `inbox`, the system's `outgoing` — resolving *through the machine's own type
  *   parameters* **refuses, every time**. `EventFromLogic<typeof theMachine>` passes through
  *   `defineSystem<Contract>()` and so back through the contract, which collapses it to `any`, and codegen refuses
  *   an `any` there. It never comes right: the throw means the generated module it needed is never written, so the
@@ -244,7 +244,7 @@ export function contractLeafFindings(packDir: string): PackWideFinding[] {
   const manifestPath = path.join(packDir, 'apack.json');
   const manifest = fs.existsSync(manifestPath)
     ? JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
-      features?: Record<string, { plugin?: { contract?: string; state?: string }; system?: { contract?: string; entry?: string } }>;
+      features?: Record<string, { surface?: { contract?: string; state?: string }; system?: { contract?: string; entry?: string } }>;
     }
     : undefined;
   /** A `"path"` or `"path#Export"` the manifest names, as a file in the pack */
@@ -254,12 +254,12 @@ export function contractLeafFindings(packDir: string): PackWideFinding[] {
   const files = (pick: (f: Feature) => Array<string | undefined>) =>
     Object.values(manifest?.features ?? {}).flatMap((feature) => pick(feature).flatMap((t) => { const f = named(t); return f ? [f] : []; }));
 
-  const leaves = manifest ? files((f) => [f.plugin?.contract, f.system?.contract]) : byLayout(src);
+  const leaves = manifest ? files((f) => [f.surface?.contract, f.system?.contract]) : byLayout(src);
   /**
    * The actor modules `apack.json` names. Exact, where the machine rule below is a guess at a filename: these
    * are the two paths the manifest states outright, so a leaf reaching one is reported whatever it is called.
    */
-  const actorEntries = new Set(manifest ? files((f) => [f.plugin?.state, f.system?.entry]) : []);
+  const actorEntries = new Set(manifest ? files((f) => [f.surface?.state, f.system?.entry]) : []);
   // The pack's own `#` subpaths, which is how a pack names its own modules and so how its features reach each
   // other. Two of `default-setup`'s contract closures used to end at one of those imports — including
   // `threads/be/types.ts` reaching `code/`, a cross-feature hop the walk stopped at.
@@ -308,10 +308,10 @@ export function contractLeafFindings(packDir: string): PackWideFinding[] {
         if (target === undefined) continue;
         const into = /^features\/([^/]+)\//.exec(relative(target));
         if (viaLeaf && into && into[1] !== ownFeature) { found.push(at); continue; }
-        // The plugin and the system definitions, which the manifest names: reaching either puts the actor in
+        // The surface and the system definitions, which the manifest names: reaching either puts the actor in
         // front of the contract, at any depth — a leaf's own types module has no business importing one either.
         if (actorEntries.has(target)) { found.push(at); continue; }
-        // The machines themselves, by the filenames the scaffold writes. A guess, deliberately: `Plugin.state`
+        // The machines themselves, by the filenames the scaffold writes. A guess, deliberately: `Surface.state`
         // is a value, so no manifest field names the machine, and this is what makes the report say "your leaf
         // imports ./state" instead of naming a module three hops away that happens to reach #generated/events.
         // A machine called something else still fails, on the closure rule above — just less precisely.

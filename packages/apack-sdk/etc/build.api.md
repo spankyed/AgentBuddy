@@ -552,7 +552,7 @@ export const FeatureEntrySchema: z.ZodObject<{
             incoming?: string[] | undefined;
         } | undefined;
     }>>;
-    plugin: z.ZodOptional<z.ZodType<PluginDeclaration, z.ZodTypeDef, PluginDeclaration>>;
+    surface: z.ZodOptional<z.ZodType<SurfaceDeclaration, z.ZodTypeDef, SurfaceDeclaration>>;
     services: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     repositories: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     references: z.ZodOptional<z.ZodType<ReferenceDeclarations, z.ZodTypeDef, ReferenceDeclarations>>;
@@ -561,7 +561,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     entities?: Record<string, string | null> | undefined;
     references?: ReferenceDeclarations | undefined;
     types?: string | undefined;
-    plugin?: PluginDeclaration | undefined;
+    surface?: SurfaceDeclaration | undefined;
     services?: Record<string, string> | undefined;
     designation?: string | undefined;
     settings?: {
@@ -585,7 +585,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     entities?: Record<string, string | null> | undefined;
     references?: ReferenceDeclarations | undefined;
     types?: string | undefined;
-    plugin?: PluginDeclaration | undefined;
+    surface?: SurfaceDeclaration | undefined;
     services?: Record<string, string> | undefined;
     designation?: string | undefined;
     settings?: unknown;
@@ -710,7 +710,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -734,7 +734,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
@@ -748,7 +748,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         repositories?: Record<string, string> | undefined;
     }>>>;
     extensions: z.ZodOptional<z.ZodObject<{
-        tiptapPlugins: z.ZodOptional<z.ZodType<Record<string, {
+        textEditor: z.ZodOptional<z.ZodType<Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -971,7 +971,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1046,7 +1046,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1271,7 +1271,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -1374,7 +1374,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1447,7 +1447,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
@@ -1536,7 +1536,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1609,7 +1609,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -1712,7 +1712,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1785,7 +1785,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
@@ -1874,7 +1874,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1947,7 +1947,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -2050,7 +2050,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -2411,7 +2411,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     dslDefinitions: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     entityDestinations: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     eventContracts: z.ZodOptional<z.ZodType<Record<string, {
-        plugin?: {
+        surface?: {
             receives: string[];
         } | undefined;
         system?: {
@@ -2419,7 +2419,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             outgoing: string[];
         } | undefined;
     }>, z.ZodTypeDef, Record<string, {
-        plugin?: {
+        surface?: {
             receives: string[];
         } | undefined;
         system?: {
@@ -2427,7 +2427,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             outgoing: string[];
         } | undefined;
     }>>>;
-    tiptapPlugins: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
+    textEditor: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -2441,7 +2441,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -2457,7 +2457,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
@@ -2480,7 +2480,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -2562,7 +2562,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     commands?: Record<string, {
         placeholder: string;
     }> | undefined;
-    tiptapPlugins?: Record<string, {
+    textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -2590,7 +2590,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
-        plugin?: {
+        surface?: {
             receives: string[];
         } | undefined;
         system?: {
@@ -2616,7 +2616,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
@@ -2684,7 +2684,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     commands?: Record<string, {
         placeholder: string;
     }> | undefined;
-    tiptapPlugins?: Record<string, {
+    textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -2712,7 +2712,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
-        plugin?: {
+        surface?: {
             receives: string[];
         } | undefined;
         system?: {
@@ -2738,7 +2738,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -2820,7 +2820,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     commands?: Record<string, {
         placeholder: string;
     }> | undefined;
-    tiptapPlugins?: Record<string, {
+    textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -2848,7 +2848,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
-        plugin?: {
+        surface?: {
             receives: string[];
         } | undefined;
         system?: {
@@ -2874,7 +2874,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
@@ -2942,7 +2942,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     commands?: Record<string, {
         placeholder: string;
     }> | undefined;
-    tiptapPlugins?: Record<string, {
+    textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -2970,7 +2970,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
-        plugin?: {
+        surface?: {
             receives: string[];
         } | undefined;
         system?: {
@@ -2996,7 +2996,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        plugin?: PluginDeclaration | undefined;
+        surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -3078,7 +3078,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     commands?: Record<string, {
         placeholder: string;
     }> | undefined;
-    tiptapPlugins?: Record<string, {
+    textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -3106,7 +3106,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
-        plugin?: {
+        surface?: {
             receives: string[];
         } | undefined;
         system?: {
@@ -3269,9 +3269,6 @@ export type PackPermission = z.infer<typeof PackPermissionSchema>;
 // @public (undocumented)
 export const PackPermissionSchema: z.ZodEnum<["ears", "llm", "filesystem", "network", "terminal"]>;
 
-// @public (undocumented)
-export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
-
 // @public
 export type PackProvenance = Partial<Record<ProvenanceKind, Record<string, string>>>;
 
@@ -3301,6 +3298,9 @@ export interface PackSnapshot {
 export type PackSnapshotValidation = PackValidation & {
     snapshot?: PackSnapshot;
 };
+
+// @public (undocumented)
+export type PackSurfaceEntry = NonNullable<PackFeatureEntry['surface']>;
 
 // @public (undocumented)
 export type PackSystemEntry = NonNullable<PackFeatureEntry['system']>;
@@ -3378,7 +3378,7 @@ export const PROVENANCE_KINDS: {
     readonly referenceCategories: (m: ProvenanceManifest) => string[];
     readonly commands: (m: ProvenanceManifest) => string[];
     readonly tiptapExtensions: (m: ProvenanceManifest) => string[];
-    readonly plugins: (m: ProvenanceManifest, packId: string) => FeatureRef[];
+    readonly surfaces: (m: ProvenanceManifest, packId: string) => FeatureRef[];
 };
 
 // @public (undocumented)
@@ -3389,12 +3389,12 @@ export interface ProvenanceManifest extends PackDataDeclarations {
     // (undocumented)
     extensions?: {
         commands?: Readonly<Record<string, unknown>>;
-        tiptapPlugins?: FrontendDeclaration['tiptapPlugins'];
+        textEditor?: FrontendDeclaration['textEditor'];
     };
     // (undocumented)
     features?: Record<string, {
         entities?: Record<string, string | null>;
-        plugin?: unknown;
+        surface?: unknown;
         references?: ReferenceDeclarations;
     }>;
 }

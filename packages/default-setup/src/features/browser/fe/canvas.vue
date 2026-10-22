@@ -69,14 +69,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { isAnyMenuOpen, usePlugin } from '@apackdev/sdk/fe';
+import { isAnyMenuOpen, useSurface } from '@apackdev/sdk/fe';
 import { useSelector } from '@xstate/vue';
 import { type BrowserState } from './state.ts';
 import BrowserTabBar from './components/BrowserTabBar.vue';
 import BrowserNavBar from './components/BrowserNavBar.vue';
 import BrowserBookmarkBar from './components/BrowserBookmarkBar.vue';
 
-const actor: BrowserState = usePlugin();
+const actor: BrowserState = useSurface();
 // This feature's own settings, from its own machine — the app sends them to it (`FEATURE_SETTINGS_UPDATED`)
 const settings = useSelector(actor, s => s.context.settings);
 const showBookmarksBar = computed(() => settings.value?.showBookmarksBar ?? true);
@@ -178,7 +178,7 @@ onMounted(async () => {
     resizeObserver.observe(contentArea.value);
   }
 
-  // Sync existing tabs from main process (e.g. popup-created tabs while on another plugin)
+  // Sync existing tabs from main process (e.g. popup-created tabs while on another surface)
   const existingTabs = await window.electronAPI?.browser.getTabs();
   const activeId = await window.electronAPI?.browser.getActiveTab();
   if (!mounted) return;

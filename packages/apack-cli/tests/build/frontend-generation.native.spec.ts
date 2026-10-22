@@ -34,7 +34,7 @@ afterEach(async () => {
   if (temporary) fs.rmSync(temporary, { recursive: true, force: true });
 });
 
-/** A private distributable compiler; only its Vue plugin is changed between generations. */
+/** A private distributable compiler; only its Vue surface is changed between generations. */
 function fixture() {
   temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-generation-'));
   const source = installations.compilerPackageDirectory();
@@ -98,7 +98,7 @@ async function nextComponentUpdate(address: PackFrontendAddress): Promise<{ read
 }
 
 async function response(address: PackFrontendAddress, template = false): Promise<string> {
-  // A browser re-imports the component before its template after an update: plugin-vue's main module re-reads the
+  // A browser re-imports the component before its template after an update: surface-vue's main module re-reads the
   // file, and the template module is compiled from what that read cached
   if (template) await response(address);
   const suffix = template ? '?vue&type=template&id=generation' : '';

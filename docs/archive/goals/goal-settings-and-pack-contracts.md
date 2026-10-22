@@ -150,10 +150,10 @@ normal integration; the eight-file focused check needs only published packages/d
 Then pass normal unfiltered integration and run final committed-source strict
 `--all`, finish the full requirement audit and archive only completed work. The separate validation-
 budget/Nx/Wireit proposals remain outside this goal. A concurrent final-source audit finds one stale
-`plugin.default` schema description claiming registration-order selection; runtime and public docs
+`surface.default` schema description claiming registration-order selection; runtime and public docs
 already use deterministic catalog selection. The help-only source/generated-schema correction passes
 61 existing editor/schema checks, generation check and lint. Final strict must include it; the current
-normal run stays immutable. See [source audit](../references/evidence/settings-and-pack-contracts.md#final-source-audit-default-plugin-schema-guidance--2026-10-19)
+normal run stays immutable. See [source audit](../references/evidence/settings-and-pack-contracts.md#final-source-audit-default-surface-schema-guidance--2026-10-19)
 and [accepted focused evidence](../references/evidence/integration-deadline-inventory.md#complete-scaffold-files-accepted--2026-10-19).
 
 Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
@@ -1959,7 +1959,7 @@ do not archive unfinished or deferred work as completed. Publishing or PR merge 
 
 - [Lazy activation](../../plans/deferred/lazy-activation.md), including boot-performance implementation.
 - [Security isolation](../../goals/goal-pack-security-isolation.md) and out-of-process backend execution.
-- Storage/LMDB, advisory-lock and console-transaction redesign; plugins-to-surfaces, logs extraction
+- Storage/LMDB, advisory-lock and console-transaction redesign; surfaces-to-surfaces, logs extraction
   and distribution work outside the required dependency provenance contract.
 - A new registry/package manager, speculative optional integrations, generated settings forms and new
   preference scopes. The package-dist watcher follow-up is separate; required descriptor freshness is not.

@@ -165,7 +165,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed, reactive, ref, watchEffect } from 'vue'
 import { X, ChevronDown, ChevronRight, ChevronLeft, Archive } from 'lucide-vue-next'
@@ -183,7 +183,7 @@ const emit = defineEmits<{
 }>()
 
 // State from threads actor
-const actor: ThreadsState = usePlugin()
+const actor: ThreadsState = useSurface()
 const threadMap = useSelector(actor, (state) => state.context.threadMap)
 const tabs = useSelector(actor, (state) => state.context.tabs)
 const tabGroups = useSelector(actor, (state) => state.context.tabGroups)

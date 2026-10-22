@@ -70,7 +70,7 @@ describe('packSpecifiers', () => {
       '<template><div /></template>',
       '',
       '<script setup lang="ts">',
-      "import { openPlugin } from '#generated/fe.ts';",
+      "import { openSurface } from '#generated/fe.ts';",
       '</script>',
     ].join('\n'))).toEqual(['src/features/a/fe/view.vue:4: #generated/fe.ts']);
   });

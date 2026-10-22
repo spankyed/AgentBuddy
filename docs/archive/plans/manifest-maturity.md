@@ -92,7 +92,7 @@ the settings plan, as that goal already specifies.
 | Default navigation and feature descriptions | Feature descriptions implemented in `ae7a995bd` through schema, scaffold, native/catalog and inspection. M4 target/layout and native/frontend default-claim checks completed in `11bdc7faa`; `69860e4be` replaces registration-order selection with enabled native claims before installed claims, then English lexical feature-ref order. Current selector and public docs agree; final discovery/navigation acceptance remains required |
 | `builtIn` and shipped provenance | Replacement owns behavior changes; provenance is host-established, never author-declared trust |
 | Build/check configuration and sidecars | Preserve build options; M5 inline allowances implemented in `24bd9f116`, with one policy/schema, no sidecar reader and unknown/non-switchable refusals. M5 format cleanup completed in `9374189e5`: no authored version key, exact build stamps, retained facade-capability acceptance. M6 writing/order implemented in `4bd88f6c9`; schema/editor/docs coverage remains required |
-| `extensions.fe` and `hostVersion` questions | Settled in consolidation: direct `extensions.tiptapPlugins` and `extensions.appExtensions` during their declarative migration (no frontend wrapper); keep `hostVersion` for one host range. No blanket fe/be rename |
+| `extensions.fe` and `hostVersion` questions | Settled in consolidation: direct `extensions.textEditor` and `extensions.appExtensions` during their declarative migration (no frontend wrapper); keep `hostVersion` for one host range. No blanket fe/be rename |
 | Snapshot `defs` versus DSL definitions | Required `facades`, `PACK_TYPES_FACADE`, complete cached build types with no separate extracted facade inventory, named required-facade refusals and unchanged capability-based acceptance; keep actual DSL defs |
 | Format/version assumptions | Required M5 removes `$manifestVersion` and audits exact layout-stamp acceptance; preserve current snapshot/layout constants and release metadata, separately from facade capability acceptance |
 
@@ -111,7 +111,7 @@ this ledger is not permission to downgrade an outcome to a survey.
   Reconcile its frontend isolation input there; security confinement is not required to discover data.
 - [LMDB-only](../../goals/goal-lmdb-only.md), console transactions and advisory locks remain a separate storage
   track. Settle their overlapping transaction/lock decisions together before changing persistence.
-- Plugins-to-surfaces, logs extraction and distribution remain deferred. Re-audit their APIs after the
+- Surfaces-to-surfaces, logs extraction and distribution remain deferred. Re-audit their APIs after the
   earlier contract changes; none is a prerequisite here. [Stretch-projection removal](drop-the-stretch-projection.md)
   is independent tooling cleanup, not part of the manifest workstream.
 
@@ -323,7 +323,7 @@ existing plans if new evidence invalidates their assumptions, rather than leavin
   not every marketplace field.
 - [VS Code activation events](https://code.visualstudio.com/api/references/activation-events) document
   activation inferred from contributed commands/views. This supports deriving repeated facts.
-- [JetBrains plugin dependencies](https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html#depends)
+- [JetBrains surface dependencies](https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html#depends)
   distinguish required providers from conditional integrations. Add that distinction when apack needs it.
 - The Chrome permission comparison and stronger enforcement target are extracted into the
   [pack security isolation goal](../../goals/goal-pack-security-isolation.md).

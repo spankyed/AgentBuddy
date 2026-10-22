@@ -1,3 +1,8 @@
+import { surfaceStorage } from '@apackdev/sdk/fe'
+import { ref as featureRef } from '#generated/ref.ts'
+
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = surfaceStorage(featureRef('code'))
 import { setup, type ActorRefFrom, type AnyActorRef, assign, enqueueActions } from 'xstate';
 
 import breadcrumb from '@apackdev/sdk/fe';
@@ -52,12 +57,12 @@ export type { TabGroupColor, TabGroup };
 
 export type Event =
   | OutgoingCodeEvents
-  // The app's, when the code plugin's settings change
+  // The app's, when the code surface's settings change
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: CodeSettings }
   // Generic update event for child actors to update parent state
   | CodeInboxEvent
   | { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<CodeContext> }
-  | { type: 'PLUGIN_ACTIVATED' }
+  | { type: 'SURFACE_ACTIVATED' }
   | { type: 'SELECT_PANEL'; panel: PanelType }
   // Tab pinning events
   | { type: 'PIN_TAB'; path: string }
@@ -242,7 +247,7 @@ function prunePersistedTabGroups(
 function persistCodeTabs(context: CodeContext): void {
   const tabGroups = pruneEmptyTabGroups(context.openFiles, context.tabGroups)
   saveOpenTabs(context.openFiles, context.activeFilePath, context.panelTerminalId, context.panelTerminalExpanded)
-  saveTabGroups('code-plugin-tab-groups', tabGroups)
+  saveTabGroups(storage, 'tab-groups', tabGroups)
 }
 
 function finalizeRestoreState(context: CodeContext): Partial<CodeContext> {
@@ -445,7 +450,7 @@ const codeState = setup({
       isLoading: false,
       error: null
     }),
-    initializePlugin: ({ self }) => {
+    initializeSurface: ({ self }) => {
       // Explorer is initialized via the CODE_CONNECTED broadcast — no re-init needed here.
       codeChild(self, 'terminal')?.send({ type: 'terminal.REFRESH_LIST' });
     },
@@ -453,7 +458,7 @@ const codeState = setup({
     restorePersistedTabs: enqueueActions(({ enqueue, self }) => {
       const { tabs: persistedTabs, activeFilePath: persistedActive, panelTerminalId: persistedPanelTerminal, panelTerminalExpanded: persistedExpanded } = loadPersistedTabs()
       const persistedGroups = prunePersistedTabGroups(
-        loadTabGroups('code-plugin-tab-groups'),
+        loadTabGroups(storage, 'tab-groups'),
         persistedTabs
       )
 
@@ -516,7 +521,7 @@ const codeState = setup({
         const actionTabs = persistedTabs.filter(tab => tab.type === 'action')
         const promptTabs = persistedTabs.filter(tab => tab.type === 'prompt')
 
-        console.log('[Code Plugin] tabs to restore:', {
+        console.log('[Code Surface] tabs to restore:', {
           actionCount: actionTabs.length,
           fileCount: fileTabs.length,
           terminalCount: terminalTabs.length,
@@ -599,7 +604,7 @@ const codeState = setup({
       } else if (ev.panel === 'pr') {
         codeChild(self, 'pr')?.send({ type: 'pr.REFRESH_STATUS' });
       }
-      // Actions and prompts are loaded by their respective main plugin actors
+      // Actions and prompts are loaded by their respective main surface actors
       return {
         ...context,
         selectedPanel: ev.panel,
@@ -1210,7 +1215,7 @@ const codeState = setup({
 
       const nextContext = { ...context, ...updates }
       persistCodeTabs(nextContext)
-      console.info('[Code Plugin] restored tabs settled', {
+      console.info('[Code Surface] restored tabs settled', {
         openTabCount: nextContext.openFiles.length,
         prunedPendingCount: context.pendingTabOrder?.filter(tab => !nextContext.openFiles.some(file => file.path === tab.path)).length ?? 0,
       })
@@ -1241,7 +1246,7 @@ const codeState = setup({
   entry: ['spawnFeatureActors', 'restorePersistedTabs'],
   context: {
     baseDirectory: '', // Will be loaded from backend EARS store
-    openFiles: [], // Don't load tabs here - wait for PLUGIN_ACTIVATED
+    openFiles: [], // Don't load tabs here - wait for SURFACE_ACTIVATED
     activeFilePath: null,
     isLoading: false,
     error: null,
@@ -1256,7 +1261,7 @@ const codeState = setup({
     quickOpenLoading: false,
     recentlyOpenedFiles: [], // loaded per project once the backend reports baseDirectory
     tabViewHistory: [],
-    // Default hotkeys for code plugin (will be overridden by settings)
+    // Default hotkeys for code surface (will be overridden by settings)
     hotkeys: {},
     pendingRevealLine: null,
     searchFocusTrigger: 0,
@@ -1289,9 +1294,9 @@ const codeState = setup({
         ADD_TAB: {
           actions: ['addTab', 'saveTabsAction']
         },
-        // Plugin initialization
-        PLUGIN_ACTIVATED: {
-          actions: ['initializePlugin']
+        // Surface initialization
+        SURFACE_ACTIVATED: {
+          actions: ['initializeSurface']
         },
         // Panel selection
         SELECT_PANEL: {

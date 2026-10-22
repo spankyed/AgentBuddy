@@ -138,13 +138,13 @@ export type DslDeclaration = z.infer<typeof DslEntrySchema>;
 
 // @internal
 export function _entityDestinationsProblem(destinations: Readonly<Record<string, string>>, features: Readonly<Record<string, {
-    readonly plugin?: unknown;
+    readonly surface?: unknown;
 }>> | undefined, entities?: ReadonlySet<string>): string | undefined;
 
 // @internal
 export function _eventContractsProblem(contracts: PackEventContracts | undefined, features: Readonly<Record<string, {
     system?: unknown;
-    plugin?: unknown;
+    surface?: unknown;
 }>> | undefined, native?: boolean): string | undefined;
 
 // @public
@@ -165,7 +165,7 @@ export type FeatureEventCatalogEntry = {
 
 // @public
 export interface FeatureEventContract {
-    plugin?: {
+    surface?: {
         receives: readonly string[];
     };
     system?: {
@@ -198,7 +198,7 @@ export interface FrontendDeclaration {
     // (undocumented)
     appExtensions?: Record<string, string>;
     // (undocumented)
-    tiptapPlugins?: Record<string, TiptapPluginDeclaration>;
+    textEditor?: Record<string, TextEditorExtensionsDeclaration>;
 }
 
 // @public
@@ -318,7 +318,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
         entities?: Record<string, string | null>;
         designation?: string;
         settings?: SettingsDefinition;
-        plugin?: PluginDeclaration;
+        surface?: SurfaceDeclaration;
         references?: ReferenceDeclarations;
         services?: Record<string, string>;
         repositories?: Record<string, string>;
@@ -428,16 +428,16 @@ export type PackEventContracts = Record<string, FeatureEventContract>;
 export interface PackFeature {
     // (undocumented)
     designation?: string;
-    // (undocumented)
-    plugin?: PackFeaturePlugin;
     services?: readonly string[];
     settings?: SettingsDefinition;
+    // (undocumented)
+    surface?: PackFeatureSurface;
     // (undocumented)
     system?: PackFeatureSystem;
 }
 
 // @public
-export interface PackFeaturePlugin {
+export interface PackFeatureSurface {
     receives: readonly string[];
 }
 
@@ -560,55 +560,6 @@ export function _parseServiceReference(ref: string): {
     name: string;
 };
 
-// @public
-export interface PluginDeclaration {
-    // (undocumented)
-    canvas?: ComponentTarget | {
-        routes: Record<string, ComponentTarget>;
-    };
-    // (undocumented)
-    chat?: ComponentTarget;
-    // (undocumented)
-    contract?: string;
-    // (undocumented)
-    default?: boolean;
-    // (undocumented)
-    defaultVisible?: boolean;
-    // (undocumented)
-    fallbackPanel?: {
-        label: string;
-        toggle: {
-            type: string;
-        };
-        isShown: string;
-    };
-    // (undocumented)
-    hotkeys?: readonly {
-        action: string;
-        global?: boolean;
-    }[];
-    // (undocumented)
-    icon?: string | {
-        entry: string;
-        load?: 'lazy';
-    };
-    // (undocumented)
-    isPinned?: boolean;
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    options?: {
-        headerClass?: string;
-    };
-    // (undocumented)
-    panel?: ComponentTarget;
-    // (undocumented)
-    state: string;
-}
-
-// @internal
-export function _pluginTargets(plugin: PluginDeclaration): [string, string][];
-
 // @public (undocumented)
 export interface ReferenceCatalogEntry {
     // (undocumented)
@@ -630,7 +581,7 @@ export interface ReferenceCatalogEntry {
 // @public (undocumented)
 export interface ReferenceCategoryDeclaration {
     // (undocumented)
-    icon: NonNullable<PluginDeclaration['icon']>;
+    icon: NonNullable<SurfaceDeclaration['icon']>;
     // (undocumented)
     label: string;
     // (undocumented)
@@ -666,7 +617,7 @@ export interface ReferenceTypeDeclaration {
     // (undocumented)
     category: string;
     // (undocumented)
-    icon: NonNullable<PluginDeclaration['icon']>;
+    icon: NonNullable<SurfaceDeclaration['icon']>;
     // (undocumented)
     svgElements: readonly ReferenceSvgElement[];
 }
@@ -791,7 +742,7 @@ export interface StepFrontendDeclaration {
     layout?: StepLayoutDeclaration;
     // (undocumented)
     nodeConfig: Omit<StepNodeConfig, 'icon'> & {
-        icon: NonNullable<PluginDeclaration['icon']>;
+        icon: NonNullable<SurfaceDeclaration['icon']>;
     };
 }
 
@@ -809,6 +760,55 @@ export interface StepLayoutDeclaration {
     // (undocumented)
     usesExitCount?: boolean;
 }
+
+// @public
+export interface SurfaceDeclaration {
+    // (undocumented)
+    canvas?: ComponentTarget | {
+        routes: Record<string, ComponentTarget>;
+    };
+    // (undocumented)
+    chat?: ComponentTarget;
+    // (undocumented)
+    contract?: string;
+    // (undocumented)
+    default?: boolean;
+    // (undocumented)
+    defaultVisible?: boolean;
+    // (undocumented)
+    fallbackPanel?: {
+        label: string;
+        toggle: {
+            type: string;
+        };
+        isShown: string;
+    };
+    // (undocumented)
+    hotkeys?: readonly {
+        action: string;
+        global?: boolean;
+    }[];
+    // (undocumented)
+    icon?: string | {
+        entry: string;
+        load?: 'lazy';
+    };
+    // (undocumented)
+    isPinned?: boolean;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    options?: {
+        headerClass?: string;
+    };
+    // (undocumented)
+    panel?: ComponentTarget;
+    // (undocumented)
+    state: string;
+}
+
+// @internal
+export function _surfaceTargets(surface: SurfaceDeclaration): [string, string][];
 
 // @public
 export const SYSTEM_EVENT_TYPES: readonly ["SEND_STATE", "CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED", "DATA_REPLACED"];
@@ -867,7 +867,7 @@ export type SystemEvents =
 }
 /**
 * The feature's settings changed: `settings` as they now apply, and `changes` to what they list, when the store
-* tells them. The feature's plugin gets it too (`FeatureSettingsUpdated`).
+* tells them. The feature's surface gets it too (`FeatureSettingsUpdated`).
 */
 | {
     type: 'FEATURE_SETTINGS_UPDATED';
@@ -877,7 +877,7 @@ export type SystemEvents =
 /**
 * Every row the app holds was replaced — reset, or a backup imported — and the new world is built.
 *
-* Handling it is optional: the bus also asks every system for its startup data, so a plugin's view is
+* Handling it is optional: the bus also asks every system for its startup data, so a surface's view is
 * refreshed either way. Declare it only for what re-reading cannot fix, such as work held over rows that
 * are now gone.
 */
@@ -915,7 +915,7 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
 }
 
 // @public
-export interface TiptapPluginDeclaration {
+export interface TextEditorExtensionsDeclaration {
     // (undocumented)
     extensions?: Record<string, string>;
     // (undocumented)

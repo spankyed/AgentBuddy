@@ -10,22 +10,22 @@
 
     <!-- Form Fields -->
     <div class="space-y-6">
-      <!-- Switch Plugin Hotkeys -->
+      <!-- Switch Surface Hotkeys -->
       <div class="group">
         <div class="flex gap-4 max-w-3xl">
           <KeyboardShortcutInput
-            v-model="builtInHotkeys.switchPluginUp"
-            id="switch-plugin-up"
-            label="Previous Plugin"
+            v-model="builtInHotkeys.switchSurfaceUp"
+            id="switch-surface-up"
+            label="Previous Surface"
             @change="updateHotkeys"
             container-class="flex-1"
             :show-reset-button="false"
           />
           
           <KeyboardShortcutInput
-            v-model="builtInHotkeys.switchPluginDown"
-            id="switch-plugin-down"
-            label="Next Plugin"
+            v-model="builtInHotkeys.switchSurfaceDown"
+            id="switch-surface-down"
+            label="Next Surface"
             @change="updateHotkeys"
             container-class="flex-1"
             :show-reset-button="false"
@@ -33,7 +33,7 @@
         </div>
         
         <p class="mt-2 text-xs text-neutral-600">
-          Navigate between plugins using keyboard shortcuts
+          Navigate between surfaces using keyboard shortcuts
         </p>
       </div>
 
@@ -141,8 +141,8 @@ const copyShortcut = (shortcut?: KeyboardShortcut | null): KeyboardShortcut | un
 const snapshot = useWindowSettingsSnapshot()
 const draft = useSettingsDraft(() => ({
   builtIn: {
-    switchPluginUp: copyShortcut(props.settings?.switchPluginUp) ?? null,
-    switchPluginDown: copyShortcut(props.settings?.switchPluginDown) ?? null,
+    switchSurfaceUp: copyShortcut(props.settings?.switchSurfaceUp) ?? null,
+    switchSurfaceDown: copyShortcut(props.settings?.switchSurfaceDown) ?? null,
     toggleInspectionPanel: copyShortcut(props.settings?.toggleInspectionPanel) ?? null
   },
   custom: (props.settings?.custom ?? []).map(h => ({

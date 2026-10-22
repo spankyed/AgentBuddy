@@ -3,15 +3,15 @@
 import { vi } from 'vitest';
 import { setup } from 'xstate';
 import type { FeatureRef } from '@apackdev/sdk/ids';
-import type { PluginCatalogEntry } from '../../../../src/packs/catalog.ts';
-import type { PluginFrontendBinding } from '../../../../src/fe/pack-store.ts';
+import type { SurfaceCatalogEntry } from '../../../../src/packs/catalog.ts';
+import type { SurfaceFrontendBinding } from '../../../../src/fe/pack-store.ts';
 import type { Message } from '@apackdev/sdk/events';
-import type { Plugin, ShellPanelSizes } from '@apackdev/sdk/fe';
+import type { Surface, ShellPanelSizes } from '@apackdev/sdk/fe';
 import type { LoadedPackEntry, ShellClient, ShellConnection, ShellFailure, ShellOptions } from '../../../../src/fe/index.ts';
 
-/** A plugin with an empty machine */
-export function plugin(id: string): Plugin {
-  return { id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Plugin;
+/** A surface with an empty machine */
+export function surface(id: string): Surface {
+  return { id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Surface;
 }
 
 export function fakeClient() {
@@ -44,18 +44,18 @@ export function fakeClient() {
     connect: () => current().onConnected(),
     /** The socket dropped */
     dropConnection: () => current().onDisconnected(),
-    /** A backend system sent a plugin `message` */
+    /** A backend system sent a surface `message` */
     receive: (message: Message) => current().onMessage(message),
     /** The backend failed for good */
     fail: (error: ShellFailure) => current().onFailed(error),
   };
 }
 
-/** The shell's options over fakes, starting with `plugins` registered (the first is the default, unless one is given) */
-export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin; designations?: Record<string, FeatureRef> }) {
+/** The shell's options over fakes, starting with `surfaces` registered (the first is the default, unless one is given) */
+export function fakeShell(start: { surfaces: Surface[]; defaultSurface?: Surface; designations?: Record<string, FeatureRef> }) {
   const client = fakeClient();
   const packFrontends = {
-    load: vi.fn<(pack: { id: string }) => Promise<Plugin[] | null>>(() => Promise.resolve(null)),
+    load: vi.fn<(pack: { id: string }) => Promise<Surface[] | null>>(() => Promise.resolve(null)),
     unload: vi.fn<(packId: string) => void>(),
   };
   const notify = {
@@ -67,23 +67,23 @@ export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin; de
     loadPanelSizes: () => savedSizes,
     savePanelSizes: vi.fn((sizes: ShellPanelSizes) => { savedSizes = sizes; }),
   };
-  const declarations = new Map<string, PluginCatalogEntry>();
-  const bindings = new Map<string, PluginFrontendBinding>();
-  const accept = (value: Plugin) => {
-    const entry: PluginCatalogEntry = { featureRef: value.id as FeatureRef, packId: value.id.split('/')[0]!, origin: 'native', enabled: true,
+  const declarations = new Map<string, SurfaceCatalogEntry>();
+  const bindings = new Map<string, SurfaceFrontendBinding>();
+  const accept = (value: Surface) => {
+    const entry: SurfaceCatalogEntry = { featureRef: value.id as FeatureRef, packId: value.id.split('/')[0]!, origin: 'native', enabled: true,
       declaration: { label: value.label, state: 'native/state.ts',
-        ...(value.id === (start.defaultPlugin ?? start.plugins[0])?.id && { default: true }) } };
+        ...(value.id === (start.defaultSurface ?? start.surfaces[0])?.id && { default: true }) } };
     if (!declarations.has(value.id)) declarations.set(value.id, entry);
     bindings.set(value.id, { packId: entry.packId, declaration: declarations.get(value.id)!.declaration, opens: declarations.get(value.id)!.opens, binding: value });
   };
-  start.plugins.forEach(accept);
+  start.surfaces.forEach(accept);
   const catalogListeners = new Set<() => void>();
-  const catalog = { status: vi.fn<() => 'loading' | 'ready'>(() => 'loading'), plugins: () => [...declarations.values()],
+  const catalog = { status: vi.fn<() => 'loading' | 'ready'>(() => 'loading'), surfaces: () => [...declarations.values()],
     subscribe(listener: () => void) { catalogListeners.add(listener); return () => { catalogListeners.delete(listener); }; } };
   const pending = new Set<string>();
   const ready = () => { if (!pending.size) { catalog.status.mockReturnValue('ready'); for (const listener of catalogListeners) listener(); } };
   const options: ShellOptions = {
-    packs: { getRegisteredPlugins: () => start.plugins, pluginBindings: () => bindings, designation: role => start.designations?.[role] },
+    packs: { getRegisteredSurfaces: () => start.surfaces, surfaceBindings: () => bindings, designation: role => start.designations?.[role] },
     catalog,
     client: { ...client.client, async loadedPacks() {
       const packs = await client.client.loadedPacks();
@@ -92,7 +92,7 @@ export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin; de
     } },
     packFrontends: {
       async load(pack) {
-        try { const plugins = await packFrontends.load(pack); plugins?.forEach(accept); return plugins; }
+        try { const surfaces = await packFrontends.load(pack); surfaces?.forEach(accept); return surfaces; }
         finally { pending.delete(pack.id); ready(); }
       },
       unload(id) { packFrontends.unload(id); for (const [ref, binding] of bindings) if (binding.packId === id) bindings.delete(ref); },
@@ -100,7 +100,7 @@ export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin; de
     storage,
     notify,
   };
-  return { options, client, packFrontends, notify, storage, declarations, bindings, catalog, catalogListeners, acceptPlugin: accept,
+  return { options, client, packFrontends, notify, storage, declarations, bindings, catalog, catalogListeners, acceptSurface: accept,
     publishCatalog() { for (const listener of catalogListeners) listener(); } };
 }
 

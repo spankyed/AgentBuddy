@@ -280,7 +280,7 @@ off the fixture, not a problem to work around.
 Second, the pack — and this is the half that "spawns it as `dev` does" would get wrong while passing every
 check the paragraph above suggests. **The fixture is the only thing that installs the pack under test.**
 With `PACK_DIR` set it builds the pack and installs it into the data dir through the same stage-verify-place
-path a user gets (`apack-testing/src/index.ts:357`), waits for its plugins and fails on its `lastError`;
+path a user gets (`apack-testing/src/index.ts:357`), waits for its surfaces and fails on its `lastError`;
 `drive` deliberately does none of it (`drive.ts:477`: *"No build here: the fixture builds the pack itself
 when PACK_DIR is set"*). In this repo that is free — a root with no `apack.json` leaves `packDir`
 undefined and the built-in pack is compiled into the API — but in a pack repo it is the whole subject, and
@@ -466,7 +466,7 @@ them, so removing it would save nothing and cost traces, `--grep` and reporting.
 reading of the shape above is that the two halves end up backwards — a one-shot attaches to the app you
 are looking at, a script launches a throwaway, when a script is the longer sequence of clicks and reads
 you would more plausibly want against real state. The answer is that **a question attaches and a program
-gets a dir**: a script whose result depends on whichever plugin was left open and whichever rows were
+gets a dir**: a script whose result depends on whichever surface was left open and whichever rows were
 half-edited has undeclared inputs, and the fresh dir is what declares them. A script that wants the
 developer's *data* already has it — `--profile` hands the fixture exactly that directory (`E2E_DATA_DIR`,
 `drive.ts:495`) — so what it cannot share is the *process*, which costs a launch and the chance to watch
@@ -681,7 +681,7 @@ below exists.
   coupling rather than a smoke test.
 - **a `--spawn` in a pack repo has the pack installed**, which is the other half of the same decision and
   fails on the other mistake: a spawn that reproduced dev's *environment* rather than running `dev`
-  passes the case above and leaves the pack author's own pack missing. Assert its plugins are present.
+  passes the case above and leaves the pack author's own pack missing. Assert its surfaces are present.
 - **the spawned app outlives the one-shot that started it**, which is what `detached` plus `.unref()`
   buys and the case that fails without either: ask one question, let the process exit, assert the session
   file still names a live `supervisorPid` and a second question attaches rather than starting a second app.

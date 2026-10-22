@@ -109,7 +109,7 @@ export const isDeclaration = (file: string): boolean => file.endsWith('.d.ts') |
  * It resolved anyway, because TypeScript substitutes `.ts` → `.d.ts` when it resolves a specifier,
  * which is why the published-types specs passed. But it relies on that substitution, and every other
  * published package on npm ships `.js` here, so anything that resolves declarations by a plainer rule
- * — a bundler, an editor plugin, a doc generator — is entitled to fail. `.js` resolves through the
+ * — a bundler, an editor's language server, a doc generator — is entitled to fail. `.js` resolves through the
  * ordinary JavaScript-to-declaration mapping instead, which needs no special case.
  *
  * Only relative specifiers ending in `.ts` change. `.vue` is left alone: @apackdev/ui's declarations

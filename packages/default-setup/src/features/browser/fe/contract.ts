@@ -1,9 +1,9 @@
-// The browser plugin's contract: the state it publishes and what other plugins may send it.
+// The browser surface's contract: the state it publishes and what other surfaces may send it.
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
-// `apack.json` names it at `features[].plugin.contract`.
-import type { PluginInbox } from '@apackdev/sdk/fe'
+// `apack.json` names it at `features[].surface.contract`.
+import type { SurfaceInbox } from '@apackdev/sdk/fe'
 import type { TabGroup } from '@apackdev/sdk/fe'
 import type { BrowserSettings } from '#generated/types.ts'
 import type { AutocompleteSuggestion } from './history.ts'
@@ -54,5 +54,5 @@ export type BrowserInboxEvent = { type: 'TAB.CREATE'; url?: string }
 
 export type Contract = {
   state: BrowserContext
-  inbox: PluginInbox<{ pack: BrowserInboxEvent }>
+  inbox: SurfaceInbox<{ pack: BrowserInboxEvent }>
 }

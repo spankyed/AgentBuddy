@@ -58,7 +58,7 @@ Never:
 `@apackdev/testing/vitest` exports one thing, `isolatedDataDir()`. Everything else a pack's vitest config needs
 is copied, and the three copies have already drifted:
 
-| | plugins | `globals` | timeouts | `fileParallelism` | `exclude` |
+| | surfaces | `globals` | timeouts | `fileParallelism` | `exclude` |
 |---|---|---|---|---|---|
 | `packages/default-setup/vitest.config.ts` | `tsconfigPaths` | ✓ | 15s / 15s | ✓ | `_support/**` |
 | `tests/fixtures/external-pack/vitest.config.ts` | — | **✗** | — | — | `tests/e2e/**` |
@@ -69,11 +69,11 @@ copies do.
 
 ### No pack's test config can load the pack's own frontend
 
-`apack add feature` writes `fe/plugin.ts` importing `canvas/list.vue`. No pack's vitest config has
-`@vitejs/plugin-vue`, so the first spec that reaches a plugin module fails with *"Install @vitejs/plugin-vue
+`apack add feature` writes `fe/surface.ts` importing `canvas/list.vue`. No pack's vitest config has
+`@vitejs/plugin-vue`, so the first spec that reaches a surface module fails with *"Install @vitejs/plugin-vue
 to handle .vue files"* — in the pack author's own repo, about a file the CLI generated for them.
 
-Nothing in the repo hits it today only because no pack spec imports a plugin module. `vitest related` does,
+Nothing in the repo hits it today only because no pack spec imports a surface module. `vitest related` does,
 because it walks the whole graph from the changed file:
 
 ```
@@ -82,7 +82,7 @@ Error: Failed to parse source for import analysis because the content contains i
 Install @vitejs/plugin-vue to handle .vue files.
 ```
 
-### The answer is not the real plugin, and this repo already says so twice
+### The answer is not the real surface, and this repo already says so twice
 
 Adding `@vitejs/plugin-vue` works, and it drags a second problem in with it — the pack's `@/` aliases are not
 applied inside an SFC, so `form.vue`'s own imports then fail to resolve. Chasing that led to
@@ -97,26 +97,26 @@ problem that does not need to exist**, and the repo had already answered this qu
 Stubbing `.vue` in the test config is the third instance of that pattern, not an invention. And it makes the
 alias problem vanish rather than solving it: a stubbed SFC is never parsed, so nothing inside one is resolved.
 
-Measured 2026-09-26 with a three-line stub plugin and **default-setup's existing config otherwise untouched**
+Measured 2026-09-26 with a three-line stub surface and **default-setup's existing config otherwise untouched**
 — no Vue plugin, no `loose: true`, `tsconfigPaths` exactly as it is:
 
 | Changed source | Before | After |
 |---|---|---|
 | `features/brain/be/flow-system.ts` | parse error | **3 specs, 2.8s** |
 | `extensions/steps/llm/runtime.ts` | parse error | runs |
-| `features/{code,brain}/fe/plugin.ts` | parse error | "no test files" — correct, nothing imports them |
+| `features/{code,brain}/fe/surface.ts` | parse error | "no test files" — correct, nothing imports them |
 | the whole suite | 87 files / 720 tests | **87 / 720, unchanged** |
 
 Against **18s** for the whole suite, which is what `npm run spec -- <pack source>` runs today
 ([`goal-spec-follows-the-graph.md`](goal-spec-follows-the-graph.md)'s Outcome records why it
 runs anything at all: it used to run nothing and exit 0).
 
-### Almost nothing renders, so almost nothing needs the real plugin
+### Almost nothing renders, so almost nothing needs the real surface
 
 **Exactly one spec in this repo mounts a Vue component** (`docs/references/test-inventory.md` lists it as a
 coverage gap), and no pack spec imports a `.vue` at all — which is precisely why `npm test` passes in
 default-setup while `vitest related` dies. What every pack needs is a module graph that resolves. What almost
-no pack needs is rendering. That asymmetry is what makes the stub the default and the plugin opt-in.
+no pack needs is rendering. That asymmetry is what makes the stub the default and the surface opt-in.
 
 ## Decisions
 
@@ -133,7 +133,7 @@ Final.
    cannot silently assert against an empty component.
 3. **`vue: true` opts into `@vitejs/plugin-vue`, as an optional peer of `@apackdev/testing`.** Peer because a
    vite plugin must match the vite instance vitest brings, and `vitest` is already a peer for that reason; a
-   direct dependency invites two vites and a plugin bound to the wrong one. Optional because a pack that
+   direct dependency invites two vites and a surface bound to the wrong one. Optional because a pack that
    renders nothing needs nothing, and `peerDependenciesMeta` is how that is said. The helper imports it
    dynamically and, when it is missing, throws one sentence naming the install — rather than vitest's
    "Install @vitejs/plugin-vue" surfacing from inside a config file the author did not write. The scaffold
@@ -168,7 +168,7 @@ and the scaffold unchanged. The reasoning, kept, because "why not simply depend 
 
 - **A dependency of `@apackdev/testing`** would give a pack author working frontend specs from one install, and
   it breaks that package's own pattern — `vitest` and `@playwright/test` are peers precisely because a test
-  framework must be the consumer's single copy, and a plugin *of* vite has the same constraint.
+  framework must be the consumer's single copy, and a surface *of* vite has the same constraint.
 - **A plain peer** would have every pack declare a package most of them never load.
 - **Detected by whether the package resolves** would hide a broken install behind a silently different config,
   which is the failure this goal exists to remove. Detecting on the *pack's own content* — does it have SFCs —
@@ -246,7 +246,7 @@ does as text. Mutation-check it by restating `globals` in one config by hand.
 - **Counts before and after, every suite this touches.** A config change's characteristic failure is a spec
   that stops being collected, and `include`/`exclude` is exactly what this moves.
 - **Measure on an idle machine, and say what you measured on.** The 2.6s figures above were taken with the
-  plugin added by hand and reverted; re-take them on the real implementation.
+  surface added by hand and reverted; re-take them on the real implementation.
 - **`@apackdev/testing` resolves its built bundle for everyone**, the repo's own E2E included
   (`packages/apack-testing/CLAUDE.md`), so a change here needs that bundle rebuilt before any pack suite
   sees it — `npm run packages:ensure` does it, and every entry point that triggers it is listed in that file.

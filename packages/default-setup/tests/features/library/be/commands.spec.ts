@@ -240,7 +240,7 @@ describe('slash commands from the library commands folder', () => {
     expect(app.emitted('threads').filter((event) => event.type === 'COMMANDS_UPDATED')).toEqual([])
   })
 
-  it("sends the library plugin its index again when asked to publish, with what the pack written", async () => {
+  it("sends the library surface its index again when asked to publish, with what the pack written", async () => {
     const app = await appliedApp()
     importCompiledContent({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 

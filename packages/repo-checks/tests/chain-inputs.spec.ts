@@ -29,7 +29,6 @@ import { repoFiles } from './_support/repo-files.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
-  'docs/archive/research/claude_code_headless_ex.ts': 'an archived transcript that happens to end in .ts',
   // The production packaging and release path. The chain builds the app (`build:runtime`) and never packages,
   // signs or releases it, so none of this runs in any step — listed per file rather than as a `build/`
   // prefix so that something chain-relevant landing there has to be noticed.
@@ -493,7 +492,7 @@ describe('a step that drives the app fixture declares the bundle it drives', () 
 
 /**
  * **Nothing here compiles a pack into the app any more**, so the check that lived here has no subject. It
- * held `build:runtime` to declaring every compiled file of every built-in pack, because the renderer's plugin
+ * held `build:runtime` to declaring every compiled file of every built-in pack, because the renderer's surface
  * and the api's tsup each traced a generated entry into the pack's `src` and the renderer's Tailwind globbed
  * it for class names — and with none of that declared, one `.vue` edit left `build:runtime` cached over an app
  * that never held the change (measured 2026-10-07).

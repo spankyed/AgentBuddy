@@ -519,7 +519,7 @@ export async function action(
 
     // ─── Generic error ───────────────────────────────────────────────────
     updateChatState(services, threadId, 'idle');
-    services.emitter.broadcastToPlugin('default-setup/threads', {
+    services.emitter.broadcastToSurface('default-setup/threads', {
       type: 'FLASH_CHAT_STATE', threadId, stateId: 'error', durationMs: 3000,
     });
     writer.finalize(`⚠️ ${message}`);

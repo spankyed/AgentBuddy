@@ -113,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { sendToPlugin } from '#generated/events.ts'
+import { sendToSurface } from '#generated/events.ts'
 import { type PropType, ref, computed, watch, nextTick, inject, onMounted, onBeforeUnmount, defineComponent } from 'vue'
 import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from 'lucide-vue-next'
 import JsonHoverPopup from '@apackdev/ui/components/JsonHoverPopup'
@@ -233,7 +233,7 @@ const artifactRef = computed(() => props.artifactRef)
 // Jump to the referenced artifact in the right panel when the link is clicked.
 function selectArtifact() {
   if (!props.artifactRef) return
-  sendToPlugin('threads', { type: 'SELECT_ARTIFACT', artifactId: props.artifactRef.artifactId })
+  sendToSurface('threads', { type: 'SELECT_ARTIFACT', artifactId: props.artifactRef.artifactId })
 }
 
 function formatDuration(ms: number): string {

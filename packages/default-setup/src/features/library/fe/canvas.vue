@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -21,7 +21,7 @@ import DocumentEditor from './components/DocumentEditor.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
 import type { LibraryActor } from './state.ts'
 
-const actor: LibraryActor = usePlugin()
+const actor: LibraryActor = useSurface()
 const context = useSelector(actor, (state) => state.context)
 const send = (event: LibraryEvents) => actor.send(event)
 

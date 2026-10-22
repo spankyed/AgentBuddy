@@ -297,7 +297,7 @@ import { useSelector } from '@xstate/vue'
 import type { NoteDTO } from '#generated/types.ts'
 import { type NotesState } from './state.ts'
 import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
-import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem, usePlugin } from '@apackdev/sdk/fe'
+import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem, useSurface } from '@apackdev/sdk/fe'
 import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight, Star, Plus } from 'lucide-vue-next'
 import EmojiPicker from '@apackdev/ui/design/EmojiPicker'
 import { useDebounce } from '@apackdev/ui/composables/useDebounce'
@@ -308,7 +308,7 @@ import TaskListPanel from './components/TaskListPanel.vue'
 import ImageLightbox from '@apackdev/ui/design/ImageLightbox'
 import TiptapSearchBar from '@apackdev/ui/components/tiptap/TiptapSearchBar'
 
-const actor: NotesState = usePlugin()
+const actor: NotesState = useSurface()
 const state = useSelector(actor, (s) => s)
 const currentNote = useSelector(actor, (s) => s.context.currentNote)
 const notes = useSelector(actor, (s) => s.context.notes)

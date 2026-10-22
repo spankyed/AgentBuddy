@@ -330,15 +330,15 @@ Scope: `apack-host/src/packs/{registry,catalog,catalog-*,declaration-binding,ext
 
 **1.1. A destination collision fails the whole boot.** `loadExternalPacks`
 (`apack-host/src/packs/runtime/loader.ts:145`) calls `registry.refreshCatalog(packsDir)` before reading any
-pack. That reaches `assertPluginDestinationClaims` (`packs/catalog-plugins.ts:51-60`), which throws when two
-enabled packs' plugins `opens` the same entity. `loadAppPacks` (`loader.ts:192-195`) does not catch it, nor
+pack. That reaches `assertSurfaceDestinationClaims` (`packs/catalog-surfaces.ts:51-60`), which throws when two
+enabled packs' surfaces `opens` the same entity. `loadAppPacks` (`loader.ts:192-195`) does not catch it, nor
 does `setupBackend` (`api/src/runtime/index.ts:180`), so the API never starts. Two ways in:
 - `apack pack install` checks the host, the app's defaults and ownership (`pack-install.ts:87-88`), but not
   the installed catalog's destination claims.
 - Boot's `installShippedPacks` passes no `accept`, so an app update that adds an `opens` claim to a shipped
   pack is installed without a catalog check.
 
-The failure is deliberate at loader level (`tests/packs/catalog-plugins.spec.ts:85-100` expects the throw
+The failure is deliberate at loader level (`tests/packs/catalog-surfaces.spec.ts:85-100` expects the throw
 before any runtime executes), but nothing turns it into a per-pack load problem. Every other refusal in the
 loader is one ("a pack it can't admit or load comes back with a problem … so the Packs view says why"). With
 the API down, the Packs view never opens to disable either pack. The CLI's offline `pack uninstall` is the
@@ -527,8 +527,8 @@ declarations reject stored values is admitted at boot without a diagnostic, and 
 (`settingsOverrides: () => storedSettings(store)`, `:171`), but not for the loader.
 
 **S.3. A pack disabled during its first frontend load stays in the window (plausible).**
-`features/packs/fe/frontends.ts:184` commits a frontend to the window's registry (plugins, forms, steps,
-tiptap plugins, stylesheet, settings binding) inside `load()`. Then `mergePackPlugins`
+`features/packs/fe/frontends.ts:184` commits a frontend to the window's registry (surfaces, forms, steps,
+text editor extensions, stylesheet, settings binding) inside `load()`. Then `mergePackPlugins`
 (`features/application/fe/machine.ts:212-216`) finds the pack no longer eligible and returns without
 recording it in `acceptedPackRuntimes`. The loader unloads only owners listed there
 (`pack-frontends.ts:27-29`), so the frontend, its global stylesheet and its tiptap extensions stay with no
@@ -536,7 +536,7 @@ backend until the pack is re-enabled.
 
 **S.4. A failed re-load after a reconnect leaves settings dead (plausible).** `fe/settings-runtime.ts:54`
 disposes every frontend's settings binding when the connection ends. Only a successful re-load issues a
-new one. If a pack's refresh fails, the window keeps its plugins (as in 6.3), but its settings reads
+new one. If a pack's refresh fails, the window keeps its surfaces (as in 6.3), but its settings reads
 return `undefined`, which pack code cannot tell from "no value", and its writes are refused. The host's
 binding wrapper still reports `active`, so nothing shows an error.
 
@@ -647,11 +647,11 @@ guarded on `editingDocumentId` (`:1031-1034`). So the answer arrives in `browser
 has a symlink case.
 
 **9.2. A replaced flow is never refetched.** `features/flows/fe/state.ts:171-185`: once a flow is selected,
-`setPluginData` keeps the local `selectedFlowId` and `graph` on every `FLOWS_CONNECTED`. The first
+`setSurfaceData` keeps the local `selectedFlowId` and `graph` on every `FLOWS_CONNECTED`. The first
 `FLOWS_CONNECTED` already selects the root flow, so in practice the published graph is always ignored. At
-the same time the Database plugin stopped reloading the window after an import or reset
+the same time the Database surface stopped reloading the window after an import or reset
 (`database/fe/components/BackupRestore.vue`, `database/fe/state.ts`), relying on the host to publish
-restored state to live plugins. After a reset or import, the canvas shows the old graph, and edits target
+restored state to live surfaces. After a reset or import, the canvas shows the old graph, and edits target
 rows that are gone or replaced. Selecting the same flow again does not refetch, because `selectFlow`
 returns early for the selected flow.
 
@@ -708,7 +708,7 @@ every one of these snippets, and none shows the current entity form.
 
 **4.3. Feature entry drift.** `docs/public-facing/features.md` presents "the entry `apack pack add feature`
 writes", but it has no `description`, which `FeatureEntrySchema` now requires. It also lacks the
-`system.contract`, `plugin.contract`, `settings.form` and `types` that `add feature`
+`system.contract`, `surface.contract`, `settings.form` and `types` that `add feature`
 (`apack-cli/src/commands/add/feature.ts:93-104`) writes.
 
 **4.4. Root guide names removed exports.** The root `CLAUDE.md` `@apackdev/sdk/fe` bullet names
@@ -803,28 +803,28 @@ Scope: host `fe/` (not the settings runtime), `features/application/fe/`, `featu
 | 6.3 | Medium | After a refused replacement, the kept frontend's systems never get startup data on that connection | Completed: the frontend is unloaded instead |
 | 6.4 | Low | A candidate's settings lifecycle activates before its last freshness check | Open |
 
-**6.1. Declared but unaccepted tabs.** The toolbar and the plugin-switch hotkeys now list every enabled
-declared plugin from the catalog (`plugin-navigation.ts`), not only loaded ones. The toolbar sends
-`SELECT_PLUGIN`, and `setActivePlugin` returns when `currentPlugin()` finds no actor
-(`features/application/fe/machine.ts:556-557`), with no message. `SELECT_PLUGIN` does not wait or refuse
-the way `OPEN_PLUGIN` does through `readyFor`. The hotkeys pick a neighbour from the same list (`:523`),
+**6.1. Declared but unaccepted tabs.** The toolbar and the surface-switch hotkeys now list every enabled
+declared surface from the catalog (`surface-navigation.ts`), not only loaded ones. The toolbar sends
+`SELECT_SURFACE`, and `setActiveSurface` returns when `currentSurface()` finds no actor
+(`features/application/fe/machine.ts:556-557`), with no message. `SELECT_SURFACE` does not wait or refuse
+the way `OPEN_SURFACE` does through `readyFor`. The hotkeys pick a neighbour from the same list (`:523`),
 so a press onto a pack whose frontend failed is a no-op, and every later press picks the same neighbour
-again. Before this PR the tabs came from loaded plugins only. No spec covers it.
+again. Before this PR the tabs came from loaded surfaces only. No spec covers it.
 
 **6.2. Reference name conflicts are refused only in the window, and by load order.** `buildTables`
 (`fe/pack-store.ts:182-196`) throws when two packs claim the same reference type or category. That refuses
-the second pack's whole frontend registration: its plugins, forms and steps. Which pack is second follows
+the second pack's whole frontend registration: its surfaces, forms and steps. Which pack is second follows
 `loadedPacks` order. The backend's reference catalog (`packs/catalog-references.ts`) has no conflict check,
 so neither pack gets a load problem on the backend side. The first pack's binding is also never eligible,
 because the reference reader treats two runtime owners as ambiguous. Entity destinations do this properly:
-the backend refuses every competing owner and the window repeats the same check (`catalog-plugins.ts:69`).
+the backend refuses every competing owner and the window repeats the same check (`catalog-surfaces.ts:69`).
 
 **6.3. Startup data stalls after a refused replacement.** On reconnect or a runtime update,
 `announceLoadedPacks` (`machine.ts:288-292`) announces nothing while `packFrontendsNeedRefresh` is set,
 and a failed refresh keeps it set (`:309`). The refused candidate's predecessor stays eligible, because
 eligibility compares declaration and build revisions, not the registration ID. But no `packClientReady`
 is sent for it on this connection, and the backend skipped it in that connection's `CLIENT_CONNECTED`. The
-plugin looks loaded and never receives its startup data until another load succeeds. The runtime guide
+surface looks loaded and never receives its startup data until another load succeeds. The runtime guide
 says *"A failed frontend remains unloaded."* Keeping the old frontend may be intended, but then its
 systems need announcing, and the guide disagrees either way. `pack-loading.spec`'s refusal case asserts
 nothing about this.
@@ -842,13 +842,13 @@ nothing awaits between prepare and commit.
 - A refused candidate's settings binding is disposed, and a grant arriving after unload is disposed.
 - Style leases are per attempt and never remove the accepted owner's stylesheet.
 - `PACK_FRONTEND_LOADED` is sent only after acceptance.
-- Replacing plugins keeps tab position, visibility and selection.
-- `PluginScope` re-keys on the actor's session.
+- Replacing surfaces keeps tab position, visibility and selection.
+- `SurfaceScope` re-keys on the actor's session.
 - `pack://` serves bytes only when they match the requested receipt, and refuses traversal and symlinks.
 - Pane and form failures are contained, and a retry with a changed identity is refused, in both main and
   popout windows.
 - Backend and window entity-destination checks are the same code.
-- No pack receives another plugin's actor.
+- No pack receives another surface's actor.
 - No assertion was loosened or deadline raised.
 
 ## Completeness — historical gap and current acceptance
@@ -920,6 +920,6 @@ current disposition table and acceptance record above supersede them.
 | Entity navigation | Delivered with open defects | 6.1 (declared but unaccepted tabs), 9.1 (symlinked Library documents) |
 | Frontend containment | Delivered with open defects | 6.3, 6.4, S.3, S.4 |
 | API consumption | Delivered with open defects | 7.2 is implemented and awaits an application check |
-| Provenance/replacement | Delivered with open defects | 9.2, 9.3: plugins show stale data after a replacement, now that the Database plugin no longer reloads the window. 1.x and 2.x are fixed |
+| Provenance/replacement | Delivered with open defects | 9.2, 9.3: surfaces show stale data after a replacement, now that the Database surface no longer reloads the window. 1.x and 2.x are fixed |
 | External package consumer and release preparation | Delivered with open defects | 4.1, 4.2 affect any author using the guides. 10.6: a failed external-pack CI run uploads nothing |
 | Final committed tree | Not delivered | No application-level or integrated run covers the current source (see above), and the repairs since this review began are covered only by focused checks. 10.1–10.4 loosen or weaken the gates that would provide it |

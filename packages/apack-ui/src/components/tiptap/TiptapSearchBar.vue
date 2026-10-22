@@ -42,7 +42,7 @@
 import { ref, nextTick, onBeforeUnmount } from 'vue'
 import { ChevronUp, ChevronDown, X } from 'lucide-vue-next'
 import type { Editor } from '@tiptap/core'
-import { searchPluginKey } from './extensions/search-plugin.ts'
+import { searchKey } from './extensions/search.ts'
 
 const props = defineProps<{
   editor: Editor
@@ -54,8 +54,8 @@ const matchCount = ref(0)
 const currentIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
 
-function readPluginState() {
-  const state = searchPluginKey.getState(props.editor.state)
+function readSearchState() {
+  const state = searchKey.getState(props.editor.state)
   if (state) {
     matchCount.value = state.matches.length
     currentIndex.value = state.currentIndex
@@ -64,8 +64,8 @@ function readPluginState() {
 
 function dispatchMeta(meta: Record<string, unknown>) {
   const { view } = props.editor
-  view.dispatch(view.state.tr.setMeta(searchPluginKey, meta))
-  readPluginState()
+  view.dispatch(view.state.tr.setMeta(searchKey, meta))
+  readSearchState()
 }
 
 function open() {
@@ -131,13 +131,13 @@ function onKeydown(e: KeyboardEvent) {
 
 // Listen for the "open" meta dispatched by the ProseMirror plugin (Ctrl+F inside editor)
 function onTransaction({ transaction }: { transaction: import('@tiptap/pm/state').Transaction }) {
-  const meta = transaction.getMeta(searchPluginKey)
+  const meta = transaction.getMeta(searchKey)
   if (meta?.open && !isOpen.value) {
     open()
   }
   // Keep match count in sync when document changes while search is open
   if (isOpen.value) {
-    readPluginState()
+    readSearchState()
   }
 }
 

@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
 
@@ -46,7 +46,7 @@ function stopWithoutRootFlow({ clientConnected }: BrainContext): Partial<BrainCo
   const startError = noRootFlowError();
   if (!startError) logger.warn('No flow to run; start the brain once a flow exists');
   else if (clientConnected) reportStartError(startError);
-  broadcastToPlugin('brain', { type: 'BRAIN_KILLED', startError: startError?.message });
+  broadcastToSurface('brain', { type: 'BRAIN_KILLED', startError: startError?.message });
   return { brainActor: undefined, runningRootFlowId: undefined, startError, startErrorReported: clientConnected };
 }
 
@@ -94,11 +94,11 @@ export const brainSystem = setup({
         };
       });
       
-      // Send BRAIN_STARTED before plugin data so frontend resets brainIsDead before processing data
+      // Send BRAIN_STARTED before surface data so frontend resets brainIsDead before processing data
       enqueue(({ context }) => {
         // Send current brain state first
         if (context.brainActor && context.runningRootFlowId) {
-          broadcastToPlugin('brain', {
+          broadcastToSurface('brain', {
             type: 'BRAIN_STARTED',
             rootFlowId: context.runningRootFlowId,
           });
@@ -106,8 +106,8 @@ export const brainSystem = setup({
 
         const data = repository.brainQueries.rootData();
 
-        broadcastToPlugin('brain', {
-          type: 'RECEIVE_PLUGIN_DATA',
+        broadcastToSurface('brain', {
+          type: 'RECEIVE_SURFACE_DATA',
           data
         });
       });
@@ -159,7 +159,7 @@ export const brainSystem = setup({
         clearFlowActorRegistry();
 
         // Send BRAIN_KILLED event
-        broadcastToPlugin('brain', {
+        broadcastToSurface('brain', {
             type: 'BRAIN_KILLED'
         });
         
@@ -195,8 +195,8 @@ export const brainSystem = setup({
       clearFlowActorRegistry();
 
       // Send empty data to clear the UI temporarily
-      broadcastToPlugin('brain', {
-        type: 'RECEIVE_PLUGIN_DATA',
+      broadcastToSurface('brain', {
+        type: 'RECEIVE_SURFACE_DATA',
         data: {
           flowTNodeId: '' as EARS.EntityId,
           tNodeTree: [],
@@ -222,13 +222,13 @@ export const brainSystem = setup({
         
         // Send fresh data after starting new brain
         const data = repository.brainQueries.rootData();
-        broadcastToPlugin('brain', { 
-          type: 'RECEIVE_PLUGIN_DATA',
+        broadcastToSurface('brain', { 
+          type: 'RECEIVE_SURFACE_DATA',
           data
         });
         
         // Send BRAIN_STARTED event
-        broadcastToPlugin('brain', { 
+        broadcastToSurface('brain', { 
           type: 'BRAIN_STARTED',
           rootFlowId: currentRootFlowId,
         });
@@ -243,9 +243,9 @@ export const brainSystem = setup({
       });
       enqueue('notifyClientReady');
     }),
-    sendPluginData: ({ context, event, self }) => {
+    sendSurfaceData: ({ context, event, self }) => {
       // Use provided flowTNodeId or fall back to root
-      const flowId = event.type === 'REQUEST_PLUGIN_DATA' && event.flowTNodeId
+      const flowId = event.type === 'REQUEST_SURFACE_DATA' && event.flowTNodeId
         ? event.flowTNodeId as EARS.EntityId<'TNode'>
         : undefined;
 
@@ -259,19 +259,19 @@ export const brainSystem = setup({
         data = { flowTNodeId: '' as EARS.EntityId, tNodeTree: [], possibleEvents: [], flowHierarchy: [] };
       }
 
-      broadcastToPlugin('brain', {
-        type: 'RECEIVE_PLUGIN_DATA',
+      broadcastToSurface('brain', {
+        type: 'RECEIVE_SURFACE_DATA',
         data
       });
 
       // Send current brain state
       if (context.brainActor && context.runningRootFlowId) {
-        broadcastToPlugin('brain', {
+        broadcastToSurface('brain', {
           type: 'BRAIN_STARTED',
           rootFlowId: context.runningRootFlowId,
         });
       } else {
-        broadcastToPlugin('brain', {
+        broadcastToSurface('brain', {
           type: 'BRAIN_KILLED',
           startError: context.startError?.message,
         });
@@ -280,7 +280,7 @@ export const brainSystem = setup({
       // Sync pause state
       const snapshot = self.getSnapshot();
       if (snapshot.matches({ running: 'paused' })) {
-        broadcastToPlugin('brain', { type: 'BRAIN_PAUSED' });
+        broadcastToSurface('brain', { type: 'BRAIN_PAUSED' });
       }
 
       // Restore inspect state from persisted settings. Default ON in dev so
@@ -289,7 +289,7 @@ export const brainSystem = setup({
       const brainSettings = featureSettings.forFeature('brain').get();
       const inspectEnabled = brainSettings?.inspectEnabled ?? (process.env.NODE_ENV !== 'production');
       setDebugEnabled('brain', inspectEnabled);
-      broadcastToPlugin('brain', { type: 'INSPECT_TOGGLED', enabled: inspectEnabled });
+      broadcastToSurface('brain', { type: 'INSPECT_TOGGLED', enabled: inspectEnabled });
     },
     openTNode: ({ event }) => {
       const ev = brainSpec.typeOf('OPEN_TNODE', event);
@@ -304,7 +304,7 @@ export const brainSystem = setup({
 
       const data = repository.brainQueries.extendedTNodeData(tNodeId);
 
-      broadcastToPlugin('brain', {
+      broadcastToSurface('brain', {
         type: 'TNODE_OPENED',
         tNodeId,
         data
@@ -320,7 +320,7 @@ export const brainSystem = setup({
         ? repository.brainQueries.extendedTNodeData(parentFlowTNodeId)
         : repository.brainQueries.rootData();
 
-      broadcastToPlugin('brain', {
+      broadcastToSurface('brain', {
         type: 'TNODE_OPENED',
         tNodeId: data.flowTNodeId,
         data
@@ -332,7 +332,7 @@ export const brainSystem = setup({
       
       const tNode = repository.brainQueries.tNodeById(tNodeId);
       
-      broadcastToPlugin('brain', {
+      broadcastToSurface('brain', {
         type: 'TNODE_DETAILS',
         tNodeId,
         details: tNode
@@ -347,7 +347,7 @@ export const brainSystem = setup({
       featureSettings.forFeature('brain').set({ path: ['inspectEnabled'], value: newState });
 
       // Send confirmation back to frontend
-      broadcastToPlugin('brain', {
+      broadcastToSurface('brain', {
         type: 'INSPECT_TOGGLED',
         enabled: newState
       });
@@ -374,7 +374,7 @@ export const brainSystem = setup({
       const { eventType, payload, targetFlowId } = ev;
 
       // Pulse the event in UI
-      broadcastToPlugin('brain', {
+      broadcastToSurface('brain', {
         type: 'EVENT_PULSE',
         eventType: eventType
       });
@@ -436,14 +436,14 @@ export const brainSystem = setup({
     }),
     on: {
       SEND_STATE: {
-        actions: 'sendPluginData',
+        actions: 'sendSurfaceData',
       },
       // Kept as a fact: whether a client is attached is not something publishing can say
       CLIENT_CONNECTED: {
         actions: 'setClientConnected',
       },
-      REQUEST_PLUGIN_DATA: {
-        actions: 'sendPluginData',
+      REQUEST_SURFACE_DATA: {
+        actions: 'sendSurfaceData',
       },
       ERROR: {
         actions: 'logError',
@@ -455,7 +455,7 @@ export const brainSystem = setup({
           // Stopped, describing itself means working out why it will not start and saying so once. The
           // root's CLIENT_CONNECTED still runs: only the ask is shadowed here
           SEND_STATE: {
-            actions: ['refreshStartError', 'sendPluginData', 'reportStartError'],
+            actions: ['refreshStartError', 'sendSurfaceData', 'reportStartError'],
           },
           START_BRAIN: {
             target: 'running',
@@ -505,13 +505,13 @@ export const brainSystem = setup({
           TNODE_SPAWNED: {
             actions: ({ event }) => {
               // Forward to frontend
-              broadcastToPlugin('brain', event);
+              broadcastToSurface('brain', event);
             }
           },
           TNODE_UPDATED: {
             actions: ({ event }) => {
               // Forward to frontend
-              broadcastToPlugin('brain', event);
+              broadcastToSurface('brain', event);
             }
           },
         },
@@ -531,7 +531,7 @@ export const brainSystem = setup({
                 target: 'paused',
                 actions: () => {
                   setBrainPausedState(true);
-                  broadcastToPlugin('brain', { type: 'BRAIN_PAUSED' });
+                  broadcastToSurface('brain', { type: 'BRAIN_PAUSED' });
                 },
               },
             },
@@ -556,7 +556,7 @@ export const brainSystem = setup({
                   },
                   'replayQueuedEvents',
                   () => {
-                    broadcastToPlugin('brain', { type: 'BRAIN_RESUMED' });
+                    broadcastToSurface('brain', { type: 'BRAIN_RESUMED' });
                   },
                 ],
               },

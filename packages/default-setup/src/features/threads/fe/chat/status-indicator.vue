@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -24,7 +24,7 @@ const props = defineProps<{
   anchor?: HTMLElement | null
 }>()
 
-const actor: ThreadsState = usePlugin();
+const actor: ThreadsState = useSurface();
 const settings = useSelector(actor, (state) => state.context.settings);
 const chatStates = useSelector(actor, (state) => state.context.chatStates);
 const overrides = useSelector(actor, (state) => state.context.chatStateOverrides);

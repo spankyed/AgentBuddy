@@ -32,15 +32,15 @@ const { default: brainState } = await import('#features/brain/fe/state.ts');
 const details = (id: string) => ({ id, label: id }) as unknown as TNodeEntity;
 
 /**
- * A started plugin in `ready`, which is where node clicks are handled.
+ * A started surface in `ready`, which is where node clicks are handled.
  *
- * `RECEIVE_PLUGIN_DATA` is what moves it there, and `normalizeFlowTNodeData` tolerates a missing
+ * `RECEIVE_SURFACE_DATA` is what moves it there, and `normalizeFlowTNodeData` tolerates a missing
  * `tNodeTree`, so nothing here has to build a tree to ask about correlation.
  */
 function ready() {
   const actor = createActor(brainState).start();
   actor.send({
-    type: 'RECEIVE_PLUGIN_DATA',
+    type: 'RECEIVE_SURFACE_DATA',
     // The fields the machine reads to reach `ready`; the rest of that payload is not this file's subject,
     // and the cast sits on it rather than on the event so the type above stays checked
     data: { flowTNodeId: 'TNode-f1', possibleEvents: [], flowHierarchy: [] } as never,

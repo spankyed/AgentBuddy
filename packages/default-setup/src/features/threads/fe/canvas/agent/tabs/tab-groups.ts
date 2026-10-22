@@ -1,10 +1,14 @@
+import { surfaceStorage } from '@apackdev/sdk/fe'
+import { ref as featureRef } from '#generated/ref.ts'
+
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = surfaceStorage(featureRef('threads'))
 import type { ThreadTabGroup } from './types.ts'
 
-const STORAGE_KEY = 'threads-tab-groups'
 
 export function saveThreadTabGroups(groups: ThreadTabGroup[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(groups))
+    storage.set('tab-groups', JSON.stringify(groups))
   } catch (error) {
     console.error('Failed to save thread tab groups:', error)
   }
@@ -12,7 +16,7 @@ export function saveThreadTabGroups(groups: ThreadTabGroup[]): void {
 
 export function loadThreadTabGroups(): ThreadTabGroup[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = storage.get('tab-groups')
     if (!stored) return []
 
     const groups = JSON.parse(stored)

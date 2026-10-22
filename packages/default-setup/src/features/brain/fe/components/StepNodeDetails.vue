@@ -120,7 +120,7 @@ import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
 import type { TNodeEntity } from '@apackdev/sdk/steps';
 import DataRenderer from '@apackdev/ui/components/DataRenderer';
-import { openPlugin } from '#generated/fe.ts';
+import { openSurface } from '#generated/fe.ts';
 
 interface Props {
   node?: TNodeEntity;
@@ -134,7 +134,7 @@ const emit = defineEmits<{
 const openBlueprint = () => {
   const blueprint = props.node?.blueprint;
   if (!blueprint) return;
-  openPlugin('flows', { type: 'NODE.REVEAL', flowId: blueprint.flowId, nodeId: blueprint.nodeId });
+  openSurface('flows', { type: 'NODE.REVEAL', flowId: blueprint.flowId, nodeId: blueprint.nodeId });
   emit('close');
 };
 

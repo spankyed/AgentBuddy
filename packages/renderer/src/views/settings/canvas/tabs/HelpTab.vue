@@ -43,13 +43,13 @@
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { ArrowLeft } from 'lucide-vue-next';
-import { usePlugin, useShell, openHelp, openLink } from '@apackdev/sdk/fe';
+import { useSurface, useShell, openHelp, openLink } from '@apackdev/sdk/fe';
 import { splitRef } from '@apackdev/sdk/ids';
 import { type SettingsState } from '@apackdev/host/fe';
 import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';
 import { DISCORD_URL, MEMORIAL_URL } from '@/views/settings/constants';
-const actor: SettingsState = usePlugin();
-const plugins = useShell().plugins;
+const actor: SettingsState = useSurface();
+const surfaces = useShell().surfaces;
 const context = useSelector(actor, s => s.context.help);
 const selected = computed(() => context.value.catalog.articles.find(a => a.packId === context.value.target.packId && a.id === context.value.target.articleId));
 const articles = computed(() => {
@@ -72,7 +72,7 @@ const groups = computed(() => {
   return [...byPack.values()];
 });
 const features = computed(() => {
-  const labels = new Map<string, string>(plugins.value.map(plugin => [plugin.id, plugin.label]));
+  const labels = new Map<string, string>(surfaces.value.map(surface => [surface.id, surface.label]));
   const byRef = new Map<string, string>();
   for (const article of context.value.catalog.articles) {
     for (const featureId of article.features ?? []) {

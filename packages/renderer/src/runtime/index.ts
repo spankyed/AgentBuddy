@@ -10,7 +10,7 @@ import { settingsPort } from '@/runtime/settings';
 
 /**
  * Binds the SDK's frontend port to this window's app, before the application actor is created (creating it already
- * builds its plugins' state) and before any pack frontend runs. `application` gives the actor once it exists.
+ * builds its surfaces' state) and before any pack frontend runs. `application` gives the actor once it exists.
  */
 export function bindRendererHost(application: () => HostShell | undefined): void {
   bindFeHost({

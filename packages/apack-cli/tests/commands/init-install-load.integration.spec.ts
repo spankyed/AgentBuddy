@@ -52,7 +52,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     return [{ key, written: true, count: 0, identity: [], items: [] }];
   });
   if (entries.length) write(`${PACK_LAYOUT.contentDir}/content.json`, JSON.stringify({ version: 1, packId: id, entries }));
-  write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts: { main: { system: { incoming: ['TEST_EVENT'], outgoing: [] }, plugin: { receives: [] } } }, facades: {} }));
+  write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts: { main: { system: { incoming: ['TEST_EVENT'], outgoing: [] }, surface: { receives: [] } } }, facades: {} }));
   sealPackBuild(path.join(packDir, 'dist'), JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf8')));
 }
 
@@ -71,11 +71,11 @@ describe('pack full lifecycle: init → install → load', () => {
       main: {
         description: 'Exercise the test system.',
         system: { entry: 'src/features/main/be/system.ts', events: { incoming: ['TEST_EVENT'] } },
-        plugin: { label: 'Fixture', state: 'src/features/main/fe/plugin.ts' },
+        surface: { label: 'Fixture', state: 'src/features/main/fe/surface.ts' },
       },
     };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest, null, 2));
-    writeBuild(packDir, manifest.id, "{ main: { system: { machine: { id: 'my-test-pack-system' }, receives: ['TEST_EVENT'] }, plugin: { receives: [] } } }");
+    writeBuild(packDir, manifest.id, "{ main: { system: { machine: { id: 'my-test-pack-system' }, receives: ['TEST_EVENT'] }, surface: { receives: [] } } }");
 
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     await installPackFromLocal(packDir, packsDir);

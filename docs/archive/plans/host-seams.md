@@ -10,21 +10,21 @@ the fourth removes the last one the same investigation turned up.
 **1. The `settings` designation is legacy.** `settings` was a default-setup feature before it became the
 host's; the role survived the move. `hostRegistration` sets `designation: 'settings'`
 (`features/registration.ts:56`), the renderer's FE registration repeats it
-(`renderer/src/views/packs/plugin.ts:22`), and nine call sites resolve it at runtime — `settings/be/system.ts:28`,
-`renderer/src/runtime/settings.ts:12,13`, `WebApp.vue:202,203`, `PluginsTab.vue:150`, `Toolbar.vue:96,110`,
-`ToolbarPluginContextMenu.vue:27,59`. Every one is the app resolving *its own* plugin. `HOST.settings` is
+(`renderer/src/views/packs/surface.ts:22`), and nine call sites resolve it at runtime — `settings/be/system.ts:28`,
+`renderer/src/runtime/settings.ts:12,13`, `WebApp.vue:202,203`, `SurfacesTab.vue:150`, `Toolbar.vue:96,110`,
+`ToolbarSurfaceContextMenu.vue:27,59`. Every one is the app resolving *its own* surface. `HOST.settings` is
 the same address, known at compile time. The `hasDesignation('settings')` guards ask whether a settings
-plugin exists, which since the move is always yes.
+surface exists, which since the move is always yes.
 
 **2. The host's sends can't say who sent them.** `Message.from` is stamped only by `defineEvents(packId)`
 (`apack-sdk/src/events/index.ts:249`), which a pack's `#generated/events` calls. The host uses the
 untyped free sends, so its messages carry no sender. Its broadcast targets: 22 to `HOST.packs`, 15 to
 `settingsView()`, 2 to `HOST.application`. With the designation gone all 39 are compile-time constants,
-so the host's sends can be *typed* against `HostPluginEvents`/`HostSystemEvents` — which already exist —
+so the host's sends can be *typed* against `HostSurfaceEvents`/`HostSystemEvents` — which already exist —
 not merely stamped.
 
-**3. Actions are the other half.** `services.emitter.broadcastToPlugin` is declared
-`typeof untypedBroadcastToPlugin` (`apack-sdk/src/services/index.ts:40`), the raw function, and an
+**3. Actions are the other half.** `services.emitter.broadcastToSurface` is declared
+`typeof untypedBroadcastToSurface` (`apack-sdk/src/services/index.ts:40`), the raw function, and an
 action runs outside any pack scope. Those two gaps are objections 1 and 2 in
 `docs/archive/goals/goal-sender-enforced-audiences.md`.
 
@@ -39,15 +39,15 @@ feature implements it. The exception in `scripts/check-import-specifiers.ts` (`H
 `public` branch in `findCrossFeatureImports`) exists for that single import.
 
 **5. The host addresses features unlike every pack.** A pack sends by bare feature id, typed per receiving
-plugin: `broadcastToPlugin('notes', …)`. The host passes branded refs to untyped sends —
-`broadcastToPlugin(HOST.settings, …)` — so nothing checks the target or the event. It has no maps to check
-against: `HostPluginEvents` is its *published* inbox, what a pack may send it, so `host/settings` there is
+surface: `broadcastToSurface('notes', …)`. The host passes branded refs to untyped sends —
+`broadcastToSurface(HOST.settings, …)` — so nothing checks the target or the event. It has no maps to check
+against: `HostSurfaceEvents` is its *published* inbox, what a pack may send it, so `host/settings` there is
 `CLI_TEST_RESULT` alone while `SETTINGS_LOADED` and the rest live in the feature's contract.
 
 The maps are assemblable from what exists, and are line-for-line the three `receives` expressions in
 `registration.ts:52,53,61` — today hand-maintained runtime lists with no type beside them. Compiled against
 the real types, with bare names, all six assertions hold: the right event accepted for `packs` and `bus`, a
-role send still unchecked by design, and rejected — another plugin's event, a missing field, an unknown
+role send still unchecked by design, and rejected — another surface's event, a missing field, an unknown
 feature.
 
 The `FeatureRef` branding is not in the way: after this, host code writes the name, so a ref is never passed
@@ -64,13 +64,13 @@ sends, which keep only that provenance check; moving 57 sites off them is the ot
 `packages/` for manifests, so one there is a standing hazard. `hostRegistration(systems)` is parameterised
 by which systems the caller runs (9 call sites) where a generated registration is static. And the host
 would build through a bespoke path rather than `apack build`. Of the four benefits, two are void:
-`eventTypes<E>()` already makes the hand-written `PACKS_PLUGIN_EVENT_TYPES` impossible to drift, and the
+`eventTypes<E>()` already makes the hand-written `PACKS_SURFACE_EVENT_TYPES` impossible to drift, and the
 contract-leaf rule guards a codegen cycle the host cannot have. The one benefit worth having is what
 step 2 delivers without a manifest.
 
 The host is the pack `host` in the *addressing* sense — every feature at `<packId>/<featureId>` — and not
 in the *packaging* sense, which is what a manifest describes. Its pack-shaped things stay hand-written
-where a hand-written one can be type-checked: `hostRegistration`, `HostShell`, `HostPluginEvents`,
+where a hand-written one can be type-checked: `hostRegistration`, `HostShell`, `HostSurfaceEvents`,
 `HostSystemEvents`.
 
 **2. No table of blessed exceptions** for the `fe/public.ts` rule. One was written in the shape of
@@ -101,8 +101,8 @@ Two things the steps below did not predict, both recorded where they were found:
   that one feature a licence no other feature had (found in review, fixed in `29620c935`'s successor).
 - **Step 3's `via` is not only an action's.** Stamping a source rather than specifically an action costs nothing
   and lets `reportError` — the one remaining sender with no pack to name — say where it came from.
-- **"The four sites that render a sender" below undercounts the shell.** It refuses a plugin at once *and* after
-  waiting for pack frontends, and the deferred one carried no sender at all, because `awaitingPlugin` kept a
+- **"The four sites that render a sender" below undercounts the shell.** It refuses a surface at once *and* after
+  waiting for pack frontends, and the deferred one carried no sender at all, because `awaitingSurface` kept a
   hand-picked subset of the request. Review caught it; all of the shell's now come from one `refusal()`
   (`931a4ce7c`). The count in Open Questions is left as written — it is the record of what was decided then.
 
@@ -120,10 +120,10 @@ rather than only stamped.
 Closes finding 2. Add `createSends({ resolve?, from? })` returning the three sends. The untyped exports become
 `createSends({})`, `defineEvents` becomes `createSends({ resolve: refOf, from: packId })`, and the host
 binds `createSends({ from: HOST_PACK_ID })`. Drops the `from?` third parameter from
-`untypedBroadcastToPlugin`, `untypedSendToSystem` and `_sendToLocalPlugin`.
+`untypedBroadcastToSurface`, `untypedSendToSystem` and `_sendToLocalSurface`.
 
 **Stamping only.** This step was written expecting to type the sends too, against
-`HostPluginEvents`/`HostSystemEvents`. Those are the published maps, not the host's own, so that was never
+`HostSurfaceEvents`/`HostSystemEvents`. Those are the published maps, not the host's own, so that was never
 the right target — it is finding 5, and step 5 closes it. Stamping is what the deferred enforcement goal
 was blocked on, so it lands alone; `packages/apack-host/src/events.ts` records why, and step 5 deletes
 that note.
@@ -153,15 +153,15 @@ Independent of 1–3; can land in any order relative to them.
 
 ### 5 — The host sends by name, typed
 
-Closes finding 5. Export `SettingsPluginEvents` (one word), then define the host's two maps in
-`apack-host/src/events.ts` and bind `defineEvents<HostPlugins, HostSystems>(HOST_PACK_ID)` in place of the
+Closes finding 5. Export `SettingsSurfaceEvents` (one word), then define the host's two maps in
+`apack-host/src/events.ts` and bind `defineEvents<HostSurfaces, HostSystems>(HOST_PACK_ID)` in place of the
 `createSends({ from })` binding:
 
 ```ts
-type HostPlugins = WithOwnNames<'host', {
-  'host/application': HostPluginEvents['host/application'];
+type HostSurfaces = WithOwnNames<'host', {
+  'host/application': HostSurfaceEvents['host/application'];
   'host/packs':       OutgoingPacksEvents;
-  'host/settings':    SettingsPluginEvents | HostPluginEvents['host/settings'];
+  'host/settings':    SettingsSurfaceEvents | HostSurfaceEvents['host/settings'];
 }>;
 ```
 
@@ -176,14 +176,14 @@ real. Lands after step 2, whose note it deletes.
 | File | Change |
 |------|--------|
 | `packages/apack-host/src/features/registration.ts` | Drop `designation: 'settings'` |
-| `packages/renderer/src/views/packs/plugin.ts` | Drop `designation: 'settings'` |
+| `packages/renderer/src/views/packs/surface.ts` | Drop `designation: 'settings'` |
 | `packages/apack-host/src/features/settings/be/system.ts` | `settingsView()` → `HOST.settings` |
-| `packages/renderer/src/runtime/settings.ts`, `views/WebApp.vue`, `views/settings/canvas/tabs/PluginsTab.vue`, `views/layout/Toolbar.vue`, `views/layout/ToolbarPluginContextMenu.vue` | `getDesignated('settings')` → `HOST.settings`; drop the `hasDesignation` guards |
+| `packages/renderer/src/runtime/settings.ts`, `views/WebApp.vue`, `views/settings/canvas/tabs/SurfacesTab.vue`, `views/layout/Toolbar.vue`, `views/layout/ToolbarSurfaceContextMenu.vue` | `getDesignated('settings')` → `HOST.settings`; drop the `hasDesignation` guards |
 | `packages/apack-sdk/src/events/index.ts` | `createSends`; untyped exports and `defineEvents` built from it; `from?` parameter goes |
 | `packages/apack-host/src/**` (39 broadcast sites) | Send through the host's bound sends |
 | `packages/apack-sdk/src/services/index.ts` | `emitter` carries a pack identity |
 | `packages/default-setup/src/extensions/steps/action/sandbox.ts` | Thread the pack id to the emitter |
-| `packages/apack-host/src/features/settings/be/system.ts` | Export `SettingsPluginEvents` for the map |
+| `packages/apack-host/src/features/settings/be/system.ts` | Export `SettingsSurfaceEvents` for the map |
 | `packages/apack-host/src/events.ts` | The host's two maps; bind `defineEvents`, dropping the `createSends` note |
 | `packages/apack-host/src/**` (39 broadcasts, 18 system sends) | `HOST.*` → bare feature ids |
 | `packages/apack-host/src/features/application/fe/types.ts` → `src/fe/` | Move `ShellPackFrontends` to the seam |
@@ -219,9 +219,9 @@ real. Lands after step 2, whose note it deletes.
   repo already uses for an action as a source. `via` is absent for everything else, so nothing else changes:
 
   ```
-  Dropped "MEMO_ADDED" sent by "default-setup" (action:summarise-thread) to the "memo-pack/memos" plugin, …
-  Dropped "MEMO_ADDED" sent by "default-setup" to the "memo-pack/memos" plugin, …
-  Dropped "MEMO_ADDED" sent to the "memo-pack/memos" plugin, …
+  Dropped "MEMO_ADDED" sent by "default-setup" (action:summarise-thread) to the "memo-pack/memos" surface, …
+  Dropped "MEMO_ADDED" sent by "default-setup" to the "memo-pack/memos" surface, …
+  Dropped "MEMO_ADDED" sent to the "memo-pack/memos" surface, …
   ```
 
   The four sites that render a sender (`bus/machine.ts:152`, `bus/client-events.ts:43`, and the shell's two

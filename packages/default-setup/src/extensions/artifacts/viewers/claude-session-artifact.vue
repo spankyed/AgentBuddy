@@ -287,9 +287,9 @@ import { computed, ref } from 'vue'
 import { Wrench, Copy, Check, MessageSquare, ChevronDown } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
 import type { ArtifactItem } from '@apackdev/sdk/artifacts'
-import { usePluginState } from '#generated/fe.ts'
-import { openPlugin } from '#generated/fe.ts'
-import { sendToSystem, sendToPlugin } from '#generated/events.ts'
+import { useSurfaceState } from '#generated/fe.ts'
+import { openSurface } from '#generated/fe.ts'
+import { sendToSystem, sendToSurface } from '#generated/events.ts'
 
 
 type PermissionMode =
@@ -345,7 +345,7 @@ const props = defineProps<{
   artifact: ArtifactItem<SessionContent>
 }>()
 
-const currentThread = usePluginState('threads', (s) => s.currentThread)
+const currentThread = useSurfaceState('threads', (s) => s.currentThread)
 const currentThreadId = computed(() => currentThread.value?.id as string | undefined)
 
 // The thread context is the source of truth for session data.
@@ -388,8 +388,8 @@ function fmt(n: number): string {
   return String(n)
 }
 
-const settings = usePluginState('threads', (s) => s.settings)
-const overrides = usePluginState('threads', (s) => s.chatStateOverrides)
+const settings = useSurfaceState('threads', (s) => s.settings)
+const overrides = useSurfaceState('threads', (s) => s.chatStateOverrides)
 const stateConfig = computed(() => {
   const configs = settings.value?.chatStates;
   const threadId = currentThreadId.value ?? '';
@@ -432,7 +432,7 @@ async function copySessionId() {
 
 function openConversation() {
   const threadId = currentThreadId.value
-  if (threadId) openPlugin('threads', { type: 'OPEN_THREAD_CHAT', threadId })
+  if (threadId) openSurface('threads', { type: 'OPEN_THREAD_CHAT', threadId })
 }
 
 // ─── Permission mode segmented control ─────────────────────────────────
@@ -473,7 +473,7 @@ const permissionDescription = computed(
   () => permissionOptions.find(o => o.value === permissionMode.value)?.description ?? '',
 )
 
-const permissionChanges = usePluginState('threads', s => s.permissionModeChanges)
+const permissionChanges = useSurfaceState('threads', s => s.permissionModeChanges)
 const permissionChange = computed(() => permissionChanges.value[currentThreadId.value ?? ''])
 
 function selectPermissionMode(mode: PermissionMode) {
@@ -483,7 +483,7 @@ function selectPermissionMode(mode: PermissionMode) {
     console.warn('[claude-session-artifact] no current thread; cannot update permission mode')
     return
   }
-  sendToPlugin('threads', { type: 'SET_CLAUDE_PERMISSION_MODE', threadId, mode })
+  sendToSurface('threads', { type: 'SET_CLAUDE_PERMISSION_MODE', threadId, mode })
 }
 
 function clearGoal() {

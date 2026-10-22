@@ -47,7 +47,7 @@
         "entry": "src/features/memos/be/system.ts",
         "contract": "src/features/memos/be/contract.ts#Contract"
       },
-      "plugin": {
+      "surface": {
         "contract": "src/features/memos/fe/contract.ts#Contract",
         "defaultVisible": false,
         "label": "Memos",
@@ -113,7 +113,7 @@
         },
         "title": "Fixture Notes"
       },
-      "plugin": {
+      "surface": {
         "label": "Fixture Notes",
         "icon": "NotebookPen",
         "state": "src/features/notes/fe/state.ts",
@@ -142,7 +142,7 @@
         "title": "Fault fixture",
         "form": "src/features/faults/form.vue"
       },
-      "plugin": {
+      "surface": {
         "label": "Fault fixture",
         "icon": "TriangleAlert",
         "defaultVisible": false,

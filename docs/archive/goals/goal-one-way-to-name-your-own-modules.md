@@ -70,7 +70,7 @@ here is not a static alias but a *per-importer* rule — `packages/renderer/vite
 
 > `@/` — scoped to the importer's pack (or `renderer/src/` for renderer files)
 
-Which is why it cannot be an alias map and needs a resolver plugin everywhere.
+Which is why it cannot be an alias map and needs a resolver surface everywhere.
 
 ### Four implementations of one idea
 
@@ -125,7 +125,7 @@ Three things follow, and none of them was obvious:
 1. **Vite needs nothing.** It applied the pack's own `imports` from inside another package's build graph,
    extensionless included. So the renderer's hook, default-setup's `vite-tsconfig-paths` and the CLI's FE
    bundler all need no replacement.
-2. **esbuild needs the extension supplied**, as Node's resolver does. So the api's plugin is *replaced* by a
+2. **esbuild needs the extension supplied**, as Node's resolver does. So the api's surface is *replaced* by a
    smaller one rather than deleted — and that code already exists, correct and specced, as
    `resolveWithExtensions` in `apack-cli/src/build/subpath-imports.ts` (`0ce94ab27`).
 3. **The tsconfig `paths` mirror is not redundant.** Under `bundler` resolution `tsc` will not resolve `#`
@@ -147,7 +147,7 @@ Final.
    why is kept and pointed at from `default-setup/CLAUDE.md`.
 4. **`resolveWithExtensions` moves to `@apackdev/host/build/`**, because `packages/api` does not depend on
    `@apackdev/cli` and both depend on host, and it needs only `node:fs` and `node:path` — no new dependency
-   anywhere. The api's `resolve-at-aliases` plugin is replaced by a `#`-extension plugin over it, and the
+   anywhere. The api's `resolve-at-aliases` surface is replaced by a `#`-extension surface over it, and the
    CLI's BE bundler calls the same function.
 
    **Skip the move if [`goal-pack-imports-name-the-file.md`](goal-pack-imports-name-the-file.md) is also
@@ -196,13 +196,13 @@ Add the `imports` entries the settled Open decision 1 names, mirrored in `paths`
 > One line here is shared with [`goal-pack-test-config.md`](goal-pack-test-config.md), which
 > has run: `packages/default-setup/vitest.config.ts` is a `definePackTestConfig()` call that passes
 > `tsconfigPaths` beside it, with a comment naming this goal as what removes that. So this phase deletes one
-> line and its import from that file, not a plugin from a config it assembles. Nothing else overlaps — the two
+> line and its import from that file, not a surface from a config it assembles. Nothing else overlaps — the two
 > goals' phases name no other file in common.
 
 Delete the `@/` branch from `packages/renderer/vite.config.ts`, and `vite-tsconfig-paths` from
 `packages/default-setup/vitest.config.ts` (with its devDependency). Move `resolveWithExtensions` to
 `@apackdev/host/build/`, replace `packages/api/tsup.config.ts`'s `resolve-at-aliases` with a `#`-extension
-plugin over it, and point the CLI's BE bundler at the same function. Act on Open decision 2 for the CLI's
+surface over it, and point the CLI's BE bundler at the same function. Act on Open decision 2 for the CLI's
 alias reader.
 
 **Done when:** `npm run build`, `npm test`, `npm run test:external-pack` and `npm run test:packaged-authoring`
@@ -230,7 +230,7 @@ significant — measure `npm run build:app` before and after rather than claimin
   safe. Whatever replaces it is a different question about how one pack reaches another, and pack code
   already goes through generated facades rather than paths.
 - **`moduleResolution: nodenext` and extensioned specifiers**, which would make pack source resolvable by
-  Node with no bundler help at all and remove even the esbuild extension plugin. It is a larger change (it
+  Node with no bundler help at all and remove even the esbuild extension surface. It is a larger change (it
   moves the scaffold too, and `tsc` then *requires* the `.js` form, spiked above), and it is orthogonal:
   this goal is about having one mechanism, that one is about which regime it runs under.
 

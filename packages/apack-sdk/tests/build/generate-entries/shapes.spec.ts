@@ -52,14 +52,14 @@ describe('generated entity shapes', () => {
       .rejects.toThrow('Dependency "base-pack" has an unusable pack-types facade: base-pack.d.ts: invalid TypeScript syntax');
   });
 
-  it('requires plugin state when a frontend consumer actually imports it', async () => {
-    const plugin = { features: { inbox: { plugin: { label: 'Inbox', state: 'src/plugin.ts' } } } };
-    await expect(generate({}, { 'base-pack': dependency(plugin) })).resolves.toBeDefined();
-    write('src/plugin.ts', 'export default {};');
-    await expect(generate(plugin, { 'base-pack': dependency(plugin) }))
-      .rejects.toThrow('does not export required type "PackPluginState"');
-    const withState = { 'pack-types': facade()['pack-types'] + '\nexport type PackPluginState = {};' };
-    await expect(generate(plugin, { 'base-pack': dependency(plugin, withState) })).resolves.toBeDefined();
+  it('requires surface state when a frontend consumer actually imports it', async () => {
+    const surface = { features: { inbox: { surface: { label: 'Inbox', state: 'src/surface.ts' } } } };
+    await expect(generate({}, { 'base-pack': dependency(surface) })).resolves.toBeDefined();
+    write('src/surface.ts', 'export default {};');
+    await expect(generate(surface, { 'base-pack': dependency(surface) }))
+      .rejects.toThrow('does not export required type "PackSurfaceState"');
+    const withState = { 'pack-types': facade()['pack-types'] + '\nexport type PackSurfaceState = {};' };
+    await expect(generate(surface, { 'base-pack': dependency(surface, withState) })).resolves.toBeDefined();
   });
 
   it('resolves facade type aliases without reading executable modules', async () => {
@@ -312,8 +312,8 @@ describe('generated services', () => {
     const files = await generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('calendar')] }, facade()) });
     expect(files['src/__generated__/events.ts']).toContain("export type QualifiedSystemEvents = Qualified<'demo-pack', PackSystemEvents> & Qualified<'base-pack', __dep_base_pack_PackSystemEvents> & HostSystemEvents;");
     const services = files['src/__generated__/services.ts'];
-    expect(services).toContain("import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.ts';");
-    expect(services).toContain('  broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;\n  sendToWindow: TypedSendToWindow<QualifiedPluginEvents>;\n  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;');
+    expect(services).toContain("import type { QualifiedSurfaceEvents, QualifiedSystemEvents } from './events.ts';");
+    expect(services).toContain('  broadcastToSurface: TypedSendToSurface<QualifiedSurfaceEvents>;\n  sendToWindow: TypedSendToWindow<QualifiedSurfaceEvents>;\n  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;');
   });
 });
 

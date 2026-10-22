@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -62,7 +62,7 @@ import QueryEditor from './components/QueryEditor.vue'
 import TraceHistoryViewer from './components/trace/TraceHistoryViewer.vue'
 import BackupRestore from './components/BackupRestore.vue'
 
-const databaseActor: DatabaseState = usePlugin()
+const databaseActor: DatabaseState = useSurface()
 const viewMode = useSelector(databaseActor, (state) => state.context.viewMode)
 const isInBackupState = useSelector(databaseActor, (state) => state.matches('backup'))
 

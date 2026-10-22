@@ -1,4 +1,4 @@
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup } from 'xstate'
 
@@ -6,7 +6,7 @@ import { repository } from '#generated/repository.ts';
 import { EARS } from '#generated/ears.ts'
 import type { ActionEntity } from '@apackdev/sdk'
 
-const pluginId = 'code' as const
+const surfaceId = 'code' as const
 
 // Incoming events from frontend
 
@@ -40,13 +40,13 @@ export const actionsSystem = setup({
           actionFnContent: action.actionFn
         }
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'codeActions.ACTION_SELECTED',
           actionId: ev.actionId as EARS.EntityId,
           data: actionWithContent
         })
       } else {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'codeActions.CODE_ERROR',
           data: {
             message: `Action ${ev.actionId} not found`
@@ -65,7 +65,7 @@ export const actionsSystem = setup({
 
       const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
       if (updatedAction) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'codeActions.ACTION_UPDATED',
           action: updatedAction,
           actionId: updatedAction.id

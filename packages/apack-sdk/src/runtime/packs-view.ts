@@ -23,7 +23,7 @@ import { _isFeHostBound, boundFeHost } from './fe-host.ts';
 
 /** What backend and frontend code both look up in the registered packs */
 export interface PackExtensionsView {
-  /** The id of the system (backend) or plugin (frontend) that plays a role */
+  /** The id of the system (backend) or surface (frontend) that plays a role */
   designation(role: string): FeatureRef | undefined;
   artifact(type: string): ArtifactDefinition | undefined;
   artifacts(): ArtifactDefinition[];
@@ -44,8 +44,8 @@ export interface PackRegistryView extends PackExtensionsView {
   getRegisteredServices(): Record<string, unknown>;
   /** The refs of every registered system, the host's included */
   systemIds(): readonly FeatureRef[];
-  /** The refs of every registered plugin, the host's included */
-  pluginIds(): readonly FeatureRef[];
+  /** The refs of every registered surface, the host's included */
+  surfaceIds(): readonly FeatureRef[];
   /** The content writers registered for an entity type */
   contentWriters(entity: string): ContentWriter | undefined;
   /** A registered pack's appliers */
@@ -53,7 +53,7 @@ export interface PackRegistryView extends PackExtensionsView {
   settingsCatalog(): SettingsCatalog;
   onCatalogChanged(listener: () => void): () => void;
   /** Navigation policy is separate from preference definitions. */
-  pluginDefaults(): Record<string, boolean>;
+  surfaceDefaults(): Record<string, boolean>;
   /** Enabled command declarations matching accepted active runtimes, in catalog admission order. */
   commands(): PackCommand[];
   /** Every registered pack's help entries, for the Settings view's Help list */

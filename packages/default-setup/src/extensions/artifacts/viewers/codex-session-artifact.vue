@@ -268,8 +268,8 @@
 import { computed, ref } from 'vue'
 import { Bot, Check, Copy, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@apackdev/sdk/artifacts'
-import { usePluginState } from '#generated/fe.ts'
-import { openPlugin } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
+import { openSurface } from '#generated/fe.ts'
 import { sendToSystem } from '#generated/events.ts'
 
 
@@ -302,14 +302,14 @@ defineProps<{
   artifact: ArtifactItem<CodexThreadState>
 }>()
 
-const currentThread = usePluginState('threads', (s) => s.currentThread)
+const currentThread = useSurfaceState('threads', (s) => s.currentThread)
 
 const content = computed<CodexThreadState>(() =>
   currentThread.value?.context?.codex ?? ({} as CodexThreadState)
 )
 
-const settings = usePluginState('threads', (s) => s.settings)
-const overrides = usePluginState('threads', (s) => s.chatStateOverrides)
+const settings = useSurfaceState('threads', (s) => s.settings)
+const overrides = useSurfaceState('threads', (s) => s.chatStateOverrides)
 const stateConfig = computed(() => {
   const configs = settings.value?.chatStates
   const threadId = currentThread.value?.id ?? ''
@@ -444,8 +444,8 @@ async function copyThreadId() {
 }
 
 function openTerminalTab() {
-  // The code plugin routes a terminal.* event to its terminals
-  openPlugin('code', {
+  // The code surface routes a terminal.* event to its terminals
+  openSurface('code', {
     type: 'terminal.CREATE',
     target: 'tab',
     command: `codex resume ${content.value.threadId}`,

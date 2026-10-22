@@ -1,4 +1,4 @@
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup } from 'xstate'
 
@@ -6,7 +6,7 @@ import { repository } from '#generated/repository.ts';
 import { EARS } from '#generated/ears.ts'
 import type { PromptEntity } from '@apackdev/sdk'
 
-const pluginId = 'code' as const
+const surfaceId = 'code' as const
 
 // Incoming events from frontend
 
@@ -40,13 +40,13 @@ export const promptsSystem = setup({
           templateFnContent: prompt.templateFn
         }
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'codePrompts.PROMPT_SELECTED',
           promptId: ev.promptId as EARS.EntityId,
           data: promptWithContent
         })
       } else {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'codePrompts.CODE_ERROR',
           data: {
             message: `Prompt ${ev.promptId} not found`
@@ -65,7 +65,7 @@ export const promptsSystem = setup({
 
       const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
       if (updatedPrompt) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'codePrompts.PROMPT_UPDATED',
           prompt: updatedPrompt,
           promptId: updatedPrompt.id

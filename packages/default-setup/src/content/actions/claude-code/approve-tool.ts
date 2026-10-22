@@ -78,7 +78,7 @@ export async function action(
 
   if (toolName === 'ExitPlanMode') {
     resolvePlanDraft(services, threadId as EntityId, 'approved');
-    services.emitter.broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
+    services.emitter.broadcastToSurface('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
   }
 
   // If the user checked "auto-accept file edits", switch for current + future turns.

@@ -13,7 +13,7 @@ migrate every in-repo caller, test, fixture, template and doc in the same change
 Finished when:
 - Phases 1–5 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- Pack code has one typed way per direction: `broadcastToPlugin`/`emit` (backend → frontend) and
+- Pack code has one typed way per direction: `broadcastToSurface`/`emit` (backend → frontend) and
   `sendToSystem` (frontend → backend, backend → backend), from `#generated/events`. No pack source
   uses `rootEvents`, `trpc.bus.send.mutate`, `@apackdev/sdk/rpc` or `console.*` in backend code, and
   a guard rejects them.
@@ -48,12 +48,12 @@ Packs reach the app's messaging, logging and action running through several over
 
 - **Five ways to send an event.**
   - **Backend → frontend:**
-    - `system.get(bus).send(emit(pluginId, event))` inside a system (8 files). It goes through the bus actor, which drops `OUTGOING` until a client connects (`apack-host/src/bus/index.ts`, `connected` state).
-    - `broadcastToPlugin` from `#generated/events` (3 files) writes straight to `rootEvents` through the api's `core/router/event-emitter.ts`, ignoring the connection.
-    - `services.emitter.broadcastToPlugin` (53 action uses) does the same, untyped.
-    - `rootEvents.emitOutgoing(emit(pluginId, …).event)` (118 calls in the code and browser systems, `@apackdev/sdk/rpc`) does the same, bypassing the typed facade.
+    - `system.get(bus).send(emit(surfaceId, event))` inside a system (8 files). It goes through the bus actor, which drops `OUTGOING` until a client connects (`apack-host/src/bus/index.ts`, `connected` state).
+    - `broadcastToSurface` from `#generated/events` (3 files) writes straight to `rootEvents` through the api's `core/router/event-emitter.ts`, ignoring the connection.
+    - `services.emitter.broadcastToSurface` (53 action uses) does the same, untyped.
+    - `rootEvents.emitOutgoing(emit(surfaceId, …).event)` (118 calls in the code and browser systems, `@apackdev/sdk/rpc`) does the same, bypassing the typed facade.
   - **Frontend → backend:** `trpc.bus.send.mutate({ systemId, type, … })` (191 calls) from `@apackdev/sdk/rpc`, untyped, plus 7 hand-copied `const sendToBackend = …` helpers in code frontend files. Every system declares its incoming events (`defineSystem(id)<Incoming, Outgoing>()`), but nothing types these sends.
-  - `sendToSystem`, `sendToBrainSystem`, `onIncoming` and `onOutgoing` live in `@apackdev/sdk/services`. `emit` lives in `@apackdev/sdk/helpers`, and `defineEvents`/`HostPluginEvents` in `@apackdev/sdk/services`.
+  - `sendToSystem`, `sendToBrainSystem`, `onIncoming` and `onOutgoing` live in `@apackdev/sdk/services`. `emit` lives in `@apackdev/sdk/helpers`, and `defineEvents`/`HostSurfaceEvents` in `@apackdev/sdk/services`.
 - **`rootEvents` and `trpc` are pack-facing plumbing.**
   - Backend: 11 files use `rootEvents` directly (`emitOutgoing` ×122, `onConnected` ×2, `onIncoming` ×2, the logs system's `onLog` ×1).
   - Frontend: `trpc` comes from `@apackdev/sdk/rpc`. In the renderer a Vite alias (`packages/renderer/vite.config.ts:116`) swaps that module for the renderer's own client; pack frontends get it as the `sdkRpc` global.
@@ -74,10 +74,10 @@ Packs reach the app's messaging, logging and action running through several over
 Throwaway worktree `spike/pack-api-organization` (from `c187956e5`, uncommitted, in the session scratchpad; discard with `git worktree remove`). Rewrite the implementation on the goal branch; don't reuse the spike's code.
 
 **What was built:**
-- **`@apackdev/sdk/events`**, holding `emit`, `broadcastToPlugin`, `defineEvents`, `HostPluginEvents`, `IncomingEventsOf` and `defineSystemSends`.
+- **`@apackdev/sdk/events`**, holding `emit`, `broadcastToSurface`, `defineEvents`, `HostSurfaceEvents`, `IncomingEventsOf` and `defineSystemSends`.
 - **Generator:** `#generated/events` gained `PackSystemEvents` (system id → incoming events, read from each system's default export) and a typed `sendToSystem`. All 12 default-setup systems and the fixture's `memos` system switched from `const x: SystemEntry = {…}` to `const x = {…} satisfies SystemEntry`.
 - **Transport:** an `event-transport` host module (`sendIncoming`) registered by the api (`rootEvents.emitIncoming`), the renderer (`trpc.bus.send.mutate`) and the test host.
-- **Migrations:** notes (27 sends) and memos frontends moved to `sendToSystem`, and the 118 `rootEvents.emitOutgoing` calls to `broadcastToPlugin`.
+- **Migrations:** notes (27 sends) and memos frontends moved to `sendToSystem`, and the 118 `rootEvents.emitOutgoing` calls to `broadcastToSurface`.
 - **Action sandbox:** one runner, `runActionCode`, used by both action runners.
 - **Entry split:** `@apackdev/sdk/templates` split from `runtime`.
 
@@ -107,33 +107,33 @@ Final.
 
 1. **`@apackdev/sdk/events` is the one home for messaging.**
    - It holds:
-     - `emit`, `broadcastToPlugin`, `sendToSystem`, `sendToBrainSystem`
+     - `emit`, `broadcastToSurface`, `sendToSystem`, `sendToBrainSystem`
      - `onConnected`, `onIncoming`
-     - `defineEvents` (typed plugin and system sends)
-     - `HostPluginEvents`, `IncomingEventsOf`, `IncomingSystemEvents`, `OutgoingSystemEvents`, `PluginEvents`
+     - `defineEvents` (typed surface and system sends)
+     - `HostSurfaceEvents`, `IncomingEventsOf`, `IncomingSystemEvents`, `OutgoingSystemEvents`, `SurfaceEvents`
    - It's frontend-safe (no Node or `services` imports), a `SDK_FE_MODULES` entry (`sdkEvents`) and an `SDK_BRIDGE` entry.
    - `@apackdev/sdk/services` and `@apackdev/sdk/helpers` stop exporting these.
    - `services.emitter` is built from `events` and typed with the pack's generated maps (the `Services` type and the Monaco action editor follow).
 2. **Typed sends both ways, generated.**
    - `#generated/events` exports:
-     - `PackEvents` (plugin → events it receives)
+     - `PackEvents` (surface → events it receives)
      - `PackSystemEvents` (system → events it receives: the pack's own and its dependencies', via their facade types)
-     - `emit`, `broadcastToPlugin` and `sendToSystem` from `defineEvents<PackEvents, PackSystemEvents>(busId)`
+     - `emit`, `broadcastToSurface` and `sendToSystem` from `defineEvents<PackEvents, PackSystemEvents>(busId)`
    - Systems declare entries with `satisfies SystemEntry`, and the `apack add feature` template and docs follow.
    - `sendToSystem(systemId, event)` narrows the event by its `type` before checking its fields, so a missing field names the chosen event's type.
    - Systems are named by pack and feature (revised after review): the pack's own by feature id, a dependency's as `<dependency>/<feature>`, and in actions, which run outside any pack, every system as `<pack>/<feature>`, resolved by the host. The generated `sendToSystem` maps each name to the id the system runs under, so an own feature may share a dependency system's name.
    - Every pack gets `sendToSystem`; one without systems sends to its dependencies' (revised after review, which found frontend-only packs had no typed way to reach a dependency).
    - `pack-types.ts` includes `PackSystemEvents`, so dependents compose it.
 3. **One way per direction in pack code.**
-   - `broadcastToPlugin` everywhere, or `emit` inside a system's actions.
+   - `broadcastToSurface` everywhere, or `emit` inside a system's actions.
    - `sendToSystem` from frontend and backend.
-   - Actions use `services.emitter.broadcastToPlugin`/`sendToSystem`, now typed.
+   - Actions use `services.emitter.broadcastToSurface`/`sendToSystem`, now typed.
    - The 118 `rootEvents.emitOutgoing` calls, the 191 `trpc.bus.send.mutate` calls and the 7 local `sendToBackend` helpers are replaced.
    - `check:specifiers` rejects in pack sources:
      - `@apackdev/sdk/rpc` imports
      - `rootEvents`
      - `trpc.bus`
-     - `emit`/`broadcastToPlugin`/`sendToSystem` from anywhere but `#generated/events` (extending today's rule)
+     - `emit`/`broadcastToSurface`/`sendToSystem` from anywhere but `#generated/events` (extending today's rule)
 4. **One transport for sends, bound per environment (interim).**
    - `events` sends through an `event-transport` host module: `sendIncoming` and `sendOutgoing`, plus `onConnected` and `onIncoming`.
    - Registered by the api (over `rootEvents`), the renderer (over its tRPC client) and the test host (over `testRootEvents`).
@@ -149,7 +149,7 @@ Final.
    - The action step and the actions page both use it.
 7. **App info and navigation.**
    - `getAppVersion` moves to `@apackdev/sdk/env`.
-   - `fe/delegates.ts` becomes `fe/navigation.ts` (`navigateToPlugin`, `openInAppBrowser`, `useState`).
+   - `fe/delegates.ts` becomes `fe/navigation.ts` (`navigateToSurface`, `openInAppBrowser`, `useState`).
 8. **Entry points say what they hold.**
    - `@apackdev/sdk/templates` holds `executeTemplate`, `createTemplateResolver` and `TemplateResolver`. `@apackdev/sdk/runtime` keeps only the host registry, for the host, until goal-package-boundaries.md replaces it.
    - `@apackdev/sdk/rpc` is removed: event types go to `events`, and `rootEvents` moves under `@apackdev/sdk/runtime` marked `@internal`.
@@ -184,7 +184,7 @@ Final.
 
 ### Phase 2 — Migrate sends and remove raw paths
 - Frontend: the 191 `trpc.bus.send.mutate` calls and 7 local `sendToBackend` helpers become `sendToSystem`.
-- Backend: the 118 `rootEvents.emitOutgoing` calls become `broadcastToPlugin`. Remove every `as any` on sent events, and declare the events it hid (`codePrompts.PROMPT_SELECTED`, `PROMPT_UPDATED`, `CODE_ERROR`, and any others found).
+- Backend: the 118 `rootEvents.emitOutgoing` calls become `broadcastToSurface`. Remove every `as any` on sent events, and declare the events it hid (`codePrompts.PROMPT_SELECTED`, `PROMPT_UPDATED`, `CODE_ERROR`, and any others found).
 - `rootEvents.onConnected`/`onIncoming` become `onConnected`/`onIncoming` from `events`.
 - `services.emitter` is built from `events`, and default-setup's content actions typecheck against it.
 - `check:specifiers` rules (Decision 3).
@@ -192,7 +192,7 @@ Final.
 **Done when:**
 - No pack source (default-setup, fixture pack, example pack, CLI templates) matches the rejected patterns, and each new rule fails on a planted violation (mutation).
 - The code, browser, notes and memos flows pass their E2E and unit tests.
-- A content action using `services.emitter.broadcastToPlugin` with a wrong event type fails typecheck.
+- A content action using `services.emitter.broadcastToSurface` with a wrong event type fails typecheck.
 
 ### Phase 3 — Observability and the action sandbox
 - `createLogger(source, { debug })`, `reportError`, `onLog` (Decision 5). Migrate the 4 `createInspectLogger` users, `reportSystemError` and `reportStepRuntimeError` callers, the logs system's subscription, and the 15 `console.*` backend files.

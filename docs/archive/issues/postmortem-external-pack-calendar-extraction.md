@@ -12,7 +12,7 @@
 
 ## Summary
 
-Moving `calendar` from `packages/default-setup` into `apack-external/example-pack` was the first end-to-end run of an external pack with a real backend system and frontend plugin. Getting five simple E2E tests to pass took ~1h50m and 30+ test runs. Along the way it surfaced **ten latent platform bugs**, all of which are now fixed and still in place.
+Moving `calendar` from `packages/default-setup` into `apack-external/example-pack` was the first end-to-end run of an external pack with a real backend system and frontend surface. Getting five simple E2E tests to pass took ~1h50m and 30+ test runs. Along the way it surfaced **ten latent platform bugs**, all of which are now fixed and still in place.
 
 Status after the external pack authoring goal:
 
@@ -51,7 +51,7 @@ Verification for the first pass (the goal's verification is under *Closed by the
 ### 1. Calendar create round-trip — ✅ resolved, not a platform bug
 
 **Root cause:** none of the three hypotheses. Temporary probes showed:
-- Backend: the handler ran, `calendarCommands.create` persisted (`shortCode: CAL-12`), and `CALENDAR_EVENT_CREATED` was emitted to plugin `calendar`.
+- Backend: the handler ran, `calendarCommands.create` persisted (`shortCode: CAL-12`), and `CALENDAR_EVENT_CREATED` was emitted to surface `calendar`.
 - Frontend: the calendar actor's `context.events` went from 12 to 13 with the new title.
 
 The event didn't render because of two things together:
@@ -118,7 +118,7 @@ This pass adds one more symptom of the linked-SDK setup. The SDK's `peerDependen
 Changes in `packages/apack-sdk/src/testing/index.ts`:
 - **Always rebuilds the pack.** The old "build only if `dist/` is missing" rule silently tested stale code (see item 1).
 - **Always buffers Electron stdout/stderr** (last 200 lines). Every fixture failure reports the renderer console errors plus the Electron/API error lines, without `DEBUG_E2E`.
-- **Fails immediately when the pack under test's FE entry fails to load**, with the error attached, instead of logging "skipping wait". A pack plugin that never registers, "App did not reach connected state", and "Main window … did not appear" also fail with the captured errors.
+- **Fails immediately when the pack under test's FE entry fails to load**, with the error attached, instead of logging "skipping wait". A pack surface that never registers, "App did not reach connected state", and "Main window … did not appear" also fail with the captured errors.
 - **Only the pack under test fails fast.** The renderer's message now includes the pack URL (`Failed to load FE entry pack://<packId>/dist/fe.js`, `packages/renderer/src/packs/pack-loader.ts`). Other installed packs' errors are reported but don't abort the run.
 - `apack build` now exits non-zero when the FE bundle fails, and the new BE compile failure check does the same. Previously either failure printed a message, exited 0, and left the previous build in `dist/`, where the fixture and loader used it.
 
@@ -146,7 +146,7 @@ It only avoided crashing because `getHostModule` was called lazily. The fix:
 ### 6. No CI coverage for the external-pack path — ✅ resolved locally
 
 **Added:**
-- `tests/fixtures/external-pack/`: a checked-in pack derived from `apack init` + `apack add feature memos`. It has an EARS entity, a compiled CJS system, an FE plugin using `#generated/bus-ids`, `@apackdev/sdk/rpc` and pack Tailwind, with no content (see N1).
+- `tests/fixtures/external-pack/`: a checked-in pack derived from `apack init` + `apack add feature memos`. It has an EARS entity, a compiled CJS system, an FE surface using `#generated/bus-ids`, `@apackdev/sdk/rpc` and pack Tailwind, with no content (see N1).
   - `memos.spec.ts` checks that a pack-only `p-[13px]` class applies, compares a visual baseline, and runs an add-memo round trip through the pack backend.
 - `tests/scripts/test-external-pack.sh`, run as `npm run test:external-pack`. It runs `apack validate`, `apack build`, `tsc --noEmit` on the pack, then `apack test` from the pack directory.
 - `.github/workflows/ci.yml` gets a new `external-pack-e2e` job (install, `npm run build`, `npm run test:external-pack`, upload test output on failure) and an `sdk` unit-test step in `check`.
@@ -169,7 +169,7 @@ The fixture was scaffolded from the `init` template, and it initially hit the sa
 | `TS2352` on the generated `RelKind` cast when a pack declares no rel kinds | cast via `Record<string, unknown>` |
 | `EARS.Entity.Action` in `appliers.ts` for packs applying actions without depending on `default-setup` | collection appliers use the entity name as a string literal |
 
-**Regression found and fixed along the way:** the new tsconfig `paths` broke `be-bundler.ts`. Its alias plugin returned extensionless paths (`Cannot read file …/__generated__/ears`), and the system compile failure didn't fail the build. The alias plugin now resolves extensions, and failed system compiles exit 1.
+**Regression found and fixed along the way:** the new tsconfig `paths` broke `be-bundler.ts`. Its alias surface returned extensionless paths (`Cannot read file …/__generated__/ears`), and the system compile failure didn't fail the build. The alias surface now resolves extensions, and failed system compiles exit 1.
 
 **Results:**
 
@@ -206,7 +206,7 @@ Update baselines with `-u`.
 - Investigate failing assertions before changing them.
 - Test data persists across runs.
 
-Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild, fail-fast, calendar plugin ID).
+Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild, fail-fast, calendar surface ID).
 
 ### New findings from this pass — ✅ resolved
 
@@ -270,14 +270,14 @@ Branch `AS/external-pack-authoring`. The spec is `docs/archive/goals/goal-extern
 | # | Issue | Symptom during session | Fix | Check |
 |---|---|---|---|---|
 | A1 | External system IDs prefixed on the backend, unprefixed on the frontend | FE→BE events unroutable (`Unknown system: "apack-external.calendar"`) | generated `busId` map in `system-ids.ts` | pack uses `busId.calendar` ×3, no bare `systemId: id`; probe shows correct routing |
-| A2 | Loader read `manifest.plugins` only | pack registered 0 systems | loader reads `manifest.features` (`plugins` since removed) | `pack-loader.ts:320,405` |
+| A2 | Loader read `manifest.surfaces` only | pack registered 0 systems | loader reads `manifest.features` (`surfaces` since removed) | `pack-loader.ts:320,405` |
 | A3 | Renderer boot deadlock (circular top-level-await chunk) blocked **all** E2E tests, including the monorepo's own | `Main window with applicationState did not appear within timeout`; error page with empty stack | static built-in pack imports; `modulePreload: false` | `renderer/vite.config.ts` |
 | A4 | FE bundler exported the namespace object as `default` | `TypeError: __m$3 is not a function` | `export default __m.default` | `fe-bundler.ts:35` |
 | A5 | `@apackdev/sdk/rpc` not proxied | `SDK host module "trpc" not registered` | added to `SDK_FE_MODULES` | `shared-deps.ts` (missing guard tracked as item 5) |
 | A6 | Pack systems loaded as ESM bypassed host resolution | `Cannot find package 'xstate'` → `'@apackdev/sdk'` → `Cannot use import statement outside a module` | new `be-bundler.ts` compiles systems to `dist/systems/*.cjs` | `build.ts` calls `bundlePackSystems` |
 | A7 | `SystemEntry` wrapper used as the machine | `this.logic.getInitialSnapshot is not a function` | `raw.machine ?? raw` | `pack-loader.ts` |
-| A8 | Pack CSS had no Tailwind utilities | broken grid; every test still passed | Tailwind/PostCSS in `fe-bundler.ts` | `tailwind-inject` plugin |
-| A9 | Test app shared the dev app's single-instance lock and packs dir | `Another dev instance is already running`; `Plugin "calendar" did not load within 30s` | `apack-test` namespace; `getPacksDirForEnv('test')` | `SingleInstanceApp.ts`, `testing/index.ts` |
+| A8 | Pack CSS had no Tailwind utilities | broken grid; every test still passed | Tailwind/PostCSS in `fe-bundler.ts` | `tailwind-inject` surface |
+| A9 | Test app shared the dev app's single-instance lock and packs dir | `Another dev instance is already running`; `Surface "calendar" did not load within 30s` | `apack-test` namespace; `getPacksDirForEnv('test')` | `SingleInstanceApp.ts`, `testing/index.ts` |
 | A10 | `bookmarks` system had a named export only | `No machine export found in src/features/bookmarks/be/system.ts` (named the wrong file), ignored for ~16h | `export default bookmarksEntry`; loader diagnostic names the loaded file (`a1a86d498`) | both systems load |
 | B3 | Pack's own E2E suite never ran green from the pack | `Requiring @playwright/test second time` / `No tests found` / `playwright: command not found`; all green runs used a monorepo copy | resolved as a side effect of A9 plus the Playwright symlink | **`apack test` from the pack: 7 passed** (remaining dependencies tracked as items 2 and 3) |
 | — | Stale default-setup and renderer `dist` | `compiledDir not initialized — pack loader must call setCompiledDir()`; renderer still bundled calendar | rebuilt | n/a |

@@ -192,7 +192,7 @@ async function handleResume(
 
   // Same thread: reload thread data to show imported messages
   const threadData = services.repository.chatQueries.threadData(targetThreadId as any);
-  if (threadData) services.emitter.broadcastToPlugin('default-setup/threads', { type: 'LOAD_CHAT_THREAD', data: threadData });
+  if (threadData) services.emitter.broadcastToSurface('default-setup/threads', { type: 'LOAD_CHAT_THREAD', data: threadData });
 
   return { text: confirmText };
 }
@@ -314,7 +314,7 @@ async function handleImport(
   // sendRecentThreadsRefresh() only updates the sidebar (recent 7 threads).
   const connectedData = services.repository.threadQueries.connectedData();
   const threadsSettings = services.settings.get<ThreadsSettings>({ kind: 'feature', featureRef: 'default-setup/threads' });
-  services.emitter.broadcastToPlugin('default-setup/threads', {
+  services.emitter.broadcastToSurface('default-setup/threads', {
     type: 'THREAD_CONNECTED',
     data: { ...connectedData, settings: threadsSettings || null },
   });

@@ -264,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 import { useAppSettings } from '#generated/settings-fe.ts'
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, type CSSProperties } from 'vue'
 import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus } from 'lucide-vue-next'
@@ -321,8 +321,8 @@ watch(isOpen, async (open) => {
   }
 })
 
-// Get threads from the threads plugin state
-const threadsActor: ThreadsState = usePlugin()
+// Get threads from the threads surface state
+const threadsActor: ThreadsState = useSurface()
 const chatStates = useSelector(threadsActor, (state) => state.context.chatStates)
 const chatStateOverrides = useSelector(threadsActor, (state) => state.context.chatStateOverrides)
 const settings = useSelector(threadsActor, (state) => state.context.settings)

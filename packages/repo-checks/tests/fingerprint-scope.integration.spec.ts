@@ -181,6 +181,9 @@ describe('prose costs nothing', () => {
     'packages/apack-cli/templates/pack/README.md': 'check:specifiers',
     // Test input, read by the content-parity goldens
     'packages/default-setup/tests/_support/fixtures/content-parity/v1/notes/welcome.md': 'test:unit:pack',
+    // The document tree `doc-links` resolves every relative link in. A dead link fails nothing on its own,
+    // so this has to be in the key of the step that runs that check or it caches over a doc that moved
+    'docs/public-facing/manifest.md': 'test:unit:host',
   };
 
   it('keeps markdown a build reads in the key of the step that reads it', () => {

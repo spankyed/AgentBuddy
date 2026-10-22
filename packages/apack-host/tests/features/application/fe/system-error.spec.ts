@@ -1,11 +1,11 @@
 // How loudly the app shows a system error. `fatal` replaces the window, `error` raises a toast, and
 // `diagnostic` does neither: it is still logged and still recorded, so a pack test that leaves one
-// fails, but it does not interrupt someone who can do nothing about it — a send to a plugin no pack
-// declares is for whoever wrote the send, and it is already in the Logs plugin.
+// fails, but it does not interrupt someone who can do nothing about it — a send to a surface no pack
+// declares is for whoever wrote the send, and it is already in the Logs surface.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type Actor } from 'xstate';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
-import { fakeShell, plugin } from './fakes.ts';
+import { fakeShell, surface } from './fakes.ts';
 
 let app: Actor<ShellMachine>;
 let shell: ReturnType<typeof fakeShell>;
@@ -14,12 +14,12 @@ let toast: ReturnType<typeof fakeShell>['notify'];
 let showErrorPage: ReturnType<typeof fakeShell>['notify']['errorPage'];
 
 beforeEach(() => {
-  shell = fakeShell({ plugins: [plugin('notes')] });
+  shell = fakeShell({ surfaces: [surface('notes')] });
   toast = shell.notify;
   showErrorPage = shell.notify.errorPage;
   app = createActor(createShellMachine(shell.options), {
     systemId: 'host/application',
-    input: { ownsLastActivePlugin: false },
+    input: { ownsLastActiveSurface: false },
   }).start();
 });
 afterEach(() => app.stop());

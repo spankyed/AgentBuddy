@@ -231,7 +231,7 @@ export function persistClaudeState(
   });
 
   // Notify frontend so thread context is always in sync.
-  services.emitter.broadcastToPlugin('default-setup/threads', {
+  services.emitter.broadcastToSurface('default-setup/threads', {
     type: 'THREAD_UPDATED',
     threadId,
     updates: {
@@ -281,7 +281,7 @@ export function ensureSessionMarker(services: Services, threadId: EntityId): Ent
 
 /**
  * Update the chat state on the thread AND push a real-time event to the
- * frontend threads plugin. This is the single call site for chat state
+ * frontend threads surface. This is the single call site for chat state
  * transitions.
  */
 export function updateChatState(
@@ -491,7 +491,7 @@ export function clearClaudeState(services: Services, threadId: string): void {
     tags: nextTags,
   });
 
-  services.emitter.broadcastToPlugin('default-setup/threads', {
+  services.emitter.broadcastToSurface('default-setup/threads', {
     type: 'THREAD_UPDATED', threadId, updates: { context: nextContext, tags: nextTags },
   });
 }

@@ -15,8 +15,8 @@ import type { SettingsAdmin, SettingsService } from '@apackdev/sdk/services';
 
 export type { Message };
 
-/** An event a plugin receives, exactly as the system that sent it wrote it */
-export type PluginEvent = Message['event'];
+/** An event a surface receives, exactly as the system that sent it wrote it */
+export type SurfaceEvent = Message['event'];
 
 /** Explicit test-fixture authority; never serialized or inferred from sender/client labels. */
 export type TestSettingsAccess =
@@ -72,7 +72,7 @@ export interface TestApp {
    * test could not drive such a handler at all.
    *
    * `client` says the ask arrived on a connection, which is what decides where `reply` sends the answer: with
-   * one, the asker is a plugin in a window or a claimed participant and the answer goes to that connection
+   * one, the asker is a surface in a window or a claimed participant and the answer goes to that connection
    * alone; without one, the ask originated in the backend and the answer goes to the asking *system*. A real
    * client's send always carries one (the API stamps it per socket), and nothing sent from here does unless it
    * is given — so a spec standing in for a window or a driver passes one, and a spec standing in for a system
@@ -90,13 +90,13 @@ export interface TestApp {
     options?: { sender?: string; client?: string; call?: string; settingsAccess?: TestSettingsAccess },
   ): Promise<string>;
   /**
-   * The events delivered to one frontend plugin (by `broadcastToPlugin`, once connected), in order, exactly as
-   * sent; the plugin named as the pack names it (its own by feature id, any other as `<packId>/<featureId>`).
+   * The events delivered to one frontend surface (by `broadcastToSurface`, once connected), in order, exactly as
+   * sent; the surface named as the pack names it (its own by feature id, any other as `<packId>/<featureId>`).
    * Readable after `stop`
    */
-  emitted(plugin: string): PluginEvent[];
+  emitted(surface: string): SurfaceEvent[];
   /**
-   * The next event of `type` sent to `plugin` (named as in `emitted`) that no earlier `nextEmit` returned,
+   * The next event of `type` sent to `surface` (named as in `emitted`) that no earlier `nextEmit` returned,
    * waiting for it if needed.
    *
    * With `answering`, only an answer to that call counts — `Message.answering`, which `reply` stamps and
@@ -104,7 +104,7 @@ export interface TestApp {
    * wherever a spec has two asks in flight, or asserts that an answer named the right one; the timeout
    * message names what each candidate answered, so a mismatch reads as a mismatch rather than as silence.
    */
-  nextEmit(plugin: string, type: string, options?: { timeoutMs?: number; answering?: string }): Promise<PluginEvent>;
+  nextEmit(surface: string, type: string, options?: { timeoutMs?: number; answering?: string }): Promise<SurfaceEvent>;
   /** Resolves once the actors have no queued work left (zero-delay raises and settled promises included) */
   settle(): Promise<void>;
   /**
@@ -137,8 +137,8 @@ interface AppPacks {
   getLifecycleHooks(): PackLifecycleHooks[];
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   getRegisteredPackSystemIds(packId: string): string[];
-  /** What each plugin receives, so a test app drops a send no plugin declares, as the app does */
-  getPluginEventValidationMap(): Map<string, Set<string>>;
+  /** What each surface receives, so a test app drops a send no surface declares, as the app does */
+  getSurfaceEventValidationMap(): Map<string, Set<string>>;
   /** And what each system accepts, so a send a system declares no event for is reported rather than ignored */
   getEventValidationMap(): Map<string, Set<string>>;
 
@@ -214,11 +214,11 @@ const resolveSystemId = (name: string, registered: ReadonlyMap<string, AnyStateM
   resolveRegistered('system', name, { packId, registered: [...registered.keys()] });
 
 /**
- * The registered plugin a name stands for, as the pack under test's own `broadcastToPlugin` resolves it. A name no
- * plugin is registered under throws at once, rather than leaving a wait for its events to time out.
+ * The registered surface a name stands for, as the pack under test's own `broadcastToSurface` resolves it. A name no
+ * surface is registered under throws at once, rather than leaving a wait for its events to time out.
  */
-const resolvePluginId = (name: string): string =>
-  resolveRegistered('plugin', name, { packId, registered: [...packs().getPluginEventValidationMap().keys()] });
+const resolveSurfaceId = (name: string): string =>
+  resolveRegistered('surface', name, { packId, registered: [...packs().getSurfaceEventValidationMap().keys()] });
 
 /** One event loop turn, after zero-delay timers already queued (xstate's `raise(…, { delay: 0 })`) */
 const macrotask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -226,11 +226,11 @@ const macrotask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 /** The brain's trace node for the root flow (default-setup's brain repository) */
 const ROOT_FLOW_TNODE = 'TNode-Root';
 
-type TNodeSpawned = PluginEvent & { type: 'TNODE_SPAWNED'; tNode: { id: string; label?: string; tNodeType?: string; eventType?: string }; flowTNodeId: string; eventTNodeId?: string };
-type TNodeUpdated = PluginEvent & { type: 'TNODE_UPDATED'; data: { tNodeId: string; status: string } };
+type TNodeSpawned = SurfaceEvent & { type: 'TNODE_SPAWNED'; tNode: { id: string; label?: string; tNodeType?: string; eventType?: string }; flowTNodeId: string; eventTNodeId?: string };
+type TNodeUpdated = SurfaceEvent & { type: 'TNODE_UPDATED'; data: { tNodeId: string; status: string } };
 
-const isSpawn = (event: PluginEvent): event is TNodeSpawned => event.type === 'TNODE_SPAWNED';
-const isUpdate = (event: PluginEvent): event is TNodeUpdated => event.type === 'TNODE_UPDATED';
+const isSpawn = (event: SurfaceEvent): event is TNodeSpawned => event.type === 'TNODE_SPAWNED';
+const isUpdate = (event: SurfaceEvent): event is TNodeUpdated => event.type === 'TNODE_UPDATED';
 
 const readTNode = (id: string) => (untypedQx(id).pickAll() as Array<Record<string, unknown>>)[0];
 
@@ -267,7 +267,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
   /** The label of the flow each reported trace node ran in, kept after the brain clears its trace */
   const flowLabels = new Map<string, string>();
   const rootFlowLabel = () => (untypedQx().withRole(ROOT_FLOW_ROLE).pickAll() as Array<{ label?: string }>)[0]?.label;
-  const record = (event: PluginEvent) => {
+  const record = (event: SurfaceEvent) => {
     if (!isSpawn(event) && !isUpdate(event)) return;
     reports.push(event);
     const tNodeId = isSpawn(event) ? event.tNode.id : isUpdate(event) ? event.data.tNodeId : undefined;
@@ -324,7 +324,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         testRootEvents.onConnected(() => send({ type: 'CLIENT_CONNECTED' })),
         testRootEvents.onPackClientConnected((id) => send({ type: 'PACK_CLIENT_CONNECTED', packId: id })),
         testRootEvents.onIncoming((message) => send({ type: 'INCOMING', message })),
-        testRootEvents.onPluginSend((message) => send({ type: 'OUTGOING', message })),
+        testRootEvents.onSurfaceSend((message) => send({ type: 'OUTGOING', message })),
       ];
       return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
     },
@@ -401,7 +401,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
    * answer, read when the wait fails rather than when it started.
    */
   const heldForAClient = (): string => (bus.getSnapshot().value === 'awaitingClient'
-    ? ' No client has connected, and the bus holds sends to plugins until one does, so a reply had nowhere to go:'
+    ? ' No client has connected, and the bus holds sends to surfaces until one does, so a reply had nowhere to go:'
       + ' `await app.connect()` before the send.'
     : '');
 
@@ -436,12 +436,12 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       await settle();
       return sentUnder;
     }),
-    emitted(plugin) {
-      const id = resolvePluginId(plugin);
+    emitted(surface) {
+      const id = resolveSurfaceId(surface);
       return emitted.filter((message) => message.to === id).map((message) => message.event);
     },
-    nextEmit: (plugin, type, { timeoutMs = 5000, answering } = {}) => call(async () => {
-      const id = resolvePluginId(plugin);
+    nextEmit: (surface, type, { timeoutMs = 5000, answering } = {}) => call(async () => {
+      const id = resolveSurfaceId(surface);
       const wanted = answering === undefined ? '' : ` answering ${answering}`;
       // Named per send, since "a QUERY_RESULT arrived but answered something else" is the failure this option
       // exists to tell apart from "no QUERY_RESULT arrived", and only the envelope says which

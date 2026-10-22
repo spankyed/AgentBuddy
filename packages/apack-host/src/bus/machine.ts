@@ -7,11 +7,11 @@ import { reportError } from '@apackdev/sdk/logger';
 import { HOST } from '../refs.ts';
 import { deliverAs } from './delivery.ts';
 import { SYSTEM_EVENT_TYPES } from '@apackdev/sdk/framework';
-import { PLUGIN_EVENT_TYPES, _callOn, senderSuffix, type Message } from '@apackdev/sdk/events';
+import { SURFACE_EVENT_TYPES, _callOn, senderSuffix, type Message } from '@apackdev/sdk/events';
 import type { PackRegistry } from '../packs/registry.ts';
 
 
-/** A message in for a system (INCOMING) or out for a plugin (OUTGOING) */
+/** A message in for a system (INCOMING) or out for a surface (OUTGOING) */
 export type BusEvent =
   | { type: 'INCOMING'; message: Message }
   | { type: 'OUTGOING'; message: Message };
@@ -45,28 +45,28 @@ export type BackendEvents =
   | SystemsSpawnedEvent
   | { type: 'SYSTEMS_STOPPED'; afterStop(): void };
 
-/** The events a bus source can feed it: OUTGOING for sends to plugins from outside a system (`broadcastToPlugin`) */
+/** The events a bus source can feed it: OUTGOING for sends to surfaces from outside a system (`broadcastToSurface`) */
 export type BusSourceEvent = Extract<BackendEvents, { type: 'INCOMING' | 'OUTGOING' | 'CLIENT_CONNECTED' | 'PACK_CLIENT_CONNECTED' }>;
 
 export interface BusOptions {
   /** The registered packs whose systems the bus runs */
-  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap' | 'getEventValidationMap'>;
+  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getSurfaceEventValidationMap' | 'getEventValidationMap'>;
   /** The systems the bus runs, by id; defaults to every system in `registry` */
   systems?(): ReadonlyMap<string, AnyStateMachine>;
-  /** Delivers a message a system sent to a frontend plugin */
+  /** Delivers a message a system sent to a frontend surface */
   onOutgoing(message: Message): void;
   /**
    * The connection that claimed a ref, for a name no pack registered (`host/drive`). A message addressed to one
-   * is delivered to that connection rather than checked against a plugin's declared events, since no pack
+   * is delivered to that connection rather than checked against a surface's declared events, since no pack
    * describes it. Absent in a bus with no claims, which is every bus but the app's.
    */
   participantClient?(ref: string): string | undefined;
-  /** Feeds the bus client events (INCOMING, CLIENT_CONNECTED, PACK_CLIENT_CONNECTED) and sends to plugins (OUTGOING); returns the unsubscribe */
+  /** Feeds the bus client events (INCOMING, CLIENT_CONNECTED, PACK_CLIENT_CONNECTED) and sends to surfaces (OUTGOING); returns the unsubscribe */
   listen(send: (event: BusSourceEvent) => void): () => void;
   /**
    * Packs whose frontend code a client loads after connecting. A connection's CLIENT_CONNECTED, and a
    * pack's activation, skip their systems: the client sends PACK_CLIENT_CONNECTED for each once it has
-   * tried to load the pack's frontend (whether or not that loaded any plugins), and again each time its
+   * tried to load the pack's frontend (whether or not that loaded any surfaces), and again each time its
    * subscription reconnects, so they get it once per client connection.
    */
   clientLoadedPacks?(): Iterable<string>;
@@ -166,10 +166,10 @@ export function createBusMachine(options: BusOptions) {
     return ids.filter(id => !pending.has(id));
   }
   /**
-   * The drops already reported, keyed by plugin, event type and sender, so each is reported once per bus.
+   * The drops already reported, keyed by surface, event type and sender, so each is reported once per bus.
    *
-   * Reporting a drop logs it, and a log event becomes a send to the logs plugin (default-setup's logs
-   * system forwards it as LOG_ADDED). When the plugin being dropped is that one, reporting a drop
+   * Reporting a drop logs it, and a log event becomes a send to the logs surface (default-setup's logs
+   * system forwards it as LOG_ADDED). When the surface being dropped is that one, reporting a drop
    * produces another droppable send, and the cycle feeds itself.
    *
    * It feeds itself through the actor's queue rather than the call stack — the send arrives as a fresh
@@ -195,15 +195,15 @@ export function createBusMachine(options: BusOptions) {
       notify: ({ event }) => {
         if (event.type !== 'OUTGOING') return;
         // The counterpart of receiveClientEvent: a client's event is checked against what a system
-        // accepts, and a system's event against what the plugin receives. Reported and dropped rather
+        // accepts, and a system's event against what the surface receives. Reported and dropped rather
         // than thrown — the caller is a running system, and a malformed message must not take it down.
         // takeSystemErrors fails any pack test that leaves one, so this is loud where it should be.
-        const { to: pluginId, event: { type } } = event.message;
+        const { to: surfaceId, event: { type } } = event.message;
         // Who sent it, when the send stamped it: the pack (`defineEvents`) and what within it (an action's
         // `action:<label>`). `reportError` sends for a caller that is neither, so a drop that names no sender is
         // not thereby suspicious — it just has one fewer clue in it.
         const sender = senderSuffix(event.message);
-        // Four senders reach this one path — `untypedBroadcastToPlugin`, the generated `broadcastToPlugin`,
+        // Four senders reach this one path — `untypedBroadcastToSurface`, the generated `broadcastToSurface`,
         // `sendToWindow` and `reply` — and a `reply` caller named no id: the address came off the envelope,
         // which is the point of the verb, so telling it to "check the id" sends the next reader to look at a
         // call site that has none. So the wording varies by this, and the report carries it as its own field.
@@ -211,44 +211,44 @@ export function createBusMachine(options: BusOptions) {
         // **Not as a third `operation` value, which was tried and regressed.** `operation` says which verb,
         // and two readers filter on it to mean *direction*: `undeclared-incoming.spec.ts` separates this
         // function's reports from `routeIncoming`'s, and `@apackdev/testing`'s fixture collects these to fail a
-        // test on a dropped send. Making it `answering ? 'reply' : 'broadcastToPlugin'` left that fixture
+        // test on a dropped send. Making it `answering ? 'reply' : 'broadcastToSurface'` left that fixture
         // filtering for one value while this sent two, so a dropped answer stopped failing any Playwright
         // test — silently, there being no case over the fixture. Two facts, two fields.
         const answering = event.message.answering !== undefined;
-        const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
+        const accepted = options.registry.getSurfaceEventValidationMap().get(surfaceId);
         const reportDrop = (message: string) => {
           // Keyed on what the report says rather than on a second reading of the envelope, so whatever the
           // message distinguishes the dedupe distinguishes, and a suppressed drop is never one the report names
           // differently — which is why `answering` is in the key now that it changes the wording
-          const pair = `${pluginId}/${type}/${sender}/${answering}`;
+          const pair = `${surfaceId}/${type}/${sender}/${answering}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);
           // `diagnostic`: logged, recorded, and failing any pack test that leaves one — but no toast.
-          // Whoever is using the app can do nothing about a send to a plugin nobody declares, and the
-          // message already reaches the Logs plugin, where the person who can is looking.
-          reportError({ source: 'bus', operation: 'broadcastToPlugin', ...(answering ? { answering } : {}), severity: 'diagnostic', error: new Error(message) });
+          // Whoever is using the app can do nothing about a send to a surface nobody declares, and the
+          // message already reaches the Logs surface, where the person who can is looking.
+          reportError({ source: 'bus', operation: 'broadcastToSurface', ...(answering ? { answering } : {}), severity: 'diagnostic', error: new Error(message) });
         };
         if (accepted === undefined) {
           // A name a connection claimed rather than a pack registering it (`host/drive`). No pack describes it, so
           // there is no declared event list to check against — what it is sent reaches it, addressed to the
           // connection holding the name. An answer already carries that connection; a send made cold takes it from
           // here, which is what makes such a participant addressable by name and not merely replyable to.
-          const claimed = options.participantClient?.(pluginId);
+          const claimed = options.participantClient?.(surfaceId);
           if (claimed !== undefined) {
             options.onOutgoing({ ...event.message, client: event.message.client ?? claimed });
             return;
           }
-          // An event every plugin takes (a feature's settings changing) is the feature's plugin's if it has one
-          if ((PLUGIN_EVENT_TYPES as readonly string[]).includes(type)) return;
+          // An event every surface takes (a feature's settings changing) is the feature's surface's if it has one
+          if ((SURFACE_EVENT_TYPES as readonly string[]).includes(type)) return;
           reportDrop(answering
-            ? `Dropped the answer "${type}"${sender} to "${pluginId}", which no registered pack declares as a plugin that receives events. Nothing holds an asker open, so this is most likely a race: the asking pack unloaded before the answer landed.`
-            : `Dropped "${type}" sent${sender} to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
+            ? `Dropped the answer "${type}"${sender} to "${surfaceId}", which no registered pack declares as a surface that receives events. Nothing holds an asker open, so this is most likely a race: the asking pack unloaded before the answer landed.`
+            : `Dropped "${type}" sent${sender} to "${surfaceId}", which no registered pack declares as a surface that receives events. Check the id, or give the surface's own pack a system that declares what it sends there.`);
           return;
         }
         if (!accepted.has(type)) {
           reportDrop(answering
-            ? `Dropped the answer "${type}"${sender} to the "${pluginId}" plugin, which declares no such event. \`reply\` is typed against the answering system's outgoing events and cannot be checked against the asking plugin's inbox, so this compiles: either the asking plugin must declare "${type}" among what its pack's systems emit to it, or the answer has to be an event it already declares.`
-            : `Dropped "${type}" sent${sender} to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`);
+            ? `Dropped the answer "${type}"${sender} to the "${surfaceId}" surface, which declares no such event. \`reply\` is typed against the answering system's outgoing events and cannot be checked against the asking surface's inbox, so this compiles: either the asking surface must declare "${type}" among what its pack's systems emit to it, or the answer has to be an event it already declares.`
+            : `Dropped "${type}" sent${sender} to the "${surfaceId}" surface, which declares no such event. A surface receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the surface handles.`);
           return;
         }
         options.onOutgoing(event.message);
@@ -259,7 +259,7 @@ export function createBusMachine(options: BusOptions) {
          * silence — delivered, dropped by the machine, nothing said.
          *
          * **This is the net for `untypedSendToSystem`**, and the asymmetry it closes is between the two
-         * untyped twins rather than between typed and untyped: `untypedBroadcastToPlugin` has always been
+         * untyped twins rather than between typed and untyped: `untypedBroadcastToSurface` has always been
          * checked here on the way out (`notify`), while its inward mirror was not. The facade's
          * `sendToSystem` and a handler's `reply` are both typed against a contract, so what is left for a
          * runtime check is exactly the hatch — host code, tooling, a target or an event that arrives as
@@ -387,7 +387,7 @@ export function createBusMachine(options: BusOptions) {
         enqueue.assign({ awaitingFrontends: awaiting(context.awaitingFrontends, event.packId) });
         const spawned = spawnSystems(enqueue, systems(), event.systemIds);
         // A pack whose frontend a client loads next gets CLIENT_CONNECTED when the client asks for it
-        // (PACK_CLIENT_CONNECTED), once its plugin actors can receive the data; any other sends it now
+        // (PACK_CLIENT_CONNECTED), once its surface actors can receive the data; any other sends it now
         if (spawned.length > 0 && !clientLoadedPacks().has(event.packId)) {
           enqueue.raise({ type: 'SYSTEMS_SPAWNED', systemIds: spawned });
         }
@@ -395,13 +395,13 @@ export function createBusMachine(options: BusOptions) {
     },
   }).createMachine({
     id: HOST.bus,
-    // A client connection is only what frontend plugins need: sends to plugins are held back until one has
+    // A client connection is only what frontend surfaces need: sends to surfaces are held back until one has
     // connected, and systems send their startup data when one does. Nothing tells the bus a client left (a
     // reconnecting client connects again and gets the startup data), so `clientSeen` means "a client has
     // connected since the bus started", not "one is connected now".
     initial: 'awaitingClient',
     context: () => ({ awaitingFrontends: new Set(clientLoadedPacks()) }),
-    // Listening first: a system sends as it starts (a plugin's report, another system's event), and what it sends
+    // Listening first: a system sends as it starts (a surface's report, another system's event), and what it sends
     // before the bus hears the root events is lost
     entry: ['listen', 'spawnActors'],
     // A pack can be installed, uninstalled or rebuilt before any client connects (`apack pack dev` against a

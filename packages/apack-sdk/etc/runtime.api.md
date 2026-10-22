@@ -67,13 +67,13 @@ export interface FePackRegistryView extends PackExtensionsView {
     // (undocumented)
     blockBindings(): ReadonlyMap<string, BlockFrontendBinding>;
     onChanged(listener: (packId: string) => void): () => void;
-    plugins(): Plugin_2[];
     // (undocumented)
     referenceCategories(): ReadonlyMap<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;
     referenceTypes(): ReadonlyMap<string, ReferenceBinding<ReferenceTypeConfig>>;
     stepBindings(): ReadonlyMap<string, StepFrontendBinding>;
+    surfaces(): Surface[];
     // (undocumented)
-    tiptapPlugins(): TiptapPluginBinding[];
+    textEditor(): TextEditorExtensionsBinding[];
 }
 
 // @public
@@ -128,8 +128,6 @@ export interface PackRegistryView extends PackExtensionsView {
     help(): HelpCatalog;
     // (undocumented)
     onCatalogChanged(listener: () => void): () => void;
-    pluginDefaults(): Record<string, boolean>;
-    pluginIds(): readonly FeatureRef[];
     // (undocumented)
     settingsCatalog(): SettingsCatalog;
     // (undocumented)
@@ -137,6 +135,8 @@ export interface PackRegistryView extends PackExtensionsView {
     stepBindings(): ReadonlyMap<string, StepBackendBinding>;
     stepDeclarations(): readonly StepCatalogEntry[];
     steps(): StepDefinition[];
+    surfaceDefaults(): Record<string, boolean>;
+    surfaceIds(): readonly FeatureRef[];
     systemIds(): readonly FeatureRef[];
 }
 
@@ -146,7 +146,7 @@ export interface RootEvents {
     // (undocumented)
     emitLog(event: LogEvent): void;
     emitOutgoing(message: Message): void;
-    emitPluginSend(message: Message): void;
+    emitSurfaceSend(message: Message): void;
     // (undocumented)
     onConnected(callback: () => void): () => void;
     // (undocumented)
@@ -157,7 +157,7 @@ export interface RootEvents {
     onOutgoing(callback: (message: Message) => void): () => void;
     onPackClientConnected(callback: (packId: string) => void): () => void;
     // (undocumented)
-    onPluginSend(callback: (message: Message) => void): () => void;
+    onSurfaceSend(callback: (message: Message) => void): () => void;
 }
 
 // @internal

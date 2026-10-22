@@ -90,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, computed, reactive, watch, onMounted, nextTick } from 'vue'
 import { ChevronRight, Plus } from 'lucide-vue-next'
@@ -117,7 +117,7 @@ const isSymlink = computed(() => props.document?.id?.startsWith('symlink:') ?? f
 const mediaEntityId = crypto.randomUUID()
 
 // Get settings from state
-const actor: LibraryActor = usePlugin()
+const actor: LibraryActor = useSurface()
 const settings = useSelector(actor, (state) => state.context.settings)
 
 const formData = reactive({

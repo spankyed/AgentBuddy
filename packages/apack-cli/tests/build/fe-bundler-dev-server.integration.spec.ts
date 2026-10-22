@@ -29,7 +29,7 @@ import { replaceDir } from '@apackdev/host/replace-dir';
 /** A host-shared module: the pack must get the app's instance, so the server leaves it for the import map */
 const SHARED = '@apackdev/sdk/fe';
 /** A name it really exports, so the import under test is one a pack could actually write */
-const EXPORTED = 'usePlugin';
+const EXPORTED = 'useSurface';
 
 let server: Awaited<ReturnType<typeof import('vite').createServer>>;
 let packDir: string;
@@ -58,7 +58,7 @@ beforeAll(async () => {
 
 afterAll(async () => { await server?.close(); });
 
-// Through the dev environment's own plugin container, which is the context `apack pack dev` puts the plugin in —
+// Through the dev environment's own plugin container, which is the context `apack pack dev` puts a pack's frontend through —
 // rather than a `/@id/` URL, whose encoding is Vite's business and not what this is about
 it('claims a host-shared module and leaves it external', async () => {
   const { pluginContainer } = server.environments.client;

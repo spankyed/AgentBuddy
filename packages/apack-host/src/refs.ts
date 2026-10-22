@@ -5,11 +5,11 @@ import { HOST_PACK_ID, resolveName } from '@apackdev/sdk/ids';
 export const HOST = {
   /** The root bus machine the app starts every system under: not a feature, but spelled as one */
   bus: resolveName('bus', HOST_PACK_ID),
-  /** The app shell: its backend system keeps the shell's state, and the renderer's application actor is its plugin */
+  /** The app shell: its backend system keeps the shell's state, and the renderer's application actor is its surface */
   application: resolveName('application', HOST_PACK_ID),
-  /** Installing, updating and toggling packs: its system, and the renderer's Packs plugin */
+  /** Installing, updating and toggling packs: its system, and the renderer's Packs surface */
   packs: resolveName('packs', HOST_PACK_ID),
-  /** The app's settings: the store's system, and the renderer's Settings plugin */
+  /** The app's settings: the store's system, and the renderer's Settings surface */
   settings: resolveName('settings', HOST_PACK_ID),
   help: resolveName('help', HOST_PACK_ID),
   /**

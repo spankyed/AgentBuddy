@@ -32,9 +32,9 @@ function pack(id: string, entities: Record<string, string>, dependencies: Record
   };
 }
 
-/** A feature with a system and a plugin, so dependents have something to send to */
+/** A feature with a system and a surface, so dependents have something to send to */
 const NOTIFIER = {
-  features: { notifier: { description: 'Notify subscribing features.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { label: 'Fixture', state: 'src/plugin.ts' } } },
+  features: { notifier: { description: 'Notify subscribing features.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, surface: { label: 'Fixture', state: 'src/surface.ts' } } },
 };
 const NOTIFIER_SOURCES = {
   'src/system.contract.ts': [
@@ -49,7 +49,7 @@ const NOTIFIER_SOURCES = {
     'const entry = { spec: notifierSpec, machine: setup({ types: notifierSpec.types }).createMachine({ id: "notifier" }) };',
     'export default entry;',
   ].join('\n'),
-  'src/plugin.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'notifier' } as unknown as AnyStateMachine;\n",
+  'src/surface.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'notifier' } as unknown as AnyStateMachine;\n",
 };
 
 const DEEP = 'deep-pack';

@@ -257,8 +257,8 @@ async function buildIntoStaging(args: string[], root: string) {
      * A dependent sees only its direct dependencies' snapshots, so this has to carry the tree rather
      * than just this pack: a dependent of two packs sharing an ancestor receives the ancestor's names
      * through both, and without knowing who declares them reads that as a collision. Every pack depends
-     * on the base pack, so that is every diamond. It is also what lets a dependent naming a plugin it
-     * only reaches transitively be told which pack to depend on, rather than that the plugin is unknown.
+     * on the base pack, so that is every diamond. It is also what lets a dependent naming a surface it
+     * only reaches transitively be told which pack to depend on, rather than that the surface is unknown.
      */
     const provenance = _buildProvenance([...depSnapshots], { id: manifest.id, manifest });
     const snapshot: PackSnapshot = {

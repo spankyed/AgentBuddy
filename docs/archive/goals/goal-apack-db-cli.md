@@ -51,7 +51,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
   - `apack dev` reads the file to call the running API (`POST /dev/reload`, `packages/apack-cli/src/commands/dev.ts`).
   - Electron keeps `SingletonLock` (`<host>-<pid>`) in the data dir; `fix-prod-upgrade.ts` `assertAppQuit` shows the check.
 - **Executors and data services:**
-  - The Database plugin's executors: read-only queries (`packages/default-setup/src/features/database/be/execute/query.ts`) and transactions (`execute/transaction.ts`).
+  - The Database surface's executors: read-only queries (`packages/default-setup/src/features/database/be/execute/query.ts`) and transactions (`execute/transaction.ts`).
   - Host data services: `services.appData.reset`/`exportBackup`/`importBackup`, `services.traceStore`.
 - **Entity types per data dir:** an installed app's packs are on disk.
   - Built-in packs are published to `hostPacksDir` with their snapshot.
@@ -72,7 +72,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
      - Reads are allowed, with a warning that they may be stale.
      - No API changes.
    - **B. Through the app when it runs, offline otherwise.**
-     - When `apiPortFile` names a live API, commands go to new API endpoints that use the Database plugin's executors and `services.appData`, so the app stays the single writer and sees the change immediately.
+     - When `apiPortFile` names a live API, commands go to new API endpoints that use the Database surface's executors and `services.appData`, so the app stays the single writer and sees the change immediately.
      - When it doesn't, the CLI opens the files.
      - If the Electron lock is held but no API port is published (starting, or crashed), writes refuse.
      - Needs authenticated local endpoints (Decision 5).
@@ -92,7 +92,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
 6. **Destructive commands are dry runs by default.**
    - `reset`, `import` and `clear-settings` list what they would change and need `--force` to act, as `db:clearSettings` does today.
    - `import` validates the backup first.
-7. **Queries run the Database plugin's rules.**
+7. **Queries run the Database surface's rules.**
    - `db query` runs read-only EARS query code with the same read helpers as the Database console.
    - `db exec` runs transaction code with the console's transaction helpers.
    - The two share the executors, whether run offline or through the app, so a query means the same thing everywhere.
@@ -119,10 +119,10 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
 ### Phase 2 — App endpoints (only with Decision 2 = B)
 - **Token:** loopback-only binding, and the `api-token` file (Decision 5).
 - **Endpoints:**
-  - `db.query` and `db.exec` (Database plugin executors);
+  - `db.query` and `db.exec` (Database surface executors);
   - `db.export` (entities, relations and roles as JSON or CSV);
   - `db.import`, `db.reset` and `db.clearSettings` through `services.appData` and the settings repository, with dry-run results.
-- **After a write through the app,** plugins are refreshed the way the Database console's writes refresh them today.
+- **After a write through the app,** surfaces are refreshed the way the Database console's writes refresh them today.
 - **Tests:**
   - a missing or wrong token is rejected;
   - a write through the endpoint is visible to the running systems;

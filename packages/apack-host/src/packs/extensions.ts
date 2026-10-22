@@ -19,7 +19,7 @@ export function createOwnedStepStore<V>() {
   };
 }
 
-/** Role → id of the system or plugin that plays it; one feature plays a role, so a taken role is refused */
+/** Role → id of the system or surface that plays it; one feature plays a role, so a taken role is refused */
 export function createDesignationStore() {
   const roles = new Map<string, FeatureRef>();
   return {

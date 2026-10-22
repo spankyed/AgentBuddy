@@ -26,10 +26,10 @@
 > - **"Merge" — the third choice of Decision 8 — is not built, and could not be as specified.** It is
 >   described as opening the editor "with both", and Decision 3 keeps hashes rather than values, so what the
 >   pack previously shipped cannot be rendered at all. What is left of it, opening the user's own item to
->   edit by hand, needs a route from an entity type to the plugin that edits it, which no pack declares: the
+>   edit by hand, needs a route from an entity type to the surface that edits it, which no pack declares: the
 >   manifest has no such key and nothing in the app maps one. So the offer has two writing choices (take the
 >   new version, keep mine) plus, per Decision 5, **Reset to factory** on an item the user kept their own
->   version of. A `content.sources` key naming the plugin that edits an entry's items is the change that
+>   version of. A `content.sources` key naming the surface that edits an entry's items is the change that
 >   would make Merge possible, and it is a manifest addition rather than a UI one.
 >
 > One thing the plan asks for that is only partly available: **Reset to factory is offered on the items the
@@ -434,7 +434,7 @@ and `createFlowApplier` become thin adapters that know only how to read and writ
   development dirs, so they are reset (`appData.reset()`, or `apack db reset`) and the first apply writes
   the applied content. A translation from the old attributes would be a subsystem written for nobody.
 - **Surface the conflicts here, before any UI exists.** The moment the merge runs, a conflict is computable,
-  and saying so costs a line: one summary per apply in the log and an entry in the Logs plugin — *"3 items
+  and saying so costs a line: one summary per apply in the log and an entry in the Logs surface — *"3 items
   have your edits and a newer version is available: flow 'Codex', action 'CDX: Start Server'…"*. This is the
   whole point of the plan (a silent permanent freeze becomes something you can see) for a day's work, it
   gives real feedback on whether the detection is right before anyone builds a diff view, and if

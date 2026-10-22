@@ -46,7 +46,7 @@ checkpoint and final committed-source strict gate. Do not archive this plan unti
 ## Context
 
 "Show the user this thing" is done **eleven times in six vocabularies**, and every one of them names a
-plugin and an event:
+surface and an event:
 
 | event | senders |
 |---|---|
@@ -57,7 +57,7 @@ plugin and an event:
 | `PROMPT.SELECT` | `features/code/fe/features/prompts/PromptsPanel.vue:475` |
 | `FLOW.SELECT` | `features/brain/fe/components/StepNodeDetails.vue:136`, `:140` |
 
-Each is declared in the owning plugin's `Contract.inbox`, which makes a feature's **internal** navigation
+Each is declared in the owning surface's `Contract.inbox`, which makes a feature's **internal** navigation
 event part of its public surface. So every consumer has to learn a per-feature string and a per-feature id
 field (`noteId`, `documentId`, `folderId`, `id`, `actionId`, `promptId`, `flowId`), and a consumer that holds
 only an entity — the host, a link, a content item — cannot address any of them, because nothing in the app
@@ -68,22 +68,22 @@ maps an entity type to the feature that is its home.
 with a discriminator and the feature maps it onto its own states (`apack-sdk/src/fe/route-trailer.ts`).
 
 **Outcome:** one public verb, `openEntity(id)`. No ref and no event name at any call site, so addressing the
-wrong plugin stops being a mistake that can be made rather than one that is checked.
+wrong surface stops being a mistake that can be made rather than one that is checked.
 
 ## The shape
 
 Three pieces, and nothing else.
 
-**One event, declared once for every plugin**, as `FEATURE_SETTINGS_UPDATED` already is
+**One event, declared once for every surface**, as `FEATURE_SETTINGS_UPDATED` already is
 (`apack-sdk/src/events/index.ts:287`), so no pack declares it:
 
 ```ts
 export type OpenEntity = { type: 'OPEN_ENTITY'; id: EARS.EntityId };
-export const PLUGIN_EVENT_TYPES = eventTypes<FeatureSettingsUpdated | OpenEntity>()(
+export const SURFACE_EVENT_TYPES = eventTypes<FeatureSettingsUpdated | OpenEntity>()(
   'FEATURE_SETTINGS_UPDATED', 'OPEN_ENTITY');
 ```
 
-**One contract field**, beside the `state` a plugin publishes and the `inbox` it opens:
+**One contract field**, beside the `state` a surface publishes and the `inbox` it opens:
 
 ```ts
 // features/notes/fe/contract.ts
@@ -116,7 +116,7 @@ module-exported and not in the public barrel; this promotes it.
 
 **2. `opens` is a contract field, not a new manifest key.** A contract can be a declared build input that codegen reads
 with `declaredTypeOf` (`apack-sdk/src/build/module-exports.ts`) without resolving the machine, and
-`apack.json` already names it at `features[].plugin.contract`. So the fact is readable at build time, lands
+`apack.json` already names it at `features[].surface.contract`. So the fact is readable at build time, lands
 in the snapshot, and the host reads it with no pack code and no TypeScript — which is what manifest-driven
 has to mean here. Against a JSON array it costs nothing and buys the compiler: `EntityName` checks the name
 at build time. The descriptor validator still checks destination identities and cross-pack collisions;
@@ -124,7 +124,7 @@ compiler checking alone cannot validate unrelated installed packs.
 The trade is that a JSON field is greppable by anything and a type needs the build's TS program, which the
 build already has.
 
-**3. No call site names a plugin.** `openLink(url)` is the precedent: it resolves the `browser` designation
+**3. No call site names a surface.** `openLink(url)` is the precedent: it resolves the `browser` designation
 itself and the caller holds only a URL. Exposing a `whoOpens(entityType)` lookup instead would put a ref back
 at every call site, which is the failure mode being removed.
 
@@ -132,7 +132,7 @@ at every call site, which is the failure mode being removed.
 entity ownership does not imply destination ownership. This includes SDK-owned entities such as Action.
 Choose the normal detail view for generic opening; opening a source file remains a separate operation.
 Validate conflicting eligible claims with both owners named. No claim is a supported unavailable result,
-not an excuse to guess a plugin. Disabled declarations remain discoverable without competing as eligible
+not an excuse to guess a surface. Disabled declarations remain discoverable without competing as eligible
 routes; enabling a conflicting claimant must fail the same validation.
 
 **5. No `intent` on the event.** `reveal` against `edit` is a real distinction in editors and there is no
@@ -160,10 +160,10 @@ missing nodes, startup metadata and stale layout delivery have focused regressio
 
 ## What this deletes
 
-- `ReferenceTypeConfig.plugin` and `ReferenceTypeConfig.navigate` — a feature publishing how to open its
+- `ReferenceTypeConfig.surface` and `ReferenceTypeConfig.navigate` — a feature publishing how to open its
   things is the thing being removed, and the config shrinks to what it is for: `category`, `icon`, `svgElements`. The click handler in `extensions/tiptap/reference-node.ts` becomes
   `openEntity(node.attrs.refId)`.
-- The six `navigate` closures, which are each `openPlugin(<own plugin>, { type: <constant>, <field>: refId })`
+- The six `navigate` closures, which are each `openSurface(<own surface>, { type: <constant>, <field>: refId })`
   with no branching — six declarations, none of which needed a function.
 
 The historical survey below predates this migration. `navigate` and its runtime binding are removed
@@ -187,8 +187,8 @@ See the [identity audit and selected correction](#reference-identity-prerequisit
 The primitive still handles missing entities and unavailable destinations usefully in Phase 1.
 
 **Phase 1 — the primitive.** `entityTypeOf` promoted to `@apackdev/ears`' barrel; `OpenEntity` in
-`PLUGIN_EVENT_TYPES`; `entityIs` beside `targetIs`; `openEntity` in `apack-sdk/src/fe/navigation.ts`;
-`opens` on the plugin contract type, read by codegen into both registrations and the snapshot; the lookup on
+`SURFACE_EVENT_TYPES`; `entityIs` beside `targetIs`; `openEntity` in `apack-sdk/src/fe/navigation.ts`;
+`opens` on the surface contract type, read by codegen into both registrations and the snapshot; the lookup on
 the host/browser catalog projection, without a second registry inventory. Bind handlers against that
 projection. Unknown, missing and disabled destinations produce distinct useful results; known destinations
 use the discovery readiness coordinator before delivering the event. Correlate queued delivery and reject
@@ -215,14 +215,14 @@ the rule "a feature declares the entities it is the home of, not the entities it
   Cover conflicts, disabled claimants and unclaimed entity types separately. Mutate it in the test by
   dropping one feature's `opens` and asserting the answer flips, because a check that reports nothing may
   have looked at nothing.
-- **Mutation-check `entityIs`** the way `targetIs` is covered: a plugin handed an `OPEN_ENTITY` for an entity
+- **Mutation-check `entityIs`** the way `targetIs` is covered: a surface handed an `OPEN_ENTITY` for an entity
   it does not open must not transition.
 - **One E2E claim is worth the real process boundary** and meets the two-part test in `tests/e2e/CLAUDE.md`:
-  a reference clicked in a stored message opens the right plugin on the right row. Everything else here is a
+  a reference clicked in a stored message opens the right surface on the right row. Everything else here is a
   harness test.
 - **End-to-end by eye**: `npm run dev:drive`, open a thread holding a note reference, click it.
 - **`npm run chain`** per phase. Phase 1 touches `@apackdev/sdk/src` and codegen, so expect a cold run;
-  `api:update` for `PackFERegistration`, the plugin contract types and `@apackdev/ears`' barrel.
+  `api:update` for `PackFERegistration`, the surface contract types and `@apackdev/ears`' barrel.
 - Regenerate the schema if authoring fields change. Check `PACK_SNAPSHOT_FORMAT` under the current
   repository rule when adding destination metadata; coordinate with discovery rather than prescribe
   an independent bump.
@@ -250,7 +250,7 @@ runs, but opening still waits for the current handler to be ready.
 - Not the content-offer "Open" button. That becomes one call site on top of this and is not a reason to build
   it; the eleven existing call sites are.
 - Not a change to how a feature opens its own things internally. `NOTE.OPEN` keeps working and keeps its name.
-- Not a replacement for `untypedOpenPlugin`, which stays the door for opening a *plugin* — a navigation
+- Not a replacement for `untypedOpenSurface`, which stays the door for opening a *surface* — a navigation
   rather than a thing.
 
 

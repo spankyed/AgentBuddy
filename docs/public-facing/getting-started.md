@@ -1,6 +1,6 @@
 # Getting Started
 
-A **pack** is a self-contained extension for apack. It can contribute backend systems, frontend plugins, flow steps, content (actions, prompts, flows), artifact viewers, message blocks, services, and data migrations. Packs are declared via an `apack.json` manifest and compiled into a distributable archive.
+A **pack** is a self-contained extension for apack. It can contribute backend systems, frontend surfaces, flow steps, content (actions, prompts, flows), artifact viewers, message blocks, services, and data migrations. Packs are declared via an `apack.json` manifest and compiled into a distributable archive.
 
 ## Prerequisites
 
@@ -165,6 +165,6 @@ apack pack clean      # Remove dist/, .apack/, __generated__/
 ## Next steps
 
 - [Manifest Reference](manifest.md) — every field in `apack.json`
-- [Features](features.md) — building systems and plugins
+- [Features](features.md) — building systems and surfaces
 - [Content](content.md) — writing actions, prompts, and flows
 - [Extensions](extensions.md) — steps, artifacts, and blocks

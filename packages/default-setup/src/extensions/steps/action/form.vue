@@ -195,7 +195,7 @@
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, Code, ExternalLink, Plus } from 'lucide-vue-next'
 import { openEntity } from '@apackdev/sdk/fe'
-import { openPlugin } from '#generated/fe.ts'
+import { openSurface } from '#generated/fe.ts'
 import {
   ComboboxAnchor,
   ComboboxContent,
@@ -349,7 +349,7 @@ const handleActionChange = (action: ActionEntity | null) => {
 }
 
 const createAction = () => {
-  openPlugin('actions', { type: 'ACTION.CREATE' });
+  openSurface('actions', { type: 'ACTION.CREATE' });
 }
 
 const viewAction = () => {

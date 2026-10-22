@@ -519,7 +519,7 @@ Next extend the shared frame to native resolution, direct content filesystem rea
 resources, preserving observations, original paths, deterministic output and live authoring. Complete
 launch/preload ownership before startup and the retained frontend compiler's generation/lifetime,
 then the whole-build receipt and passive freshness consumers. Returned declaration errors/read records
-are projected to source paths; upstream TypeScript diagnostics printed directly by the plugin still
+are projected to source paths; upstream TypeScript diagnostics printed directly by the surface still
 need source-path acceptance through the complete worker output handoff. Do not mistake returned-error
 mapping for proof about that stream. The generic Node/Vite read adapters remain experimental.
 
@@ -816,7 +816,7 @@ Record the completed naming baseline at kickoff, then implementation evidence as
 | Staging declaration coherence | `b085edd3d` | Current-format snapshots and source/installed manifests must agree before staging or teardown, including installs with unknown target format. Foreign-format policy stays explicit. Temporary staging is cleaned on refusal. 364 host pack checks, 27 release-fixture checks, six doc checks and three guard mutations passed. Strict chain passed (180.9s, 16 cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T14-28-19Z-88313`. Release stand-ins now regenerate declarations and ignore build output; release implementation/metadata unchanged. Full source-input freshness, descriptor/binding completeness and runtime settings integration remain required. |
 | Authored-input scopes / publication stability | `44cc56fb1` | Shared scope covers module sources outside src, generated bundle entries and all asset extensions; codegen tracks captured declarations and SDK source. Builds refuse persistent authored-input changes before publication and retain the previous build. 42 focused checks and three guard mutations passed. Strict chain passed (282.0s, one cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T14-44-50Z-20334`. Complete external/dependency identities, a coherent frozen build view, descriptor completeness and runtime settings integration remain required. |
 | Async codegen / schema-derived pack group types | `b6ec616b0` | `generatePackFiles` now returns a Promise across SDK/CLI callers. Facades export schema-derived `PackGroupSettings`; per-group referenced types remain independent. Generation holds its lock through settlement and preserves prior files/stamp on rejection. 156 focused checks, six doc checks, SDK/CLI typechecks and two mutations passed; removal of type isolation or generation awaiting is caught. Strict chain passed all 30 steps (333.0s); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T15-08-26Z-56743`. Feature conversion, typed group handles, trusted caller policies, production catalog integration and complete build/dependency freshness remain unfinished. |
-| Inline feature declarations / schema-derived feature types | `74a48e0f3` | All 11 shipped definitions, external fixtures and scaffolds use inline JSON Schema/defaults; navigation visibility belongs to `plugin.defaultVisible`. The conversion audit compared 844 probes with the previous effective-value schemas. Focused host checks (453), shipped checks (47), schema/codegen edge checks (102) and scaffold/dependency-runtime integration checks (13) passed. Three guard mutations caught schema ownership, non-JSON writes and unsafe generated object literals. Reviewed editor schema, SDK reports and shipped facade. Strict chain passed (226.6s, 14 cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T15-55-35Z-29737`, including external and packaged app checks. Two earlier runs exposed stale fixture assertions; both were corrected and verified. Host ownership, pack handles, trusted policies, forms, stored-data migration and production catalog/freshness integration remain required. |
+| Inline feature declarations / schema-derived feature types | `74a48e0f3` | All 11 shipped definitions, external fixtures and scaffolds use inline JSON Schema/defaults; navigation visibility belongs to `surface.defaultVisible`. The conversion audit compared 844 probes with the previous effective-value schemas. Focused host checks (453), shipped checks (47), schema/codegen edge checks (102) and scaffold/dependency-runtime integration checks (13) passed. Three guard mutations caught schema ownership, non-JSON writes and unsafe generated object literals. Reviewed editor schema, SDK reports and shipped facade. Strict chain passed (226.6s, 14 cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T15-55-35Z-29737`, including external and packaged app checks. Two earlier runs exposed stale fixture assertions; both were corrected and verified. Host ownership, pack handles, trusted policies, forms, stored-data migration and production catalog/freshness integration remain required. |
 | Installed build verification / accepted identity | `b7d1d10fe` | The shared reader validates declarations against verified file bytes before runtime execution and refuses concurrent declaration/build replacement. Installer identity checks run before placement; shipped refresh verifies receipts before reporting current and repairs invalid copies. Focused host pack checks (382), install/refresh checks (78), restored race/docs checks (139), CLI/layout checks (78) and four guard mutations passed. CLI install tests now use isolated storage even when run directly. Strict chain passed (291.7s, one cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T16-30-32Z-32191`, including external and packaged app checks. An earlier unrelated process-cleanup integration failure passed unchanged in isolation and subsequent chains. Source-build sealing, complete dependency/frozen-input identities, production catalog wiring, binding membership, frontend asset delivery and settings ownership/policies/migration remain required. |
 | Producer-owned output receipts / verified staging | `8f137ced9` | Build publication now includes the canonical manifest and complete integrity inventory; reuse verifies the previous output, and staging/shipped comparison refuse edited output. Staging verifies copied bytes before replacing the prior stage. Focused pack/runtime/CLI/docs checks passed (480), three additional boot/lifecycle fixture checks passed (6), release fixture integration passed (27), and four guard mutations were caught and restored. Synthetic producers now seal their completed files. Final strict chain passed (208.5s, 17 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T16-52-29Z-8008`, including external-pack app, smoke and packaged authoring/app. Earlier runs identified unsealed simulated producers; those fixtures were corrected without relaxing guards. No release behavior/version metadata changed. Live DSL output writes, frozen authored/dependency/tool input views, accepted placement/frontend copies, production catalog wiring and checked bindings remain required; settings ownership and all later phases remain unfinished. |
 | Staged DSL generation / frontend definition coherence | `20c8194e7` | DSL bundling writes directly into staged output; the frontend resolves and hashes that same definition tree. A real cold/failing/recovered/reused/removed-definition build proves preservation of the accepted build, receipts, read record and cache, matching frontend/declarations, reuse and removal of obsolete output. Missing staged definitions refuse the older published copy. Focused unit/docs checks (34), DSL integration (7) and three restored guard mutations passed. Strict chain passed (295.0s, one cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T17-03-47Z-41045`, including external-pack, smoke and packaged authoring/app. The live DSL output write gap is closed; frozen authored/dependency/tool inputs, accepted placement/frontend copies, production catalog wiring and checked contribution bindings remain required, as do settings ownership and all later phases. |
@@ -926,7 +926,7 @@ intercepting settings snapshots/outcomes on the existing bus subscription. The S
 holds shared values, loading state or save status. SDK writes return correlated results; each form's
 save composable tracks its own requests. Complete snapshots carry backend-run identity, publication
 revision, readiness and the declaration catalog. Reconnect obtains a freshly correlated snapshot;
-stale runs/revisions, timeouts, disconnect and disposal are handled independently of plugin activation.
+stale runs/revisions, timeouts, disconnect and disposal are handled independently of surface activation.
 
 The writer compares a draft's original value and backend run before replacement. Unrelated settings
 changes do not reject a targeted edit. Projects retains dirty drafts across incoming values and emits
@@ -955,7 +955,7 @@ host app preferences, inline pack groups, feature definitions and custom forms. 
 remaining default-setup assembly references or SDK/host section-default APIs.
 
 Migrated host lookup, registration, lifecycle and event fixtures to catalog definitions and independent
-plugin visibility. The installed-loader fixture now declares its settings in the sealed manifest and
+surface visibility. The installed-loader fixture now declares its settings in the sealed manifest and
 publishes that catalog before registration; it does not rely on executable defaults for discovery.
 Focused catalog/registration checks passed 75 tests, and loader/lifecycle/event checks passed 85 tests.
 Host and SDK typechecking passed. The caller-bound service facade had dropped the draft comparison;
@@ -1295,11 +1295,11 @@ loader fixture proves it reaches that response. Native app reset now uses the in
 operation and reports transport rejection without leaving its reset button busy.
 
 The shell now unloads registered frontends on disconnect using the existing unload path, stops their
-plugin actors, and retains the selected feature for fresh acceptance. A loader interrupted by a dropped
+surface actors, and retains the selected feature for fresh acceptance. A loader interrupted by a dropped
 connection is invalidated, but remains the sole running loader until it settles: late registrations are
 undone, never merged or announced, and a queued fresh run starts afterward. Offline requests do not
 start a new run. Removing the stale-result check failed the delayed-import regression; source restored.
-Tests cover selected-view restoration, distinct plugin actors, delayed imports across reconnect,
+Tests cover selected-view restoration, distinct surface actors, delayed imports across reconnect,
 styles-only reacceptance, onboarding/error states, independent credentials, provisional credential
 cleanup and the actual renderer subscription's readiness barrier on two connections.
 
@@ -1312,7 +1312,7 @@ consumed by the renderer (the first renderer typecheck correctly exposed their s
 These are source/fixture checks; no real external-pack, multiwindow or packaged acceptance is claimed.
 
 The provider and reconnect lifecycle are now wired. Catalog-driven forms (including pack groups and
-features without activated plugins), ambient mutation API/caller removal, backup staging consistency,
+features without activated surfaces), ambient mutation API/caller removal, backup staging consistency,
 installed/frontend declaration admission completeness and remaining goal phases are still required.
 The complete integrated settings checkpoint remains uncommitted until it is usable and accepted.
 
@@ -1338,10 +1338,10 @@ default-setup and renderer typechecks pass. Evidence:
 `/private/tmp/apack-settings-explicit-writes-{sdk,sdk-suite,sdk-types,packages,api,default-build,default-suite,default-types,renderer-suite,renderer-types}.log`.
 
 The form audit confirms definitions already support `settings.form`, but codegen does not consume it;
-forms remain attached to `Plugin.settings`. The next integration must declare forms beside their schemas,
+forms remain attached to `Surface.settings`. The next integration must declare forms beside their schemas,
 register their components under their actual settings owners and render catalog entries independently
-of active plugin discovery. Feature actor context remains available only where a custom form actually
-requires its active plugin; groups and features without plugins must not acquire invented actors.
+of active surface discovery. Feature actor context remains available only where a custom form actually
+requires its active surface; groups and features without surfaces must not acquire invented actors.
 Disabled declarations remain discoverable and editable through the validated advanced editor while their
 executable form is unavailable. Assistant's presenter belongs with a pack settings extension, never a
 replacement app-settings assembly or new assistant feature. Real app/packaged acceptance and remaining
@@ -1351,8 +1351,8 @@ goal phases stay unfinished. The integrated checkpoint remains uncommitted.
 
 The working change now consumes `features.<id>.settings.form` and
 `extensions.settings.<groupId>.form` during frontend codegen. Forms register by qualified settings target,
-independently of plugins. The host registry owns atomic accepted availability and unload notifications;
-Vue reactivity stays in the renderer. `Plugin.settings` is removed without an alias. Default-setup declares
+independently of surfaces. The host registry owns atomic accepted availability and unload notifications;
+Vue reactivity stays in the renderer. `Surface.settings` is removed without an alias. Default-setup declares
 its eleven feature presenters beside their schemas and its assistant presenter beside the pack group;
 there is no replacement app-settings assembly or assistant feature.
 
@@ -1360,7 +1360,7 @@ Settings lists now come from the installed settings catalog. Pack groups and fea
 without an executable form, with the validated JSON editor available. The shared renderer editor supplies
 the selected target itself rather than trusting a contributed event to choose an administrative target.
 Actual mounted pack-settings tests prove distinct same-named owners, arrival/removal of a form without a
-plugin, unavailable-form fallback and refusal to retarget an emitted edit. Registry checks cover rollback,
+surface, unavailable-form fallback and refusal to retarget an emitted edit. Registry checks cover rollback,
 qualified group/feature identities and subscriber isolation. Source validation now diagnoses missing group
 forms at their manifest address, matching the existing feature-form check.
 
@@ -1923,8 +1923,8 @@ checked binding inventory across remaining contribution kinds before dependent c
 
 
 The next discovery checkpoint adds backend binding membership checks before installed content
-initialization and before origin-bearing registry mutation. It compares feature IDs, roles, system/plugin
-presence, plugin default visibility, feature service names, aggregate services and repositories with the
+initialization and before origin-bearing registry mutation. It compares feature IDs, roles, system/surface
+presence, surface default visibility, feature service names, aggregate services and repositories with the
 accepted manifest. A matching stamp alone previously permitted undeclared contributions. Explicit null
 maps are refused, while omitted empty maps remain valid. This does not complete frontend/static-asset
 or remaining contribution-kind binding coverage.
@@ -2163,7 +2163,7 @@ bundled worker teardown hits the separately reproduced native quit loop. Evidenc
 acceptance remains open. The initial report mismatch and test Promise-lib error are corrected.
 
 Return to declaration/catalog work next: native declarations must have an independent lifetime, and
-remaining hidden plugin/step/reference/editor/hook metadata and accepted assets/bindings must move to
+remaining hidden surface/step/reference/editor/hook metadata and accepted assets/bindings must move to
 the complete data contract. Full freshness, navigation, frontend boundaries and all three Phase 6
 workstreams remain required. This resource checkpoint adds no feature, stored lifecycle field, settings
 assembly or compatibility path, and does not complete or archive the goal.
@@ -2237,7 +2237,7 @@ packaged authoring. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T0
 intermittent native shutdown issue is fixed. No deadline or assertion was relaxed.
 
 The goal remains active across Phases 0–7. Source/dependency projections do not yet have complete build
-admission; static native/plugin/step/reference/editor/hook metadata and the window activation/retry/stale
+admission; static native/surface/step/reference/editor/hook metadata and the window activation/retry/stale
 binding coordinator remain unfinished. Full freshness, navigation, fault boundaries and all three Phase 6
 workstreams still require their own implementation and evidence. Nothing is archived.
 
@@ -2292,7 +2292,7 @@ what still prevents closure; the linked plans retain their complete acceptance c
 | Descriptor/build admission | `parseSnapshot`, declaration stamps, staged publication and full installed receipts reject invalid/stale builds. Reports/schema checks pass. | Dependency/tool input provenance and complete source/watch publication remain incomplete; accepted installed receipts must not be invented for source/cache projections. |
 | Native discovery | Native identity/settings declarations precede runtime binding and survive unload. | `NativePackDeclaration` still lacks all-kind contribution metadata; runtime/native registration is not a complete discovery source. |
 | Backend binding | Contribution identity/membership, settings and content bindings are checked before registration. | Hidden hook exports, migration descriptions and other runtime-only metadata still need descriptor materialization. Keep actual queries/appliers executable. |
-| Frontend acceptance | Accepted bytes/revisioned chunks/styles and declaration stamps are checked; cancellation, stale settings disposal and retry are now covered. | Full declared frontend membership/static plugin metadata and one catalog-driven navigation/readiness coordinator remain unfinished. A matching declaration stamp alone is not complete membership validation. |
+| Frontend acceptance | Accepted bytes/revisioned chunks/styles and declaration stamps are checked; cancellation, stale settings disposal and retry are now covered. | Full declared frontend membership/static surface metadata and one catalog-driven navigation/readiness coordinator remain unfinished. A matching declaration stamp alone is not complete membership validation. |
 | Information consumers | Settings/help use catalog data. | Packs information still joins disk manifests/runtime extensions and calls `packFrontendFiles`; disabled/failed contributions can lose their metadata. Palette/editor/reference readers need their complete data projections. |
 | Entity navigation | Existing executable navigation remains available. | Phase 4's declarative destinations, owner/destination distinction, short-code resolution and stale readiness delivery are not implemented. |
 | Frontend fault boundaries | Import/registration failures have containment and runtime contributions have undo logs. | Canvas, panel and custom-form recovery boundaries and real throwing-contribution fixtures remain unimplemented. Cancellation alone does not satisfy Phase 5. |
@@ -2500,7 +2500,7 @@ prefix and codegen quotes prefix/global strings correctly. The final strict chai
 Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T13-31-33Z-2547`;
 `/private/tmp/apack-fe-membership-strict-chain-final.log`.
 
-The initial plugin metadata audit remains unfinished: labels/icons/pinning/routes/shortcuts still live
+The initial surface metadata audit remains unfinished: labels/icons/pinning/routes/shortcuts still live
 in executable definitions, and native/all-kind declarations are incomplete. The owning discovery plan
 also records concrete frontend replacement hazards: failure can remove incumbent styles and late
 factory failure can retire incumbent bindings. Complete resource transactions and declarative metadata
@@ -2655,7 +2655,7 @@ goal phase. This is not the final requirement audit or strict `--all` acceptance
 ### Obsolete replacement state removal checkpoint (2026-10-13)
 
 `f048ef9f9` removes teardown's replacement flag, registry window/suppression state and its methods,
-and the bus's silent missing-plugin drop path. Actual teardown always announces removal; refused
+and the bus's silent missing-surface drop path. Actual teardown always announces removal; refused
 replacement retains delivery through the incumbent, and accepted replacement still reports invalid
 events. Removed `getPackExtensions` and its executable metadata assembly: teardown uses system ids,
 presence checks use registration and installed information uses catalog declarations. The test-app
@@ -2752,10 +2752,10 @@ this is not final strict `--all` acceptance or completion of the replacement wor
 
 `7ef47f69b` removes Welcome's throwing process-global designation lookup. The shell resolves optional
 Threads from its injected window registry, then uses existing selection behavior; missing/non-frontend
-providers keep the current plugin while onboarding advances. No fallback feature or actor is created.
+providers keep the current surface while onboarding advances. No fallback feature or actor is created.
 The host-only case follows actual renderer bootstrap, which registers native host frontends first.
 
-Six new cases cover host-only and alternate-plugin windows, an alternate Threads provider, a
+Six new cases cover host-only and alternate-surface windows, an alternate Threads provider, a
 backend-only role, provider removal and two independent window registries. All 23 focused tests and
 the host typecheck pass. A hardcoded default-setup role mutation fails and was restored; an ineffective
 extra availability guard was removed because selection already handles absence. Strict validation
@@ -2896,7 +2896,7 @@ race remains open. No plans are archived; final full-goal strict `--all` on fini
 ### Real default fork and normal-boot lifecycle checkpoint (2026-10-13)
 
 `29015d951` adds real external-source acceptance: copy default-setup outside the checkout, edit its
-manifest display name and Notes plugin label, build and archive with the public CLI, replace through
+manifest display name and Notes surface label, build and archive with the public CLI, replace through
 the live app, and verify both windows and actual dev reload use the accepted frontend. A preference
 acknowledged by another settings window survives replacement and reload. The clone borrows the test
 toolchain; published-package hermeticity is covered separately, not claimed by this case.
@@ -2954,19 +2954,19 @@ dependency provenance and final goal-wide review. Final strict `--all` on finish
 and archival remain due; this checkpoint does not complete or narrow the full goal.
 
 
-### Plugin discovery design audit (2026-10-13)
+### Surface discovery design audit (2026-10-13)
 
-Audited Plugin/PluginDefinition, frontend registration/admission, manifest/codegen, all eleven
-shipped plugin assembly modules, three fixture plugin modules, the CLI template and two native host
-views. Existing snapshots omit presentation and pane metadata because codegen imports whole plugin
+Audited Surface/SurfaceDefinition, frontend registration/admission, manifest/codegen, all eleven
+shipped surface assembly modules, three fixture surface modules, the CLI template and two native host
+views. Existing snapshots omit presentation and pane metadata because codegen imports whole surface
 objects. The binding guard checks only label/machine shape, not declaration agreement for those fields.
 
-The owning discovery plan now records a complete Plugin-field classification and the next implementation
+The owning discovery plan now records a complete Surface-field classification and the next implementation
 shape: inline presentation plus explicit state/component/route/predicate targets, with codegen assembling
 the binding. It accounts for named Library state, five Threads canvas routes, six existing lazy component
 bindings, custom icon support and Brain's fallback predicate. Native Settings/Packs views must share the
 metadata contract while retaining trusted per-window executable composition. Host/application's shell
-inbox and host/help's system do not require invented visible plugins or actors.
+inbox and host/help's system do not require invented visible surfaces or actors.
 
 Implement the shared declaration/binding prototype and migrate owned modules, authoring, fixtures and
 first catalog reader together; preserve readiness and transactional frontend retirement. The real fork
@@ -2975,21 +2975,21 @@ a design checkpoint, not a claim that new metadata or readers exist yet. All rem
 kinds, native coverage, freshness and other goal phases remain required.
 
 
-### Declarative plugin bindings and catalog details checkpoint (2026-10-13)
+### Declarative surface bindings and catalog details checkpoint (2026-10-13)
 
-`b5697bb88` replaces plugin assembly modules with manifest presentation, explicit machine/component
+`b5697bb88` replaces surface assembly modules with manifest presentation, explicit machine/component
 references, canvas routes and fallback predicate references. Codegen checks exports/files and assembles
-the bound plugin, preserving Library's named machine, Threads' routes and six lazy view bindings.
-Fourteen obsolete assemblies, the authoring template and definePlugin helper are removed. Scaffolding,
+the bound surface, preserving Library's named machine, Threads' routes and six lazy view bindings.
+Fourteen obsolete assemblies, the authoring template and defineSurface helper are removed. Scaffolding,
 doctor, contract-leaf rules, schema/API reports, owned fixtures and public docs follow the new contract.
-No plugin.entry alias or data conversion is added.
+No surface.entry alias or data conversion is added.
 
 Native host view metadata is declared before binding and consumed by renderer composition. Shared
 admission checks presentation, shortcuts, pane/route membership and fallback metadata without executing
 views/predicates; a refused native replacement retains its accepted frontend and grants no resources.
 Top-level registration getters are captured once. The common catalog projects native, disabled installed
-and authoring plugin data without activation or invented native receipts/authoring enablement. Packs
-details uses that projection; hasPlugin is replaced by declaration presence. Shell readiness/selection
+and authoring surface data without activation or invented native receipts/authoring enablement. Packs
+details uses that projection; hasSurface is replaced by declaration presence. Shell readiness/selection
 is deliberately still an unfinished consumer migration, not silently treated as delivered.
 
 The actual default pack and 25 external authoring/dependency/facade integration checks pass, alongside
@@ -3001,7 +3001,7 @@ changes a manifest label and a rendered Vue component, retaining executable repl
 Final strict validation passes all 30 gates in 488.6 seconds (one cached), including complete unit/
 integration, real external app acceptance in 156.5 seconds, smoke and both packaged-authoring halves.
 Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T00-28-13Z-89285`;
-`/private/tmp/apack-declarative-plugins-strict-3.log`. This completes this plugin checkpoint, not the goal.
+`/private/tmp/apack-declarative-surfaces-strict-3.log`. This completes this surface checkpoint, not the goal.
 
 Next complete the other contribution descriptors (references, steps/triggers, editors/content/contracts),
 remaining native/source provenance and static readers, then shell eligibility/readiness, entity navigation
@@ -3206,7 +3206,7 @@ Plan commit `e86b89978` records the current consumer audit and migration sequenc
 [discovery without activation](discovery-without-activation.md#editorprovider-consumer-audit-and-migration-sequence-2026-10-13).
 The audit confirmed construction-time protocol capture, static category/icon readers, a no-op
 Markdown DOM hook, and providers started eagerly for the entire popup component lifetime. Existing
-SDK plugin-state composables already dispose subscriptions with effect scopes.
+SDK surface-state composables already dispose subscriptions with effect scopes.
 
 The next implementation uses one shared eligibility reader before switching editor consumers,
 then removes generated pack-local aggregates and obsolete public category/provider types. Acceptance
@@ -3379,7 +3379,7 @@ identity/no syntax-only reapplication, all loosely typed/native/source/install r
 agreement, schema descriptions/assistance and complete public docs. Flow/action relationships, actual
 CLI inventory and capability-based facade acceptance remain explicit completion obligations.
 
-Editor and app contributions use direct `extensions.tiptapPlugins` and `extensions.appExtensions`;
+Editor and app contributions use direct `extensions.textEditor` and `extensions.appExtensions`;
 the frontend wrapper is removed because other contribution kinds also serve the frontend;
 `hostVersion` stays the one-host compatibility range. Explicit keyed existence, richer binding data,
 settings/help redesign and host-established provenance remain; obsolete `provides`, inferred existence,
@@ -3697,7 +3697,7 @@ module/export syntax remains shared for TypeScript type references and executabl
 purpose-specific checks. The derived target inventory carries the reference mode instead of an
 ambiguous boolean. Codegen normalizes it once before emission, including packs with no named
 exports to inspect. Systems/forms/views/DSL/frontend/content whole modules reject export selectors;
-system/plugin contracts require their named TypeScript exports. Plugin/reference binding syntax and
+system/surface contracts require their named TypeScript exports. Surface/reference binding syntax and
 loading/route metadata remain intact. Generated schema assistance and public manifest docs agree.
 
 Evidence: focused SDK checks passed (217), including schema purpose cases, actual existing-file
@@ -3722,7 +3722,7 @@ mandatory. Nothing is archived; the entire goal remains active.
 
 Source `fb9d212fc` records whole-module readers' conventional export names in the shared target
 metadata and checks their runtime-value exports without activation. Systems, non-Vue forms/views
-and compilers require `default`; appliers require `apply`; tiptap modules require `tiptapPlugins`.
+and compilers require `default`; appliers require `apply`; tiptap modules require `textEditor`.
 Removed the duplicate tiptap guard. Type-only barrels retain their own purpose and Vue component
 exports remain checked by the SFC frontend build. Export inspection explicitly includes JavaScript;
 CommonJS default imports inspect the module value rather than demanding an ESM default declaration.
@@ -3762,15 +3762,15 @@ and broken table structure. Runtime declarations and generated output retain the
 
 Audit found default-claim uniqueness missing from native admission and direct frontend registration.
 Authored/native schemas now share the existing one-default rule; frontend capture refuses duplicate
-defaults and claims without a plugin before publication. Tests preserve first-registered cross-pack
+defaults and claims without a surface before publication. Tests preserve first-registered cross-pack
 selection, replacement priority, promotion after winner removal and re-registration order. Invalid
-replacement retains the incumbent's plugins/default. The actual native catalog refuses malformed
+replacement retains the incumbent's surfaces/default. The actual native catalog refuses malformed
 duplicate claims atomically; role collision/nonmatching-ID behavior remains covered.
 
 Evidence: 83 focused schema/native/frontend checks and 11 real external scaffold cases passed.
 Removing native validation failed two named assertions, removing frontend uniqueness failed one;
 all source restored exactly (`/private/tmp/apack-m4-layout-{native,frontend}-mutation.log`). Strict
-initially required a regenerated API report. Reviewed all hunks: only plugin/settings ordering in
+initially required a regenerated API report. Reviewed all hunks: only surface/settings ordering in
 inferred schema types changed (16 identical added/removed lines), no fields/types/signatures changed.
 Report preparation first refused after CLI whitespace cleanup; refreshed that package before
 regeneration, then reviewed/normalized the report. Final strict passed in 514.2s (all 30 steps fresh):
@@ -3910,7 +3910,7 @@ authoring, packaged authoring (54.0s) and packaged app (7.4s). Evidence:
 byte-identical to the preservation baseline. Unrelated issue draft remains untouched.
 
 M6 remains open: the current generated-schema audit found 45 fields without descriptions, concentrated
-in plugin presentation, references, settings titles/descriptions and help paths. Complete meaningful
+in surface presentation, references, settings titles/descriptions and help paths. Complete meaningful
 field assistance and nonvacuous editor completion/diagnostics coverage, plus native/installed/shipped
 build documentation, before certifying M6. JSON Schema does not encode the semantic npm range
 refinements; authoring tools still perform the shared semantic validation. The full discovery,
@@ -3921,7 +3921,7 @@ strict `--all` and the complete reconciled requirement audit remain due; nothing
 ### Manifest field help and actual editor assistance — M6 checkpoint (2026-10-14)
 
 Source `9e9a9ac0e` describes every generated-schema property, including union component forms,
-loading modes, routed canvases, plugin actions/fallback panels, references, settings labels and help
+loading modes, routed canvases, surface actions/fallback panels, references, settings labels and help
 paths. Descriptions were checked against actual consumers. Help guidance now states the compiled
 snapshot contract. Feature entity completion retains shape/null grammar as well as ownership; the
 first real completion check exposed that its field override had hidden the shared grammar. Public
@@ -4019,8 +4019,8 @@ boundaries and three Phase 6 workstreams remain active. No final `--all` or comp
 
 Source `b1eeebd19` checks every type actually imported by dependency codegen through the existing
 TypeScript export reader. Requirements come from real import generation, not a second capability
-inventory. Plugin state is required when the consumer emits frontend state access, rather than merely
-because a dependency has plugins. Missing, value-only, unresolved and syntactically malformed
+inventory. Surface state is required when the consumer emits frontend state access, rather than merely
+because a dependency has surfaces. Missing, value-only, unresolved and syntactically malformed
 declarations fail with the dependency name, required type/context and rebuild remedy. Type aliases
 resolve normally; no fake export, widened EARS shape or fallback typing is emitted.
 
@@ -4035,8 +4035,8 @@ Focused checks passed 63 SDK export/shape cases, 113 affected fixture/generation
 source/published facade typing, completion and dependent flow-helper cases. Removing export validation
 failed all eight missing-type assertions; removing syntax validation failed the malformed-facade
 assertion, with exact restoration before validation. The first strict run exposed unit fixtures that
-declared plugins but omitted their state export. Fixtures now model the generator's actual never state
-for plugins without a state contract. The version-warning fixture bundles a real producer facade
+declared surfaces but omitted their state export. Fixtures now model the generator's actual never state
+for surfaces without a state contract. The version-warning fixture bundles a real producer facade
 instead of maintaining an outdated export list. Production typing and original assertions are retained.
 
 Final strict passed all 30 steps in 509.1s (1 cached), including real external app, smoke, packaged
@@ -4983,7 +4983,7 @@ required; focused evidence does not establish phase completion. No scope is excl
 
 Source `53550379d` includes Vite's separate worker compiler graphs in both diagnostic reads and live
 subscriptions. Reports accumulate worker and main inputs per compilation, retaining worker files in
-the final accepted scope. Nested workers receive fresh reporting/glob plugins from the same factory.
+the final accepted scope. Nested workers receive fresh reporting/glob surfaces from the same factory.
 Both URL and `?worker` entries missed dependency-only changes before this fix:
 `/private/tmp/apack-worker-input-baseline.log`. Eight targeted cases pass in 38.54s, including prior
 glob regressions, nested workers, an empty nested-worker glob, and real CLI error retention/repair:
@@ -4996,7 +4996,7 @@ work and every larger goal requirement remain open. No exclusions or archival.
 ### Variable import membership checkpoint (2026-10-15)
 
 Source `a6be184da` observes fixed relative directory prefixes of variable import templates. Vite
-expands those templates after user plugins, so observing authored `import.meta.glob` alone missed
+expands those templates after user surfaces, so observing authored `import.meta.glob` alone missed
 initially empty variable-import graphs. The observer conservatively tracks membership; Vite still
 owns expansion and diagnostics. Explicit `@vite-ignore` runtime imports are excluded.
 The matching-file reproducer fails before the fix (`/private/tmp/apack-variable-import-baseline.log`).
@@ -5048,7 +5048,7 @@ manual-build/drive freshness, the aggregate strict gate and all other goal scope
 
 ### Explicit editor contribution checkpoint (2026-10-15)
 
-Source `e40d157f9` declares editor groups and app slots directly under `extensions.tiptapPlugins`
+Source `e40d157f9` declares editor groups and app slots directly under `extensions.textEditor`
 and `extensions.appExtensions`. This replaces the earlier proposed frontend wrapper at the user's
 request: a contribution kind's placement does not claim exclusive ownership of frontend behavior.
 Native declarations carry the same fields directly. Each editor group names extension objects,
@@ -5081,9 +5081,9 @@ No scope is excluded or archived.
 ### Native reference schema ownership checkpoint (2026-10-15)
 
 Source `f8c6b2262` moves `ReferenceNode` and its behavior tests into `@apackdev/ui`. The native host
-catalog declares `tiptapPlugins.references.extensions.reference`; the renderer supplies its binding
+catalog declares `textEditor.references.extensions.reference`; the renderer supplies its binding
 before loading external frontends. Backend discovery imports no UI implementation. Default-setup
-now contributes `referenceSuggestion`, which installs its existing suggestion plugin alongside the
+now contributes `referenceSuggestion`, which installs its existing suggestion surface alongside the
 host-owned node. The URI/node/attribute identities, Markdown/HTML behavior, metadata-driven icon
 refresh and eligible navigation are preserved; navigation callbacks still belong to Phase 4's migration.
 No alias, fallback schema, new feature or duplicate registry was introduced.
@@ -5115,7 +5115,7 @@ excluded or archived.
 ### Accepted editor binding identity checkpoint (2026-10-15)
 
 Source `45e8465ad` preserves `{ packId, groupId, binding }` in the accepted editor registry, including
-native groups, and exposes committed-change subscription through `tiptapPluginRegistry.onChanged`.
+native groups, and exposes committed-change subscription through `textEditorExtensionsRegistry.onChanged`.
 Rows are immutable, returned lists are detached, and unrelated registrations retain incumbent
 binding objects. Consumers use `.binding`; declarations/unavailable groups remain in the catalog.
 No alias or second registry. This implements step 1 of the editor lifetime design above; the editor
@@ -5148,7 +5148,7 @@ qualified keys. Replacement retires old views/providers first, then restores pen
 stored marks and focus. Exact document/mark round-trips refuse silent attribute/node loss. An
 unavailable schema retains pending data without emitting a save; compatible re-enablement restores
 it, and explicit document/entity changes replace suspended state. Actual extension replacement resets
-opaque undo/plugin state, as selected above. Failed cleanup is logged and view/listener cleanup is
+opaque undo/surface state, as selected above. Failed cleanup is logged and view/listener cleanup is
 attempted without preventing a usable replacement. No private Tiptap managers or history internals.
 
 Twenty-seven focused UI/reference/lifetime checks pass in 3.69s
@@ -5252,7 +5252,7 @@ provider, navigation, failure-boundary and all three Phase 6 requirements remain
 Source `cda9fa00e` completes step checkpoint **2A** in the
 [discovery plan](discovery-without-activation.md#frontend-step-declaration-design-2026-10-15).
 Step `fe` now declares presentation, icon/component targets and loading modes, static layout flags and
-named calculated-layout functions. Generated bindings share component grammar with feature plugins;
+named calculated-layout functions. Generated bindings share component grammar with feature surfaces;
 frontend admission checks metadata, slot membership and callable layouts without invoking them.
 
 All 15 authored frontend step modules and both frontend scaffold templates are removed. Fire/Switch
@@ -5893,8 +5893,8 @@ gate. `/private/tmp/apack-compiler-checkpoint-strict.log`. The seven EARS/conten
 byte-identical. The other worktree's chain was observed during subsequent focused retries, starting
 after this strict run ended; that observation does not explain the original strict failure.
 
-A fixture experiment removing its frontend plugin fails the existing generated-contract assertion;
-the plugin is necessary and the experiment is fully reverted. No test assertion or deadline changed.
+A fixture experiment removing its frontend surface fails the existing generated-contract assertion;
+the surface is necessary and the experiment is fully reverted. No test assertion or deadline changed.
 The retained optimization instead reuses resolved directory paths while scanning ordinary files;
 file symlinks still resolve explicitly. Interleaved warm scans preserve the entire normalized graph
 and hash across all 292 compiler packages, improving from 997–1019ms to 663–682ms. The first cold
@@ -6065,18 +6065,18 @@ and order are declarative; user choices override defaults, native host tabs foll
 pinned/unpinned groups, and source/disabled owners are omitted from app destinations. Only current
 accepted bindings supply icons; the shell supplies a placeholder beforehand. Active components,
 actors, request queues and readiness remain execution responsibilities. The renderer subscribes to
-catalog changes with scope-owned cleanup rather than storing another plugin inventory.
+catalog changes with scope-owned cleanup rather than storing another surface inventory.
 
 Backend visibility defaults now also read the catalog before runtime registration. The duplicate
-`PackFeaturePlugin.defaultVisible`, generated backend copy, binding comparison and active-only visible
-plugin selector are removed. Schema authors still declare `features.<id>.plugin.defaultVisible` once.
+`PackFeatureSurface.defaultVisible`, generated backend copy, binding comparison and active-only visible
+surface selector are removed. Schema authors still declare `features.<id>.surface.defaultVisible` once.
 The SDK framework API report and in-tree native/installed/pack tests match the contract.
 
 Evidence: 111 focused host/SDK cases (5.53s), 167 additional host/SDK cases including installed loader
 and real generated TypeScript compilation (18.19s), final pinned-order projection check, and five
 real shipped-pack settings consumer cases (2.91s) pass. Host/SDK and renderer app/test typechecks,
 lint/import/tier checks and the SDK API report pass. The actual shipped pack rebuild passes.
-Logs: `/private/tmp/apack-plugin-navigation-{focused,final-focused,pinning,pack-consumer,host-types,sdk-types,renderer-types,renderer-tests-types,lint,specifiers,tiers,api,default-build}.log`.
+Logs: `/private/tmp/apack-surface-navigation-{focused,final-focused,pinning,pack-consumer,host-types,sdk-types,renderer-types,renderer-tests-types,lint,specifiers,tiers,api,default-build}.log`.
 The shared shell-state fake is now fresh per test; the prior file retained another test's declared pack.
 Final real-window, all-kind and strict acceptance remain outstanding; no broad diagnostic gate rerun.
 
@@ -6128,7 +6128,7 @@ shared schema validation names competing owners before activation. Native fixtur
 these names before binding; direct replacement fixtures explicitly declare their changed API inventory.
 These references identify native composition bindings, not modules discovery may import. This does not
 complete method-contract consumption or system/event discovery. In particular the shell's native
-application inbox must not be modeled as an invented toolbar plugin to satisfy a schema.
+application inbox must not be modeled as an invented toolbar surface to satisfy a schema.
 
 Validation: 124 initial host cases pass; SDK native/browser-schema and codegen-shape cases pass;
 all nine native API cases pass, including failed admission retention, unloaded metadata and methods
@@ -6226,8 +6226,8 @@ The producer checkpoint's consumer migration is implemented by `39e48e66e`; its 
 limits and recorded staged-build failure remain as stated above.
 
 Earlier shell checkpoint: shell default selection and new-request dispatch in `69860e4be`.
-The host and window share plugin metadata projection, including build identity. The window receives
-local native host declarations before backend connection. Accepted frontend plugin bindings carry
+The host and window share surface metadata projection, including build identity. The window receives
+local native host declarations before backend connection. Accepted frontend surface bindings carry
 captured declaration/build/runtime identity; the obsolete first-registered-default table and SDK
 lookup are removed. Default claims are selected before imports: enabled native owners first, then
 installed owners, ordered by fully qualified ref in English lexical order. Saved/popout/explicit
@@ -6245,7 +6245,7 @@ rerun passed 115 cases after the additional replacement-gap case and final start
 Two real pack harness/navigation cases pass. Host, SDK, testing, renderer app/test and default-setup
 typechecks, all 28 SDK API reports, lint/import rules and test tiers pass. The report removes only the
 obsolete default lookup. Test fixtures now supply declaration authority and accepted bindings instead
-of injecting an unadmitted loaded plugin. The first API report attempt correctly refused stale dependent
+of injecting an unadmitted loaded surface. The first API report attempt correctly refused stale dependent
 packages after a shell edit; refreshing packages then generating/checking reports passed.
 `/private/tmp/apack-shell-catalog-{final-tests,converged,final-shell,navigation,pack-tests,types,sdk-types,testing-types,renderer-types,renderer-test-types,pack-types,api-check,lint,specifiers,tiers}.log`.
 
@@ -6343,7 +6343,7 @@ after its step; preserve that publication/cache observation for B6 rather than c
 
 ### Entity destination catalog and admission (2026-10-16)
 
-Source `479c75e01` projects native/installed compiled claims into immutable plugin entries, leaving
+Source `479c75e01` projects native/installed compiled claims into immutable surface entries, leaving
 unbuilt previews without compiled claims. One validator checks target feature identity and entity
 vocabulary. Enabled conflicts name both owners and refuse the candidate atomically; disabled claims
 remain readable. Enablement preflight precedes persistence and activation. Both single-candidate loading
@@ -6460,7 +6460,7 @@ cross-feature click, unreached gate steps and final committed-source strict `--a
 
 Source `95ff95ab3` closes the remaining Phase 4 handler and stored-message acceptance gaps.
 Eight Actions/Prompts cases reproduced abandoned selection replies replacing current intent:
-list/create navigation, plugin deactivation and returning to the already-loaded entity. Detail-state
+list/create navigation, surface deactivation and returning to the already-loaded entity. Detail-state
 exit and deactivation now retire the existing pending call. No additional request object or protocol.
 Three shell cases reproduced breadcrumb/Back/Forward leaving an entity query pending; these inputs
 now use the existing owner cancellation action before forwarding navigation.
@@ -6485,8 +6485,8 @@ Evidence:
   It creates a real note, imports a saved thread message through the supported import operation,
   opens/reloads that message, clicks its rendered reference and verifies the destination note's title
   and body. The label deliberately differs from the title. No inference, injected document/view,
-  replacement navigation handler or new test hook. First setup attempt selected a plugin before its
-  registration; the test now explicitly waits for that plugin before navigating. Logs:
+  replacement navigation handler or new test hook. First setup attempt selected a surface before its
+  registration; the test now explicitly waits for that surface before navigating. Logs:
   `/private/tmp/apack-entity-acceptance-runtime.log`, `/private/tmp/apack-stored-reference-app-final.log`.
 
 The prior strict run's missing-source-map authoring failure remains preserved for B6. It was not
@@ -7294,7 +7294,7 @@ The discovery plan's registration inventory covers every current field. The clas
 | Current fields / contribution | Static authority and checked execution boundary | Existing acceptance |
 |---|---|---|
 | IDs, revisions, dependencies, consumes | Snapshot/native declaration, common cache/build receipt and selected service admission | Catalog, declaration-binding, dependency-cache and service-binding cases |
-| Feature membership, designation, default, plugin presentation and endpoint events | Keyed declaration plus compiled event contracts; machines/components bind separately | Native-declarations, catalog-plugins, catalog-navigation, backend/frontend declaration-binding |
+| Feature membership, designation, default, surface presentation and endpoint events | Keyed declaration plus compiled event contracts; machines/components bind separately | Native-declarations, catalog-surfaces, catalog-navigation, backend/frontend declaration-binding |
 | Entity/relation identity and optional shape | Shared normalized entity projection and `data.relations`; generated typed EARS and installed schema | Manifest consolidation evidence; snapshot and installed-schema cases |
 | Pack/feature settings and custom forms | Inline definitions through catalog; frontend forms and scoped ports are checked execution | Catalog settings, native declarations, frontend admission and five real host-only window cases |
 | Service/repository names and ownership | Manifest/native ownership before construction; selected runtime object/method authority remains executable | Native-api-declarations, content-binding and selected lifetime tests |
@@ -7451,7 +7451,7 @@ also belongs to final producer/app convergence.
 
 ## Public contract documentation audit (2026-10-17)
 
-Reviewed current plugin selection, generated entry outputs, service consumption, startup, migration
+Reviewed current surface selection, generated entry outputs, service consumption, startup, migration
 scaffolding and shell harness code against the public guides. Corrected stale registration-order
 default selection, runtime DSL registration, external reference restrictions, administrative versus
 caller-bound service access, onboarding ownership, reset ordering, migration sidecar examples and
@@ -7459,10 +7459,10 @@ settings delivery status. The generated-output guide now includes settings, runt
 paths and static destination/event metadata; shell guidance describes verified build reuse.
 
 Manifest decision 12 explicitly records `69860e4be` as a better replacement: catalog selection before
-frontend loading removes delivery-order races without dropping per-plugin default declarations or
+frontend loading removes delivery-order races without dropping per-surface default declarations or
 uniqueness. The dated M4 paragraph remains historical and names its successor.
 
-Evidence inspected: `apack-host/src/fe/plugin-selection.ts`, `apack-host/src/packs/runtime/start.ts`,
+Evidence inspected: `apack-host/src/fe/surface-selection.ts`, `apack-host/src/packs/runtime/start.ts`,
 `apack-sdk/src/framework/service-consumption.ts`, `apack-sdk/src/build/generate-entries.ts`,
 `apack-cli/src/commands/add/migration.ts`, `api/src/runtime/index.ts` and
 `apack-testing/src/harness.ts` (all under `packages/`). This checkpoint changes documentation only;
@@ -7586,13 +7586,13 @@ review, not completion or a substitute for remaining compiler work or final stri
 - The canonical writer derives structural ordering from the schema, preserving declaration/data order;
   init, release and all manifest-mutating add commands inspected use it. The schema editor test checks
   offline completion, actual diagnostic ranges, useful descriptions and typed/untyped declarations.
-- `selectDefaultPluginDeclaration` and public feature/manifest docs agree on enabled native-before-
+- `selectDefaultSurfaceDeclaration` and public feature/manifest docs agree on enabled native-before-
   installed claims and English lexical feature-ref tie-breaking. The roadmap's first-registered claim
   was stale. Its semver/range and M6 coverage descriptions were stale too; corrected against current
   schema, accepted decision replacements and the live execution ledger, without dropping final gates.
 
 Checks on this source: 68 cases pass across SDK manifest schema (47), JSON editor assistance (11),
-module references (7), CLI canonical writing (1) and host plugin selection (2), in 2.70s. These are pure
+module references (7), CLI canonical writing (1) and host surface selection (2), in 2.70s. These are pure
 source/inert-data checks; no native fixture, copied runtime, compiler worker or live watcher executes.
 `node --import tsx scripts/generate-schema.ts --check` from the SDK passes. The npm `tsx` launcher
 first refused its IPC socket under sandbox EPERM; invoking the same script through the standard Node
@@ -8056,7 +8056,7 @@ is removed here.
 | 5 — removed pack storage policy | No policy is restored. Found a deleted partition-policy API's prose attached to `getLifecycleHooks`; corrected it to describe the actual registered lifecycle hook list. This changes no storage behavior. |
 | 6, 8, 9, 10, 12, 13 — declarations and bindings | Current schema uses required feature descriptions, explicit contribution targets, extensions and lifecycle. Host `declaration-binding.ts` checks entity/relation identities, feature/designation membership, APIs, content, commands, events, migrations and lifecycle against accepted declarations. `lifecycle-binding.ts` checks exact names/callability without invoking hooks. Existing registration tests include nonmatching designation/id and attributed cross-pack collisions. Runtime order/readiness and real external paths still require their final acceptance. |
 | 11, 14, 15, 17 — assistance, format, naming and checks | `declaration-schema.ts` declares purpose-specific descriptions, `hostVersion`, direct editor/app extension fields and inline checks; `pack-checks.ts` owns the allowable check vocabulary. Current code search across packages/scripts/tests finds no old settings section APIs, entity-shape map, manifest format key or check sidecar references. Build-format stamps/release metadata are untouched. Schema/API/editor derivation and external authoring remain required gates, not consequences of this search. |
-| Both naming questions | Current authored schema uses `extensions.tiptapPlugins`, `extensions.appExtensions` and `hostVersion`. No frontend wrapper or alternative range key is introduced. |
+| Both naming questions | Current authored schema uses `extensions.textEditor`, `extensions.appExtensions` and `hostVersion`. No frontend wrapper or alternative range key is introduced. |
 
 Settings source review confirms fixed app/pack/feature ownership in `document.ts`, host-owned app
 definitions, pack-scoped service callers and declaration-aware authorization in the store. Transport
@@ -8618,11 +8618,11 @@ Windows VM startup or repeated prerequisite run is authorized by this diagnostic
 existing source checkpoints and diagnostic branches; the complete active goal and final gates remain.
 
 
-## Final source audit: default-plugin schema guidance — 2026-10-19
+## Final source audit: default-surface schema guidance — 2026-10-19
 
 The current-source pass rechecks consolidated entities/relations, type-only shape export generation,
 lifecycle membership/callability, strict authored fields, canonical writer call sites and deterministic
-plugin selection. `_packEntities` preserves flat wire names and both collision owners;
+surface selection. `_packEntities` preserves flat wire names and both collision owners;
 `entityShapeEntries` skips null shapes and uses `hasTypeExport` plus generated `import type`.
 `lifecycleBindingProblem` checks declared callable membership without invoking hooks. Init, every
 manifest-writing add command and release use the schema-derived `writeManifest`. Production/source
@@ -8631,14 +8631,14 @@ reader. This supplements the [17-decision audit](../../plans/manifest-consolidat
 not a replacement for final runtime acceptance.
 
 Compared with that audit's source `a74bbd88a`, the consolidated framework contracts, entry generator,
-manifest writer and plugin-selection implementation are unchanged through `14de022f8`. The reviewed
+manifest writer and surface-selection implementation are unchanged through `14de022f8`. The reviewed
 service-binding delta retains Array identity/its nonconfigurable length descriptor while preserving
 provider/caller generation checks. No production `packages/*/src` or `packages/*/bin` changes occur
 between accepted native/worker checkpoint `f17d2e286` and `14de022f8`; later repairs affect test execution
 and deadlines. Existing platform/runtime evidence remains relevant, with final gates still required.
 
-One concrete M6/decision-12 omission is found: `PluginSchema.default` and generated JSON Schema still
-claim the first registered pack wins. Actual `selectDefaultPluginDeclaration` filters enabled runtime
+One concrete M6/decision-12 omission is found: `SurfaceSchema.default` and generated JSON Schema still
+claim the first registered pack wins. Actual `selectDefaultSurfaceDeclaration` filters enabled runtime
 owners, prioritizes native claims and sorts qualified feature refs with locale `en`; public feature and
 manifest docs already explain this policy. Correct the schema help and regenerate `apack.schema.json`.
 Only that description changes; no validation, runtime selection, API type, format stamp or release

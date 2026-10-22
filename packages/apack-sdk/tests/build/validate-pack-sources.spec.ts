@@ -25,9 +25,9 @@ const memos = {
   description: 'Manage memos.',
   settings: { schema: { type: 'object' }, defaults: {}, form: 'src/features/memos/fe/settings.vue' },
   system: { entry: 'src/features/memos/be/system.ts' },
-  plugin: { label: 'Fixture', state: 'src/features/memos/fe/plugin.ts' },
+  surface: { label: 'Fixture', state: 'src/features/memos/fe/surface.ts' },
 };
-const memosFiles = [memos.settings.form, memos.system.entry, memos.plugin.state];
+const memosFiles = [memos.settings.form, memos.system.entry, memos.surface.state];
 
 describe('validatePackSources', () => {
   it('refuses an export selector for a whole module even when its source file exists', () => {
@@ -52,7 +52,7 @@ describe('validatePackSources', () => {
         blocks: { text: { be: 'src/hooks#block', fe: 'src/view.vue' } },
         artifacts: { text: { icon: 'File', fe: 'src/view.vue' } },
         dsl: { test: { entry: 'src/types', targets: ['monaco'] } },
-        tiptapPlugins: { editor: { extensions: { example: 'src/hooks#Example' },
+        textEditor: { editor: { extensions: { example: 'src/hooks#Example' },
           popups: { extra: 'src/view.vue' }, isSuggestionActive: 'src/hooks#isActive' } }, appExtensions: { extra: 'src/view.vue' },
       },
       content: { writers: { Test: 'src/hooks#writer' }, formats: { custom: { compiler: 'src/hooks' } }, sources: { custom: { applier: 'src/hooks' } } },
@@ -71,8 +71,8 @@ describe('validatePackSources', () => {
       ['extensions', 'steps', 'test', 'runtime', 'handler'], ['extensions', 'steps', 'test', 'fe', 'components', 'form'], ['extensions', 'steps', 'test', 'fe', 'layout', 'getHeight'],
       ...['compile', 'decompile'].map(name => ['extensions', 'steps', 'signal', 'trigger', name]), ['extensions', 'steps', 'signal', 'trigger', 'register'],
       ['extensions', 'blocks', 'text', 'be'], ['extensions', 'blocks', 'text', 'fe'], ['extensions', 'artifacts', 'text', 'fe'],
-      ['extensions', 'dsl', 'test', 'entry'], ['extensions', 'tiptapPlugins', 'editor', 'extensions', 'example'],
-      ['extensions', 'tiptapPlugins', 'editor', 'popups', 'extra'], ['extensions', 'tiptapPlugins', 'editor', 'isSuggestionActive'],
+      ['extensions', 'dsl', 'test', 'entry'], ['extensions', 'textEditor', 'editor', 'extensions', 'example'],
+      ['extensions', 'textEditor', 'editor', 'popups', 'extra'], ['extensions', 'textEditor', 'editor', 'isSuggestionActive'],
       ['extensions', 'appExtensions', 'extra'],
       ['lifecycle', 'onInit'], ['migrations', 'app', '1.0.0', 'up'], ['migrations', 'pack', '1.0.0', 'up'],
       ['content', 'writers', 'Test'], ['content', 'formats', 'custom', 'compiler'], ['content', 'sources', 'custom', 'applier'],
@@ -84,7 +84,7 @@ describe('validatePackSources', () => {
     fs.writeFileSync(path.join(root, 'src/types.ts'), 'throw new Error("Do not execute"); export interface Contract {}');
     const manifest = { id: 'fixture', features: { memos: {
       description: 'Manage memos.', system: { entry: 'src/system', contract: 'src/types#Contract' },
-      plugin: { label: 'Memos', state: 'src/views' },
+      surface: { label: 'Memos', state: 'src/views' },
       services: { memos: 'src/queries#queries' }, repositories: { memoQueries: 'src/queries#queries' },
       entities: { Memo: 'src/types#Contract' },
     } } };
@@ -101,10 +101,10 @@ describe('validatePackSources', () => {
     fs.symlinkSync(path.join(outside, 'outside.vue'), path.join(root, 'linked.vue'));
     for (const canvas of ['../outside.vue', 'linked.vue']) {
       const result = validatePackSources(root, { features: { memos: {
-        description: 'Manage memos.', plugin: { label: 'Memos', state: 'src/state.ts', canvas },
+        description: 'Manage memos.', surface: { label: 'Memos', state: 'src/state.ts', canvas },
       } } });
       expect(result.status).toBe('invalid');
-      expect(result.diagnostics[0]).toMatchObject({ path: ['features', 'memos', 'plugin', 'canvas'] });
+      expect(result.diagnostics[0]).toMatchObject({ path: ['features', 'memos', 'surface', 'canvas'] });
       expect(result.diagnostics[0].message).toContain('stay within the pack');
     }
   });
@@ -116,7 +116,7 @@ describe('validatePackSources', () => {
   it.each([
     ['settings.form', memos.settings.form],
     ['system.entry', memos.system.entry],
-    ['plugin.state', memos.plugin.state],
+    ['surface.state', memos.surface.state],
   ])('reports a missing %s file', (field, missing) => {
     const root = pack(memosFiles.filter(file => file !== missing));
     expect(messagesOf(validatePackSources(root, { features: { memos } }))).toEqual([`Feature "memos": ${field} file "${missing}" not found`]);
@@ -183,7 +183,7 @@ describe('pack settings forms', () => {
   const form = 'src/extensions/settings/preferences.vue';
   const definition = { schema: { type: 'object' }, defaults: {}, form };
 
-  it('validates a group form without a feature or plugin', () => {
+  it('validates a group form without a feature or surface', () => {
     expect(validatePackSources(pack([form]), {
       extensions: { settings: { preferences: definition } },
     })).toEqual({ status: 'valid', diagnostics: [], skippedChecks: [] });

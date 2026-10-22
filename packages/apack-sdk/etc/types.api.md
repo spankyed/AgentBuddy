@@ -68,9 +68,9 @@ export interface ApplicationHotkeys {
     // (undocumented)
     custom?: CustomHotkey[];
     // (undocumented)
-    switchPluginDown?: KeyboardShortcut;
+    switchSurfaceDown?: KeyboardShortcut;
     // (undocumented)
-    switchPluginUp?: KeyboardShortcut;
+    switchSurfaceUp?: KeyboardShortcut;
     // (undocumented)
     toggleInspectionPanel?: KeyboardShortcut;
 }

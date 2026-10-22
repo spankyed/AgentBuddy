@@ -41,6 +41,7 @@ const NOT_GATED: Record<string, string> = {
   'packages/apack-ears/tsconfig.api-extractor.json': 'API Extractor\'s input, not a check',
   'packages/apack-sdk/tsconfig.api-extractor.json': 'API Extractor\'s input, not a check',
   'packages/apack-ui/tsconfig.api-extractor.json': 'API Extractor\'s input, not a check',
+  'packages/apack-testing/tsconfig.api-extractor.json': 'API Extractor\'s input, not a check',
 };
 
 interface Config { readonly rel: string; readonly file: string; readonly compiles: number; readonly gated: boolean }

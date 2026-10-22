@@ -38,20 +38,20 @@ describe('contribution catalog data', () => {
     const catalog = createContributionCatalog(app);
     catalog.setNative([hostDeclaration]);
     expect(catalog.frontend()).toMatchObject([{ packId: 'host', origin: 'native', enabled: true,
-      declaration: { tiptapPlugins: { references: { extensions: {
+      declaration: { textEditor: { references: { extensions: {
         reference: '@apackdev/ui/components/tiptap/reference-node#ReferenceNode',
       } } } } }]);
     expect(catalog.getSnapshot().packs).toEqual([]);
   });
 
-  it('reads help and plugins from a disabled sealed build without executing its poisoned runtime', () => {
+  it('reads help and surfaces from a disabled sealed build without executing its poisoned runtime', () => {
     const packsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-help-discovery-'));
     const dir = path.join(packsDir, 'help-pack');
     try {
-      const frontend = { tiptapPlugins: { suggestions: { extensions: { mention: 'src/unavailable.ts#Mention' },
+      const frontend = { textEditor: { suggestions: { extensions: { mention: 'src/unavailable.ts#Mention' },
         popups: { mention: 'src/unavailable.vue' }, isSuggestionActive: 'src/unavailable.ts#isActive' } } };
       const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0', consumes: { services: ['host/onboarding'] },
-        features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: {
+        features: { notes: { description: 'Feature declaration fixture.', surface: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: {
           dsl: { cold: { entry: 'src/unavailable.ts', targets: ['monaco'], prefix: 'cold:' } },
           commands: { cold: { placeholder: 'Cold command' } }, artifacts: { cold: { icon: 'FileText', fe: 'src/unavailable.vue' } },
           blocks: { cold: { kind: 'input', fe: 'src/unavailable.vue', be: 'src/unavailable.ts#backend' } }, help: { path: 'help' }, ...frontend } };
@@ -81,7 +81,7 @@ describe('contribution catalog data', () => {
       expect(catalog.get('help-pack')?.snapshot.entityDestinations).toEqual({ Action: 'notes' });
       expect(catalog.frontend()).toMatchObject([{ packId: 'help-pack', origin: 'installed', enabled: false,
         declarationRevision: snapshot.declarationRevision, buildRevision: accepted.revision, declaration: frontend }]);
-      expect(catalog.plugins()).toMatchObject([{ featureRef: 'help-pack/notes', origin: 'installed', enabled: false, declaration: { label: 'Cold Notes', canvas: 'src/canvas.vue' } }]);
+      expect(catalog.surfaces()).toMatchObject([{ featureRef: 'help-pack/notes', origin: 'installed', enabled: false, declaration: { label: 'Cold Notes', canvas: 'src/canvas.vue' } }]);
       expect(catalog.dsl()).toMatchObject([{ type: 'cold', packId: 'help-pack', enabled: false, buildRevision: accepted.revision,
         definitions: snapshot.dslDefinitions.cold, declaration: { prefix: 'cold:' } }]);
       expect(catalog.commands()).toMatchObject([{ name: 'cold', placeholder: 'Cold command', packId: 'help-pack', enabled: false }]);
@@ -295,31 +295,31 @@ it('checks source binding identity before acceptance and preserves declarations 
 });
 
 
-it('projects native, disabled installed and authoring plugins without activating implementations', () => {
+it('projects native, disabled installed and authoring surfaces without activating implementations', () => {
   const catalog = createContributionCatalog(app);
-  const native = { id: 'native', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
+  const native = { id: 'native', features: { view: { description: 'Feature declaration fixture.', surface: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
   catalog.setNative([native]);
   const installed = source('installed', false);
-  installed.snapshot.manifest.features = { view: { description: 'Feature declaration fixture.', plugin: { label: 'Installed view', state: 'src/state.ts',
+  installed.snapshot.manifest.features = { view: { description: 'Feature declaration fixture.', surface: { label: 'Installed view', state: 'src/state.ts',
     canvas: { routes: { list: 'src/list.vue', view: { entry: 'src/view.vue', load: 'lazy' } } } } } };
   installed.snapshot.declarationRevision = _declarationRevision(installed.snapshot.manifest);
   Object.assign(installed.snapshot, { eventContracts: eventContractsFixture(installed.snapshot.manifest) });
   catalog.replace([installed]);
-  const author = { id: 'author', name: 'Author', version: '1.0.0', features: { view: { description: 'Present an author view.', plugin: { label: 'Author view', state: 'src/state.ts' } } } };
+  const author = { id: 'author', name: 'Author', version: '1.0.0', features: { view: { description: 'Present an author view.', surface: { label: 'Author view', state: 'src/state.ts' } } } };
   catalog.setSources([{ dir: '/source/author', manifest: author, declarationRevision: _declarationRevision(author) }]);
-  expect(catalog.plugins()).toMatchObject([
+  expect(catalog.surfaces()).toMatchObject([
     { featureRef: 'native/view', origin: 'native', enabled: true, declaration: { label: 'Native view' } },
     { featureRef: 'installed/view', origin: 'installed', enabled: false, declaration: { label: 'Installed view' } },
     { featureRef: 'author/view', origin: 'source', declaration: { label: 'Author view' } },
   ]);
-  expect(catalog.plugins()[0].declarationRevision).toBeUndefined();
-  expect(catalog.plugins()[2].enabled).toBeUndefined();
-  native.features.view.plugin.label = 'Changed caller';
-  expect(catalog.plugins()[0].declaration.label).toBe('Native view');
-  expect(Reflect.set(catalog.plugins()[0].declaration, 'label', 'Changed reader')).toBe(false);
-  expect(catalog.plugins()[0].declaration.label).toBe('Native view');
+  expect(catalog.surfaces()[0].declarationRevision).toBeUndefined();
+  expect(catalog.surfaces()[2].enabled).toBeUndefined();
+  native.features.view.surface.label = 'Changed caller';
+  expect(catalog.surfaces()[0].declaration.label).toBe('Native view');
+  expect(Reflect.set(catalog.surfaces()[0].declaration, 'label', 'Changed reader')).toBe(false);
+  expect(catalog.surfaces()[0].declaration.label).toBe('Native view');
   catalog.replace([]);
-  expect(catalog.plugins().map(plugin => plugin.origin)).toEqual(['native', 'source']);
+  expect(catalog.surfaces().map(surface => surface.origin)).toEqual(['native', 'source']);
 });
 
 it('keeps reference metadata immutable and independent of native, installed and source activation', () => {

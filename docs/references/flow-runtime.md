@@ -205,7 +205,7 @@ The runtime emits trace events to the frontend:
 
 - `TNODE_SPAWNED` when flow, event, or step TNodes are created.
 - `TNODE_UPDATED` when TNodes complete or fail.
-- `TNODE_OPENED` and `RECEIVE_PLUGIN_DATA` when the UI requests flow trace data.
+- `TNODE_OPENED` and `RECEIVE_SURFACE_DATA` when the UI requests flow trace data.
 - `TNODE_DETAILS` for details-panel data.
 
 Trace hierarchy:

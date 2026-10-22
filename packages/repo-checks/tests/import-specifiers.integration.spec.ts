@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findComponentSends, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findReservedEventKeys, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findSyncSpawnsInSlowSpecs, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, repoRootDir, findUnimportedDependencies, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
+import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackWindowStorage, findComponentSends, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findReservedEventKeys, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findSyncSpawnsInSlowSpecs, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, repoRootDir, findUnimportedDependencies, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { population } from '@apackdev/sdk/testing';
@@ -116,11 +116,11 @@ describe('findJsSpecifiers', () => {
 
 /** Code none of the pack rules flag: comments, string text and the allowed imports */
 const ALLOWED = [
-  "// import { untypedBroadcastToPlugin } from '@apackdev/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
+  "// import { untypedBroadcastToSurface } from '@apackdev/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
   "/* import * as events from '@apackdev/sdk/events'; console.log('x') */",
   "const url = 'https://console.anthropic.com/settings/keys';",
   "const prompt = `_rootEvents.emitOutgoing(event); console.log(ev.type)`;",
-  "import { untypedBroadcastToPlugin, untypedSendToSystem } from '#generated/events';",
+  "import { untypedBroadcastToSurface, untypedSendToSystem } from '#generated/events';",
   "import { onConnected, onIncoming } from '@apackdev/sdk/events';",
   "import { emit as emitEvent } from 'xstate';",
   "import * as ears from '@apackdev/ears';",
@@ -163,12 +163,12 @@ describe('findInternalPackageImports', () => {
 
 describe('findRawPackHelpers', () => {
   it.each([
-    ["import { untypedBroadcastToPlugin as toPlugin } from '@apackdev/sdk/events';", 'untypedBroadcastToPlugin from @apackdev/sdk/events'],
+    ["import { untypedBroadcastToSurface as toSurface } from '@apackdev/sdk/events';", 'untypedBroadcastToSurface from @apackdev/sdk/events'],
     ["import onConnected, { untypedSendToSystem } from '@apackdev/sdk/events';", 'untypedSendToSystem from @apackdev/sdk/events'],
-    ["import { untypedBroadcastToPlugin, createActionEmitter } from '@apackdev/sdk/services';", 'untypedBroadcastToPlugin from @apackdev/sdk/services'],
+    ["import { untypedBroadcastToSurface, createActionEmitter } from '@apackdev/sdk/services';", 'untypedBroadcastToSurface from @apackdev/sdk/services'],
     ["import { registerRepository, untypedTx } from '@apackdev/ears';", 'registerRepository from @apackdev/ears'],
     ["import { unregisterRepository } from '@apackdev/ears';", 'unregisterRepository from @apackdev/ears'],
-    ["export type { untypedBroadcastToPlugin } from '@apackdev/sdk/events';", 'untypedBroadcastToPlugin from @apackdev/sdk/events'],
+    ["export type { untypedBroadcastToSurface } from '@apackdev/sdk/events';", 'untypedBroadcastToSurface from @apackdev/sdk/events'],
     ["import * as events from '@apackdev/sdk/events';", '* from @apackdev/sdk/events (import the names)'],
     ["export * from '@apackdev/sdk/events';", '* from @apackdev/sdk/events (import the names)'],
   ])('flags %s', (code, problem) => {
@@ -183,8 +183,8 @@ describe('findRawPackHelpers', () => {
   });
 
   it('checks .vue script blocks with their line numbers', () => {
-    write('pack/Widget.vue', "<template><pre>import { untypedBroadcastToPlugin } from '@apackdev/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { untypedBroadcastToPlugin } from '@apackdev/sdk/events';\n</script>\n");
-    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: untypedBroadcastToPlugin from @apackdev/sdk/events']);
+    write('pack/Widget.vue', "<template><pre>import { untypedBroadcastToSurface } from '@apackdev/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { untypedBroadcastToSurface } from '@apackdev/sdk/events';\n</script>\n");
+    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: untypedBroadcastToSurface from @apackdev/sdk/events']);
   });
 });
 
@@ -610,7 +610,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
   findComponentSends: () => {
     // A feature's component, which is the half the rule is scoped to — an extension's is exempt, and
     // `pack-rules.spec.ts` holds that half
-    packFixture({ 'src/features/memos/fe/panel.vue': "<script setup lang=\"ts\">\nsendToPlugin('notes', { type: 'X' });\n</script>" });
+    packFixture({ 'src/features/memos/fe/panel.vue': "<script setup lang=\"ts\">\nsendToSurface('notes', { type: 'X' });\n</script>" });
     return findComponentSends(PACK_SRC, root);
   },
   findRawTransport: () => {
@@ -625,6 +625,10 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
   findPackBackendConsole: () => {
     packFixture({ 'src/features/memos/be/system.ts': "console.log('written');" });
     return findPackBackendConsole(PACK_SRC, root);
+  },
+  findPackWindowStorage: () => {
+    packFixture({ 'src/features/memos/fe/state.ts': "const raw = localStorage.getItem('open-tabs');" });
+    return findPackWindowStorage(PACK_SRC, root);
   },
   findHostImports: () => {
     packFixture({ 'src/f.ts': "import { edgeStore } from '@apackdev/host/ears';" });
@@ -697,7 +701,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     // has something to be wrong about. `.ts` on the sibling and a type-only generated import keep the site to
     // one claimant, since this fixture is swept for exactly that
     packFixture({
-      'src/features/memos/fe/contract.ts': "import type { P } from './plugin.ts';",
+      'src/features/memos/fe/contract.ts': "import type { P } from './surface.ts';",
       'src/features/memos/be/contract.ts': "import type { Ev } from './children/list.ts';",
       'src/features/memos/be/children/list.ts': "import type { Ev } from '#generated/events.ts';",
     });
@@ -1058,10 +1062,10 @@ describe('CHECKS', () => {
   it('reports a leaf reaching another feature under both rules, running one rule at a time', () => {
     writeAt('pack/apack.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
-      features: { memos: { plugin: { label: 'Fixture', state: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } } },
+      features: { memos: { surface: { label: 'Fixture', state: 'src/features/memos/fe/surface.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } } },
     }));
     writeAt('pack/src/features/memos/fe/contract.ts', "import type { T } from '../../calendar/fe/state.ts';\nexport type Contract = { state: { t: T } };");
-    writeAt('pack/src/features/memos/fe/plugin.ts', 'export type P = { id: string };');
+    writeAt('pack/src/features/memos/fe/surface.ts', 'export type P = { id: string };');
     writeAt('pack/src/features/calendar/fe/state.ts', 'export type T = { id: string };');
     const offence = 'pack/src/features/memos/fe/contract.ts:1: ../../calendar/fe/state.ts';
     expect(findContractLeafImports(['pack/src'], root)).toEqual([offence]);
@@ -1114,7 +1118,7 @@ describe('CHECKS', () => {
     'own-modules': "import { sendToSystem } from '#generated/events';",
     'repository-casts': 'const notes = repository as unknown as Repositories;',
     'cross-feature-imports': "import { t } from '#features/calendar/fe/state.ts';",
-    'contract-leaves': "import type { P } from '#features/memos/fe/plugin.ts';",
+    'contract-leaves': "import type { P } from '#features/memos/fe/surface.ts';",
   };
 
   /** A second feature for the cross-feature offence to name. Inert, and in every cell so they are all alike. */
@@ -1417,7 +1421,7 @@ describe('findPackOwnAliases', () => {
   it('is the only rule that reacts to one, the resolvers skipping it', () => {
     writeAt('pack/apack.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
-      features: { memos: { plugin: { contract: 'src/features/memos/fe/contract.ts#Contract' } } },
+      features: { memos: { surface: { contract: 'src/features/memos/fe/contract.ts#Contract' } } },
     }));
     writeAt('pack/src/features/memos/fe/contract.ts', "import type { P } from '@/__generated__/fe';");
     writeAt('pack/src/features/code/fe/panel.ts', "import { id } from '@/features/memos/fe/state';");
@@ -1551,21 +1555,21 @@ describe('findContractLeafImports', () => {
   });
 
   /**
-   * The plugin and system definitions, which the manifest names outright. The machine rule beside this one is a
-   * guess at a filename; plugin.state now names the machine explicitly. This case deliberately gives it
+   * The surface and system definitions, which the manifest names outright. The machine rule beside this one is a
+   * guess at a filename; surface.state now names the machine explicitly. This case deliberately gives it
    * an unconventional filename, so the declaration must determine the forbidden import.
    */
   it("flags a leaf that imports an entry apack.json names, whatever the file is called", () => {
     pack({
-      'features/memos/fe/contract.ts': "import type { P } from './plugin';",
+      'features/memos/fe/contract.ts': "import type { P } from './surface';",
       'features/memos/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
-      'features/memos/fe/plugin.ts': 'export type P = { id: string };',
+      'features/memos/fe/surface.ts': 'export type P = { id: string };',
     });
     const manifestFile = path.join(root, 'pack', 'apack.json');
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-    manifest.features.memos.plugin.state = 'src/features/memos/fe/plugin.ts';
+    manifest.features.memos.surface.state = 'src/features/memos/fe/surface.ts';
     fs.writeFileSync(manifestFile, JSON.stringify(manifest));
-    expect(findContractLeafImports([src], root)).toEqual([`${src}/features/memos/fe/contract.ts:1: ./plugin`]);
+    expect(findContractLeafImports([src], root)).toEqual([`${src}/features/memos/fe/contract.ts:1: ./surface`]);
   });
 
   // It is the entry's path that matters, not its name: a pack whose machine is `machine.ts` is caught the same way
@@ -1573,7 +1577,7 @@ describe('findContractLeafImports', () => {
     writeAt('pack/apack.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
       features: {
-        memos: { plugin: { label: 'Fixture', state: 'src/features/memos/fe/machine.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } },
+        memos: { surface: { label: 'Fixture', state: 'src/features/memos/fe/machine.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } },
       },
     }));
     writeAt(`${src}/features/memos/fe/contract.ts`, "import type { M } from './machine';");
@@ -1581,14 +1585,14 @@ describe('findContractLeafImports', () => {
     expect(findContractLeafImports([src], root)).toEqual([`${src}/features/memos/fe/contract.ts:1: ./machine`]);
   });
 
-  // Each side's machine: a plugin's is fe/state, a system's is be/system, and both import #generated/events.
+  // Each side's machine: a surface's is fe/state, a system's is be/system, and both import #generated/events.
   // The rule resolves what it reads, so the machines have to exist for the import to be one.
   it("flags a leaf that reaches its own feature's machine", () => {
     pack({
       'features/memos/fe/contract.ts': "import type { Ctx } from './state';",
-      'features/memos/fe/state.ts': "import { sendToPlugin } from '#generated/events.ts';",
+      'features/memos/fe/state.ts': "import { sendToSurface } from '#generated/events.ts';",
       'features/memos/be/contract.ts': "import type { Ev } from './system';",
-      'features/memos/be/system.ts': "import { untypedBroadcastToPlugin } from '#generated/events.ts';",
+      'features/memos/be/system.ts': "import { untypedBroadcastToSurface } from '#generated/events.ts';",
     });
     expect(findContractLeafImports([src], root).sort()).toEqual([
       `${src}/features/memos/be/contract.ts:1: ./system`,
@@ -1608,7 +1612,7 @@ describe('findContractLeafImports', () => {
   it('flags a generated module that is not a leaf itself', () => {
     pack({
       'features/memos/fe/contract.ts': "import type { P } from '#generated/fe.ts';",
-      'features/memos/be/contract.ts': "import { untypedBroadcastToPlugin } from '#generated/events.ts';",
+      'features/memos/be/contract.ts': "import { untypedBroadcastToSurface } from '#generated/events.ts';",
     });
     expect(findContractLeafImports([src], root).sort()).toEqual([
       `${src}/features/memos/be/contract.ts:1: #generated/events.ts`,
@@ -1619,12 +1623,12 @@ describe('findContractLeafImports', () => {
   /**
    * The rule that matters, and the one a check of the leaf's own imports would miss: the cycle returns just as
    * surely through two hops. This is the shape that was live in default-setup's code feature — its contract
-   * imported its child modules, and those import `#generated/events` for `untypedBroadcastToPlugin`.
+   * imported its child modules, and those import `#generated/events` for `untypedBroadcastToSurface`.
    */
   it('flags #generated/events reached through the closure, naming the leaf it came from', () => {
     pack({
       'features/memos/be/contract.ts': "import type { Ev } from './children/list';",
-      'features/memos/be/children/list.ts': "import { untypedBroadcastToPlugin } from '#generated/events.ts';",
+      'features/memos/be/children/list.ts': "import { untypedBroadcastToSurface } from '#generated/events.ts';",
       'features/memos/fe/contract.ts': 'export type Contract = { state: {} };',
     });
     expect(findContractLeafImports([src], root)).toEqual([
@@ -1679,7 +1683,7 @@ describe('findContractLeafImports', () => {
     pack({
       'features/memos/be/contract.ts': "import type { Ev } from './types.ts';",
       'features/memos/be/types.ts': "import type { H } from '#features/calendar/be/helper.ts';\nexport type Ev = H;",
-      'features/calendar/be/helper.ts': "import { untypedBroadcastToPlugin } from '#generated/events.ts';\nexport type H = typeof untypedBroadcastToPlugin;",
+      'features/calendar/be/helper.ts': "import { untypedBroadcastToSurface } from '#generated/events.ts';\nexport type H = typeof untypedBroadcastToSurface;",
       'features/memos/fe/contract.ts': 'export type Contract = { state: {} };',
     });
     expect(findContractLeafImports([src], root)).toEqual([
@@ -1769,12 +1773,12 @@ describe('findCrossFeatureImports', () => {
     manifest();
     writeAt(`${src}/features/code/fe/panel.ts`, [
       "import { codeChild } from '#features/code/fe/utils/parent-communication.ts';",
-      "import { usePluginState } from '#generated/fe.ts';",
+      "import { useSurfaceState } from '#generated/fe.ts';",
       "import { featureSettings } from '#features/settings/feature-settings.ts';",
       "import type { ActionEntity } from '#features/actions/be/types.ts';",
     ].join('\n'));
     writeAt(`${src}/features/code/fe/features/list.ts`, "import state from '../state';");
-    writeAt(`${src}/__generated__/pack-entry-fe.ts`, "import plugin from '../features/memos/fe/plugin.js';");
+    writeAt(`${src}/__generated__/pack-entry-fe.ts`, "import surface from '../features/memos/fe/surface.js';");
     // A feature's own modules outside fe/ may use its frontend, exporting what they make of it
     writeAt(`${src}/features/code/settings.ts`, "import { id } from './fe/state';\nconst label = `${id}!`;\nexport { label };");
     expect(findCrossFeatureImports([src], root)).toEqual([]);
@@ -2097,7 +2101,7 @@ describe('findMissingSourceConditions', () => {
     ['a projects list beside its own setupFiles', "export default { test: { projects: ['packages/consumer'], setupFiles: ['./setup.ts'] } };\n"],
     // `projects` is somebody else's option here: vite-tsconfig-paths takes one
     ['a projects option that is not the test one', "export default { define: { projects: ['packages/consumer'] }, test: { } };\n"],
-    ['a plugin option named projects', "export default { plugins: [tsconfigPaths({ projects: ['./tsconfig.test.json'] })], test: {} };\n"],
+    ['a surface option named projects', "export default { surfaces: [tsconfigPaths({ projects: ['./tsconfig.test.json'] })], test: {} };\n"],
   ])('flags a vitest config with %s', (_form, content) => {
     writeAt('vitest.config.ts', content);
     expect(conditionProblems()).toEqual([expect.stringContaining('vitest.config.ts: needs resolve.conditions')]);

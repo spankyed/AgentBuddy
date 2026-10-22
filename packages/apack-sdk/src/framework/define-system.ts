@@ -23,13 +23,13 @@ export type SystemEvents =
   | { type: 'PACK_CHANGED'; packId: string }
   /**
    * The feature's settings changed: `settings` as they now apply, and `changes` to what they list, when the store
-   * tells them. The feature's plugin gets it too (`FeatureSettingsUpdated`).
+   * tells them. The feature's surface gets it too (`FeatureSettingsUpdated`).
    */
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown; changes?: ArrayChanges | null }
   /**
    * Every row the app holds was replaced — reset, or a backup imported — and the new world is built.
    *
-   * Handling it is optional: the bus also asks every system for its startup data, so a plugin's view is
+   * Handling it is optional: the bus also asks every system for its startup data, so a surface's view is
    * refreshed either way. Declare it only for what re-reading cannot fix, such as work held over rows that
    * are now gone.
    */
@@ -79,7 +79,7 @@ export interface SystemContract {
 export type ContractIncoming<C> = C extends { incoming: infer Events } ? Events : never;
 /** The events a contract says the system's own children send it; nobody else's to send */
 export type ContractInternal<C> = C extends { internal: infer Events } ? Events : never;
-/** The events a contract says the system sends to plugins */
+/** The events a contract says the system sends to surfaces */
 export type ContractOutgoing<C> = C extends { outgoing: infer Events } ? Events : never;
 /** A contract's context, `{}` when it declares none */
 export type ContractContext<C> = C extends { context: infer Context } ? Context : {};
@@ -223,7 +223,7 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
 
 /**
  * Define a backend system from its feature's contract: the events it receives, those its own children send it,
- * those it sends to plugins, and its context. Its identity is its feature's: the manifest names the system module
+ * those it sends to surfaces, and its context. Its identity is its feature's: the manifest names the system module
  * under the feature, which runs it at `<packId>/<featureId>`, and the pack's code names it by the feature id.
  *
  * ```ts

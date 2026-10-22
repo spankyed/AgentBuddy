@@ -1,4 +1,4 @@
-// Messaging between frontend plugins and backend systems. Frontend-safe: no Node modules and no
+// Messaging between frontend surfaces and backend systems. Frontend-safe: no Node modules and no
 // `services`, since pack frontends get this module from the host (the `sdkEvents` global).
 import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
@@ -14,9 +14,9 @@ export { eventTypes, type TypeOfEvent } from './event-types.ts';
 export { _currentDelivery, _runDelivery, type _Delivery, type _Asker } from './delivery.ts';
 
 /**
- * A message on the bus: the ref of the system or plugin it goes to, and the event exactly as the sender wrote it.
- * Where it goes is never a field of the event, so an event may carry any field (a `pluginId` of its own included).
- * Messages sent in (`sendToSystem`) go to systems, and messages sent out (`broadcastToPlugin`) to plugins.
+ * A message on the bus: the ref of the system or surface it goes to, and the event exactly as the sender wrote it.
+ * Where it goes is never a field of the event, so an event may carry any field (a `surfaceId` of its own included).
+ * Messages sent in (`sendToSystem`) go to systems, and messages sent out (`broadcastToSurface`) to surfaces.
  */
 export interface Message {
   to: string;
@@ -61,7 +61,7 @@ export interface Message {
    */
   client?: string;
   /**
-   * The ref of the participant that sent it: a feature's system or plugin, or a participant that claimed a name
+   * The ref of the participant that sent it: a feature's system or surface, or a participant that claimed a name
    * (`host/drive`). What `reply` answers, so a handler never has to be told who asked.
    *
    * Stamped where a send is *made*, which is during the handling of another message — `createSends` reads it from
@@ -175,7 +175,7 @@ export const newCall = (): string => `c-${PROCESS_TAG}-${++minted}`;
  * has no reader on the event.
  *
  * **Reserved**: the injected value wins over a pack's own field of that name, which `outgoing-events.spec.ts`
- * pins beside its deliberate `pluginId` collision, and the `reserved-event-keys` pack rule refuses one
+ * pins beside its deliberate `surfaceId` collision, and the `reserved-event-keys` pack rule refuses one
  * written in any pack's source.
  *
  * @internal Host and SDK only, and the restriction is the point. A raw call invites `===` against a stored
@@ -274,20 +274,20 @@ export function senderSuffix({ from, via }: Pick<Message, 'from' | 'via'>): stri
   return '';
 }
 
-/** A plugin's name → the events that plugin receives. Each pack's `#generated/events` defines its `SendablePluginEvents`. */
-export type PluginEvents = { [plugin: string]: { type: string } };
+/** A surface's name → the events that surface receives. Each pack's `#generated/events` defines its `SendableSurfaceEvents`. */
+export type SurfaceEvents = { [surface: string]: { type: string } };
 
 /**
- * What every plugin receives when its feature's settings change, so no pack declares it: the settings as they now
+ * What every surface receives when its feature's settings change, so no pack declares it: the settings as they now
  * apply. The feature's system gets the same event, with the changes (`SystemEvents`).
  */
 export type FeatureSettingsUpdated = { type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown };
 
-/** Open a canonical entity ID at this plugin's declared destination. */
+/** Open a canonical entity ID at this surface's declared destination. */
 export type OpenEntity = { type: 'OPEN_ENTITY'; id: import('@apackdev/ears').EARS.EntityId };
 
-/** The event types every plugin receives from the app, beside those its pack's systems declare. */
-export const PLUGIN_EVENT_TYPES = eventTypes<FeatureSettingsUpdated | OpenEntity>()('FEATURE_SETTINGS_UPDATED', 'OPEN_ENTITY');
+/** The event types every surface receives from the app, beside those its pack's systems declare. */
+export const SURFACE_EVENT_TYPES = eventTypes<FeatureSettingsUpdated | OpenEntity>()('FEATURE_SETTINGS_UPDATED', 'OPEN_ENTITY');
 
 /** `M` keyed `<PackId>/<key>`: a pack's features by their refs */
 export type Qualified<PackId extends string, M> = { [K in keyof M & string as `${PackId}/${K}`]: M[K] };
@@ -316,7 +316,7 @@ type EventsOfType<E, Type> = E extends { type: infer T } ? (Type extends T ? E :
 type WithoutType<E> = E extends unknown ? { [K in keyof E as K extends 'type' ? never : K]: E[K] } : never;
 
 /*
- * The `*Of` names below, with `PluginStateOf` (`fe/plugin.ts`), are the vocabulary generated code is written in:
+ * The `*Of` names below, with `SurfaceStateOf` (`fe/surface.ts`), are the vocabulary generated code is written in:
  * `generate-entries` emits them into every pack's `#generated/events`. That is what they are for, and why a system
  * contract's two published halves get one each even though `ContractIncoming` and `ContractOutgoing` already read
  * those fields — the layer that packs depend on stays a surface this package can keep still while the readers
@@ -329,47 +329,47 @@ type WithoutType<E> = E extends unknown ? { [K in keyof E as K extends 'type' ? 
  */
 export type IncomingEventsOf<C> = ContractIncoming<C>;
 
-/** The events a system sends to plugins, from its feature's `Contract` */
+/** The events a system sends to surfaces, from its feature's `Contract` */
 export type OutgoingEventsOf<C> = ContractOutgoing<C>;
 
 /**
- * Every event a plugin's `Contract` says another plugin may send it, across audiences. Generated code builds each
- * plugin's inbox with it, as it builds a system's with `OutgoingEventsOf`. A contract with no `inbox` publishes
+ * Every event a surface's `Contract` says another surface may send it, across audiences. Generated code builds each
+ * surface's inbox with it, as it builds a system's with `OutgoingEventsOf`. A contract with no `inbox` publishes
  * state only and receives nothing but its own system's events.
  */
-export type PluginInboxOf<C> = C extends { inbox: infer Audiences }
+export type SurfaceInboxOf<C> = C extends { inbox: infer Audiences }
   ? Extract<Audiences[keyof Audiences], { type: string }>
   : never;
 
 /**
- * The half of a plugin's inbox a *dependent pack* may send: its `public` audience alone. The `pack` audience is
+ * The half of a surface's inbox a *dependent pack* may send: its `public` audience alone. The `pack` audience is
  * what this pack's own features send it — a sibling asking for a panel, a link opening a note — and publishing it
  * would make every dependent's completions carry commands only the owning pack can meaningfully send.
  *
- * Generated code builds `PackPluginEvents` with this and `OwnPluginEvents` with `PluginInboxOf`, which is the
+ * Generated code builds `PackSurfaceEvents` with this and `OwnSurfaceEvents` with `SurfaceInboxOf`, which is the
  * whole of the split: one contract, two readers.
  */
-export type PublicPluginInboxOf<C> = C extends { inbox: { public: infer Events } }
+export type PublicSurfaceInboxOf<C> = C extends { inbox: { public: infer Events } }
   ? Extract<Events, { type: string }>
   : never;
 
 /**
- * Events the host app's own plugins receive from packs. The host declares them here, as a pack's plugin declares
+ * Events the host app's own surfaces receive from packs. The host declares them here, as a pack's surface declares
  * its own in its `Contract`; `#generated/events` includes this map, so any pack may send them.
  */
-export type HostPluginEvents = {
+export type HostSurfaceEvents = {
   'host/application':
     // The app's own send after each client connection (`ApplicationConnectedEvent`, @apackdev/host/bus): whether
-    // the user onboarded, which plugins' tabs show, and the plugin the user last had open
-    | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginVisibility: Record<string, boolean>; lastActivePlugin?: string }
+    // the user onboarded, which surfaces' tabs show, and the surface the user last had open
+    | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; surfaceVisibility: Record<string, boolean>; lastActiveSurface?: string }
     | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
-    // The app's own send when a plugin's tab is shown or hidden, or a pack's defaults change
-    | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
+    // The app's own send when a surface's tab is shown or hidden, or a pack's defaults change
+    | { type: 'SURFACE_VISIBILITY_UPDATED'; surfaceVisibility: Record<string, boolean> }
     // The user finished onboarding: the shell leaves its onboarding layout
     | { type: 'ONBOARDING_COMPLETE' }
-    // Opens a plugin, by its ref, in the app's main windows (a popout keeps the plugin it shows) and hands its actor
-    // `events`; the shell waits for a plugin whose pack's frontend is still loading
-    | { type: 'OPEN_PLUGIN'; plugin: string; events?: Array<{ type: string; [key: string]: unknown }> };
+    // Opens a surface, by its ref, in the app's main windows (a popout keeps the surface it shows) and hands its actor
+    // `events`; the shell waits for a surface whose pack's frontend is still loading
+    | { type: 'OPEN_SURFACE'; surface: string; events?: Array<{ type: string; [key: string]: unknown }> };
   /**
    * The app's Settings view. A pack sends it what only that pack can find out about its own things, for the view to
    * show — the code feature's CLI resolution, for one. The settings themselves are the app's.
@@ -394,13 +394,13 @@ export const HOST_SYSTEM_EVENT_TYPES = {
 } satisfies Record<keyof HostSystemEvents, readonly string[]>;
 
 /**
- * The event types each host plugin receives, as a value the app can check a send against and the build can
- * read the host's plugins from. A pack's own plugins get this generated from their systems' specs.
+ * The event types each host surface receives, as a value the app can check a send against and the build can
+ * read the host's surfaces from. A pack's own surfaces get this generated from their systems' specs.
  */
-export const HOST_PLUGIN_EVENT_TYPES = {
-  'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN'),
-  'host/settings': eventTypes<HostPluginEvents['host/settings']>()('CLI_TEST_RESULT', 'HELP.OPEN'),
-} satisfies Record<keyof HostPluginEvents, readonly string[]>;
+export const HOST_SURFACE_EVENT_TYPES = {
+  'host/application': eventTypes<HostSurfaceEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'SURFACE_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_SURFACE'),
+  'host/settings': eventTypes<HostSurfaceEvents['host/settings']>()('CLI_TEST_RESULT', 'HELP.OPEN'),
+} satisfies Record<keyof HostSurfaceEvents, readonly string[]>;
 
 /**
  * Delivers an event to a backend system: in the renderer over its API client, elsewhere onto the bound app's bus.
@@ -413,24 +413,24 @@ function sendIncoming(message: Message): void {
 }
 
 /**
- * Delivers an event to a plugin in **this window**, through the shell. The window-local counterpart of
+ * Delivers an event to a surface in **this window**, through the shell. The window-local counterpart of
  * `sendIncoming`: no bus, no other window, and the two are the only channels a window has.
  *
  * It takes the whole message rather than reading the sender from the delivery in scope, because `reply` is
  * bound at entry and may be called long after its delivery has returned — the one caller that cannot rely on
  * ambient scope is the one that most needs the address to arrive.
  *
- * Through the shell rather than at the actor, because "is that plugin here yet" is the shell's question and it
- * already answers it for `OPEN_PLUGIN`: a plugin whose pack's frontend is still loading is waited for, and one
+ * Through the shell rather than at the actor, because "is that surface here yet" is the shell's question and it
+ * already answers it for `OPEN_SURFACE`: a surface whose pack's frontend is still loading is waited for, and one
  * no pack provides is reported to the user once loading settles.
  */
 function deliverInWindow(message: Message): void {
   const ref = message.to;
-  if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
+  if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a surface: a surface is named "<packId>/<featureId>"`);
   const { from, via, sender, answering, call } = message;
   boundFeHost().application.send({
-    type: 'SEND_TO_PLUGIN',
-    plugin: ref,
+    type: 'SEND_TO_SURFACE',
+    surface: ref,
     events: [message.event],
     ...(from ? { from } : {}),
     ...(via ? { via } : {}),
@@ -438,13 +438,13 @@ function deliverInWindow(message: Message): void {
     // field is lost quietly rather than loudly, and why `shell-envelope-parity.spec.ts` holds the two shapes
     // to each other the way `bus-message-parity.spec.ts` does for the wire
     ...(call ? { call } : {}),
-    // Whether a person is waiting on this, which decides how the shell reports a plugin that isn't there: a
+    // Whether a person is waiting on this, which decides how the shell reports a surface that isn't there: a
     // command someone gave is worth a toast, an answer to a question is not. It rides on the envelope, so this
     // door and the renderer's wire send read one field rather than each being told separately
     ...(answering ? { answering } : {}),
     // The window's counterpart of the bus's `askerOf`: each door turns the envelope's `sender` into the channel
     // it arrived on, because that door is the only place the channel is known. This one stays inside the window,
-    // so a plugin answering it answers an actor beside it rather than something over the bus.
+    // so a surface answering it answers an actor beside it rather than something over the bus.
     ...(sender ? { asker: { kind: 'window', ref: sender } as const } : {}),
   });
 }
@@ -491,28 +491,28 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
   };
 
   return {
-    broadcastToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
+    broadcastToSurface(name: string, event: { type: string; [key: string]: unknown }): void {
       // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it
       // is. Reaching for the other from here is the likely mistake, not a missing bindHost.
       if (!_isHostBound() && _isFeHostBound()) {
-        throw new Error(`broadcastToPlugin("${name}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
+        throw new Error(`broadcastToSurface("${name}") is the backend's, over the bus to every window. In the renderer, send to this window's surface with sendToSurface from #generated/events`);
       }
-      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, call: newCall(), ...labels, ...answerAddress() });
+      boundHost().transport.rootEvents.emitSurfaceSend({ to: resolve(name), event, call: newCall(), ...labels, ...answerAddress() });
     },
 
-    sendToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
+    sendToSurface(name: string, event: { type: string; [key: string]: unknown }): void {
       // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
       if (!_isFeHostBound() && _isHostBound()) {
-        throw new Error(`sendToPlugin("${name}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
+        throw new Error(`sendToSurface("${name}") is the renderer's, to this window's surface. On the backend, send over the bus with broadcastToSurface from #generated/events`);
       }
       deliverInWindow({ to: resolve(name), event, call: newCall(), ...labels, ...answerAddress() });
     },
 
     /**
-     * Sends an event to a plugin on **one connection** — the window a handler is serving — rather than to
+     * Sends an event to a surface on **one connection** — the window a handler is serving — rather than to
      * every window showing it.
      *
-     * The pair with `broadcastToPlugin` is the whole point, and which to reach for follows the job: news
+     * The pair with `broadcastToSurface` is the whole point, and which to reach for follows the job: news
      * every window needs is a broadcast, and anything only the window that asked should act on is this.
      * Before it existed a system could be *answered* by a window but could only *ask* by broadcasting, so
      * one question collected one answer per open window.
@@ -531,9 +531,9 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
       // widening from one window to all of them that this verb exists to prevent. The type says `string`,
       // so reaching this takes a cast or untyped code; it is a gate on the one wrong value, not on a shape.
       if (!client) {
-        throw new Error(`sendToWindow("${name}") was given no connection to send to. A handler is handed the one it is serving as \`client\`, which is absent when the message came from another system or from nothing — to reach every window showing that plugin, use broadcastToPlugin.`);
+        throw new Error(`sendToWindow("${name}") was given no connection to send to. A handler is handed the one it is serving as \`client\`, which is absent when the message came from another system or from nothing — to reach every window showing that surface, use broadcastToSurface.`);
       }
-      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, call: newCall(), ...labels, ...answerAddress(), client });
+      boundHost().transport.rootEvents.emitSurfaceSend({ to: resolve(name), event, call: newCall(), ...labels, ...answerAddress(), client });
     },
 
     /**
@@ -546,7 +546,7 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
      * `Message.answering`, which `callOf` reads off the delivered event.
      *
      * The three other verbs take no call, because nothing asks with them: a broadcast has no single asker,
-     * and the two addressed plugin sends are answers or news. One of them gains the parameter the day
+     * and the two addressed surface sends are answers or news. One of them gains the parameter the day
      * something asks with it, and not before.
      */
     sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, options?: CallOptions): string {
@@ -561,36 +561,36 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
 const unboundSends = createSends();
 
 /**
- * Sends an event to a plugin through the bus, which delivers it once a client is connected — and to **every**
- * window showing that plugin, since a plugin runs once per window. Backend only.
+ * Sends an event to a surface through the bus, which delivers it once a client is connected — and to **every**
+ * window showing that surface, since a surface runs once per window. Backend only.
  *
- * That reach is the reason for the name. `sendToPlugin` beside it is the renderer's, and goes to one window's actor.
- * A backend send that only one window should act on says so in the event, as the host's `OPEN_PLUGIN` does.
+ * That reach is the reason for the name. `sendToSurface` beside it is the renderer's, and goes to one window's actor.
+ * A backend send that only one window should act on says so in the event, as the host's `OPEN_SURFACE` does.
  *
- * Untyped: packs use the `broadcastToPlugin` from their `#generated/events`.
+ * Untyped: packs use the `broadcastToSurface` from their `#generated/events`.
  */
-export function untypedBroadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
-  unboundSends.broadcastToPlugin(to, event);
+export function untypedBroadcastToSurface(to: string, event: { type: string; [key: string]: unknown }): void {
+  unboundSends.broadcastToSurface(to, event);
 }
 
 /**
- * @internal Sends an event to the plugin at `ref` in **this window**, through the shell — no bus, no other window.
- * The renderer half of `sendToPlugin`, which `defineEvents` types per receiving plugin.
+ * @internal Sends an event to the surface at `ref` in **this window**, through the shell — no bus, no other window.
+ * The renderer half of `sendToSurface`, which `defineEvents` types per receiving surface.
  *
- * A plugin runs once per window, so this is what UI coordination wants: the artifact opens where the user clicked.
+ * A surface runs once per window, so this is what UI coordination wants: the artifact opens where the user clicked.
  *
- * It goes through the shell rather than to the actor directly, because "is that plugin here yet" is the shell's
- * question and it already answers it for `OPEN_PLUGIN`: a plugin whose pack's frontend is still loading is waited
+ * It goes through the shell rather than to the actor directly, because "is that surface here yet" is the shell's
+ * question and it already answers it for `OPEN_SURFACE`: a surface whose pack's frontend is still loading is waited
  * for, and one no pack provides is reported to the user once loading settles. Reaching past the shell meant two
- * owners of that question giving different answers — this one threw. It is a send, not a navigation, so the plugin
+ * owners of that question giving different answers — this one threw. It is a send, not a navigation, so the surface
  * the user has open doesn't change.
  */
-export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }): void {
-  unboundSends.sendToPlugin(ref, event);
+export function _sendToLocalSurface(ref: string, event: { type: string; [key: string]: unknown }): void {
+  unboundSends.sendToSurface(ref, event);
 }
 
 /**
- * Sends an event to a plugin in the one window being served, rather than to every window showing it.
+ * Sends an event to a surface in the one window being served, rather than to every window showing it.
  * Backend only, and only while handling a message that came from a connection.
  *
  * Untyped: packs use the `sendToWindow` from their `#generated/events`.
@@ -636,7 +636,7 @@ export type Reply<E extends { type: string } = { type: string; [key: string]: un
  * |---|---|---|
  * | `bus` | in, onto the bus, to the asking system | out over this window's connection |
  * | `connection` | out to that connection alone | **impossible** — a window reaches no other connection |
- * | `window` | **impossible** — there is no window-local bus here | to the plugin beside the answerer |
+ * | `window` | **impossible** — there is no window-local bus here | to the surface beside the answerer |
  *
  * The two throw rather than falling back, because either would be a message delivered in the wrong process and
  * a silent broadcast is how that used to show up. `bus` answered in a window goes *out*, which looks like an
@@ -646,7 +646,7 @@ export type Reply<E extends { type: string } = { type: string; [key: string]: un
  * **Both are assertions, not gates, and that is why they stay throws.** Nothing can reach either: an asker is
  * built at one of three doors and each door can only build the channel it is — `askerOf`
  * (`@apackdev/host/bus`'s `delivery.ts`) returns `bus` or `connection`, `connection.ts` in the shell returns
- * `bus`, `deliverInWindow` returns `window`, and `usePlugin` builds no asker at all. So the subject is this
+ * `bus`, `deliverInWindow` returns `window`, and `useSurface` builds no asker at all. So the subject is this
  * program's own construction rather than anything a caller passes, and a `reportError` here would turn a
  * proven-impossible state into a line in a log while the process carried on inside it.
  *
@@ -677,12 +677,12 @@ export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
     if (_isFeHostBound()) {
       if (asker.kind === 'window') { deliverInWindow(message); return; }
       if (asker.kind === 'bus') { boundFeHost().client.send(message); return; }
-      throw new Error(`Can't answer "${asker.ref}" on connection "${asker.client}" from a window: a window reaches the backend and the plugins beside it, not another window's connection. Nothing in this window builds a connection asker, so the delivery was constructed wrongly rather than answered wrongly — the handler that called reply is not at fault.`);
+      throw new Error(`Can't answer "${asker.ref}" on connection "${asker.client}" from a window: a window reaches the backend and the surfaces beside it, not another window's connection. Nothing in this window builds a connection asker, so the delivery was constructed wrongly rather than answered wrongly — the handler that called reply is not at fault.`);
     }
     const { rootEvents } = boundHost().transport;
-    if (asker.kind === 'connection') { rootEvents.emitPluginSend({ ...message, client: asker.client }); return; }
+    if (asker.kind === 'connection') { rootEvents.emitSurfaceSend({ ...message, client: asker.client }); return; }
     if (asker.kind === 'bus') { rootEvents.emitIncoming(message); return; }
-    throw new Error(`Can't answer the "${asker.ref}" plugin in its own window from the backend: there is no window-local bus here, so a backend send to a plugin either reaches every window (broadcastToPlugin) or one connection (sendToWindow). Nothing on the backend builds a window asker, so the delivery was constructed wrongly rather than answered wrongly — the handler that called reply is not at fault.`);
+    throw new Error(`Can't answer the "${asker.ref}" surface in its own window from the backend: there is no window-local bus here, so a backend send to a surface either reaches every window (broadcastToSurface) or one connection (sendToWindow). Nothing on the backend builds a window asker, so the delivery was constructed wrongly rather than answered wrongly — the handler that called reply is not at fault.`);
   };
 }
 
@@ -721,26 +721,26 @@ export function onIncoming(callback: (message: Message) => void): () => void {
   return boundHost().transport.rootEvents.onIncoming(callback);
 }
 
-/** `sendToPlugin` typed against a plugin event map; any feature's plugin, by its ref, takes what every plugin does */
-export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & string>(
-  plugin: P,
+/** `sendToSurface` typed against a surface event map; any feature's surface, by its ref, takes what every surface does */
+export type TypedSendToSurface<M extends SurfaceEvents> = (<P extends keyof M & string>(
+  surface: P,
   event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
-) => void) & ((plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
+) => void) & ((surface: FeatureRef, event: FeatureSettingsUpdated) => void);
 
 /**
- * `sendToWindow` typed against a plugin event map, with the connection it addresses in front.
+ * `sendToWindow` typed against a surface event map, with the connection it addresses in front.
  *
- * `TypedSendToPlugin` with that one parameter added through both arms, so a plugin's events are checked
+ * `TypedSendToSurface` with that one parameter added through both arms, so a surface's events are checked
  * exactly as a broadcast's are and only the address differs. `client` is `string` rather than
  * `string | undefined` deliberately: a handler is handed `client?: string`, so it cannot call this until
  * it has said what it does when there is no window — which is `reply?.()`'s discipline written for a
  * three-argument send.
  */
-export type TypedSendToWindow<M extends PluginEvents> = (<P extends keyof M & string>(
+export type TypedSendToWindow<M extends SurfaceEvents> = (<P extends keyof M & string>(
   client: string,
-  plugin: P,
+  surface: P,
   event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
-) => void) & ((client: string, plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
+) => void) & ((client: string, surface: FeatureRef, event: FeatureSettingsUpdated) => void);
 
 /**
  * `sendToSystem` typed against a system event map; `type` picks the event, so a missing field names it. A role
@@ -754,13 +754,13 @@ export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S &
 ) => string) & ((target: { role: string }, event: { type: string; [key: string]: unknown }, options?: CallOptions) => string) & ((system: FeatureRef, event: SystemEvents, options?: CallOptions) => string);
 
 /** A pack's typed sends */
-export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
-  /** Backend: over the bus, to every window showing that plugin */
-  broadcastToPlugin: TypedSendToPlugin<P>;
-  /** Backend: to that plugin on one connection — the window a handler is serving, handed to it as `client` */
+export interface TypedEvents<P extends SurfaceEvents, S extends SystemEventMap> {
+  /** Backend: over the bus, to every window showing that surface */
+  broadcastToSurface: TypedSendToSurface<P>;
+  /** Backend: to that surface on one connection — the window a handler is serving, handed to it as `client` */
   sendToWindow: TypedSendToWindow<P>;
-  /** Renderer: straight to this window's actor for that plugin */
-  sendToPlugin: TypedSendToPlugin<P>;
+  /** Renderer: straight to this window's actor for that surface */
+  sendToSurface: TypedSendToSurface<P>;
   sendToSystem: TypedSendToSystem<S>;
 }
 
@@ -769,6 +769,6 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
  * feature, the host's included, as `<packId>/<featureId>` (`@apackdev/sdk/ids`). The types reject a name nothing declares, and the app reports a
  * send it has no receiver for.
  */
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
+export function defineEvents<P extends SurfaceEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
   return createSends({ resolve: (name) => resolveName(name, packId), from: packId }) as unknown as TypedEvents<P, S>;
 }

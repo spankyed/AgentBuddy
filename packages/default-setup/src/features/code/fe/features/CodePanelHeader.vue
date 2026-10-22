@@ -81,7 +81,7 @@ import type { Component } from 'vue'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { type CodeState } from '#features/code/fe/state.ts'
-import { isAnyMenuOpen, usePlugin } from '@apackdev/sdk/fe'
+import { isAnyMenuOpen, useSurface } from '@apackdev/sdk/fe'
 import BaseDirectoryMenu from '#features/code/fe/features/explorer/components/BaseDirectoryMenu.vue'
 import { codeChild } from './children.ts';
 import {
@@ -103,7 +103,7 @@ defineEmits<{
   'title-click': []
 }>()
 
-const actor: CodeState = usePlugin()
+const actor: CodeState = useSurface()
 const explorerActor = codeChild(actor, 'explorer')!
 const terminalActor = codeChild(actor, 'terminal')!
 const commitActor = codeChild(actor, 'commit')!

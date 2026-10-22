@@ -1,10 +1,10 @@
-// The threads plugin's contract: the state it publishes and what other plugins may send it.
+// The threads surface's contract: the state it publishes and what other surfaces may send it.
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
-// `apack.json` names it at `features[].plugin.contract`.
+// `apack.json` names it at `features[].surface.contract`.
 import type { Simplify } from '@apackdev/sdk/helpers'
-import type { HotkeysMap, NavHistory, PluginInbox } from '@apackdev/sdk/fe'
+import type { HotkeysMap, NavHistory, SurfaceInbox } from '@apackdev/sdk/fe'
 import type {
   ClaudePromptHostRequest, ClaudeUiFocusReply, ClaudeUiMountState, ClaudePromptReply, ClaudePromptCompletionReply, AgentMode as AgentModeConfig, AgentSettings, AgentThreadData, CommandItem, Tab, ThreadCreateData,
   ThreadEntity, ThreadTagOption, ThreadViewData, ThreadsSettings,
@@ -72,7 +72,7 @@ export interface ThreadsContext {
   sidebarArchivedThreads: ThreadListItem[];
 }
 
-/** What the artifact viewers, the dashboard and the tiptap command items ask of the threads plugin */
+/** What the artifact viewers, the dashboard and the tiptap command items ask of the threads surface */
 export type ThreadsInboxEvent =
   | { type: 'SET_CLAUDE_PERMISSION_MODE'; threadId: string; mode: NonNullable<import('#generated/types.ts').ClaudeSessionArtifactContent['permissionMode']> }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
@@ -84,5 +84,5 @@ export type ThreadsInboxEvent =
 export type Contract = {
   opens: 'Thread'
   state: ThreadsContext
-  inbox: PluginInbox<{ pack: ThreadsInboxEvent }>
+  inbox: SurfaceInbox<{ pack: ThreadsInboxEvent }>
 }

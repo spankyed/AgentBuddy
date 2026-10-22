@@ -1,6 +1,6 @@
 import type { repository } from '@apackdev/ears';
 import { boundHost, _boundHostGeneration, type HostRuntimeServices } from '../runtime/host-runtime.ts';
-import { createSends, untypedBroadcastToPlugin, untypedSendToWindow, untypedSendToSystem } from '../events/index.ts';
+import { createSends, untypedBroadcastToSurface, untypedSendToWindow, untypedSendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
@@ -34,13 +34,13 @@ const logger = createLogger('log-service');
 export interface HostServices {
   logger: Logger;
   /**
-   * Sends to plugins and systems. Both name a feature `<packId>/<featureId>` — the action's own pack included,
+   * Sends to surfaces and systems. Both name a feature `<packId>/<featureId>` — the action's own pack included,
    * and the host's (`host/application`); `sendToSystem` also takes a role (`{ role: 'brain' }`), which reaches
    * whichever system plays it — a flow event goes to the brain as `TRIGGER_BRAIN_EVENT`. A pack's `Services`
    * types them with its own and its dependencies' events.
    *
    * Naming its own pack is the point, not a gap left by the action having no pack scope.
-   * An action is content, not source: a row a user can edit in the Actions plugin, read in the DB console,
+   * An action is content, not source: a row a user can edit in the Actions surface, read in the DB console,
    * export to a content file and copy into another pack. A bare name would rebind on that copy — `'threads'`
    * quietly meaning the new pack's feature, or nothing — where a ref that no longer fits is wrong visibly, and
    * is refused at the bus rather than doing something else.
@@ -50,9 +50,9 @@ export interface HostServices {
    * the message, the second would change what a name means.
    */
   emitter: {
-    broadcastToPlugin: typeof untypedBroadcastToPlugin;
+    broadcastToSurface: typeof untypedBroadcastToSurface;
     /**
-     * To that plugin on one connection, which the caller supplies. A handler is handed the connection it
+     * To that surface on one connection, which the caller supplies. A handler is handed the connection it
      * is serving; an action is handed nothing, so it has one only if something passed it in a payload —
      * nothing does today, which is why this has no caller yet rather than why it would fail.
      */
@@ -77,7 +77,7 @@ export interface HostServices {
 }
 
 /** An action names every feature by its ref, its own pack's included, and the ref must be a registered one */
-const actionRef = (kind: 'system' | 'plugin', name: string, registered: readonly string[]) =>
+const actionRef = (kind: 'system' | 'surface', name: string, registered: readonly string[]) =>
   resolveRegistered(kind, name, { registered, form: `actions name a ${kind} "<packId>/<featureId>"` });
 
 /** Who an action's sends say they are. Both fields are labels: nothing routes or refuses on either. */
@@ -105,8 +105,8 @@ export interface ActionSender {
 export function createActionEmitter(sender?: ActionSender): HostServices['emitter'] {
   const sends = createSends(sender);
   return {
-    broadcastToPlugin: (name, event) => sends.broadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
-    sendToWindow: (client, name, event) => sends.sendToWindow(client, actionRef('plugin', name, boundHost().packs.pluginIds()), event),
+    broadcastToSurface: (name, event) => sends.broadcastToSurface(actionRef('surface', name, boundHost().packs.surfaceIds()), event),
+    sendToWindow: (client, name, event) => sends.sendToWindow(client, actionRef('surface', name, boundHost().packs.surfaceIds()), event),
     sendToSystem: (to, event, options) => sends.sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event, options),
   };
 }

@@ -15,7 +15,7 @@ export function isPackageSpecifier(id: string): boolean {
 }
 
 /**
- * Bundles a pack's facade types (src/__generated__/pack-types.ts: entity shapes, plugin events,
+ * Bundles a pack's facade types (src/__generated__/pack-types.ts: entity shapes, surface events,
  * services, repositories) into one declaration file that dependents import. The pack's own
  * modules and its dependencies' facade types are inlined; packages stay imports.
  */

@@ -1,7 +1,7 @@
 // External packs' frontends: which URL a pack's files are at, what counts as a registration one exports, and what
 // unloading takes back. The two things only a window can do — import a module and add a stylesheet — arrive as
 // `PackFrontendIO`, so the rules hold wherever this runs and the browser's part stays the renderer's.
-import type { PackFERegistration, Plugin } from '@apackdev/sdk/fe';
+import type { PackFERegistration, Surface } from '@apackdev/sdk/fe';
 import { captureFrontendBindings } from '../../../fe/binding-snapshot.ts';
 import { frontendBindingProblem } from '../../../fe/declaration-binding.ts';
 import { _packDeclarationProblem, _settingsJsonProblems } from '@apackdev/sdk/framework';
@@ -50,7 +50,7 @@ export interface PackFrontendIO {
  * a build failure rather than a warning that stops firing.
  */
 const REGISTRATION_KEYS = [
-  'features', 'settingsForms', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions',
+  'features', 'settingsForms', 'steps', 'artifacts', 'blocks', 'textEditor', 'appExtensions',
 ] as const satisfies readonly (keyof PackFERegistration)[];
 
 /** A revision belongs in the base URL so relative imports retain it too. */
@@ -96,14 +96,14 @@ export async function loadPackFEEntry(
 
 /**
  * The shell's pack frontends over one window: `load` adds a pack's styles and imports its entry, registering what it
- * contributes and answering with the plugins it added (null for a pack with no frontend code, whose systems the bus
+ * contributes and answering with the surfaces it added (null for a pack with no frontend code, whose systems the bus
  * has told already); `unload` undoes both, for a pack deactivated and for a load that finished after it was.
  */
 export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): ShellPackFrontends {
   const attempts = new Map<string, object>();
   const acceptedStyles = new Map<string, PackFrontendStyle>();
   return {
-    async load(input: LoadedPackEntry, signal?: AbortSignal): Promise<Plugin[] | null> {
+    async load(input: LoadedPackEntry, signal?: AbortSignal): Promise<Surface[] | null> {
       const pack = { ...input };
       const attempt = {};
       let style: PackFrontendStyle | undefined;

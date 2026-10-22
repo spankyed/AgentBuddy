@@ -1,11 +1,11 @@
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { assign, setup } from 'xstate'
 
 import { FileSystemRepository } from '../services/filesystem.ts'
 import type { SearchOptions } from '../types.ts'
 
-const pluginId = 'code' as const
+const surfaceId = 'code' as const
 
 // Incoming events from frontend
 
@@ -56,7 +56,7 @@ export const searchSystem = setup({
       }
 
       if (!context.repository) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'search.ERROR',
           data: { message: 'No directory selected. Please select a directory first.' }
         })
@@ -91,7 +91,7 @@ export const searchSystem = setup({
           // Progress callback
           (filesSearched, totalFiles, currentFile) => {
             if (!controller.signal.aborted) {
-              broadcastToPlugin(pluginId, {
+              broadcastToSurface(surfaceId, {
                 type: 'search.PROGRESS',
                 data: { filesSearched, totalFiles, currentFile }
               })
@@ -101,7 +101,7 @@ export const searchSystem = setup({
           (result) => {
             if (!controller.signal.aborted) {
               totalMatches += result.matches.length
-              broadcastToPlugin(pluginId, {
+              broadcastToSurface(surfaceId, {
                 type: 'search.RESULT',
                 data: result
               })
@@ -110,14 +110,14 @@ export const searchSystem = setup({
         )
 
         if (!controller.signal.aborted) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'search.COMPLETE',
             data: { results, totalMatches }
           })
         }
       } catch (error: any) {
         if (!controller.signal.aborted) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'search.ERROR',
             data: { message: error.message }
           })

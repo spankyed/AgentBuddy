@@ -2,7 +2,7 @@
 // dependencies' snapshots, so each snapshot carries the whole tree's names — otherwise a dependent of
 // two packs sharing an ancestor reads the ancestor's names arriving from both as a collision.
 //
-// Entities, relation kinds, commands and plugins used to travel as three differently-shaped fields with
+// Entities, relation kinds, commands and surfaces used to travel as three differently-shaped fields with
 // three readers running this same algorithm. These tests are on the one that replaced them.
 import { describe, expect, it } from 'vitest';
 import { PROVENANCE_KINDS, _buildProvenance, _mergeProvenance, type ProvenanceSource } from '../../src/build/manifest.ts';
@@ -58,8 +58,8 @@ describe('_mergeProvenance', () => {
   });
 
   it('reads a snapshot that declares nothing and inherited nothing', () => {
-    expect(_mergeProvenance('plugins', [dep('bare-pack', { manifest: {} })])).toEqual({});
-    expect(_mergeProvenance('plugins', [])).toEqual({});
+    expect(_mergeProvenance('surfaces', [dep('bare-pack', { manifest: {} })])).toEqual({});
+    expect(_mergeProvenance('surfaces', [])).toEqual({});
   });
 
   // One table entry per kind, so a new kind is a line rather than a type pair and a reader
@@ -67,8 +67,8 @@ describe('_mergeProvenance', () => {
     const manifest = {
       data: { entities: { Note: null }, relations: ['tagged'] },
 
-      extensions: { commands: { note: { placeholder: 'x' } },  tiptapPlugins: { suggestions: { extensions: { mention: 'src/editor.ts#Mention' } } } },
-      features: { memos: { plugin: {}, references: {
+      extensions: { commands: { note: { placeholder: 'x' } },  textEditor: { suggestions: { extensions: { mention: 'src/editor.ts#Mention' } } } },
+      features: { memos: { surface: {}, references: {
         types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [] } },
         categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
       } }, headless: {} },
@@ -80,8 +80,8 @@ describe('_mergeProvenance', () => {
       ['tiptapExtensions', { mention: 'base-pack' }],
       ['referenceTypes', { memo: 'base-pack' }],
       ['referenceCategories', { memos: 'base-pack' }],
-      // A feature without a plugin owns no plugin id: nothing could be sent there
-      ['plugins', { 'base-pack/memos': 'base-pack' }],
+      // A feature without a surface owns no surface id: nothing could be sent there
+      ['surfaces', { 'base-pack/memos': 'base-pack' }],
     ];
     it.each(cases)('%s', (kind, expected) => {
       expect(_mergeProvenance(kind, [dep('base-pack', { manifest })])).toEqual(expected);
@@ -134,9 +134,9 @@ describe('_buildProvenance', () => {
   it('records every kind that declared something', () => {
     const provenance = _buildProvenance(
       [dep('base-pack', { manifest: { data: { entities: { Note: null } }, extensions: { commands: { note: { placeholder: 'x' } } } } })],
-      { id: 'app-pack', manifest: { features: { app: { plugin: {} } } } },
+      { id: 'app-pack', manifest: { features: { app: { surface: {} } } } },
     );
-    expect(provenance).toEqual({ entities: { Note: 'base-pack' }, commands: { note: 'base-pack' }, plugins: { 'app-pack/app': 'app-pack' } });
+    expect(provenance).toEqual({ entities: { Note: 'base-pack' }, commands: { note: 'base-pack' }, surfaces: { 'app-pack/app': 'app-pack' } });
   });
 
   // An empty record and an absent kind would read the same; the absent one says what it means

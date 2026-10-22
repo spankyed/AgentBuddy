@@ -24,7 +24,7 @@ including symlinks. A path and a selected export have different meanings:
 |---|---|---|
 | Systems, settings forms, block/artifact views, DSL type modules, frontend app extensions/popups, content compilers/appliers and feature type barrels | `src/module.ts` | Whole module, with the export convention described by that field; no `#export` selector |
 | Services, repositories, step facets, lifecycle hooks, migrations, content writers, Tiptap extension objects/predicates, contracts and entity shapes | `src/module.ts#Export` | The named export; contracts and shapes select TypeScript types, without executing them |
-| Plugin machines/views and reference icon components | `src/module.ts` or `src/module.ts#Export` | Default export when omitted, or the explicitly named binding |
+| Surface machines/views and reference icon components | `src/module.ts` or `src/module.ts#Export` | Default export when omitted, or the explicitly named binding |
 
 Schema validation, source checks and codegen use these same distinctions. Whole-module readers check
 their conventional runtime exports (`default` or `apply`) without activation; type
@@ -50,7 +50,7 @@ order. `init`, `add` and the release version editor share this writer.
 | `description` | `string` | no | Short description |
 | `hostVersion` | `string` | no | Nonempty npm semver range of compatible host versions (e.g. `">=0.3.0"`) |
 | `license` | `string` | no | SPDX license identifier |
-| `features` | `Record<string, PackFeatureEntry>` | no | Feature declarations (system + plugin bundles), keyed by feature id |
+| `features` | `Record<string, PackFeatureEntry>` | no | Feature declarations (system + surface bundles), keyed by feature id |
 | `extensions` | `object` | no | What the pack contributes to the app; see [Extensions](#extensions) |
 | `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |
 | `data.entities` | `Record<string, string \| null>` | no | Entities without a feature owner; see [Entities and relations](#entities-and-relations) |
@@ -76,7 +76,7 @@ ships (`content`). Every entry is a contribution the app registers and other pac
 | `services` | `Record<string, string>` | Pack-level services, belonging to no one feature, in the same form as [a feature's `services`](#packfeatureentry-fields) |
 | `settings` | `Record<string, SettingsDefinition>` | Inline pack-owned preference definitions; see [Pack settings declarations](#pack-settings-declarations) |
 | `dsl` | `Record<string, DslEntry>` | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
-| `tiptapPlugins` | `Record<string, TiptapPluginDeclaration>` | Named editor extension and popup groups; see [Editor and app extensions](#editor-and-app-extensions) |
+| `textEditor` | `Record<string, TextEditorExtensionsDeclaration>` | Named editor extension and popup groups; see [Editor and app extensions](#editor-and-app-extensions) |
 | `appExtensions` | `Record<string, string>` | Named app extension components; see [Editor and app extensions](#editor-and-app-extensions) |
 
 **A setting that only changes what `apack pack build` produces is not one of these**: it goes in `build`, which
@@ -117,7 +117,7 @@ The feature settings interface below remains the current feature API until its m
 
 ## Features
 
-The `features` map is the primary way to add functionality. Each entry is keyed by its feature id and bundles a backend system, frontend plugin, settings, and services.
+The `features` map is the primary way to add functionality. Each entry is keyed by its feature id and bundles a backend system, frontend surface, settings, and services.
 
 ```json
 {
@@ -132,7 +132,7 @@ The `features` map is the primary way to add functionality. Each entry is keyed 
       "system": {
         "entry": "src/features/bookmarks/be/system.ts"
       },
-      "plugin": {
+      "surface": {
         "label": "Bookmarks",
         "icon": "Bookmark",
         "state": "src/features/bookmarks/fe/state.ts",
@@ -158,17 +158,17 @@ unrepresentable.
 | `entities` | `Record<string, string \| null>` | no | Entity wire names owned by this feature, mapped to a TypeScript shape export or `null` for untyped entities. Paths remain pack-root-relative. |
 | `designation` | `string` | no | Role played by this feature; it may differ from the feature ID. Duplicate claims are refused locally and across packs. |
 | `settings` | `object` | no | Declarative `schema`, explicit `defaults`, optional custom `form`, title, description and access policy; see [Feature settings](#feature-settings) |
-| `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@apackdev/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its plugin receives is the contract's outgoing events; a plugin that also takes events from another feature or another pack declares those itself, in its own `Contract` (`plugin.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
-| `plugin` | `{ label, state, icon?, canvas?, panel?, chat?, contract?, default? }` | no | Declarative frontend plugin. State and views name modules; paths use default exports, or `path#exportName` for named exports. Codegen assembles the binding. Icons name Lucide exports or a custom component target. Contract is a leaf `path#exportName` containing published state/inbox types. `default: true` declares the startup default; a pack without a claim has none. See [plugin declarations](features.md#defining-a-plugin). |
+| `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@apackdev/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its surface receives is the contract's outgoing events; a surface that also takes events from another feature or another pack declares those itself, in its own `Contract` (`surface.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
+| `surface` | `{ label, state, icon?, canvas?, panel?, chat?, contract?, default? }` | no | Declarative frontend surface. State and views name modules; paths use default exports, or `path#exportName` for named exports. Codegen assembles the binding. Icons name Lucide exports or a custom component target. Contract is a leaf `path#exportName` containing published state/inbox types. `default: true` declares the startup default; a pack without a claim has none. See [surface declarations](features.md#defining-a-surface). |
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
-| `description` | `string` | yes | Nonblank feature purpose, independent of plugin display labels |
+| `description` | `string` | yes | Nonblank feature purpose, independent of surface display labels |
 | `types` | `string` | no | Pack-root-relative TypeScript module re-exported through `#generated/types`; optional `.ts` or directory `index.ts` resolution. No undeclared files are inferred. |
-| `references` | `object` | no | Keyed reference identities and presentation metadata, with reactive item-provider exports; entity navigation uses declared plugin destinations |
+| `references` | `object` | no | Keyed reference identities and presentation metadata, with reactive item-provider exports; entity navigation uses declared surface destinations |
 
-A feature can have just a system (backend-only), just a plugin (frontend-only), or both.
+A feature can have just a system (backend-only), just a surface (frontend-only), or both.
 
-A pack may claim at most one default plugin. The host selects from enabled declarations before
+A pack may claim at most one default surface. The host selects from enabled declarations before
 loading frontends: native claims precede installed claims, then fully qualified feature refs sort
 lexically using the English locale. Authoring-source previews do not participate. Frontend delivery
 order cannot change the winner; opening waits for its matching accepted binding and actor. A saved
@@ -203,7 +203,7 @@ A feature declares effective-value validation and explicit defaults as JSON data
           "syncInterval": 300
         }
       },
-      "plugin": {
+      "surface": {
         "label": "Bookmarks",
         "icon": "Bookmark",
         "state": "src/features/bookmarks/fe/state.ts",
@@ -217,7 +217,7 @@ A feature declares effective-value validation and explicit defaults as JSON data
 
 The declaration owns only this feature's settings; it does not repeat the feature ID. The host stores user overrides under `features.<packId>/<featureId>` and validates changed values for every write, including custom forms, actions and the JSON editor. Forms remain custom Vue components; no form is generated from the schema. Use JSON Schema draft-07 for validation; values are never coerced, transformed or populated from schema annotations. References stay within the value schema.
 
-Defaults must pass the schema before the pack builds or registers. Navigation visibility is separate: `plugin.defaultVisible: false` needs no settings declaration. Settings may also declare presentation metadata and a custom `form` path. Writes must satisfy the current schema; unchanged invalid values are not exempt. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
+Defaults must pass the schema before the pack builds or registers. Navigation visibility is separate: `surface.defaultVisible: false` needs no settings declaration. Settings may also declare presentation metadata and a custom `form` path. Writes must satisfy the current schema; unchanged invalid values are not exempt. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
 
 Installation, replacement, shipped-pack updates and live reload validate stored overrides against the
 candidate settings declarations before replacing accepted state. Incompatible changes are refused with
@@ -233,8 +233,8 @@ reconnecting a window preserves that restart requirement. App data and API keys 
 Declare a custom form at `features.<id>.settings.form`, for example
 `"form": "src/features/bookmarks/fe/settings.vue"`. The module default-exports a Vue
 component that receives `settings` and emits `update-setting` with `{ path, value, condition? }`.
-The host supplies the target address. Forms are independent of plugins: a feature can provide a
-form without a plugin or system.
+The host supplies the target address. Forms are independent of surfaces: a feature can provide a
+form without a surface or system.
 
 Pack-wide preferences use the same definition under `extensions.settings.<groupId>`, including
 `schema`, `defaults`, optional `title` and `description`, and optional `form`. Their values live at
@@ -244,7 +244,7 @@ is unavailable; the JSON editor remains available. There is no pack-owned assemb
 
 ### Entity destination declarations
 
-A plugin's TypeScript contract may declare the literal entity types it opens:
+A surface's TypeScript contract may declare the literal entity types it opens:
 
 ```ts
 export type Contract = {
@@ -257,12 +257,12 @@ These are existing entity wire names, including SDK and dependency entities; dec
 creates no entity type or ownership claim. The build reads exported types without executing the module,
 rejects unknown entities and competing destination features within a pack, and materializes the map in
 `snapshot.json` as `entityDestinations`. Installed inspection reads that data without authored sources.
-Omit `opens` for a plugin with no entity destination; present declarations must be nonempty literal
+Omit `opens` for a surface with no entity destination; present declarations must be nonempty literal
 unions. This build metadata does not itself make a runtime handler ready.
 
 Call `openEntity(id)` from `@apackdev/sdk/fe` to open an existing entity. The shell checks existence,
 selects its enabled declared destination and waits for the accepted frontend. Missing, disabled or
-replaced destinations produce a useful refusal; callers do not choose a plugin or send its private events.
+replaced destinations produce a useful refusal; callers do not choose a surface or send its private events.
 The destination handles the shared `OpenEntity` event from `@apackdev/sdk/events`. Bind the SDK guard
 as `entityIs: entityIs<Contract['opens']>` in the machine's `guards` and handle `OPEN_ENTITY` with
 `guard: { type: 'entityIs', params: { entity: 'Memo' } }`. The event carries only `id`.
@@ -297,7 +297,7 @@ Reference type and category names have global identities. Duplicate claims withi
 across its dependency tree fail validation/build; a shared ancestor arriving through two dependencies
 retains its actual owner. Between independently installed packs, the app checks the same thing: if two
 enabled packs claim one name, both are refused and the Packs view names the shared claim, as it does
-for two plugins opening one entity. Disabling either one resolves it. A type may use a category declared by its pack or a dependency. Each category
+for two surfaces opening one entity. Disabling either one resolves it. A type may use a category declared by its pack or a dependency. Each category
 owns one provider. Icons name Lucide exports or use `{ "entry": "src/icon.vue", "load": "lazy" }` for a
 custom component. SVG geometry supports path, rect and circle tuples.
 
@@ -557,7 +557,7 @@ Declare these contributions directly under `extensions`, alongside artifacts, he
 ```json
 {
   "extensions": {
-    "tiptapPlugins": {
+    "textEditor": {
       "suggestions": {
         "extensions": { "mention": "src/editor/mention.ts#Mention" },
         "popups": { "mentions": "src/editor/MentionPopup.vue" },
@@ -571,7 +571,7 @@ Declare these contributions directly under `extensions`, alongside artifacts, he
 
 | Field | Type | Description |
 |---|---|---|
-| `tiptapPlugins` | `Record<string, TiptapPluginDeclaration>` | Named groups of editor extensions, popups and optional suggestion predicates |
+| `textEditor` | `Record<string, TextEditorExtensionsDeclaration>` | Named groups of editor extensions, popups and optional suggestion predicates |
 | `appExtensions` | `Record<string, string>` | Named app extensions: slot name (an identifier) → Vue component path |
 
 Within each Tiptap group, `extensions` maps the actual Tiptap name to its exported extension object
@@ -579,7 +579,7 @@ Within each Tiptap group, `extensions` maps the actual Tiptap name to its export
 export. All paths are pack-root-relative. Discovery reads these declarations without importing their
 modules. Build checks exports and runtime admission checks exact member identities and executable
 shapes. Conflicting active extension names are refused with both owners.
-See [Tiptap plugins](extensions.md#tiptap-plugins) for the binding contract.
+See [Text editor extensions](extensions.md#text-editor-extensions) for the binding contract.
 
 Carrying your own copy of `@apackdev/ui` is `build.bundleUi`, not one of these: it changes what the build
 produces rather than giving the app anything.
@@ -730,7 +730,7 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
       "system": {
         "entry": "src/features/bookmarks/be/system.ts"
       },
-      "plugin": {
+      "surface": {
         "label": "Bookmarks",
         "icon": "Bookmark",
         "state": "src/features/bookmarks/fe/state.ts",

@@ -38,7 +38,7 @@ export default defineConfigWithVueTs(
       // Vue's Priority A rule guards against a single-word component name colliding with an HTML element, since
       // every HTML element is one word. It guards a global registry: these components are imported in
       // `<script setup>` and referenced by the import binding, so `<Toolbar>` resolves to the import and there is
-      // no lookup for an element to collide with. It also fights the plugin layout, where `canvas.vue` is the name
+      // no lookup for an element to collide with. It also fights the surface layout, where `canvas.vue` is the name
       // of a feature's canvas area — every feature has one, in this package and in every pack.
       'vue/multi-word-component-names': 'off',
     },

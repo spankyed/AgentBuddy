@@ -1,5 +1,5 @@
 import { HOST_PACK_ID, splitRef } from '@apackdev/sdk/ids';
-import type { NativePackDeclaration, PluginDeclaration } from '@apackdev/sdk/framework';
+import type { NativePackDeclaration, SurfaceDeclaration } from '@apackdev/sdk/framework';
 import { HOST } from '../refs.ts';
 import { hostEventContracts } from './event-contracts.ts';
 
@@ -8,23 +8,23 @@ export const hostFeatureIds = Object.fromEntries(
 ) as Record<'application' | 'packs' | 'settings' | 'help', string>;
 
 /** Host declarations exist before any host system is constructed or registered. */
-export const hostPluginDeclarations = {
+export const hostSurfaceDeclarations = {
   packs: { label: 'Packs', icon: 'Package', isPinned: true, state: '@apackdev/host/fe#packsMachine',
     canvas: 'packages/renderer/src/views/packs/canvas.vue' },
   settings: { label: 'Settings', icon: 'Settings', isPinned: true, state: '@apackdev/host/fe#createSettingsMachine',
     canvas: 'packages/renderer/src/views/settings/canvas/index.vue' },
-} satisfies Record<string, PluginDeclaration>;
+} satisfies Record<string, SurfaceDeclaration>;
 
 export const hostDeclaration: NativePackDeclaration = {
   id: HOST_PACK_ID,
   eventContracts: hostEventContracts,
-  tiptapPlugins: { references: { extensions: {
+  textEditor: { references: { extensions: {
     reference: '@apackdev/ui/components/tiptap/reference-node#ReferenceNode',
   } } },
   features: {
-    [hostFeatureIds.application]: { description: 'Manage sidebar visibility and the last active plugin.' },
+    [hostFeatureIds.application]: { description: 'Manage sidebar visibility and the last active surface.' },
     [hostFeatureIds.help]: { description: 'Browse help articles from installed packs.' },
-    [hostFeatureIds.packs]: { description: 'Manage installed packs and their update choices.', plugin: hostPluginDeclarations.packs },
-    [hostFeatureIds.settings]: { description: 'Edit app, pack and feature preferences.', plugin: hostPluginDeclarations.settings },
+    [hostFeatureIds.packs]: { description: 'Manage installed packs and their update choices.', surface: hostSurfaceDeclarations.packs },
+    [hostFeatureIds.settings]: { description: 'Edit app, pack and feature preferences.', surface: hostSurfaceDeclarations.settings },
   },
 };

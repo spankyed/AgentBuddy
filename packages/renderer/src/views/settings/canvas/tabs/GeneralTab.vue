@@ -70,12 +70,12 @@ import Secrets from '../components/GeneralSettings/Secrets.vue'
 import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
-import { useAppSettings, usePlugin } from '@apackdev/sdk/fe'
+import { useAppSettings, useSurface } from '@apackdev/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import type { SettingsState } from '@apackdev/host/fe'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 
-const actor: SettingsState = usePlugin()
+const actor: SettingsState = useSurface()
 
 const generalNavItem = useSelector(actor, (state) => state.context.generalNavItem)
 const appSettings = useAppSettings()

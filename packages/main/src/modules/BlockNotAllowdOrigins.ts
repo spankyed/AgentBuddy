@@ -20,7 +20,7 @@ export class BlockNotAllowedOrigins extends AbstractSecurityRule {
   }
 
   applyRule(contents: Electron.WebContents): Promise<void> | void {
-    // Browser plugin tabs navigate freely — skip them
+    // Browser surface tabs navigate freely — skip them
     if (contents.session === session.fromPartition('persist:browser')) return;
 
     contents.on('will-navigate', (event, url) => {

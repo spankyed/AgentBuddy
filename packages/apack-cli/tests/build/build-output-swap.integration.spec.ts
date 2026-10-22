@@ -53,7 +53,7 @@ describe('a build that fails', () => {
     const root = path.dirname(dir);
     packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
       id: 'incomplete-output', name: 'Incomplete output', features: { view: {
-        description: 'Output verification.', plugin: { label: 'View', state: 'src/view.ts' },
+        description: 'Output verification.', surface: { label: 'View', state: 'src/view.ts' },
       } },
     }, files: { 'src/view.ts': "import { createMachine } from 'xstate'; export default createMachine({});" } });
     vi.spyOn(frontend, 'bundlePackFE').mockImplementation(async options => {

@@ -112,10 +112,10 @@ const notesState = setup({
     events: {} as NotesEvents,
   },
   actions: {
-    setPluginData: assign(({ context, event }) => {
+    setSurfaceData: assign(({ context, event }) => {
       const ev = typeOf('NOTES_CONNECTED', event)
       // The backend sends whatever the repositories hold, and settings are absent until the Settings row
-      // has an entry for this plugin. Assigning that over the context blanks the defaults this machine
+      // has an entry for this surface. Assigning that over the context blanks the defaults this machine
       // declares, and every selector and computed reading them throws on the next render.
       return {
         notes: ev.data.notes ?? context.notes,
@@ -780,7 +780,7 @@ const notesState = setup({
   },
   on: {
     OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Note' } }, target: '.editor', actions: ['openNote', 'sendViewNote'] },
-    NOTES_CONNECTED: { actions: 'setPluginData' },
+    NOTES_CONNECTED: { actions: 'setSurfaceData' },
     FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     NOTE_UPDATED: { actions: 'updateNoteInList' },
     NOTE_RESTORED: { actions: 'addRestoredNote' },

@@ -2,7 +2,7 @@
 import WebApp from './WebApp.vue';
 import SettingsRecovery from './settings/SettingsRecovery.vue';
 import { useSettingsRecovery } from '@/runtime/settings';
-import PluginPopoutApp from './PluginPopoutApp.vue';
+import SurfacePopoutApp from './SurfacePopoutApp.vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
 import { onScopeDispose, shallowRef } from 'vue';
@@ -20,16 +20,16 @@ const WelcomeComponent = shallowRef(fePacks.getAppExtension('welcome'));
 onScopeDispose(fePacks.onChanged(() => { WelcomeComponent.value = fePacks.getAppExtension('welcome'); }));
 const isWelcome = useSelector(applicationState, (s) => s.hasTag('welcome'));
 const isConnecting = useSelector(applicationState, (s) => s.hasTag('connecting'));
-const isPluginPopout = new URLSearchParams(window.location.search).get('popout') === 'plugin';
+const isSurfacePopout = new URLSearchParams(window.location.search).get('popout') === 'surface';
 </script>
 
 <template>
   <SettingsRecovery v-if="recovery" :recovery="recovery" />
   <template v-else>
     <!-- Welcome modal overlay (first-time users) -->
-    <component v-if="isWelcome && !isPluginPopout && WelcomeComponent" :is="WelcomeComponent" />
-    <!-- Main web app component (always rendered, plugins show own loading states) -->
-    <PluginPopoutApp v-if="isPluginPopout" />
+    <component v-if="isWelcome && !isSurfacePopout && WelcomeComponent" :is="WelcomeComponent" />
+    <!-- Main web app component (always rendered, surfaces show own loading states) -->
+    <SurfacePopoutApp v-if="isSurfacePopout" />
     <WebApp v-else />
 
     <!-- Loading overlay while waiting for backend connection -->

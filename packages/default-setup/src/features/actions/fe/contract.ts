@@ -1,9 +1,9 @@
-// The actions plugin's contract: the state it publishes and what other plugins may send it.
+// The actions surface's contract: the state it publishes and what other surfaces may send it.
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
-// `apack.json` names it at `features[].plugin.contract`.
-import type { PluginInbox } from '@apackdev/sdk/fe'
+// `apack.json` names it at `features[].surface.contract`.
+import type { SurfaceInbox } from '@apackdev/sdk/fe'
 import type { ActionEntity, ActionParameter } from '@apackdev/sdk'
 import type { EARS } from '#generated/ears.ts'
 import type { Category } from '#generated/types.ts'
@@ -20,7 +20,7 @@ export interface ActionsContext {
    * **A domain id cannot do this job, for two independent reasons.** It does not distinguish windows, so
    * another window's answer for the same action satisfies it; and it does not distinguish asks, so a slot
    * holding one is only ever overwritten, never emptied — which names the last ask for the life of the
-   * plugin. A call is per ask and per window, and the slot is cleared when its answer lands.
+   * surface. A call is per ask and per window, and the slot is cleared when its answer lands.
    */
   pendingActionCall: string | null;
   actions: ActionEntity[];
@@ -59,7 +59,7 @@ export interface ActionsContext {
   };
 }
 
-/** Paging and editing, which the code plugin's actions panel asks of it */
+/** Paging and editing, which the code surface's actions panel asks of it */
 export type ActionsInboxEvent =
   | { type: 'ACTION.SELECT'; actionId: EARS.EntityId }
   | { type: 'ACTION.CREATE' }
@@ -73,5 +73,5 @@ export type ActionsInboxEvent =
 export type Contract = {
   opens: 'Action'
   state: ActionsContext
-  inbox: PluginInbox<{ pack: ActionsInboxEvent }>
+  inbox: SurfaceInbox<{ pack: ActionsInboxEvent }>
 }

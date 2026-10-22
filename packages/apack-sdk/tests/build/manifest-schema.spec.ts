@@ -38,13 +38,13 @@ describe('parseManifest', () => {
     }
   });
 
-  it('enforces the same default-plugin uniqueness for native declarations', () => {
-    const feature = { description: 'Show fixture items.', plugin: { label: 'Items', state: 'state.ts', default: true } };
+  it('enforces the same default-surface uniqueness for native declarations', () => {
+    const feature = { description: 'Show fixture items.', surface: { label: 'Items', state: 'state.ts', default: true } };
     expect(_NativePackDeclarationSchema.safeParse({ id: 'native', features: { first: feature } }).success).toBe(true);
     const result = _NativePackDeclarationSchema.safeParse({ id: 'native', features: { first: feature, second: feature } });
     expect(result.success).toBe(false);
     if (result.success) throw new Error('Duplicate defaults accepted');
-    expect(result.error.issues[0].path).toEqual(['features', 'second', 'plugin', 'default']);
+    expect(result.error.issues[0].path).toEqual(['features', 'second', 'surface', 'default']);
     expect(result.error.issues[0].message).toContain('"first" and "second"');
   });
 
@@ -57,7 +57,7 @@ describe('parseManifest', () => {
       { extensions: { settings: { extra: { ...settings, form: 'src/module#value' } } } },
       { extensions: { blocks: { extra: { fe: 'src/module#value' } } } },
       { extensions: { artifacts: { extra: { icon: 'File', fe: 'src/module#value' } } } },
-      { extensions: { tiptapPlugins: { editor: { popups: { extra: 'src/module#value' } } }, appExtensions: { extra: 'src/module#value' } } },
+      { extensions: { textEditor: { editor: { popups: { extra: 'src/module#value' } } }, appExtensions: { extra: 'src/module#value' } } },
       { extensions: { dsl: { extra: { entry: 'src/module#value', targets: ['monaco'] } } } },
       { content: { formats: { extra: { compiler: 'src/module#value' } } } },
       { content: { sources: { extra: { applier: 'src/module#value' } } } },
@@ -67,9 +67,9 @@ describe('parseManifest', () => {
       expect(report.status).toBe('invalid');
       expect(report.diagnostics.every(issue => issue.message.includes('without an export selector'))).toBe(true);
     }
-    for (const owner of ['system', 'plugin']) {
+    for (const owner of ['system', 'surface']) {
       const declaration = owner === 'system' ? { entry: 'src/system', contract: 'src/types' }
-        : { label: 'Memos', state: 'src/plugin#machine', contract: 'src/types' };
+        : { label: 'Memos', state: 'src/surface#machine', contract: 'src/types' };
       const feature = { description: 'Manage memos.', [owner]: declaration };
       expect(parseManifest({ ...pack, features: { memos: feature } }).diagnostics[0].path)
         .toEqual(['features', 'memos', owner, 'contract']);
@@ -78,16 +78,16 @@ describe('parseManifest', () => {
   });
 
   it('names both editor groups claiming one Tiptap extension for native and external packs', () => {
-    const plugin = { extensions: { mention: 'src/editor.ts#Mention' } };
-    const contributions = { tiptapPlugins: { first: plugin, second: plugin } };
+    const surface = { extensions: { mention: 'src/editor.ts#Mention' } };
+    const contributions = { textEditor: { first: surface, second: surface } };
     const external = parseManifest({ id: 'editor', name: 'Editor', version: '1.0.0', extensions: contributions });
     expect(external.status).toBe('invalid');
-    expect(external.diagnostics[0].path).toEqual(['extensions', 'tiptapPlugins', 'second', 'extensions', 'mention']);
+    expect(external.diagnostics[0].path).toEqual(['extensions', 'textEditor', 'second', 'extensions', 'mention']);
     expect(external.diagnostics[0].message).toContain('"first" and "second"');
     const native = _NativePackDeclarationSchema.safeParse({ id: 'editor', ...contributions });
     expect(native.success).toBe(false);
     if (native.success) throw new Error('Duplicate native editor extension accepted');
-    expect(native.error.issues[0].path).toEqual(['tiptapPlugins', 'second', 'extensions', 'mention']);
+    expect(native.error.issues[0].path).toEqual(['textEditor', 'second', 'extensions', 'mention']);
     expect(native.error.issues[0].message).toContain('"first" and "second"');
   });
 
@@ -292,20 +292,20 @@ describe('content.formats, content.sources and content.datasets', () => {
     expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
   });
 
-  // Which plugin opens first is an annotation on the plugin, not a feature id at the root: an id there
+  // Which surface opens first is an annotation on the surface, not a feature id at the root: an id there
   // could name a feature the pack doesn't have, and codegen then emitted no default at all. A pack
-  // claiming none has no default plugin, which the shell handles.
-  it('takes the default plugin from the plugin that claims it, and refuses two claims', () => {
-    const plugin = (id: string, isDefault?: boolean) =>
-      ({ [id]: { description: `Exercise ${id} navigation.`, plugin: { label: 'Fixture', state: `src/${id}/fe/plugin.ts`, ...(isDefault ? { default: true } : {}) } } });
+  // claiming none has no default surface, which the shell handles.
+  it('takes the default surface from the surface that claims it, and refuses two claims', () => {
+    const surface = (id: string, isDefault?: boolean) =>
+      ({ [id]: { description: `Exercise ${id} navigation.`, surface: { label: 'Fixture', state: `src/${id}/fe/surface.ts`, ...(isDefault ? { default: true } : {}) } } });
 
-    expect(messagesOf(parseManifest({ ...pack, features: { ...plugin('notes'), ...plugin('cards', true) } }))).toEqual([]);
-    expect(messagesOf(parseManifest({ ...pack, features: { ...plugin('notes', true), ...plugin('cards', true) } })))
-      .toEqual([expect.stringMatching(/"features\.cards\.plugin\.default": Two features claim the default plugin: "notes" and "cards"/)]);
+    expect(messagesOf(parseManifest({ ...pack, features: { ...surface('notes'), ...surface('cards', true) } }))).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, features: { ...surface('notes', true), ...surface('cards', true) } })))
+      .toEqual([expect.stringMatching(/"features\.cards\.surface\.default": Two features claim the default surface: "notes" and "cards"/)]);
   });
 
-  it('has no root defaultPlugin to name a feature that may not exist', () => {
-    expect(messagesOf(parseManifest({ ...pack, defaultPlugin: 'threads' }))).toEqual([expect.stringMatching(/Unrecognized key.*defaultPlugin/)]);
+  it('has no root defaultSurface to name a feature that may not exist', () => {
+    expect(messagesOf(parseManifest({ ...pack, defaultSurface: 'threads' }))).toEqual([expect.stringMatching(/Unrecognized key.*defaultSurface/)]);
   });
 
   it('rejects anything but a path on a specialty key', () => {
