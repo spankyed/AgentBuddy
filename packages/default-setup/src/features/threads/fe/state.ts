@@ -11,7 +11,6 @@ import { safeEvents } from '@apackdev/sdk/fe';
 import { setup, assign, enqueueActions, fromCallback, spawnChild, stopChild, type AnyEventObject } from 'xstate';
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@apackdev/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
-import type { PackCommand } from '@apackdev/sdk/commands';
 import type { ThreadEntity, ThreadCreateData, ThreadViewData, ThreadEditFields, ThreadsSettings, MessageEntity, AgentThreadData, Tab, AgentSettings, AgentMode as AgentModeConfig, MessageReferences, BlockResponse } from '#generated/types.ts';
 import type { Contract, ChatState, ThreadListItem, ThreadsContext } from './contract.ts';
 import type { OutgoingThreadsEvents } from '#features/threads/be/types.ts';
@@ -203,7 +202,6 @@ type UIEvent =
   | { type: 'CLOSE_QUICK_PROMPTS' }
   | { type: 'TOGGLE_QUICK_PROMPTS' }
   | { type: 'NAVIGATE_TO_SECRETS' }
-  | { type: 'COMMANDS_UPDATED'; commands: PackCommand[] }
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
   | { type: 'SUMMARIZE_THREAD'; messageId: string; threadId: string }
@@ -1016,7 +1014,6 @@ const threadsState = setup({
         activeTabId,
         tabGroups: restoredTabGroups,
         ...extracted,
-        commands: typedEvent.data.commands || [],
         ...modeUpdate,
         ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
       }));
@@ -1477,7 +1474,6 @@ const threadsState = setup({
     modes: [],
     hotkeys: {},
     chatSettings: { modes: [], hotkeys: {} },
-    commands: [],
     quickPromptCursor: null,
     navHistory: createNavHistory(getInitialView()),
     messagePagination: { hasMore: false, nextCursor: null, isLoading: false },
@@ -1733,11 +1729,6 @@ const threadsState = setup({
     AGENT_CONNECTED: { actions: 'setStartupData' },
     AGENT_SETTINGS_UPDATED: { actions: 'handleChatSettingsUpdate' },
     NAVIGATE_TO_SECRETS: { actions: 'navigateToSecrets' },
-    COMMANDS_UPDATED: {
-      actions: assign(({ event }) => ({
-        commands: typeOf('COMMANDS_UPDATED', event).commands
-      }))
-    },
     RESPOND_TO_BLOCK_INTERACTION: {
       actions: [
         'respondToBlockInteraction',

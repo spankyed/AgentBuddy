@@ -442,6 +442,8 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
 
       updateSurfaceVisibility: assign(({ event }) => ({ surfaceVisibility: typeOf('SURFACE_VISIBILITY_UPDATED', event).surfaceVisibility })),
 
+      updateCommands: assign(({ event }) => ({ commands: typeOf('COMMANDS_UPDATED', event).commands })),
+
       /**
        * The shell's state the backend sends on each connection (the host `application` system's, in AppState): which
        * surfaces' tabs show, and the surface the user last had open, which a main window opens on once it's registered.
@@ -660,6 +662,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       return {
         surfaces,
         surfaceVisibility: {},
+        commands: [],
         activeSurface: initialActiveSurface,
         defaultSurface: claimedDefault,
         // Nothing specific was asked for and no pack has claimed a default yet, so open it when one does
@@ -790,6 +793,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       },
       PACK_SURFACES_UNLOADED: { actions: 'removePackSurfaces' },
       SURFACE_VISIBILITY_UPDATED: { actions: 'updateSurfaceVisibility' },
+      COMMANDS_UPDATED: { actions: 'updateCommands' },
       SET_SURFACE_VISIBILITY: { actions: 'setSurfaceVisibility' },
       OPEN_ENTITY: { actions: 'beginEntityOpen' },
       ENTITY_OPEN_FINISHED: { actions: assign(({ context, event }) => ({ awaitingSurface: context.awaitingSurface.filter(request => request.entityToken !== event.token) })) },

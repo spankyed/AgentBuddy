@@ -2,9 +2,9 @@ import { featureSettings } from '#generated/settings.ts';
 
 import { sendToSystem, broadcastToSurface } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
-import { assign, setup, fromCallback } from 'xstate';
+import { setup } from 'xstate';
 import { answer } from './answer.ts';
-import { defineSystem, onPackCatalogChanged } from '@apackdev/sdk/framework';
+import { defineSystem } from '@apackdev/sdk/framework';
 
 import { tx, EARS } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
@@ -51,7 +51,6 @@ function reportThreadOperationError(
 export const threadsSystem = setup({
   types: threadsSpec.types,
   actors: {
-    commandCatalog: fromCallback(({ sendBack }) => onPackCatalogChanged(() => sendBack({ type: 'COMMANDS_CHANGED' }))),
   },
   actions: threadsSpec.actions({
     // ---- Thread management actions ----
@@ -354,22 +353,13 @@ export const threadsSystem = setup({
       }
     },
 
-    // Sends the chat the commands when they differ from what it was last sent
-    sendCommands: assign(({ context }) => {
-      const commands = services.library.commands();
-      const sent = JSON.stringify(commands);
-      if (sent === context.sentCommands) return {};
-      broadcastToSurface('threads', { type: 'COMMANDS_UPDATED', commands });
-      return { sentCommands: sent };
-    }),
     sendChatConnectedData: () => {
       const data = repository.chatQueries.connectedData();
       broadcastToSurface('threads', {
         type: 'AGENT_CONNECTED',
-        data: { ...data, commands: services.library.commands() },
+        data,
       });
     },
-    rememberSentCommands: assign({ sentCommands: () => JSON.stringify(services.library.commands()) }),
     sendThreadChatData: ({ event, reply }) => {
       const { threadId, restore } = threadsSpec.typeOf('OPEN_THREAD_CHAT', event);
       try {
@@ -836,16 +826,11 @@ export const threadsSystem = setup({
 }).createMachine(
   {
     id: 'threads',
-    invoke: { src: 'commandCatalog' },
     initial: 'idle',
     context: () => ({}),
     on: {
       SEND_STATE: {
-        actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'sendCommands'],
-      },
-      // Record which commands the client receives, so later updates only send changes.
-      CLIENT_CONNECTED: {
-        actions: 'rememberSentCommands',
+        actions: ['sendThreadsConnectedData', 'sendChatConnectedData'],
       },
       FEATURE_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
@@ -859,9 +844,6 @@ export const threadsSystem = setup({
       },
       OPEN_THREAD_TAB: {
         actions: 'sendThreadTabData',
-      },
-      COMMANDS_CHANGED: {
-        actions: 'sendCommands',
       },
       THREAD_DELETED: {
         // Internal notification (e.g., refresh chat if active thread deleted)

@@ -742,10 +742,19 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     for (const pack of admitted.values()) {
       for (const [ref, system] of pack.systems) map.set(ref, new Set(system.receives));
     }
-    // The bus isn't a feature's system, but pack code sends it events (HostSystemEvents): from a frontend too, so the
-    // client path checks them as the backend's does. It runs where the host is registered.
+    // What pack code may send the host's own systems (`HostSystemEvents`): from a frontend too, so the client path
+    // checks them as the backend's does. It runs where the host is registered.
+    //
+    // **Merged into whatever is already there, never set over it.** One of these refs is the bus, which is no
+    // feature's system and so has no entry of its own; the rest name a host feature whose system declared its
+    // incoming events a few lines above, and overwriting that entry would drop every event the system itself
+    // accepts — leaving a system reachable only by the events packs may send it.
     if (registrations.has(HOST_PACK_ID)) {
-      for (const [ref, types] of Object.entries(HOST_SYSTEM_EVENT_TYPES)) map.set(ref, new Set(types));
+      for (const [ref, types] of Object.entries(HOST_SYSTEM_EVENT_TYPES)) {
+        const existing = map.get(ref);
+        if (existing) for (const type of types) existing.add(type);
+        else map.set(ref, new Set(types));
+      }
     }
     return map;
   }

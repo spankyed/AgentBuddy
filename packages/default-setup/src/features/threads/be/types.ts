@@ -1,6 +1,5 @@
 export type * from './export-types.ts';
 import { type BaseEntity, EARS } from '#generated/ears.ts';
-import type { PackCommand } from '@apackdev/sdk/commands';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "#features/code/be/services/claude-code/types.ts";
 
@@ -312,7 +311,6 @@ export type AgentConnectedData = {
   recentThreads: Partial<ThreadEntity>[];
   tabs: Tab[];
   settings?: AgentSettings;
-  commands?: PackCommand[];
 };
 
 
@@ -491,8 +489,6 @@ export type IncomingThreadsEvents =
 
   | { type: 'CLIENT_CONNECTED' }
   | { type: 'THREAD_DELETED'; threadId: string }
-  /** The library's commands folder changed (sent by the library system) */
-  | { type: 'COMMANDS_CHANGED' }
 
 export type OutgoingThreadsEvents =
   // Thread management events
@@ -520,11 +516,7 @@ export type OutgoingThreadsEvents =
   | { type: 'SET_PHASE'; phase: string }
   | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
   | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
-  | { type: 'COMMANDS_UPDATED'; commands: PackCommand[] }
   | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
   | { type: 'OLDER_MESSAGES_LOADED'; threadId: string; messages: Partial<MessageEntity>[]; hasMore: boolean; nextCursor: string | null }
 
-export interface ThreadsContext {
-  /** The slash commands the chat was last sent, serialized, so an unchanged list isn't sent again */
-  sentCommands?: string
-}
+export interface ThreadsContext {}

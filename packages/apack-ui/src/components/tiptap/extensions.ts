@@ -27,6 +27,7 @@ import { ImageUploadPlaceholder } from './extensions/image-upload-placeholder.ts
 import { ImageSelectionDecoration } from './extensions/image-selection-decoration.ts'
 import { CustomHorizontalRule } from './extensions/custom-horizontal-rule.ts'
 import { SearchAndFind } from './extensions/search.ts'
+import { CommandSuggestion } from './extensions/command-suggestion.ts'
 
 const lowlight = createLowlight(common)
 
@@ -132,6 +133,10 @@ export function createExtensions({ mode, variant = 'full', placeholder, injected
   if (cfg.listShiftEnter) extensions.push(ListShiftEnter)
   if (cfg.editorInteractions) extensions.push(ImageUploadPlaceholder)
   if (cfg.searchBar) extensions.push(SearchAndFind)
+  // Built in rather than contributed: it asks the `commands` designation, so it needs nothing from any
+  // named pack and no pack can fail to declare it. Still config-gated, because `/` is ordinary text in a
+  // note or a document — the commands are the chat's affordance even though they are the app's data.
+  if (cfg.commandSuggestion) extensions.push(CommandSuggestion)
   if (placeholder) extensions.push(Placeholder.configure({
     placeholder: ({ editor, node }) => {
       if (node.type.name === 'heading') return `Heading ${node.attrs.level}`

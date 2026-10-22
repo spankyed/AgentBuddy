@@ -99,13 +99,14 @@ export type FeatureSettingsUpdated = {
 
 // @public
 export const HOST_SURFACE_EVENT_TYPES: {
-    'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "SURFACE_VISIBILITY_UPDATED", "ONBOARDING_COMPLETE", "OPEN_SURFACE"];
+    'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "SURFACE_VISIBILITY_UPDATED", "COMMANDS_UPDATED", "ONBOARDING_COMPLETE", "OPEN_SURFACE"];
     'host/settings': readonly ["CLI_TEST_RESULT", "HELP.OPEN"];
 };
 
 // @public
 export const HOST_SYSTEM_EVENT_TYPES: {
     'host/bus': readonly ["PACK_CHANGED"];
+    'host/application': readonly ["COMMANDS_CHANGED"];
 };
 
 // @public
@@ -121,6 +122,9 @@ export type HostSurfaceEvents = {
     } | {
         type: 'SURFACE_VISIBILITY_UPDATED';
         surfaceVisibility: Record<string, boolean>;
+    } | {
+        type: 'COMMANDS_UPDATED';
+        commands: PackCommand[];
     } | {
         type: 'ONBOARDING_COMPLETE';
     } | {
@@ -148,6 +152,9 @@ export type HostSystemEvents = {
     'host/bus': {
         type: 'PACK_CHANGED';
         packId: string;
+    };
+    'host/application': {
+        type: 'COMMANDS_CHANGED';
     };
 };
 

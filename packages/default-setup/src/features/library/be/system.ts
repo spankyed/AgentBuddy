@@ -6,7 +6,7 @@ import { setup } from 'xstate'
 import { defineSystem } from '@apackdev/sdk/framework'
 import type { EARS } from '#generated/ears.ts'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
-import { sendToSystem, broadcastToSurface } from '#generated/events.ts'
+import { broadcastToSurface, sendToSystem } from '#generated/events.ts'
 import { repository } from '#generated/repository.ts';
 import * as path from 'path'
 import * as os from 'os'
@@ -42,13 +42,16 @@ function resolveHomePath(inputPath: string): string {
 }
 
 /**
- * Tells the threads system the chat's slash commands changed, when a library change altered them: a document in the
- * commands folder, or the folder, was created, edited, moved, renamed, deleted or imported. `before` is the list from
- * before the change.
+ * Tells the app the chat's slash commands changed, when a library change altered them: a command document was
+ * created, edited, moved, renamed, deleted or imported. `before` is the list from before the change.
+ *
+ * It says *that* they changed and not what they are: this feature plays the `commands` designation, so the app
+ * reads the list from there and publishes it to every window. Sending the list instead would make this the one
+ * window's answer rather than the app's.
  */
 function notifyIfCommandsChanged(before: PackCommand[]): void {
   if (JSON.stringify(libraryService.commands()) === JSON.stringify(before)) return
-  sendToSystem('threads', { type: 'COMMANDS_CHANGED' })
+  sendToSystem('host/application', { type: 'COMMANDS_CHANGED' })
 }
 
 export const librarySystem = setup({

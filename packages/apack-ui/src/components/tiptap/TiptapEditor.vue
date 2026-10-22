@@ -15,6 +15,7 @@
     <p v-if="problem" role="status">{{ problem }}</p>
     <editor-content v-else :editor="editor" :class="editorClass" />
     <template v-if="editor">
+      <CommandSuggestionPopup v-if="cfg.commandSuggestion" :editor="editor" :variant="variant" />
       <component
         v-for="popup in textEditorPopups"
         :key="`${generation}/${popup.id}`"
@@ -34,6 +35,7 @@ import { createExtensions, type TiptapMode, type TiptapVariant } from './extensi
 import { getEditorConfig } from './editor-config.ts'
 import { useContributedEditor } from './internal/use-contributed-editor.ts'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
+import CommandSuggestionPopup from './CommandSuggestionPopup.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
 import { createImageHandlers } from './composables/createImageHandlers.ts'

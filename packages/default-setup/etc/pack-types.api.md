@@ -148,7 +148,6 @@ type AgentConnectedData = {
     recentThreads: Partial<ThreadEntity>[];
     tabs: Tab[];
     settings?: AgentSettings;
-    commands?: PackCommand[];
 };
 
 interface AgentMode {
@@ -2663,10 +2662,6 @@ type IncomingThreadsEvents = {
 } | {
     type: 'THREAD_DELETED';
     threadId: string;
-}
-/** The library's commands folder changed (sent by the library system) */
- | {
-    type: 'COMMANDS_CHANGED';
 };
 
 type IndexMetric = 'cosine' | 'dot_product';
@@ -4166,9 +4161,6 @@ type OutgoingThreadsEvents = {
     stateId: string;
     durationMs?: number;
 } | {
-    type: 'COMMANDS_UPDATED';
-    commands: PackCommand[];
-} | {
     type: 'THREAD_CHAT_ERROR';
     threadId: string;
     error: string;
@@ -5315,7 +5307,6 @@ interface ThreadsContext {
     modes: AgentMode[];
     hotkeys: HotkeysMap;
     chatSettings: AgentSettings;
-    commands: PackCommand[];
     quickPromptCursor: {
         x: number;
         y: number;
@@ -5332,8 +5323,6 @@ interface ThreadsContext {
 }
 
 interface ThreadsContext$1 {
-    /** The slash commands the chat was last sent, serialized, so an unchanged list isn't sent again */
-    sentCommands?: string;
 }
 
 /** What the artifact viewers, the dashboard and the tiptap command items ask of the threads surface */

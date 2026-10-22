@@ -1,11 +1,17 @@
 // The chat's slash commands are the fields of every document that says it is a command list
-// (`documentType: 'commands'`, from a content file's frontmatter): the threads system sends them when a
-// client connects, and again whenever a library change alters them.
+// (`documentType: 'commands'`, from a content file's frontmatter). This feature plays the `commands`
+// designation, so it is what the app asks; the app publishes the list to the shell, which every editor in
+// a window reads. This feature only says *that* the list moved — `COMMANDS_CHANGED` to `host/application`.
 //
 // **One source.** They used to be these documents merged with `extensions.commands` declarations, keyed so
 // a document could not shadow a declared one. Commands are content now — the two that were manifest
 // entries are `src/content/commands/chat.md` — so there is no merge, no precedence, and no folder path
 // deciding what a document is.
+//
+// **One destination.** They used to reach the chat: the threads system held the list, memoized it and sent
+// its own surface `COMMANDS_UPDATED`, so a window where threads was never spawned had no commands. Nothing
+// about a command is the chat's, so the app holds them now, beside the other two facts a window needs
+// whatever is open.
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -70,21 +76,32 @@ const document = (name: string, command: string) =>
 const dependentPackCommands = (documentName: string, command: string) =>
   dependentPack([document(documentName, command)], 'commands')
 
+/** The systems a command case needs: the owner, the app that publishes, and what the owner's boot reaches */
+const SYSTEMS = ['library', 'threads', 'brain', 'host/application', 'host/settings', 'host/packs']
+
 async function appliedApp(): Promise<TestApp> {
   importCompiledContent({ compiledDir: DIST, include: { commands: true } })
   // threads checks onboarding with the brain when a client connects
-  const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
+  const app = await startApp({ systems: SYSTEMS })
   await app.connect()
+  await connectionPublish(app)
   return app
 }
+
+/**
+ * Takes the publish the connection itself made, so a later `nextEmit` is the one the case's change caused.
+ * The app publishes on every `SEND_STATE` and the bus sends one after each connection, so there is always
+ * exactly one waiting here.
+ */
+const connectionPublish = (app: TestApp) => app.nextEmit('host/application', 'COMMANDS_UPDATED')
 
 describe('slash commands from the library commands folder', () => {
   it("lists the commands default-setup declares, then its Claude Code and Codex documents'", async () => {
     const app = await appliedApp()
     expect(commandDocuments().map((document) => document.name).sort()).toEqual(['Chat commands', 'Claude Code commands', 'Codex commands'])
 
-    const connected = app.emitted('threads').find((event) => event.type === 'AGENT_CONNECTED') as unknown as { data: { commands: Array<{ name: string }> } }
-    const names = connected.data.commands.map((command) => command.name)
+    // Published on the connection, as the shell's other two facts are
+    const names = commandNames(app.emitted('host/application').find((event) => event.type === 'COMMANDS_UPDATED'))
     // Document order then name, so the chat's own document leads
     expect(names.slice(0, 2)).toEqual(['pr2md', 'instructions'])
     expect(names).toEqual(expect.arrayContaining(['cc-resume', 'cc-goal', 'cdx-resume', 'cdx-goal']))
@@ -102,7 +119,7 @@ describe('slash commands from the library commands folder', () => {
   it('adds the commands of a document created in the folder, and sends the chat the new list', async () => {
     const app = await appliedApp()
     await app.send('library', { type: 'CREATE_DOCUMENT', name: 'mine', content: field('my-command', 'Arguments'), tags: [], documentType: 'commands' })
-    const updated = await app.nextEmit('threads', 'COMMANDS_UPDATED')
+    const updated = await app.nextEmit('host/application', 'COMMANDS_UPDATED')
     expect(commandNames(updated)).toContain('my-command')
     expect(commandNames(updated)).toContain('cc-resume')
   })
@@ -110,7 +127,7 @@ describe('slash commands from the library commands folder', () => {
   it('removes the commands of a deleted document, and sends the chat the new list', async () => {
     const app = await appliedApp()
     await app.send('library', { type: 'DELETE_ITEMS', ids: [documentNamed('Claude Code commands').id] })
-    const afterDelete = commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))
+    const afterDelete = commandNames(await app.nextEmit('host/application', 'COMMANDS_UPDATED'))
     expect(afterDelete).not.toContain('cc-resume')
     expect(afterDelete).toContain('pr2md')
   })
@@ -130,7 +147,7 @@ describe('slash commands from the library commands folder', () => {
     dependentDirs.push(dir)
     fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, entries: [] }))
     const nothing = Object.fromEntries(Object.keys(manifest.content.sources).map((key) => [key, []]))
-    const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
+    const app = await startApp({ systems: SYSTEMS })
     await app.connect()
 
     await app.send('host/packs', { type: 'IMPORT_PACK_CONTENT', directory: dir, include: nothing, mode: 'replace-on-collision', restartBrain: false })
@@ -146,7 +163,7 @@ describe('slash commands from the library commands folder', () => {
     fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: manifest.id, entries: [] }))
     const note = (title: string) => ({ entity: 'Note', title, noteType: 'document', content: 'x', contentHash: `hash-${title}` })
     fs.writeFileSync(path.join(dir, 'notes.content.json'), JSON.stringify({ records: [note(''), note('kept')] }))
-    const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
+    const app = await startApp({ systems: SYSTEMS })
     await app.connect()
 
     await app.send('host/packs', { type: 'IMPORT_PACK_CONTENT', directory: dir, include: { notes: null }, mode: 'replace-on-collision', restartBrain: false })
@@ -158,25 +175,29 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it('sends the chat the commands a pack content import brings', async () => {
-    const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
+    const app = await startApp({ systems: SYSTEMS })
     await app.connect()
+    await connectionPublish(app)
     await app.send('host/packs', { type: 'IMPORT_PACK_CONTENT', directory: DIST, include: { commands: null }, mode: 'replace-on-collision', restartBrain: false })
-    expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toContain('cdx-goal')
+    expect(commandNames(await app.nextEmit('host/application', 'COMMANDS_UPDATED'))).toContain('cdx-goal')
   })
 
   it("keeps the chat's own commands when the CLI documents are gone", async () => {
     const app = await appliedApp()
     await app.send('library', { type: 'DELETE_ITEMS', ids: [documentNamed('Claude Code commands').id, documentNamed('Codex commands').id] })
 
-    expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toEqual(['pr2md', 'instructions'])
+    expect(commandNames(await app.nextEmit('host/application', 'COMMANDS_UPDATED'))).toEqual(['pr2md', 'instructions'])
   })
 
   it("sends nothing for a change that doesn't alter the commands", async () => {
     const app = await appliedApp()
+    const published = app.emitted('host/application').filter((event) => event.type === 'COMMANDS_UPDATED').length
     await app.send('library', { type: 'CREATE_DOCUMENT', name: 'notes', content: field('not-a-command', 'x'), tags: [] })
     await app.nextEmit('library', 'DOCUMENT_CREATED')
     await app.settle()
-    expect(app.emitted('threads').filter((event) => event.type === 'COMMANDS_UPDATED')).toEqual([])
+    // The owner compares the list before and after its own write, so a document that is not a command list
+    // never reaches the app at all — the one dedupe left, and the only place that can make it
+    expect(app.emitted('host/application').filter((event) => event.type === 'COMMANDS_UPDATED')).toHaveLength(published)
     expect(services.library.commands().map((command) => command.name)).not.toContain('not-a-command')
   })
 
@@ -198,18 +219,24 @@ describe('slash commands from the library commands folder', () => {
     const app = await appliedApp()
     importCompiledContent({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
-    await app.send('threads', { type: 'SEND_STATE' })
+    await app.send('host/application', { type: 'SEND_STATE' })
 
-    expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toContain('team-standup')
+    expect(commandNames(await app.nextEmit('host/application', 'COMMANDS_UPDATED'))).toContain('team-standup')
   })
 
-  it("sends nothing when asked to publish without the commands having altered", async () => {
+  // Unconditionally, as `SURFACE_VISIBILITY_UPDATED` and `PACK_RUNTIMES_UPDATED` are: the app reads the list from
+  // the designation on each send and holds none of it, so it has nothing to compare an unchanged list against.
+  // Only the owner dedupes, and it dedupes a *change* rather than a publish — see the case above.
+  it("publishes the list again when asked to, whether or not it moved", async () => {
     const app = await appliedApp()
+    const before = app.emitted('host/application').filter((event) => event.type === 'COMMANDS_UPDATED').length
 
-    await app.send('threads', { type: 'SEND_STATE' })
+    await app.send('host/application', { type: 'SEND_STATE' })
     await app.settle()
 
-    expect(app.emitted('threads').filter((event) => event.type === 'COMMANDS_UPDATED')).toEqual([])
+    const sent = app.emitted('host/application').filter((event) => event.type === 'COMMANDS_UPDATED')
+    expect(sent).toHaveLength(before + 1)
+    expect(commandNames(sent.at(-1))).toContain('pr2md')
   })
 
   it("sends the library surface its index again when asked to publish, with what the pack written", async () => {

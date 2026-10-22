@@ -11,11 +11,15 @@ import { appState } from '../../../src/app-state/index.ts';
 import { createApplicationSystem } from '../../../src/features/application/be/system.ts';
 
 /** A registry whose features declare `defaults` as their tabs' visibility */
+const COMMANDS = [{ name: 'standup', placeholder: 'Topic' }];
+
 const withDefaults = (visibility: Record<string, boolean>, surfaceIds: string[] = []) => ({
   surfaceDefaults: () => visibility,
   surfaceIds: () => surfaceIds,
   loadedPacks: () => [],
   getPackRuntime: () => null,
+  // The registry's, resolved from the `commands` designation; this system only passes it on
+  commands: () => COMMANDS,
 });
 
 let stop: (() => void) | undefined;
@@ -31,7 +35,8 @@ function runApplicationSystem(defaults: Record<string, boolean> = {}, surfaceIds
     stopListening();
   };
   const visibilitySent = () => sent.filter((message) => message.event.type === 'SURFACE_VISIBILITY_UPDATED');
-  return { send: (event: EventFromLogic<typeof machine>) => actor.send(event), visibilitySent };
+  const commandsSent = () => sent.filter((message) => message.event.type === 'COMMANDS_UPDATED');
+  return { send: (event: EventFromLogic<typeof machine>) => actor.send(event), visibilitySent, commandsSent };
 }
 
 beforeEach(() => resetTestData());
@@ -78,6 +83,25 @@ describe('the host application system', () => {
     system.send({ type: 'SEND_STATE' });
 
     expect(system.visibilitySent()).toEqual([{ to: 'host/application', from: 'host', call: expect.any(String), event: expect.objectContaining({ surfaceVisibility: { 'memo-pack/memos': false } }) }]);
+  });
+
+  // The window's second app-level fact: an editor's command popup reads the shell, never a surface, so a window
+  // with no chat open still has the list. The whole path is in default-setup's `extensions/tiptap/command-items`
+  it('sends the commands when asked to publish, so every window holds them whatever is open', () => {
+    const system = runApplicationSystem();
+
+    system.send({ type: 'SEND_STATE' });
+
+    expect(system.commandsSent()).toEqual([expect.objectContaining({ to: 'host/application', event: { type: 'COMMANDS_UPDATED', commands: COMMANDS } })]);
+  });
+
+  // The designation's owner says *that* they moved and the app reads them again; nothing holds a copy to compare
+  it('sends them again when the owner says they changed', () => {
+    const system = runApplicationSystem();
+
+    system.send({ type: 'COMMANDS_CHANGED' });
+
+    expect(system.commandsSent()).toHaveLength(1);
   });
 });
 

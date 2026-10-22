@@ -8,8 +8,10 @@ import { APPLICATION_SURFACE_EVENT_TYPES } from './application/events.ts';
 
 export type ApplicationClientEvent =
   | { type: 'SET_SURFACE_VISIBILITY'; surface: string; visible: boolean }
-  | { type: 'SET_LAST_ACTIVE_SURFACE'; surface: string };
-export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('SET_SURFACE_VISIBILITY', 'SET_LAST_ACTIVE_SURFACE');
+  | { type: 'SET_LAST_ACTIVE_SURFACE'; surface: string }
+  // The feature playing the `commands` designation wrote; the system reads the list again and publishes it
+  | { type: 'COMMANDS_CHANGED' };
+export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('SET_SURFACE_VISIBILITY', 'SET_LAST_ACTIVE_SURFACE', 'COMMANDS_CHANGED');
 export type HelpOutgoing = { type: 'HELP_CATALOG'; catalog: HelpCatalog };
 export const helpEvents = ['GET_HELP', 'CLIENT_CONNECTED'] as const;
 

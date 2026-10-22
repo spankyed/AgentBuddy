@@ -134,6 +134,11 @@
       "types": "./dist/components/tiptap/composables/useBlockHandle.d.ts",
       "default": "./dist/components/tiptap/composables/useBlockHandle.js"
     },
+    "./components/tiptap/composables/useCommandItems": {
+      "@apackdev/source": "./src/components/tiptap/composables/useCommandItems.ts",
+      "types": "./dist/components/tiptap/composables/useCommandItems.d.ts",
+      "default": "./dist/components/tiptap/composables/useCommandItems.js"
+    },
     "./components/tiptap/composables/useSubDocumentTracking": {
       "@apackdev/source": "./src/components/tiptap/composables/useSubDocumentTracking.ts",
       "types": "./dist/components/tiptap/composables/useSubDocumentTracking.d.ts",
@@ -158,6 +163,11 @@
       "@apackdev/source": "./src/components/tiptap/extensions/code-block-copy.ts",
       "types": "./dist/components/tiptap/extensions/code-block-copy.d.ts",
       "default": "./dist/components/tiptap/extensions/code-block-copy.js"
+    },
+    "./components/tiptap/extensions/command-suggestion": {
+      "@apackdev/source": "./src/components/tiptap/extensions/command-suggestion.ts",
+      "types": "./dist/components/tiptap/extensions/command-suggestion.d.ts",
+      "default": "./dist/components/tiptap/extensions/command-suggestion.js"
     },
     "./components/tiptap/extensions/custom-horizontal-rule": {
       "@apackdev/source": "./src/components/tiptap/extensions/custom-horizontal-rule.ts",

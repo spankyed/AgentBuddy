@@ -1,8 +1,7 @@
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import { Extension, type Editor } from '@tiptap/core'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import { readSurfaceState } from '#generated/fe.ts'
-import type { PackCommand } from '@apackdev/sdk/commands'
+import { getCommands, type PackCommand } from '@apackdev/sdk/commands'
 
 export interface CommandSuggestionState {
   active: boolean
@@ -247,6 +246,6 @@ export const CommandSuggestion = Extension.create({
   name: 'commandSuggestion',
 
   addProseMirrorPlugins() {
-    return [plugin(this.editor, () => readSurfaceState('threads', (s) => s.commands))]
+    return [plugin(this.editor, getCommands)]
   },
 })
