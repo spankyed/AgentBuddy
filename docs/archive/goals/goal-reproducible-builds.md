@@ -236,8 +236,10 @@ matching `.inputs-hash`. A check that left codegen to `apack build` would re-has
 regenerating it and report it identical — half of `PACK_OUTPUTS` passing for having been looked at. The script
 runs `generate:entries -- --force` itself, and a spec pins the flag.
 
-### Follow-ups, deliberately not done
+### Follow-ups, both since closed
 
-- **`APP_OUTPUTS` is not covered** (renderer, api, main, preload). A third full build, ~37s more.
-- **The `tsc` ordering itself is unfixed.** Whether it is worth chasing upstream, sorting the emitted unions,
-  or leaving recorded is a decision nobody has had the measurement to make until now.
+- **`APP_OUTPUTS` is covered.** The population takes the app's four trees beside the packages and the pack,
+  and a spec derives completeness from the chain, so a build output another step caches on cannot go
+  uncompared.
+- **The `tsc` ordering is fixed at the emitter**, by sorting the emitted unions (`sortLiteralUnions`), which
+  is why `KNOWN_IRREPRODUCIBLE` is empty.
