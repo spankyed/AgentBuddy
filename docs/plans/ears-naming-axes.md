@@ -1,6 +1,6 @@
 # A name carries the operation; structure carries the rest
 
-**Status:** approved, not started. It lands after [`ears-public-api.md`](ears-public-api.md), whose change 4
+**Status:** in progress: phase 0 is done (the rule is in `packages/apack-ears/CLAUDE.md`). It lands after [`ears-public-api.md`](ears-public-api.md), whose change 4
 it **supersedes** on one point (see [What this supersedes](#what-this-supersedes)).
 Source read at `886c11bd5` (2026-10-22). Call-site figures are text searches over `packages` for
 `*.ts`/`*.vue`, excluding `dist/`, `publish/` and `__generated__/`; each is an upper bound on the work and
