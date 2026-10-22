@@ -166,9 +166,13 @@ export function snapshot(): Snapshot {
 
   return {
     rows: Object.fromEntries(Object.entries(normalized).sort(([a], [b]) => a.localeCompare(b))),
+    // Sorted, as rows and media are: a golden is read by diffing it, so nothing in it may depend on
+    // the order a run happened to produce. Insert a content key in the middle of `PARITY_KEYS` and an
+    // unsorted field moves every line, which is a diff nobody can confirm is the change they meant.
     relations: relations
       .filter((r) => rows.has(r.source) || rows.has(r.target))
-      .map((r) => `${alias.get(r.source) ?? r.source} --${r.kind}--> ${alias.get(r.target) ?? r.target}`),
+      .map((r) => `${alias.get(r.source) ?? r.source} --${r.kind}--> ${alias.get(r.target) ?? r.target}`)
+      .sort(),
     media: media.sort(),
   };
 }

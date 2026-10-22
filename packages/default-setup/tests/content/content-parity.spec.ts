@@ -84,7 +84,7 @@ function forGolden(step: Step, withNotes: boolean) {
     rows,
     relations: withNotes ? step.snapshot.relations : step.snapshot.relations.filter((r) => !isNote(r)),
     media: step.snapshot.media,
-    counts: Object.fromEntries(Object.entries(step.counts).filter(([key]) => key !== 'notes')),
+    counts: Object.fromEntries(Object.entries(step.counts).filter(([key]) => key !== 'notes').sort(([a], [b]) => a.localeCompare(b))),
   };
 }
 

@@ -1846,8 +1846,8 @@
         "updated": 0,
         "skipped": 0
       },
-      "prompts": {
-        "created": 6,
+      "commands": {
+        "created": 3,
         "updated": 0,
         "skipped": 0
       },
@@ -1856,8 +1856,8 @@
         "updated": 0,
         "skipped": 0
       },
-      "commands": {
-        "created": 3,
+      "prompts": {
+        "created": 6,
         "updated": 0,
         "skipped": 0
       }
