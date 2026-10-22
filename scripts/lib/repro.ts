@@ -5,7 +5,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, REPO_ROOT, type BuildUnit } from '@apackdev/host/build/packages-built';
-import { PACK_OUTPUTS } from './chain-steps.ts';
+import { APP_OUTPUTS, PACK_OUTPUTS } from './chain-steps.ts';
 import { repoRelative } from './import-populations.ts';
 
 /** One path whose bytes did not survive a second build of the same input */
@@ -15,24 +15,27 @@ export interface Difference {
 }
 
 /**
- * The trees a build writes, derived from the two places that already say so rather than listed again here: the
- * five `BUILD_UNITS` (each `dist` and its publish tree) and `PACK_OUTPUTS` (default-setup's `dist` and its
- * generated sources). A list of someone else's outputs is a guess, and this one would go stale the first time
- * a package is added.
+ * Every tree a build writes, taken from the declarations that already say so rather than listed again here:
+ * the five `BUILD_UNITS` (each `dist` and its publish tree), `PACK_OUTPUTS` (default-setup's `dist` and its
+ * generated sources) and `APP_OUTPUTS` (the four app trees). A list of someone else's outputs is a guess, and
+ * this one would go stale the first time a package is added.
  *
- * Both arguments are injectable because that is the only honest way to watch the emptiness guard fire: a spec
- * hands in an empty map and asserts it throws, rather than trusting a branch nothing takes.
+ * The families are one argument rather than one each, so a fourth is an entry here and no new parameter. Both
+ * arguments are injectable because that is the only honest way to watch the emptiness guard fire: a spec hands
+ * in an empty map and an empty list and asserts it throws, rather than trusting a branch nothing takes.
  */
+const COMPARED_FAMILIES: readonly (readonly string[])[] = [PACK_OUTPUTS, APP_OUTPUTS];
+
 export function reproPaths(
   units: Record<string, BuildUnit> = BUILD_UNITS,
-  packOutputs: readonly string[] = PACK_OUTPUTS,
+  families: readonly (readonly string[])[] = COMPARED_FAMILIES,
   root = REPO_ROOT,
 ): string[] {
   const fromUnits = Object.values(units).flatMap((unit) => unit.outputs.map((out) => repoRelative(root, out)));
-  const all = [...new Set([...fromUnits, ...packOutputs])].sort();
+  const all = [...new Set([...fromUnits, ...families.flat()])].sort();
   if (all.length === 0) {
-    throw new Error('check:repro derived no output paths from BUILD_UNITS or PACK_OUTPUTS, so it would compare '
-      + 'nothing and pass. Something moved one of those declarations.');
+    throw new Error('check:repro derived no output paths from BUILD_UNITS, PACK_OUTPUTS or APP_OUTPUTS, so it '
+      + 'would compare nothing and pass. Something moved one of those declarations.');
   }
   return all;
 }

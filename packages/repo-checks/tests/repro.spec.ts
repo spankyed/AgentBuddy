@@ -5,8 +5,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { population } from '@apackdev/sdk/testing';
 import { BUILD_UNITS, REPO_ROOT, type BuildUnit } from '@apackdev/host/build/packages-built';
-import { PACK_OUTPUTS } from '../../../scripts/lib/chain-steps.ts';
+import { APP_OUTPUTS, CHAIN_STEPS, PACK_OUTPUTS } from '../../../scripts/lib/chain-steps.ts';
 import { compare, KNOWN_IRREPRODUCIBLE, partition, reproPaths, snapshot } from '../../../scripts/lib/repro.ts';
 
 let root: string;
@@ -22,20 +23,90 @@ const write = (file: string, content: string): void => {
   fs.writeFileSync(path.join(root, file), content);
 };
 
+/**
+ * Steps that write something another step reads without it being a build's output, so this command does not
+ * build them twice and compare them. Each is a test step whose product is a test input.
+ *
+ * By step rather than by path, because a step's output list moves and its job does not. An entry is dead text
+ * the moment the step is renamed, which the case below refuses.
+ */
+const NOT_A_BUILD_STEP: Readonly<Record<string, string>> = {
+  'test:external-pack:contract': 'builds the fixture packs it then drives, which are a test input rather than a shipped build',
+  'test:external-pack:fork': 'caches a fork archive under node_modules/.cache for the step that reads it',
+  'test:packaged-authoring:author': 'hands a work dir to its app half, deliberately outside the checkout',
+};
+
+/**
+ * Every output one step writes and another reads that the population does not cover.
+ *
+ * Extracted so the firing cases can hand it a table that breaks: a case restating the comparison inline would
+ * prove the fixture wrong rather than the rule reporting it.
+ */
+const uncovered = (
+  steps: readonly { name: string; inputs?: readonly string[]; outputs?: readonly string[] }[],
+  population: readonly string[],
+): string[] => {
+  const read = new Set(steps.flatMap((step) => step.inputs ?? []));
+  return steps.filter((step) => NOT_A_BUILD_STEP[step.name] === undefined)
+    .flatMap((step) => (step.outputs ?? [])
+      .filter((out) => read.has(out))
+      .filter((out) => !population.some((covered) => out === covered || out.startsWith(`${covered}/`)))
+      .map((out) => `${step.name} writes ${out}, which another step reads and this compares nothing of`));
+};
+
 describe('what check:repro compares', () => {
   /**
-   * Derived from the two declarations that already say where a build writes, so a sixth package is covered on
-   * the day it is added rather than the day someone remembers this file.
+   * Derived from the declarations that already say where a build writes, so a sixth package or a fourth app
+   * tree is covered on the day it is added rather than the day someone remembers this file.
    */
-  it('is every build unit output and the pack outputs, and nothing invented', () => {
+  it('is every build unit output, the pack outputs and the app outputs', () => {
     const paths = reproPaths();
     expect(paths, 'the population is empty, so the check would compare nothing').not.toEqual([]);
     for (const pack of PACK_OUTPUTS) expect(paths).toContain(pack);
+    for (const app of APP_OUTPUTS) expect(paths).toContain(app);
     // Every unit's declared outputs, repo-relative, and no path outside the repo
     for (const unit of Object.values(BUILD_UNITS)) {
       for (const out of unit.outputs) expect(paths).toContain(path.relative(REPO_ROOT, out).split(path.sep).join('/'));
     }
     expect(paths.filter((p) => p.startsWith('..'))).toEqual([]);
+  });
+
+  /**
+   * The completeness question, asked of the chain rather than of this file: anything one step builds and
+   * another caches on is something a second build has to agree about, or the step reading it goes stale once
+   * per build and nothing says why.
+   *
+   * Three build steps satisfy it today. A fourth fails here rather than being quietly uncompared, which is
+   * the whole reason this is derived instead of a list of the three.
+   */
+  it('covers every build output another step caches on', () => {
+    const read = new Set(CHAIN_STEPS.flatMap((step) => step.inputs ?? []));
+    const producers = CHAIN_STEPS.filter((step) => NOT_A_BUILD_STEP[step.name] === undefined)
+      .map((step) => ({ name: step.name, consumed: (step.outputs ?? []).filter((out) => read.has(out)) }))
+      .filter(({ consumed }) => consumed.length > 0);
+    // Each producer guarded, never a floor under their sum: one of them ceasing to be found leaves the others
+    // above any such floor, and then the rule below is asked about a shorter population than it claims
+    for (const { name, consumed } of producers) population(`${name}'s outputs that another step reads`, consumed);
+    expect(producers.map(({ name }) => name),
+      'a build step arrived or stopped being found; the rule below is only as wide as this list')
+      .toEqual(['packages:ensure', 'build:default-setup', 'build:runtime']);
+    expect(uncovered(CHAIN_STEPS, reproPaths()),
+      'a build output the chain caches on is compared by nothing, so a second build could change it unnoticed')
+      .toEqual([]);
+  });
+
+  // The rule, watched failing: it agrees today, and an assertion over agreement cannot fail on its own
+  it('would report a build output that nothing compares', () => {
+    const steps = [{ name: 'build:runtime', outputs: ['packages/renderer/dist', 'packages/elsewhere/dist'] },
+      { name: 'test:smoke', inputs: ['packages/elsewhere/dist'] }];
+    expect(uncovered(steps, reproPaths()))
+      .toEqual([expect.stringContaining('build:runtime writes packages/elsewhere/dist')]);
+  });
+
+  it('would report an exception naming a step the chain does not have', () => {
+    const absent = Object.keys(NOT_A_BUILD_STEP).filter((name) =>
+      !CHAIN_STEPS.some((step) => step.name === name));
+    expect(absent, 'an exception for a step that no longer exists is dead text reading as coverage').toEqual([]);
   });
 
   /**
