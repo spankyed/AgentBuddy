@@ -1398,8 +1398,8 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     reason: z.ZodOptional<z.ZodString>;
     input: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
-    revision: string;
     cwd: string;
+    revision: string;
     command: string;
     id: string;
     input: Record<string, unknown>;
@@ -1415,8 +1415,8 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     reason?: string | undefined;
     choiceToken?: string | undefined;
 }, {
-    revision: string;
     cwd: string;
+    revision: string;
     command: string;
     id: string;
     input: Record<string, unknown>;
@@ -2398,6 +2398,7 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
 interface ClaudeNativeSessionMetadata {
     cwd: string;
     model: string;
+    modelSelection?: string;
     turns: number;
     startedAt: number;
     totalCostUsd?: number;
