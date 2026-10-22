@@ -13,7 +13,6 @@
  * `docs/plans/deferred/pack-window-storage-migrations.md`.
  */
 import { compareVersions } from '@apackdev/sdk/utils/compare-versions';
-import { migration as m040 } from './0.4.0.ts';
 
 /** What a window keeps its own data in: `localStorage`'s shape, so a window passes it as it is */
 export interface WindowStorage {
@@ -32,8 +31,13 @@ export interface WindowStorageMigration {
 /** The app version a window's storage was last migrated to */
 const VERSION_KEY = 'apack-window-storage-version';
 
-/** In version order */
-const migrations: WindowStorageMigration[] = [m040];
+/**
+ * In version order, and **empty on purpose.** The app has never shipped, so no window holds a key under a
+ * name this repo has since changed: the rename that would have needed the first entry simply renamed the
+ * keys. The runner stays because the seam is the cheap half — an entry costs a file and a line here — and
+ * because the version it records is what a first real migration compares against.
+ */
+const migrations: WindowStorageMigration[] = [];
 
 /** Runs every migration newer than what `storage` was last migrated to, then records `appVersion` */
 export function runWindowStorageMigrations(storage: WindowStorage, appVersion: string): void {

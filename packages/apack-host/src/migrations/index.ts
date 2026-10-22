@@ -6,10 +6,6 @@ import type { PackMigration } from '@apackdev/sdk/framework';
 import { appState } from '../app-state/index.ts';
 import type { PackRegistry } from '../packs/registry.ts';
 
-// Named here because a declaration's `up` target has to resolve: `./migrations` is the only subpath the
-// exports map carries, and `hostDeclaration` names this one the way it names `@apackdev/host/fe#packsMachine`.
-export { up as moveSurfaceStateOffPluginNames } from './app/0.4.0.ts';
-
 /** A version without its prerelease part: a beta (`0.4.0-beta.2`) runs its release's (`0.4.0`) migrations */
 const releaseOf = (version: string): string => version.replace(/[-+].*$/, '');
 

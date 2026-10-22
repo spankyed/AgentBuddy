@@ -15,8 +15,7 @@ Finished when:
 - The concept is named `surface` throughout: `Surface`, `SurfaceDeclaration`, `useSurface`,
   `surfaceId`, `features[].surface`, `getRegisteredSurfaces`, `sendToSurface`.
 - A guard fails when it is named `plugin` again, and passes for what keeps the name.
-- What the two `AppState` fields and the two window-storage keys held is still held, proven by a
-  migration spec.
+- The two `AppState` fields and the two window-storage keys are renamed outright, with no migration.
 - `npm run chain` passes.
 - Record Outcome, archive this document, repair links and commit closure.
 
@@ -71,7 +70,14 @@ poll a deadline matched to what a restore costs is the fix; raising it to obtain
 | 1 — the guard | `99540ead9` | Live in `@app/repo-checks`. Each of the five names its condition lists was planted on its own and fails the scan alone: `pluginId`, `usePlugin`, `sendToPlugin`, `getRegisteredPlugins` as a one-line module, `features[].plugin` as an `apack.json`. Also: unparked it reported 2128 violations; adding `TiptapPlugin` to a group failed the kept-spellings case; a stale `ALLOWED` entry was named |
 | 2 — the concept | `7f495e0ff` | `typecheck` 17/17, `api:check`, `schema:check`, `test:unit` 5689, `build:default-setup`, and `npm run test:external-pack` run directly, exit 0 — `:contract` 38 tests over 11 files, `:fork`, `:app` 27 + 5 specs |
 | 3 — the wire | `260a96801` | `npm test -w @apackdev/host` 1746 passed / 135 files, including `tests/bus/outgoing-events.spec.ts` and `tests/packs/event-validation-map.spec.ts`; `test:smoke` 16.1s in the chain. Mutation, at the site the condition names — a `pluginId` left in the **renderer's** routing (`features/application/fe/connection.ts`, looking the surface up by the field the transport used to stamp): **5 of 110** renderer routing specs fail, in `plugin-reply` and `send-scope`. Smoke still passes, so of the condition's two candidates only the event specs catch it. The bus's own lookup was mutated too and failed **23** specs across `outgoing-events` and `event-validation-map` |
-| 4 — stored state | `824df0b92` | `tests/migrations/surface-state-0.4.0.spec.ts`. Mutation: dropping the removal, guarding on `undefined`, and guarding the row instead of each attribute each failed a different case |
+| 4 — stored state | `824df0b92`, and the migration removed after | Renamed outright. `npm test -w @apackdev/host`; `tests/fe/window-storage.spec.ts` holds the runner's cases around an empty list |
+**What landed after that run, and what proves it.** Window storage was namespaced by the surface's ref
+(`surfaceStorage`/`useSurfaceStorage`, the `window-storage` pack rule), and the two 0.4.0 migrations this
+goal had written — one app-line, one window-storage — were **deleted**: the app has been renamed and
+re-namespaced and has never shipped, so they migrate nobody, and a developer's own instance is moved by
+hand. Proven by `npm run typecheck` (20 legs ok), `npm test -w @apackdev/host` (1738 over 134 files) and
+`npm test -w @app/repo-checks` (894 over 50 files), the three suites those edits reach.
+
 | 5 — docs, guard live | `afedfa064` | Scan unparked and green; `welcome.md` re-recorded; `doc-links` passing |
 | 6 — the prose read | `dc57c0504`, `32f1b07cf`, `313a2092c` | 19 inversions. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader. Its "no comment or guide sentence" condition rests on a **complete enumeration** — all 241 remaining occurrences classified, not a sampled grep — which found eight concept names that four passes had missed, `setPluginVisible` among them, published. All four memory files now name only things that exist |
 
@@ -155,8 +161,8 @@ a registry.
   carries no pack key. What a pack still cannot do is move its own *names*, which is
   [its own deferred plan](../../plans/deferred/pack-window-storage-migrations.md) and wanted by nothing
   today.
-- The migration spec found that `pickOne` answers `null`, not `undefined`, for an absent attribute. That
-  is a sharp edge for every future migration, not just this one, and nothing records it but that spec.
+- `pickOne` answers `null`, not `undefined`, for an absent attribute — found by the migration this phase
+  wrote and then dropped. It is a sharp edge for every future migration, and nothing records it now.
 
 **One thing to settle in Phase 2, not during it.** `PROVENANCE_KINDS.plugins` (`build/manifest.ts:162`)
 is a snapshot key a dependent pack reads, and `packages/apack-sdk/CLAUDE.md` says to bump
@@ -210,13 +216,13 @@ stamped on every backend→frontend event, routed on by the renderer, and valida
 
 No pack rule changes: `reserved-event-keys` guards `_call` alone, and no rule key names `plugin`.
 
-**Stored data**, which moves by migration and not by rename (Phase 4):
+**Stored data**, renamed outright with the rest (Phase 4):
 
 - `AppState.pluginVisibility` and `AppState.lastActivePlugin`
   (`packages/apack-host/src/app-state/index.ts:51,53`, both named in its attribute list).
 - The window-storage keys `'code-plugin-open-tabs'`
   (`packages/default-setup/src/features/code/fe/utils/persisted-tabs.ts:18`) and
-  `'apack-last-active-plugin'`, which `packages/apack-host/src/fe/migrations/0.4.0.ts` exists to remove.
+  `'apack-last-active-plugin'`.
 
 Per-feature settings are keyed by feature (`forFeature`), so there is nothing else stored.
 
@@ -249,8 +255,8 @@ dependency names `@vitejs/plugin-vue`, `vite-plugin-vue-devtools`, `vite-plugin-
 `rollup-plugin-dts`, `eslint-plugin-vue`, `eslint-plugin-oxlint`, `@vitest/eslint-plugin`.
 
 **Two stored string literals.** `'code-plugin-open-tabs'` and `'apack-last-active-plugin'` are keys in
-the user's window storage, not identifiers: rename either and the data is orphaned or the migration
-that removes it stops finding it. Phase 4 decides each; until then they keep their spelling.
+the user's window storage, not identifiers, so a rename orphans whatever a window holds under them.
+Phase 4 renames both anyway — see there for why that costs nothing.
 
 ## What the user sees
 
@@ -350,24 +356,20 @@ than passing silently — if it does not, add the spec that catches it.
 ### Phase 4 — stored identities
 
 **Deliverable.** `AppState.pluginVisibility` → `surfaceVisibility` and `lastActivePlugin` →
-`lastActiveSurface`, with their consumers, fixtures and tests, behind an **app-line migration**. The
-host declares none today (`packages/apack-host/src/migrations/` holds only `index.ts`), so this creates
-the first one: target the next unreleased version, idempotent across a development boot, each beta and
-a reset (`packages/apack-host/src/migrations/CLAUDE.md`).
+`lastActiveSurface`, and the window-storage keys `'code-plugin-open-tabs'` → `'code-feature-open-tabs'`
+and `'apack-last-active-plugin'` → `'apack-last-active-surface'`, with their consumers, fixtures and
+tests. **Renamed outright, with no migration on either line.** The app has been renamed and
+re-namespaced and has never shipped: there is no installed instance but a developer's own, which is
+migrated by hand, so a migration is work for nobody. A window's storage keeps its runner
+(`runWindowStorageMigrations`, `packages/apack-host/src/fe/window-storage/`) with an empty list, because
+the version it records is what a first real migration will compare against.
 
-The two window-storage keys are the frontend's, and `runFrontendMigrations()` is the precedent.
-`'apack-last-active-plugin'` keeps its spelling inside `fe/migrations/0.4.0.ts` and nowhere else.
-`'code-plugin-open-tabs'` is live: either keep the literal with a comment saying why, or rename it with
-a frontend migration that moves the value. Decide which; do not rename it bare.
-
-No backward compatibility beyond these migrations: no dual-read, no old-format fallback, no
-grandfathering.
+No backward compatibility: no dual-read, no old-format fallback, no grandfathering.
 
 **Dependencies.** Phase 2's `AppState` consumers.
 
-**Done when:** a migration spec proves a database written before the change reads back the same
-visibility map and last-active ref under the new field names; current-format backup, import and reset
-keep their behaviour; `npm test -w @apackdev/host` and `npm run test:unit` pass.
+**Done when:** current-format backup, import and reset keep their behaviour; `npm test -w @apackdev/host`
+and `npm run test:unit` pass; `packages/apack-host/src/migrations/` declares none, as before.
 
 ### Phase 5 — docs, and turn the guard on
 
@@ -420,5 +422,4 @@ commits only on request, the chain as the gate. Goal-specific:
   2 renames 28 public entries and must update `etc/*.api.md`.
 - Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`) and this goal must not
   touch them; `AppState` is the host's entity, and Phase 4 touches its fields, not that contract.
-- Phase 4's migration targets the next unreleased version and is not a version bump; release metadata
-  stays untouched.
+- Phase 4 declares no migration and is not a version bump; release metadata stays untouched.

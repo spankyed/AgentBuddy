@@ -111,12 +111,6 @@ const KEPT = [
  * one group does not hide another arriving later.
  */
 const ALLOWED: Record<string, { groups: readonly Group[]; why: string }> = {
-  'packages/apack-host/src/migrations/app/0.4.0.ts': {
-    groups: ['concept-field'], why: 'the migration that moves those two attributes off those names',
-  },
-  'packages/apack-host/tests/migrations/surface-state-0.4.0.spec.ts': {
-    groups: ['concept-field'], why: 'its spec, which has to write a row the pre-rename way',
-  },
   'packages/repo-checks/tests/surface-vocabulary.spec.ts': {
     groups: ['concept-type', 'concept-call', 'concept-field', 'concept-event'],
     why: 'this guard, which has to spell the names it retires',
