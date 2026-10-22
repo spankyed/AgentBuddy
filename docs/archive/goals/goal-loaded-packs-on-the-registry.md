@@ -235,7 +235,7 @@ survey turned up.
 - **Phase 0 (unplanned) — `receivedEventTypes` was being dropped.** Measuring what the refactor would
   delete found the round trip had already lost a field. `PackRegistration.receivedEventTypes` was added
   after the unpack/repack copies were written, and neither was updated, so **every external pack's
-  outgoing-event validation was silently off**: `ownedPluginIds` fell back to `features[].hasPlugin`, the
+  outgoing-event validation was silently off**: `ownedSurfaceIds` fell back to `features[].hasSurface`, the
   map stored `null`, and the bus read that as "a pack too old to declare" and checked nothing. Built-in
   packs were unaffected — they take the direct `registerPack(registration)` path.
   `tests/packs/runtime/pack-event-declarations.spec.ts` fails without the fix.

@@ -494,7 +494,7 @@ Completion still requires catalog-driven custom forms and real app/packaged acce
 transport test alone is insufficient evidence.
 
 Reconnect includes frontend reacceptance. The shell unloads the connection's frontends and stops their
-plugin actors using its existing unload lifecycle. A load interrupted by disconnect remains the only
+surface actors using its existing unload lifecycle. A load interrupted by disconnect remains the only
 running loader; its late registrations are undone and not announced, then a queued fresh run starts after
 it settles. No run starts while disconnected. The selected feature is restored after acceptance if it
 still exists. Revoked handles remain revoked. Backend origin replacement must likewise require
@@ -528,7 +528,7 @@ Host app definitions + discovered pack/feature definitions + stored overrides
 ```
 
 Keep the existing backend store as the authority. A window-level settings runtime starts with the
-application, independently of Settings plugin activation. It receives snapshots/changes, handles
+application, independently of Settings surface activation. It receives snapshots/changes, handles
 reconnect and replacement, and serves the SDK frontend port. The Settings view subscribes like any
 other consumer; it owns navigation and local editing state, not the shared data source.
 
@@ -752,8 +752,8 @@ No transforms or refinements needed a domain replacement. Default wrappers were 
 output schemas; merging the explicit baseline remains the settings store's responsibility. No conversion
 adapter or executable feature-settings authoring API remains.
 
-Feature navigation defaults now live in `plugin.defaultVisible`; a plugin with no configurable values
-needs no settings declaration. This is distinct from `plugin.default`, which claims startup selection.
+Feature navigation defaults now live in `surface.defaultVisible`; a surface with no configurable values
+needs no settings declaration. This is distinct from `surface.default`, which claims startup selection.
 Generated feature values use the maintained schema compiler, isolated per feature, and backend registrations
 embed declaration data. The registry compiles validators once on registration; the shared writer preserves
 unchanged invalid values after a declaration change but refuses new invalid values, including explicit
@@ -804,7 +804,7 @@ These are current-code findings, not a completed review of the whole PR:
 
 | Finding | Evidence | Required correction |
 |---|---|---|
-| Old-format migration complexity | Host `migrations/app/0.4.0.ts` addresses old `plugins` keys; the draft proposed additional unresolved-key storage | No users require this compatibility contract. Remove old-format accommodation from the settings redesign rather than adding a migration-data store. Current-format overrides for temporarily unavailable packs remain a separate, supported lifecycle requirement. |
+| Old-format migration complexity | Host `migrations/app/0.4.0.ts` addresses old `surfaces` keys; the draft proposed additional unresolved-key storage | No users require this compatibility contract. Remove old-format accommodation from the settings redesign rather than adding a migration-data store. Current-format overrides for temporarily unavailable packs remain a separate, supported lifecycle requirement. |
 | Disabled declarations do not supply the live validators | `features/settings/be/store.ts` obtains validators from `getPackSettingsDefaults`; registry populates that store during runtime registration | Compile definitions from the accepted installed catalog. Enablement/activation may remove behavior and custom forms, not defaults, validation or override access. |
 | Pack section defaults still have silent global collisions | `packs/backend-extensions.ts` merges thunk results through `sections[name] = value` | Remove the thunk/global root-section contract when pack groups and consumers switch together. Qualified pack/group identity prevents two packs' `assistant` groups from overwriting one another. |
 | Catalog has no production reader | `createContributionCatalog` is exported and called by catalog specs only | Prove production boot/install/disable/refresh wiring and the same accepted revision in writer/readers before claiming discovery. |

@@ -7,7 +7,7 @@
 
 Implement docs/goals/goal-manifest-redesign.md on AS/external-pack-authoring, at or after 4f24d04f7 —
 the base its Background was surveyed at. Two decisions have landed since that survey — Decision 6
-(`validate.ts`) and Decision 12 (`b8d66af4e`, the default plugin) — and Background and the Phases mark
+(`validate.ts`) and Decision 12 (`b8d66af4e`, the default surface) — and Background and the Phases mark
 what they changed; everything else Background describes was still true at 4f24d04f7 — confirm the names
 a phase acts on exist before acting.
 Read Background, Decisions, Open decisions, Phases and Constraints first, and
@@ -105,7 +105,7 @@ schema 22 — against 552 and 23/28 at the survey.
 | Decision | State |
 |---|---|
 | 6 — `designation` need not equal the feature id | landed before the phases |
-| 12 — `defaultPlugin` moves onto its plugin | landed in `b8d66af4e` |
+| 12 — `defaultSurface` moves onto its surface | landed in `b8d66af4e` |
 | 9 — every extension point under `extensions` | **landed** in `a6aad1e4a` |
 | 17 — `build` for what the app never loads | **half landed**: `build.bundleUi`; `checks` is open |
 | 10 — every content concern under `content` | **half landed**: all four keys are there; `boot` → `lifecycle` is open |
@@ -152,7 +152,7 @@ Manifest consumers: `apack-sdk/src/build/generate-entries.ts` (most of it), `man
 `build/pack-features.ts`, `apack-host/src/packs/runtime/loader.ts`,
 `features/packs/be/system.ts` (two `PackInfo` builders, over an untyped `readManifest`),
 `apack-host/src/database/schema.ts`, `migrations/app/0.4.0.ts` (`declaredFeatureRefs`) and
-`@apackdev/testing`'s `harness.ts` (`declareFeatures`) and `index.ts` (the fixture's plugin ids).
+`@apackdev/testing`'s `harness.ts` (`declareFeatures`) and `index.ts` (the fixture's surface ids).
 
 Two of those read a manifest through a type that is **not** `PackManifest` — `ProvenanceManifest`'s own
 optional fields and the packs system's `Record<string, any>` — so they do not fail to compile when a
@@ -204,7 +204,7 @@ All five designations still equal their ids, so no manifest changed.
 | Thing | Form |
 |---|---|
 | `services`, `repositories`, `content.writers`, `extensions.services`, a step's and a block's facets | `"src/features/threads/be/services/chat.ts#chatService"` |
-| `system.entry`, `plugin.entry`, `references`, a block's and an artifact's `fe` | `"src/features/threads/be/system.ts"` |
+| `system.entry`, `surface.entry`, `references`, a block's and an artifact's `fe` | `"src/features/threads/be/system.ts"` |
 | `entityShapes` | `{ "source": "src/features/threads/be/types.ts", "type": "ThreadEntity" }` |
 
 The contribution keys landed on both of the first two: a facet whose export has a name takes
@@ -213,7 +213,7 @@ That is Decision 2's rule already, applied in one section; the open half is `ref
 `entityShapes` and the two feature entries.
 
 **Paths repeat their own location.** 100 path strings begin `src/features/<id>/`. Fifty-nine of them are
-a feature's own declaration (`system.entry`, `system.contract`, `plugin.entry`, `plugin.contract`,
+a feature's own declaration (`system.entry`, `system.contract`, `surface.entry`, `surface.contract`,
 `settings`, `references`, `typesEntry`) and **all fifty-nine are the conventional path** — no feature in
 the pack puts a file anywhere else. A feature's id is already the directory name.
 
@@ -323,7 +323,7 @@ a later author cannot reinterpret the way they can reinterpret a principle.
 
 **2. One encoding for a module reference: `"path#export"`.** A bare `"path"` means the module's default
 export. `entityShapes`' `{ source, type }` object goes. Every place that names a module — services,
-repositories, systems, plugins, references, content writers, content compilers, step definitions, DSL entries,
+repositories, systems, surfaces, references, content writers, content compilers, step definitions, DSL entries,
 migrations — uses the same form, and the schema validates it with one shared refinement.
 
 **3. `entities` and `entityShapes` merge into one map, which lives on the feature that owns the
@@ -512,7 +512,7 @@ deleted the ability to name a role, not a redundancy.
 (`apack-host`'s `packs/registry.ts`) already maps `[f.designation, systemId(f.id)]` — role and system id as
 two separate values — and codegen already carries them apart, building a `Map([[featureId,
 designation]])` (`generate-entries.ts:630`) and emitting `designation: '<value>'` onto the system and
-plugin definitions (`:642`, `:729`). The machinery has always supported a role that differs from the
+surface definitions (`:642`, `:729`). The machinery has always supported a role that differs from the
 feature that plays it; only the validator did not. Delete the check.
 
 Role uniqueness is unaffected and still enforced where it matters: `registerPack` throws when another
@@ -527,7 +527,7 @@ ignored, `fe/pack-store.ts:72-73`).
 why the check existed: at that time "the designation registry maps role → role … so a designation only
 routes correctly when it equals the feature id". That is no longer true — `createDesignationStore`
 (`packs/extensions.ts:26-39`) holds a real `Map<role, id>` and both registries populate it with the
-system or plugin id — so the check was guarding an invariant the code had already outgrown. Read the
+system or surface id — so the check was guarding an invariant the code had already outgrown. Read the
 archived note as history, not as a reason to put it back.
 
 **7. A feature lists what it provides in one line, and paths inside it are relative to
@@ -536,19 +536,19 @@ archived note as history, not as a reason to put it back.
 ```jsonc
 { "id": "library",
   "about": "Documents and collections, with a dormant semantic search index.",
-  "provides": ["system", "plugin", "settings", "references"],
+  "provides": ["system", "surface", "settings", "references"],
   "entities": { ... }, "services": { ... }, "repositories": { ... } }
 ```
 
 `provides` is the complete list of what the feature contributes that lives in a file: `system`,
-`plugin`, `settings`, `references`, `types`. Each name resolves to the conventional path
-(`be/system.ts`, `fe/plugin.ts`, `settings.ts`, `fe/references`, `be/types`), and the paths a feature
+`surface`, `settings`, `references`, `types`. Each name resolves to the conventional path
+(`be/system.ts`, `fe/surface.ts`, `settings.ts`, `fe/references`, `be/types`), and the paths a feature
 does spell out are relative to its own directory, not the pack root.
 
 **Why a list and not a key per thing.** The first draft of this decision wrote `"system": true` and a
 key per capability. Measured against default-setup that is **37 lines whose entire content is the word
 `true`** — because all 41 paths its features declare today are already the conventional one (every
-`system`, `plugin` and `settings`, both `references` and the one `typesEntry`, at `4f24d04f7`). A
+`system`, `surface` and `settings`, both `references` and the one `typesEntry`, at `4f24d04f7`). A
 boolean there is a *marker*, not a value: it says the feature has a system without saying anything
 about it, and five of them in a row read as a checklist rather than a description. One line that names
 them is the same fact with the noise removed, and it reads as a sentence.
@@ -579,7 +579,7 @@ supposed to remove. So the table ships with it:
 // @apackdev/sdk/build — the one definition of what a feature may provide and where it lives
 export const FEATURE_LAYOUT = {
   system:     'be/system.ts',
-  plugin:     'fe/plugin.ts',
+  surface:     'fe/surface.ts',
   settings:   'settings.ts',
   references: 'fe/references',
   types:      'be/types',
@@ -617,14 +617,14 @@ at all, gating it is then a one-line follow-up with the evidence already gathere
 Paths outside a feature (content data, extension registers, migrations) stay relative to the pack root.
 
 **8. A capability key appears only when there is more to say than "it exists".** `provides` says the
-feature has a system; a sibling `system` or `plugin` key annotates it, carrying the `events` that
-`system.entry`'s wrapper object carries today, the plugin's `default` claim, and an `entry` when the
+feature has a system; a sibling `system` or `surface` key annotates it, carrying the `events` that
+`system.entry`'s wrapper object carries today, the surface's `default` claim, and an `entry` when the
 file is not at the conventional path.
 
 ```jsonc
 { "id": "threads", "about": "…",
-  "provides": ["system", "plugin"],
-  "plugin": { "default": true } }
+  "provides": ["system", "surface"],
+  "surface": { "default": true } }
 
 { "id": "weird", "about": "…",
   "provides": ["system"],
@@ -635,7 +635,7 @@ file is not at the conventional path.
 > survives. `outgoingEventsType` no longer exists in `manifest-schema.ts` — it was removed after this
 > doc was written, and no pack in the repo carries one. `sendsTo` is deleted by
 > [`goal-plugin-inbox.md`](goal-plugin-inbox.md) (its Decision 2), which has **landed**:
-> a plugin declares the events it accepts, so the inverse index `sendsTo` supplied is gone from every
+> a surface declares the events it accepts, so the inverse index `sendsTo` supplied is gone from every
 > manifest, from `SystemSchema` and from `apack.schema.json`. Nothing here has to remove it.
 
 This is a list with annotations, not two homes for one fact: `validate` requires every capability key
@@ -643,18 +643,18 @@ to be named in `provides`, so a `system` block on a feature that does not provid
 rather than a second way of declaring it.
 
 **One reader breaks silently here, the same way two do in Decision 3.** `init-tests.ts:46` picks the
-feature to scaffold a test for with `(manifest.features ?? []).find((f: any) => f.plugin)` — an
+feature to scaffold a test for with `(manifest.features ?? []).find((f: any) => f.surface)` — an
 `any`-typed predicate, so after this change it compiles, finds nothing, and `apack pack init-tests`
-scaffolds against no plugin. It becomes `f.provides?.includes('plugin')`. Together with
+scaffolds against no surface. It becomes `f.provides?.includes('surface')`. Together with
 `ProvenanceManifest` and `features/packs/be/system.ts`, that is **every loosely-typed manifest read in the repo**:
 `apack-cli/src/utils.ts:34` returns a real `PackManifest`, and `@apackdev/testing`'s
 `harness.ts:228` casts to one, so both fail to compile like everything else. Three, and the compiler
 names none of them. Measured again on 2026-09-22, the annotations are rarer still — of default-setup's
-24 `system` and `plugin` declarations, **three carry anything beyond the entry**: `threads.plugin`
+24 `system` and `surface` declarations, **three carry anything beyond the entry**: `threads.surface`
 (`default: true`), `actions.system` (`sendsTo: ["flows"]`) and `settings.system`
 (`sendsTo: ["host/application"]`) — and **none** overrode the path. Re-measured on 2026-09-23, after
 [`goal-plugin-inbox.md`](goal-plugin-inbox.md) deleted `sendsTo`,
-**`threads.plugin.default` is the only annotation left in the pack**; `events` and the `entry` override
+**`threads.surface.default` is the only annotation left in the pack**; `events` and the `entry` override
 exist for external packs rather than for anything here. The `entry` override exists for an external pack with a different layout, not because
 anything here needs it.
 
@@ -727,14 +727,14 @@ writers are keys that change together whenever a written format changes.
 `.describe()` on every field, `npm run schema:update` regenerates `apack.schema.json`, and
 `docs/public-facing/manifest.md` is rewritten from the new shape rather than edited.
 
-**12. `defaultPlugin` moves onto the plugin it names.** — **Landed** in `b8d66af4e`, ahead of this goal
-and on its own. The root key is gone, `PluginSchema` takes `default`, the schema rejects two features of
+**12. `defaultSurface` moves onto the surface it names.** — **Landed** in `b8d66af4e`, ahead of this goal
+and on its own. The root key is gone, `SurfaceSchema` takes `default`, the schema rejects two features of
 one pack claiming it, and codegen reads the claim instead of resolving a feature id. Nothing else in this
 redesign was touched, so Decision 8's sibling annotations still have to accommodate it rather than
 introduce it. It is loose content at the root today, and it
-names a feature's plugin, so it belongs there: `"plugin": { "default": true }`, one of the sibling
-annotations of Decision 8 — the feature still lists `plugin` in `provides`, and the annotation says
-which of the app's plugins opens first. The host already resolves it first-wins
+names a feature's surface, so it belongs there: `"surface": { "default": true }`, one of the sibling
+annotations of Decision 8 — the feature still lists `surface` in `provides`, and the annotation says
+which of the app's surfaces opens first. The host already resolves it first-wins
 across packs and warns on the second (`fe/pack-store.ts:63-66`), so nothing about the competition
 changes; `validate` additionally rejects two features of one pack claiming it.
 
@@ -853,7 +853,7 @@ resting on an undocumented invariant is one bad refactor from being wrong.
 **15. This is the last cheap rename, and the discipline starts at the first release with users.**
 
 Of the 28 root keys the schema allowed at the survey, this goal renames, moves or deletes 14
-(`artifacts`, `blocks`, `boot`, `commands`, `defaultPlugin`, `dsl`, `entities`, `entityShapes`, `fe`,
+(`artifacts`, `blocks`, `boot`, `commands`, `defaultSurface`, `dsl`, `entities`, `entityShapes`, `fe`,
 `packServices`, `partitionPolicy`, `relKinds`, `steps`, `$manifestVersion`); `features` keeps its name
 and is rewritten inside; and 11 are untouched
 (`$schema`, `id`, `name`, `version`, `description`, `license`, `builtIn`, `hostVersion`,
@@ -861,7 +861,7 @@ and is rewritten inside; and 11 are untouched
 
 **Nine of the fourteen have been spent**, which is what makes the rule below the live question rather
 than a forecast: `artifacts`, `blocks`, `commands`, `dsl`, `fe`, `packServices` and `steps` moved under
-`extensions`, `defaultPlugin` moved onto its plugin, and `partitionPolicy` was deleted outright. The
+`extensions`, `defaultSurface` moved onto its surface, and `partitionPolicy` was deleted outright. The
 schema allows **22** root keys now. What is left to spend is `boot`, `entities`, `entityShapes`,
 `relKinds` and `$manifestVersion` — five, and worth doing together, since every pack in the world has
 to be rebuilt either way and there are none.
@@ -1055,14 +1055,14 @@ byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` pas
 - Replace the per-capability keys with one `provides` list, each name resolving through
   `FEATURE_LAYOUT`, and make every path a feature does spell out relative to `src/features/<id>/`
   (Decision 7).
-- Keep `system`/`plugin` as optional sibling annotations carrying `events`, the plugin's `default`
+- Keep `system`/`surface` as optional sibling annotations carrying `events`, the surface's `default`
   claim, its `contract` and an `entry` override, and make `validate` reject one whose name is absent
   from `provides` (Decision 8). `sendsTo` is not among them:
   [`goal-plugin-inbox.md`](goal-plugin-inbox.md) already deleted it.
-- ~~Move `defaultPlugin` onto the feature's plugin as `{ "default": true }` (Decision 12).~~ **Done ahead of this goal**, on its own: the root field is gone, `PluginSchema` takes `default`, `validate` rejects two features of one pack claiming it, and codegen reads the claim. Nothing else in the redesign was touched.
+- ~~Move `defaultSurface` onto the feature's surface as `{ "default": true }` (Decision 12).~~ **Done ahead of this goal**, on its own: the root field is gone, `SurfaceSchema` takes `default`, `validate` rejects two features of one pack claiming it, and codegen reads the claim. Nothing else in the redesign was touched.
 - Widen `validateFeatures` (`validate.ts:47`, moved by Decision 6) to check **every** name in
   `provides`, not the three
-  paths it checks today (`settings`, `system.entry`, `plugin.entry`). A listed `references` or `types`
+  paths it checks today (`settings`, `system.entry`, `surface.entry`). A listed `references` or `types`
   whose file is missing must fail here, not much later. Resolve each name to its conventional path, or
   to the feature-relative `entry` when one is given, and reject a path that escapes the feature's
   directory.
@@ -1074,15 +1074,15 @@ byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` pas
 - Update `generate-entries.ts`, `validate.ts`, `add/feature.ts`, `init.ts`, `doctor.ts` and the loader.
 
 **Done when:** no manifest contains the string `src/features/` inside a `features` entry; no feature
-key anywhere holds the value `true` except `plugin.default` (`earlySystem` is gone — the schema refuses
-it as an unknown key); no manifest contains a root `defaultPlugin`; every feature in every manifest has
+key anywhere holds the value `true` except `surface.default` (`earlySystem` is gone — the schema refuses
+it as an unknown key); no manifest contains a root `defaultSurface`; every feature in every manifest has
 an `about` and a `provides`; the generated `pack-entry.ts`, `pack-entry-fe.ts`, `ref.ts` and `fe.ts` for
 default-setup are byte-identical to before; `npm run
 typecheck` and the full unit chain pass. Mutations: a feature naming a path that escapes its directory
 (`../other/be/system.ts`) fails validation; a feature listing `"system"` in `provides` whose
 `be/system.ts` does not exist fails the build naming the expected path, rather than silently having no
 system; a `system` annotation on a feature whose `provides` omits `system` fails `validate`; a feature
-without `about` fails `validate`; two features of one pack both claiming `plugin.default` fail
+without `about` fails `validate`; two features of one pack both claiming `surface.default` fail
 `validate`.
 
 ### Phase 5 — one encoding for a module reference
@@ -1147,7 +1147,7 @@ Mutations: adding a sixteenth top-level key fails that spec; so does a map whose
 so does writing the keys in a different order.
 
 The retired-key list is shorter than it was: `partitionPolicy`, `content.sourcesPolicy`,
-`defaultPlugin` and the moved extension keys are already absent from that doc, and `manifest.md`
+`defaultSurface` and the moved extension keys are already absent from that doc, and `manifest.md`
 documents `extensions` and `build.bundleUi` as they are.
 
 ### Phase 7 — `build` and `checks`: what the app never loads

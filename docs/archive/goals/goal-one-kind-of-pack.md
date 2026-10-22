@@ -207,10 +207,10 @@ HMR is simply the renderer's. The external path cannot get that, because the loa
 `@vite-ignore` is exactly *"Vite, do not own this"*.
 
 So the capability depends on **the pack's source being on disk and resolvable**, not on the pack shipping
-with the app. Those are two facts `manifest.builtIn` currently conflates, and re-keying the plugin to the
+with the app. Those are two facts `manifest.builtIn` currently conflates, and re-keying the surface to the
 first keeps the capability while dropping the concept — see step 3.
 
-Of the plugin's 46 lines, the `@<pack-id>/` alias half has **no remaining user**: nothing imports
+Of the surface's 46 lines, the `@<pack-id>/` alias half has **no remaining user**: nothing imports
 `@default-setup/…` except the virtual module's own generated import, because packs name their own modules
 with `#` subpath imports now.
 
@@ -242,7 +242,7 @@ renderer's Vite compiles its frontend from source with the condition, so the edi
 resolve differently.
 
 **The hazard to keep in mind:** with a dev source import the frontend comes from source while the backend
-comes from the built runtime, so a feature added to `apack.json` without a rebuild shows a plugin whose
+comes from the built runtime, so a feature added to `apack.json` without a rebuild shows a surface whose
 system is not registered. That is true today for the same reason, and `apack run`'s `apack.json` watcher
 regenerating entries (`run.ts:377`) is the mitigation to keep.
 
@@ -319,7 +319,7 @@ and `evaluateContentPolicy` runs only on the declarative path, so Phase 5 preced
 
 **3. A migration is a convenience here, not a gate.** There is one user of this app and he wrote it, so
 the two records Phases 4 and 5 move can be migrated or not: skipping them costs one re-apply of every pack
-(content are upsert) and the `logs` plugin's settings and tab-visibility choice. `CLAUDE.md`'s carve-out for
+(content are upsert) and the `logs` surface's settings and tab-visibility choice. `CLAUDE.md`'s carve-out for
 stored data is written for users this repo does not have. An earlier version of this doc sorted its work
 by "needs no stored-data migration" and deferred half of it on that premise; see *What an earlier version
 got wrong*.
@@ -328,7 +328,7 @@ got wrong*.
 refinement's own reason is *"before external packs load"*, which cannot hold for a pack that is external —
 and it would let an arbitrary pack's system run before the data layer exists. Moving `logs` to the host
 would also have removed the privilege, and is deferred rather than rejected
-([`plans/logs-to-host.md`](../plans/logs-to-host.md)): whether the Logs plugin should become a core app
+([`plans/logs-to-host.md`](../plans/logs-to-host.md)): whether the Logs surface should become a core app
 feature, updated only by a full app release, is a product question this goal does not need answered. Deleting the field removes more than the move would and touches nothing else.
 **The cost, which is the reason this is a decision and not a tidy-up:** `logs` stops starting before
 hydration, so hydration, `onInit`, migrations and applying stop reaching the in-app viewer. They still reach
@@ -365,7 +365,7 @@ pack writes `PACK_LAYOUT.snapshot`.
 
 Then **delete `dev-build.mjs`** — 164 lines, of which the esbuild config is a *second* backend bundle
 rather than a copy of `bundlePackRuntime`: it leaves every package external where the CLI inlines them, and
-carries an alias plugin for `@/` specifiers that no default-setup source has used since
+carries an alias surface for `@/` specifiers that no default-setup source has used since
 [`goal-one-way-to-name-your-own-modules`](goal-one-way-to-name-your-own-modules.md) and a
 `.vue` stub the CLI's `stubFrontendAssetsPlugin` already does.
 
@@ -477,7 +477,7 @@ does, and the frontend loads over `pack://` for every pack.
 those virtual modules import. `pack-entry.ts` and `pack-entry-fe.ts` stay on disk, written by `apack
 generate-entries` on the triggers and under the stamp
 [`codegen-staleness.md`](../plans/codegen-staleness.md) records — a pack's own typecheck reads them through
-`#generated/*`, so they could not be synthesised by a plugin even if this step wanted them to be. What changes
+`#generated/*`, so they could not be synthesised by a surface even if this step wanted them to be. What changes
 is only who imports them: after this, each pack's own `apack build` rather than the renderer's and the api's.
 
 After this, `manifest.builtIn` decides **nothing about behaviour**: one load path, one reload path, one build
@@ -486,7 +486,7 @@ path, one frontend path, no privileges. What survives is axis 1 — the director
 **Four more things go with those two virtual modules.**
 
 - **Their type declarations.** `api/src/env.d.ts` declares `virtual:built-in-pack-loaders` and
-  `renderer/env.d.ts` declares `virtual:built-in-packs`. Delete the plugins without them and the typecheck
+  `renderer/env.d.ts` declares `virtual:built-in-packs`. Delete the surfaces without them and the typecheck
   fails on a module nothing provides.
 - **The dev-reload wire.** `api/src/transport/websocket.ts:59,72` takes `{ packId, builtIn }` out of the
   `POST /dev/reload` body and branches to the two reload functions this step merges, so the body shape changes
@@ -503,7 +503,7 @@ path, one frontend path, no privileges. What survives is axis 1 — the director
   app that never held the change. **It is fixable today** by declaring `packages/default-setup/src` on that
   step, and waits on nothing here; after this step the edge is gone and that declaration comes back out.
 - **What stays, and has to be said because this step claims `manifest.builtIn` decides nothing about
-  behaviour:** the Packs plugin reports it (`apack-host/src/features/packs/be/system.ts:70,88,97`). That is
+  behaviour:** the Packs surface reports it (`apack-host/src/features/packs/be/system.ts:70,88,97`). That is
   axis 1 — which directory a pack lives in — and it is the one behaviour the claim excepts.
 
 **Files:** `apack-host/src/packs/runtime/{loader,reload}.ts`, `api/tsup.config.ts`,
@@ -561,7 +561,7 @@ which is what says the path is shared.
 goes for good: the manifest field, its refinement, the codegen branch and the strip. No pack should ever
 get it back, and the host needs no manifest to express anything.
 
-`logs` stays in default-setup. Moving it would also have removed the privilege, but whether the Logs plugin
+`logs` stays in default-setup. Moving it would also have removed the privilege, but whether the Logs surface
 should become a core app feature — updated only by a full app release — is a product question this goal
 does not need answered, and deleting the field removes more while moving nothing.
 
@@ -603,7 +603,7 @@ of the pack contract, which is the part that is settled.
 
 **Done when:** `earlySystem` is absent from `manifest-schema.ts`, `apack.schema.json` and
 `packages/default-setup/apack.json`; a manifest declaring it is refused by `.strict()` rather than by a
-bespoke refinement; and the Logs plugin still shows everything logged from the bus actor on.
+bespoke refinement; and the Logs surface still shows everything logged from the bus actor on.
 Mutation: put `earlySystem: true` in a fixture manifest and watch the schema refuse it.
 
 ### Phase 5 — Merge the two content paths

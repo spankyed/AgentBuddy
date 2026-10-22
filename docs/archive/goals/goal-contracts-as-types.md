@@ -7,7 +7,7 @@
 
 Implement docs/goals/goal-contracts-as-types.md, at or after ad1bc3894 on AS/plugin-inbox — the base its
 Background was surveyed at — and after docs/goals/goal-plugin-contract.md lands, which is where
-`declaredTypeOf` comes from. This goal does the same thing for systems that that one did for plugins.
+`declaredTypeOf` comes from. This goal does the same thing for systems that that one did for surfaces.
 Before Phase 1, confirm the base: `declaredTypeOf` exists in packages/apack-sdk/src/build/module-exports.ts,
 `SystemSpec` in packages/apack-sdk/src/framework/define-system.ts still carries `_incoming` and `_outgoing`,
 and `git grep -l "satisfies SystemEntry" -- '*/be/system.ts'` lists 13 files (11 default-setup, the host's
@@ -62,7 +62,7 @@ Never:
 ## Background (2026-09-23, at ad1bc3894 on AS/plugin-inbox)
 
 `goal-plugin-contract.md` found that codegen's inability to read a declared type was **ours**, not
-TypeScript's, and that lifting it turns a plugin's contract from a phantom-carrying value into a type
+TypeScript's, and that lifting it turns a surface's contract from a phantom-carrying value into a type
 alias. That goal applies the finding to one reader. This goal applies it to the other, which is the larger
 one, and then closes the pattern.
 
@@ -74,7 +74,7 @@ one, and then closes the pattern.
 |---|---|---|
 | `exportOf(file, name)` | whether a name exists, and whether it is a value, a type or both | legitimately a value question |
 | `outgoingEventTypesOf(file)` | a system's outgoing events | **a value: the default export's `spec._outgoing`** |
-| `acceptedEventTypesOf(file)` | a plugin's inbox | **a value: the `accepts` export's `_accepts`** — `goal-plugin-contract.md` |
+| `acceptedEventTypesOf(file)` | a surface's inbox | **a value: the `accepts` export's `_accepts`** — `goal-plugin-contract.md` |
 
 So after that goal, one value-reading path remains, and it is the one with 14 call sites.
 
@@ -109,7 +109,7 @@ export interface SystemSpec<TEvents, TOutgoing, TContext = {}> {
    event**, because `SystemEntry.spec` is `Pick<SystemSpec<{ type: string }, { type: string }>, '_incoming' |
    '_outgoing'>` (`framework/system-utils.ts:7`) and the annotation widens the phantoms away.
 
-   The plugin side has the identical bug with `: PluginAccepts` and defends against it with a
+   The surface side has the identical bug with `: SurfaceAccepts` and defends against it with a
    `TypeFlags.Never` branch and an `annotated` hint threaded into `eventTypeLiterals`. Two readers, one
    footgun, two hand-written defences.
 
@@ -153,7 +153,7 @@ All eleven default-setup `be/system.ts` files import `@/__generated__/events` �
 of a module that imports codegen's own output. The frontend arrangement of the same shape failed with
 `_TYPES_UNRESOLVED` (`goal-plugin-contract.md`, Spike results). The backend's does not, and the plausible
 reason is that `default → spec` resolves one property whose type comes from a separate `defineSystem` call
-and never requires checking the machine, where typing `definePlugin<E>({ state: machine })` requires
+and never requires checking the machine, where typing `defineSurface<E>({ state: machine })` requires
 checking the argument.
 
 **That has not been verified, and the goal does not rely on it.** It is recorded because it is the only
@@ -191,7 +191,7 @@ Final.
    }
    ```
 
-   Same reasons as the plugin side: the manifest names every other entry point a feature has, the schema
+   Same reasons as the surface side: the manifest names every other entry point a feature has, the schema
    validates it, a typo fails the build naming the path, and the field being optional is what lets a feature
    have a system with nothing published.
 
@@ -223,8 +223,8 @@ Final.
    This is `goal-plugin-contract.md`'s Deferred item 1, taken here because Decision 1 makes it a field
    rather than a signature change.
 
-   **Nothing changes at runtime.** A plugin's inbox is emitted as a value the app can check against
-   (`plugin: { receives: [...] }`, `generate-entries.ts:550`); a system's events are type-only (`:923`, "from
+   **Nothing changes at runtime.** A surface's inbox is emitted as a value the app can check against
+   (`surface: { receives: [...] }`, `generate-entries.ts:550`); a system's events are type-only (`:923`, "from
    its spec; type-only, so facades carry no machines or contexts"). So narrowing `internal` out of the
    published type cannot make the bus start rejecting an event it accepts today, and no `fromCallback` child
    loses its send to its own parent.

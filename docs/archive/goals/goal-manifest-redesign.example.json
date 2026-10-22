@@ -3,7 +3,7 @@
   "id": "default-setup",
   "name": "Default Setup",
   "version": "0.1.0",
-  "description": "The official apack starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, content data, message blocks, and default settings.",
+  "description": "The official apack starter pack. Provides core entity types, backend systems, services, frontend surfaces, artifacts, content data, message blocks, and default settings.",
   "license": "MIT",
   "builtIn": true,
   "hostVersion": ">=0.3.0",
@@ -21,11 +21,11 @@
       "designation": "threads",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings",
         "references"
       ],
-      "plugin": {
+      "surface": {
         "default": true
       },
       "entities": {
@@ -50,7 +50,7 @@
       "about": "Terminals and coding agents (Claude Code, Codex) in an embedded shell.",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings"
       ],
       "entities": {
@@ -70,7 +70,7 @@
       "about": "A hierarchical notebook of markdown notes.",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings",
         "references"
       ],
@@ -88,7 +88,7 @@
       "designation": "browser",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings"
       ],
       "entities": {
@@ -105,7 +105,7 @@
       "about": "Documents and collections, with a dormant semantic search index.",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings",
         "references"
       ],
@@ -128,7 +128,7 @@
       "about": "The visual flow editor: flows, nodes and their wiring.",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings",
         "types"
       ],
@@ -142,7 +142,7 @@
       "about": "Reusable code actions a flow step can run.",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings"
       ],
       "services": {
@@ -158,7 +158,7 @@
       "about": "Reusable prompts an llm step can run.",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings"
       ],
       "services": {
@@ -175,7 +175,7 @@
       "designation": "brain",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings"
       ],
       "services": {
@@ -192,7 +192,7 @@
       "about": "A console over the EARS store, with backup and restore.",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings"
       ],
       "services": {
@@ -206,17 +206,17 @@
       "earlySystem": true,
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings"
       ]
     },
     {
       "id": "settings",
-      "about": "App and per-plugin settings, API keys and the pack list.",
+      "about": "App and per-surface settings, API keys and the pack list.",
       "designation": "settings",
       "provides": [
         "system",
-        "plugin",
+        "surface",
         "settings"
       ],
       "entities": {

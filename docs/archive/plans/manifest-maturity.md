@@ -111,7 +111,7 @@ this ledger is not permission to downgrade an outcome to a survey.
   Reconcile its frontend isolation input there; security confinement is not required to discover data.
 - [LMDB-only](../../goals/goal-lmdb-only.md), console transactions and advisory locks remain a separate storage
   track. Settle their overlapping transaction/lock decisions together before changing persistence.
-- Plugins-to-surfaces, logs extraction and distribution remain deferred. Re-audit their APIs after the
+- Surfaces-to-surfaces, logs extraction and distribution remain deferred. Re-audit their APIs after the
   earlier contract changes; none is a prerequisite here. [Stretch-projection removal](drop-the-stretch-projection.md)
   is independent tooling cleanup, not part of the manifest workstream.
 
@@ -323,7 +323,7 @@ existing plans if new evidence invalidates their assumptions, rather than leavin
   not every marketplace field.
 - [VS Code activation events](https://code.visualstudio.com/api/references/activation-events) document
   activation inferred from contributed commands/views. This supports deriving repeated facts.
-- [JetBrains plugin dependencies](https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html#depends)
+- [JetBrains surface dependencies](https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html#depends)
   distinguish required providers from conditional integrations. Add that distinction when apack needs it.
 - The Chrome permission comparison and stronger enforcement target are extracted into the
   [pack security isolation goal](../../goals/goal-pack-security-isolation.md).

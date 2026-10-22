@@ -1,7 +1,7 @@
 > **Done and closed.** A migration is declared under a version line in its pack's `apack.json` —
 > `migrations.app` or `migrations.pack`, keyed by the version it targets — and the runners read one map
 > each (`packMigrationTargets(line)`), so neither asks where a pack came from. `shippedPacks()` keeps the
-> one consumer that is genuinely about shipping (`migrations/app/0.4.0.ts`'s `PluginOwners.shipped`).
+> one consumer that is genuinely about shipping (`migrations/app/0.4.0.ts`'s `SurfaceOwners.shipped`).
 >
 > **Five of the plan below were falsified before implementing, and it is kept for the design rather than
 > the mechanism.** What was wrong: a pack never writes `target` (it was already the manifest key, so the

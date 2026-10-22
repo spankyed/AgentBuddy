@@ -38,13 +38,13 @@ Investigation (2026-09-12) of how the published SDK should ship declarations. Pr
 
 **Current state.**
 - `@apackdev/sdk` source: 170 `.ts` files and 46 `.vue` files. 398 relative imports have no extension.
-- Published build: `packages/apack-sdk/scripts/build-package.ts` writes `dist/package` with a generated `package.json`. It transpiles each file with esbuild through a hand-written resolve plugin that adds `.js`, emits declarations with `tsc -p tsconfig.package.json`, then regex-rewrites relative specifiers in the `.d.ts` files. `.vue` files ship as source without declarations.
+- Published build: `packages/apack-sdk/scripts/build-package.ts` writes `dist/package` with a generated `package.json`. It transpiles each file with esbuild through a hand-written resolve surface that adds `.js`, emits declarations with `tsc -p tsconfig.package.json`, then regex-rewrites relative specifiers in the `.d.ts` files. `.vue` files ship as source without declarations.
 - The workspace `package.json` exports point at `src/`; the publish manifest drops host-only entries (`ears/internals`, `fe/host`, `fe/pack-store`, `persistence`, `backup`, `packs`, `build/discover`, `build/shared-deps`, `testing`). Host code imports these 40 times across api, renderer, main, cli and testing.
 - Wildcard exports (`./fe/design/*`, `./fe/components/*`, `./fe/composables/*`, `./fe/layout/*`, `./fe/utils/*`, tiptap) have no `types` condition. Extensionless imports such as `@apackdev/sdk/fe/components/node-handles` don't typecheck against the published package.
 - The scaffold's `src/env.d.ts` types every `.vue` import as `DefineComponent<Record<string, unknown>, Record<string, unknown>, any>`, so SDK component props are unchecked in packs.
 
 **Pack typing depends on module augmentation.**
-- The registries `EntityShapeRegistry`, `PluginEventRegistry`, `ServiceRegistry` and `NodeEntityRegistry` are declared in `packages/apack-sdk/src/types/entities.ts`.
+- The registries `EntityShapeRegistry`, `SurfaceEventRegistry`, `ServiceRegistry` and `NodeEntityRegistry` are declared in `packages/apack-sdk/src/types/entities.ts`.
 - `generate-entries.ts` (lines ~532, ~810, ~826) and default-setup's step `types.ts` files augment `declare module '@apackdev/sdk/types'`, a module that only re-exports them.
 - The SDK itself augments the declaring module: `declare module '../types/entities'` in `src/steps/types.ts`.
 - Consumers of the registries: `ears/index.ts`, `ears/attribute-storage.ts`, `services/index.ts`, `helpers/actor-helpers.ts`, `framework/pack-registration.ts`, `steps/types.ts`.
@@ -78,8 +78,8 @@ Final. Breaking changes are acceptable: nothing is published yet, so choose the 
      - Codegen emits `export const { qx, findById, … } = /*#__PURE__*/ defineEars<PackShapes>();`. The factory returns the SDK's singleton functions (no runtime cost, no SDK bridge change), and the `__PURE__` annotation lets FE bundles that only use the `EARS` constants drop it.
      - The raw helpers move to host-internal `@apackdev/sdk/ears/internals` (later `@apackdev/host`), with `unknown` generic defaults instead of `Record<string, any>`.
    - No `any` fallback: an entity type the shape map doesn't declare reads as `BaseEntity & Record<string, unknown>` (id, entityType and createdAt are typed; other fields need narrowing).
-   - Events use the same pattern: `defineEvents<PackEvents>()` returns typed `emit` and `broadcastToPlugin`. The raw `emit` / `broadcastToPlugin` stay available for host code but are strict (`P extends string`, `E extends { type: string }`), never `any`.
-   - The global registries (`EntityShapeRegistry`, `PluginEventRegistry`, `ServiceRegistry`, `NodeEntityRegistry`) and every `declare module '@apackdev/sdk/…'` augmentation are removed.
+   - Events use the same pattern: `defineEvents<PackEvents>()` returns typed `emit` and `broadcastToSurface`. The raw `emit` / `broadcastToSurface` stay available for host code but are strict (`P extends string`, `E extends { type: string }`), never `any`.
+   - The global registries (`EntityShapeRegistry`, `SurfaceEventRegistry`, `ServiceRegistry`, `NodeEntityRegistry`) and every `declare module '@apackdev/sdk/…'` augmentation are removed.
    - Why: explicit instead of ambient type state (no program-inclusion or merge-order effects, no cross-pack collisions when the host compiles built-in packs together), dependencies compose visibly, independent of declaration layout, and consistent with the codegen-first model (Prisma/Drizzle/tRPC style).
 2. **Host package split: in scope, before the first publish.**
    - Host-only modules move to a private workspace package `@apackdev/host`.
@@ -88,7 +88,7 @@ Final. Breaking changes are acceptable: nothing is published yet, so choose the 
 3. **Typed components: in scope before the first release, as a separate `@apackdev/ui` package.**
    - The Vue component library (`fe/design`, `fe/components` incl. tiptap and Monaco editors, `fe/composables`, `fe/layout`, `fe/utils`) moves out of `@apackdev/sdk` into `@apackdev/ui`.
    - It ships vue-tsc declarations and an explicit exports map (no untyped wildcards). Its peers are vue and the host-shared libraries; the editor libraries are its own dependencies.
-   - `@apackdev/sdk` keeps the platform API, including FE contracts (`Plugin`, `safeEvents`, contributions, `useActorSystem`, etc.), and drops the editor dependencies.
+   - `@apackdev/sdk` keeps the platform API, including FE contracts (`Surface`, `safeEvents`, contributions, `useActorSystem`, etc.), and drops the editor dependencies.
    - Why: correct types from the first release (no `any` usage baked into packs), and packs that don't render SDK UI don't install tiptap, `highlight.js` or the Monaco loader.
 
 ## Phases
@@ -97,7 +97,7 @@ Final. Breaking changes are acceptable: nothing is published yet, so choose the 
 - **Codegen** (`packages/apack-sdk/src/build/generate-entries.ts`, run by `apack generate-entries`):
   - `#generated/ears` exports `PackShapes` (including the SDK-owned `SdkEntityShapes`, e.g. `TNode`), `EntityShape<E>`, and `qx`, `findById`, `findByIdRaw`, `findAll`, `findWhere`, `findFirst`, `createEntity` from `/*#__PURE__*/ defineEars<PackShapes>()`.
   - `PackShapes` = this pack's entity shapes plus each dependency's entity shapes. The dependency snapshot (`.apack/deps/<id>/snapshot.json`, the `defs` / `.apack/generated/types.ts`) must carry what's needed to reference the dependency's entity types. Extend the snapshot if it doesn't.
-  - `#generated/events` exports `PackEvents` and typed `emit` and `broadcastToPlugin` from `/*#__PURE__*/ defineEvents<PackEvents>()` (replacing `PluginEventRegistry`).
+  - `#generated/events` exports `PackEvents` and typed `emit` and `broadcastToSurface` from `/*#__PURE__*/ defineEvents<PackEvents>()` (replacing `SurfaceEventRegistry`).
   - `#generated/services` exports `services` typed with the pack's feature services (replacing `ServiceRegistry`). A pack's own service modules can't import it (it imports them), so they use the SDK's `services`, which is typed as the host services only.
   - `#generated/types` exports `NodeEntity`, the union of the pack's step node interfaces (`interface XNode extends NodeBase` in each step's `types.ts`), replacing `NodeEntityRegistry`.
   - Remove the generated `entity-shapes.ts`, `event-channels.ts` and `service-types.ts` augmentation files, or turn them into plain type modules the facades import.
@@ -117,14 +117,14 @@ Final. Breaking changes are acceptable: nothing is published yet, so choose the 
 ### Phase 2 — Emit by construction
 - Codemod every relative import in `packages/apack-sdk/src` to an explicit `.js` specifier (`./x.js`, `./dir/index.js`). Leave `.vue`, `.css` and `.json` as they are.
 - The SDK typecheck uses `module`/`moduleResolution: nodenext` and `verbatimModuleSyntax`, so an extensionless relative import fails `npm run typecheck:sdk`.
-- Build JS, `.d.ts` and `declarationMap` with `tsc`. Delete the esbuild resolve plugin and the `.d.ts` regex rewrite from `build-package.ts`. Keep the undeclared bare-import guard, reading `tsc`'s output and the `.vue` scripts.
+- Build JS, `.d.ts` and `declarationMap` with `tsc`. Delete the esbuild resolve surface and the `.d.ts` regex rewrite from `build-package.ts`. Keep the undeclared bare-import guard, reading `tsc`'s output and the `.vue` scripts.
 - Confirm the monorepo consumers of SDK source still build and typecheck with `.js` specifiers: renderer Vite, api tsup and `tsc` (moduleResolution node), main (NodeNext), default-setup `tsc` and `dev-build.mjs`, and tsx in the CLI.
 
 **Done when:** `@arethetypeswrong/cli` reports no problems for the packed SDK in node10, node16 (ESM) and bundler modes (node10 limitations explicitly ignored if the package is ESM-only). Adding an extensionless relative import fails the SDK typecheck (mutation). `test:packaged-authoring` passes.
 
 ### Phase 3 — `@apackdev/ui`: typed component library
 - Create the workspace package `packages/apack-ui` (`@apackdev/ui`). Move the Vue component library out of `@apackdev/sdk`: `src/fe/design`, `src/fe/components` (including tiptap and Monaco editors), `src/fe/composables`, `src/fe/layout`, `src/fe/utils`.
-- The FE platform contracts stay in `@apackdev/sdk/fe` (`Plugin`, `PackFERegistration`, `safeEvents`, contributions, navigation helpers, `useActorSystem`). Where a moved module is imported by SDK contract code, move the shared piece to the side that owns it; `@apackdev/sdk` must not depend on `@apackdev/ui`.
+- The FE platform contracts stay in `@apackdev/sdk/fe` (`Surface`, `PackFERegistration`, `safeEvents`, contributions, navigation helpers, `useActorSystem`). Where a moved module is imported by SDK contract code, move the shared piece to the side that owns it; `@apackdev/sdk` must not depend on `@apackdev/ui`.
 - Dependencies:
   - `@apackdev/ui` peers on `vue` and the host-shared libraries (`reka-ui`, `lucide-vue-next`, `@tiptap/core`, `@tiptap/vue-3`, `@tiptap/starter-kit`, `@tiptap/pm`, `@vue-flow/core`, `@xstate/vue`, `xstate`) with host ranges, and on `@apackdev/sdk`.
   - The editor libraries (tiptap extensions, `highlight.js`, `lowlight`, `tiptap-markdown`, `@guolao/vue-monaco-editor`; `monaco-editor` types as appropriate) are its own dependencies.

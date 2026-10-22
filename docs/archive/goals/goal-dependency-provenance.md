@@ -18,11 +18,11 @@ it moves with migrations.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- `PackSnapshot` carries one `provenance` field. `dependencyCommands`, `dependencyPlugins` and
+- `PackSnapshot` carries one `provenance` field. `dependencyCommands`, `dependencySurfaces` and
   `typeOwners` no longer exist in the source, and neither do `DependencyCommand`,
-  `DependencyCommandSource`, `DependencyPlugin`, `DependencyPluginSource`, `_dependencyCommands` or
-  `_dependencyPlugins` (`grep -r` finds them only in docs/archive).
-- One `_mergeProvenance` serves entities, relKinds, commands and plugins; no kind has its own reader.
+  `DependencyCommandSource`, `DependencySurface`, `DependencySurfaceSource`, `_dependencyCommands` or
+  `_dependencySurfaces` (`grep -r` finds them only in docs/archive).
+- One `_mergeProvenance` serves entities, relKinds, commands and surfaces; no kind has its own reader.
 - A four-pack diamond (A → {B, C} → D) builds with the real `apack build`, and A's generated
   `EntityName` names D's entity once.
 - A build against a dependency whose facade lacks a required export fails, naming the missing export
@@ -61,7 +61,7 @@ way today, each with its own type, reader and shape:
 | Field on `PackSnapshot` | Shape | Reader |
 |---|---|---|
 | `dependencyCommands` | `{ name, packId }[]` | `_dependencyCommands` (`manifest.ts`) |
-| `dependencyPlugins` | `{ id, packId }[]` | `_dependencyPlugins` (`manifest.ts`) |
+| `dependencySurfaces` | `{ id, packId }[]` | `_dependencySurfaces` (`manifest.ts`) |
 | `typeOwners` | `{ entities?: Record<string,string>; relKinds?: … }` | `ownerOf`, inline in `build.ts` |
 
 The algorithm is identical in all three — walk the dependencies, take what each inherited, then let each
@@ -74,7 +74,7 @@ for (const [depId, snapshot] of snapshots) {
 }
 ```
 
-`_dependencyPlugins` is that function with `name` renamed to `id`. `ownerOf` is that function written as
+`_dependencySurfaces` is that function with `name` renamed to `id`. `ownerOf` is that function written as
 `Object.assign` over records, in a different package, and additionally folding in the pack's own names.
 
 **The cost today:** 6 entries in `@apackdev/sdk/build`'s public API (`etc/build.api.md:219–253`), 5 field
@@ -82,7 +82,7 @@ declarations in `manifest.ts`, 14 call sites across `build.ts`, `generate-entrie
 and three test suites that each re-pin the same nearer-wins rule. The cost of the next kind that needs
 to travel — services, steps, artifacts — is another type pair, another reader, another suite.
 
-**Why now.** Two of the three fields were added today (`dependencyPlugins` in `7d5f67e83`,
+**Why now.** Two of the three fields were added today (`dependencySurfaces` in `7d5f67e83`,
 `typeOwners` in `8cd745ece`). Nothing consumes a snapshot but this repo, so the shape is free to change;
 it only gets more expensive as more code reads it.
 
@@ -107,7 +107,7 @@ Final.
 
 1. **One field, one reader.** `PackSnapshot.provenance?: PackProvenance`, where `PackProvenance` is
    `Partial<Record<ProvenanceKind, Record<string, string>>>` — name → the pack that declares it. One
-   exported `_mergeProvenance(kind, deps, own?)` replaces `_dependencyCommands`, `_dependencyPlugins`
+   exported `_mergeProvenance(kind, deps, own?)` replaces `_dependencyCommands`, `_dependencySurfaces`
    and `ownerOf`. The kinds live in one table that maps a kind to how its names are read off a manifest:
 
    ```ts
@@ -115,12 +115,12 @@ Final.
      entities: (m) => Object.keys(m.entities ?? {}),
      relKinds: (m) => Object.keys(m.relKinds ?? {}),
      commands: (m) => (m.commands ?? []).map((c) => c.name),
-     plugins:  (m) => (m.features ?? []).filter((f) => f.plugin).map((f) => f.id),
+     surfaces:  (m) => (m.features ?? []).filter((f) => f.surface).map((f) => f.id),
    } as const;
    ```
 
    Adding a kind is a line in that table. `DependencyCommand`, `DependencyCommandSource`,
-   `DependencyPlugin` and `DependencyPluginSource` are deleted, not re-exported as aliases.
+   `DependencySurface` and `DependencySurfaceSource` are deleted, not re-exported as aliases.
 
 2. **Record shape, not array of pairs.** Two of the three already disagree; `Record<name, packId>` is
    the one that indexes without a scan, serialises smaller, and diffs legibly in a snapshot. The array
@@ -162,14 +162,14 @@ own-manifest pass fails the nearer-wins test; swapping the two loops fails it to
 ### Phase 2 — Move the three consumers onto it, and delete the old shapes
 
 - `build.ts` writes `provenance` for all four kinds via `_mergeProvenance`, and stops writing
-  `dependencyCommands`, `dependencyPlugins` and `typeOwners`.
-- `generate-entries.ts`: `checkCommandNames`, the transitive-plugin owner lookup, and `mergeRegistries`'
+  `dependencyCommands`, `dependencySurfaces` and `typeOwners`.
+- `generate-entries.ts`: `checkCommandNames`, the transitive-surface owner lookup, and `mergeRegistries`'
   `depOwners` all read `provenance`.
 - Delete the four `Dependency*` types and the two `_dependency*` functions. Run `api:update`.
 
-**Done when:** `grep -rn "dependencyCommands\|dependencyPlugins\|typeOwners\|_dependencyCommands\|_dependencyPlugins" packages/ scripts/`
+**Done when:** `grep -rn "dependencyCommands\|dependencySurfaces\|typeOwners\|_dependencyCommands\|_dependencySurfaces" packages/ scripts/`
 returns nothing outside `docs/archive`; `npm run typecheck` and `npm run api:check` pass; the existing
-command-collision, transitive-plugin and diamond unit tests pass unchanged in behaviour.
+command-collision, transitive-surface and diamond unit tests pass unchanged in behaviour.
 
 ### Phase 3 — Prove it end to end on a real diamond
 
@@ -190,7 +190,7 @@ return via` fails the diamond case and leaves the genuine-collision case passing
 
 - In the same spec, strip a required export from `base-pack`'s built snapshot and build a dependent:
   the build fails, naming the missing export and `base-pack`. Cover the `PackEvents` half separately —
-  a dependent whose `sendsTo` names a plugin of such a dependency fails; one that names none builds.
+  a dependent whose `sendsTo` names a surface of such a dependency fails; one that names none builds.
 - Run `npm run compile` and `npm run test:external-pack` so every in-repo snapshot is rewritten in the
   new shape (Decision 3).
 
@@ -252,7 +252,7 @@ budget.
 | `npm test -w @apackdev/cli` | 718 passed |
 | `npm run compile` | passes; generated `ears.ts` byte-identical to before the change |
 | `npm run test:external-pack` | passes; fixture snapshots rewritten in the new shape |
-| `default-setup` snapshot | `provenance` with all four kinds, no `typeOwners`/`dependencyCommands`/`dependencyPlugins` |
+| `default-setup` snapshot | `provenance` with all four kinds, no `typeOwners`/`dependencyCommands`/`dependencySurfaces` |
 
 ## Deferred
 

@@ -69,7 +69,7 @@ Two distinct issues:
 
 3. Add `createLogger('gh-cli')` logging to the probe catch block for future debugging.
 
-**`packages/renderer/src/plugins/code/features/pull-request/PullRequestPanel.vue`:**
+**`packages/renderer/src/surfaces/code/features/pull-request/PullRequestPanel.vue`:**
 
 4. Update the banner text to suggest checking active token via `gh auth status` and switching accounts with `gh auth switch`.
 

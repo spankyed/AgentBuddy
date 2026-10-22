@@ -143,7 +143,7 @@ Rules that pay for themselves:
   the same risk, for a third of what externalising gives: whoever takes on being answerable for a vendor
   bundle's semantics should take the -3.0s and not the -1.0s. The lesson about the arms is the reusable
   half — the byte count tells the two regimes apart (8,511,670 shaken against 8,549,845 opaque), it had
-  already caught one dead plugin in this same spike, and it was not run on this arm.
+  already caught one dead surface in this same spike, and it was not run on this arm.
 
   **Skipping the phase is not the other lever.** `apack pack build` records what each phase read, and that
   record's own header says it is *"never a cache key"* — it is a dep file, so it can be stale about a read
@@ -463,7 +463,7 @@ The condition is the machine, which is a fact a run can check.
   rejected by one command each, both having been argued for at length first.
 - **Attribute a concurrent pipeline's cost with a CPU profile, not by timing its stages.** Wall clock
   summed per stage double-counts everything that overlaps, and the result reads as a table with a plausible
-  winner rather than as an error: the pack frontend bundle's plugin hooks totalled 120s inside an 11.5s
+  winner rather than as an error: the pack frontend bundle's surface hooks totalled 120s inside an 11.5s
   build, and the stage that table blamed held a twentieth of the cost. `node --cpu-prof` with self time per
   package is the instrument, and two profiles subtracted isolate one phase.
 - **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the right
@@ -624,7 +624,7 @@ and its neighbours ask the app `npm run dev` is holding, over its debug port —
 
 **One directory here is a gate: `tests/e2e/smoke/`**, as its own chain step (`test:smoke`, 6s). Its four
 cases are the ones every other check silently assumes — the app launches without crashing, reaches `connected`, has
-its plugins, and runs in its own data dir. Taking the suite off the chain took that with it, which is the
+its surfaces, and runs in its own data dir. Taking the suite off the chain took that with it, which is the
 one thing worth paying for.
 
 **The rest is not a regression suite, and is not in `npm run chain`.** It was built to watch the app while

@@ -314,7 +314,7 @@ checkpoint. All other source/external-input, receipt, discovery and later-phase 
 Production increment `00a6e3db5` routes native module resolution and declaration compilation through
 the shared owned input tree. Captured package entry metadata survives transient live edits, implicit
 absolute config inheritance works with original configs absent, and original source-map paths and
-repeat-build identity are preserved. Keep normal native resolution for ordinary imports: a plugin
+repeat-build identity are preserved. Keep normal native resolution for ordinary imports: a surface
 `build.resolve()` round-trip discards internal per-file configuration context. The owning goal records
 focused evidence and the exact retry; no new broad acceptance is claimed.
 
@@ -719,7 +719,7 @@ current readers. Nested contribution lists matter as much as top-level keys.
 | Surface | Existing declaration | Remaining discovery work |
 |---|---|---|
 | Pack identity/dependencies | IDs, versions, host range and dependencies | Validate descriptors; retain resolved identities, origin and unavailable reasons |
-| Features/plugins | Feature refs, designations, entry paths and default claims | Declare labels, icon references, pinning, pane/route presence, fallback-panel metadata and static shortcut descriptors |
+| Features/surfaces | Feature refs, designations, entry paths and default claims | Declare labels, icon references, pinning, pane/route presence, fallback-panel metadata and static shortcut descriptors |
 | Settings | Inline pack/feature schemas, defaults and form references; host app definition | Catalog-based extraction landed in `f3416ad2f`; retain its policy, restore and window checks while completing the other kinds |
 | Steps/triggers | Type names, facet paths, runtime flags and DSL metadata | Materialize palette labels/categories, initial node values, static connection metadata and facet availability |
 | Blocks/artifacts | Type names, facet paths and artifact icon names | Audit remaining labels/metadata; expose descriptors without importing viewers or backend facets |
@@ -745,7 +745,7 @@ Each grouped row accounts for its named fields; new fields must extend the event
 | BE/FE `features` keys | Pack-local IDs resolved to feature refs; one normalized account for both processes |
 | BE/FE feature `designation` | Declared role and owner; cross-pack role conflict checked before binding |
 | BE feature `system.machine`, `system.receives` | Machine executable; generated incoming-event names/contracts become descriptor data |
-| BE feature `plugin.receives` | Generated outgoing/inbox event contract data, not a component import |
+| BE feature `surface.receives` | Generated outgoing/inbox event contract data, not a component import |
 | BE feature `services`; BE `services`, `repositories` | Declared API names/contracts plus checked executable object bindings; service and repository names retain their actual collision rules |
 | BE feature `settings`; BE `settingsSections` | Replace executable Zod/thunk declarations with the settings plan's schema/default/form data; remove registration-derived defaults |
 | BE `ears.entities`, `ears.relKinds`; manifest feature/data `entities` | M1 (`2fff8bb76`) derives identity/ownership/shape through `_packEntities`, with flat compiled EARS names and type-only build references. Remaining entity descriptors must reuse this projection; M2 (`3ff590240`) uses `_packRelationTypes` for `data.relations` and derives flat EARS maps. Preserve SDK/host reserved names and typed EARS behavior. |
@@ -765,16 +765,16 @@ Each grouped row accounts for its named fields; new fields must extend the event
 | BE `commands` | Key/placeholder data; keep user-content commands and their live notifications separate |
 | BE `help` | Materialize article identity/title/body/order/feature filters into readable data assets, not just source directory paths |
 | FE feature `default` | Static claim; deterministic catalog selection independent of import completion |
-| FE plugin `id`, `label`, `isPinned`, `icon`, `hotkeys`, `options.headerClass` | Feature ref, presentation and shortcut descriptors become data; icon objects resolve only when rendering |
-| FE plugin `state`, `canvas`, `panel`, `chat`, `settings` | Actor/component/route presence and stable references in data; concrete implementations execute. Form ownership follows the settings plan |
-| FE plugin `fallbackPanel.label`, `toggle`, `isShown` | Label/event contract discoverable; state predicate executes and is not a discovery eligibility check |
+| FE surface `id`, `label`, `isPinned`, `icon`, `hotkeys`, `options.headerClass` | Feature ref, presentation and shortcut descriptors become data; icon objects resolve only when rendering |
+| FE surface `state`, `canvas`, `panel`, `chat`, `settings` | Actor/component/route presence and stable references in data; concrete implementations execute. Form ownership follows the settings plan |
+| FE surface `fallbackPanel.label`, `toggle`, `isShown` | Label/event contract discoverable; state predicate executes and is not a discovery eligibility check |
 | FE `appExtensions` | Named slot/component references, retaining actual slot composition/ownership policy |
 | FE `tiptapPlugins.extensions`, `popups`, `isSuggestionActive` | Give anonymous contributions stable declared identities; availability in data, extension/component/predicate objects executable |
 | FE `dslTypes.prefix`, `schema`, `globals`, `language` | Static editor declarations/assets; read without executing generated frontend imports |
 | Feature `references`; reference `category`, `icon`, `svgElements`, `navigate` | Type/category/static icon data discoverable; navigation binding remains until entity-opening callers migrate |
 | Reference categories `id`, `label`, `primaryIcon`; provider `category`, `useItems` | Category/provider identity and icon data discoverable; live reactive items require that provider's execution and disposal |
 | Content sources/datasets/formats and compiled `content.json` | Declared keys, formats, entity targets and compiled indexes/assets; rows written by appliers are not discovery results |
-| Manifest `features.<id>.types`, plugin/system contracts and snapshot `defs`, `types`, `flowHelpers`, `provenance` | Build inputs materialize type/event/facade assets and true dependency ownership; source paths alone are insufficient installed discovery |
+| Manifest `features.<id>.types`, surface/system contracts and snapshot `defs`, `types`, `flowHelpers`, `provenance` | Build inputs materialize type/event/facade assets and true dependency ownership; source paths alone are insufficient installed discovery |
 | Manifest `build`, `$schema`, `$manifestVersion`, license/description/version/dependencies/host range | Build options are authoring inputs; compatibility/identity metadata is data; descriptive permissions do not establish grants |
 
 Current consumers confirmed: backend registration/defaults stores, frontend registration/default selection,
@@ -984,14 +984,14 @@ Codegen now gives an omitted DSL prefix the empty prefix and quotes prefix/globa
 the frontend check uses the same default. This fixes valid omitted/quoted declarations rather than
 accepting the producer's literal "undefined" as metadata.
 
-This does not complete frontend discovery. Plugin presentation/route/shortcut metadata and stable
+This does not complete frontend discovery. Surface presentation/route/shortcut metadata and stable
 anonymous editor contribution identities still require declarations; native frontend admission still
 needs the complete native model. Icon identity and DSL asset bytes are not established by member-name
 checks. The renderer still has to move static readers off runtime registrations.
 
 Frontend replacement still needs an explicit transaction. Correction from the subsequent source audit:
 `registerPackFE()` currently refuses duplicate owners; it does not implement replacement. The shell's
-`PACK_PLUGINS_UNLOADED` path retires existing frontends before reloading them. Stylesheet ownership is
+`PACK_SURFACES_UNLOADED` path retires existing frontends before reloading them. Stylesheet ownership is
 now staged as described below, but settings/contribution replacement and shell handoff remain open.
 Stage resources, publish once, and retire old resources after acceptance; prove failure/cancellation
 keeps the incumbent usable. Arbitrary module side effects remain outside rollback.
@@ -1006,7 +1006,7 @@ an old owner cannot remove a newer owner using that link. Candidate failure reta
 explicit pack unload disposes accepted and pending leases. Styles-only retries transfer ownership
 without duplicating links. An abort during a fresh binding also unregisters that candidate before commit.
 
-The real-app strict gate proves Chromium loads the inert stylesheet and accepted plugin styles apply.
+The real-app strict gate proves Chromium loads the inert stylesheet and accepted surface styles apply.
 DOM and host seam checks prove failure/cancellation/ownership behavior. This closes stylesheet staging,
 not the shell's unload-before-reload behavior or a transactional frontend registry replacement API.
 Vite/source-module side effects remain outside installed stylesheet rollback.
@@ -1115,7 +1115,7 @@ installed update publication, complete native/static descriptors and every later
 `@app/api` to `src/types.ts` through the existing source condition; other type consumers use the compiled
 entry, and runtime resolution keeps the compiled server. The API's imports are now file-relative in source,
 tests and scripts, making the contract portable across package compiler contexts. Removed the API alias
-resolver, Vite paths plugin, tsconfig alias maps and unused dependency/lock entries. No new build step,
+resolver, Vite paths surface, tsconfig alias maps and unused dependency/lock entries. No new build step,
 manual prebuild requirement or compatibility alias is introduced.
 
 Evidence: renderer and API typechecks pass; 121 API cases and 67 focused pipeline cases pass. The compiler
@@ -1152,7 +1152,7 @@ reload/activation wait, readiness releases them, and removal clears them. Both `
 explicitly caught the latter state-publication path after the initial recorder checked only connection.
 
 The real dev-reload check exposed a mounted-lifetime bug: Vue reused a cached canvas whose setup had
-captured the stopped actor. `PluginScope` now follows shell actor changes and keys its subtree by actor
+captured the stopped actor. `SurfaceScope` now follows shell actor changes and keys its subtree by actor
 session, disposing obsolete content and leaving unchanged scopes mounted. Cached custom forms without
 actors had the analogous binding problem. Registry form notifications identify their changed owner;
 SettingsEditor remounts that owner's form even for the same component object and preserves unrelated forms.
@@ -1179,22 +1179,22 @@ freshness, navigation, frontend fault boundaries and all three Phase 6 streams r
 requirement audit, strict `--all` on completed committed source, and archival remain outstanding.
 
 
-### Plugin declaration audit and implementation design (2026-10-13)
+### Surface declaration audit and implementation design (2026-10-13)
 
-The next slice removes executable plugin assembly as the metadata source. Audit at `7e79cd788`
-confirms eleven default-setup plugin modules, three external fixture plugin modules and two native
-host views. `PluginSchema` currently declares only entry, contract, default and default visibility;
-`generateFrontendEntry` imports the plugin object wholesale. `frontendBindingProblem` verifies a
+The next slice removes executable surface assembly as the metadata source. Audit at `7e79cd788`
+confirms eleven default-setup surface modules, three external fixture surface modules and two native
+host views. `SurfaceSchema` currently declares only entry, contract, default and default visibility;
+`generateFrontendEntry` imports the surface object wholesale. `frontendBindingProblem` verifies a
 nonempty label and a machine, but does not compare presentation or pane membership to declarations.
 Installed/source snapshots therefore cannot describe the current UI independently of activation.
 
-Every field of `Plugin` is classified below. This is an audit of the supported contract, not another
+Every field of `Surface` is classified below. This is an audit of the supported contract, not another
 hand-maintained runtime registry:
 
 | Field | Owner and source after migration |
 |---|---|
-| id | Generated feature ref; never authored inside a plugin binding |
-| label, isPinned, hotkeys, options.headerClass | Inline plugin declaration data; codegen supplies the registered values |
+| id | Generated feature ref; never authored inside a surface binding |
+| label, isPinned, hotkeys, options.headerClass | Inline surface declaration data; codegen supplies the registered values |
 | icon | Named Lucide icon, consistent with artifact declarations, or an explicit custom component target; discovery reads the reference, rendering resolves the binding |
 | state | Explicit module/default or named-export target; machine construction and state remain execution |
 | canvas | Optional component target or a declared route map; route identities and component references are data |
@@ -1212,12 +1212,12 @@ optional; do not invent panes or actors to fill absent declarations.
 
 #### Authored shape
 
-Keep metadata inline and implementation targets explicit. Replace `plugin.entry` with `plugin.state`;
-codegen assembles the plugin instead of importing a second handwritten inventory from `fe/plugin.ts`.
-Retain existing contract/default/defaultVisible keys and their meanings. A normal plugin is:
+Keep metadata inline and implementation targets explicit. Replace `surface.entry` with `surface.state`;
+codegen assembles the surface instead of importing a second handwritten inventory from `fe/surface.ts`.
+Retain existing contract/default/defaultVisible keys and their meanings. A normal surface is:
 
 ```json
-"plugin": {
+"surface": {
   "label": "Notes",
   "icon": "NotebookText",
   "state": "src/features/notes/fe/state.ts",
@@ -1238,14 +1238,14 @@ names. Do not execute custom icons to discover them; their rendered output is ex
 
 Fallback-panel declarations retain label/toggle and name the predicate via path#export. Move Brain's
 predicate to a small executable module or an appropriate existing module; do not serialize its result.
-Delete obsolete plugin assembly files and unused definePlugin authoring exports/callers together.
-There are no aliases or dual reads for plugin.entry. Generated registrations still use the bound
-Plugin/PluginDefinition types needed by host stores, with metadata supplied from declarations.
+Delete obsolete surface assembly files and unused defineSurface authoring exports/callers together.
+There are no aliases or dual reads for surface.entry. Generated registrations still use the bound
+Surface/SurfaceDefinition types needed by host stores, with metadata supplied from declarations.
 
 #### Native host and common readers
 
-The normalized plugin descriptor must be shared by installed, source-authoring and native declarations;
-there is no plugin-only catalog and no fabricated native receipt. Native host metadata is pure data,
+The normalized surface descriptor must be shared by installed, source-authoring and native declarations;
+there is no surface-only catalog and no fabricated native receipt. Native host metadata is pure data,
 separate from the renderer's executable imports and per-window machine factories. The native renderer
 uses that metadata when assembling bindings, and admission checks the same label/pinning/shortcuts,
 pane/route presence and fallback-panel metadata as external frontends.
@@ -1253,21 +1253,21 @@ pane/route presence and fallback-panel metadata as external frontends.
 Do not assume native implementations physically live in the metadata owner's package: host Settings
 and Packs views live in renderer, while their machines/ownership live in host. Resolve native binding
 references through trusted composition/build checks, independently of installed build paths.
-The host/application backend plugin inbox targets the shell actor; it is not a contributed canvas.
+The host/application backend surface inbox targets the shell actor; it is not a contributed canvas.
 Host/help supplies a system, while its articles appear in Settings. Neither needs a fabricated visible
-plugin, feature or actor to satisfy a frontend inventory. Classify protocol receivers separately from
+surface, feature or actor to satisfy a frontend inventory. Classify protocol receivers separately from
 contributed views when expanding the remaining native event/system declarations.
 
-The common catalog projects feature refs, declaration identity, enablement and plugin descriptor data
+The common catalog projects feature refs, declaration identity, enablement and surface descriptor data
 before frontend activation. Source declarations retain source identity; installed entries retain their
 real receipts; native entries retain trusted native identity. UI availability/readiness remains a
-separate runtime concern. Move installed details and known-plugin discovery to this projection before
-changing shell selection. A declared disabled/failed plugin remains describable; it does not become an
+separate runtime concern. Move installed details and known-surface discovery to this projection before
+changing shell selection. A declared disabled/failed surface remains describable; it does not become an
 eligible destination or trigger component/module execution merely because it is listed.
 
 #### Implementation and verification checkpoints
 
-1. Add shared descriptor/component-target schemas and exhaustive Plugin field classification, then
+1. Add shared descriptor/component-target schemas and exhaustive Surface field classification, then
    change codegen and file/export validation together. Generate metadata and bindings from one accepted
    declaration. Check exact pane/route membership and presentation values before frontend publication.
 2. Migrate default-setup, native views, both external fixtures and the authoring template in the same
@@ -1280,7 +1280,7 @@ eligible destination or trigger component/module execution merely because it is 
    Readiness, actor startup and existing transactional frontend resource retirement remain intact.
 4. Prove single/routed/lazy panes, named machine exports, custom icons and fallback predicates through
    generated-entry/build checks. Refuse mismatched labels, routes, pane presence, shortcuts and unknown
-   plugin fields before committing a replacement; retain the accepted frontend/settings grant on refusal.
+   surface fields before committing a replacement; retain the accepted frontend/settings grant on refusal.
    Mutation-check admission guards. Run the actual external app and packaged-authoring checks, regenerate
    public schema/API reports and update authoring docs before committing the implementation checkpoint.
 
@@ -1290,17 +1290,17 @@ listed consumer migrations still require their own coherent checkpoints. Keep ev
 all three Phase 6 workstreams active.
 
 
-### Declarative plugin implementation working checkpoint (2026-10-13)
+### Declarative surface implementation working checkpoint (2026-10-13)
 
-Plugin declarations now hold presentation, machine/component targets, route identities and fallback
+Surface declarations now hold presentation, machine/component targets, route identities and fallback
 predicate references. The shared framework type and schema agree through a checked schema annotation
 and exhaustive field maps. Module/export syntax and reserved route names are validated. Codegen builds
-bound PluginDefinition objects from declarations, checks state/predicate/module exports as values,
-checks Vue component files and preserves lazy component imports. No plugin module executes during
+bound SurfaceDefinition objects from declarations, checks state/predicate/module exports as values,
+checks Vue component files and preserves lazy component imports. No surface module executes during
 these checks. JavaScript targets remain supported when the pack's TypeScript configuration permits them.
 
 All eleven default-setup assemblies and three fixture assemblies are removed, along with the authoring
-template and definePlugin helper. Library's named machine export, Threads' five routes and all six
+template and defineSurface helper. Library's named machine export, Threads' five routes and all six
 lazy bindings are preserved. Brain's predicate is a small executable module; its label/toggle are data.
 CLI feature scaffolding writes the declaration directly; doctor shares complete feature-target file
 validation. Contract-leaf checks identify the actual state module. The real fork acceptance edits a
@@ -1313,15 +1313,15 @@ top-level authored values once, preserving the existing getter-lifetime contract
 are projected into the validator's settings contribution shape; no native build receipt is invented.
 Full native contribution coverage and source/provenance verification beyond this view slice remain open.
 
-The existing common catalog projects immutable plugins from native, installed and authoring owners.
+The existing common catalog projects immutable surfaces from native, installed and authoring owners.
 Installed entries preserve declaration identity and enablement; authoring entries do not invent an
 installation enablement decision. App-source advertisements are excluded from selected contributions.
 Packs details consumes this projection, showing declared labels even when implementations are inactive.
-The redundant hasPlugin summary flag is removed; declaration presence answers that question.
+The redundant hasSurface summary flag is removed; declaration presence answers that question.
 Shell selection/default readiness is not migrated or declared complete by this details-reader change.
 
 Admission compares labels, pinning, shortcuts, header options, pane/route membership and fallback
-metadata, rejects unknown plugin fields, and checks executable binding shapes without calling renderers
+metadata, rejects unknown surface fields, and checks executable binding shapes without calling renderers
 or predicates. This does not prove arbitrary JavaScript is safe or establish component-source identity
 by comparing function objects. Generated imports, checked exports, accepted declaration identity and
 existing build integrity remain the implementation-binding path.
@@ -1342,13 +1342,13 @@ frontend boundaries, API/provenance work and final goal-wide strict --all accept
 
 Validation follow-through: the first strict candidate passed 4,301 of 4,303 host-pool tests and
 refused two incomplete fixture paths. The shared SDK fixture now writes its declared state module,
-and its completeness assertion enumerates plugin targets rather than reading the retired entry key.
+and its completeness assertion enumerates surface targets rather than reading the retired entry key.
 All nine fixture checks and eight build-output-swap checks pass, including the original authored-input
 race and build rollback assertions. The next strict run passes the full host/pack unit gates and
 638 of 639 integration checks; its remaining contract-leaf fixture still imported a filename the
 shared manifest no longer designated as the actor module. The fixture now explicitly declares that
 unconventional state filename. All 17 targeted leaf-rule cases pass, with their original refusal
-assertions retained. Codegen prose now states that plugin modules enter the compiler for value-export
+assertions retained. Codegen prose now states that surface modules enter the compiler for value-export
 checks while facade event/state types still come from independent contract leaves. Final strict
 validation is running; these focused passes are not substitutes for the full app gates or final goal audit.
 
@@ -1357,8 +1357,8 @@ Final strict validation on the corrected candidate passes all 30 gates in 488.6 
 including full unit/integration, real external-pack app acceptance in 156.5 seconds, smoke and both
 packaged-authoring halves. Evidence:
 `node_modules/.cache/apack-chain/runs/2026-10-14T00-28-13Z-89285`;
-`/private/tmp/apack-declarative-plugins-strict-3.log`.
-This completes this plugin declaration/binding/catalog-details checkpoint, not all-kind discovery or
+`/private/tmp/apack-declarative-surfaces-strict-3.log`.
+This completes this surface declaration/binding/catalog-details checkpoint, not all-kind discovery or
 the larger goal. Source/asset provenance checks for the remaining native contributions, other static
 consumers, shell readiness/navigation, boundaries, consumed APIs, dependency identity and final strict
 --all on finished committed source remain required. No unfinished plans are archived.
@@ -1684,14 +1684,14 @@ Concrete audit findings and required fixes:
   updates, unsubscribe in node-view destruction, and resolve eligible navigation at click time. Missing
   bindings leave declared references renderable without activating their owner. Delete the Markdown
   `updateDOM` loop: it visits anchors and does nothing.
-- The suggestion plugin filters with the static category list; the popup uses the same static list and
+- The suggestion surface filters with the static category list; the popup uses the same static list and
   indexes item icons without an absence check. Read category labels from declarations and render active
   icons only when eligible. A stale or invalid provider item must not cause an undefined-icon crash or
   insert a reference type outside that category's declarations.
 - `useReferenceItems.ts` starts every provider during setup and keeps them until the containing component
   dies. Start only the selected eligible category while the suggestion is active. Own a child effect scope,
   stop it before replacement/category change/closure, and dispose all listeners at parent-scope teardown.
-  Stable accepted binding identity avoids restarts for unrelated publications. Existing SDK plugin-state
+  Stable accepted binding identity avoids restarts for unrelated publications. Existing SDK surface-state
   readers already use `onScopeDispose`, so child effect scopes release their actor/shell subscriptions.
 
 Use one SDK reference reader to join declarations and accepted bindings; editor components must not
@@ -1914,7 +1914,7 @@ retain their scope.
 
 `b1eeebd19` implements actual consumed type-export checks using the shared TypeScript reader and
 virtual bundled declarations, with stale-file precedence and no directory writes. Required imports
-define requirements; backend-only consumers do not acquire unused plugin-state requirements. Syntax
+define requirements; backend-only consumers do not acquire unused surface-state requirements. Syntax
 recovery cannot count as usable capability. Missing/value-only/unresolved/syntax-invalid types fail
 by dependency and rebuild remedy. Focused/mutation/real authoring checks and all 30 strict steps passed;
 the execution goal records source and exact evidence. EARS/content bytes and API reports are unchanged.
@@ -2207,7 +2207,7 @@ frozen execution or the outstanding bulk strict gate. All other goal scope remai
 
 `49f2647f3` adds membership subscriptions for static external `import.meta.glob` declarations,
 including arrays, exclusions, literal `base` and root-entry subpath imports. `53550379d` installs
-input-reporting plugins in Vite's separate worker builds, including nested workers. Each report
+input-reporting surfaces in Vite's separate worker builds, including nested workers. Each report
 accumulates the compilation's files, so the main bundle's final report cannot discard worker inputs;
 diagnostic records and live subscriptions share that set. Worker globs use the same directory observer.
 Actual Vite tests cover dependency-only changes, nested worker glob additions and changed output.
@@ -2217,7 +2217,7 @@ remaining dynamic graphs, exact compiler identity, coherent frozen execution/pub
 manual-build/drive freshness and the aggregate strict gate remain required. No broader phase is closed.
 
 `a6be184da` additionally observes the fixed relative directory prefix of variable import templates,
-which Vite expands after user plugins. A previously empty import graph now observes matching-file
+which Vite expands after user surfaces. A previously empty import graph now observes matching-file
 additions/removals, including filename prefixes; explicit `@vite-ignore` imports remain runtime-owned.
 This is conservative subscription coverage, not a replacement for Vite's expansion or proof of frozen
 reads. The goal records the failing baseline, seven passing compiler cases, nested-worker regression,
@@ -2258,7 +2258,7 @@ remaining input closure, manual-build/drive freshness and the aggregate strict g
 
 ### Frontend editor declaration checkpoint
 
-Replace the opaque frontend registration-module target with explicit plugin groups:
+Replace the opaque frontend registration-module target with explicit surface groups:
 
 ```json
 {
@@ -2281,8 +2281,8 @@ Replace the opaque frontend registration-module target with explicit plugin grou
 }
 ```
 
-Plugin and popup keys are local to their pack/group; extension keys preserve actual Tiptap names.
-Keep meaningful plugin grouping. Registration carries matching keyed bindings; generated imports name
+Surface and popup keys are local to their pack/group; extension keys preserve actual Tiptap names.
+Keep meaningful surface grouping. Registration carries matching keyed bindings; generated imports name
 each declared export. Validate missing/extra groups and members, extension-name mismatch and predicate/
 component shapes without executing them. Reject extension-name collisions transactionally, naming
 both pack/group owners. No conventional aggregate export or anonymous arrays remain.
@@ -2335,7 +2335,7 @@ No scope is excluded or archived.
 
 Current code still declares the `reference` Tiptap node in default-setup's suggestions group. That
 module owns persistence parsing/serialization, node presentation and a pack-specific suggestion
-plugin. Consequently a renderer without default-setup's frontend lacks the stored-document schema,
+surface. Consequently a renderer without default-setup's frontend lacks the stored-document schema,
 even though reference declarations themselves are available without activation.
 
 Split those responsibilities at the existing composition boundary:
@@ -2348,11 +2348,11 @@ Split those responsibilities at the existing composition boundary:
   Native declarations remain data-only; host/backend code does not import UI or the Tiptap node.
   Existing checked binding and cross-pack ownership rules cover the intrinsic name too.
 - Default-setup declares a separate `referenceSuggestion` extension that installs its existing
-  ProseMirror suggestion plugin. It no longer owns the reference node. No alias, fallback node,
+  ProseMirror suggestion surface. It no longer owns the reference node. No alias, fallback node,
   invented feature, second registry or duplicated document-schema inventory.
 - Move the node behavior tests with its owner; prove cold HTML/Markdown and stored JSON preserve
   targets with no external packs registered. Exercise actual renderer host registration and collision
-  refusal, and prove the pack's suggestion extension still installs its plugin alongside the native
+  refusal, and prove the pack's suggestion extension still installs its surface alongside the native
   node. Update public exports/reports and manifest documentation with the move.
 
 This checkpoint does not complete live editor recomposition: editors already open while a contributed
@@ -2367,7 +2367,7 @@ boundaries, dependency/API/replacement work and the aggregate strict gate remain
 Source `f8c6b2262` moves `ReferenceNode` and its behavior tests into `@apackdev/ui`. The native host
 catalog declares `tiptapPlugins.references.extensions.reference`; the renderer supplies its binding
 before loading external frontends. Backend discovery imports no UI implementation. Default-setup
-now contributes `referenceSuggestion`, which installs its existing suggestion plugin alongside the
+now contributes `referenceSuggestion`, which installs its existing suggestion surface alongside the
 host-owned node. The URI/node/attribute identities, Markdown/HTML behavior, metadata-driven icon
 refresh and eligible navigation are preserved; navigation callbacks still belong to Phase 4's migration.
 No alias, fallback schema, new feature or duplicate registry was introduced.
@@ -2404,7 +2404,7 @@ The catalog supplies declared membership, but cannot stand in for accepted execu
 
 Installed Tiptap source confirms `Editor.setOptions()` only updates options/view props and state;
 it does not rebuild the extension manager or schema. `registerPlugin()` reconfigures ProseMirror
-plugins, not node/mark definitions. Do not use either API as an alleged general schema replacement.
+surfaces, not node/mark definitions. Do not use either API as an alleged general schema replacement.
 
 Implement in coherent checkpoints:
 
@@ -2422,7 +2422,7 @@ Implement in coherent checkpoints:
    If required content has no usable provider, retain the original document and present an unavailable
    editor until it can be represented safely. Do not keep unloaded executable callbacks alive or emit
    normalized/damaged content as a save. Cover parent content/entity changes while unavailable.
-4. Treat undo/plugin state explicitly: arbitrary opaque plugin state is not transferable across schema
+4. Treat undo/surface state explicitly: arbitrary opaque surface state is not transferable across schema
    replacement. Preserve history for updates that do not replace the editor; reset it on actual schema/
    extension replacement and document that boundary. Do not access private Tiptap managers or mutate
    ProseMirror history internals to suggest stronger preservation than the libraries support.
@@ -2469,7 +2469,7 @@ qualified keys. Replacement retires old views/providers first, then restores pen
 stored marks and focus. Exact document/mark round-trips refuse silent attribute/node loss. An
 unavailable schema retains pending data without emitting a save; compatible re-enablement restores
 it, and explicit document/entity changes replace suspended state. Actual extension replacement resets
-opaque undo/plugin state, as selected above. Failed cleanup is logged and view/listener cleanup is
+opaque undo/surface state, as selected above. Failed cleanup is logged and view/listener cleanup is
 attempted without preventing a usable replacement. No private Tiptap managers or history internals.
 
 Twenty-seven focused UI/reference/lifetime checks pass in 3.69s
@@ -2763,7 +2763,7 @@ proves it reaches no Node tooling or authored pack modules. This is a foundation
 not closure of its mandatory registration-authority and binding-identity work.
 
 The subsequent mandatory-admission change also owns the capture gap: current frontend snapshots copy
-references, editor groups and steps, but retain mutable plugin metadata/routes, artifact/block facet
+references, editor groups and steps, but retain mutable surface metadata/routes, artifact/block facet
 containers, DSL globals and form/extension slot maps. Capture those containers before comparison while
 preserving actual machine/component/function identities. Route maps need accepted declaration context;
 a component object must not be guessed to be a route map. Validate in the loader before allocating settings,
@@ -3325,15 +3325,15 @@ build with 76 indexed flow edges. The remaining inventory reader and navigation 
 
 ### Declaration-driven app navigation (2026-10-16)
 
-`cfcbb53f9` projects enabled installed/native plugin declarations into toolbar/menu data before runtime
+`cfcbb53f9` projects enabled installed/native surface declarations into toolbar/menu data before runtime
 loading. Catalog order is stable across frontend delivery; host tabs follow pack tabs in each pinned
 or unpinned group, and directional keyboard selection uses that same order. Visibility uses user
 choices over declared defaults. Current eligible bindings supply icons; missing bindings use the
 shell placeholder. Source previews and disabled packs remain catalog metadata, not app destinations.
 The renderer observes declaration and runtime updates without retaining a duplicate inventory.
 
-Backend `pluginDefaults` reads declarations, and the runtime registration's redundant `defaultVisible`
-field/comparison/codegen are removed. Runtime plugin storage remains for actual actors/components.
+Backend `surfaceDefaults` reads declarations, and the runtime registration's redundant `defaultVisible`
+field/comparison/codegen are removed. Runtime surface storage remains for actual actors/components.
 The goal records focused host/SDK checks, installed loader/codegen checks, the shipped build and pack
 consumer proof, types/API/lint/import/tier checks. Final window and all-kind acceptance remain required.
 
@@ -3370,7 +3370,7 @@ names explicitly. The goal records focused/source-free/retention/mutation eviden
 checks, plus types, schema/API, package builds and lint/import/tier checks.
 
 Remaining native system/event contracts must account for the shell's non-toolbar inbox. Do not invent
-a visual plugin or infer executable behavior to fill that gap. Method-contract consumption belongs to
+a visual surface or infer executable behavior to fill that gap. Method-contract consumption belongs to
 Phase 6; native content/migration data, static assets, loader coordination and all-kind acceptance
 remain required alongside the full build-input/freshness and later goal scope.
 
@@ -3385,7 +3385,7 @@ may leave declared systems unbound; the native shell inbox needs no contributed 
 
 The catalog and CLI expose endpoint data independently of activation; an uncompiled source preview
 reports unavailable metadata rather than an empty inbox. Backend admission checks event membership
-and captures effective inputs/plugin inboxes once, adding shared SDK protocol events. Mutating a
+and captures effective inputs/surface inboxes once, adding shared SDK protocol events. Mutating a
 registration afterward cannot change accepted routing or machine identities. Host endpoint metadata
 now lives in a data-only module. Event names do not validate payloads or authorize senders.
 
@@ -3538,7 +3538,7 @@ invalid and was corrected rather than counted as proof. Final coverage includes 
 `/private/tmp/apack-required-entries-before.log`, `/private/tmp/apack-required-entries-after.log`.
 
 Current-format build reading, source staging and installer admission now require `runtime/index.cjs`
-and require `runtime/fe.js` for generated frontend memberships: feature plugins/designations/forms/
+and require `runtime/fe.js` for generated frontend memberships: feature surfaces/designations/forms/
 references, group forms, steps, artifacts, blocks, editor groups and app extensions. Empty maps and
 inline command/settings data do not require frontend code. Discovery reads declarations and receipt
 membership without importing either poisoned runtime or missing authored files. Synthetic successful

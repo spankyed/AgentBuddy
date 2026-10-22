@@ -21,7 +21,7 @@ apack is a local-first AI coding workspace that turns raw CLI interactions into 
 
 apack is built around a few key areas:
 
-- **Toolbar (left):** Switch between plugins like Threads, Notes, Code, and Flows  
+- **Toolbar (left):** Switch between surfaces like Threads, Notes, Code, and Flows  
 - **Canvas (top):** Displays the active view (thread dashboard, editor, flows, etc.)  
 - **Chat (bottom):** Where you interact with Claude Code  
 - **Inspection Panel (right):** Contextual details and debugging tools  
@@ -32,7 +32,7 @@ Most interactions happen through the **chat**, but the system is powered by flow
 
 ## 🚀 Getting Started
 
-1. Open the **Threads** plugin (default view)  
+1. Open the **Threads** surface (default view)  
 2. Create or select a thread  
 3. Type your request in the chat  
 4. If prompted, select a project directory  
@@ -60,7 +60,7 @@ You now have a persistent, resumable coding session.
 
 - Use `cc-fork` to branch a conversation without losing context  
 - Use `cc-compact` to reduce context size in long threads  
-- Enable additional plugins in **Settings → Plugins**  
+- Enable additional surfaces in **Settings → Surfaces**  
 - Use Kanban view to manage threads visually  
 - Inspect flow execution using the Brain debugger  
 

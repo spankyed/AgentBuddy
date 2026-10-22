@@ -12,7 +12,7 @@ Validate replacements before publishing one committed build/catalog revision. Pr
 retains the prior build/view; activation failure is a separate outcome, not a promise to undo
 user-data effects. Preserve owner IDs and stored settings overrides.
 Keep migration version lines independent of update provenance. The planned catalog default-navigation policy
-supersedes the old first-plugin survey below.
+supersedes the old first-surface survey below.
 
 Current settings acceptance confirms that booting with a current-format disabled `default-setup`
 record works: host Personal and shortcut preferences remain usable without it. Live controls remove
@@ -54,12 +54,12 @@ protections that read like safety mechanisms are revealed as a UI preference and
 Three premises this plan was nearly built on, all false:
 
 - **"Uninstalling the shipped pack bricks the app."** It does not. `features/registration.ts:2` —
-  *"The plugins are always there"* — the host registers `application`, `packs` and `settings`
+  *"The surfaces are always there"* — the host registers `application`, `packs` and `settings`
   unconditionally, so an app with no packs is a working app showing the Packs view. The way back is a view
   that is always present.
-- **"The shell picks its opening plugin with `getDesignated('threads')`."** It does not.
+- **"The shell picks its opening surface with `getDesignated('threads')`."** It does not.
   `application/fe/machine.ts:492` is inside `closeDevLetter`, which fires when the dev letter is dismissed.
-  The opening pick is "its first plugin", and a host plugin is always first. That one call still wants a
+  The opening pick is "its first surface", and a host surface is always first. That one call still wants a
   guard, but it is one action, not a structural dependency.
 - **"Shipped packs need protecting."** They need a UI that does not offer destruction casually. That is not
   the same thing, and it is why `canUninstall` goes.
@@ -265,9 +265,9 @@ that obsolete discovery projection. Preserve actual teardown and frontend readin
 ### Removal of teardown-first replacement glue (2026-10-13)
 
 Removed the teardown `replacing` option, registry replacement-window map and marker methods, and bus
-suppression of drops to missing plugins. Transactional replacement keeps an incumbent registered until
+suppression of drops to missing surfaces. Transactional replacement keeps an incumbent registered until
 acceptance, so a temporary unregistered window is no longer a lifecycle to model. Genuine teardown
-always announces removal; absent or invalid plugin delivery remains observable.
+always announces removal; absent or invalid surface delivery remains observable.
 
 Removed `getPackExtensions` and its runtime metadata assembly. Teardown queries registered system ids;
 presence checks query registration; installed information continues using catalog declarations. Tests
@@ -412,9 +412,9 @@ independently observed fixture/API shutdown race remains unresolved despite pass
 The controls audit found Welcome closing through the SDK's throwing process-global `getDesignated`.
 The shell now reads optional `designation('threads')` from its injected window registry and sends the
 existing selection action only when a role is present. The existing action safely handles a designation
-without a frontend plugin; no duplicate availability check, fallback feature or fabricated actor is added.
+without a frontend surface; no duplicate availability check, fallback feature or fabricated actor is added.
 
-Six new cases cover a host-only registry, another current plugin, an alternate Threads provider,
+Six new cases cover a host-only registry, another current surface, an alternate Threads provider,
 a backend-only role, provider removal before click, and two independent window registries. Welcome
 advances to onboarding without error and retains the existing selection when no destination is available.
 Renderer bootstrap registers the native host frontend before shell creation; the packless case represents
@@ -720,7 +720,7 @@ archive of unfinished plans. The independent process shutdown race and final ful
 
 Copy the real default-setup sources into a temporary external pack, excluding build/cache output.
 Use the established external-authoring test toolchain setup; source and generated output remain private
-to the clone. Edit the manifest's display name and an executable frontend plugin label, keeping owner
+to the clone. Edit the manifest's display name and an executable frontend surface label, keeping owner
 ids and versions unchanged. Build/archive with the public CLI and verify the emitted receipt.
 
 Install deliberately at the default id into isolated app data. In actual Electron windows prove the
@@ -736,7 +736,7 @@ state when its build borrows the checkout toolchain rather than claim distributi
 ### Real clone and multi-launch acceptance working implementation (2026-10-13)
 
 The new E2E case copies actual default-setup outside the checkout, excludes prior output, edits its
-manifest name and executable Notes plugin label, then builds and archives through the public CLI.
+manifest name and executable Notes surface label, then builds and archives through the public CLI.
 It borrows the established test toolchain link; it does not claim published-package hermeticity.
 Two actual windows accept the changed frontend, the authenticated dev-reload endpoint retains it,
 and a preference acknowledged in a second settings window survives both operations. Initial test

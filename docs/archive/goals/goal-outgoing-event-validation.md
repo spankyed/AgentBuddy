@@ -5,7 +5,7 @@
 > **Written in session** `34470405-e643-41fb-8244-6a561a0963c5` (Claude Code, 2026-09-18). Resume it with `claude -r 34470405-e643-41fb-8244-6a561a0963c5`.
 
 ```
-# Goal: an event a system sends to a plugin is checked, the way an event a client sends to a system is
+# Goal: an event a system sends to a surface is checked, the way an event a client sends to a system is
 
 Implement docs/goals/goal-outgoing-event-validation.md on a branch cut from master. Read Background,
 Decisions, Open decisions, Phases and Constraints first. Decisions are final: implement them, don't
@@ -18,39 +18,39 @@ template and doc in the same change, and fix forward.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- A system that sends a plugin an event type it does not declare is reported as a SYSTEM_ERROR and the
-  event is dropped, named with the system, the plugin and the type.
+- A system that sends a surface an event type it does not declare is reported as a SYSTEM_ERROR and the
+  event is dropped, named with the system, the surface and the type.
 - The declared types are runtime data generated from the manifest, not a list maintained by hand, and a
-  pack that adds an event to a plugin gets it by rebuilding.
+  pack that adds an event to a surface gets it by rebuilding.
 - `npm run typecheck`; `npm test -w @apackdev/host`; `npm test -w @apackdev/sdk`; `npm test -w @apackdev/cli`;
   `npm test -w @app/default-setup`; `npm run test:external-pack`.
 ```
 
 ## Background
 
-The app checks events **into** systems and nothing checks events **out** to plugins.
+The app checks events **into** systems and nothing checks events **out** to surfaces.
 
 Incoming: the API's `bus.send` delegates to `receiveClientEvent` (`@apackdev/host/bus/client-events.ts`),
 which looks the event's `systemId` up in `registry.getEventValidationMap()` and throws
 `UnknownClientEventError` when the type isn't one that system accepts. The map is built in
 `pack-registration.ts`'s `buildEventValidationMap()` from what each registered system declares.
 
-Outgoing: `emit(pluginId, event)` and `broadcastToPlugin` go to the bus as `OUTGOING` and straight to the
-client sink. Nothing looks at them. A system can send a plugin an event the plugin has no case for, an
+Outgoing: `emit(surfaceId, event)` and `broadcastToSurface` go to the bus as `OUTGOING` and straight to the
+client sink. Nothing looks at them. A system can send a surface an event the surface has no case for, an
 event type that was renamed, or an event whose payload is missing fields the receiving machine assumes.
 
 ### What made this worth writing down
 
-`packages/default-setup`'s notes plugin. `NOTES_CONNECTED` carries `{ notes, settings }`, and the
+`packages/default-setup`'s notes surface. `NOTES_CONNECTED` carries `{ notes, settings }`, and the
 system builds it from its repositories:
 
 ```ts
-const settings = repository.settingsQueries.getPluginSettings('notes');
+const settings = repository.settingsQueries.getSurfaceSettings('notes');
 system.get(bus).send(emit(notes, { type: 'NOTES_CONNECTED', data: { ...connectedData, settings } }));
 ```
 
-`getPluginSettings` returns `undefined` until the Settings row has an entry for the plugin. The frontend
-machine's `setPluginData` assigned the payload straight over a **complete** initial context, so on a
+`getSurfaceSettings` returns `undefined` until the Settings row has an entry for the surface. The frontend
+machine's `setSurfaceData` assigned the payload straight over a **complete** initial context, so on a
 fresh data dir it wrote `undefined` over `settings: { tasklistPanelPosition: 'left', showCollapseIcon:
 false }`, and the next read threw: `panel.vue`'s `s.context.settings.showCollapseIcon` and `canvas.vue`'s
 `notes.value.filter`. Both showed up as console errors in `test:packaged-authoring`'s E2E while its tests
@@ -69,10 +69,10 @@ should not be sold as if it would. Two facts, both checked:
   system declares. It says nothing about `settings` being absent.
 - Outgoing events exist only as types. `packages/default-setup/src/__generated__/events.ts` declares
   `OwnPackEvents` and `PackEvents` and calls `defineEvents<PackEvents, SendableSystemEvents>(systemIds)`
-  — only `systemIds` survives to runtime. There is no runtime list of what a plugin receives.
+  — only `systemIds` survives to runtime. There is no runtime list of what a surface receives.
 
 So this goal closes the **type-name** half of the asymmetry, which is a real class on its own: an event
-renamed on one side, a typo, a send to a plugin whose pack never declared it, a contract entry removed
+renamed on one side, a typo, a send to a surface whose pack never declared it, a contract entry removed
 while a sender still uses it. Today every one of those is silent. The payload half — the half the notes
 bug lives in — is the Open decision below.
 
@@ -86,22 +86,22 @@ goal is to make the class safe rather than to visit its members.
 
 ## Decisions
 
-- **Validate where the bus handles `OUTGOING`**, not inside `emit`/`broadcastToPlugin`. That is the one place
+- **Validate where the bus handles `OUTGOING`**, not inside `emit`/`broadcastToSurface`. That is the one place
   every send passes through, whether it came from a system's action or from `services.emitter`, and it
   mirrors `receiveClientEvent` sitting at the other boundary rather than inside each caller.
 - **Report and drop; never throw.** `receiveClientEvent` throws because it answers an API call. Here the
   caller is a running system, and throwing inside its action takes the system down over a malformed
-  message. Report through `reportError` as a `SYSTEM_ERROR` naming the system, the plugin and the type,
+  message. Report through `reportError` as a `SYSTEM_ERROR` naming the system, the surface and the type,
   and drop the event. This is loud where it matters: `takeSystemErrors` fails any pack test that leaves a
   system error, so a bad send fails the suite while a production app keeps running.
 - **The declared types are generated, not hand-maintained.** `generate-entries` already computes the
-  plugin → event-type map at the type level for `PackEvents`; it emits the same thing as runtime data.
+  surface → event-type map at the type level for `PackEvents`; it emits the same thing as runtime data.
   A hand-kept list is a second place to forget, and this repo has just spent a branch removing that shape.
-- **A pack that declares nothing for a plugin sends nothing to it.** That is already the rule the
-  `sendsTo` gating enforces at build time (`cb749590f`): only the pack that owns a plugin declares what it
+- **A pack that declares nothing for a surface sends nothing to it.** That is already the rule the
+  `sendsTo` gating enforces at build time (`cb749590f`): only the pack that owns a surface declares what it
   receives. This makes the same rule true at runtime.
-- **Host plugins are covered too.** `HOST_PLUGIN_IDS` (`application`) and `HostPluginEvents` declare what
-  the app's own plugins receive; they get an entry in the map like any pack's.
+- **Host surfaces are covered too.** `HOST_SURFACE_IDS` (`application`) and `HostSurfaceEvents` declare what
+  the app's own surfaces receive; they get an entry in the map like any pack's.
 
 ## Open decisions
 
@@ -117,30 +117,30 @@ goal is to make the class safe rather than to visit its members.
 ## Phases
 
 ### Phase 1 — the declared types as runtime data
-- `generate-entries` emits, beside `PackEvents`, a runtime map of plugin id → the event type names that
-  plugin receives, for the pack's own plugins and for every `sendsTo` target it is allowed to reach.
+- `generate-entries` emits, beside `PackEvents`, a runtime map of surface id → the event type names that
+  surface receives, for the pack's own surfaces and for every `sendsTo` target it is allowed to reach.
 - It goes into the pack's registration (`PackRegistration`), the way `systems[].events` carries the
   incoming set today.
 - **Done when:** a rebuilt `packages/default-setup` exports the map; its entries match the `PackEvents`
-  type for the same plugins; a spec in `apack-sdk/tests/build/generate-entries.spec.ts` covers a pack
-  with an own plugin, a `sendsTo` target and a plugin nobody sends to. Mutation: dropping a `sendsTo`
+  type for the same surfaces; a spec in `apack-sdk/tests/build/generate-entries.spec.ts` covers a pack
+  with an own surface, a `sendsTo` target and a surface nobody sends to. Mutation: dropping a `sendsTo`
   target from the manifest removes its entry.
 
 ### Phase 2 — the registry side
 - `createPackRegistry()` gains the outgoing equivalent of `getEventValidationMap()`, built from the
-  registrations and from `HostPluginEvents` for host plugins, cached and dropped on register/unregister
+  registrations and from `HostSurfaceEvents` for host surfaces, cached and dropped on register/unregister
   exactly as the incoming map is.
 - **Done when:** `apack-host/tests/packs/event-validation-map.spec.ts` (or a sibling) covers both maps;
-  registering and unregistering a pack adds and removes its plugins' entries. Mutation: not dropping the
+  registering and unregistering a pack adds and removes its surfaces' entries. Mutation: not dropping the
   cache on unregister fails a spec.
 
 ### Phase 3 — the check
 - The bus checks `OUTGOING` against that map and, on a miss, reports a `SYSTEM_ERROR` naming the system,
-  the plugin and the type, and drops the event.
-- An event for a plugin the map has no entry for is a miss, not a pass: that is the case the notes bug's
+  the surface and the type, and drops the event.
+- An event for a surface the map has no entry for is a miss, not a pass: that is the case the notes bug's
   neighbours live in.
 - **Done when:** `apack-host/tests/bus/` covers a good send delivered, a bad type reported and dropped,
-  and an unknown plugin reported and dropped; a pack test that makes a bad send fails through
+  and an unknown surface reported and dropped; a pack test that makes a bad send fails through
   `takeSystemErrors` without any assertion of its own. Mutation: skipping the check delivers the bad
   event and the spec fails.
 
@@ -170,36 +170,36 @@ registration that had nothing to do with events. The phases were the cheap part.
 | Phase | Status | Evidence |
 |---|---|---|
 | 1 — declared types as runtime data | done | `receivedEventTypes` in `#generated/events`, read by `eventTypesOf`; `apack-sdk/tests/build/generate-entries.spec.ts` |
-| 2 — the registry side | done | `getPluginEventValidationMap()`; `apack-host/tests/packs/event-validation-map.spec.ts` |
+| 2 — the registry side | done | `getSurfaceEventValidationMap()`; `apack-host/tests/packs/event-validation-map.spec.ts` |
 | 3 — the check | done | `bus/machine.ts` reports and drops; `apack-host/tests/bus/outgoing-events.spec.ts` |
-| 4 — the repo's own sends | done | `CLIENT_CONNECTED` on `application` and the host `packs` plugin were real contract gaps, both closed by declaring |
+| 4 — the repo's own sends | done | `CLIENT_CONNECTED` on `application` and the host `packs` surface were real contract gaps, both closed by declaring |
 | 5 — payload schemas | **not started** | Open decision 1 unsettled |
 
 ### What the review found after the phases were "done"
 | Defect | Fix |
 |---|---|
-| Every send from the host `packs` system was dropped — the Packs view stopped updating | `registerHostPlugin` + `PACKS_PLUGIN_EVENT_TYPES`, pinned to the union by a compile-time check (`503cd2cd9`) |
-| Any pack could widen any plugin's accepted events, the host's included | ownership is explicit and the map never overwrites a claimed id (`503cd2cd9`) |
-| A pack built before `receivedEventTypes` had every send dropped | its plugins map to `null` — known, nothing to check against — so its sends pass (`503cd2cd9`) |
-| A dropped send could not distinguish "unknown plugin" from "pack mid-update" | `markPackReplacing`, using `teardownPack`'s existing `replacing` flag (`29c6a5222`) |
-| Reporting a drop produced another droppable send, unbounded | reported once per `(plugin, type)`; the cycle runs through the actor's queue, not the call stack (`50fd094b7`) |
+| Every send from the host `packs` system was dropped — the Packs view stopped updating | `registerHostSurface` + `PACKS_SURFACE_EVENT_TYPES`, pinned to the union by a compile-time check (`503cd2cd9`) |
+| Any pack could widen any surface's accepted events, the host's included | ownership is explicit and the map never overwrites a claimed id (`503cd2cd9`) |
+| A pack built before `receivedEventTypes` had every send dropped | its surfaces map to `null` — known, nothing to check against — so its sends pass (`503cd2cd9`) |
+| A dropped send could not distinguish "unknown surface" from "pack mid-update" | `markPackReplacing`, using `teardownPack`'s existing `replacing` flag (`29c6a5222`) |
+| Reporting a drop produced another droppable send, unbounded | reported once per `(surface, type)`; the cycle runs through the actor's queue, not the call stack (`50fd094b7`) |
 | A drop raised "Something went wrong" at the person using the app | new `diagnostic` severity: logged and recorded, no toast (`4311bf8ef`) |
-| `_meta`, the plugin-visibility key, was treated as a plugin id | excluded, as `checkFeatureSettings` already did (`729727a1e`) |
+| `_meta`, the surface-visibility key, was treated as a surface id | excluded, as `checkFeatureSettings` already did (`729727a1e`) |
 | A drop in an E2E run failed nothing | the fixture fails the test that produced one (`f919b197c`) |
 
 ### Corrections to the Decisions
 - **Cross-pack widening was fixed by non-override, not by refusing the pack.** Throwing at registration
   broke `pack-settings-defaults.spec.ts`, which documents that a pack feature may share an id with
-  another pack's plugin and that settings resolve in the app's favour. Refusing the pack outright is a
+  another pack's surface and that settings resolve in the app's favour. Refusing the pack outright is a
   product change this goal did not ask for; the first owner keeps the id instead.
-- **Plugin ownership reads `features` *and* `receivedEventTypes`, not `features` alone.** A hand-written
+- **Surface ownership reads `features` *and* `receivedEventTypes`, not `features` alone.** A hand-written
   registration may name only one of the two. Non-override is what prevents widening; `features` is what
-  lets a pack that declared no event types still be known to own its plugins.
+  lets a pack that declared no event types still be known to own its surfaces.
 
 ### Open items
 - **Phase 5 / Open decision 1.** Runtime payload schemas. Until then a declared event with a missing
   field passes, which is the class the notes bug belonged to.
-- **`notes/fe/state.ts:723` assigns `settings` unguarded.** Upstream guards with `if (pluginSettings)`
+- **`notes/fe/state.ts:723` assigns `settings` unguarded.** Upstream guards with `if (surfaceSettings)`
   and no reaching path was found; noted, not claimed.
 - **`secrets.spec.ts` E2E fails** reading a 2.6GB LMDB file in the test data dir. Environmental.
 
@@ -214,7 +214,7 @@ throughout went 60s and 15s timeouts to 2.1s and 163ms once the feedback loop wa
   Phase 5 exists they are safe by construction, and until then the receiver-side guard used in
   `707a3c6f9` (`ev.data.x ?? context.x`) is the local fix when one bites.
 - **The notes sender.** The notes system should always send `settings`, defaults included, rather than
-  whatever `getPluginSettings` returns. That is a one-line fix in its own change, not a reason to hold
+  whatever `getSurfaceSettings` returns. That is a one-line fix in its own change, not a reason to hold
   this one.
 
 ## Constraints

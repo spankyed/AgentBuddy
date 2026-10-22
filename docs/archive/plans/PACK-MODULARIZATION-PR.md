@@ -17,12 +17,12 @@ Three architectural layers emerge:
 
 ### 1. Code Extraction & Relocation (~140 commits)
 
-**Renderer** went from ~510 files to 33. All plugin UIs (371 files across 14 plugins), shared design system components (74 files), tiptap editor subsystem (~30 files), and composables/utilities (~16 files) were extracted.
+**Renderer** went from ~510 files to 33. All surface UIs (371 files across 14 surfaces), shared design system components (74 files), tiptap editor subsystem (~30 files), and composables/utilities (~16 files) were extracted.
 
 **API** went from ~350 files to 45. All backend systems (180+ files across 13 systems), services (~50 files), shared EARS modules, migrations, and content were extracted.
 
 **Destinations:**
-- Feature code (systems + plugins) → `default-setup/src/features/<name>/` with colocated `be/` + `fe/` directories
+- Feature code (systems + surfaces) → `default-setup/src/features/<name>/` with colocated `be/` + `fe/` directories
 - Reusable framework APIs → `apack-sdk/src/` (design components, composables, EARS engine, step/block/artifact registries)
 - Cross-cutting extensions → `default-setup/src/extensions/` (steps, blocks, artifacts, tiptap plugins, services)
 - Content (DSL source) → `default-setup/src/content/`
@@ -63,7 +63,7 @@ The `apack.json` manifest is each feature's only configuration: it declares all 
 **Frontend loading:**
 - Custom Vite plugins: `builtInPacksPlugin()` (auto-discovers packs, scoped `@/` aliases) and `hostDepsPlugin()` (shared deps via `window.__apack` global)
 - `pack://` Electron custom protocol with dev-server proxy and path traversal protection
-- Lazy loading with `defineAsyncComponent`, reactive plugin registration
+- Lazy loading with `defineAsyncComponent`, reactive surface registration
 
 **Backend loading:**
 - `tsup.config.ts` with esbuild plugins for pack discovery, virtual module generation, per-pack alias resolution
@@ -91,7 +91,7 @@ Made the step/flow system pluggable: step definitions as structured types with t
 
 ### 7. Bug Fixes (scattered, ~25 commits)
 
-Thread submit handler argument, stale birth thread after db reset, white flash on window load, tiptap suggestion popup guard, negative menu count, duplicate plugin ID warnings, locale-based version comparison, proxy binding fixes, import path corrections.
+Thread submit handler argument, stale birth thread after db reset, white flash on window load, tiptap suggestion popup guard, negative menu count, duplicate surface ID warnings, locale-based version comparison, proxy binding fixes, import path corrections.
 
 ## What Was Intentionally Not Done
 

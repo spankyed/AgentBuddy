@@ -62,7 +62,7 @@ The pack harness (`@apackdev/testing/harness`, on `@apackdev/sdk/testing`) unit-
 
   | Host module | What needs it | Where |
   |---|---|---|
-  | `event-emitter` | `broadcastToPlugin`, `sendToSystem`, `sendToBrainSystem` | `sdk/src/services/index.ts:17-59` |
+  | `event-emitter` | `broadcastToSurface`, `sendToSystem`, `sendToBrainSystem` | `sdk/src/services/index.ts:17-59` |
   | `bus-emitter` (via `initRpc()`) | `rootEvents`, used by the browser, code and logs systems and by `reportStepRuntimeError` | `sdk/src/steps/runtime-errors.ts:31` |
   | `pack-registry` | the `services` proxy | `sdk/src/services/index.ts:99-121` |
   | `system-errors`, `version`, `migrations` | `@apackdev/sdk/utils` | |
@@ -122,7 +122,7 @@ Final.
 5. **Harness API for systems** (`@apackdev/testing/harness`):
    - `const app = await startApp({ systems })` spawns the named registered systems under the test bus; `'*'` spawns all. A bare feature id maps to the pack's bus id (`<packId>.<featureId>`), as `#generated/bus-ids` does.
    - `app.connect()` sends `CLIENT_CONNECTED`. `app.send(systemId, event)` routes like `trpc.bus.send`.
-   - `app.emitted(pluginId?)` lists the recorded outgoing events. `await app.nextEmit(pluginId, type)` waits for one.
+   - `app.emitted(surfaceId?)` lists the recorded outgoing events. `await app.nextEmit(surfaceId, type)` waits for one.
    - `await app.settle()` drains queued actor work and zero-delay raises.
    - The harness stops the app after each test.
 6. **Services.**
@@ -150,7 +150,7 @@ Final.
 10. **Scope.**
     - In: backend systems, services, flows and steps, including dependencies'.
     - Out:
-      - FE plugins, which vitest already covers;
+      - FE surfaces, which vitest already covers;
       - the real CLIs, which stay behind `mockService`, with the gated `_hybrid` integration tests unchanged;
       - persistence (LMDB), which stays in API and host tests.
 
@@ -195,7 +195,7 @@ Both spikes pass, run from the fixture pack's vitest process (in-memory harness 
 - Move `SDK_BRIDGE` and `withHostResolution` into `@apackdev/host/packs`, with `api/src/packs/pack-loader.ts` passing its SDK namespaces.
 - Add the test host modules to `@apackdev/sdk/testing` (Decision 4), plus `entityIds()` and `dropAttribute()`. Run `api:update`.
 
-**Done when:** `bus-client-connected.spec.ts`, the pack-loader and `sdk-bridge-drift` specs and the E2E suite pass unchanged. A `@apackdev/sdk/testing` spec shows `broadcastToPlugin`, `rootEvents` and `reportSystemError` working after `startTestRuntime`.
+**Done when:** `bus-client-connected.spec.ts`, the pack-loader and `sdk-bridge-drift` specs and the E2E suite pass unchanged. A `@apackdev/sdk/testing` spec shows `broadcastToSurface`, `rootEvents` and `reportSystemError` working after `startTestRuntime`.
 
 ### Phase 2 — Systems
 
@@ -258,7 +258,7 @@ Both spikes pass, run from the fixture pack's vitest process (in-memory harness 
 
 ## Deferred
 
-- FE plugin tests on the harness (plugin state machines with the recorded bus as their backend).
+- FE surface tests on the harness (surface state machines with the recorded bus as their backend).
 - Running the real `claude`/`codex` CLIs in harness tests.
 - A persistence-backed tier (LMDB in a temp dir) for packs that test restarts.
 

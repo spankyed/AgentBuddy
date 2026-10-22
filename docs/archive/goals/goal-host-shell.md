@@ -26,7 +26,7 @@ Finished when:
   import of tRPC, `window`, `localStorage`, the toast or the pack loader; the renderer composes it.
 - Outside the renderer's client implementation, no renderer module calls `trpc.bus.*` or `trpc.packs.loaded`.
 - The shell's specs run in @apackdev/host with fakes, and none of them mocks a module.
-- A fixture pack's unit test opens its plugin through the real shell in @apackdev/testing, and the link
+- A fixture pack's unit test opens its surface through the real shell in @apackdev/testing, and the link
   navigation case in tests/e2e/feature-addressing.spec.ts:52 is covered by a unit test on that harness.
 - npm run typecheck, npm run test:unit, npm run build, npm test, npm run test:external-pack and
   npm run test:packaged-authoring pass; npm run api:check and facade:check pass with etc/ committed.
@@ -73,7 +73,7 @@ The clean seams came from the move; they weren't there before it. The backend al
 `packages/renderer/src/core/actors/application.ts` (1,170 lines) is the application actor: the app shell. It is the frontend half of the host `application` feature, whose backend half is `packages/apack-host/src/bus/application-system.ts`. `packages/renderer/src/main.ts:116` creates it as `applicationState`.
 
 It owns seven concerns in one machine:
-- plugins, spawning and selection
+- surfaces, spawning and selection
 - history and breadcrumbs
 - hotkeys
 - panel layout
@@ -97,7 +97,7 @@ Its I/O is imported at module level:
 
 It imports no Vue. `route-trailer.ts`, its other import, is plain XState, and `@apackdev/host` already depends on `xstate`.
 
-Its four specs (`packages/renderer/src/core/actors/__tests__/application-{pack-plugins,shell-state,system-error,pack-loading}.spec.ts`) each `vi.mock('@/core/trpc')` to run it.
+Its four specs (`packages/renderer/src/core/actors/__tests__/application-{pack-surfaces,shell-state,system-error,pack-loading}.spec.ts`) each `vi.mock('@/core/trpc')` to run it.
 
 ### How packs reach the shell
 
@@ -105,14 +105,14 @@ The shell is a de facto public API, and it is untyped:
 
 - **`useApplicationActor(): AnyActorRef`** (`packages/apack-sdk/src/fe/actor-system.ts:9`) returns `inject('applicationActor')!`, which `main.ts:169` provides.
 - **The SDK port** is a second path to the same actor: `FeHostRuntime.application: AnyActorRef` (`packages/apack-sdk/src/runtime/fe-host.ts:33`).
-- **`openPlugin`** (`packages/apack-sdk/src/fe/navigation.ts`) reads `snapshot.context.plugins`, `activePlugin.id` and `defaultToggles.canvas` untyped, and sends `SELECT_PLUGIN` and `DEFAULT_TOGGLE`. It throws for a ref no plugin is registered at, so a link to an external pack's plugin clicked before that pack's frontend has loaded throws rather than opening once it loads (PR #196 review, item 11). The SDK can't tell a pack still loading from a mistyped ref; only the shell knows which pack frontends are still loading, and it already waits for a plugin that way for a popout and for the plugin last open (`pendingPluginId`).
-- **`pluginActor`** (`actor-system.ts:27`) reads `application.system.get(ref)`.
+- **`openSurface`** (`packages/apack-sdk/src/fe/navigation.ts`) reads `snapshot.context.surfaces`, `activeSurface.id` and `defaultToggles.canvas` untyped, and sends `SELECT_SURFACE` and `DEFAULT_TOGGLE`. It throws for a ref no surface is registered at, so a link to an external pack's surface clicked before that pack's frontend has loaded throws rather than opening once it loads (PR #196 review, item 11). The SDK can't tell a pack still loading from a mistyped ref; only the shell knows which pack frontends are still loading, and it already waits for a surface that way for a popout and for the surface last open (`pendingSurfaceId`).
+- **`surfaceActor`** (`actor-system.ts:27`) reads `application.system.get(ref)`.
 
 Pack call sites, all with `state: any` selectors and unchecked sends:
 
 | File | Reads | Sends |
 |---|---|---|
-| `default-setup/src/features/settings/fe/canvas/tabs/PluginsTab.vue` | `context.plugins`, `context.pluginVisibility` | `SET_PLUGIN_VISIBILITY` |
+| `default-setup/src/features/settings/fe/canvas/tabs/SurfacesTab.vue` | `context.surfaces`, `context.surfaceVisibility` | `SET_SURFACE_VISIBILITY` |
 | `default-setup/src/features/code/fe/features/commit/CommitPanel.vue` | | `RESTORE_CHAT` (twice) |
 | `default-setup/src/features/code/fe/features/pull-request/PullRequestPanel.vue` | | `RESTORE_CHAT` (twice) |
 | `default-setup/src/features/code/fe/canvas/QuickOpenPalette.vue` | `context.panelSizes` | |
@@ -121,19 +121,19 @@ Pack call sites, all with `state: any` selectors and unchecked sends:
 | `default-setup/src/extensions/app/Welcome.vue` | | `CLOSE_DEV_LETTER` |
 | `apack-ui/src/components/KeyboardShortcutInput.vue` | | `HOTKEYS_RECORDING_START`/`_END` |
 
-Nothing stops a pack sending the shell's internal events (`BUS_SUBSCRIBED`, `PACK_PLUGINS_UNLOADED`). This breaks the rule in the root CLAUDE.md that no pack code looks up another plugin's actor: a feature offers what others need as composables from its `fe/public.ts`. The host's own plugin is the one exception.
+Nothing stops a pack sending the shell's internal events (`BUS_SUBSCRIBED`, `PACK_SURFACES_UNLOADED`). This breaks the rule in the root CLAUDE.md that no pack code looks up another surface's actor: a feature offers what others need as composables from its `fe/public.ts`. The host's own surface is the one exception.
 
 `LinkBlock.vue`'s `'application'` target is a bare name, and no link data in the repo uses it (`git grep "target: 'application'"` finds only the type at `:32`).
 
 ### Where the renderer uses tRPC
 
-- `bus.send`: the SDK's frontend transport wraps it (`packages/renderer/src/core/fe-host.ts`, `feTransport.sendIncoming`). The shell (`:649`, `:782`), the Packs plugin (`packages/renderer/src/packs/state.ts:98`, `:111`, `:120`, `:150`, `:154`, `:158`) and `packages/renderer/src/packs/pack-install.ts:24` call tRPC directly instead.
+- `bus.send`: the SDK's frontend transport wraps it (`packages/renderer/src/core/fe-host.ts`, `feTransport.sendIncoming`). The shell (`:649`, `:782`), the Packs surface (`packages/renderer/src/packs/state.ts:98`, `:111`, `:120`, `:150`, `:154`, `:158`) and `packages/renderer/src/packs/pack-install.ts:24` call tRPC directly instead.
 - `bus.sub`, `bus.packClientReady` and `packs.loaded`: the shell only.
 - `secrets.*`: already behind the `SecretsClient` port (`packages/renderer/src/core/secrets-client.ts`).
 
 ### Tests
 
-- **Pack frontend tests** bind `startFeTestRuntime` (`packages/apack-sdk/src/testing/fe-runtime.ts:36`), whose shell is `{} as never`. No pack test can exercise `openPlugin`, `navigateToPlugin`, `PluginScope`, or any of the call sites above.
+- **Pack frontend tests** bind `startFeTestRuntime` (`packages/apack-sdk/src/testing/fe-runtime.ts:36`), whose shell is `{} as never`. No pack test can exercise `openSurface`, `navigateToSurface`, `SurfaceScope`, or any of the call sites above.
 - **Environment:** default-setup's unit tests run in `environment: 'node'`, and the renderer's in `jsdom`.
 - **E2E:** 11 files under `tests/e2e` and `packages/apack-testing/src` read `window.applicationState` (`main.ts:130`).
 
@@ -141,8 +141,8 @@ Nothing stops a pack sending the shell's internal events (`BUS_SUBSCRIBED`, `PAC
 
 The user sees no change: no new behaviour and no speed target. The wins are safety for pack authors, testability, and cleaner ownership. Strongest first:
 
-1. **Packs can't break, or be broken by, the shell without a compile error.** Today eight pack components read the shell's state as `any` and can send it any event, internal ones included. Renaming a context field (`panelSizes`, say) breaks the chat panel and `openPlugin` at runtime, with no compile error. With a typed contract checked on both sides, a mismatch fails the typecheck, and external packs get a published API instead of an accident they depend on.
-2. **Pack frontends can be tested without E2E.** Today anything that navigates, opens a plugin or reads shell state can only be tested by launching Electron. A real shell in a `node` test, next to the bus `startApp` runs, turns minutes-long app launches into tests that take seconds. This is the frontend version of `a35120c5f`.
+1. **Packs can't break, or be broken by, the shell without a compile error.** Today eight pack components read the shell's state as `any` and can send it any event, internal ones included. Renaming a context field (`panelSizes`, say) breaks the chat panel and `openSurface` at runtime, with no compile error. With a typed contract checked on both sides, a mismatch fails the typecheck, and external packs get a published API instead of an accident they depend on.
+2. **Pack frontends can be tested without E2E.** Today anything that navigates, opens a surface or reads shell state can only be tested by launching Electron. A real shell in a `node` test, next to the bus `startApp` runs, turns minutes-long app launches into tests that take seconds. This is the frontend version of `a35120c5f`.
 3. **The shell can be tested on its own.** Its I/O is injected and its seven concerns are separate modules, so its specs run on fakes instead of mocking the tRPC module.
 4. **One seam between the frontend and the backend.** `FeClient` and `SecretsClient` replace three ways of talking to the API, so reconnect handling and error reporting live in one place.
 5. **Ownership matches the layer rule.** The host owns both halves of its `application` feature, and the renderer is composition. On its own this is the weakest of the five.
@@ -150,7 +150,7 @@ The user sees no change: no new behaviour and no speed target. The wins are safe
 | Win | Success looks like |
 |---|---|
 | Typed contract | No shell selector typed `any` in pack sources. Removing an event from the machine fails the typecheck, which a mutation check proves. `etc/fe.api.md` shows the shell API and no raw actor. |
-| Pack frontend tests | A fixture pack's `node` unit test opens its plugin and reads shell state. At least one interaction that only E2E covers today moves to a unit test: the link navigation case at `tests/e2e/feature-addressing.spec.ts:52` ("a link to another plugin opens it and hands it the events"). |
+| Pack frontend tests | A fixture pack's `node` unit test opens its surface and reads shell state. At least one interaction that only E2E covers today moves to a unit test: the link navigation case at `tests/e2e/feature-addressing.spec.ts:52` ("a link to another surface opens it and hands it the events"). |
 | Shell testability | The host's shell specs run on fakes with no `vi.mock`. A shell change is verified by the host suite without E2E. |
 | One seam | Only the client implementation calls tRPC for the bus, and reconnect has a test. |
 | No regressions | The E2E suite passes with none of the 11 files that read `window.applicationState` edited for the move. |
@@ -166,11 +166,11 @@ Final.
    - The renderer composes it (`createAppShell`, the counterpart of `createAppBus`) and binds it.
    - `@apackdev/host` stays free of Vue, tRPC and browser globals. Everything else arrives as options (Decisions 3 and 4).
 2. **Packs reach the shell through a typed SDK contract, never its actor.**
-   - `@apackdev/sdk/fe` defines `HostShell`: the state packs may read (plugins, active plugin, plugin visibility, panel sizes, whether the app is onboarding) and the events they may send.
-   - `useShell()` exposes that state and named commands (`restoreChat()`, `resizeCanvas(size)`, `setPluginVisible(ref, visible)`, `startHotkeyRecording()`/`endHotkeyRecording()`, `closeDevLetter()`).
+   - `@apackdev/sdk/fe` defines `HostShell`: the state packs may read (surfaces, active surface, surface visibility, panel sizes, whether the app is onboarding) and the events they may send.
+   - `useShell()` exposes that state and named commands (`restoreChat()`, `resizeCanvas(size)`, `setSurfaceVisible(ref, visible)`, `startHotkeyRecording()`/`endHotkeyRecording()`, `closeDevLetter()`).
    - `useApplicationActor` and the `'applicationActor'` provide are deleted: one path to the shell, the bound port.
-   - `FeHostRuntime.application` is typed against the contract, so `openPlugin`, `pluginActor` and `PluginScope` read it typed.
-   - The shell machine is checked against `HostShell` at compile time, as the backend application system is against `HostPluginEvents`.
+   - `FeHostRuntime.application` is typed against the contract, so `openSurface`, `surfaceActor` and `SurfaceScope` read it typed.
+   - The shell machine is checked against `HostShell` at compile time, as the backend application system is against `HostSurfaceEvents`.
 3. **One frontend client port.** `FeTransport` becomes `FeClient`, covering:
    - sending a message
    - subscribing to messages sent out, and to the connection's lifecycle
@@ -183,28 +183,28 @@ Final.
    - `storage`: saved panel sizes
    - `notify`: toasts and the error page
    - `target`: where the key and mouse listeners attach; with none, none attach
-5. **Split by concern as it moves.** Modules under `packages/apack-host/src/fe/shell/` for plugins and selection, history and breadcrumbs, layout, hotkeys, connection, and pack frontends. A concern that owns a listener or subscription is a child actor.
+5. **Split by concern as it moves.** Modules under `packages/apack-host/src/fe/shell/` for surfaces and selection, history and breadcrumbs, layout, hotkeys, connection, and pack frontends. A concern that owns a listener or subscription is a child actor.
 6. **What stays in the renderer:**
    - the Vue components
    - the composition (`createAppShell`) and the port binding
    - `window.applicationState`, which the E2E fixture reads
    - the machine id `application`, which `#application.*` targets use
-   - the Packs plugin's frontend (Vue, `renderer/src/packs`); only its tRPC sends move onto `FeClient`
-7. **`LinkBlock.vue`'s `target === 'application'` branch is deleted.** A link's target is a plugin's ref or `'external'`. Done in `abb036161`. No migration rewrites stored targets: the only code that made link blocks was removed before the first release, so no released data holds one.
+   - the Packs surface's frontend (Vue, `renderer/src/packs`); only its tRPC sends move onto `FeClient`
+7. **`LinkBlock.vue`'s `target === 'application'` branch is deleted.** A link's target is a surface's ref or `'external'`. Done in `abb036161`. No migration rewrites stored targets: the only code that made link blocks was removed before the first release, so no released data holds one.
 8. **`@apackdev/testing` runs the real shell for pack frontend tests,** over the in-memory bus `startApp` uses. It runs without a DOM (no `target`), so it works in default-setup's `node` environment. `startFeTestRuntime` no longer defaults the shell to `{} as never`.
-9. **Opening a plugin is the shell's command, and it waits for a pack still loading.**
-   - `openPlugin(ref, event?)` sends the shell `OPEN_PLUGIN { plugin, events }` (part of `HostShell`) instead of reading its context and sending it `SELECT_PLUGIN` and `DEFAULT_TOGGLE` itself.
-   - The shell opens a registered plugin and hands its actor the events, as `openPlugin` does today.
-   - For a ref that isn't registered while external pack frontends are still loading (the loaded packs not yet read, or a load running or queued), it parks the request, as it parks `pendingPluginId`, and opens it when that pack's plugins arrive.
-   - Once every pack frontend has settled and the ref still names no plugin, the request is refused through `notify`, naming the ref. A request whose pack is unloaded while it waits is dropped.
-   - `openPlugin` no longer throws for an unregistered ref, since the answer only exists after loading; a ref that isn't `<packId>/<featureId>` at all is still refused at the call.
+9. **Opening a surface is the shell's command, and it waits for a pack still loading.**
+   - `openSurface(ref, event?)` sends the shell `OPEN_SURFACE { surface, events }` (part of `HostShell`) instead of reading its context and sending it `SELECT_SURFACE` and `DEFAULT_TOGGLE` itself.
+   - The shell opens a registered surface and hands its actor the events, as `openSurface` does today.
+   - For a ref that isn't registered while external pack frontends are still loading (the loaded packs not yet read, or a load running or queued), it parks the request, as it parks `pendingSurfaceId`, and opens it when that pack's surfaces arrive.
+   - Once every pack frontend has settled and the ref still names no surface, the request is refused through `notify`, naming the ref. A request whose pack is unloaded while it waits is dropped.
+   - `openSurface` no longer throws for an unregistered ref, since the answer only exists after loading; a ref that isn't `<packId>/<featureId>` at all is still refused at the call.
 
 ## Phases
 
 ### Phase 1 — a typed shell contract (Decisions 2 and 7)
 
 - Add `HostShell` and `useShell()` to `@apackdev/sdk/fe`.
-- Type `FeHostRuntime.application`, `openPlugin` and `pluginActor` against the contract.
+- Type `FeHostRuntime.application`, `openSurface` and `surfaceActor` against the contract.
 - Migrate the 8 call sites in Background, and delete `useApplicationActor` and `main.ts:169`'s provide.
 - Delete `LinkBlock.vue`'s `'application'` branch.
 - With `useApplicationActor` gone, pack code has no path to the actor: `boundFeHost` is exported only from `@apackdev/sdk/runtime/internals`, which isn't published. Keep it that way; `etc/fe.api.md` and `etc/runtime.api.md` record it.
@@ -238,14 +238,14 @@ Final.
 - Build `createShellMachine({ packs, client, packFrontends, storage, notify, target })` in `packages/apack-host/src/fe/shell/`, split per Decision 5, and export it from `@apackdev/host/fe`.
 - The renderer's `createAppShell` composes it with the real implementations, and `main.ts` creates and binds it.
 - Move the four specs to `packages/apack-host/tests/fe/shell/`, running on fakes.
-- Opening a plugin moves into the shell (Decision 9): `OPEN_PLUGIN` joins `HostShell`, `openPlugin` sends it, and the shell parks a request for a plugin whose pack frontend is still loading. Specs, on the fake `packFrontends`: a request made while a pack loads opens its plugin with the events once it arrives; one for a ref no pack provides is refused through `notify` once loading settles; one whose pack unloads while it waits is dropped.
+- Opening a surface moves into the shell (Decision 9): `OPEN_SURFACE` joins `HostShell`, `openSurface` sends it, and the shell parks a request for a surface whose pack frontend is still loading. Specs, on the fake `packFrontends`: a request made while a pack loads opens its surface with the events once it arrives; one for a ref no pack provides is refused through `notify` once loading settles; one whose pack unloads while it waits is dropped.
 - Update `packages/renderer/CLAUDE.md`, `packages/apack-host/CLAUDE.md` and the root CLAUDE.md's layer table.
 
 **Done when:**
 - `packages/renderer/src/core/actors/application.ts` holds no machine.
 - `git grep -E "from ['\"](vue|@)|window\.|localStorage" packages/apack-host/src/fe` matches nothing, with a boundary spec in `packages/apack-host/tests` enforcing it.
 - The host shell specs pass with no `vi.mock`.
-- A link to an external pack's plugin clicked before that pack's frontend loads opens it once it loads (the host shell spec above, and the E2E link case with the pack's load delayed).
+- A link to an external pack's surface clicked before that pack's frontend loads opens it once it loads (the host shell spec above, and the E2E link case with the pack's load delayed).
 - The full E2E suite passes.
 
 **Mutation:** import `localStorage` from a shell module and the boundary spec fails. Make the shell refuse an unregistered ref at once instead of parking it, and the waiting spec fails.
@@ -254,16 +254,16 @@ Final.
 
 - `@apackdev/testing` gains a frontend harness that binds the real shell over the in-memory bus `startApp` runs, with the test pack's frontend registered.
 - `startFeTestRuntime` binds a working shell by default.
-- A fixture pack (`tests/fixtures`) adds a unit test that opens its plugin with `navigateToPlugin` and reads `useShell()` state.
+- A fixture pack (`tests/fixtures`) adds a unit test that opens its surface with `navigateToSurface` and reads `useShell()` state.
 - `packages/apack-testing/CLAUDE.md` documents it.
 
-- Cover the link navigation case at `tests/e2e/feature-addressing.spec.ts:52` with a unit test on the harness: a link block's target opens the plugin and hands it the link's events. Keep the E2E case only if it checks something the unit test can't (rendering, the real window), and say which.
+- Cover the link navigation case at `tests/e2e/feature-addressing.spec.ts:52` with a unit test on the harness: a link block's target opens the surface and hands it the link's events. Keep the E2E case only if it checks something the unit test can't (rendering, the real window), and say which.
 
 **Done when:**
 - The fixture's test passes under `npm run test:external-pack`, and `test:packaged-authoring` still passes.
-- A unit test on the harness covers link navigation, and fails when `openPlugin` stops handing the plugin its events.
+- A unit test on the harness covers link navigation, and fails when `openSurface` stops handing the surface its events.
 
-**Mutation:** make the harness skip spawning plugin actors, and the fixture test fails.
+**Mutation:** make the harness skip spawning surface actors, and the fixture test fails.
 
 ## Outcome (2026-09-22)
 
@@ -275,15 +275,15 @@ All four phases landed, each its own commit, with the full check list passing at
 |---|---|---|
 | 1. Typed shell contract | done, `9d6721a0c` | `HostShell`/`useShell()` in `@apackdev/sdk/fe`; the 8 call sites and the toolbar's context menu migrated; `useApplicationActor` and the `'applicationActor'` provide gone; the shell checked against the contract where it's defined (mutation: dropping `RESTORE_CHAT` fails `satisfiesHostShell`) |
 | 2. One frontend client port | done, `9875869e2` | `FeClient` (`send`) on the SDK port, `ShellClient` in `@apackdev/host/fe`, the renderer's `core/fe-client.ts` the only module calling `trpc.bus`/`trpc.packs`; shell specs on a fake client (mutation: a client dropping sends fails two); `tests/e2e/api-reconnect.spec.ts` kills the API and sees the window resubscribe (mutation: reporting only the first connection fails it) |
-| 3. Move, inject, split | done, `224291e0e` | `createShellMachine` in `packages/apack-host/src/fe/shell/`; `application.ts` holds only `createAppShell`; the four specs in `packages/apack-host/tests/fe/shell/` with no `vi.mock`; `tests/boundaries.spec.ts` guards `src/fe` (mutation: a `localStorage` use fails it); `OPEN_PLUGIN` parks requests (`open-plugin.spec.ts`; mutation: refusing at once fails it) and the fixture pack's `open-while-loading` E2E (mutation: same) |
-| 4. The shell in pack tests | done, `b368a26d5` | `startShell` in `@apackdev/testing/harness`; the fixture's `tests/unit/shell.spec.ts` (mutation: registering plugins without their machines fails two); default-setup's `link-navigation.spec.ts` (mutation: dropping `DELIVER_PLUGIN_EVENTS` fails it) |
+| 3. Move, inject, split | done, `224291e0e` | `createShellMachine` in `packages/apack-host/src/fe/shell/`; `application.ts` holds only `createAppShell`; the four specs in `packages/apack-host/tests/fe/shell/` with no `vi.mock`; `tests/boundaries.spec.ts` guards `src/fe` (mutation: a `localStorage` use fails it); `OPEN_SURFACE` parks requests (`open-surface.spec.ts`; mutation: refusing at once fails it) and the fixture pack's `open-while-loading` E2E (mutation: same) |
+| 4. The shell in pack tests | done, `b368a26d5` | `startShell` in `@apackdev/testing/harness`; the fixture's `tests/unit/shell.spec.ts` (mutation: registering surfaces without their machines fails two); default-setup's `link-navigation.spec.ts` (mutation: dropping `DELIVER_SURFACE_EVENTS` fails it) |
 
 ### Conventional choices
 
-- **Phase 1:** `useShell()` gives the state as read-only refs kept current while the calling scope lives; `HostShellEvent` held `SELECT_PLUGIN` and `DEFAULT_TOGGLE` until Phase 3 replaced them with `OPEN_PLUGIN`, and `defaultToggles` left the readable state with them. `PluginEvent` moved into `shell.ts`, so the contract doesn't pull in `navigation.ts` (and its `window.electronAPI`) wherever the SDK port is typed.
-- **Phase 2:** `FeClient` in the SDK has only `send`; what only the shell reads (`subscribe`, `packClientReady`, `loadedPacks`, `describeConnection`) is `ShellClient` in `@apackdev/host/fe`, because the loaded packs are a host type (`LoadedPackEntry`) and packs never read them. `fePacks` moved to `core/fe-packs.ts`, so importing the shell or the pack loader no longer opens the API client. Pack install sends with the SDK's `sendToSystem`, as the Packs plugin already did.
-- **Phase 3:** the machine takes `packs` (the window's registry) for the plugins it starts with and its default, so its input keeps only `initialPluginId` and `ownsLastActivePlugin`. `OPEN_PLUGIN` delivers the plugin's events with a send to itself rather than a raise, so they arrive after the selection has settled, as `openPlugin`'s did. Once loading settles the shell refuses a parked request whether or not the read of the loaded packs succeeded. `app-extensions.ts` takes its component type from the SDK instead of `vue`, so `src/fe` names no Vue at all.
-- **Phase 4:** `startShell` takes plugins as state machines by feature id, connects at once, loads no external pack frontends, stores nothing, and records what it would tell the user as `notices`; messages sent while it starts are held until it subscribes. `TestShell.actor` is typed `HostShell`, because published declarations name no `@apackdev/host` type. The delayed-load E2E uses disabling and re-enabling the pack: `/dev/reload` replaces only a pack's backend, so its frontend never unloads.
+- **Phase 1:** `useShell()` gives the state as read-only refs kept current while the calling scope lives; `HostShellEvent` held `SELECT_SURFACE` and `DEFAULT_TOGGLE` until Phase 3 replaced them with `OPEN_SURFACE`, and `defaultToggles` left the readable state with them. `SurfaceEvent` moved into `shell.ts`, so the contract doesn't pull in `navigation.ts` (and its `window.electronAPI`) wherever the SDK port is typed.
+- **Phase 2:** `FeClient` in the SDK has only `send`; what only the shell reads (`subscribe`, `packClientReady`, `loadedPacks`, `describeConnection`) is `ShellClient` in `@apackdev/host/fe`, because the loaded packs are a host type (`LoadedPackEntry`) and packs never read them. `fePacks` moved to `core/fe-packs.ts`, so importing the shell or the pack loader no longer opens the API client. Pack install sends with the SDK's `sendToSystem`, as the Packs surface already did.
+- **Phase 3:** the machine takes `packs` (the window's registry) for the surfaces it starts with and its default, so its input keeps only `initialSurfaceId` and `ownsLastActiveSurface`. `OPEN_SURFACE` delivers the surface's events with a send to itself rather than a raise, so they arrive after the selection has settled, as `openSurface`'s did. Once loading settles the shell refuses a parked request whether or not the read of the loaded packs succeeded. `app-extensions.ts` takes its component type from the SDK instead of `vue`, so `src/fe` names no Vue at all.
+- **Phase 4:** `startShell` takes surfaces as state machines by feature id, connects at once, loads no external pack frontends, stores nothing, and records what it would tell the user as `notices`; messages sent while it starts are held until it subscribes. `TestShell.actor` is typed `HostShell`, because published declarations name no `@apackdev/host` type. The delayed-load E2E uses disabling and re-enabling the pack: `/dev/reload` replaces only a pack's backend, so its frontend never unloads.
 
 ### Corrections to the Decisions
 
@@ -300,7 +300,7 @@ All four phases landed, each its own commit, with the full check list passing at
 
 ## Deferred
 
-- **Moving the Packs plugin's frontend (`renderer/src/packs`) into the host.** It is Vue components and state; only its sends change (Phase 2).
+- **Moving the Packs surface's frontend (`renderer/src/packs`) into the host.** It is Vue components and state; only its sends change (Phase 2).
 - **Mounting pack Vue components in pack unit tests.** Phase 4 exercises machines, navigation and `useShell()` state, not rendering.
 - **A client other than Electron.** `FeClient` makes one possible; nothing here builds one.
 

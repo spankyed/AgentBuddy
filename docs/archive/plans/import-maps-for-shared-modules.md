@@ -14,7 +14,7 @@
 >   package's `/@fs/…` source alike. With no route, the plan's security section has no subject: there is no
 >   allow-list to get wrong because there is nothing to serve.
 > - **`apack run` needed a fix the plan did not foresee.** Vite appends `importAnalysisPlugin` *after* the
->   user's `post` plugins and rewrites an external to `/@id/<specifier>`, which the browser resolves against
+>   user's `post` surfaces and rewrites an external to `/@id/<specifier>`, which the browser resolves against
 >   the module's own `pack://` URL and asks the pack's dev server for — and that server left the specifier
 >   external and has nothing to answer with. `keepExternalsBarePlugin` undoes it in the response, the only
 >   hook that runs after, and the only path that matters since `pack://` proxies HTTP.
@@ -70,7 +70,7 @@ It also has two defects nobody has hit:
 And its failure mode is a `console.warn` plus an `undefined` (`warnMissing`), where ESM would refuse at link
 time naming the export.
 
-**The alternative is a web standard.** An import map lets the pack keep `import { usePlugin } from
+**The alternative is a web standard.** An import map lets the pack keep `import { useSurface } from
 '@apackdev/sdk/fe'` **as written and external**, and the browser resolves it to the host's module. Nothing
 needs to know the names, because `export * from` does not.
 
@@ -258,7 +258,7 @@ has no server, so the map's targets are relative `file://` URLs.
 ### 1. The host's side
 
 Generate the shims and the map from the three shared lists, in the renderer's config beside the
-`host-deps` plugin that is being replaced. Keep `window.__apack` in place for this step, so nothing breaks
+`host-deps` surface that is being replaced. Keep `window.__apack` in place for this step, so nothing breaks
 while both exist.
 
 ### 2. The pack's side
@@ -289,7 +289,7 @@ name), so delete it in the same change.
 ## Verification
 
 - **The spike's four checks** above, which decide whether the rest happens.
-- `npm run spec -- fe-bundler` for the plugin's suites, and `npm run chain` for the rest.
+- `npm run spec -- fe-bundler` for the surface's suites, and `npm run chain` for the rest.
 - **The fixture pack's frontend actually loading**, in both modes. `npm run start` covers the dev half:
   since `goal-one-kind-of-pack`'s phase 3 the renderer's dev server serves every pack in the tree from
   source, `tests/packs/external-pack` included, and `repo-checks`' `dev-pack-hmr.integration.spec.ts` holds

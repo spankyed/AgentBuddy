@@ -80,7 +80,7 @@ proof of a current failure nor proof that the failure was subsequently fixed.
 | Reference metadata, parsing and picker categories | **Implemented, awaiting final acceptance.** `20ab75efe` migrates editor consumers/provider scopes; `c776d1c5d` preserves wire identity without metadata. | Reconfirm delayed/missing catalog delivery and source-free discovery; categories must start no providers. Actual queries/navigation still require eligible bindings and disposed provider scopes. Entity destination redesign belongs to Phase 4. |
 | Live editor contribution composition | **Implemented, awaiting final acceptance.** `8863043a6` adds accepted-change subscriptions and generation-checked replacement. | Local real-window acceptance passes in `d1c38bc58`: existing Tiptap activation/removal preserves draft/selection/update count, and the cold Monaco case covers typed replacement and shared lifetime. Retain these cases for final all-kind acceptance; compiler frontend reuse/removal remains separate. |
 | Step palettes, styles, defaults, layout and backend metadata | **Implemented, awaiting final acceptance.** `76df2f0e5` migrates frontend readers; `71fad4013` backend defaults; `8ec5285ed` trigger/build declarations; `f7d63434c` update eligibility. | Include authored and native steps, inactive metadata, external runtime paths and stale binding refusal in final acceptance. Keep actual flow execution bound to its accepted runtime lifetime. |
-| Shell navigation/default selection | **Default/dispatch and navigation metadata implemented.** `cfcbb53f9` moves toolbar/menu/keyboard inventories, labels, order and visibility to declarations and removes backend runtime visibility copies. `69860e4be` selects defaults from declarations, uses checked owner/build/runtime plugin bindings for new navigation/delivery, preserves native host availability and reconciles frontend-before-frame ordering. The runtime default selector is removed. | Complete loader coordination cleanup and final real-window navigation acceptance. Preserve saved/popout/explicit precedence, unknown/disabled/loading/failed distinctions, actor-event readiness and stale completion refusal. `wantsDefaultPlugin` still records user intent; `pendingPluginId` and request queues retain actual readiness work. |
+| Shell navigation/default selection | **Default/dispatch and navigation metadata implemented.** `cfcbb53f9` moves toolbar/menu/keyboard inventories, labels, order and visibility to declarations and removes backend runtime visibility copies. `69860e4be` selects defaults from declarations, uses checked owner/build/runtime surface bindings for new navigation/delivery, preserves native host availability and reconciles frontend-before-frame ordering. The runtime default selector is removed. | Complete loader coordination cleanup and final real-window navigation acceptance. Preserve saved/popout/explicit precedence, unknown/disabled/loading/failed distinctions, actor-event readiness and stale completion refusal. `wantsDefaultSurface` still records user intent; `pendingSurfaceId` and request queues retain actual readiness work. |
 | Declared slash-command listing | **Implemented, awaiting final acceptance.** `ff48438cd` projects native/installed/source commands through the common catalog in stable admission order. SDK execution selection matches enabled declarations to accepted runtime identities; the old command store is removed. Chat subscribes to catalog changes and retains user-content/runtime notifications. | Include this metadata/eligibility split in final all-kind acceptance. Focused checks cover poisoned source-free inspection, inactive/stale/build-replaced owners, collisions, ordering, real pack refresh and actor stop. User-document precedence and user.command flow dispatch remain unchanged. |
 | Block and artifact metadata | **Consumer checkpoint implemented.** `3e4e10c8f` publishes native/installed/source metadata; `a278d4116` adds checked frontend bindings and scoped catalog readers, migrating thread icons, input kinds and components together. Mounted views follow independent catalog/binding changes and refuse stale implementations. Backend transcript callbacks remain execution. | Finish the all-kind audit, including backend/native fields and superseded metadata readers. Active low-level registries retain runtime lookup lifetimes; do not count them as static discovery. Keep source-free installed inspection and ownership/readiness checks in final acceptance. |
 | DSL/editor assistance | **Implemented, awaiting final acceptance.** `8ed188046` publishes compiled text and `39e48e66e` / `eb7d0995b` migrate SDK/Monaco to static catalog data with shared owned libraries and live replacement/removal. The frontend registration/store, generated raw module and staged-import resolver are removed. `07d544606` supplies offline Monaco. | Real worker/cold-document/window acceptance passes in `d1c38bc58`: source-free disabled metadata arrives after document opening, actual completions/diagnostics follow replacement/removal, typed drafts/models/selections survive, and libraries remain until their final consumer releases them. [Window evidence](../references/evidence/settings-and-pack-contracts.md#real-cold-monaco-worker-and-editor-lifetimes-2026-10-17). Retain the existing producer, prefix-policy and deterministic-build evidence for final all-kind acceptance. Five-build publication/refusal/recovery/reuse/removal is locally accepted in `3913fe196`; it compares publishable bytes separately from invocation metadata and has a measured 120s scenario exception. [DSL evidence](../references/evidence/settings-and-pack-contracts.md#dsl-reuse-identity-and-measured-five-build-acceptance-2026-10-17). Preserve final B6/all-kind acceptance. |
@@ -130,7 +130,7 @@ compiler input/lifetime requirements or final all-kind acceptance.
 | `features` membership | Manifest/native keyed features; backend and frontend admission | Both admit against declarations; the native backend nested checks below are implemented. |
 | `features.*.designation` | Feature declaration; runtime designation lookup is execution | Native parity repaired in `b268fac86`: changed/added/omitted claims refuse atomically; fixtures retain declarations, including explicit candidate admission before role replacement. Authored backend and shared frontend already compare it. |
 | `features.*.system.machine` | Authored `system.entry`; executable machine remains activation | Implemented in `774b0844c`: compiled event contracts declare endpoint presence independently of machine bindings. Native composition may bind only the systems it runs; every bound endpoint must match. No UI pane is invented for the shell inbox. |
-| `features.*.system.receives`, `features.*.plugin.receives` | Generated contract event names; backend validation maps consume running bindings | Implemented in `774b0844c`: generated JSON feeds the snapshot, source harness and generated entries; native composition supplies the same static contract. Catalog/CLI inspection imports no pack modules. Admission captures effective receive sets instead of rereading mutable registration arrays. Uncompiled source previews explicitly report unavailable contracts. |
+| `features.*.system.receives`, `features.*.surface.receives` | Generated contract event names; backend validation maps consume running bindings | Implemented in `774b0844c`: generated JSON feeds the snapshot, source harness and generated entries; native composition supplies the same static contract. Catalog/CLI inspection imports no pack modules. Admission captures effective receive sets instead of rereading mutable registration arrays. Uncompiled source previews explicitly report unavailable contracts. |
 | `features.*.services`, top-level `services`, `repositories` | Manifest/native named targets; `apiBindingProblem` checks ownership and membership | Implemented names/owners; constructing objects and calling methods remain execution. Phase 6 owns consumed API enforcement. Verify source-free inspection and collision acceptance rather than replace their runtime stores. |
 | `consumes.services` (declarations only) | Qualified provider/service refs, canonical SDK baseline and normalized direct ownership | Declaration/codegen foundation `1a0de64fb`; catalog retains native/source/disabled installed requests without activation. A2 admission/diagnostics `558b42220` and A3 runtime/type filtering/lifetimes `cccc12d5d` are implemented; `bb6df4a45` removes the ambient service value and binds attributed action access. There is no duplicate runtime consumption inventory. |
 | `settings`, `features.*.settings` | Inline schema/defaults; shared catalog projection and binding equality | Implemented. Retain disabled/failed-owner definitions and current policy semantics in final acceptance. |
@@ -142,15 +142,15 @@ compiler input/lifetime requirements or final all-kind acceptance.
 | `artifacts`, `blocks` (both registrations) | Snapshot/native declarations; frontend checked components; backend authored membership/kind/facet checks | Implemented in `be5a9344b`: native and authored backends share identity, block-kind and backend-facet membership checks before authority/publication. Frontend facets are refused on the backend; native metadata remains after unload. Runtime callbacks remain executable bindings. |
 | `contentWriters`, `appliers` | Authored `content.writers` and `content.sources`; compiled content index | Implemented in `2e1701fad`: native content declares owned writers and explicit applier sources; native/authored backend admission shares exact binding checks and writer ownership validation. Explicit native import remains executable; automatic application still requires an installed build directory. Keep final all-kind/lifetime acceptance separate from this checkpoint. |
 | `commands` | Native/authored keyed metadata and catalog order; runtime selection checks accepted identity | Implemented; preserve document-command precedence and global dispatch behavior. |
-| `features.*.plugin` (frontend) | Plugin declaration plus compiled destination claims; checked binding/catalog eligibility | Implemented. Backend inbox metadata is a separate transport concern; the host application actor has an inbox without a contributed sidebar pane. |
+| `features.*.surface` (frontend) | Surface declaration plus compiled destination claims; checked binding/catalog eligibility | Implemented. Backend inbox metadata is a separate transport concern; the host application actor has an inbox without a contributed sidebar pane. |
 | `features.*.references` | Declared type/category metadata and checked provider/icon bindings | Implemented; no navigation callbacks. Provider results remain executable. |
 | `features.*.settingsForm`, `settingsForms` | Declared custom-form targets and owner settings | Implemented checked components and scoped failure boundaries. |
-| `features.*.designation`, `features.*.default` (frontend) | Feature designation and plugin default annotation | Implemented shared native/authored comparison; do not restore runtime discovery tables. |
+| `features.*.designation`, `features.*.default` (frontend) | Feature designation and surface default annotation | Implemented shared native/authored comparison; do not restore runtime discovery tables. |
 | `tiptapPlugins` | Named group/member targets and catalog metadata | Implemented checked extension names, popup membership and predicate presence; running editor extensions remains execution. |
 | `appExtensions` | Named targets and checked components | Implemented metadata; shared slot selection retains existing composition policy. |
 
 Other authored/static surfaces remain part of the same audit: help's built documents, DSL's compiled
-definitions, compiled-content indexes/flow edges, public type facades, source formats, plugin component
+definitions, compiled-content indexes/flow edges, public type facades, source formats, surface component
 targets, frontend entry/CSS and lazy chunks. Snapshots carry declarations/compiled data; the installed
 asset receipt verifies shipped files. Do not treat module target strings alone as proof that a required
 asset is present, or an unavailable source-only projection as an empty compiled inventory. Existing
@@ -312,7 +312,7 @@ membership, ownership refusals, explicit application and cleanup/rollback. Nativ
 final all-kind and lifetime acceptance remain required.
 
 Endpoint checkpoint contract: compiled `eventContracts` is keyed by local feature ID. A system records
-`{ incoming: string[], outgoing: string[] }`; a plugin records `{ receives: string[] }` (its own system's
+`{ incoming: string[], outgoing: string[] }`; a surface records `{ receives: string[] }` (its own system's
 outgoing events plus its declared inbox). Shared SDK lifecycle events remain implicit in the protocol
 and are added when deriving effective receive sets. The producer reads declared TypeScript contracts,
 never pack modules; manifest `system.events.incoming` remains an explicit routing addition. Generated
@@ -350,7 +350,7 @@ icon names or asset references rather than Vue component objects. Publish genera
 requiring readers to execute their source modules.
 
 The author declares a fact once. Codegen derives the descriptor and runtime binding from that declaration;
-do not copy labels/defaults into both a plugin object and a manifest. Where metadata currently comes from
+do not copy labels/defaults into both a surface object and a manifest. Where metadata currently comes from
 executable exports, move its authoring location to data rather than try to evaluate arbitrary functions
 at discovery time. A typed source definition can remain build input only if its descriptor is generated
 before installation and there is no independent runtime account of the same metadata.
@@ -376,7 +376,7 @@ Use one general catalog-change subscription for data consumers. The Help system 
 not PACK_CHANGED activation events; settings follows the same catalog through its existing projection.
 Prove readable help with poisoned executable entries, disabled packs and atomic invalid updates, then
 verify actual help navigation and source/built authoring. This checkpoint does not replace the required
-plugin/step/reference/editor/hook metadata and frontend binding work.
+surface/step/reference/editor/hook metadata and frontend binding work.
 
 ### A catalog separate from running implementations
 
@@ -397,8 +397,8 @@ Keep stored overrides and other user data outside the catalog.
 
 ### Authoritative declarations and checked binding
 
-The validated backend/content checkpoint checks backend feature identities, designation values, system/plugin
-presence, plugin default visibility, per-feature service names, and the aggregate provided-service and
+The validated backend/content checkpoint checks backend feature identities, designation values, system/surface
+presence, surface default visibility, per-feature service names, and the aggregate provided-service and
 repository names against the accepted manifest. Both installed loading and direct origin-bearing
 registration perform this check before registry mutation, catalog publication or settings authority
 binding. A matching declaration stamp alone did not enforce this membership. Installed test builds
@@ -406,14 +406,14 @@ must declare the contributions they actually bind; do not infer manifest facts b
 
 The integration gate confirmed a facet mismatch in the testing harness: content-only runtimes were
 adapted into full backend registrations. Settle two explicit operations instead. Backend registration
-binds the manifest's systems, plugins, roles and services. Content registration binds only the generated
+binds the manifest's systems, surfaces, roles and services. Content registration binds only the generated
 content runtime's own entities, relations, repositories and writers, with optional declared appliers;
 it activates no actors and claims no backend services. Both retain the same accepted declaration identity,
 owner and catalog data, and share registry collision, rollback and teardown machinery. Do not add a
 skip-validation flag or manufacture missing actors. Move the producer's `ContentRuntime` contract to
 SDK framework ownership, remove the harness's fake backend-registration assembly, and check content
 identity/membership through a separate registry operation. Backend integration fixtures must also declare
-their hand-written systems/plugins rather than adding them only in test setup.
+their hand-written systems/surfaces rather than adding them only in test setup.
 
 The next working extension checks backend entity/relation values, writer/applier identities, step,
 artifact and block type membership, command names/placeholders, migration lines/targets, and hook-module
@@ -488,8 +488,8 @@ from the settings catalog instead. Keep settings revision/subscription behavior,
 declaration changes rather than register/unregister. Activation alone must not remove defaults or change
 effective settings. Enablement/visibility policy is separate, as specified in the settings plan.
 
-`packages/renderer/src/views/settings/canvas/tabs/FeaturesTab.vue` filters `allPlugins` by
-`plugin.settings`. Replace that list with declared settings owners, including features without a plugin.
+`packages/renderer/src/views/settings/canvas/tabs/FeaturesTab.vue` filters `allSurfaces` by
+`surface.settings`. Replace that list with declared settings owners, including features without a surface.
 Resolve a custom component through the executable binding only when rendering it; show unavailable forms
 without hiding the declaration. Move `application/be/system.ts`'s default visibility read off the runtime
 settings store too. Keep the settings service, override storage, write correlation and live change delivery;
@@ -518,8 +518,8 @@ its use as the source of discoverable metadata.
 ### Shell: separate known navigation from frontend readiness
 
 Checkpoint `69860e4be` moves default selection and destination eligibility to the catalog. The host
-and window share plugin projection; local native host declarations are available before a connection.
-Checked plugin bindings retain the captured declaration and accepted backend build/runtime identity.
+and window share surface projection; local native host declarations are available before a connection.
+Checked surface bindings retain the captured declaration and accepted backend build/runtime identity.
 The first-registered default table and its SDK lookup are removed. Enabled native default claims
 precede installed claims, then fully qualified feature refs sort in English lexical order, independent
 of frontend delivery. A saved selection, popout target or explicit navigation wins over the default.
@@ -533,13 +533,13 @@ are released on shell stop. Native host Settings remains accessible while extern
 or disconnect. These are checked implementation claims; final goal acceptance remains outstanding.
 
 Remaining: move sidebar/menu inventories, labels, declared visibility and navigation order to metadata,
-joining readiness for actual rendering. `context.plugins` remains the active implementation/actor
-inventory. Keep `wantsDefaultPlugin` while it records unresolved initial user intent, and pending work
+joining readiness for actual rendering. `context.surfaces` remains the active implementation/actor
+inventory. Keep `wantsDefaultSurface` while it records unresolved initial user intent, and pending work
 while it waits for an actor; remove only superseded discovery responsibilities.
 
 Inspection correction: `features/application/fe/pack-frontends.ts` already emits explicit
 `PACK_FRONTENDS_SETTLED.failedPacks`, uses cancellation, and preserves incumbents after failed candidate
-loads. It does not report failed imports as a successful empty plugin array. Preserve that behavior;
+loads. It does not report failed imports as a successful empty surface array. Preserve that behavior;
 do not reimplement the nonexistent overloaded-result defect. Audit remaining load/retry/unload
 coordination for extraction from navigation state, retaining revision, cancellation and readiness
 ownership. The shell must not maintain another contribution metadata inventory.
@@ -570,7 +570,7 @@ feature modules. `default-setup/src/extensions/tiptap/useReferenceItems.ts` then
 `useItems()` when the picker mounts. Generate data descriptors separately from navigation/provider
 bindings; move category/icon readers to the catalog; parse stored targets independently of metadata. Initialize providers only for actual item
 queries, with explicit lifetime/disposal, rather than to list categories. Audit `reference-config.ts`,
-`ReferenceSuggestionPopup.vue` and `reference-suggestion-plugin.ts` together. Dependency-scoped generated
+`ReferenceSuggestionPopup.vue` and `reference-suggestion-surface.ts` together. Dependency-scoped generated
 contracts remain useful; do not replace them with an untyped global provider search.
 
 Step/artifact/block palettes and DSL/editor readers need the same split. Preserve execution-facing
@@ -602,8 +602,8 @@ and migration/content execution order. Move static ownership checks earlier with
 runtime bindings necessarily match the build.
 
 Keep `packClientReady` and the bus's client readiness handshake until an actual replacement guarantees
-that startup messages arrive after actors exist. Knowing a plugin's contract does not make its actor
-ready, and does not authorize a connection to claim that plugin. Do not widen event routing from active
+that startup messages arrive after actors exist. Knowing a surface's contract does not make its actor
+ready, and does not authorize a connection to claim that surface. Do not widen event routing from active
 bindings to all catalog entries. Catalog initialization itself also needs an explicit ready/error state;
 an unread catalog is not an empty inventory.
 
@@ -633,7 +633,7 @@ not become a second coordination layer alongside the old shell actions.
 3. **Extend the snapshot descriptor.** Resolve facade terminology and required-facade diagnostics from
    the absorbed [facade goal](../goals/goal-defs-naming.md) in this checkpoint. Add the necessary
    static metadata and asset indexes, deriving them
-   from declarations. Start with plugin navigation, reference types and anonymous editor contribution lists.
+   from declarations. Start with surface navigation, reference types and anonymous editor contribution lists.
    Materialize help/step metadata and API/lifecycle contracts until the inventory has no executable reads.
 4. **Extend checked binding and freshness before switching readers.** Audit watch/codegen/snapshot
    invalidation with [dev-loop freshness](../../goals/goal-dev-loop-freshness.md). For each added kind,

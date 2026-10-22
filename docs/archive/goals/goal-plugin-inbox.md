@@ -6,7 +6,7 @@
 > **Written in session** `c9f31de2-e94c-46ea-a2ac-2898390dc27d` (Claude Code, 2026-09-22). Resume it with `claude -r c9f31de2-e94c-46ea-a2ac-2898390dc27d`.
 
 ```
-# Goal: a plugin declares what it accepts, so `sendsTo` and the hand-written cross-feature plumbing go away
+# Goal: a surface declares what it accepts, so `sendsTo` and the hand-written cross-feature plumbing go away
 
 Implement docs/goals/goal-plugin-inbox.md, at or after bec339ea7 — the base its Background was
 re-surveyed at, which is the merge of goal-settings-to-host.md.
@@ -14,7 +14,7 @@ Before Phase 1, confirm the base: packages/apack-sdk/src/build/generate-entries.
 packages/apack-sdk/src/build/manifest-schema.ts, packages/apack-sdk/src/events/index.ts,
 packages/apack-sdk/src/framework/define-system.ts, packages/apack-host/src/packs/registry.ts,
 packages/apack-host/src/bus/machine.ts, packages/apack-host/src/features/registration.ts and
-packages/default-setup/src/features/plugin-handle.ts exist at HEAD, and that
+packages/default-setup/src/features/surface-handle.ts exist at HEAD, and that
 packages/default-setup/src/features/settings/ does NOT (goal-settings-to-host moved it). If any of that
 is wrong, stop and say so — the plan was surveyed somewhere else.
 Phase 2 is a verification slot: its work landed in goal-settings-to-host. Check it, record the one
@@ -32,20 +32,20 @@ Finished when:
   mutation-checked.
 - `sendsTo` no longer appears in packages/apack-sdk/src/build/manifest-schema.ts, in
   apack.schema.json, in any apack.json in the repo, or in generate-entries.ts.
-- `receivedEventTypes` and the `sendsTo` target loop are gone from generate-entries.ts; a plugin's
+- `receivedEventTypes` and the `sendsTo` target loop are gone from generate-entries.ts; a surface's
   `receives` comes from its own declaration.
-- A plugin declares the inbox other plugins may send it (`pluginAccepts()`), and only that declared half
-  reaches a dependent's facade (`PackPluginEvents`); what a feature's own system sends its own plugin stays
+- A surface declares the inbox other surfaces may send it (`surfaceAccepts()`), and only that declared half
+  reaches a dependent's facade (`PackSurfaceEvents`); what a feature's own system sends its own surface stays
   between the two halves.
-- A generated `events.ts` spells its dependency plugins `Qualified<'<dep>', __dep_<dep>_PackPluginEvents>`
-  with no `Pick<>`, matching the systems line; `SendablePluginEvents` is gone from the facade barrel.
-- `broadcastToPlugin` is the backend send and `sendToPlugin` the renderer one; no module exports both
+- A generated `events.ts` spells its dependency surfaces `Qualified<'<dep>', __dep_<dep>_PackSurfaceEvents>`
+  with no `Pick<>`, matching the systems line; `SendableSurfaceEvents` is gone from the facade barrel.
+- `broadcastToSurface` is the backend send and `sendToSurface` the renderer one; no module exports both
   meanings under one name; the delivery-scope difference is documented in @apackdev/sdk and pinned by a spec.
-- The renderer send is typed from the target's declared inbox, and so is `navigateToPlugin`, which hands its
+- The renderer send is typed from the target's declared inbox, and so is `navigateToSurface`, which hands its
   events to the same actor. It is not runtime-checked: the trimmed scope dropped the FE validation map, and
   `Message` carries no sender, so a map could not tell one audience from the other anyway.
-- `usePluginSettings` and `currentPluginSettings` no longer exist.
-- packages/default-setup/src/features/plugin-handle.ts is deleted, or the doc records under Outcome why
+- `useSurfaceSettings` and `currentSurfaceSettings` no longer exist.
+- packages/default-setup/src/features/surface-handle.ts is deleted, or the doc records under Outcome why
   it survived and what still binds it.
 - `npm start` boots the dev app clean — the acceptance test for the manifest change (Decision 15).
 - npm run typecheck, npm run schema:check, npm run generate:schema -w @apackdev/sdk (clean), api:check
@@ -72,19 +72,19 @@ Never:
   metadata.
 - change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
-- keep `sendsTo` alive "for the audit trail", or add a `plugin.sendsTo` to replace it (Decision 2).
+- keep `sendsTo` alive "for the audit trail", or add a `surface.sendsTo` to replace it (Decision 2).
 - give the renderer send a second name in a second module (the rejected `#generated/fe` split).
-- put a plugin's machine state type into the facade (Decision 4 carries event unions only).
-- keep `SendablePluginEvents` as an alias of `PackPluginEvents` (Decision 4: it is a swap).
+- put a surface's machine state type into the facade (Decision 4 carries event unions only).
+- keep `SendableSurfaceEvents` as an alias of `PackSurfaceEvents` (Decision 4: it is a swap).
 - bump PACK_SNAPSHOT_FORMAT or write a friendlier error for the removed `sendsTo` key (Decision 15:
   there are no external packs and no users; a clean `npm start` is the acceptance test).
-- migrate the host's hand-written `plugin: { receives: … }` to `definePlugin` (Decision 14: the host has
+- migrate the host's hand-written `surface: { receives: … }` to `defineSurface` (Decision 14: the host has
   no manifest and no codegen to read one).
 - build `useMySettings`/`updateMySettings` or any settings composable — that work landed in
   goal-settings-to-host and Phase 2 only verifies it (Decision 8).
 - fix `FeatureSettingsUpdated.settings` being `unknown` — it is goal-settings-to-host's Decision 7, and
   belongs to that goal (Decision 8); record it, don't do it.
-- split `defineSystem` into `Public`/`Internal` (the goal was trimmed to the plugin half; the system-side
+- split `defineSystem` into `Public`/`Internal` (the goal was trimmed to the surface half; the system-side
   leak is recorded under Deferred).
 - make a validation map audience-aware — `Message` has no sender, so it cannot be (Decision 18).
 ```
@@ -92,16 +92,16 @@ Never:
 ## Background (surveyed 2026-09-22 at 6d0633ad4; re-verified at bec339ea7, the goal-settings-to-host merge)
 
 > **Re-verified after `goal-settings-to-host.md` merged (#199).** Six counts in the first survey were stale
-> and are corrected below: `sendsTo` has four users, not two, and two of them target host plugins;
+> and are corrected below: `sendsTo` has four users, not two, and two of them target host surfaces;
 > `sendsTo` reaches 26 files, not 20; `fe/public.ts` is 7 files, not 8; the cross-feature edge graph is 16
-> edges, not ~27, and feature→feature is 4, not 13; 14 plugin entries are in the annotation form, not 15.
-> `sendToPlugin`'s ~534 occurrences are unchanged. What that goal did and didn't do for this one is
+> edges, not ~27, and feature→feature is 4, not 13; 14 surface entries are in the annotation form, not 15.
+> `sendToSurface`'s ~534 occurrences are unchanged. What that goal did and didn't do for this one is
 > Decision 8.
 
 > Line numbers in `features/application/fe/machine.ts` were re-checked at `c947ed32b`, which changed that file
 > after this was surveyed. Every other citation here still points where it says.
 
-### A system declares its contract; a plugin declares nothing
+### A system declares its contract; a surface declares nothing
 
 A backend system says what it accepts and what it sends:
 
@@ -109,12 +109,12 @@ A backend system says what it accepts and what it sends:
 defineSystem<Incoming | Internal, Outgoing>()
 ```
 
-A frontend plugin says neither. `PluginDefinition` (`packages/apack-sdk/src/fe/plugin.ts`) carries `id`,
-`label`, `icon`, `state`, `canvas`, `panel` — no event contract. So codegen answers "what may plugin P
+A frontend surface says neither. `SurfaceDefinition` (`packages/apack-sdk/src/fe/surface.ts`) carries `id`,
+`label`, `icon`, `state`, `canvas`, `panel` — no event contract. So codegen answers "what may surface P
 receive?" by inverting the question: find every system that sends to P, union their outgoing types.
 
 That edge is not derivable from the source. A system's outgoing union is a flat list of event types; the
-target is a runtime argument (`broadcastToPlugin(to, event)`). Nothing in the code says which plugin each event
+target is a runtime argument (`broadcastToSurface(to, event)`). Nothing in the code says which surface each event
 goes to. **`sendsTo` is the manifest field that supplies the missing edge**, and it exists only because the
 receiver never declared itself.
 
@@ -125,12 +125,12 @@ receiver never declared itself.
 3. `packages/apack-sdk/src/build/generate-entries.ts`:
    - `sentEventTypes(feature)` reads a system's outgoing union off its spec through the TypeScript API
      (`module-exports.ts`, `outgoingEventTypesOf`);
-   - `receivedEventTypes(pluginId)` unions every sender — the plugin's own feature's system, plus every
+   - `receivedEventTypes(surfaceId)` unions every sender — the surface's own feature's system, plus every
      system whose `sendsTo` names it;
-   - line ~540 writes `plugin: { receives: [...] }` into `src/__generated__/pack-entry.ts` (runtime strings);
+   - line ~540 writes `surface: { receives: [...] }` into `src/__generated__/pack-entry.ts` (runtime strings);
    - lines ~830–890 write the types into `src/__generated__/events.ts`.
-4. `packages/apack-host/src/packs/registry.ts` — `getPluginEventValidationMap()` turns each registration's
-   `plugin.receives` into `Map<pluginRef, PluginEventTypes>`.
+4. `packages/apack-host/src/packs/registry.ts` — `getSurfaceEventValidationMap()` turns each registration's
+   `surface.receives` into `Map<surfaceRef, SurfaceEventTypes>`.
 5. `packages/apack-host/src/bus/machine.ts:144` — the `notify` action checks every `OUTGOING` against that
    map, drops a miss and reports `reportError({ severity: 'diagnostic' })`.
 
@@ -138,10 +138,10 @@ receiver never declared itself.
 
 In `generate-entries.ts`'s target loop:
 
-- **naming an own plugin → `addSender(target, feature)`**: that plugin's inbox gains the naming system's
+- **naming an own surface → `addSender(target, feature)`**: that surface's inbox gains the naming system's
   *entire* outgoing union. Widening.
-- **naming a dependency's plugin → `depTargets`**: produces
-  `Qualified<'dep', Pick<__dep_SendablePluginEvents, 'logs'>>`. A capability grant, no widening; the loop
+- **naming a dependency's surface → `depTargets`**: produces
+  `Qualified<'dep', Pick<__dep_SendableSurfaceEvents, 'logs'>>`. A capability grant, no widening; the loop
   refuses a target whose owner declares no events for it.
 
 ### What that costs
@@ -150,26 +150,26 @@ Generated today (`packages/default-setup/src/__generated__/events.ts`,
 `tests/fixtures/external-pack/src/__generated__/events.ts`):
 
 ```ts
-export type OwnPluginEvents = { 'flows': __events_flows | __events_actions; ... };
+export type OwnSurfaceEvents = { 'flows': __events_flows | __events_actions; ... };
 
 QualifiedSystemEvents = Qualified<'e2e-fixture', PackSystemEvents>
                       & Qualified<'default-setup', __dep_default_setup_PackSystemEvents>
                       & HostSystemEvents;                                   // no gate, whole map
 
-QualifiedPluginEvents = Qualified<'e2e-fixture', OwnPluginEvents>
-                      & Qualified<'default-setup', Pick<__dep_default_setup_SendablePluginEvents, 'logs'>>;
+QualifiedSurfaceEvents = Qualified<'e2e-fixture', OwnSurfaceEvents>
+                      & Qualified<'default-setup', Pick<__dep_default_setup_SendableSurfaceEvents, 'logs'>>;
 ```
 
 - **Coarse.** A sender's whole outgoing union enters the target's inbox. If the actions system sends ten
   event types and one reaches `flows`, `flows` accepts all ten — in the types and in the runtime map.
 - **Couples receiver to sender.** Adding an event to the actions system's outgoing union silently widens
   `flows`' contract without touching `flows`.
-- **No plugin→plugin.** The derivation filters on `f.system`; plugins have no outgoing declaration, so
-  plugin-to-plugin edges yield nothing. That is why `packages/default-setup/src/features/actions/fe/public.ts`
+- **No surface→surface.** The derivation filters on `f.system`; surfaces have no outgoing declaration, so
+  surface-to-surface edges yield nothing. That is why `packages/default-setup/src/features/actions/fe/public.ts`
   hand-writes `export type ActionsListEvent = Extract<ActionsEvents, { type: 'ACTION.DELETE' | ... }>`.
 - **Cross-pack needs a grant** because there is no contract to trust — hence the `Pick` and the refusal.
   Systems need neither.
-- **A plugin with no system is unaddressable.** `receivingPlugins()` keys on `f.system && f.plugin`.
+- **A surface with no system is unaddressable.** `receivingSurfaces()` keys on `f.system && f.surface`.
 
 ### The renderer half is missing
 
@@ -181,22 +181,22 @@ function sendIncoming(message) {                                     // sendToSy
   else if (_isHostBound()) boundHost().transport.rootEvents.emitIncoming(message);
 }
 
-export function broadcastToPlugin(to, event) {                            // no renderer branch
-  boundHost().transport.rootEvents.emitPluginSend({ to, event });
+export function broadcastToSurface(to, event) {                            // no renderer branch
+  boundHost().transport.rootEvents.emitSurfaceSend({ to, event });
 }
 ```
 
-`sendToSystem` is one function with two transports. `broadcastToPlugin` is backend-only; no pack frontend calls
-it. The asymmetry is specific to plugins: there is one backend, so both `sendToSystem` transports reach the
-same actor, while a plugin exists once per window.
+`sendToSystem` is one function with two transports. `broadcastToSurface` is backend-only; no pack frontend calls
+it. The asymmetry is specific to surfaces: there is one backend, so both `sendToSystem` transports reach the
+same actor, while a surface exists once per window.
 
-A backend `broadcastToPlugin` reaches **every** window. The app already pays for this:
+A backend `broadcastToSurface` reaches **every** window. The app already pays for this:
 
 ```ts
 // packages/apack-host/src/features/application/fe/connection.ts:17
-sendBack((event.type === 'OPEN_PLUGIN' ? { ...event, type: 'OPEN_PLUGIN_FROM_APP' } : event))
+sendBack((event.type === 'OPEN_SURFACE' ? { ...event, type: 'OPEN_SURFACE_FROM_APP' } : event))
 // packages/apack-host/src/features/application/fe/machine.ts:525
-OPEN_PLUGIN_FROM_APP: { guard: 'isMainWindow', actions: 'openPluginFromApp' },
+OPEN_SURFACE_FROM_APP: { guard: 'isMainWindow', actions: 'openSurfaceFromApp' },
 ```
 
 The event is renamed on arrival and guarded, or every popout navigates. The fan-out was invisible in the
@@ -204,26 +204,26 @@ name.
 
 ### The pack-local workaround that grew in the gap
 
-`packages/default-setup/src/features/plugin-handle.ts` is a module-scope singleton per feature, bound by
-each plugin machine's `entry` action, with no unbind:
+`packages/default-setup/src/features/surface-handle.ts` is a module-scope singleton per feature, bound by
+each surface machine's `entry` action, with no unbind:
 
 ```ts
-export function pluginHandle<T extends AnyActorRef = AnyActorRef>(feature: string) {
+export function surfaceHandle<T extends AnyActorRef = AnyActorRef>(feature: string) {
   let actor: T | undefined
-  return { bind(self) { actor = self as T }, get() { if (!actor) throw new Error(`The ${feature} plugin isn't running`); return actor } }
+  return { bind(self) { actor = self as T }, get() { if (!actor) throw new Error(`The ${feature} surface isn't running`); return actor } }
 }
 ```
 
 Eight features declare one in `fe/public.ts` (settings, library, notes, threads, actions, prompts, brain,
 flows); `check:specifiers`' `findCrossFeatureImports` makes `fe/public.ts` the only door between features.
-~27 files consume one. It duplicates a registry that already exists — the shell spawns every plugin actor
+~27 files consume one. It duplicates a registry that already exists — the shell spawns every surface actor
 with `systemId` its ref, reachable as `boundFeHost().application.system.get(ref)` — and is strictly worse:
 no unbind (a reloaded pack leaves a stale actor), it throws rather than reporting "not running yet", and
-being module-scope it cannot cross a pack boundary. `usePlugin()`'s docblock states the policy it works
-around: *"Another plugin's state is that plugin's to expose, not a lookup away."*
+being module-scope it cannot cross a pack boundary. `useSurface()`'s docblock states the policy it works
+around: *"Another surface's state is that surface's to expose, not a lookup away."*
 
 Its heaviest consumers are `src/extensions/**` (13 of ~27: artifact viewers, tiptap command items, step
-forms) — host-rendered outside any `PluginScope`, where `usePlugin()` is unavailable.
+forms) — host-rendered outside any `SurfaceScope`, where `useSurface()` is unavailable.
 
 ### Most cross-feature edges are not cross-feature
 
@@ -231,10 +231,10 @@ The 13 feature→feature edges, sorted by what they want:
 
 | want | edges | note |
 |---|---|---|
-| my own settings, read/write | ~5 | `usePluginSettings<CodeSettings>('code')` in `features/code/...` — the `code` feature reading its own settings out of the settings plugin's actor, untyped, while `code/fe/state.ts` already receives `FEATURE_SETTINGS_UPDATED`. Ten features receive it. `browser` does the same with `'browser'`. |
+| my own settings, read/write | ~5 | `useSurfaceSettings<CodeSettings>('code')` in `features/code/...` — the `code` feature reading its own settings out of the settings surface's actor, untyped, while `code/fe/state.ts` already receives `FEATURE_SETTINGS_UPDATED`. Ten features receive it. `browser` does the same with `'browser'`. |
 | app-wide general settings | ~4 | `useGeneralSettings` |
-| command another plugin | ~6 | `selectArtifact`, `approveTodoList`, `rejectTodoList`, `sendToActionsPlugin`, `sendToPromptsPlugin`, `selectFlow` |
-| read another plugin's live state | ~8 | `useCurrentThread`, `useSlashCommands`, `useChatStateOverrides`, `useRootFlowId`, `useRunningRootFlowId`, … |
+| command another surface | ~6 | `selectArtifact`, `approveTodoList`, `rejectTodoList`, `sendToActionsSurface`, `sendToPromptsSurface`, `selectFlow` |
+| read another surface's live state | ~8 | `useCurrentThread`, `useSlashCommands`, `useChatStateOverrides`, `useRootFlowId`, `useRunningRootFlowId`, … |
 | entity lists | ~4 | `useNotes`, `useActionsList`, `usePromptsList` — `useActionsList` exposes `page`/`totalPages`/`loadingMore`, another feature's paging state |
 
 `settings` is 8 of the 13 and mostly is not communication at all.
@@ -275,11 +275,11 @@ The host is the one place that keeps the two apart, by hand
 (`packages/apack-host/src/features/registration.ts:55`):
 
 ```ts
-[featureIdOf(HOST.settings)]: { …, plugin: { receives: [...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] } },
+[featureIdOf(HOST.settings)]: { …, surface: { receives: [...SETTINGS_SURFACE_EVENT_TYPES, ...HOST_SURFACE_EVENT_TYPES['host/settings']] } },
 ```
 
-with `HostPluginEvents` documented as *"what a pack may name"* and `PACKS_PLUGIN_EVENT_TYPES` marked *"Not
-part of `HostPluginEvents`"* (`:26`). The **distinction** is right and is the precedent for Decision 1; the
+with `HostSurfaceEvents` documented as *"what a pack may name"* and `PACKS_SURFACE_EVENT_TYPES` marked *"Not
+part of `HostSurfaceEvents`"* (`:26`). The **distinction** is right and is the precedent for Decision 1; the
 **mechanism** is not something to copy — three hand-maintained lists per host feature, joined by a manual
 spread that nothing checks, and a runtime `receives` that is the flat union anyway.
 
@@ -287,13 +287,13 @@ spread that nothing checks, and a runtime `receives` that is the flat union anyw
 
 | path | typed | checked at runtime |
 |---|---|---|
-| backend send → bus → plugin | yes | **yes** — `getPluginEventValidationMap()`, drop + `diagnostic` (`bus/machine.ts:150`) |
+| backend send → bus → surface | yes | **yes** — `getSurfaceEventValidationMap()`, drop + `diagnostic` (`bus/machine.ts:150`) |
 | renderer `system.get(ref).send(…)` | no | **no** — nothing observes it |
-| renderer `broadcastToPlugin` (this goal) | yes | yes, once Decision 18 lands; nothing today |
+| renderer `broadcastToSurface` (this goal) | yes | yes, once Decision 18 lands; nothing today |
 
 The middle row is XState's own API, not a hole this goal opens: `system` is a property of every `ActorRef`
 and a member of `UnifiedArg`, which `ActionArgs` extends, so it is reachable from any action and from
-anything `usePlugin()` returns. `useShell().plugins` enumerates every registered plugin's ref. Neither the
+anything `useSurface()` returns. `useShell().surfaces` enumerates every registered surface's ref. Neither the
 old `sendsTo` nor the new declaration changes that; see Decision 2.
 
 **And a runtime check can never tell one audience from the other**, because the envelope has no sender
@@ -304,23 +304,23 @@ export interface Message { to: string; event: { type: string; [key: string]: unk
 ```
 
 So the two-audience split of Decision 1 is enforceable in types only, and the validation maps stay one flat
-union per plugin. Their job is "does this plugin handle this event at all", not "is this sender allowed to
+union per surface. Their job is "does this surface handle this event at all", not "is this sender allowed to
 send it" — Decision 18 says so where it specifies the check.
 
 ### Checked before planning (2026-09-22)
 
-- **`definePlugin<Incoming>()` is feasible by the same mechanism systems use.** `outgoingEventTypesOf`
+- **`defineSurface<Incoming>()` is feasible by the same mechanism systems use.** `outgoingEventTypesOf`
   reads the *type* of a module's default export and pulls a phantom property off it —
-  `propertyType(spec, '_outgoing')` — rather than parsing source. A plugin declaration carrying its inbox
+  `propertyType(spec, '_outgoing')` — rather than parsing source. A surface declaration carrying its inbox
   the same way is read the same way.
-- **The host already declares a plugin inbox by hand** (`features/registration.ts:50`), so the shape is
+- **The host already declares a surface inbox by hand** (`features/registration.ts:50`), so the shape is
   proven in this codebase; packs are the odd ones out. See Decision 14.
 - **Phase 5 is scope-neutral.** Each window is its own renderer with its own module graph, so
-  `pluginHandle`'s module-scope actor is already window-local. A renderer `broadcastToPlugin` preserves today's
-  delivery exactly rather than changing it. `spawnPluginActors` loops `context.plugins`
-  (`features/application/fe/machine.ts:377`), so a popout spawns every registered plugin and there is no
-  "target not spawned" hole; `ownsLastActivePlugin` only decides who records and acts on navigation.
-- **`sendsTo` has four users**, and two target host plugins — so the `hostTargets` branch Phase 3 deletes
+  `surfaceHandle`'s module-scope actor is already window-local. A renderer `broadcastToSurface` preserves today's
+  delivery exactly rather than changing it. `spawnSurfaceActors` loops `context.surfaces`
+  (`features/application/fe/machine.ts:377`), so a popout spawns every registered surface and there is no
+  "target not spawned" hole; `ownsLastActiveSurface` only decides who records and acts on navigation.
+- **`sendsTo` has four users**, and two target host surfaces — so the `hostTargets` branch Phase 3 deletes
   is live code, not a hypothetical:
   ```
   default-setup  threads → host/application
@@ -336,11 +336,11 @@ send it" — Decision 18 says so where it specifies the check.
   ```
   Feature→feature is down to 4 from 13, because every settings edge went with
   `goal-settings-to-host`. So the residue Open decision 1 is about is **mostly an extensions problem** —
-  which is the original reason `pluginHandle` exists: `src/extensions/**` renders outside any
-  `PluginScope`, where `usePlugin()` is unavailable.
+  which is the original reason `surfaceHandle` exists: `src/extensions/**` renders outside any
+  `SurfaceScope`, where `useSurface()` is unavailable.
 - **`fe/public.ts` is 7 files** (`actions`, `brain`, `flows`, `library`, `notes`, `prompts`, `threads`), each
-  still declaring a `pluginHandle`.
-- **14 plugin entries are in the annotation form**, and `definePlugin` is a free name (0 occurrences).
+  still declaring a `surfaceHandle`.
+- **14 surface entries are in the annotation form**, and `defineSurface` is a free name (0 occurrences).
 - **`outgoingEventsType` does not exist** in `manifest-schema.ts` or codegen, despite being named in
   `goal-manifest-redesign.md` — that doc was corrected on 2026-09-22.
 
@@ -350,11 +350,11 @@ send it" — Decision 18 says so where it specifies the check.
   bundler has no notion of dependency packs. Cross-pack frontend access can only be host-mediated at
   runtime and typed through the facade.
 - The facade (`generatePackTypes()` in `generate-entries.ts`) is a five-line barrel exporting exactly six
-  things — `PackEntityShapes`, `PackStepNodes`, `PackSystemEvents`, `SendablePluginEvents`, `Repositories`,
+  things — `PackEntityShapes`, `PackStepNodes`, `PackSystemEvents`, `SendableSurfaceEvents`, `Repositories`,
   `Services`. All backend. `facadeProblems` (`packages/apack-cli/src/build/facade-gate.ts`) requires the
   bundled facade to type-check standalone importing only `@apackdev/*`, SDK peers and Node builtins.
   default-setup's is already 5273 lines.
-- `tests/fixtures/external-pack` does no cross-pack frontend access today; its plugins use `usePlugin()`
+- `tests/fixtures/external-pack` does no cross-pack frontend access today; its surfaces use `useSurface()`
   for their own actor only. The cross-pack half is greenfield.
 - Related but separate: `docs/goals/goal-pack-frontend-isolation.md` covers keeping a pack's
   frontend away from `window.electronAPI`, the host API client and the app DOM. It does not overlap this
@@ -364,19 +364,19 @@ send it" — Decision 18 says so where it specifies the check.
   annotations; it was updated on 2026-09-22 to drop it and to point here. Deleting `sendsTo` first means
   that goal's schema work is written once. Nothing else in the two overlaps.
 - `sendsTo` is used by exactly two features today — `actions.system` (`["flows"]`) and `settings.system`
-  (`["host/application"]`). Once it is gone, `threads.plugin.default` is the only non-`entry` annotation
+  (`["host/application"]`). Once it is gone, `threads.surface.default` is the only non-`entry` annotation
   left in default-setup's manifest.
 
 ## Decisions
 
 Final.
 
-1. **A plugin declares its inbox, in two parts.** `definePlugin<Public, Internal>()` on the plugin entry,
+1. **A surface declares its inbox, in two parts.** `defineSurface<Public, Internal>()` on the surface entry,
    read by codegen the way `defineSystem`'s spec already is (a phantom property off the default export's
    type). `Public` is what any pack may send it; `Internal` is what its own feature's system sends it and
    never leaves the pack. With no type parameters the inbox defaults to its own feature's system's outgoing
    union as `Internal` — today's behaviour for the common case, so no feature gains work it didn't have.
-   `receivedEventTypes` and `sentEventTypes`-for-receivers are deleted; `plugin: { receives: [...] }` comes
+   `receivedEventTypes` and `sentEventTypes`-for-receivers are deleted; `surface: { receives: [...] }` comes
    from the declaration.
 
    The split is what stops a declaration from publishing every internal event as cross-pack API — the leak
@@ -385,17 +385,17 @@ Final.
 
    | map | contents | who may send |
    |---|---|---|
-   | `OwnPluginEvents` → the pack's own sends | `Public \| Internal` | the pack owns both halves, so nothing that compiles today stops compiling |
-   | `PackPluginEvents` → the facade | `Public` only | a dependent gets the contract, not the internals |
+   | `OwnSurfaceEvents` → the pack's own sends | `Public \| Internal` | the pack owns both halves, so nothing that compiles today stops compiling |
+   | `PackSurfaceEvents` → the facade | `Public` only | a dependent gets the contract, not the internals |
 
    Codegen must tell **"declared nothing"** from **"declared `never`"**: the system side already collapses
    an empty declaration (`if (declared.flags & ts.TypeFlags.Never) return []`), so a `never` default on the
    type parameter would make "inherit my system's outgoing" and "accept nothing" identical. Use the absence
    of the phantom property as the signal, not its value.
 
-2. **`sendsTo` is deleted from the manifest**, both jobs with it. No widening: a plugin's inbox is its own.
+2. **`sendsTo` is deleted from the manifest**, both jobs with it. No widening: a surface's inbox is its own.
    No grant: the declaration takes over what `sendsTo` governed, exactly as it already does for systems,
-   which take the whole `PackSystemEvents` of a dependency with no gate. Do not add `plugin.sendsTo` or
+   which take the whole `PackSystemEvents` of a dependency with no gate. Do not add `surface.sendsTo` or
    hoist `sendsTo` to the feature — both keep the inverse index alive.
 
    **What the declaration governs is types and the validation maps — not access.** It is not a boundary
@@ -403,8 +403,8 @@ Final.
    (`UnifiedArg`, which `ActionArgs` extends), so any pack has always been able to write
 
    ```ts
-   const mine = usePlugin()                        // @apackdev/sdk/fe
-   const ref  = useShell().plugins[0].id           // every registered plugin, by ref
+   const mine = useSurface()                        // @apackdev/sdk/fe
+   const ref  = useShell().surfaces[0].id           // every registered surface, by ref
    mine.system.get(ref)?.send({ type: 'ANYTHING' })
    ```
 
@@ -414,40 +414,40 @@ Final.
    as keeping a pack frontend away from `window.electronAPI`; don't attempt it here.
 
    What this does give up is the coarse audit trail in `apack.json` ("this feature talks to that one").
-   That list was never complete — every plugin→plugin edge was already invisible to it — and both buses
+   That list was never complete — every surface→surface edge was already invisible to it — and both buses
    still validate every send they carry, against a tighter map than before (Decision 18).
 
-3. **`PackPluginEvents` mirrors `PackSystemEvents`.** Codegen emits it from the declarations, and
-   `QualifiedPluginEvents` becomes `Qualified<'<dep>', __dep_<dep>_PackPluginEvents>` — no `Pick`, the same
+3. **`PackSurfaceEvents` mirrors `PackSystemEvents`.** Codegen emits it from the declarations, and
+   `QualifiedSurfaceEvents` becomes `Qualified<'<dep>', __dep_<dep>_PackSurfaceEvents>` — no `Pick`, the same
    shape as the systems line.
 
-4. **`PackPluginEvents` replaces `SendablePluginEvents` in the facade.** It is a swap, not a seventh
-   export: `SendablePluginEvents` exists to carry a *derived* inbox, and a declared one makes it dead
+4. **`PackSurfaceEvents` replaces `SendableSurfaceEvents` in the facade.** It is a swap, not a seventh
+   export: `SendableSurfaceEvents` exists to carry a *derived* inbox, and a declared one makes it dead
    weight. Drop it from `generatePackTypes()` rather than keeping it as an alias — there are no external
    packs and no users, so nothing is owed a transition. Event unions of string-literal-tagged objects
-   only; a plugin's machine state type never enters the facade.
+   only; a surface's machine state type never enters the facade.
 
    The facade is already 5273 lines for default-setup and `facadeProblems` requires it to type-check
    standalone, so Phase 1's probe still runs — the risk is size and the gate, not compatibility.
 
 5. **The two sends get independent names.**
-   - `broadcastToPlugin(ref, event)` — backend. Over the bus, reaching every window showing that plugin.
-   - `broadcastToPlugin(ref, event)` — renderer. This window's actor, directly.
+   - `broadcastToSurface(ref, event)` — backend. Over the bus, reaching every window showing that surface.
+   - `broadcastToSurface(ref, event)` — renderer. This window's actor, directly.
 
-   The scope lives in the verb, because scope is what bit the app (`OPEN_PLUGIN_FROM_APP`). `broadcastToPlugin`
-   keeps the literal reading and matches what "plugin" already means in the renderer, where `usePlugin()`
+   The scope lives in the verb, because scope is what bit the app (`OPEN_SURFACE_FROM_APP`). `broadcastToSurface`
+   keeps the literal reading and matches what "surface" already means in the renderer, where `useSurface()`
    hands back this window's actor. The reuse is not silent: the backend export stops offering
-   `broadcastToPlugin`, so every existing backend call fails to compile rather than quietly changing scope.
+   `broadcastToSurface`, so every existing backend call fails to compile rather than quietly changing scope.
    `sendToSystem` is unchanged — one backend, both transports reach the same actor.
 
-   Rejected: `notifyPlugin`/`broadcastToPlugin` (reads well, leaves the fan-out invisible — the original
-   mistake); `broadcastToPlugin`/`tellPlugin` (breaks the `…ToPlugin` shape); a single name with an object
+   Rejected: `notifySurface`/`broadcastToSurface` (reads well, leaves the fan-out invisible — the original
+   mistake); `broadcastToSurface`/`tellSurface` (breaks the `…ToSurface` shape); a single name with an object
    target (`{ everyWindow: ref }`) — real house precedent in `sendToSystem({ role })`, but the backend can
    only fan out, so its every call would carry the object form as noise.
 
-6. **The renderer `broadcastToPlugin` reuses the shell's existing not-yet-loaded policy** rather than inventing a
+6. **The renderer `broadcastToSurface` reuses the shell's existing not-yet-loaded policy** rather than inventing a
    second one: queue while the target pack's frontend is loading, report through `notify` once loading has
-   settled with no such plugin (`features/application/fe/machine.ts`, `openPlugin`).
+   settled with no such surface (`features/application/fe/machine.ts`, `openSurface`).
 
 7. **The delivery-scope difference is contract, not folklore.** It is written into the SDK doc comments for
    both functions and into `packages/apack-sdk`'s docs, and pinned by a spec that fails if a backend send
@@ -456,17 +456,17 @@ Final.
 8. **A feature's machine reads its own settings from its own context. Done by `goal-settings-to-host.md`.**
 
    This decision first proposed `useMySettings()` / `updateMySettings()` as the API for it. **Those names were
-   wrong** and are not to be built: a composable cannot serve a machine action — `currentPluginSettings('browser')`
+   wrong** and are not to be built: a composable cannot serve a machine action — `currentSurfaceSettings('browser')`
    was called inside `actions: ({ event }) => …`, where there is no Vue scope — and a machine needs no API at all,
    because the feature already has the data in its own context. `goal-settings-to-host` settled it, and its result
    is the shape to keep:
 
    ```ts
-   // features/browser/fe/state.ts:323 — was currentPluginSettings<…>('browser')?.openLinksInApp
+   // features/browser/fe/state.ts:323 — was currentSurfaceSettings<…>('browser')?.openLinksInApp
    actions: ({ context, event }) => { if (context.settings.openLinksInApp ?? true) { … } }
    ```
 
-   `usePluginSettings` and `currentPluginSettings` no longer exist as pack API; `browser` handles
+   `useSurfaceSettings` and `currentSurfaceSettings` no longer exist as pack API; `browser` handles
    `FEATURE_SETTINGS_UPDATED` like the other nine features; writes go through `services.settings`.
 
    A machine needs no API; a component does, and `goal-settings-to-host` shipped one — `@apackdev/sdk/fe`'s
@@ -488,7 +488,7 @@ Final.
    the plumbing around it can. What leaves: the handle, the `bind` action, the `Extract<>` event unions and
    the six sender wrappers. What stays: the selectors, until Open decision 1 settles.
 
-10. **`plugin-handle.ts` is deleted as a consequence, not as a goal.** It goes when nothing binds it. If
+10. **`surface-handle.ts` is deleted as a consequence, not as a goal.** It goes when nothing binds it. If
     something still does after Phase 5, the Outcome records what and why rather than forcing it.
 
 11. **Order: reduce the demand before building supply — and it already happened.**
@@ -497,44 +497,44 @@ Final.
     own-settings pattern as cross-pack API. What remains (Open decision 1) is measured against 16 edges, not
     27, and 12 of those 16 are extensions.
 
-12. **The plugin entry is declared with `satisfies`, never annotated.** `outgoingEventTypesOf`
+12. **The surface entry is declared with `satisfies`, never annotated.** `outgoingEventTypesOf`
     (`packages/apack-sdk/src/build/module-exports.ts`) already throws a specific error when a system entry
     is written `const entry: SystemEntry = {…}`, because the annotation erases the spec's event types and
-    the map would silently come up short. `definePlugin<Incoming>()` inherits that trap exactly. Mirror the
-    error text, and mirror `packages/apack-cli/tests/build/facade-gate-system-entry.spec.ts` for plugins.
+    the map would silently come up short. `defineSurface<Incoming>()` inherits that trap exactly. Mirror the
+    error text, and mirror `packages/apack-cli/tests/build/facade-gate-system-entry.spec.ts` for surfaces.
 
-    **Every plugin entry in the repo is in the annotation form today** — 15 of 15, in `default-setup` and
+    **Every surface entry in the repo is in the annotation form today** — 15 of 15, in `default-setup` and
     both fixture packs:
     ```ts
-    const notesPlugin: PluginDefinition = { label, icon, state, canvas, panel, settings };
-    export default notesPlugin;
+    const notesSurface: SurfaceDefinition = { label, icon, state, canvas, panel, settings };
+    export default notesSurface;
     ```
-    So Phase 3 rewrites all 15, not only the ones that gain an inbox. The two that gain one (the plugins
+    So Phase 3 rewrites all 15, not only the ones that gain an inbox. The two that gain one (the surfaces
     `actions` and `settings` reach today through `sendsTo`, plus whichever Phase 5 migrates) differ from
     the rest only by a type argument. `apack add feature`'s scaffold and `docs/public-facing/features.md`
     emit the annotation form and change with them.
 
-13. **A declaration composes with the SDK-wide plugin events, it doesn't repeat them.**
-    `PLUGIN_EVENT_TYPES` (`FEATURE_SETTINGS_UPDATED`) is taken by every plugin, and the bus already falls
+13. **A declaration composes with the SDK-wide surface events, it doesn't repeat them.**
+    `SURFACE_EVENT_TYPES` (`FEATURE_SETTINGS_UPDATED`) is taken by every surface, and the bus already falls
     through to it (`bus/machine.ts`, the `accepted === undefined` branch). A feature's declaration names
     only what is its own; codegen unions the SDK-wide set in. No feature lists `FEATURE_SETTINGS_UPDATED`.
 
-14. **Host plugins keep their hand-written declaration.** `packages/apack-host/src/features/registration.ts:50`
+14. **Host surfaces keep their hand-written declaration.** `packages/apack-host/src/features/registration.ts:50`
     already does what Decision 1 asks of packs:
     ```ts
-    plugin: { receives: HOST_PLUGIN_EVENT_TYPES['host/application'] }
+    surface: { receives: HOST_SURFACE_EVENT_TYPES['host/application'] }
     ```
-    The host has no `apack.json` and no codegen, so there is nothing for `definePlugin` to be read by. It
+    The host has no `apack.json` and no codegen, so there is nothing for `defineSurface` to be read by. It
     is the precedent this goal generalises, not a call site to migrate — leave it, and say so in the code
-    so it isn't "fixed" later. `PACKS_PLUGIN_EVENT_TYPES` beside it stays as it is.
+    so it isn't "fixed" later. `PACKS_SURFACE_EVENT_TYPES` beside it stays as it is.
 
     All three host features declare this way now, and `host/settings` (`:55`) declares **both halves**
-    explicitly — `[...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']]`, internal
+    explicitly — `[...SETTINGS_SURFACE_EVENT_TYPES, ...HOST_SURFACE_EVENT_TYPES['host/settings']]`, internal
     then public. That is the precedent for Decision 1's split. Its *mechanism* is not: three hand-maintained
     lists per feature joined by a spread nothing checks. The host keeps it because it has no codegen; packs
     get the split derived from one declaration instead.
 
-    `HOST_PLUGIN_EVENT_TYPES` already carries a `'host/settings'` entry (`CLI_TEST_RESULT`), which is what
+    `HOST_SURFACE_EVENT_TYPES` already carries a `'host/settings'` entry (`CLI_TEST_RESULT`), which is what
     `code`'s `sendsTo: ["host/settings"]` sends it. Phase 3 must keep that send working without `sendsTo`.
 
 15. **No pack format bump, and no compatibility work.** Removing `sendsTo` from a `.strict()` schema makes
@@ -544,49 +544,49 @@ Final.
     add a friendlier error for the old key. The acceptance test is that the dev environment boots clean and
     the in-repo fixtures build.
 
-16. **The rename is mechanical, not risky.** `broadcastToPlugin` has ~534 occurrences (409 in
+16. **The rename is mechanical, not risky.** `broadcastToSurface` has ~534 occurrences (409 in
     `packages/default-setup`, 49 SDK, 31 CLI, 30 host, 5 api, ~7 fixtures and E2E). It is a find-and-replace
-    plus a compile. The one non-mechanical consequence is that `broadcastToPlugin` is a member of `HostServices`
+    plus a compile. The one non-mechanical consequence is that `broadcastToSurface` is a member of `HostServices`
     (`packages/apack-sdk/src/services/index.ts:38`) and `Services` is a facade export, so the rename moves
     `etc/build.api.md` and every `deps/<id>.d.ts`: run `api:update` and `facade:update` and commit the
     reports as part of the phase.
 
-17. **`navigateToPlugin`'s event is typed from the same inbox; `openPlugin`'s stays untyped.**
-    `navigateToPlugin(name, event?)` (`#generated/fe`) takes a compile-time-checked `PluginName` and hands
-    the events to that plugin's actor — the same delivery the renderer `broadcastToPlugin` does, so it takes the
-    same types. Today its payload is the SDK's open `PluginEvent` (`{ type: string; [key: string]: unknown }`),
+17. **`navigateToSurface`'s event is typed from the same inbox; `openSurface`'s stays untyped.**
+    `navigateToSurface(name, event?)` (`#generated/fe`) takes a compile-time-checked `SurfaceName` and hands
+    the events to that surface's actor — the same delivery the renderer `broadcastToSurface` does, so it takes the
+    same types. Today its payload is the SDK's open `SurfaceEvent` (`{ type: string; [key: string]: unknown }`),
     which leaves a typed channel beside an untyped one doing the same thing.
 
-    `openPlugin(ref, event?)` (`@apackdev/sdk/fe`) keeps `PluginEvent`: its target arrives as data — a link
-    block's, a registered plugin's `id` — so there is no name to type against. It is the escape hatch, the
+    `openSurface(ref, event?)` (`@apackdev/sdk/fe`) keeps `SurfaceEvent`: its target arrives as data — a link
+    block's, a registered surface's `id` — so there is no name to type against. It is the escape hatch, the
     way `untypedQx` is for a query whose entity isn't known at compile time.
 
 18. **The renderer send is checked at runtime too, against the same declaration.** The backend path
-    already is: `bus/machine.ts:150` looks the target up in `getPluginEventValidationMap()` and drops a
+    already is: `bus/machine.ts:150` looks the target up in `getSurfaceEventValidationMap()` and drops a
     miss with a `diagnostic` report. The frontend cannot do that today — `PackFEFeature`
-    (`packages/apack-sdk/src/fe/pack-fe-registration.ts`) carries `plugin?: PluginDefinition`,
-    `designation` and `default`, and nothing about what a plugin accepts — so the FE registry doesn't know.
+    (`packages/apack-sdk/src/fe/pack-fe-registration.ts`) carries `surface?: SurfaceDefinition`,
+    `designation` and `default`, and nothing about what a surface accepts — so the FE registry doesn't know.
 
-    So: `PackFEFeature` gains the plugin's `receives`, codegen emits it into `pack-entry-fe.ts` beside the
+    So: `PackFEFeature` gains the surface's `receives`, codegen emits it into `pack-entry-fe.ts` beside the
     backend entry's copy, `createFePackRegistry()` builds the equivalent map, and the renderer
-    `broadcastToPlugin` checks and reports through it. One declaration, the same meaning on both sides.
+    `broadcastToSurface` checks and reports through it. One declaration, the same meaning on both sides.
 
     **This catches mistakes, not misuse.** `mine.system.get(ref)?.send(…)` bypasses it, as it bypasses the
     bus (Decision 2). It is worth the field for the same reason the bus's `diagnostic` report is worth
-    having: a send to a plugin that doesn't handle it is a bug, and silence is the worst way to learn.
+    having: a send to a surface that doesn't handle it is a bug, and silence is the worst way to learn.
     Match the bus's behaviour rather than inventing another — report and drop, never throw, since the
-    caller is a running plugin.
+    caller is a running surface.
 
     **The check cannot be audience-aware**, because `Message` carries no sender (Background, "What is
     actually enforced"). So `receives` stays one flat union of `Public | Internal` and the map answers only
-    "does this plugin handle this event at all". Say that in the doc comment, so nobody later reads a
+    "does this surface handle this event at all". Say that in the doc comment, so nobody later reads a
     passing check as "this sender was allowed".
 
 19. ~~**`defineSystem` gets the same split, in this goal.**~~ **Trimmed out.** The goal was cut back to the
-    plugin half (one declaration, `pluginAccepts()`, instead of a two-parameter split on both sides), so the
+    surface half (one declaration, `surfaceAccepts()`, instead of a two-parameter split on both sides), so the
     system-side leak stays and is recorded under Deferred. The design below is kept as written for whoever
     picks that up. Leaving it collapsed would ship the exact
-    asymmetry this goal exists to remove — and it is where the leak actually is today, since plugins have
+    asymmetry this goal exists to remove — and it is where the leak actually is today, since surfaces have
     no declaration to leak from yet. `defineSystem<Public, Internal, Outgoing, Context>()`:
 
     ```ts
@@ -596,7 +596,7 @@ Final.
     _internal    = Internal                           // never published
     ```
 
-    The union stays where the machine needs it; only the published half narrows. As on the plugin side, a
+    The union stays where the machine needs it; only the published half narrows. As on the surface side, a
     pack's sends to its **own** systems keep `Public | Internal`, so nothing that compiles today stops
     compiling — only `deps/<id>.d.ts` gets smaller.
 
@@ -607,7 +607,7 @@ Final.
 ## Open decisions (settle with the user before Phase 6)
 
 1. **Whether to build a declared read channel at all.** The residue is the reads that are genuinely another
-   plugin's live state. It is already much smaller than when this goal was written — 16 edges, not ~27,
+   surface's live state. It is already much smaller than when this goal was written — 16 edges, not ~27,
    since `goal-settings-to-host` took all 9 settings edges with it — and its shape changed:
 
    ```
@@ -616,17 +616,17 @@ Final.
    ```
 
    **Three quarters of it is `src/extensions/**`, not features.** That matters for the choice: extension
-   components are host-rendered outside any `PluginScope`, which is the reason `pluginHandle` exists at all.
-   A read channel for them is not a cross-pack API question, it is a "how does a component with no plugin
-   scope read a plugin" question — and `PluginScope` already answers it for the rendering case.
+   components are host-rendered outside any `SurfaceScope`, which is the reason `surfaceHandle` exists at all.
+   A read channel for them is not a cross-pack API question, it is a "how does a component with no surface
+   scope read a surface" question — and `SurfaceScope` already answers it for the rendering case.
 
    - **Leave `fe/public.ts` selectors as they are.** No new manifest or codegen surface. Cross-pack reads
      stay impossible; no pack needs them today, and the fixtures do none. — *open*
-   - **Add a declared `publishes()` view**, read by codegen like the plugin inbox, with a narrow view type
+   - **Add a declared `publishes()` view**, read by codegen like the surface inbox, with a narrow view type
      in the facade. Types cross packs; entity-list internals (`page`, `loadingMore`) stop leaking because
      the declaration is narrow. Costs new manifest/codegen surface and a second facade export. — *open*
    - **Give the extension case its own answer** and leave the 4 feature→feature edges alone: the extensions
-     are the volume, and `PluginScope` or a scoped read may cover them without a published contract. — *open*
+     are the volume, and `SurfaceScope` or a scoped read may cover them without a published contract. — *open*
 
    Phase 1's facade probe informs the second: if a declared view type cannot pass `facadeProblems` without
    bloating the facade, it is intra-pack only and worth much less.
@@ -638,12 +638,12 @@ Final.
 Two questions decide the shape of Phases 3–6. Neither writes production code; both record results in a
 `## Spike results (YYYY-MM-DD)` section added to this doc.
 
-- **Facade probe.** Hand-write a representative `PackPluginEvents` (and, for Open decision 1, a narrow view
+- **Facade probe.** Hand-write a representative `PackSurfaceEvents` (and, for Open decision 1, a narrow view
   type) into `packages/default-setup/src/__generated__/pack-types.ts`, run `apack build` and
   `facadeProblems`. Record: does it pass the gate, and by how many lines does
   `dist/types/pack-types.d.ts` grow from its current 5273.
 - **Renderer delivery probe.** Confirm a renderer-side send resolves the target through
-  `boundFeHost().application.system.get(ref)` for a plugin of *another* pack in the same window, and what
+  `boundFeHost().application.system.get(ref)` for a surface of *another* pack in the same window, and what
   happens when that pack's frontend has not loaded yet.
 
 **Done when:** both results are recorded in this doc with the commands used; no source file outside the
@@ -657,8 +657,8 @@ exists so its absence is a checked fact rather than an assumption, and so the on
 
 Verify, in one pass:
 
-- `git grep usePluginSettings` and `currentPluginSettings` find no pack API — the only hit is an unrelated
-  local `computed` in `packages/renderer/src/views/settings/canvas/tabs/PluginsTab.vue`.
+- `git grep useSurfaceSettings` and `currentSurfaceSettings` find no pack API — the only hit is an unrelated
+  local `computed` in `packages/renderer/src/views/settings/canvas/tabs/SurfacesTab.vue`.
 - `features/browser/fe/state.ts` handles `FEATURE_SETTINGS_UPDATED` and reads `context.settings` (`:323`).
 - `packages/default-setup/src/features/settings/` does not exist; `packages/apack-host/src/features/settings/` does.
 
@@ -670,32 +670,32 @@ goal — note it in the Outcome's "Open items" and move on.
 **Done when:** the three checks above hold, and the residue is in the Outcome. No source file changes in
 this phase; if one seems necessary, the base is not what this doc was surveyed at — stop and say so.
 
-### Phase 3 — The plugin inbox, and `sendsTo` deleted
+### Phase 3 — The surface inbox, and `sendsTo` deleted
 
 The root change. After Phase 1.
 
-- `definePlugin()` and `pluginAccepts<Accepts>()` in `packages/apack-sdk/src/fe/plugin.ts`. As built, the
-  declaration is a named `accepts` export beside the plugin rather than a type parameter on `definePlugin`,
-  so codegen reads it with a **type-only** import and the plugin's machine and `.vue` graph never enter the
+- `defineSurface()` and `surfaceAccepts<Accepts>()` in `packages/apack-sdk/src/fe/surface.ts`. As built, the
+  declaration is a named `accepts` export beside the surface rather than a type parameter on `defineSurface`,
+  so codegen reads it with a **type-only** import and the surface's machine and `.vue` graph never enter the
   event types. The two audiences fall out of declared-vs-derived instead of `Public`/`Internal`: what the
-  feature's own system sends is added by codegen and stays out of `PackPluginEvents`.
+  feature's own system sends is added by codegen and stays out of `PackSurfaceEvents`.
 - ~~`defineSystem<Public, Internal, Outgoing, Context>()`~~ — trimmed with Decision 19; see Deferred.
-- Rewrite **all 14 plugin entries** out of the `const x: PluginDefinition = {…}` annotation form into
-  `definePlugin(…)` (Decision 12) — 11 in `packages/default-setup/src/features/*/fe/plugin.ts`, 3 in
-  `tests/fixtures/*/src/features/*/fe/plugin.ts`. Only the ones other plugins send to take type
+- Rewrite **all 14 surface entries** out of the `const x: SurfaceDefinition = {…}` annotation form into
+  `defineSurface(…)` (Decision 12) — 11 in `packages/default-setup/src/features/*/fe/surface.ts`, 3 in
+  `tests/fixtures/*/src/features/*/fe/surface.ts`. Only the ones other surfaces send to take type
   arguments; the rest change shape alone. Update `apack add feature`'s scaffold
   (`packages/apack-cli/src/commands/add/feature.ts`) and `docs/public-facing/features.md`, which emit the
   annotation form today.
 - `generate-entries.ts`: read the declaration the way `sentEventTypes` reads a system spec; delete
-  `receivedEventTypes` and the `sendsTo` target loop; emit `PackPluginEvents`; drop the `Pick<>` from
-  `QualifiedPluginEvents` (Decision 3); swap `SendablePluginEvents` for `PackPluginEvents` in
+  `receivedEventTypes` and the `sendsTo` target loop; emit `PackSurfaceEvents`; drop the `Pick<>` from
+  `QualifiedSurfaceEvents` (Decision 3); swap `SendableSurfaceEvents` for `PackSurfaceEvents` in
   `generatePackTypes()` (Decision 4).
 - `manifest-schema.ts`: delete `sendsTo` from `SystemSchema` and its `superRefine` checks; regenerate
   `apack.schema.json` (`npm run generate:schema -w @apackdev/sdk`). No format bump (Decision 15).
-- Remove `sendsTo` from its **four** users and declare the inbox on the plugins that needed one. Two of the
-  four target host plugins, so the `hostTargets` branch is live code:
+- Remove `sendsTo` from its **four** users and declare the inbox on the surfaces that needed one. Two of the
+  four target host surfaces, so the `hostTargets` branch is live code:
   ```
-  default-setup  threads → host/application      (HOST_PLUGIN_EVENT_TYPES['host/application'])
+  default-setup  threads → host/application      (HOST_SURFACE_EVENT_TYPES['host/application'])
   default-setup  code    → host/settings         (CLI_TEST_RESULT — must keep working, Decision 14)
   default-setup  actions → flows
   external-pack  memos   → default-setup/logs
@@ -717,44 +717,44 @@ The root change. After Phase 1.
   - docs: `docs/public-facing/manifest.md`, `docs/public-facing/features.md`,
     `packages/apack-sdk/CLAUDE.md`, `packages/default-setup/CLAUDE.md`
 - `packages/apack-host/src/packs/registry.ts` and `bus/machine.ts` are unchanged — they read
-  `plugin.receives`, which is now precise. Confirm with a spec rather than by inspection.
+  `surface.receives`, which is now precise. Confirm with a spec rather than by inspection.
 
 **Done when:** `npm run typecheck`, `npm run schema:check`, `npm test -w @apackdev/sdk`,
 `npm test -w @apackdev/host`, `npm run compile`, `npm run test:external-pack` pass; a generated `events.ts`
-for the fixture pack spells its dependency plugins with no `Pick<>`; `facade:check -w @app/default-setup`
+for the fixture pack spells its dependency surfaces with no `Pick<>`; `facade:check -w @app/default-setup`
 and `api:check` updated and committed; `git grep sendsTo` returns nothing outside `docs/archive/` and
 `docs/goals/goal-manifest-redesign.md`'s dated note; `npm start` boots the dev app clean (Decision 15's
 acceptance test).
 
-Only the declared half crosses: a dependent's `PackPluginEvents` carries what `pluginAccepts()` declared and
-not what a feature's own system sends its own plugin. (The system side keeps both in one phantom — see
-Deferred.) Mutations: narrowing a plugin's declared inbox makes a send that was valid fail to compile;
+Only the declared half crosses: a dependent's `PackSurfaceEvents` carries what `surfaceAccepts()` declared and
+not what a feature's own system sends its own surface. (The system side keeps both in one phantom — see
+Deferred.) Mutations: narrowing a surface's declared inbox makes a send that was valid fail to compile;
 exporting `accepts` as a type rather than a value is passed over instead of emitting `typeof` on it; an
 `accepts` that declares no events fails the build naming the annotation that drops them.
 
-### Phase 4 — `broadcastToPlugin`, and the renderer send
+### Phase 4 — `broadcastToSurface`, and the renderer send
 
 After Phase 3.
 
 A find-and-replace plus a compile (Decision 16) — ~534 occurrences, mechanical. The only part that needs
 thought is the facade consequence and the new renderer branch.
 
-- Rename the backend send to `broadcastToPlugin` (Decision 5): `packages/apack-sdk/src/events/index.ts`,
+- Rename the backend send to `broadcastToSurface` (Decision 5): `packages/apack-sdk/src/events/index.ts`,
   `defineEvents`, `HostServices` (`src/services/index.ts:38`, and the `emitter` implementation at :59),
   the generated `events.ts`, and every backend caller — 409 in `packages/default-setup`, 30 in
   `packages/apack-host`, 31 in `packages/apack-cli`, 5 in `packages/api`, plus the fixtures and
-  `tests/e2e/plugin-sends.spec.ts`.
-- Add the renderer `broadcastToPlugin`, delivering to `boundFeHost().application.system.get(ref)` and reusing the
+  `tests/e2e/surface-sends.spec.ts`.
+- Add the renderer `broadcastToSurface`, delivering to `boundFeHost().application.system.get(ref)` and reusing the
   shell's not-yet-loaded policy (Decision 6).
 - Carry the inbox to the frontend so that send can be checked (Decision 18): add `receives` to
   `PackFEFeature` (`packages/apack-sdk/src/fe/pack-fe-registration.ts`), emit it from
   `generateFrontendEntry()` into `pack-entry-fe.ts`, build the map in `createFePackRegistry()`
   (`packages/apack-host/src/fe/pack-store.ts`), and have the renderer send report and drop a miss the way
-  `bus/machine.ts` does — same `diagnostic` severity, never a throw. The host's own two plugins already
+  `bus/machine.ts` does — same `diagnostic` severity, never a throw. The host's own two surfaces already
   have their `receives` (`features/registration.ts`), so they fill it without new work.
-- Type `navigateToPlugin`'s event parameter from the same inbox in `#generated/fe` (Decision 17), and
-  leave `openPlugin`'s as `PluginEvent`. Check the ~22 `@/__generated__/fe` call sites still compile:
-  a payload that was accepted as an open `PluginEvent` and isn't in the target's inbox now fails, which
+- Type `navigateToSurface`'s event parameter from the same inbox in `#generated/fe` (Decision 17), and
+  leave `openSurface`'s as `SurfaceEvent`. Check the ~22 `@/__generated__/fe` call sites still compile:
+  a payload that was accepted as an open `SurfaceEvent` and isn't in the target's inbox now fails, which
   is the point.
 - Document the delivery scopes on both functions and in `packages/apack-sdk`'s docs (Decision 7).
 
@@ -765,7 +765,7 @@ export, so the rename moves `etc/build.api.md` and every `deps/<id>.d.ts` (Decis
 renderer send reaches only its own (two windows in one E2E, or the shell fakes in
 `packages/apack-host/tests/fe/shell/`); a spec pins that a renderer send of an event outside the target's
 `receives` is dropped and reported at `diagnostic`, as the bus does (Decision 18), and that
-`getRegisteredPlugins()` carries `receives` for a pack's plugins and the host's. Mutations: routing the
+`getRegisteredSurfaces()` carries `receives` for a pack's surfaces and the host's. Mutations: routing the
 renderer send through the bus fails the scope spec; dropping `receives` from `pack-entry-fe.ts` fails the
 validation spec.
 
@@ -773,20 +773,20 @@ validation spec.
 
 After Phase 4.
 
-- Replace the six sender wrappers and their `Extract<>` unions with the receiving plugins' declarations
-  (Decision 9): `selectArtifact`, `approveTodoList`, `rejectTodoList`, `sendToActionsPlugin`,
-  `sendToPromptsPlugin`, `selectFlow`, and their ~6 call sites.
-- Delete each `pluginHandle` whose feature no longer needs one, with its `entry: ({ self }) => …bind(self)`.
+- Replace the six sender wrappers and their `Extract<>` unions with the receiving surfaces' declarations
+  (Decision 9): `selectArtifact`, `approveTodoList`, `rejectTodoList`, `sendToActionsSurface`,
+  `sendToPromptsSurface`, `selectFlow`, and their ~6 call sites.
+- Delete each `surfaceHandle` whose feature no longer needs one, with its `entry: ({ self }) => …bind(self)`.
   `library/fe/public.ts` exports only the handle and should disappear entirely.
-- Delete `packages/default-setup/src/features/plugin-handle.ts` when nothing binds it (Decision 10).
+- Delete `packages/default-setup/src/features/surface-handle.ts` when nothing binds it (Decision 10).
 
-This phase is **scope-neutral**: `pluginHandle` is module state in a per-window renderer, so it was
-already window-local, and the renderer `broadcastToPlugin` delivers to the same actor it did. No migrated
+This phase is **scope-neutral**: `surfaceHandle` is module state in a per-window renderer, so it was
+already window-local, and the renderer `broadcastToSurface` delivers to the same actor it did. No migrated
 sender changes which window it affects.
 
 **Done when:** `npm run typecheck`, `npm test -w @app/default-setup`, `npm test` (E2E) pass;
 `npm run check:specifiers` still reports `fe/public.ts` as the only cross-feature door; `git grep
-pluginHandle` returns nothing, or the Outcome records what still binds one.
+surfaceHandle` returns nothing, or the Outcome records what still binds one.
 
 ### Phase 6 — Re-measure the reads, then decide (Open decision 1)
 
@@ -798,8 +798,8 @@ pluginHandle` returns nothing, or the Outcome records what still binds one.
 
 ## Outcome (2026-09-23)
 
-Landed on `AS/plugin-inbox` in seven commits. The thesis holds: a plugin declares what others may send it,
-`sendsTo` is gone from the manifest, the schema, 26 files and the docs, and `plugin-handle.ts` with its
+Landed on `AS/plugin-inbox` in seven commits. The thesis holds: a surface declares what others may send it,
+`sendsTo` is gone from the manifest, the schema, 26 files and the docs, and `surface-handle.ts` with its
 seven handles, seven binds and six sender wrappers is deleted. The full chain is green — `typecheck`,
 `test:unit`, `build`, `test:external-pack`, E2E.
 
@@ -811,31 +811,31 @@ the doc didn't anticipate and is better than what it asked for. The work also pr
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — probes | absorbed | The facade question was answered by doing it (`PackPluginEvents` crosses); the renderer-delivery question by `_sendToLocalPlugin` |
-| 2 — own settings | verified, not built | `goal-settings-to-host.md` had done it; `usePluginSettings`/`currentPluginSettings` no longer exist, `browser` reads `context.settings` (`state.ts:323`) |
+| 1 — probes | absorbed | The facade question was answered by doing it (`PackSurfaceEvents` crosses); the renderer-delivery question by `_sendToLocalSurface` |
+| 2 — own settings | verified, not built | `goal-settings-to-host.md` had done it; `useSurfaceSettings`/`currentSurfaceSettings` no longer exist, `browser` reads `context.settings` (`state.ts:323`) |
 | 3 — the inbox, `sendsTo` deleted | done | `5ab558898`; `git grep sendsTo` finds nothing outside the archive |
-| 4 — the two sends | done | `7bb76426f`, `eb57a9e69`; `broadcastToPlugin` (bus, every window) / `sendToPlugin` (renderer, this window) |
+| 4 — the two sends | done | `7bb76426f`, `eb57a9e69`; `broadcastToSurface` (bus, every window) / `sendToSurface` (renderer, this window) |
 | 5 — migrate `fe/public.ts`, drop the handle | done | `3b793b5a4`, `7bb76426f`; `public.ts` is selectors only |
 | 6 — re-measure the reads | done | 14 edges remain, 10 of them `src/extensions/**`; carried to the new goal |
 
 ### Corrections to the Decisions
 
 **Decision 1 shipped as one tier declared, one derived — not `<Public, Internal>`.** The split the doc wanted
-two type parameters for falls out of *declared vs derived*: `OwnPluginEvents` is the feature's own system's
-outgoing union unioned with what the plugin declares, and the facade carries the declared half alone. Simpler,
+two type parameters for falls out of *declared vs derived*: `OwnSurfaceEvents` is the feature's own system's
+outgoing union unioned with what the surface declares, and the facade carries the declared half alone. Simpler,
 same separation, no new vocabulary.
 
 **Decision 12 is moot in that shape.** The `satisfies`-versus-annotation trap belonged to reading a type off
-the plugin's default export. The declaration is a named `accepts` export from a no-argument call, so there is
+the surface's default export. The declaration is a named `accepts` export from a no-argument call, so there is
 no call argument to check — which is also why it resolves at all (see below).
 
-**The declaration could not live on `definePlugin`.** Reading `definePlugin<E>({…})`'s type makes TypeScript
-check its argument, which holds the machine, which imports `#generated/events`, which imports the plugin: a
-cycle, and codegen sees `any`. `pluginAccepts<E>()` takes no arguments, so its type resolves from its own
+**The declaration could not live on `defineSurface`.** Reading `defineSurface<E>({…})`'s type makes TypeScript
+check its argument, which holds the machine, which imports `#generated/events`, which imports the surface: a
+cycle, and codegen sees `any`. `surfaceAccepts<E>()` takes no arguments, so its type resolves from its own
 declaration — the same reason `defineSystem<…>()` works. This is recorded because it looks like gratuitous
 indirection and is not.
 
-**Decision 17 landed late (`da6a45e91`) and cost more than the doc knew.** Typing `navigateToPlugin` from the
+**Decision 17 landed late (`da6a45e91`) and cost more than the doc knew.** Typing `navigateToSurface` from the
 target's inbox surfaced 17 cross-feature UI commands that nothing declared — `terminal.CREATE`, `NOTE.OPEN`,
 `TAB.CREATE`, `NODE.DOUBLE_CLICK` and the rest. Each had to be declared, and since the only declared tier is
 the published one, **all 17 now reach every dependent pack's facade**
@@ -844,8 +844,8 @@ the published one, **all 17 now reach every dependent pack's facade**
 
 ### Open items
 
-- **Decision 6 — the renderer send does not wait.** `_sendToLocalPlugin` throws when no plugin runs at the
-  ref instead of reusing the shell's `pendingOpens` policy. Intra-pack this matches what `pluginHandle.get()`
+- **Decision 6 — the renderer send does not wait.** `_sendToLocalSurface` throws when no surface runs at the
+  ref instead of reusing the shell's `pendingOpens` policy. Intra-pack this matches what `surfaceHandle.get()`
   did, so nothing regressed; cross-pack it is a hole. Carried to the new goal.
 - **Decision 18 — no runtime check on the renderer send.** `PackFEFeature` gained no `receives`. Deliberately
   cut: `Message` carries no sender, so the check can never be audience-aware, and types cover every in-repo
@@ -854,10 +854,10 @@ the published one, **all 17 now reach every dependent pack's facade**
   reaches a dependent's facade (`ADD_LOG`). Struck from this goal by `94b10d0e6`; carried as a deferral.
 - **Decision 7 is half-pinned.** The delivery-scope difference is in the SDK doc comments and the public docs,
   and a spec covers the renderer send. Nothing pins that a backend send reaches *every* window — the half that
-  produced `OPEN_PLUGIN_FROM_APP`.
+  produced `OPEN_SURFACE_FROM_APP`.
 - **Open decision 1 (the read channel) is answered, not declined.** The count that was meant to settle it —
   14 edges, 10 of them extensions — was read as "no demand". It is the opposite: `fe/public.ts` is the demand,
-  and an external pack reading a plugin's state is a first-class need with no mechanism. The new goal builds it.
+  and an external pack reading a surface's state is a first-class need with no mechanism. The new goal builds it.
 
 ### Final verification
 
@@ -867,7 +867,7 @@ the published one, **all 17 now reach every dependent pack's facade**
 ## Deferred
 
 - A frontend **data** channel for entity lists (`useNotes`, `useActionsList`, `usePromptsList`). These are
-  EARS rows cached per plugin; the backend solved the equivalent with repositories and the renderer holds no
+  EARS rows cached per surface; the backend solved the equivalent with repositories and the renderer holds no
   EARS data. Out of scope, and not to be approximated by widening the read channel.
 - Pack frontend isolation from `window.electronAPI`, the host API client and the app DOM —
   `docs/goals/goal-pack-frontend-isolation.md`.
@@ -876,7 +876,7 @@ the published one, **all 17 now reach every dependent pack's facade**
   `LogsInternalEvents`, is in `tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts`.
   Splitting it is two call sites (`features/logs/be/system.ts`, `features/database/be/system.ts`) plus an
   `_internal` phantom, and was trimmed out of this goal with the rest of the `Public`/`Internal` design. The
-  plugin side has no such leak: `PackPluginEvents` carries only the declared half.
+  surface side has no such leak: `PackSurfaceEvents` carries only the declared half.
 - The `brain ↔ flows` mutual `public.ts` dependency (each settings panel reads the other's root-flow id).
   It survives only because both are consumed from `.vue` setup rather than module init. Note it in the
   Phase 6 table; do not restructure it here.

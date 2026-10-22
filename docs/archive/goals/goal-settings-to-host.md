@@ -7,7 +7,7 @@ Implement docs/goals/goal-settings-to-host.md, at or after 6d0633ad4 — the
 base its Background was surveyed at.
 Before Phase 1, confirm the base: packages/default-setup/src/features/settings/{document.ts,be/repository/index.ts,be/system.ts,be/services/settings.ts},
 packages/apack-host/src/features/{registration.ts,packs/be/system.ts,packs/fe/machine.ts},
-packages/renderer/src/views/packs/plugin.ts and packages/apack-host/src/app-state/index.ts exist at HEAD.
+packages/renderer/src/views/packs/surface.ts and packages/apack-host/src/app-state/index.ts exist at HEAD.
 If they don't, stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask. The Open decisions must be settled with the user before the phase each names;
@@ -25,7 +25,7 @@ Finished when:
 - The Settings entity is declared by the host (HOST_ENTITY_TYPES) and no pack may declare it.
 - `services.settings` is a host service, named in HOST_SERVICE_NAMES, implemented in
   packages/apack-host/src/services/settings.ts.
-- The settings plugin runs at `host/settings`, its machine in packages/apack-host/src/features/settings/fe/
+- The settings surface runs at `host/settings`, its machine in packages/apack-host/src/features/settings/fe/
   and its Vue in packages/renderer/src/views/settings/, registered through `hostFrontend`.
 - A feature reads and writes its own settings without importing anything from default-setup.
 - npm run typecheck, npm run schema:check, api:check (sdk), facade:check -w @app/default-setup,
@@ -64,10 +64,10 @@ feature to read or write its own settings. Two consequences found while planning
 [`goal-plugin-inbox.md`](goal-plugin-inbox.md):
 
 - `packages/default-setup/src/features/code/fe/features/explorer/ExplorerPanel.vue:201` reads
-  `usePluginSettings<CodeSettings>('code')` — the `code` feature reading **its own** settings out of the
-  settings *plugin's* actor, with a hand-supplied type parameter, while `code/fe/state.ts:770` already
+  `useSurfaceSettings<CodeSettings>('code')` — the `code` feature reading **its own** settings out of the
+  settings *surface's* actor, with a hand-supplied type parameter, while `code/fe/state.ts:770` already
   handles `FEATURE_SETTINGS_UPDATED` typed as `CodeSettings`. Redundant.
-- `packages/default-setup/src/features/browser/fe/state.ts:317` calls `currentPluginSettings('browser')`
+- `packages/default-setup/src/features/browser/fe/state.ts:317` calls `currentSurfaceSettings('browser')`
   **inside a machine action**, because `browser` is the one feature of ten that never handles
   `FEATURE_SETTINGS_UPDATED` and so has no settings of its own to read.
 
@@ -78,7 +78,7 @@ Both are symptoms of the same thing: there is no app-level way to reach a featur
 | concern | owner today |
 |---|---|
 | which features may have settings; declared defaults; merge, revision, listeners | **host** — `createSettingsDefaultsStore()` (`packs/backend-extensions.ts`), `featuresWithSettings()` (`packs/registry.ts`) |
-| the event every plugin receives | **SDK** — `FeatureSettingsUpdated`, in `PLUGIN_EVENT_TYPES` (`events/index.ts:30`) |
+| the event every surface receives | **SDK** — `FeatureSettingsUpdated`, in `SURFACE_EVENT_TYPES` (`events/index.ts:30`) |
 | stored values, read/write, the service | **default-setup** — `services.settings` is a *pack* service (`features[].services` on `settings`), not one of the eight `HOST_SERVICE_NAMES` |
 | the UI | **default-setup** |
 
@@ -91,17 +91,17 @@ every consumer hand-supplies a type.
 
 ```
 packages/apack-host/src/features/packs/be/system.ts     the backend system
-packages/apack-host/src/features/packs/fe/machine.ts    the plugin's machine, no Vue
+packages/apack-host/src/features/packs/fe/machine.ts    the surface's machine, no Vue
 packages/apack-host/src/features/packs/fe/public.ts     what it offers other frontend code
-packages/renderer/src/views/packs/{plugin.ts,canvas.vue,PackDetail.vue,SectionHeader.vue}
+packages/renderer/src/views/packs/{surface.ts,canvas.vue,PackDetail.vue,SectionHeader.vue}
 ```
 
-`packages/renderer/src/views/packs/plugin.ts` pairs them and is where the host's frontend registration
+`packages/renderer/src/views/packs/surface.ts` pairs them and is where the host's frontend registration
 lives:
 
 ```ts
-const packsPlugin: PluginDefinition = { label: 'Packs', icon: Package, state: packsMachine, canvas, isPinned: true };
-export const hostFrontend: PackFERegistration = { id: HOST_PACK_ID, features: { packs: { plugin: packsPlugin } } };
+const packsSurface: SurfaceDefinition = { label: 'Packs', icon: Package, state: packsMachine, canvas, isPinned: true };
+export const hostFrontend: PackFERegistration = { id: HOST_PACK_ID, features: { packs: { surface: packsSurface } } };
 ```
 
 `packages/apack-host/src/features/index.ts` is the one import the API composes the host's registration
@@ -114,14 +114,14 @@ from. Settings adds a third feature beside `application` and `packs`.
 | file | lines | what |
 |---|---|---|
 | `be/system.ts` | 400 | the system — and four jobs that aren't settings (below) |
-| `be/types.ts` | 199 | `SettingsData`, and every per-plugin settings interface |
+| `be/types.ts` | 199 | `SettingsData`, and every per-surface settings interface |
 | `be/repository/index.ts` | 170 | the store: stored vs effective, the one `write()`, listeners, `whileReplacingData` |
 | `be/defaults.ts` | 40 | reads default-setup's compiled `settings.content.json`, merges `getPackSettingsDefaults()` |
-| `be/services/settings.ts` | 45 | `SettingsService`: `getAll`, `getPluginSettings`, `getGeneralSettings`, `updatePluginSetting` |
+| `be/services/settings.ts` | 45 | `SettingsService`: `getAll`, `getSurfaceSettings`, `getGeneralSettings`, `updateSurfaceSetting` |
 | `be/faqs.ts` | 9 | reads default-setup's compiled `faqs.content.json` |
 | `document.ts` | 107 | pure: `setIn`, `removeIn`, `changesFrom`, `isEqual`, `settingsProblems`, `SettingsRefusedError`, `SETTINGS_KIND` |
-| `settings.ts`, `plugin-settings.ts`, `constants.ts` | — | the feature's own defaults; reading a slice by name; UI URLs |
-| `fe/**` | — | the plugin, its machine, and the canvas/tabs/components |
+| `settings.ts`, `surface-settings.ts`, `constants.ts` | — | the feature's own defaults; reading a slice by name; UI URLs |
+| `fe/**` | — | the surface, its machine, and the canvas/tabs/components |
 
 **`document.ts` depends only on `@apackdev/sdk/ids` and `@apackdev/sdk/utils/pure`** — it moves as-is.
 
@@ -141,19 +141,19 @@ host's equivalent of the first is `import { tx, untypedQx } from '@apackdev/ears
 - **app reset** — `RESET_APP` (`services.appData.reset()`)
 
 plus `SECRETS_CHANGED`/`SECRETS_UPDATED` forwarding (host's `forwardSecretsChanges`) and `loadFaqs()` for
-the Help tab. Three of these are host concerns already, homed here because the Settings *plugin* renders
+the Help tab. Three of these are host concerns already, homed here because the Settings *surface* renders
 them; one is a pack's.
 
 ### `SettingsData` is mixed ownership
 
 ```ts
-export interface SettingsData { general: GeneralSettings; plugins: PluginSettings; assistant: AssistantSettings }
+export interface SettingsData { general: GeneralSettings; surfaces: SurfaceSettings; assistant: AssistantSettings }
 ```
 
-- `plugins` is `{ [pluginRef: string]: any }` — purely cross-cutting, and the host already owns its
+- `surfaces` is `{ [surfaceRef: string]: any }` — purely cross-cutting, and the host already owns its
   defaults registry.
 - `general` is `{ personal, application: { hotkeys }, projects: Project[] }` — `projects` belongs to the
-  code plugin, `hotkeys` is app-level, `personal` is the assistant's.
+  code surface, `hotkeys` is app-level, `personal` is the assistant's.
 - `assistant` is `{ name, birthdate }` — default-setup's brain.
 
 `be/types.ts` also declares `ThreadsSettings`, `LogsSettings`, `NotesSettings`, `BrowserSettings`,
@@ -187,7 +187,7 @@ What actually has to move, and what it drags:
   owns each, and this file is split, not moved.
 - **`fe/state.ts:10` imports `OutgoingSettingsEvents`** as a type from `be/system.ts`. Once both are the
   host's this is internal; until then it crosses the boundary.
-- **`plugin-settings.ts` is whitelisted** in `packages/apack-cli/tests/build/import-specifiers.spec.ts:445`,
+- **`surface-settings.ts` is whitelisted** in `packages/apack-cli/tests/build/import-specifiers.spec.ts:445`,
   so moving it changes that fixture.
 - **The harness requires the settings system**: `packages/apack-testing/src/app.ts:378` refuses `runFlow`
   without it, naming `startApp({ systems: ['brain', 'settings', …] })`. The name it asks for changes.
@@ -206,23 +206,23 @@ role sends (Decision 9).
 Final.
 
 1. **Settings becomes the host feature `host/settings`**, following `host/packs` exactly: the system in
-   `packages/apack-host/src/features/settings/be/`, the plugin's machine and public surface in
+   `packages/apack-host/src/features/settings/be/`, the surface's machine and public surface in
    `.../fe/`, the Vue in `packages/renderer/src/views/settings/`, registered through `hostFrontend` in
-   `packages/renderer/src/views/settings/plugin.ts` and `features/index.ts`.
+   `packages/renderer/src/views/settings/surface.ts` and `features/index.ts`.
 
 2. **The host owns the document's structure, not its content.** The stored document is
-   `{ plugins: Record<FeatureRef, unknown>; [section: string]: unknown }`. The host knows `plugins` —
+   `{ surfaces: Record<FeatureRef, unknown>; [section: string]: unknown }`. The host knows `surfaces` —
    keyed by ref, one slice per installed feature with settings — and treats every other section as
    opaque: it stores, merges, diffs and validates it without knowing its shape. `general` and `assistant`
    stay default-setup's, declared as **sections it registers** with their defaults.
 
-   So `settingsProblems`' `SECTIONS` list stops being the literal `['general','plugins','assistant']` and
-   becomes `plugins` plus the registered sections.
+   So `settingsProblems`' `SECTIONS` list stops being the literal `['general','surfaces','assistant']` and
+   becomes `surfaces` plus the registered sections.
 
 3. **A feature's own settings content stays in default-setup**: each `features/<id>/settings.ts`
    (its defaults, already collected by the host's registry) and each `features/<id>/fe/settings.vue`
-   (its form, already rendered by the settings plugin in a `PluginScope`). Only the *container* moves.
-   The per-plugin interfaces in `be/types.ts` move to the feature that owns each.
+   (its form, already rendered by the settings surface in a `SurfaceScope`). Only the *container* moves.
+   The per-surface interfaces in `be/types.ts` move to the feature that owns each.
 
 4. **`services.settings` becomes a host service** — `HOST_SERVICE_NAMES`, contract in
    `@apackdev/sdk/services/settings.ts`, implementation in `@apackdev/host/services/settings.ts`, test double
@@ -252,7 +252,7 @@ Final.
    hand-supplied `<CodeSettings>` parameters.
 
 8. **`browser` gains its own settings handling** like the other nine features, which is what its
-   `currentPluginSettings('browser')` call was standing in for.
+   `currentSurfaceSettings('browser')` call was standing in for.
 
 9. **The host settings system addresses packs by role, never by name.** `BIRTH_FLOW_START` and
    `COMMANDS_CHANGED` go to `{ role: 'threads' }`, `RESTART_BRAIN` to `{ role: 'brain' }`. Both roles are
@@ -274,7 +274,7 @@ Final.
 - **Open decision 1 — the Help tab's FAQs: Option A, as `help` entries.** A pack declares `help` in its
   manifest; the registry collects each pack's entries in registration order and the Settings view lists
   them all. Option B (an app-extension slot) does not work: a pack's Help component renders inside the
-  *host's* settings plugin, with no scope from which to reach its own backend. Named `help` rather than
+  *host's* settings surface, with no scope from which to reach its own backend. Named `help` rather than
   `faqs` because `tests/build/no-pack-content-specifics.spec.ts` is right that FAQ is default-setup's word
   for its own content — the pack maps its FAQ content onto the app's help entries.
 - **Open decision 2 — `general` keeps its shape.** Sections stay opaque to the host (Decision 2), and the
@@ -297,7 +297,7 @@ was open, and what it was weighed against, survives with the answer.
      collects, and the settings view renders. Any pack can then contribute help. — *chosen, as `help`*
    - **An app-extension slot.** The Help tab becomes a slot default-setup fills through
      `fe.appExtensions`, keeping the FAQ reading entirely in the pack. — *rejected: a pack's Help component
-     would render inside the host's settings plugin, with no scope from which to reach its own backend*
+     would render inside the host's settings surface, with no scope from which to reach its own backend*
 
 2. **Whether `general` keeps its shape** (settle before Phase 3). Decision 2 makes sections opaque to the
    host, but `general.application.hotkeys` is read by the host's own shell for application hotkeys.
@@ -355,13 +355,13 @@ listeners firing in order, and `whileReplacingData` bracketing; `npm test -w @ap
 > use), the manifest field, the codegen that emits it, and `createSettingsDefaultsStore` merging each
 > pack's sections into the default document. default-setup registers `general` and `assistant` through
 > `features/settings/sections.ts`. `PackSettingsDefaults.settings` is now the whole default document
-> rather than `{ plugins }` alone.
+> rather than `{ surfaces }` alone.
 >
 > Two stores still write the row: this pack's repository remains for the settings system's own use, and
 > the system listens to **both** (`settingsWriteListener`), so a feature is told its settings changed
 > whichever wrote them. Phase 4 deletes this pack's store with the system.
 >
-> **The migration found untyped code.** `getPluginSettings` returned `any`; `forFeature` returns
+> **The migration found untyped code.** `getSurfaceSettings` returned `any`; `forFeature` returns
 > `unknown`, so ~25 reads now name their type (`ThreadsSettings`, `CodeSettings`, `GeneralSettings`, …).
 > `getAll` and `getStored` are generic for the same reason. Nobody could see those reads were untyped.
 
@@ -386,24 +386,24 @@ listeners firing in order, and `whileReplacingData` bracketing; `npm test -w @ap
 **Done when:** `npm test -w @apackdev/host`, `packages/api/tests/unit/` pass; a spec pins that
 `getDesignated('settings')` resolves to `host/settings`.
 
-### Phase 5 — The plugin and its views
+### Phase 5 — The surface and its views
 
 - Machine and `fe/public.ts` to `packages/apack-host/src/features/settings/fe/`; the Vue to
   `packages/renderer/src/views/settings/`; `hostFrontend` gains `settings`.
-- Per-feature `settings.vue` forms stay in default-setup and keep rendering through `PluginScope`
-  (Decision 3) — now a host plugin rendering a pack's component, which is the same mechanism the Plugins
+- Per-feature `settings.vue` forms stay in default-setup and keep rendering through `SurfaceScope`
+  (Decision 3) — now a host surface rendering a pack's component, which is the same mechanism the Surfaces
   tab already uses.
 - Settle Open decision 1 (FAQs) before this phase.
 
 **Done when:** `npm run typecheck:fe`, `npm test -w @app/renderer`, `npm test` (E2E) pass; `npm start`
-opens Settings with the General, Plugins and Help tabs working, and every feature's settings form renders.
+opens Settings with the General, Surfaces and Help tabs working, and every feature's settings form renders.
 
 ### Phase 6 — Delete the feature, and fix what it was standing in for
 
 - `packages/default-setup/src/features/settings/` is deleted; `settings` leaves default-setup's
   `apack.json`.
 - `browser` handles `FEATURE_SETTINGS_UPDATED` (Decision 8); `code`'s two components read their own
-  machine; `usePluginSettings`/`currentPluginSettings` are gone.
+  machine; `useSurfaceSettings`/`currentSurfaceSettings` are gone.
 - `FeatureSettingsUpdated` is typed per feature (Decision 7), and the hand-supplied type parameters go.
 - A migration if any stored path moved (Open decision 2).
 
@@ -430,7 +430,7 @@ opens Settings with the General, Plugins and Help tabs working, and every featur
 
 ## Outcome (2026-09-22)
 
-Done, in eight commits on `AS/shell-owned-plugins`, ending with the atomic move
+Done, in eight commits on `AS/shell-owned-surfaces`, ending with the atomic move
 `refactor(settings): the settings are the app's, and the view that draws them is the app's too`.
 
 | Phase | Result |
@@ -439,7 +439,7 @@ Done, in eight commits on `AS/shell-owned-plugins`, ending with the atomic move
 | 2 — the store and the entity | `be/store.ts`: `createSettingsStore({ defaults })`, one `write()`, `whileReplacingData`. `Settings` joins `AppState` in `HOST_ENTITY_TYPES` |
 | 3 — `services.settings` as a host service | `@apackdev/sdk/services/settings.ts` + `@apackdev/host/services/settings.ts`, in `HOST_SERVICE_NAMES`; `PackRegistration.settingsSections` and the manifest field for a pack's own sections |
 | 4 — the system | `features/settings/be/system.ts` at `host/settings`. Its three non-settings jobs left first: CLI testing to `code`, the assistant's birth flow to `threads`, and the FAQ tab to the `help` contribution any pack can make |
-| 5 — the plugin and its views | `features/settings/fe/machine.ts` in the host, `packages/renderer/src/views/settings/` in the renderer, registered through `hostFrontend`. Frontend code reaches the settings through the SDK's `SettingsPort`, never the view's actor |
+| 5 — the surface and its views | `features/settings/fe/machine.ts` in the host, `packages/renderer/src/views/settings/` in the renderer, registered through `hostFrontend`. Frontend code reaches the settings through the SDK's `SettingsPort`, never the view's actor |
 | 6 — delete the feature | `packages/default-setup/src/features/settings/` is gone; its 28 per-feature settings types went to the features that own them, and its `general`/`assistant` sections to `src/app-settings/` |
 
 Checks, all green at the final commit: `typecheck`, `schema:check`, `api:check`, `facade:check`,

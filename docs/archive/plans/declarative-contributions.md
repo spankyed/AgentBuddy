@@ -11,7 +11,7 @@ is the whole question.
 A pack contributes two ways.
 
 **Declared**, in `apack.json` and compiled into each pack's built `snapshot.json` (`PACK_LAYOUT.snapshot`): features and their ids, designations,
-system and plugin entries with their contracts, repositories, settings sections, the EARS entities and
+system and surface entries with their contracts, repositories, settings sections, the EARS entities and
 relation kinds, the boot apply and its policy, dependencies and `hostVersion`.
 
 **Imperative**, in the `PackRegistration` object the pack's runtime module exports
@@ -56,7 +56,7 @@ below answered rather than guarded.
 
 For every member the table marks declarable: the manifest names it with an entry path, `generate-entries`
 keeps building the same registration object from those paths, and the built `snapshot.json` carries the declared
-set. Nothing a pack author writes gets harder — the manifest already names system, plugin, contract,
+set. Nothing a pack author writes gets harder — the manifest already names system, surface, contract,
 repository and service entries the same way, so this is the existing pattern extended rather than a new one.
 
 The check that keeps it honest is the one this repo uses everywhere: the declared set and the registered set
