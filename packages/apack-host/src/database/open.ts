@@ -74,7 +74,8 @@ export interface OpenAppDatabaseOptions {
   /** Where the store's progress lines go; `console.log` by default */
   log?: (message: string) => void;
   /**
-   * A pack snapshot to read the schema from when the data dir publishes none of its own (`--schema-from`).
+   * Packs to read the schema from when the data dir publishes none of its own (`--schema-from`): a snapshot
+   * file, a pack directory, or a directory of pack directories.
    * See `readInstalledSchema`: without it such a dir opens read-only, knowing only apack's own types.
    */
   schemaFrom?: string;

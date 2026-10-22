@@ -4,7 +4,7 @@ import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { AppEnvironment } from '@apackdev/sdk/env';
-import { parseSnapshot, type PackManifest } from '@apackdev/sdk/build';
+import { parseManifest, parseSnapshot, type PackManifest } from '@apackdev/sdk/build';
 import { readInstalledPacks } from '../packs/installed.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '@apackdev/sdk/types';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
@@ -90,15 +90,71 @@ function addNames(names: Record<string, string>, owners: Map<string, string>, pa
 }
 
 /**
- * A snapshot named by `--schema-from`, in either shape a built pack has on disk: the file itself, or a pack
- * directory holding it (`<dir>/types/snapshot.json`, which is where every pack's build writes it).
+ * Where a pack directory keeps the names, in the order a directory is probed. Three shapes are in the wild and
+ * each supplies a different file: an installed pack and the host's published packs have the snapshot and no
+ * manifest, a checkout has the manifest and its build's snapshot, and a packaged app ships both.
  */
-function namedManifest(schemaFrom: string): PackManifest {
-  const file = schemaFrom.endsWith('.json') ? schemaFrom : path.join(schemaFrom, PACK_LAYOUT.snapshot);
-  if (!fs.existsSync(file)) throw new Error(`No pack snapshot at ${file}`);
+const PACK_CANDIDATES = [
+  { file: PACK_LAYOUT.snapshot, read: readSnapshotManifest },
+  { file: path.join('dist', PACK_LAYOUT.snapshot), read: readSnapshotManifest },
+  { file: PACK_LAYOUT.manifest, read: readManifestFile },
+] as const;
+
+function readSnapshotManifest(file: string): PackManifest {
   const parsed = parseSnapshot(readJSON(file, "a pack's snapshot"));
   if (!parsed.snapshot) throw new Error(`${file}: ${parsed.diagnostics.map(issue => issue.message).join('; ')}`);
   return parsed.snapshot.manifest;
+}
+
+function readManifestFile(file: string): PackManifest {
+  const raw = readJSON(file, "a pack's manifest");
+  const { diagnostics } = parseManifest(raw);
+  if (diagnostics.length > 0) throw new Error(`${file}: ${diagnostics.map(issue => issue.message).join('; ')}`);
+  // The schema it just passed is what `PackManifest` is inferred from, which is why the installer reads one
+  // the same way (`packs/installer.ts`)
+  return raw as PackManifest;
+}
+
+/** The names in one pack directory, or nothing when it holds none of the three files a pack keeps them in. */
+function packAt(dir: string): PackManifest | undefined {
+  for (const { file, read } of PACK_CANDIDATES) {
+    const candidate = path.join(dir, file);
+    if (fs.existsSync(candidate)) return read(candidate);
+  }
+  return undefined;
+}
+
+/**
+ * The packs named by `--schema-from`: a snapshot file, one pack directory, or a **directory of pack
+ * directories** — an app's `host-packs`, a checkout's `packages`, a packaged app's `Resources/app/packages`.
+ *
+ * Naming a place rather than a list is what lets one flag cover every pack behind it. A directory is tried as
+ * one pack first, since that is the narrower reading and a pack directory never holds packs; only if it is not
+ * one are its children read, and a directory holding neither is an error rather than an empty answer, so a path
+ * that names nothing is reported instead of quietly adding nothing.
+ */
+function namedManifests(schemaFrom: string): PackManifest[] {
+  if (schemaFrom.endsWith('.json')) {
+    if (!fs.existsSync(schemaFrom)) throw new Error(`No pack snapshot at ${schemaFrom}`);
+    return [readSnapshotManifest(schemaFrom)];
+  }
+  if (!fs.existsSync(schemaFrom)) throw new Error(`No pack or pack directory at ${schemaFrom}`);
+  const one = packAt(schemaFrom);
+  if (one) return [one];
+
+  const byId = new Map<string, PackManifest>();
+  for (const entry of fs.readdirSync(schemaFrom, { withFileTypes: true })) {
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+    const manifest = packAt(path.join(schemaFrom, entry.name));
+    if (manifest) byId.set(manifest.id, manifest);
+  }
+  if (byId.size === 0) {
+    throw new Error(
+      `${schemaFrom} holds no pack: a pack keeps its names in ${PACK_CANDIDATES.map(({ file }) => file).join(', ')}, `
+      + 'and neither it nor any directory in it has one of those.',
+    );
+  }
+  return [...byId.values()];
 }
 
 /**
@@ -114,17 +170,22 @@ function namedManifest(schemaFrom: string): PackManifest {
  * *installed*, and a caller about to write needs to know it is not true about what is *stored*. See the
  * field, which says what it does and does not cover.
  *
- * `schemaFrom` names a snapshot to read *as well*, for a dir whose rows outlived the pack that declared
- * their types. It is resolved whether or not it adds anything, so a path that names nothing is an error
- * rather than a flag that quietly did nothing.
+ * `schemaFrom` names packs to read *as well*, for a dir whose rows outlived the packs that declared their
+ * types: a snapshot, a pack directory, or a directory of them (see `namedManifests`). It is resolved whether
+ * or not it adds anything, so a path that names nothing is an error rather than a flag that quietly did
+ * nothing, and one that only names packs already installed is reported in `notes`.
  */
 export function readInstalledSchema(context: SchemaContext, options: { schemaFrom?: string } = {}): InstalledSchema {
-  const named = options.schemaFrom === undefined ? undefined : namedManifest(options.schemaFrom);
+  const named = options.schemaFrom === undefined ? [] : namedManifests(options.schemaFrom);
   const installed = installedManifests(context);
-  const notes = named && installed.some((manifest) => manifest.id === named.id)
-    ? [`${context.userDataDir} has ${named.id} installed, so --schema-from ${options.schemaFrom} added nothing.`]
-    : [];
-  const packs = [...installed, ...(named && !installed.some((m) => m.id === named.id) ? [named] : [])];
+  const installedIds = new Set(installed.map((manifest) => manifest.id));
+  const added = named.filter((manifest) => !installedIds.has(manifest.id));
+  const alreadyInstalled = named.filter((manifest) => installedIds.has(manifest.id)).map(({ id }) => id);
+  const notes = alreadyInstalled.length === 0 ? [] : [
+    `${context.userDataDir} already has ${alreadyInstalled.join(', ')} installed, so --schema-from `
+    + `${options.schemaFrom} added ${added.length === 0 ? 'nothing' : added.map(({ id }) => id).join(', ')}.`,
+  ];
+  const packs = [...installed, ...added];
   const degraded = packs.length === 0
     ? `${context.userDataDir} has no packs installed in ${context.packsDir}, so only apack's own entity `
       + "types are known. Rows still load and are reachable by id, but a query that starts from a pack's "

@@ -30,7 +30,8 @@ const TARGET_OPTIONS = {
 export const TARGET_USAGE = [
   '  --data-dir <path>      A data dir, a copy of the user\'s for example',
   '  --profile <name>       Built-in or custom stored profile',
-  '  --schema-from <path>   A pack snapshot to read entity types from, for a data dir that publishes none',
+  '  --schema-from <path>   Packs to read entity types from, for a data dir that publishes none: a snapshot,',
+  '                         a pack directory, or a directory of them (an app, a checkout)',
   '  --volatile             Read the run history too (TNode rows), which the app keeps in its own partition',
 ].join('\n');
 
@@ -39,7 +40,7 @@ export type DbTarget = Pick<AppEnvironment, 'env' | 'userDataDir' | 'apiPortFile
   named: boolean;
   /** `--volatile`: the run history is read with the rest of the data */
   volatile: boolean;
-  /** `--schema-from`: a pack snapshot to name the entity types a data dir doesn't publish */
+  /** `--schema-from`: packs naming the entity types a data dir doesn't publish — a snapshot, a pack, or a directory of packs */
   schemaFrom?: string;
 };
 
