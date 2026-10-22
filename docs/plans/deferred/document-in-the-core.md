@@ -7,7 +7,7 @@ The first is the condition for drawing the line the move turns on, which is wher
 Library's view of one begins; the one consumer there is today cannot settle it.
 
 Compiled 2026-10-22 on `session/commands-to-the-editor`, after
-[the commands goal](../../goals/goal-commands-are-host-level.md) made the chat's slash commands a
+[the commands goal](../../archive/goals/goal-commands-are-host-level.md) made the chat's slash commands a
 derivation over library documents.
 
 ## Why this rather than a `Command` entity

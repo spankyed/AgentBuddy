@@ -20,6 +20,59 @@ Finished when:
 Commit usable checkpoints as you go. Do not expand or reduce scope without user authorization.
 ```
 
+## Outcome (2026-10-22)
+
+**Done.** A command is content a pack ships, served by whichever feature plays the `commands`
+designation, and published to the shell so an editor in any window offers the list whatever surface is
+open. `extensions.commands` is gone; so is every read of a surface's state for it.
+
+| Phase | Commit | Evidence |
+|---|---|---|
+| 1 — one shape | `13cdd77e5` | One `PackCommand`, the SDK's; `CommandItem` gone |
+| 2 — one door, and the role that serves it | `2f3f5ca06`, `8922af1a2` | The content source, the designation, the provider; `extensions.commands`, its schema and `getPackCommands` deleted |
+| 3 — the move | `361969c75` | The suggestion in `@apackdev/ui`, config-gated to `input:chat`; threads' actor, memo and events stripped. Mutation: removing `sendCommands` from `SEND_STATE` fails three cases |
+| 4 — docs | `62287438f` | `content.md`'s section rewritten, the manifest row replaced by `features.<id>.getCommands`, four guides off `getPackCommands` |
+
+**What the review and the gate then changed, which is the part worth reading.** Four of these were
+defects the phases had introduced and two were mine in sequencing:
+
+| Change | Commit | Why |
+|---|---|---|
+| Escape stays with the open suggestion | `d61a7849c` | The editor composed `isSuggestionActive` from contributed groups only, so a built-in had nothing to speak for it: Escape paused the turn instead of closing the popup. No case covered Escape, which is why it slipped |
+| Only the role's feature may declare the provider | `5dcc627b8` | Codegen took `declared[0]` and the registry checked the *pack*, so a second provider lost to manifest order and a feature without the role could be served |
+| The role resolves to the feature that answers | `13f5511e0` | The manifest declared the provider per feature and the registration carried it per pack, so the ref was mined for a `packId`. That mismatch is what the claim check was reconciling; both failure modes are gone rather than guarded |
+| One place decides the list moved | `334ccad9c` | Ten library handlers each compared the whole list before and after a write. `libraryCommands` announces its writes; one watcher compares |
+| A command is a document with a type | `bde1deb16`, `54762313f` | The format defaults `documentType` — so a file in the commands source cannot omit it, *and* a library document that declares it is served. The first framing stamped it, which wrongly made the second impossible |
+| The document type is declared once | `7c33139ad` | Writer and reader spelled the literal separately |
+| The exports map keeps its own order | `4900457f9` | A json round-trip alphabetised all 34 keys; `published-exports` reads the non-code entries in order |
+
+**Authoring, which the goal did not ask for and the design argued into.** Removing the manifest key left
+a pack hand-writing a directory, a format reference and a field-section convention. `apack pack add
+command` and `add document` (`ed3fec238`, `f50d61ee9`, `12cf0fe22`, `ad98fb23f`) write the markdown and
+declare the source; `--content` takes a body and `add command` appends into a document already there,
+because an agent runs these and scaffold-then-edit is two steps where one does. That last one is the
+only scaffold here that writes into an existing file, and `add/write.ts`'s header states the bent rule
+rather than denying it.
+
+**Three things deferred rather than left in a conversation**, each with its revisit condition:
+[`document-in-the-core`](../../plans/deferred/document-in-the-core.md) (whose second trigger is wanting
+`extensions.commands` back — this move is what makes it buildable),
+[`pack-published-app-facts`](../../plans/deferred/pack-published-app-facts.md) and
+[`the-empty-library-source`](../../plans/deferred/the-empty-library-source.md), which records why the
+obvious fix for it is wrong. A `Command` entity is dropped for good.
+
+**`npm run chain -- --strict` passes on `ad98fb23f`**: 31 steps ok, 0 failed, 1 cached — effectively a
+cold run, with no step caveated as having read files that changed while it ran. `test:native` was the
+critical path at 297s.
+
+**Two lessons about running the gate, which cost four runs.** A pack's own `CLAUDE.md` is inside the
+pack compiler's captured namespace, so editing one mid-run invalidates the build inputs an integration
+spec checks — `docs/` is outside every pack and safe, a pack-local guide is not. And stopping a chain
+with a kill while `test:native` runs leaves its lock in the container's own `node_modules` volume,
+naming a pid and hostname the host can only ever read as held; it never clears itself. Both are in
+[pipeline-lessons.md](../references/pipeline-lessons.md#validation-loops)'s territory, and
+`--strict` is what turns the first into a refusal rather than a green run that describes another tree.
+
 ## Scope
 
 Commands enter the app through **two doors, one of which skips the machinery the other uses**, and the
@@ -477,11 +530,11 @@ or `extensions.commands` as a manifest key.
 - `extensions.commands` is removed, not kept beside the content path. Two doors is the defect.
 - Reference suggestion is not touched. If a phase wants to, it has found a shared seam worth naming
   rather than a reason to widen scope.
-- [`goal-editor-extensions.md`](../archive/goals/goal-editor-extensions.md) has landed, so
+- [`goal-editor-extensions.md`](goal-editor-extensions.md) has landed, so
   `command-suggestion.ts` already holds the extension and its Plugin together, and the convention there
   governs where they arrive.
 - Commands stay `Document`s, and a `Command` entity is **dropped for good** — not deferred. The Library
   surface *is* their editing UI, so the entity would trade the provider getter for a whole new editor.
   Don't raise it again as an alternative or as future work. The direction that does hold is the inverse:
   `Document` into the core with Library as its editor, as flows already work
-  ([document-in-the-core.md](../plans/deferred/document-in-the-core.md)).
+  ([document-in-the-core.md](../../plans/deferred/document-in-the-core.md)).

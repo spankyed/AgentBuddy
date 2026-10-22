@@ -6,7 +6,7 @@ second pack-sourced fact wants the same treatment**; that is the condition, and 
 makes the second one cheap enough to extract then rather than guess at now.
 
 Compiled 2026-10-22 on `session/commands-to-the-editor`, after
-[the commands goal](../../goals/goal-commands-are-host-level.md) put the commands on the shell.
+[the commands goal](../../archive/goals/goal-commands-are-host-level.md) put the commands on the shell.
 
 ## What an app-level fact is
 
