@@ -3,7 +3,7 @@
 Status: **closed, because the one instance stopped being one.** This plan deferred extracting a mechanism
 until a second pack-sourced app-level fact appeared. None did, and the first one went away instead: the
 chat's slash commands are now a derivation the app makes over its own rows, since `Document` is an SDK
-entity ([document-in-the-core](document-in-the-core.md)). No fact the shell holds comes from a pack any
+entity ([document-in-the-core](../../plans/deferred/document-in-the-core.md)). No fact the shell holds comes from a pack any
 more, so there is nothing to generalize and no condition left to wait for.
 
 **Kept as the record of what the machinery was**, because the five pieces below were real and are now
@@ -12,7 +12,7 @@ was built, used once, and removed when its subject moved into the core rather th
 framework. The seam at the end is where a future one would go.
 
 Compiled 2026-10-22 on `session/commands-to-the-editor`, after
-[the commands goal](../../archive/goals/goal-commands-are-host-level.md) put the commands on the shell;
+[the commands goal](../goals/goal-commands-are-host-level.md) put the commands on the shell;
 closed the same day on `session/document-in-the-core`, which removed them from the shell's pack-sourced
 column.
 
