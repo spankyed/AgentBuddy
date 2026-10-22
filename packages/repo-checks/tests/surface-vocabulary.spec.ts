@@ -122,13 +122,6 @@ const KEPT = [
  * one group does not hide another arriving later.
  */
 const ALLOWED: Record<string, { groups: readonly Group[]; why: string }> = {
-  // The record of the rename, which lists the names it retired. Renaming those would leave it saying the
-  // concept is called what it is called, and the five planted names its Phase 1 evidence cites would
-  // name nothing. It is the only archived document that quotes a retired spelling after the rename.
-  'docs/archive/goals/goal-plugins-to-surfaces.md': {
-    groups: ['concept-type', 'concept-call', 'concept-field', 'concept-event'],
-    why: 'the record of the rename, which has to spell what it retired',
-  },
   'packages/repo-checks/tests/surface-vocabulary.spec.ts': {
     groups: ['concept-type', 'concept-call', 'concept-field', 'concept-event'],
     why: 'this guard, which has to spell the names it retires',
@@ -148,13 +141,19 @@ const trackedCodeFiles = (): string[] => repoFiles().filter((file) =>
  * exists because the code-only population let `SELECT_PLUGIN_BY_SHELL` sit in `@apackdev/host`'s guide
  * through five phases of a rename — the one place a reader would have gone to find the event's name.
  *
- * **`docs/archive` is in, and the one exemption below is the whole cost of that.** An archive left to
- * record the vocabulary of its time is an archive a reader greps and finds the retired name in, which is
- * the noise this rename exists to remove — so the archived guides were renamed with everything else.
+ * **`docs/archive` is out because it adds no coverage, not because its vocabulary is excused.** Archiving
+ * moves a file; it does not change its text — so every archived document was scanned by this same case
+ * while it was live under `docs/goals`, `docs/plans` or `docs/references`. What scanning it again would
+ * find is only what cannot comply: a rename's own goal doc, whose evidence *is* an inventory of the
+ * spellings it retired (`goal-plugins-to-surfaces.md` lists 28 published entries and 22 event names).
+ * Policing that costs an `ALLOWED` row per rename that can never be removed, and whose staleness case can
+ * never fire, because the file is finished. The archived guides were renamed to the current vocabulary
+ * anyway — a reader greps the archive — but that is a readability change, not this gate's subject.
+ *
  * `CHANGELOG.md` is released history, and `etc/` is generated from source that this already reads.
  */
 const trackedGuides = (): string[] => repoFiles().filter((file) =>
-  file.endsWith('.md') && file !== 'CHANGELOG.md'
+  file.endsWith('.md') && !file.startsWith('docs/archive/') && file !== 'CHANGELOG.md'
   && !file.includes('/etc/') && !file.includes('node_modules/'));
 
 /** Which groups a file actually holds, for the staleness case. */
