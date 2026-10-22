@@ -4,7 +4,7 @@ import { qx, tx, EARS } from '#generated/ears.ts'
 
 describe('brainCommands writing to a TNode', () => {
   it('leave nothing behind for a TNode that is gone', () => {
-    const id = tx(EARS.Entity.TNode).put('status', 'running').id()
+    const id = tx(EARS.Entity.TNode).put('status', 'active').id()
     repository.brainCommands.clearVolatileData()
 
     repository.brainCommands.updateTNodeStatus(id, 'completed')
@@ -14,7 +14,7 @@ describe('brainCommands writing to a TNode', () => {
   })
 
   it('still write to a TNode that exists', () => {
-    const id = tx(EARS.Entity.TNode).put('status', 'running').id()
+    const id = tx(EARS.Entity.TNode).put('status', 'active').id()
 
     repository.brainCommands.updateTNodeStatus(id, 'completed')
     repository.brainCommands.updateTNodeAttributes(id, { payload: 1 })
