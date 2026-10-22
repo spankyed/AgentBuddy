@@ -57,9 +57,33 @@ const RETIRED = {
     'PLUGIN_EVENT_TYPES', 'HOST_PLUGIN_EVENT_TYPES', 'APPLICATION_PLUGIN_EVENT_TYPES',
     'PACKS_PLUGIN_EVENT_TYPES', 'SETTINGS_PLUGIN_EVENT_TYPES', '__PLUGIN_ID__',
   ],
+  /**
+   * The editor contribution, which tiptap has no name for because it has no such concept: an entry
+   * bundles tiptap Extensions, Vue popups and a predicate. The word was ours, so it goes with the rest.
+   *
+   * Longest first, which the `\b` would handle by backtracking anyway — it is for whoever reads the
+   * list, `TiptapPlugin` sitting inside four of its neighbours.
+   */
+  'editor-concept': [
+    'TiptapPluginDeclaration', 'TiptapPluginBinding', 'TiptapPluginSchema', 'tiptapPluginRegistry',
+    'tiptapPlugins', 'TiptapPlugin', 'editorPlugins', 'editorPlugin', 'tiptap-plugins', 'pluginPopups',
+  ],
 } as const;
 
 type Group = keyof typeof RETIRED;
+
+/**
+ * Groups the tree is not yet held to, because their rename is in flight.
+ *
+ * **The two cases above the scan still run for a parked group**, which is the point of parking rather
+ * than commenting the group out: its pattern is held to matching every name it retires and to leaving
+ * every kept spelling alone from the moment it lands, and only the sweep over the tree waits.
+ *
+ * `editor-concept` unparks in `docs/goals/goal-editor-extensions.md`'s Phase 5. Emptying this set is
+ * that phase's deliverable, so a group left here fails nothing and must not be forgotten — which is
+ * what `parked groups are declared` below is for.
+ */
+const PARKED: ReadonlySet<Group> = new Set<Group>(['editor-concept']);
 
 const patternFor = (group: Group): RegExp => new RegExp(`(?<![.\\w])(${RETIRED[group].join('|')})\\b`);
 
@@ -90,10 +114,12 @@ const DECLARES_PLUGIN = /^\s*(?:export\s+)?(?:declare\s+)?(?:interface|type|clas
 /**
  * One spelling from each vocabulary that keeps the word, which no pattern above may match.
  *
- * This is the case with teeth. Every entry is either published API (`TiptapPlugin`,
- * `tiptapPluginRegistry`, `searchPluginKey`) or a name this app hands to another program, so a pattern
- * that grew greedy enough to reach one of them would have the rename break a pack author's editor
- * extension or call a `claude` subcommand that does not exist.
+ * This is the case with teeth. Every entry is a name **somebody else defines** — ProseMirror's `Plugin`
+ * and `PluginKey`, a bundler's, or a subcommand of another program — so a pattern that grew greedy
+ * enough to reach one would alias a library's class or call a `claude` subcommand that does not exist.
+ *
+ * **No editor entry survives, and that is the point.** `tiptapPlugins` and its chain were ours; the
+ * only editor names here now are ones ProseMirror exports and we import as written.
  *
  * **There is no stored-key entry, and that is the point of the storage work rather than an omission.**
  * A window key used to be a fourth vocabulary — hand-written, so a rename orphaned the user's data.
@@ -101,9 +127,10 @@ const DECLARES_PLUGIN = /^\s*(?:export\s+)?(?:declare\s+)?(?:interface|type|clas
  * tree spells the word at all.
  */
 const KEPT = [
-  'tiptapPlugins', 'TiptapPlugin', 'TiptapPluginBinding', 'TiptapPluginDeclaration', 'tiptapPluginRegistry',
-  'PluginKey', 'searchPlugin', 'searchPluginKey', 'SearchPluginState', 'commandSuggestionPluginKey',
-  'addProseMirrorPlugins', 'ref.editor.registerPlugin(imagePastePlugin)',
+  // ProseMirror's own API, constructed in a `tiptap/extensions/` file. This is the whole of what the
+  // editor vocabulary keeps: an identifier says what it holds, and the type says whose class it is.
+  'PluginKey', 'new PluginKey<SearchState>(\'search\')', 'new Plugin<SearchState>({ key: searchKey })',
+  'addProseMirrorPlugins', 'editor.registerPlugin(plugin())', 'Plugin<SearchState>',
   'VitePlugin', 'esbuild.Plugin', "import('esbuild').Plugin", 'plugins: [vue()]', 'plugins.push(x)',
   'packExternalsPlugin', 'hostSharedModulesPlugin', 'postcssPlugins', 'pluginVue', 'pluginOxlint',
   "'@vitejs/plugin-vue'", "'eslint-plugin-vue'", "'rollup-plugin-dts'", "name: 'collect-bare-imports'",
@@ -123,13 +150,20 @@ const KEPT = [
  */
 const ALLOWED: Record<string, { groups: readonly Group[]; why: string }> = {
   'packages/repo-checks/tests/surface-vocabulary.spec.ts': {
-    groups: ['concept-type', 'concept-call', 'concept-field', 'concept-event'],
+    groups: ['concept-type', 'concept-call', 'concept-field', 'concept-event', 'editor-concept'],
     why: 'this guard, which has to spell the names it retires',
   },
 };
 
+/**
+ * `docs/archive` is out here for the reason `trackedGuides` gives: archiving moves a file without
+ * changing its text, so it was scanned while it was live. The population is one archived example
+ * manifest (`goal-manifest-redesign.example.json`), which is a document's illustration rather than a
+ * module anything imports — and renaming a key inside it would falsify the design it records.
+ */
 const trackedCodeFiles = (): string[] => repoFiles().filter((file) =>
   /\.(ts|tsx|js|mjs|cjs|vue|json|sh)$/.test(file)
+  && !file.startsWith('docs/archive/')
   && !file.includes('node_modules/') && !file.includes('/dist/') && !file.includes('__generated__/')
   && !file.includes('/__golden__/'));
 
@@ -205,7 +239,7 @@ describe('the surface vocabulary', () => {
       const lines = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8').split('\n');
       lines.forEach((line, i) => {
         for (const group of Object.keys(RETIRED) as Group[]) {
-          if (excused.includes(group)) continue;
+          if (excused.includes(group) || PARKED.has(group)) continue;
           if (patternFor(group).test(line)) violations.push(`${file}:${i + 1} ${line.trim()}  ← ${group}`);
         }
         if (!excused.includes('concept-type') && DECLARES_PLUGIN.test(line)) {
@@ -229,7 +263,7 @@ describe('the surface vocabulary', () => {
       const excused = ALLOWED[file]?.groups ?? [];
       fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8').split('\n').forEach((line, i) => {
         for (const group of Object.keys(RETIRED) as Group[]) {
-          if (excused.includes(group)) continue;
+          if (excused.includes(group) || PARKED.has(group)) continue;
           if (patternFor(group).test(line)) violations.push(`${file}:${i + 1} ${line.trim()}  ← ${group}`);
         }
       });
@@ -237,11 +271,28 @@ describe('the surface vocabulary', () => {
     expect(violations, 'a surface is not a plugin; see docs/archive/goals/goal-plugins-to-surfaces.md').toEqual([]);
   });
 
+  /**
+   * **A park closes itself.** While a rename is in flight its group has violations in the tree and this
+   * passes; the moment the last one goes, the park is excusing nothing and this fails, naming the group
+   * to unpark. So the final phase cannot be "forget to turn it on" — the guard asks for it.
+   *
+   * The edit that makes it fire is finishing the rename, which is the edit it is for.
+   */
+  it('parks nothing that has stopped needing it', () => {
+    const obsolete = [...PARKED].filter((group) => !trackedCodeFiles().some((file) => {
+      const excused = ALLOWED[file]?.groups ?? [];
+      return !excused.includes(group)
+        && patternFor(group).test(fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8'));
+    }));
+    expect(obsolete, 'the rename is done — take these out of PARKED and let the scan hold the tree')
+      .toEqual([]);
+  });
+
   it('excuses nothing that has stopped needing it', () => {
     const stale = Object.entries(ALLOWED).flatMap(([file, { groups }]) => {
       if (!fs.existsSync(path.join(REPO_ROOT, file))) return [`${file}: gone`];
       const actual = fires(file);
-      const unused = groups.filter((group) => !actual.includes(group));
+      const unused = groups.filter((group) => !actual.includes(group) && !PARKED.has(group));
       return unused.length > 0 ? [`${file}: no longer holds ${unused.join(', ')}`] : [];
     });
     expect(stale, 'drop these from ALLOWED, or the group they name from their entry').toEqual([]);
