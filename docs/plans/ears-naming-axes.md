@@ -1,8 +1,7 @@
 # A name carries the operation; structure carries the rest
 
-**Status:** proposed, not started. **It amends [`ears-public-api.md`](ears-public-api.md)'s change 4** (see
-[The amendment](#the-amendment-this-makes)), so it needs that plan's owner before anything in
-`packages/apack-ears/src/` moves.
+**Status:** approved, not started. It lands after [`ears-public-api.md`](ears-public-api.md), whose change 4
+it **supersedes** on one point (see [What this supersedes](#what-this-supersedes)).
 Source read at `886c11bd5` (2026-10-22). Call-site figures are text searches over `packages` for
 `*.ts`/`*.vue`, excluding `dist/`, `publish/` and `__generated__/`; each is an upper bound on the work and
 the typecheck is the exact count once a name moves.
@@ -152,14 +151,16 @@ A gate is available and should wait: `check:specifiers` already enforces the `_`
 and could refuse a new `untyped*` **free** export. It is worth adding only after phase 1, because until then
 it has no firing case — and a check that cannot fail is a gate or an assertion, not a check.
 
-## The amendment this makes
+## What this supersedes
 
 [`ears-public-api.md`](ears-public-api.md#4-the-package-holds-no-ambient-engine)'s change 4 reads
-*"everything that reads or writes data is a member of `engine.query` or `engine.admin`."* Phase 2 says there
-is no `engine.query`. That is the same direction one level further, not a disagreement, but it is a change to
-a plan that is mid-flight in those files, so it is named here rather than absorbed quietly. If its owner
-keeps the two faces, phases 3 and 4 still stand and `query` stays spent on the face — which is the one
-outcome this plan exists to avoid.
+*"everything that reads or writes data is a member of `engine.query` or `engine.admin`."* **There is no
+`engine.query`.** Phase 2 replaces that clause: the operations are the engine's own members, with `admin`
+beside them. The same direction one level further, and it is named here rather than absorbed quietly only so
+that whoever reads that plan afterwards knows which of the two is current.
+
+Keeping the two faces is what this plan exists to rule out, because it leaves `query` spent on a set that is
+not a category and the operation that is a query still called `qx`.
 
 ## Deliberately not doing
 
