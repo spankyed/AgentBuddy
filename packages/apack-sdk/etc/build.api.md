@@ -3347,7 +3347,6 @@ export const PROVENANCE_KINDS: {
     readonly relKinds: (m: ProvenanceManifest) => string[];
     readonly referenceTypes: (m: ProvenanceManifest) => string[];
     readonly referenceCategories: (m: ProvenanceManifest) => string[];
-    readonly commands: (m: ProvenanceManifest) => string[];
     readonly tiptapExtensions: (m: ProvenanceManifest) => string[];
     readonly surfaces: (m: ProvenanceManifest, packId: string) => FeatureRef[];
 };
@@ -3359,7 +3358,6 @@ export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;
 export interface ProvenanceManifest extends PackDataDeclarations {
     // (undocumented)
     extensions?: {
-        commands?: Readonly<Record<string, unknown>>;
         textEditor?: FrontendDeclaration['textEditor'];
     };
     // (undocumented)
