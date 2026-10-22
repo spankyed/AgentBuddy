@@ -14,7 +14,7 @@ export function template(params: Record<string, any>) {
   const { schema, topology } = params;
 
   return `You are an EARS database query generator. Output ONLY executable TypeScript code. No markdown, no explanations, no comments.
-MUST include a return statement. qx() is synchronous — never use await.
+MUST include a return statement. qx is synchronous — never use await.
 
 SCHEMA:
 
@@ -38,12 +38,16 @@ getSchemaStats()      { entities, attributes, relations } with counts
 API — chain order matters. Use filters/shaping FIRST, then a terminal to get results.
 
 Chainable (return qx, keep chaining):
-  qx(EARS.Entity.Thread)                          all of a type
-  qx('Thread-1')                                  single entity by ID
-  qx(['Thread-1', 'Thread-2'])                    multiple by ID
+  qx(EARS.Entity.Thread)                          all of a type (a type name only, never an id)
+  qx([EARS.Entity.Thread, EARS.Entity.Note])      all of several types
+  qx.ids('Thread-1')                              single entity by ID
+  qx.ids(['Thread-1', 'Thread-2'])                multiple by ID (absent ids are dropped)
+  qx.all()                                        every entity
   .ofType(EARS.Entity.X)                           filter by entity type
-  .where('field', value)                           filter by exact attribute match
-  .where('field')                                  filter: has this attribute
+  .where('field', value)                           filter by exact attribute match (value must not be undefined)
+  .where('field', v => ...)                        filter by a predicate over each value
+  .has('field')                                    filter: has this attribute
+  .lacks('field')                                  filter: lacks this attribute
   .withRole(role)                                  filter by role
   .relatedTo(targetId)                             filter: any relation to target
   .inIds([...ids])                                 filter to specific IDs
@@ -89,22 +93,22 @@ return qx(EARS.Entity.Thread).where('status', 'active').pickAll();
 
 // Traverse relations (get messages in a thread)
 const threadId = qx(EARS.Entity.Thread).first();
-return qx(threadId).linksTo('contains', EARS.Entity.Message)
+return qx.ids(threadId).linksTo('contains', EARS.Entity.Message)
   .pick(['text', 'sender', 'timestamp']);
 
 // Traverse + pick in one call
-return qx('Thread-1')
+return qx.ids('Thread-1')
   .linksPick('contains', ['text', 'sender', 'timestamp'], EARS.Entity.Message);
 
 // Aggregate: threads with message counts
 return qx(EARS.Entity.Thread).pick(['topic']).map(t => ({
   ...t,
-  messageCount: qx(t.id).linksTo('contains', EARS.Entity.Message).count()
+  messageCount: qx.ids(t.id).linksTo('contains', EARS.Entity.Message).count()
 }));
 
 // Reverse relation: find what points TO an entity
 const flowId = qx(EARS.Entity.Flow).first();
-return qx(flowId).linksTo('contains', EARS.Entity.Node, false).pickAll();
+return qx.ids(flowId).linksTo('contains', EARS.Entity.Node, false).pickAll();
 
 // Inspect a single entity's full data
 const id = qx(EARS.Entity.Thread).first();
@@ -114,6 +118,6 @@ return getAll(id);
 return qx(EARS.Entity.Flow).map(id => ({
   id,
   ...getAll(id),
-  nodeCount: qx(id).linksTo('contains', EARS.Entity.Node).count()
+  nodeCount: qx.ids(id).linksTo('contains', EARS.Entity.Node).count()
 }));`;
 }

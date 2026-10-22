@@ -35,7 +35,7 @@ test('real onboarding writes app and feature preferences without a settings asse
       actor.send({ type: 'BACK_TO_EXPLORER' });
       actor.send({ type: 'QUERY.UPDATE', code: `return {
         app: qx('AppState').pickOne(['hasOnboarded']),
-        threads: qx().withRole('assistant_birth').pick(['context', 'topic'])
+        threads: qx.all().withRole('assistant_birth').pick(['context', 'topic'])
       };` });
     });
     // The component's useSurface send supplies the reply address. Sending a raw actor event from

@@ -25,8 +25,8 @@ describe("the console's EARS", () => {
     await expect(executeTransaction('return EARS.Entity.Memo')).resolves.toBe('Memo')
   })
 
-  // It read as `undefined` before, and `qx(undefined)` means every entity — so a query for the gone pack's
-  // type answered with the whole database instead of failing
+  // A gone pack's type is refused where it is named, so a query for it fails naming the type rather than
+  // reaching `qx` as `undefined`
   it("refuses a pack's types once it is unregistered", async () => {
     registerPack(MEMO_PACK)
     unregisterPack(MEMO_PACK.id)

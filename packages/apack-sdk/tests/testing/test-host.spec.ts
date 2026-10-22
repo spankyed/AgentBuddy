@@ -9,11 +9,11 @@ import { getAppVersion } from '../../src/env/index.ts';
 import { createLogger, reportError } from '../../src/logger/index.ts';
 import { boundHost, unbindHost } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
-import { registerRepository, repository, untypedTx } from '@apackdev/ears';
+import { registerRepository, repository, untypedCreate } from '@apackdev/ears';
 
 process.env.APACK_ENV ??= 'test';
 process.env.APACK_USER_DATA_DIR ??= os.tmpdir();
-startTestRuntime();
+startTestRuntime({ entityTypes: ['Memo'] });
 
 describe('the test host', () => {
   it('binds testRootEvents as the bus untypedBroadcastToSurface and untypedSendToSystem send on, which _rootEvents is', () => {
@@ -58,7 +58,7 @@ describe('the test host', () => {
     expect(getAppVersion()).toBe('0.0.0-test');
     expect(boundHost().ears.repository).toBe(ears().repository);
     registerRepository('memoQueries', { all: () => [] });
-    const id = untypedTx('Memo').put('text', 'hello').id();
+    const id = untypedCreate('Memo').set('text', 'hello').id();
     expect(boundHost().services.traceStore.getAttr('text', id)).toBe('hello');
     expect(entityIds()).toContain(id);
     dropAttribute(id, 'text');

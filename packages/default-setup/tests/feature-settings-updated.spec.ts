@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assign, setup } from 'xstate';
 import { getTestSettings, mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apackdev/testing/harness';
-import { untypedTx } from '@apackdev/ears';
+import { untypedCreate, untypedUpsert } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 
 
@@ -119,7 +119,7 @@ describe('a feature whose settings change', () => {
   it('tells each feature its settings with no changes after a backup import, and not a diff across it later', async () => {
     mockService('appData', {
       importBackup: () => getTestSettings().whileReplacingData(async () => {
-        untypedTx('Settings-app' as EARS.EntityId).put('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } })
+        untypedUpsert('Settings', 'Settings-app' as EARS.EntityId).set('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } })
         return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] }
       }),
     });
@@ -142,7 +142,7 @@ describe('a feature whose settings change', () => {
         // Before the import's first await, and after it: the writes tell nothing whenever they happen
         getTestSettings().set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['tags'], [{ name: 'early' }]);
         await Promise.resolve();
-        untypedTx('Settings-app' as EARS.EntityId).put('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
+        untypedUpsert('Settings', 'Settings-app' as EARS.EntityId).set('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
         getTestSettings().set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['tags'], [{ name: 'migrated' }]);
         if (outcome === 'fails') throw new Error('backup unreadable');
         return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] };
@@ -217,7 +217,7 @@ describe('a feature whose settings change', () => {
       const heardBefore = heardBy(app).length;
       const { finish } = await importing(app);
 
-      untypedTx('Settings-app' as EARS.EntityId).put('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
+      untypedUpsert('Settings', 'Settings-app' as EARS.EntityId).set('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
       await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'memo-pack' }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
       expect(heardBy(app)).toHaveLength(heardBefore);
 
@@ -323,7 +323,7 @@ describe('a feature whose settings change', () => {
   // features from its manifest, host/tests/packs); one no installed pack has is refused, and one of an uninstalled
   // pack stays as it was, for its reinstall
   it('refuses changed settings of a feature no installed pack has, and keeps an uninstalled pack\'s unchanged', async () => {
-    untypedTx('Settings-app' as EARS.EntityId, true).put('entityType', 'Settings').put('data', { features: { 'gone-pack/journal': { font: 'serif' } } });
+    untypedCreate('Settings', { id: 'Settings-app' as EARS.EntityId }).set('data', { features: { 'gone-pack/journal': { font: 'serif' } } });
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 

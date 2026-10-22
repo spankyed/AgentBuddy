@@ -4,7 +4,7 @@ import { writeInstalledPackFixture } from '../packs/runtime/build-fixture.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { untypedTx, installEngine } from '@apackdev/ears';
+import { untypedCreate, installEngine } from '@apackdev/ears';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { openDatabaseStore } from '../../src/database/open.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
@@ -77,4 +77,4 @@ export async function writeData(userDataDir: string, write: () => void): Promise
   }
 }
 
-export { context as schemaContext, untypedTx };
+export { context as schemaContext, untypedCreate };

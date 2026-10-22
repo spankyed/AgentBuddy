@@ -18,7 +18,7 @@ const SETTINGS_ID = `${SETTINGS_ENTITY}-app` as EARS.EntityId;
 const logger = createLogger('settings');
 export interface SettingsStoreOptions {
   /** The owning engine; test harnesses resolve the current engine after a reset. */
-  ears: () => Pick<EarsQuery, 'qx' | 'tx'>;
+  ears: () => Pick<EarsQuery, 'qx' | 'upsert'>;
   catalog: () => SettingsCatalog;
   /** Omit only for a fixed catalog, such as a one-shot validator. */
   onCatalogChanged?: (listener: () => void) => () => void;
@@ -47,7 +47,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
 
   function defaults(): SettingsDocument { declarations(); return validation.defaults; }
   function rawStored(): unknown {
-    const row = ears().qx(SETTINGS_ID).pickOne(['data']);
+    const row = ears().qx.ids(SETTINGS_ID).pickOne(['data']);
     if (row === null) return {};
     return structuredClone(row.data);
   }
@@ -100,9 +100,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     declarations();
     validation.validate(next, rawStored());
     const database = ears();
-    const exists = database.qx(SETTINGS_ID).pickOne(['data']) !== null;
-    (exists ? database.tx(SETTINGS_ID) : database.tx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY))
-      .put('data', structuredClone(next)).put('updatedAt', Date.now());
+    database.upsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', structuredClone(next)).set('updatedAt', Date.now());
     revision++;
     tell('written');
   }

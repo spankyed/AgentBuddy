@@ -9,7 +9,7 @@ export const transactionExamples: TransactionExample[] = [
   {
     title: 'Reset Settings',
     description: 'Reset all settings by destroying all entries in the Settings collection',
-    query: `return qx('Settings').ids().forEach(id => tx(id).destroy());`
+    query: `return qx('Settings').ids().forEach(id => write(id).destroy());`
   },
 
 
@@ -24,15 +24,15 @@ if (threads.length === 0) {
 }
 
 const threadId = threads[0];
-const before = qx(threadId).pickOne(['status', 'updatedAt']);
+const before = qx.ids(threadId).pickOne(['status', 'updatedAt']);
 
 // Update the thread
-tx(threadId)
-  .put('status', 'resolved')
-  .put('updatedAt', Date.now())
-  .put('resolvedBy', 'admin');
+write(threadId)
+  .set('status', 'resolved')
+  .set('updatedAt', Date.now())
+  .set('resolvedBy', 'admin');
 
-const after = qx(threadId).pickOne(['status', 'updatedAt', 'resolvedBy']);
+const after = qx.ids(threadId).pickOne(['status', 'updatedAt', 'resolvedBy']);
 
 return { threadId, before, after };`
   },
@@ -41,8 +41,8 @@ return { threadId, before, after };`
   {
     title: 'Grant and Revoke Roles',
     description: 'Manage entity roles',
-    query: `const noteId = tx(EARS.Entity.Note)
-  .put('title', 'Role Test Note')
+    query: `const noteId = create(EARS.Entity.Note)
+  .set('title', 'Role Test Note')
   .grant('assistant')
   .grant('analyzer')
   .id();
@@ -51,12 +51,12 @@ return { threadId, before, after };`
 const initialRoles = getRoles(noteId);
 
 // Revoke one role and grant another
-tx(noteId)
+write(noteId)
   .revoke('assistant')
   .grant('supervisor');
 
-// Ensure only this note has the 'primary' role
-tx(noteId).ensure('primary');
+// Make this the only note with the 'primary' role
+write(noteId).grantExclusive('primary', qx(EARS.Entity.Note).ids());
 
 const finalRoles = getRoles(noteId);
 
@@ -69,35 +69,31 @@ return {
 
   // Complex Operations
   {
-    title: 'Define Entity with Relations',
-    description: 'Create entity with attributes, roles, and relations in one call',
-    query: `// Create a flow with complete definition
-const flowId = tx(EARS.Entity.Flow)
-  .define({
-    attributes: {
-      name: 'Customer Onboarding',
-      description: 'Automated customer onboarding flow',
-      status: 'draft',
-      version: '1.0.0'
-    },
-    roles: ['template', 'featured'],
-    links: {
-      // Create and link nodes
-      contains: [
-        tx(EARS.Entity.Node)
-          .put('type', 'start')
-          .put('label', 'Begin Onboarding')
-          .id(),
-        tx(EARS.Entity.Node)
-          .put('type', 'action')
-          .put('label', 'Collect Information')
-          .id()
-      ]
-    }
-  })
+    title: 'Create Entity with Relations',
+    description: 'Create an entity with attributes, roles, and relations',
+    query: `// Create the nodes
+const startId = create(EARS.Entity.Node)
+  .setMany({ type: 'start', label: 'Begin Onboarding' })
+  .id();
+const actionId = create(EARS.Entity.Node)
+  .setMany({ type: 'action', label: 'Collect Information' })
   .id();
 
-return qx(flowId).pickAll();`
+// Create a flow holding them
+const flowId = create(EARS.Entity.Flow)
+  .setMany({
+    name: 'Customer Onboarding',
+    description: 'Automated customer onboarding flow',
+    status: 'draft',
+    version: '1.0.0'
+  })
+  .grant('template')
+  .grant('featured')
+  .link(EARS.RelKind.CONTAINS, startId)
+  .link(EARS.RelKind.CONTAINS, actionId)
+  .id();
+
+return qx.ids(flowId).pickAll();`
   },
 
 
@@ -118,9 +114,10 @@ updateEntity(note.id, {
 });
 
 // Create relation with helper
-createRelation(note.id, EARS.RelKind.spawned, 'Thread-1');
+const threadId = qx(EARS.Entity.Thread).first();
+if (threadId) createRelation(note.id, EARS.RelKind.SPAWNED, threadId);
 
-return qx(note.id).pickAll();`
+return qx.ids(note.id).pickAll();`
   },
 
   // Safe Operations
@@ -128,28 +125,26 @@ return qx(note.id).pickAll();`
     title: 'Safe Link Creation',
     description: 'Create relations with cycle prevention',
     query: `// Create a hierarchy
-const root = tx(EARS.Entity.Thread)
-  .put('title', 'Root Thread')
+const root = create(EARS.Entity.Thread)
+  .set('title', 'Root Thread')
   .id();
 
-const child = tx(EARS.Entity.Thread)
-  .put('title', 'Child Thread')
+const child = create(EARS.Entity.Thread)
+  .set('title', 'Child Thread')
   .id();
 
-const grandchild = tx(EARS.Entity.Thread)
-  .put('title', 'Grandchild Thread')
+const grandchild = create(EARS.Entity.Thread)
+  .set('title', 'Grandchild Thread')
   .id();
 
-// Create safe hierarchy
-tx(root).safeLink(EARS.RelKind.parent_of, child);
-tx(child).safeLink(EARS.RelKind.parent_of, grandchild);
+// Link, refusing any link that would form a parent_of cycle
+const acyclicIn = [EARS.RelKind.PARENT_OF];
+write(root).link(EARS.RelKind.PARENT_OF, child, { acyclicIn });
+write(child).link(EARS.RelKind.PARENT_OF, grandchild, { acyclicIn });
 
 // This would fail due to cycle prevention
 try {
-  tx(grandchild).safeLink(EARS.RelKind.parent_of, root, {
-    preventCycles: true,
-    relationKind: EARS.RelKind.parent_of
-  });
+  write(grandchild).link(EARS.RelKind.PARENT_OF, root, { acyclicIn });
 } catch (error) {
   return {
     hierarchy: {

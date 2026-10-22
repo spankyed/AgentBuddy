@@ -28,7 +28,7 @@ test("reads the running app's data and refuses to change it", async ({ electronA
   // The app's settings and written flows
   expect(JSON.parse(read.stdout)).toEqual([true, true]);
 
-  const write = apackDb(['exec', "tx(EARS.Entity.Note).put('title', 'written while the app runs')", '--data-dir', dataDir]);
+  const write = apackDb(['exec', "create(EARS.Entity.Note).set('title', 'written while the app runs')", '--data-dir', dataDir]);
   expect(write.status).toBe(1);
   expect(write.stderr).toMatch(/apack is running on .*: quit it first, this command changes its database/);
   const reset = apackDb(['reset', '--force', '--data-dir', dataDir]);

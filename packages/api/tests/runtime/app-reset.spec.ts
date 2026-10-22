@@ -23,7 +23,7 @@ const { _settingsAdmin } = await import('@apackdev/sdk/services');
 const { boundHost } = await import('@apackdev/sdk/runtime/internals');
 const { services } = boundHost();
 const { flowRepository } = await import('@apackdev/sdk/repositories');
-const { untypedQx, untypedTx } = await import('@apackdev/ears');
+const { untypedQx, untypedWrite } = await import('@apackdev/ears');
 const { onIncoming } = await import('@apackdev/sdk/events');
 const { HOST } = await import('@apackdev/host/bus');
 
@@ -105,8 +105,8 @@ it('restores unfinished onboarding and resumes it only after an explicit restart
     if (to === 'default-setup/threads' && event.type === 'LOAD_CHAT_THREAD') opened.push(event);
   });
   const bus = createActor(createAppBus(packs), { systemId: HOST.bus }).start();
-  const threadId = () => untypedQx().withRole('assistant_birth').ids()[0];
-  const context = () => threadId() && untypedQx(threadId()).pickOne(['context'])?.context;
+  const threadId = () => untypedQx.all().withRole('assistant_birth').ids()[0];
+  const context = () => threadId() && untypedQx.ids(threadId()).pickOne(['context'])?.context;
   try {
     rootEvents.emitConnected();
     rootEvents.emitPackClientConnected('default-setup');
@@ -115,9 +115,9 @@ it('restores unfinished onboarding and resumes it only after an explicit restart
     expect(id).toBeDefined();
     const welcome = context() as { onboarding: Record<string, unknown> };
     const progress = { ...welcome, onboarding: { ...welcome.onboarding, step: 'projects' } };
-    untypedTx(id).put('context', progress);
+    untypedWrite(id).set('context', progress);
     const backup = await services.appData.exportBackup(dataDir, 'unfinished-onboarding', ['lmdb']);
-    untypedTx(id).put('context', { onboarding: { step: 'changed after backup' } });
+    untypedWrite(id).set('context', { onboarding: { step: 'changed after backup' } });
     services.onboarding.complete();
 
     await services.appData.importBackup(backup);

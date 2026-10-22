@@ -11,7 +11,7 @@ import { importCompiledContent, type ApplyRecord } from '@apackdev/sdk/utils';
 import { registerPack, unregisterPack } from '@apackdev/testing/harness';
 import { findWhere } from '#generated/ears.ts';
 import { dropAttribute } from '@apackdev/sdk/testing';
-import { findRelations, untypedTx } from '@apackdev/ears';
+import { findRelations, untypedWrite } from '@apackdev/ears';
 import { repository } from '#generated/repository.ts';
 import { PACK_DIR, applyAfter, resetDatabase } from './harness.ts';
 import type { EARS } from '@apackdev/ears';
@@ -114,8 +114,9 @@ describe('re-applying edited flows', () => {
   it("doesn't count relations stored in another order as an edit", () => {
     // Relinking a transition (as loading relations from disk in another order would) keeps its content
     const [transition] = nodesOf('Codex').flatMap((node) => findRelations({ sourceEntity: node.id, relationType: 'transitions_to' }));
-    untypedTx(transition.sourceEntity).unlinkIf('transitions_to', transition.targetEntity);
-    untypedTx(transition.sourceEntity).link('transitions_to', transition.targetEntity, transition.info);
+    untypedWrite(transition.sourceEntity)
+      .unlink('transitions_to', transition.targetEntity)
+      .link('transitions_to', transition.targetEntity, { info: transition.info });
     expect(contentFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
   });
 

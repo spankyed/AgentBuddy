@@ -12,7 +12,7 @@ import { replace } from '../../src/commands/pack-replace';
 import { install } from '../../src/commands/pack-install';
 import { uninstall } from '../../src/commands/pack-uninstall';
 import { _appDataPaths } from '@apackdev/sdk/utils';
-import { untypedTx, installEngine, type EARS } from '@apackdev/ears';
+import { untypedUpsert, installEngine, type EARS } from '@apackdev/ears';
 import { openProfile } from '../../src/app/profiles';
 
 let tmp: string;
@@ -71,7 +71,7 @@ it('replaces deliberately, survives boot refresh, then restores a removed defaul
   const previousEngine = installEngine(engine.query);
   try {
     await store.hydrate();
-    untypedTx(settingsId, true).put('entityType', 'Settings').put('data', choices);
+    untypedUpsert('Settings', settingsId).set('data', choices);
   } finally {
     installEngine(previousEngine);
     expect(store.close().errorCount).toBe(0);

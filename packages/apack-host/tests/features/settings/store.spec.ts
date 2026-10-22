@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installedEngine, untypedQx, untypedTx } from '@apackdev/ears';
+import { installedEngine, untypedQx, untypedUpsert, untypedWrite } from '@apackdev/ears';
 import { resetTestData } from '@apackdev/sdk/testing';
 import type { EARS } from '@apackdev/sdk';
 import type { PackRegistration } from '@apackdev/sdk/framework';
@@ -32,7 +32,7 @@ beforeEach(() => {
   resetTestData();
   store = createSettingsStore({ ears: installedEngine, catalog: () => registry.settingsCatalog() });
 });
-const rowData = () => untypedQx(SETTINGS_ID).pickOne(['data'])?.data;
+const rowData = () => untypedQx.ids(SETTINGS_ID).pickOne(['data'])?.data;
 
 describe('definitions and explicit choices', () => {
   it('reads all three owners without creating a row', () => {
@@ -40,7 +40,7 @@ describe('definitions and explicit choices', () => {
     expect(store.get(app)).toMatchObject({ projects: [], personal: {} });
     expect(store.get(assistant)).toEqual({ name: '' });
     expect(store.get(feature)).toEqual({ limit: 10, sort: 'newest' });
-    expect(untypedQx(SETTINGS_ID).pickOne(['data'])).toBeNull();
+    expect(untypedQx.ids(SETTINGS_ID).pickOne(['data'])).toBeNull();
   });
 
   it('keeps an explicit default-equal value until reset while following untouched defaults', () => {
@@ -115,7 +115,7 @@ describe('one validated writer', () => {
 
   it('retains current-format unavailable overrides but refuses edits and allows host removal', () => {
     const orphan = { packs: { absent: { assistant: { name: 'Keep' } } }, features: { 'absent/code': { limit: 2 } } };
-    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', orphan);
+    untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', orphan);
     store.set(assistant, ['name'], 'Ada');
     expect(store.getOverrides()).toMatchObject(orphan);
     const replacement = store.getAll();
@@ -128,7 +128,7 @@ describe('one validated writer', () => {
 
   it('refuses retaining invalid declared data and permits replacing the invalid slice', () => {
     const data = { features: { [THREADS]: { unknown: true, limit: 'invalid' } } };
-    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', data);
+    untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', data);
     expect(() => store.set(assistant, ['name'], 'Ada')).toThrow(SettingsRefusedError);
     expect(store.getOverrides()).toEqual(data);
     store.set(feature, [], { sort: 'oldest' });
@@ -204,7 +204,7 @@ describe('notifications and data replacement', () => {
     const before = store.getSnapshot();
     await store.whileReplacingData(async () => {
       const pending = store.getSnapshot();
-      untypedTx(SETTINGS_ID).put('data', { packs: { 'default-setup': { assistant: { name: 'Restored' } } } });
+      untypedWrite(SETTINGS_ID).set('data', { packs: { 'default-setup': { assistant: { name: 'Restored' } } } });
       expect(store.getAll().packs['default-setup'].assistant).toEqual({ name: 'Restored' });
       expect(store.getSnapshot()).toEqual(pending);
       expect(pending.values).toEqual(before.values);
@@ -265,7 +265,7 @@ it('permits replacement initialization while refusing unrelated pack writers', a
 
 
 it.each([null, undefined, [], 'invalid'])('refuses a malformed stored row rather than treating %j as missing preferences', data => {
-  untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', data);
+  untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', data);
   const before = rowData();
   expect(() => store.getAll()).toThrow('Stored settings must be a JSON object');
   expect(() => store.set(app, ['personal', 'name'], 'Ada')).toThrow('Stored settings must be a JSON object');
@@ -306,13 +306,13 @@ it('does not let detached initialization work retain write access during a later
 
 describe('explicit settings recovery', () => {
   function corrupt(data: unknown) {
-    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', data);
+    untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', data);
     store.enterRecovery();
     return store.getRecovery()!;
   }
 
   it('reports nothing and reads normally until boot enters recovery', () => {
-    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { limit: 5 } } });
+    untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', { features: { [THREADS]: { limit: 5 } } });
     expect(store.getRecovery()).toBeUndefined();
     expect(store.get(feature)).toMatchObject({ limit: 5 });
   });
@@ -338,7 +338,7 @@ describe('explicit settings recovery', () => {
   });
 
   it('validates typed reads even before boot explicitly enters recovery', () => {
-    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { limit: 'invalid' } } });
+    untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', { features: { [THREADS]: { limit: 'invalid' } } });
     expect(store.getRecovery()).toBeUndefined();
     expect(() => store.get(feature)).toThrow('limit');
     expect(() => store.getAll()).toThrow('limit');
@@ -404,7 +404,7 @@ describe('explicit settings recovery', () => {
       expect(() => store.recover({ version: recovery.version, reset: 'all' })).toThrow('being replaced');
       expect(rowData()).toEqual(before);
       // The replacement's own data arrives by hydration, which bypasses the writer
-      untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', {});
+      untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', {});
     });
   });
 

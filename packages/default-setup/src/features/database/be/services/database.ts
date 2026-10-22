@@ -2,7 +2,7 @@
  * Database Service
  *
  * `services.database`: live-data context for AI query generation. Actions read and write
- * entities through `services.repository`; pack code imports `qx`/`tx` from `#generated/ears`.
+ * entities through `services.repository`; pack code imports `qx`/`create`/`write` from `#generated/ears`.
  */
 
 import { EARS } from '#generated/ears.ts';

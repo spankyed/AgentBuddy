@@ -1,4 +1,4 @@
-import { tx, qx, findById } from '#generated/ears.ts';
+import { qx, create, write, findById } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { findRelations, untypedQx } from '@apackdev/ears';
 import type { FlowTNodeData, EventListenerEntity } from '../types.ts';
@@ -62,12 +62,12 @@ const TNODE_COLUMNS = [
  */
 function spawnedChildIds(id: EARS.EntityId): EARS.EntityId<'TNode'>[] {
   return uniqueEntityIds(
-    qx(id).linksTo(EARS.RelKind.SPAWNED).ids(),
+    qx.ids(id).linksTo(EARS.RelKind.SPAWNED).ids(),
   ) as EARS.EntityId<'TNode'>[];
 }
 
 function buildSpawnedTree(nodeId: EARS.EntityId<'TNode'>): TrackTree {
-  const tnode = qx(nodeId).pickOne(TNODE_COLUMNS)!;
+  const tnode = qx.ids(nodeId).pickOne(TNODE_COLUMNS)!;
   const directChildIds = spawnedChildIds(nodeId);
   const children = directChildIds.map(childId => buildSpawnedTree(childId));
   return { ...tnode, children };
@@ -99,13 +99,13 @@ export const brainQueries = {
       .first() as EARS.EntityId<'TNode'> | undefined,
 
   tNodeById: (id: EARS.EntityId<'TNode'>) => {
-    return qx(id).pickOne(TNODE_COLUMNS);
+    return qx.ids(id).pickOne(TNODE_COLUMNS);
   },
 
   eventAllSteps: (eventNodeId: EARS.EntityId): NodeEntity[] => {
-    const nodes = qx(eventNodeId)
+    const nodes = qx.ids(eventNodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])
-      .map(link => qx(link.id).pickAll()[0] as unknown as NodeEntity)
+      .map(link => qx.ids(link.id).pickAll()[0] as unknown as NodeEntity)
       .filter(node => node && node.id);
 
     return uniqueNodesById(nodes);
@@ -113,11 +113,11 @@ export const brainQueries = {
   
   // Get next nodes via TRANSITIONS_TO relation
   nextNodeInFlowTrack: (nodeId: EARS.EntityId): NodeEntity => {
-    const nextLinks = qx(nodeId)
+    const nextLinks = qx.ids(nodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
 
     return nextLinks.map(link => {
-      const result = qx(link.id).pickAll();
+      const result = qx.ids(link.id).pickAll();
       return result[0] as unknown as NodeEntity;
     }).filter(node => node && node.id)[0];
   },
@@ -143,13 +143,13 @@ export const brainQueries = {
     if (!edge) return undefined;
 
     // Get the target node
-    const result = qx(edge.targetEntity).pickAll();
+    const result = qx.ids(edge.targetEntity).pickAll();
     return result[0] as unknown as NodeEntity | undefined;
   },
   
   eventTracks: (flowTNodeId: EARS.EntityId<'TNode'>): TrackTree[] => {
     // Get the flow TNode
-    const flowTNode = qx(flowTNodeId).pickOne(TNODE_COLUMNS)!;
+    const flowTNode = qx.ids(flowTNodeId).pickOne(TNODE_COLUMNS)!;
     
     if (!isFlowTNode(flowTNode)) {
       throw new Error(`TNode ${flowTNodeId} is not a flow type (found: ${flowTNode?.tNodeType || 'none'})`);
@@ -157,7 +157,7 @@ export const brainQueries = {
     
     // Get all event TNodes tracked by this flow
     const eventTNodes = uniqueNodesById(
-      qx(flowTNodeId)
+      qx.ids(flowTNodeId)
         .linksPick(EARS.RelKind.TRACKED, TNODE_COLUMNS, [EARS.Entity.TNode])
     );
     
@@ -173,7 +173,7 @@ export const brainQueries = {
   
   possibleEvents: (flowTNodeId: EARS.EntityId): EventListenerEntity[] => {
     // Get the flow blueprint this TNode is an instance of
-    const flowLinks = qx(flowTNodeId)
+    const flowLinks = qx.ids(flowTNodeId)
       .links(EARS.RelKind.INSTANCE_OF, [EARS.Entity.Flow]);
 
     if (flowLinks.length === 0) {
@@ -190,7 +190,7 @@ export const brainQueries = {
     for (const def of stepRegistry.triggers()) {
       const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
       // Untyped: each trigger names its own fields, which only some step node types have
-      const triggerNodes = untypedQx(flowId)
+      const triggerNodes = untypedQx.ids(flowId)
         .linksPick(EARS.RelKind.CONTAINS, fields, [EARS.Entity.Node])
         .filter((n: any) => n.nodeType === def.type);
       for (const n of triggerNodes as any[]) {
@@ -220,7 +220,7 @@ export const brainQueries = {
     let currentId: EARS.EntityId<'TNode'> | undefined = flowTNodeId;
 
     while (currentId) {
-      const node = qx(currentId).pickOne(['label', 'nodeAttributes']);
+      const node = qx.ids(currentId).pickOne(['label', 'nodeAttributes']);
       if (!node) break;
 
       hierarchy.unshift({ flowTNodeId: currentId, label: node.label || 'Unknown Flow' });
@@ -231,7 +231,7 @@ export const brainQueries = {
   },
 
   extendedTNodeData: (tNodeId: EARS.EntityId<'TNode'>): FlowTNodeData => {
-    const tNode = qx(tNodeId).pickOne(["tNodeType"]);
+    const tNode = qx.ids(tNodeId).pickOne(["tNodeType"]);
 
     if (!isFlowTNode(tNode as TNodeEntity)) {
       throw new Error(
@@ -277,8 +277,8 @@ export const brainCommands = {
       triggerType,
       ...(eventNode.cronExpression && { cronExpression: eventNode.cronExpression }),
     };
-    const tNodeId = tx(EARS.Entity.TNode)
-      .batchPut({
+    const tNodeId = create(EARS.Entity.TNode, { createdAt: now })
+      .setMany({
         tNodeType: 'event',
         label: eventNode.label,
         ...triggerAttrs,
@@ -288,7 +288,7 @@ export const brainCommands = {
       .id();
     
     // Create TRACKED relationship from parent flow
-    tx(flowTNodeId).link(EARS.RelKind.TRACKED, tNodeId);
+    write(flowTNodeId).link(EARS.RelKind.TRACKED, tNodeId);
     
     const eventTNode: TNodeEntity = {
       id: tNodeId,
@@ -310,7 +310,7 @@ export const brainCommands = {
     executionContext?: ExecutionContext
   ): { flowTNode: TNodeEntity; flowId: EARS.EntityId } => {
     // Get the flow reference from the flow node (get all fields for attributes)
-    const flowStepNode = qx(flowStepId)
+    const flowStepNode = qx.ids(flowStepId)
       .pickAll()[0] as Partial<FlowNode> | undefined;
 
     if (!flowStepNode || flowStepNode.nodeType !== 'subflow') {
@@ -326,7 +326,7 @@ export const brainCommands = {
     }
 
     // Get the referenced flow
-    const flow = qx(flowStepNode.flowRef as EARS.EntityId<'Flow'>)
+    const flow = qx.ids(flowStepNode.flowRef as EARS.EntityId<'Flow'>)
       .pickOne(["id", "label"]) ?? undefined;
 
     if (!flow) {
@@ -340,7 +340,7 @@ export const brainCommands = {
     let parentFlowId: EARS.EntityId | undefined;
     
     for (const flowId of allFlows) {
-      const nodeIds = qx(flowId)
+      const nodeIds = qx.ids(flowId)
         .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
         .map(({ id }) => id);
       if (nodeIds.includes(flowStepId)) {
@@ -376,14 +376,14 @@ export const brainCommands = {
 
     // Link to the referenced Flow entity (not the flow step node)
     // This allows possibleEvents to find the event nodes defined in the flow
-    const flowTnodeId = tx(EARS.Entity.TNode)
-      .batchPut(flowTNode)
+    const flowTnodeId = create(EARS.Entity.TNode, { createdAt: now })
+      .setMany(flowTNode)
       .link(EARS.RelKind.INSTANCE_OF, flowStepNode.flowRef as EARS.EntityId)
       .id();
     
     // Create SPAWNED relationship from parent
     if (eventTrackId) {
-      tx(eventTrackId).link(EARS.RelKind.SPAWNED, flowTnodeId);
+      write(eventTrackId).link(EARS.RelKind.SPAWNED, flowTnodeId);
     }
 
     Object.assign(flowTNode, { id: flowTnodeId, createdAt: now, entityType: EARS.Entity.TNode });
@@ -405,7 +405,7 @@ export const brainCommands = {
       );
     }
 
-    const step = qx(stepId)
+    const step = qx.ids(stepId)
       .pickAll()[0] as Partial<NodeEntity> | undefined;
 
     if (!step || !step.id) {
@@ -419,7 +419,7 @@ export const brainCommands = {
     let flowId: EARS.EntityId | undefined;
     
     for (const fid of allFlows) {
-      const nodeIds = qx(fid)
+      const nodeIds = qx.ids(fid)
         .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
         .map(({ id }) => id);
       if (nodeIds.includes(stepId)) {
@@ -450,13 +450,13 @@ export const brainCommands = {
       ...(prepared && { resolvedParams: prepared.resolvedParams }),
     };
 
-    const tNodeId = tx(EARS.Entity.TNode)
-      .batchPut(stepTNode)
+    const tNodeId = create(EARS.Entity.TNode, { createdAt: now })
+      .setMany(stepTNode)
       .link(EARS.RelKind.INSTANCE_OF, stepId)
       .id();
     
     // Create SPAWNED relationship from parent
-    tx(eventTrackId).link(EARS.RelKind.SPAWNED, tNodeId);
+    write(eventTrackId).link(EARS.RelKind.SPAWNED, tNodeId);
     
     const tNode: TNodeEntity = {
       id: tNodeId,
@@ -495,14 +495,12 @@ export const brainCommands = {
     }
 
     const now = Date.now();
-    tx(rootId)
-      .batchPut({
-        entityType: EARS.Entity.TNode,
+    create(EARS.Entity.TNode, { id: rootId, createdAt: now })
+      .setMany({
         tNodeType: 'flow',
         label: rootFlow.label,
         status: 'active',
         startedAt: now,
-        createdAt: now,
       })
       .link(EARS.RelKind.INSTANCE_OF, rootFlow.id)
       .grant(ROOT_TRACE_NODE_ROLE);
@@ -529,14 +527,14 @@ export const brainCommands = {
   ): void => {
     // A step can finish after its run was cleared (`clearVolatileData`, the data replaced); writing then
     // would leave an attribute-only orphan with no TNode behind it
-    if (!qx(tNodeId).exists()) return;
+    if (!qx.ids(tNodeId).exists()) return;
     if (status === 'completed') {
       // Set both status and completedAt timestamp
-      tx(tNodeId)
-        .update('status', status)
-        .update('completedAt', Date.now());
+      write(tNodeId)
+        .set('status', status)
+        .set('completedAt', Date.now());
     } else {
-      tx(tNodeId).update('status', status);
+      write(tNodeId).set('status', status);
     }
   },
   
@@ -547,12 +545,12 @@ export const brainCommands = {
     tNodeId: EARS.EntityId,
     attributes: any
   ): void => {
-    if (!qx(tNodeId).exists()) return;
+    if (!qx.ids(tNodeId).exists()) return;
     // Truncate the attributes to prevent memory overflow
     const truncatedAttributes = truncateResult(attributes);
     
     // Directly set nodeAttributes (for event TNodes that store payload as attributes)
-    tx(tNodeId).update('nodeAttributes', truncatedAttributes);
+    write(tNodeId).set('nodeAttributes', truncatedAttributes);
   },
   
   clearVolatileData: (): void => {
@@ -561,7 +559,7 @@ export const brainCommands = {
 
     // Destroy each TNode entity without persisting (volatile data)
     allTNodes.forEach(tNodeId => {
-      tx(tNodeId).destroy(true); // skip persistence for volatile data
+      write(tNodeId).destroy({ keepStored: true }); // skip persistence for volatile data
     });
 
     brainLogger.info(`Cleared ${allTNodes.length} volatile TNode entities from memory`);

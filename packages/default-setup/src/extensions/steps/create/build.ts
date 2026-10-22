@@ -3,6 +3,7 @@ import { EARS } from '@apackdev/sdk';
 import { expandRecord, collapseRecord, mapProblems } from '@apackdev/sdk/steps';
 import type { FieldMapping, MapEntry } from '@apackdev/sdk/steps';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
+import { RESERVED_ATTRIBUTES } from '@apackdev/ears';
 
 export function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -23,11 +24,24 @@ export function compile(node: Record<string, unknown>, nodeId: string, ts: numbe
   };
 }
 
-/** Errors for a step's `map` and `params` fields, shared with the update step */
+/**
+ * Errors for a step's `map` and `params` fields, shared with the update step. A field the engine writes itself (an
+ * entity's id, type, creation time, roles and relations) is refused here, so a flow says so when it is saved rather
+ * than when the step runs and the write throws.
+ */
 export function validateFields(s: Record<string, unknown>, path: string): StepValidationError[] {
   const errors: StepValidationError[] = [...mapProblems(s.map, `${path}.map`)];
   if (s.params !== undefined && !isPlainObject(s.params)) {
     errors.push({ path: `${path}.params`, message: '"params" must be an object { field: value }' });
+  }
+  for (const key of ['map', 'params'] as const) {
+    const fields = s[key];
+    if (!isPlainObject(fields)) continue;
+    for (const field of Object.keys(fields)) {
+      if ((RESERVED_ATTRIBUTES as readonly string[]).includes(field)) {
+        errors.push({ path: `${path}.${key}.${field}`, message: `"${field}" is written by the database itself, so a step can't set it` });
+      }
+    }
   }
   return errors;
 }

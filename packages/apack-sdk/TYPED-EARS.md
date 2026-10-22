@@ -36,24 +36,29 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   name's `E` at its `string` default, so `findAll<Shape>('Tpyo')` compiles by design. Without a type
   argument the same call is checked.
 - A generic helper constrains its name to `EntityName`, or opts out with `as string`.
-- Overload order in `typed.ts` is part of the contract. `qx`'s name overloads come before its id overloads: in the other order, editors offer no entity names in `qx('…')`. It's also the order the runtime resolves an apply in (a registered entity type first, then an id).
+- A name and an id go to different functions: `qx(type)`/`create(type)`/`upsert(type, id)` take a name,
+  `qx.ids(id)`/`write(id)` an id. An id passed where a name is meant is a compile error (it is no declared
+  name), and in the untyped twins too, whose name parameters are `TypeName<E>`: a dashed literal or an
+  `EntityId`-typed value becomes `never`. A name typed `string` passes, and the runtime refuses it when it
+  isn't a registered type.
+- Overload order in `typed.ts` is part of the contract wherever a function still has more than one.
 
 **Ids.**
 - Typed queries return ids tagged with their entity type (`ids()`, `first()`, `pick`'s `id`, a row's `id`).
 - A plain `EARS.EntityId` carries no tag and is accepted wherever a tagged id is, including `includes` and `Set.has`. Only an id tagged with a different entity type is rejected.
 - Link ids use `NoInferType`, so a result passed straight into a generic function keeps its shape.
-- **A hyphenated literal is structurally an id.** `qx('user-note')` compiles and matches nothing at
-  runtime, because `EntityId` is `` `${string}-${string}` `` and any dashed literal satisfies it. This is
-  known, it is not fixable without changing behaviour, and the measurements are in Incidents below —
-  read them before proposing a fix.
+- **`qx('user-note')` is a compile error**, now that no entry point takes a name *or* an id (Incidents
+  below has why the type alone could not fix it).
 
 **Writes.**
-- `tx` from `#generated/ears` checks declared fields' values when it knows the entity: written with a declared name or a tagged id.
+- `create`, `upsert` and `write` from `#generated/ears` check declared fields' values when they know the entity: started from a declared name or a tagged id.
 - Undeclared fields are accepted, and a plain id leaves every write unchecked.
-- So `put` and `add` take a field *name* of any string (`put<K extends string>`), and an undeclared one
+- So `set` and `add` take a field *name* of any string (`set<K extends string>`), and an undeclared one
   gets `unknown` for its value. This is deliberate — EARS stores attributes a shape need not declare —
   but it is inconsistent with `updateEntity`, which does check names against the shape. Writing through
-  `updateEntity` gets completions and a typo's error; writing through `tx().put()` does not.
+  `updateEntity` gets completions and a typo's error; writing through `write().set()` does not.
+- The engine's own attributes (`id`, `entityType`, `createdAt`, `role`, `relationDetails`) are refused by
+  every attribute write at runtime, not by the type.
 
 **Which `EARS` to import.**
 - Pack code imports `EARS` from its `#generated/ears` by default.
@@ -76,7 +81,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
    - an explicit shape
    - an `EntityName` constraint
    - a runtime name typed `string`
-   - the untyped `qx`/`tx` (`untypedQx`/`untypedTx`)
+   - the untyped twins (`untypedQx`, `untypedCreate`, `untypedUpsert`, `untypedWrite`)
 2. **Run the type tests** that pin the contract:
    - default-setup: `tests/typed-query-builder.spec.ts`, `branded-entity-id.spec.ts`, `entity-shape-registry.spec.ts`, `sdk-type-safety.spec.ts`, and `npm run typecheck:pack`
    - `@apackdev/cli`: `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` (a real dependent pack under bundler and node16, against both the workspace source and the packed `@apackdev/ears` and `@apackdev/sdk`) and `packages/publish-checks/tests/published-sdk-any.integration.spec.ts`
@@ -94,9 +99,9 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   - What happened: to make brain's trigger queries compile against the new `Node` union, the field parameters were rewritten as conditional and mapped types (`FieldArg`, `FieldsArg`, `PickedOf`). That added runtime field names and union-member fields to every field-keyed API.
   - Why tests missed it: everything compiled and every type test passed. But field completions disappeared from `pick`, `pickOne`, `linksPick`, `getAttr` and `findWithFields`, and typo errors became "not assignable to type 'never'".
   - Resolution: reverted, and the two queries use the untyped `untypedQx` (`@apackdev/ears`). The completions test in `facade-typing.integration.spec.ts` now guards these positions.
-- **`qx('user-note')` compiles: the dash heuristic (investigated 2026-09-18, not fixed).**
-  - What it is: `EntityId<E>` is `` `${string}-${string}` `` with an *optional* `__entity` brand. `qx` and
-    `tx` take a name *or* an id, and the dash is the only thing telling those apart. So a misspelled
+- **`qx('user-note')` compiled: the dash heuristic (investigated 2026-09-18; resolved by the split below).**
+  - What it was: `EntityId<E>` is `` `${string}-${string}` `` with an *optional* `__entity` brand. `qx` and
+    `tx` took a name *or* an id, and the dash was the only thing telling those apart. So a misspelled
     entity name containing a dash fails the name check and lands on the id overload.
   - **Four things depend on that one shape**, which is why it looks fixable and isn't: the dash
     discriminates name from id; the *optional* brand is what lets `E` infer from a tagged id; the
@@ -116,10 +121,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
     in `apack-ears/tests/engine/persistence.spec.ts`. All correct code.
   - **Conclusion: there is no type-level fix that leaves current behaviour unchanged.** Anything that
     stops `'user-note'` being an id also stops `'TNode-Root'` being one.
-  - **The only design that gets both properties** is to stop overloading: a checked `qx(name)` and a
-    separate `qx.byId(id)` that accepts any string. Then ids need no casts, names are fully checked, and
-    the ambiguity cannot exist. That is an API change across every call site, not a type tweak — cost it
-    as one.
-  - Why it is tolerable meanwhile: entity names here are PascalCase with no dashes, so no realistic
-    misspelling of `Thread`, `TNode` or `Flow` reaches the id overload.
-- **No entity names in `qx('…')` (found 2026-09-14).** `qx`'s id overloads came before its name overloads, so editors offered no names there. Fixed by putting the name overloads first; the content resolution matrix in `typed-query-builder.spec.ts` pins that nothing else changed.
+  - **The design that gets both properties** is to stop overloading, and that is what landed
+    ([`ears-public-api.md`](../../docs/plans/ears-public-api.md)): `qx(type)` beside `qx.ids(id)`, and
+    `create(type)` beside `write(id)`. The `EntityId` template stays, so literal ids still compile.
+- **No entity names in `qx('…')` (found 2026-09-14).** `qx`'s id overloads came before its name overloads, so editors offered no names there. Fixed by putting the name overloads first, and moot since ids moved to `qx.ids`; the completions test still guards the position.

@@ -91,15 +91,15 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   const context = resolveAppEnvironment({ env, userDataDir });
   const paths = findAppDataPaths(userDataDir);
   const schema = readInstalledSchema(context, { schemaFrom });
-  // A write needs a schema, not most of one. The engine asks it whether a name is an entity type, and for
-  // one it has never heard of `tx('Note')` takes the name for an id and writes a row called `Note` — a junk
-  // entity in the user's database, permanently. Reading is what an incomplete schema is good for.
+  // A write needs a schema, not most of one. The engine asks it whether a name is an entity type, and refuses
+  // one it has never heard of, so a write through an incomplete schema fails part way through on the first
+  // type it lacks. Reading is what an incomplete schema is good for.
   if (!readOnly && schema.degraded !== undefined) {
     throw new Error(`${schema.degraded}\n\nThis command changes the database, and an incomplete schema would write the wrong rows.`);
   }
   // **The engine knows the types in the data as well as the declared ones, and `schema` keeps meaning declared.**
-  // Rows outlive the pack that declared their types, and for a name it has never heard of the engine takes the
-  // name for an id — so `qx('Note')` finds nothing and `tx('Note')` writes a row literally called `Note`. The
+  // Rows outlive the pack that declared their types, and the engine refuses a name it has never heard of — so
+  // `qx('Note')` and `create('Note')` would throw over rows that are plainly there. The
   // types present are only knowable after hydration, and `isEntityType` is a live closure consulted per call,
   // so they are added to this set once their rows are in. It stays separate from `schema`, whose
   // `getRegisteredEntityTypes` is a backup's yardstick for "no installed pack declares this"

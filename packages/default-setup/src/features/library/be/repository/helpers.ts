@@ -6,14 +6,14 @@ import type { ContentSection } from '#features/library/be/types.ts';
 
 export const findParentCollection = (childId: EARS.EntityId): EARS.EntityId | null => 
   qx(EARS.Entity.Collection).pickAll().find(col => 
-    qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).ids().includes(childId)
+    qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).ids().includes(childId)
   )?.id as EARS.EntityId || null
 
 export const isRootCollection = (id: EARS.EntityId): boolean => !findParentCollection(id)
 
 export const findDocumentCollection = (docId: EARS.EntityId): EARS.EntityId | null =>
   qx(EARS.Entity.Collection).pickAll().find(col =>
-    qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
+    qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
   )?.id as EARS.EntityId || null
 
 export const getDisplayOrder = (item: any): number => {
@@ -33,9 +33,9 @@ const getItemsForReordering = (folderId: EARS.EntityId | null) => {
     ]
   }
   return [
-    ...qx(folderId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll()
+    ...qx.ids(folderId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll()
       .map(c => ({ id: c.id as EARS.EntityId, displayOrder: getDisplayOrder(c), type: 'folder' as const })),
-    ...qx(folderId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll()
+    ...qx.ids(folderId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll()
       .map(d => ({ id: d.id as EARS.EntityId, displayOrder: getDisplayOrder(d), type: 'document' as const }))
   ]
 }
@@ -49,7 +49,7 @@ export function getCollectionPath(collectionId: EARS.EntityId): string[] {
   const path: string[] = []
   let currentId: EARS.EntityId | null = collectionId
   while (currentId) {
-    const collection = qx(currentId).pickAll()[0]
+    const collection = qx.ids(currentId).pickAll()[0]
     if (collection) path.unshift(collection.name as string)
     currentId = findParentCollection(currentId)
   }

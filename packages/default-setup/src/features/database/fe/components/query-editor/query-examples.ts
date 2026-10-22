@@ -20,18 +20,18 @@ export const queryExamples: QueryExample[] = [
   {
     title: 'Thread Messages',
     description: 'Get messages contained in a specific thread',
-    query: `const threadId = qx(EARS.Entity.Thread).first();\nreturn qx(threadId).linksTo('contains', EARS.Entity.Message).pick(['text', 'sender', 'timestamp']);`
+    query: `const threadId = qx(EARS.Entity.Thread).first();\nreturn qx.ids(threadId).linksTo('contains', EARS.Entity.Message).pick(['text', 'sender', 'timestamp']);`
   },
   {
     title: 'Thread Hierarchy',
     description: 'Get child threads of a parent thread',
-    query: `const threadId = qx(EARS.Entity.Thread).first();\nreturn qx(threadId).linksTo('parent_of', EARS.Entity.Thread).pick(['topic', 'status']);`
+    query: `const threadId = qx(EARS.Entity.Thread).first();\nreturn qx.ids(threadId).linksTo('parent_of', EARS.Entity.Thread).pick(['topic', 'status']);`
   },
 
   // Advanced Queries
   {
     title: 'Flows with Node Counts',
     description: 'List flows with the number of nodes in each',
-    query: `return qx(EARS.Entity.Flow).pick(['label', 'description']).map(f => ({\n  ...f,\n  nodeCount: qx(f.id).linksTo('contains', EARS.Entity.Node).count()\n}));`
+    query: `return qx(EARS.Entity.Flow).pick(['label', 'description']).map(f => ({\n  ...f,\n  nodeCount: qx.ids(f.id).linksTo('contains', EARS.Entity.Node).count()\n}));`
   },
 ];

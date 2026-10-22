@@ -28,7 +28,7 @@ describe('a flow compile', () => {
   it("leaves the installed engine's data untouched, and compiles into its own", () => {
     const installed = createEarsEngine({ isEntityType: (name) => name === EARS.Entity.Flow });
     installEngine(installed.query);
-    const appFlow = untypedQx(EARS.Entity.Flow).count() === 0 && installed.query.tx(EARS.Entity.Flow).put('label', 'Mine').id();
+    const appFlow = untypedQx(EARS.Entity.Flow).count() === 0 && installed.query.create(EARS.Entity.Flow).set('label', 'Mine').id();
     const before = installed.query.getAllEntities();
 
     expect(rt.roundTrip(flows.simple)).toHaveProperty('Simple');

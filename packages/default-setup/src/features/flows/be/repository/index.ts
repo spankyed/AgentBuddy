@@ -1,4 +1,4 @@
-import { tx, qx } from '#generated/ears.ts';
+import { qx, write } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { flowRepository } from '@apackdev/sdk/repositories';
 import type {
@@ -114,7 +114,7 @@ export const flowsCommands = {
       scope: FLOW_ENTRY_NODE.SCOPE,
       eventType: FLOW_ENTRY_NODE.EVENT_TYPE,
     } as Partial<NodeEntity>);
-    tx(entryNode.id).grant(FLOW_ROLES.ENTRY_EVENT);
+    write(entryNode.id).grant(FLOW_ROLES.ENTRY_EVENT);
     return { flow: newFlow, entryNode };
   },
 

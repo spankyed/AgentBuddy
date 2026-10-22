@@ -15,7 +15,7 @@ const usage = (command: 'query' | 'exec') => [
   '',
   command === 'query'
     ? 'Runs read-only query code with the Database console\'s read helpers (qx, getAttr, findRelations, getSchemaStats, ...).'
-    : 'Runs transaction code with the Database console\'s read and write helpers (tx, destroyEntity, createRelation, ...).',
+    : 'Runs transaction code with the Database console\'s read and write helpers (create, upsert, write, destroyEntity, createRelation, ...).',
   'The code is a function body: return the result (`return qx(EARS.Entity.Note).pickAll()`).',
   '',
   'Options:',

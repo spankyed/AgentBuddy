@@ -1,6 +1,6 @@
 // Scoped resets remove one owner's overrides; resetting everything is a separate host operation.
 import { describe, expect, it } from 'vitest';
-import { untypedQx } from '@apackdev/ears';
+import { untypedQx, type EARS } from '@apackdev/ears';
 import { getTestSettings, startApp } from '@apackdev/testing/harness';
 import { featureSettings, packSettings } from '#generated/settings.ts';
 import { services } from '#generated/services.ts';
@@ -8,7 +8,7 @@ import { ref } from '#generated/ref.ts';
 
 const SETTINGS = 'host/settings';
 const WINDOW = 'c-window';
-const stored = () => untypedQx('Settings-app').pickOne(['data'])?.data;
+const stored = () => untypedQx.ids('Settings-app' as EARS.EntityId).pickOne(['data'])?.data;
 
 async function reset(target: unknown) {
   const app = await startApp({ systems: [SETTINGS] });

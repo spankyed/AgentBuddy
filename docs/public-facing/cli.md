@@ -732,10 +732,10 @@ apack db query --file ./report.js -o csv
 
 #### `apack db exec <code> | --file <path> [-o pretty|json|csv] [--out <file>]` (names its data dir)
 
-Run transaction code with the console's read and write helpers (`tx`, `destroyEntity`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `createRelation`, `removeRelation`, `removeRelationById`, `grantRole`, `revokeRole`). Despite the name, the code is not one transaction: each helper writes as the code runs, so code that throws part way leaves the writes it already made — the failure says so, and there is nothing to roll back. A write that fails to reach the files fails the command.
+Run transaction code with the console's read and write helpers (`create`, `upsert`, `write`, `destroyEntity`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `createRelation`, `removeRelation`, `removeRelationById`, `grantRole`, `revokeRole`). Despite the name, the code is not one transaction: each helper writes as the code runs, so code that throws part way leaves the writes it already made — the failure says so, and there is nothing to roll back. A write that fails to reach the files fails the command.
 
 ```bash
-apack db exec "tx('Note-123').put('title', 'Renamed')"
+apack db exec "write('Note-123').set('title', 'Renamed')"
 ```
 
 #### `apack db repl [--write]` (`--write` names its data dir)
@@ -762,7 +762,7 @@ apack db script ./cleanup.ts --profile development -- --older-than 30
 
 | It receives | |
 |---|---|
-| `db` | the open database: `query` (`qx`, `tx`, the finders), `admin`, `store`, `schema`, `paths`, `userDataDir` |
+| `db` | the open database: `query` (`qx`, `create`, `upsert`, `write`, the finders), `admin`, `store`, `schema`, `paths`, `userDataDir` |
 | `EARS` | the entity types and relation kinds of the packs installed in that data dir |
 | `args` | whatever follows `--` |
 | `log` | prints a line, like the script's own output |

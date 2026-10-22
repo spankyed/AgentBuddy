@@ -6,7 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { createEarsEngine, installEngine } from '@apackdev/ears';
+import { createEarsEngine, installEngine, type EARS } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
 import { testRootEvents } from '@apackdev/sdk/testing';
 import { createHostRuntime } from '../../src/services/index.ts';
@@ -15,6 +15,7 @@ import { secrets } from '../../src/services/secrets.ts';
 import { filesystem } from '../../src/services/filesystem.ts';
 import { secretsStore } from '../../src/secrets/index.ts';
 import { startPacks } from '../../src/packs/runtime/start.ts';
+import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 
 // What a reset does, in order; the host's migrations runners and external packs' applying record themselves here
 const order = vi.hoisted((): string[] => []);
@@ -35,7 +36,9 @@ process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
-const newEngine = () => createEarsEngine({ isEntityType: () => false });
+// The host's own rows (settings, onboarding) and a pack's `Memo`
+const entityTypes = new Set([...HOST_ENTITY_TYPES, 'Memo']);
+const newEngine = () => createEarsEngine({ isEntityType: (name) => entityTypes.has(name) });
 
 /** An external pack the app loaded: where it came from, as the loader records it */
 const externalOrigin = (id: string, name: string) => ({ declarationRevision: 'fixture-revision',
@@ -131,7 +134,7 @@ describe('createHostRuntime', () => {
   it("stops the packs, empties the engine, stores and keys, then starts the packs as a boot does", async () => {
     const store = { reset: async () => { order.push('store reset'); } } as unknown as LmdbStore;
     const engine = newEngine();
-    const id = engine.query.tx('Memo-1').put('title', 'kept?').id();
+    const id = engine.query.create('Memo', { id: 'Memo-1' as EARS.EntityId }).set('title', 'kept?').id();
     const clear = engine.admin.clear;
     engine.admin.clear = () => { order.push('engine cleared'); clear(); };
     const packs = createNativePackTestRegistry();

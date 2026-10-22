@@ -28,12 +28,10 @@ export interface InstalledSchema extends DatabaseSchema {
   /**
    * Why this schema knows no pack's names, or nothing when it read at least one pack.
    *
-   * It is a field rather than a log line because a *write* against names the schema lacks corrupts: the
-   * engine asks it whether a name is an entity type, and for one it has never heard of `tx('Note')` takes
-   * the name for an id and writes a row literally called `Note` instead of minting one. So
-   * `openAppDatabase` refuses a writable open, and only a read degrades — and a read degrades silently,
-   * since `EARS.Entity.Note` is `undefined` for an unknown name and `qx(undefined)` answers with the whole
-   * database rather than an error.
+   * It is a field rather than a log line because a *write* against names the schema lacks stops part way:
+   * the engine asks it whether a name is an entity type and refuses one it has never heard of, so a write
+   * fails on the first type it lacks, after whatever it wrote before. So `openAppDatabase` refuses a writable
+   * open, and only a read degrades.
    *
    * **The condition is "no pack was read", not "the rows are accounted for", and the difference is a hole
    * this does not close.** Rows outlive the pack that declared their types on purpose — uninstalling

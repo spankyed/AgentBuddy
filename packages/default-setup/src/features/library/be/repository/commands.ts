@@ -1,4 +1,4 @@
-import { tx, qx } from '#generated/ears.ts';
+import { qx, create, write } from '#generated/ears.ts';
 import * as path from 'path'
 import { EARS } from '#generated/ears.ts'
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types.ts'
@@ -61,10 +61,10 @@ const writers = {
     const displayOrder = getNextDisplayOrder(collectionId || null)
 
     // Create document entity
-    const builder = id ? tx(id as EARS.EntityId, true) : tx(EARS.Entity.Document)
+    const builder = id ? create(EARS.Entity.Document, { id: id as EARS.EntityId<'Document'> }) : create(EARS.Entity.Document)
     const documentId = builder.id()
 
-    builder.updateBatch({
+    builder.setMany({
       name,
       content,
       shortCode,
@@ -72,12 +72,11 @@ const writers = {
       tags, // Store tags directly as string array
       ...(documentType !== undefined && { documentType }),
       ...(contentHash && { contentHash }),
-      createdAt: now,
       updatedAt: now,
     })
 
     if (collectionId) {
-      tx(collectionId).link(EARS.RelKind.CONTAINS, documentId)
+      write(collectionId).link(EARS.RelKind.CONTAINS, documentId)
     }
 
     const document = libraryQueries.findDocument(documentId)
@@ -106,7 +105,7 @@ const writers = {
     const documentId = id
     const now = Date.now()
 
-    tx(documentId).updateBatch({
+    write(documentId).setMany({
       name,
       content,
       ...(contentHash && { contentHash }),
@@ -114,13 +113,13 @@ const writers = {
       updatedAt: now,
     })
       
-    tx(documentId).updateBatch({ tags })
+    write(documentId).setMany({ tags })
 
     // Find collections that contain this document
     const allCollections = qx(EARS.Entity.Collection).pickAll()
     const collections: typeof allCollections = []
     for (const col of allCollections) {
-      const docs = qx(col.id as EARS.EntityId)
+      const docs = qx.ids(col.id as EARS.EntityId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .ids()
       if (docs.includes(documentId as EARS.EntityId)) {
@@ -132,11 +131,11 @@ const writers = {
     // Only handle collection changes if a collectionId is explicitly provided
     if (collectionId !== undefined) {
       if (currentCollection && currentCollection.id !== collectionId) {
-        tx(currentCollection.id as EARS.EntityId).unlinkIf(EARS.RelKind.CONTAINS, documentId)
+        write(currentCollection.id as EARS.EntityId).unlink(EARS.RelKind.CONTAINS, documentId)
       }
       
       if (collectionId) {
-        tx(collectionId).safeLink(EARS.RelKind.CONTAINS, documentId)
+        write(collectionId).link(EARS.RelKind.CONTAINS, documentId, { replace: true })
       }
     }
     // If collectionId is undefined, we keep the document in its current collection
@@ -158,17 +157,17 @@ const writers = {
     const documentId = id
 
     const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
-      qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
+      qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
     )
 
     if (collection) {
-      tx(collection.id as EARS.EntityId).unlinkIf(EARS.RelKind.CONTAINS, documentId)
+      write(collection.id as EARS.EntityId).unlink(EARS.RelKind.CONTAINS, documentId)
     }
 
     // [SEARCH_INDEX_FF] Remove from all search indices (fire and forget)
     // searchIndexRepo.removeDocumentFromAllIndices(documentId)
 
-    tx(documentId).destroy()
+    write(documentId).destroy()
   },
 
   createCollection(
@@ -179,7 +178,7 @@ const writers = {
     contentHash?: string,
   ): CollectionDTO {
     // Create collection entity
-    const builder = id ? tx(id as EARS.EntityId, true) : tx(EARS.Entity.Collection)
+    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId<'Collection'> }) : create(EARS.Entity.Collection)
     const collectionId = builder.id()
     const now = Date.now()
     
@@ -190,7 +189,6 @@ const writers = {
       name,
       displayOrder,
       ...(contentHash && { contentHash }),
-      createdAt: now,
       updatedAt: now,
     }
 
@@ -198,9 +196,9 @@ const writers = {
       attrs.description = description
     }
 
-    builder.updateBatch(attrs)
+    builder.setMany(attrs)
     if (parentId) {
-      tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
+      write(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }
 
     const path = getCollectionPath(collectionId)
@@ -238,14 +236,14 @@ const writers = {
       attrs.description = description
     }
 
-    tx(collectionId).updateBatch(attrs)
-    const collections = qx(collectionId).pickAll()
+    write(collectionId).setMany(attrs)
+    const collections = qx.ids(collectionId).pickAll()
     const collection = collections[0]
-    const documentCount = (qx(collectionId)
+    const documentCount = (qx.ids(collectionId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pickAll()).length
 
-    const childCollections = qx(collectionId)
+    const childCollections = qx.ids(collectionId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
@@ -257,8 +255,8 @@ const writers = {
         name: child.name as string,
         description: child.description as string | undefined,
         path: getCollectionPath(child.id as EARS.EntityId),
-        documentCount: qx(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
-        childCollections: buildChildren(qx(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
+        documentCount: qx.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
+        childCollections: buildChildren(qx.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
         displayOrder: getDisplayOrder(child),
         createdAt: new Date(child.createdAt as number).toISOString(),
         updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),
@@ -280,35 +278,35 @@ const writers = {
   deleteCollection(id: EARS.EntityId): void {
     const collectionId = id
 
-    const documents = qx(collectionId)
+    const documents = qx.ids(collectionId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pickAll()
 
     for (const doc of documents) {
-      tx(collectionId).unlinkIf(EARS.RelKind.CONTAINS, doc.id as EARS.EntityId)
+      write(collectionId).unlink(EARS.RelKind.CONTAINS, doc.id as EARS.EntityId)
     }
 
-    const parent = findParentCollection(collectionId) ? qx(findParentCollection(collectionId)!).pickAll()[0] : null
+    const parent = findParentCollection(collectionId) ? qx.ids(findParentCollection(collectionId)!).pickAll()[0] : null
 
     if (parent) {
-      tx(parent.id as EARS.EntityId).unlinkIf(EARS.RelKind.PARENT_OF, collectionId)
+      write(parent.id as EARS.EntityId).unlink(EARS.RelKind.PARENT_OF, collectionId)
     }
 
-    const children = qx(collectionId)
+    const children = qx.ids(collectionId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pickAll()
 
     for (const child of children) {
-      tx(collectionId).unlinkIf(EARS.RelKind.PARENT_OF, child.id as EARS.EntityId)
+      write(collectionId).unlink(EARS.RelKind.PARENT_OF, child.id as EARS.EntityId)
       if (parent) {
-        tx(parent.id as EARS.EntityId).link(EARS.RelKind.PARENT_OF, child.id as EARS.EntityId)
+        write(parent.id as EARS.EntityId).link(EARS.RelKind.PARENT_OF, child.id as EARS.EntityId)
       }
     }
 
     // [SEARCH_INDEX_FF] Delete all search indices associated with this folder (fire and forget)
     // searchIndexRepo.deleteSearchIndicesForFolder(collectionId)
 
-    tx(collectionId).destroy()
+    write(collectionId).destroy()
   },
 
   moveDocument(
@@ -318,15 +316,15 @@ const writers = {
     const docId = documentId
 
     const currentCollection = qx(EARS.Entity.Collection).pickAll().find(col => 
-      qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
+      qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
     )
 
     if (currentCollection) {
-      tx(currentCollection.id as EARS.EntityId).unlinkIf(EARS.RelKind.CONTAINS, docId)
+      write(currentCollection.id as EARS.EntityId).unlink(EARS.RelKind.CONTAINS, docId)
     }
 
     if (newCollectionId) {
-      tx(newCollectionId).link(EARS.RelKind.CONTAINS, docId)
+      write(newCollectionId).link(EARS.RelKind.CONTAINS, docId)
     }
 
     const document = libraryQueries.findDocument(docId)
@@ -337,7 +335,7 @@ const writers = {
     const entityId = id
     const now = Date.now()
     
-    tx(entityId).updateBatch({
+    write(entityId).setMany({
       name,
       updatedAt: now,
     })
@@ -364,7 +362,7 @@ const writers = {
         updatedAt: new Date(now).toISOString(),
       }
     } else {
-      const collections = qx(entityId).pickAll()
+      const collections = qx.ids(entityId).pickAll()
       const collection = collections[0]!
       const childCount = 0 // Simplified for now
       
@@ -409,17 +407,17 @@ const writers = {
         
         // Remove from current parent if exists
         if (currentParent) {
-          tx(currentParent).unlinkIf(EARS.RelKind.PARENT_OF, collectionId)
+          write(currentParent).unlink(EARS.RelKind.PARENT_OF, collectionId)
         }
         
         // Add to new parent if specified
         if (targetFolderId) {
-          tx(targetFolderId).link(EARS.RelKind.PARENT_OF, collectionId)
+          write(targetFolderId).link(EARS.RelKind.PARENT_OF, collectionId)
         }
         
         // Update display order
         const displayOrder = getNextDisplayOrder(targetFolderId)
-        tx(collectionId).update('displayOrder', displayOrder)
+        write(collectionId).set('displayOrder', displayOrder)
       }
     }
   },
@@ -430,22 +428,21 @@ const writers = {
     parentId?: EARS.EntityId,
     id?: string,
   ): CollectionDTO {
-    const builder = id ? tx(id as EARS.EntityId, true) : tx(EARS.Entity.Collection)
+    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId<'Collection'> }) : create(EARS.Entity.Collection)
     const collectionId = builder.id()
     const now = Date.now()
 
     const displayOrder = getNextDisplayOrder(parentId || null)
 
-    builder.updateBatch({
+    builder.setMany({
       name,
       symlinkPath,
       displayOrder,
-      createdAt: now,
       updatedAt: now,
     })
 
     if (parentId) {
-      tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
+      write(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }
 
     const path = getCollectionPath(collectionId)
@@ -467,11 +464,11 @@ const writers = {
   updateSymlinkPath(collectionId: EARS.EntityId, newPath: string): CollectionDTO {
     const now = Date.now()
     const newName = path.basename(newPath) || 'Symlink'
-    tx(collectionId).update('symlinkPath', newPath)
-    tx(collectionId).update('name', newName)
-    tx(collectionId).update('updatedAt', now)
+    write(collectionId).set('symlinkPath', newPath)
+    write(collectionId).set('name', newName)
+    write(collectionId).set('updatedAt', now)
 
-    const col = qx(collectionId).pickAll()[0]
+    const col = qx.ids(collectionId).pickAll()[0]
     const colPath = getCollectionPath(collectionId)
     const parentId = findParentCollection(collectionId) || undefined
 
@@ -490,8 +487,8 @@ const writers = {
   },
 
   updateDocumentTags(documentId: EARS.EntityId, tags: string[]): void {
-    tx(documentId).update('tags', tags)
-    // tx(documentId).update('updatedAt', Date.now())
+    write(documentId).set('tags', tags)
+    // write(documentId).set('updatedAt', Date.now())
   }
 } as const
 

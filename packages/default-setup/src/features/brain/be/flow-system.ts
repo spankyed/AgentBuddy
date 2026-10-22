@@ -248,7 +248,7 @@ export function createFlowNodeSystem(
   for (const def of stepRegistry.triggers()) {
     const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
     // Untyped: each trigger names its own fields, which only some step node types have
-    const triggerNodes = untypedQx(actualFlowId)
+    const triggerNodes = untypedQx.ids(actualFlowId)
       .linksPick(EARS.RelKind.CONTAINS, fields, [EARS.Entity.Node])
       .filter((n: any) => n.nodeType === def.type);
     for (const n of triggerNodes as any[]) {

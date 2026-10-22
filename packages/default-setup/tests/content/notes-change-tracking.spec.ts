@@ -10,7 +10,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { compileBuiltinFormat, type ContentFormatConfig, type ContentItem } from '@apackdev/sdk/build';
 import { createFormatApplier } from '@apackdev/sdk/content';
 import type { ApplyRecord, ImportMode, ApplyResult, ContentSelection } from '@apackdev/sdk/utils';
-import { untypedQx as qx, untypedTx as tx } from '@apackdev/ears';
+import { untypedQx as qx, untypedWrite } from '@apackdev/ears';
 import { trash } from '@apackdev/sdk/repositories';
 import { dropAttribute, entityIds } from '@apackdev/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';
@@ -81,7 +81,7 @@ function contentNotes(
 /** Every Note row with this title, deleted ones included: a recreated note is a second id, not a changed row */
 function notesTitled(title: string): EARS.EntityId[] {
   return (entityIds() as EARS.EntityId[]).filter((id) => id.startsWith('Note-')
-    && (qx(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === title);
+    && (qx.ids(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === title);
 }
 
 function notesOf(snap: Snapshot, { withHash = false } = {}) {
@@ -219,7 +219,7 @@ describe('notes applying (generic pipeline)', () => {
     addLinkTargets();
     contentNotes('v1');
     const welcome = (entityIds() as EARS.EntityId[]).find((id) =>
-      id.startsWith('Note-') && (qx(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === 'Welcome');
+      id.startsWith('Note-') && (qx.ids(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === 'Welcome');
     // `find` can miss, and `dropAttribute(undefined)` drops nothing: the case would then content, re-apply and
     // assert that an untracked note was left alone without ever having untracked one. The premise is checked.
     if (!welcome) throw new Error('no written Welcome note to untrack, so this case would assert nothing');
@@ -253,7 +253,7 @@ describe('notes applying (generic pipeline)', () => {
 
     const after = notesTitled('Welcome');
     expect(after, 'the apply created a second Welcome beside the deleted one').toEqual(welcome);
-    expect((qx(welcome[0]).pickAll() as Array<{ deleted?: boolean }>)[0]?.deleted, 'still the user\'s').toBe(true);
+    expect((qx.ids(welcome[0]).pickAll() as Array<{ deleted?: boolean }>)[0]?.deleted, 'still the user\'s').toBe(true);
   });
 
   /**
@@ -288,7 +288,7 @@ describe('notes applying (generic pipeline)', () => {
    * answers for those is the applied content — a key the last apply wrote with no entity behind it now is
    * the user's deletion.
    *
-   * Destroying the row rather than trashing it is the whole point of the case, so it uses `tx().destroy()`
+   * Destroying the row rather than trashing it is the whole point of the case, so it uses `write().destroy()`
    * directly: `trash.move` would leave the row the earlier cases are about and prove nothing new.
    */
   it('leaves a note the user deleted outright alone, given what the last apply wrote', () => {
@@ -297,7 +297,7 @@ describe('notes applying (generic pipeline)', () => {
     contentNotes('v1');
     const welcome = notesTitled('Welcome');
     if (welcome.length !== 1) throw new Error(`expected one written Welcome note to delete, found ${welcome.length}`);
-    tx(welcome[0]).destroy();
+    untypedWrite(welcome[0]).destroy();
     expect(notesTitled('Welcome'), 'a destroyed row leaves nothing behind, which is the premise').toEqual([]);
 
     const counts = contentNotes('v2', { mode: 'replace-on-collision' });

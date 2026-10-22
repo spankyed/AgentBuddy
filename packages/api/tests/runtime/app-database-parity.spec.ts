@@ -19,7 +19,7 @@ const { installPackFromLocal, installShippedPacks } = await import('@apackdev/ho
 const { openAppDatabase } = await import('@apackdev/host/database');
 const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
 const { unbindHost } = await import('@apackdev/sdk/runtime/internals');
-const { untypedTx } = await import('@apackdev/ears');
+const { untypedCreate } = await import('@apackdev/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 
@@ -82,8 +82,8 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     // the volatile partition, which neither hydrates
     const first = await bootApi();
     startPacks(first.packs);
-    untypedTx('Note-parity', true).put('entityType', 'Note').put('title', 'mine').grant('pinned').link('parent_of', 'Note-child');
-    untypedTx('TNode-parity', true).put('entityType', 'TNode').put('status', 'done');
+    untypedCreate('Note', { id: 'Note-parity' }).set('title', 'mine').grant('pinned').link('parent_of', 'Note-child');
+    untypedCreate('TNode', { id: 'TNode-parity' }).set('status', 'done');
     closeApi(first);
 
     const api = await bootApi();
@@ -116,8 +116,8 @@ describe('what the tool writes', () => {
     closeApi(booted);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, log: () => {} });
-    untypedTx('Note-tool', true).put('entityType', 'Note').put('title', 'from the tool').grant('pinned');
-    untypedTx('TNode-tool', true).put('entityType', 'TNode').put('status', 'done');
+    untypedCreate('Note', { id: 'Note-tool' }).set('title', 'from the tool').grant('pinned');
+    untypedCreate('TNode', { id: 'TNode-tool' }).set('status', 'done');
     db.close();
 
     const api = await bootApi();

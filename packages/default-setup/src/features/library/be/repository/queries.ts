@@ -20,7 +20,7 @@ export const libraryQueries = {
     let query = qx(EARS.Entity.Document)
 
     if (collectionId) {
-      const documentsInCollection = qx(collectionId as EARS.EntityId)
+      const documentsInCollection = qx.ids(collectionId as EARS.EntityId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
 
@@ -38,7 +38,7 @@ export const libraryQueries = {
 
       // Find collection that contains this document
       const collectionId = findDocumentCollection(doc.id as EARS.EntityId)
-      const collection = collectionId ? qx(collectionId).pickAll()[0] : null
+      const collection = collectionId ? qx.ids(collectionId).pickAll()[0] : null
 
       const collectionPath = collection
         ? getCollectionPath(collection.id as EARS.EntityId)
@@ -64,7 +64,7 @@ export const libraryQueries = {
 
   findDocument(id: EARS.EntityId): DocumentDTO | null {
     const documentId = id
-    const documents = qx(documentId).pickAll()
+    const documents = qx.ids(documentId).pickAll()
     const document = documents[0]
 
     if (!document) return null
@@ -72,7 +72,7 @@ export const libraryQueries = {
     const tags = document.tags || []
 
     const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
-      qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
+      qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
     )
 
     const collectionPath = collection
@@ -132,8 +132,8 @@ export const libraryQueries = {
         name: col.name as string,
         description: col.description as string | undefined,
         path: getCollectionPath(col.id as EARS.EntityId),
-        documentCount: qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().length,
-        childCollections: buildTree(qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])),
+        documentCount: qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().length,
+        childCollections: buildTree(qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])),
         displayOrder: getDisplayOrder(col),
         createdAt: new Date(col.createdAt as number).toISOString(),
         updatedAt: new Date(col.updatedAt as number || col.createdAt as number).toISOString(),
@@ -167,7 +167,7 @@ export const libraryQueries = {
       }
     } else {
       // Get child collections of this folder
-      folders = qx(folderId)
+      folders = qx.ids(folderId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .pickAll()
     }
@@ -175,10 +175,10 @@ export const libraryQueries = {
     // Convert collections to folder items
     for (const folder of folders) {
       const itemId = folder.id
-      const childCollections = qx(itemId as EARS.EntityId)
+      const childCollections = qx.ids(itemId as EARS.EntityId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .pickAll()
-      const documents = qx(itemId as EARS.EntityId)
+      const documents = qx.ids(itemId as EARS.EntityId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
       const childCount = childCollections.length + documents.length
@@ -219,7 +219,7 @@ export const libraryQueries = {
       documents = qx(EARS.Entity.Document).pickAll().filter(doc => !findDocumentCollection(doc.id))
     } else {
       // Get documents in this collection
-      documents = qx(folderId)
+      documents = qx.ids(folderId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
     }
@@ -284,7 +284,7 @@ export const libraryQueries = {
     
     // Walk up the parent chain to build breadcrumbs
     while (currentId) {
-      const collections = qx(currentId).pickAll()
+      const collections = qx.ids(currentId).pickAll()
       const collection = collections[0]
       if (collection) {
         breadcrumbs.unshift({
@@ -307,7 +307,7 @@ export const libraryQueries = {
 
 
   getDocumentsInCollection(collectionId: EARS.EntityId): DocumentDTO[] {
-    const documentIds = qx(collectionId)
+    const documentIds = qx.ids(collectionId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .ids()
     
@@ -341,9 +341,9 @@ export const libraryQueries = {
       const tags = doc.tags || []
 
       // Find collection that contains this document
-      const collectionLinks = qx(doc.id as EARS.EntityId)
+      const collectionLinks = qx.ids(doc.id as EARS.EntityId)
         .links(EARS.RelKind.CONTAINS, EARS.Entity.Collection, false)
-      const collection = collectionLinks.length > 0 ? qx(collectionLinks[0].id).pickAll()[0] : null
+      const collection = collectionLinks.length > 0 ? qx.ids(collectionLinks[0].id).pickAll()[0] : null
 
       const collectionPath = collection ? getCollectionPath(collection.id as EARS.EntityId) : []
 

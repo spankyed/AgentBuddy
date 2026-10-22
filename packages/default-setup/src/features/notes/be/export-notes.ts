@@ -18,7 +18,7 @@ function buildNoteTree(): { notes: ExportedNote[]; itemCount: number } {
   const hasParent = new Set<string>()
 
   for (const note of allNotes) {
-    const parentIds = qx(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()
+    const parentIds = qx.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()
     if (parentIds.length > 0) {
       hasParent.add(note.id)
       const parentId = parentIds[0]

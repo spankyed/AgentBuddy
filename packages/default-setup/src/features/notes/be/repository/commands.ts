@@ -1,4 +1,4 @@
-import { tx, findById, findByIdRaw, qx } from '#generated/ears.ts';
+import { write, findById, findByIdRaw, qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
@@ -64,7 +64,7 @@ export const noteCommands = {
     let displayOrder = input.displayOrder;
     if (displayOrder == null) {
       if (input.parentId) {
-        const siblings = qx(input.parentId as EARS.EntityId)
+        const siblings = qx.ids(input.parentId as EARS.EntityId)
           .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note)
           .ids();
         displayOrder = siblings.length;
@@ -72,7 +72,7 @@ export const noteCommands = {
         // Count root notes (notes with no parent)
         const allNotes = qx(EARS.Entity.Note).ids();
         const rootCount = allNotes.filter(id => {
-          const parents = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+          const parents = qx.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
           return parents.length === 0;
         }).length;
         displayOrder = rootCount;
@@ -80,9 +80,9 @@ export const noteCommands = {
     } else {
       // Explicit displayOrder: shift existing siblings at/after this index up by 1
       const siblingIds = input.parentId
-        ? qx(input.parentId as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
+        ? qx.ids(input.parentId as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
         : qx(EARS.Entity.Note).ids().filter(nid => {
-            const parents = qx(nid as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+            const parents = qx.ids(nid as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
             return parents.length === 0;
           });
 
@@ -165,7 +165,7 @@ export const noteCommands = {
     }
 
     // A task has no sub-document link in its parent's content; a note that stops being one gets it
-    const parentId = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()[0];
+    const parentId = qx.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()[0];
     if (parentId && updates.noteType !== undefined && (updates.noteType === 'task') !== (existing.noteType === 'task')) {
       if (updates.noteType === 'task') removeParentLink(parentId, id);
       else appendParentLink(parentId, id, updates.noteType);
@@ -176,7 +176,7 @@ export const noteCommands = {
   softDelete: (id: EARS.EntityId): string[] => {
     if (!findById<NoteEntity>(id)) return [];
     const subtree = (noteId: EARS.EntityId): EARS.EntityId[] =>
-      [noteId, ...qx(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().flatMap(subtree)];
+      [noteId, ...qx.ids(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().flatMap(subtree)];
     return trash.move(subtree(id));
   },
 
@@ -185,11 +185,11 @@ export const noteCommands = {
     if (trash.restore([id]).length === 0) return [];
     const restoredIds: string[] = [id];
     // If parent is still deleted, detach so note restores at root
-    const parentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const parentIds = qx.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
     if (parentIds.length > 0 && trash.isTrashed(parentIds[0])) {
       removeRelation(parentIds[0], EARS.RelKind.CONTAINS, id);
     }
-    const childIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    const childIds = qx.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const childId of childIds) {
       restoredIds.push(...noteCommands.restore(childId));
     }
@@ -203,7 +203,7 @@ export const noteCommands = {
     }
 
     // Find current parent
-    const parentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const parentIds = qx.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
     const oldParentId = parentIds.length > 0 ? parentIds[0] : null;
 
     // Early return if already has this parent
@@ -213,13 +213,13 @@ export const noteCommands = {
 
     if (newParentId) {
       // Update displayOrder to end of new parent's children
-      const newSiblings = qx(newParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+      const newSiblings = qx.ids(newParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
       updateEntity(id, { displayOrder: newSiblings.length - 1 });
     } else {
       // Moving to root: calculate root-level displayOrder
       const allNotes = qx(EARS.Entity.Note).ids();
       const rootCount = allNotes.filter(nid => {
-        const parents = qx(nid).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const parents = qx.ids(nid).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
         return parents.length === 0;
       }).length;
       updateEntity(id, { displayOrder: rootCount - 1 });
@@ -235,7 +235,7 @@ export const noteCommands = {
     }
 
     // Find current parent
-    const parentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const parentIds = qx.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
     const oldParentId = parentIds.length > 0 ? parentIds[0] : null;
     const parentChanged = oldParentId !== newParentId;
     const affectedIds: string[] = [];
@@ -247,9 +247,9 @@ export const noteCommands = {
 
     // Get siblings under new parent, sorted by displayOrder
     const siblingIds = newParentId
-      ? qx(newParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
+      ? qx.ids(newParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
       : qx(EARS.Entity.Note).ids().filter(nid => {
-          const parents = qx(nid as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+          const parents = qx.ids(nid as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
           return parents.length === 0;
         });
 
@@ -276,7 +276,7 @@ export const noteCommands = {
 
     // If parent changed, also re-index old parent's remaining children
     if (parentChanged && oldParentId) {
-      const oldSiblingIds = qx(oldParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+      const oldSiblingIds = qx.ids(oldParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
       const oldSiblings = oldSiblingIds
         .map(sid => findById<NoteEntity>(sid as EARS.EntityId))
         .filter((n): n is NoteEntity => n !== undefined)
@@ -300,30 +300,30 @@ export const noteCommands = {
     }
 
     // Recursively delete children first
-    const childIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    const childIds = qx.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const childId of childIds) {
       noteCommands.delete(childId);
     }
 
     // Remove parent relationship (if any)
-    const parentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const parentIds = qx.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
     for (const parentId of parentIds) {
       removeRelation(parentId, EARS.RelKind.CONTAINS, id);
     }
 
     // Remove CONTAINS relationships to children (already deleted)
-    tx(id).unlinkWhere({ kind: EARS.RelKind.CONTAINS });
+    write(id).unlink(EARS.RelKind.CONTAINS);
 
     // Clean up REFERENCES relations (outgoing)
-    tx(id).unlinkWhere({ kind: REFERENCES });
+    write(id).unlink(REFERENCES);
 
     // Clean up incoming REFERENCES (other notes pointing to this one)
-    const referencingIds = qx(id).linksTo(REFERENCES, EARS.Entity.Note, false).ids();
+    const referencingIds = qx.ids(id).linksTo(REFERENCES, EARS.Entity.Note, false).ids();
     for (const refId of referencingIds) {
       removeRelation(refId, REFERENCES, id);
     }
 
     // Destroy the entity
-    tx(id).destroy();
+    write(id).destroy();
   },
 } as const;

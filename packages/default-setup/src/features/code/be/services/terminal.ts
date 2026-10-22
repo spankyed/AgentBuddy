@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { tx } from '#generated/ears.ts';
+import { create } from '#generated/ears.ts';
 import * as pty from 'node-pty'
 import * as os from 'os'
 import * as path from 'path'
@@ -62,7 +62,7 @@ class TerminalService {
     }
 
     // Generate a proper terminal ID using EARS entity creation
-    const id = tx(EARS.Entity.Terminal).id()
+    const id = create(EARS.Entity.Terminal).id()
     
     // Validate and sanitize shell
     const requestedShell = options.shell || this.defaultShell

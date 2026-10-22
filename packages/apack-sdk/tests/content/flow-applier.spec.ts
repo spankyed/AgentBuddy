@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEarsEngine, findRelations, installEngine, installedEngine, untypedTx } from '@apackdev/ears';
+import { createEarsEngine, findRelations, installEngine, installedEngine, untypedWrite } from '@apackdev/ears';
 import { applyRecord, type ApplyRecord } from '../../src/utils/index.ts';
 
 const { createFlowApplier } = await import('../../src/content/flow-applier.ts');
@@ -96,7 +96,7 @@ describe('flow applier', () => {
     const flowId = flows('Demo Flow')[0].id as never;
 
     const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
-    untypedTx(flowId).link('transitions_to' as never, nodeId as never, { sourceHandle: 'branch-9' });
+    untypedWrite(flowId).link('transitions_to' as never, nodeId as never, { info: { sourceHandle: 'branch-9' } });
 
     expect(driftedGraphParts(item, flowId)).toEqual(['edges']);
   });
@@ -115,12 +115,12 @@ describe('flow applier', () => {
     const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
 
     const added = installedEngine().createEntityWithDefaults('Node' as never, { label: 'mine' }).id;
-    untypedTx(flowId).link('contains' as never, added as never);
+    untypedWrite(flowId).link('contains' as never, added as never);
     // Both, and that is right: a node arrives with the `contains` edge that holds it, so the wiring moved too
     expect(driftedGraphParts(item, flowId), 'a node the user added').toEqual(['edges', `node:${added}`]);
 
-    untypedTx(flowId).unlinkIf('contains' as never, added as never);
-    untypedTx(flowId).unlinkIf('contains' as never, nodeId as never);
+    untypedWrite(flowId).unlink('contains' as never, added as never);
+    untypedWrite(flowId).unlink('contains' as never, nodeId as never);
     expect(driftedGraphParts(item, flowId), 'a node the user removed, and the wiring that named it')
       .toEqual(['edges', `node:${nodeId}`]);
   });
@@ -191,7 +191,7 @@ describe('flow applier', () => {
     const first = applyRecord();
     apply(compiledFlows('Demo Flow'), first);
     const flowId = flows('Demo Flow')[0].id as never;
-    untypedTx(flowId).update('description' as never, 'mine');
+    untypedWrite(flowId).set('description' as never, 'mine');
 
     const second = after(first);
     const counts = apply(compiledFlows('Demo Flow', 'v2'), second);
@@ -206,7 +206,7 @@ describe('flow applier', () => {
     const theirs = (dir: string, record?: ApplyRecord) =>
       createFlowApplier().apply({ compiledDir: dir, mode: 'replace-on-collision', ...(record && { applied: record }), log: () => {} });
     theirs(compiledFlows('Demo Flow'), first);
-    untypedTx(flows('Demo Flow')[0]!.id as never).update('description' as never, 'mine');
+    untypedWrite(flows('Demo Flow')[0]!.id as never).set('description' as never, 'mine');
 
     const second = after(first);
     theirs(compiledFlows('Demo Flow', 'v2'), second);
@@ -260,7 +260,7 @@ describe('flow applier', () => {
     // And again with the user's edit on it
     const third = applyRecord();
     apply(compiledFlows('Demo Flow'), third);
-    untypedTx(flows('Demo Flow')[0].id as never).update('description' as never, 'mine');
+    untypedWrite(flows('Demo Flow')[0].id as never).set('description' as never, 'mine');
     const fourth = after(third);
     apply(emptied, fourth);
     expect(flows('Demo Flow').length, 'a flow the user edited was removed with the content').toBe(1);

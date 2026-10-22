@@ -3,9 +3,9 @@ import { expectTypeOf } from 'vitest';
 import type { QueryBuilder } from '@apackdev/ears';
 import { EARS, qx, type EntityName, type PackShapes } from '#generated/ears.ts';
 
-// ─── qx() overloads ────────────────────────────────────────────────────
+// ─── qx entry points ────────────────────────────────────────────────────
 
-describe('Typed QueryBuilder — qx() overloads', () => {
+describe('Typed QueryBuilder — qx entry points', () => {
   it('qx(Entity.Action) returns QueryBuilder<"Action">', () => {
     expectTypeOf(qx(EARS.Entity.Action)).toEqualTypeOf<QueryBuilder<'Action', PackShapes>>();
   });
@@ -14,45 +14,45 @@ describe('Typed QueryBuilder — qx() overloads', () => {
     expectTypeOf(qx(EARS.Entity.Thread)).toEqualTypeOf<QueryBuilder<'Thread', PackShapes>>();
   });
 
-  it('qx() without args returns QueryBuilder<string, PackShapes>', () => {
-    expectTypeOf(qx()).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
+  it('qx.all() returns QueryBuilder<string, PackShapes>', () => {
+    expectTypeOf(qx.all()).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
   });
 
-  it('qx(idArray) returns untyped QueryBuilder', () => {
+  it('qx.ids(idArray) of plain ids returns an untyped QueryBuilder', () => {
     const ids = ['act-1', 'act-2'] as EARS.EntityId[];
-    expectTypeOf(qx(ids)).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
+    expectTypeOf(qx.ids(ids)).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
   });
 
-  // The content each overload takes. Name overloads come before id overloads (so editors offer entity
-  // names in qx('…')); this pins that every apply still resolves as it did in the other order.
-  it('resolves every kind of content to the same builder whatever the overload order', () => {
+  // What each entry point takes: qx a type (a declared name, or one known only at runtime), qx.ids ids, typed
+  // by the entity an id is tagged with. An id where a type is meant, or a type that may be absent, is refused.
+  it('types each entry point by what it starts from', () => {
     type QB<E extends string> = QueryBuilder<E, PackShapes, EntityName>;
     // Type-level only: never called
     const check = (
       noteId: EARS.EntityId<'Note'>, plainId: EARS.EntityId, noteIds: EARS.EntityId<'Note'>[], runtimeName: string,
-      maybeName: string | undefined, maybeId: EARS.EntityId | undefined, maybeNoteId: EARS.EntityId<'Note'> | undefined,
-      anyEntity: EARS.Entity, idOrName: EARS.EntityId | EntityName,
+      maybeName: string | undefined, anyEntity: EARS.Entity,
     ) => {
       expectTypeOf(qx('Note')).toEqualTypeOf<QB<'Note'>>();
-      expectTypeOf(qx(noteId)).toEqualTypeOf<QB<'Note'>>();
-      expectTypeOf(qx(noteIds)).toEqualTypeOf<QB<'Note'>>();
-      expectTypeOf(qx(plainId)).toEqualTypeOf<QB<string>>();
-      expectTypeOf(qx('Note-abc123')).toEqualTypeOf<QB<string>>();
+      expectTypeOf(qx.ids(noteId)).toEqualTypeOf<QB<'Note'>>();
+      expectTypeOf(qx.ids(noteIds)).toEqualTypeOf<QB<'Note'>>();
+      expectTypeOf(qx.ids(plainId)).toEqualTypeOf<QB<string>>();
       expectTypeOf(qx(runtimeName)).toEqualTypeOf<QB<string>>();
       expectTypeOf(qx(['Note', 'Flow'])).toEqualTypeOf<QB<string>>();
-      expectTypeOf(qx(maybeName)).toEqualTypeOf<QB<string>>();
-      expectTypeOf(qx(maybeId)).toEqualTypeOf<QB<string>>();
-      expectTypeOf(qx(maybeNoteId)).toEqualTypeOf<QB<string>>();
       expectTypeOf(qx(anyEntity)).toEqualTypeOf<QB<EARS.Entity>>();
-      expectTypeOf(qx(idOrName)).toEqualTypeOf<QB<string>>();
       const byName = <E extends EntityName>(entityType: E) => qx(entityType);
       expectTypeOf(byName<'Note'>).returns.toEqualTypeOf<QB<'Note'>>();
-      const byId = <E extends string>(id: EARS.EntityId<E>) => qx(id);
+      const byId = <E extends string>(id: EARS.EntityId<E>) => qx.ids(id);
       expectTypeOf(byId<'Note'>).returns.toEqualTypeOf<QB<'Note'>>();
       // @ts-expect-error not a declared entity name
       qx('Noet');
       // @ts-expect-error not a declared entity name, in a list
       qx(['Note', 'Noet']);
+      // @ts-expect-error an id is not an entity type: it starts from qx.ids
+      qx(noteId);
+      // @ts-expect-error an id literal is not an entity type either
+      qx('Note-abc123');
+      // @ts-expect-error a type that may be absent: qx.all() is every entity, asked for by name
+      qx(maybeName);
     };
     expectTypeOf(check).toBeFunction();
   });

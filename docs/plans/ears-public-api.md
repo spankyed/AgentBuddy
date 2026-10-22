@@ -333,14 +333,16 @@ publish-checks).
 | `link(kind, target, { info?, replace?, acyclicIn?, symmetric? })` | `link`, `linkOne`, `safeLink` | see below |
 | `unlink(kind, target?)` | `unlinkIf`, `unlinkWhere` with a kind | |
 | `unlinkAll()` | `unlinkWhere()` | |
-| `retarget(kind, from, to, { info? })` | `patchLink` | matches `info` when given, so it can pick one of two edges to the same target |
 | `grant(role)`, `revoke(role)` | same | |
 | `grantExclusive(role, among)` | `ensure` | `among` is required |
-| `destroy()` | `destroy` | returns `void`; `skipPersistence` moves to `admin` |
+| `destroy({ keepStored? })` | `destroy` | returns `void`. `keepStored` (was `destroy(true)`) stays on the builder: the brain clears run records from memory and leaves them on disk, and a pack has no admin face |
 | `id()` | same | |
 
 **`link` is idempotent on the whole edge: kind, target and `info`.** Linking an edge identical to one that
-exists does nothing, keeping its relation id and its position. A different `info` is a different edge.
+exists does nothing, keeping its relation id and its position. A different `info` is a different edge, and a
+`link` with no `info` matches any edge between the ends (which is what `addRelation` already did). `link`
+refuses an options object with keys it doesn't know, since that is what `info` passed positionally — the old
+signature — looks like when the value is typed `any`.
 `replace: true` gives `linkOne`'s behaviour: remove that kind's edges to that target, then add this one.
 The audit of every caller decided each part of that:
 
@@ -359,14 +361,16 @@ The audit of every caller decided each part of that:
   The "unlink, then link" moves (library `:329,417`, threads `:273`, notes `:43`) keep working and can use it.
 - `createRelation` (`transaction-helpers.ts`) delegates to `link` and inherits all of this.
 
-**Check during Phase 3:** `flowRepository.deleteNode` (`flow-repository.ts:318-334`) takes
-`findRelations({ src, kind, tgt })[0]` once per link entry, so if `.links()` yields one entry per edge, two
-handle edges to the same node collect the same relation id twice and the second edge survives the delete.
-Confirm it with a case before the reshape, which would otherwise hide it.
+**Found during the reshape:** `flowRepository.deleteNode` and `flowEdges` took
+`findRelations({ src, kind, tgt })[0]` once per link entry, and `.links()` yields one entry per edge, so two
+handle edges between the same nodes collected one relation id twice: the second edge survived a delete and was
+missing from the list. Both walk `findRelations` directly now.
 
-The relation-id operations (`unlink(relId)`, `relPatch`) become `engine.query.removeRelation(relId)` and
-`updateRelation(relId, patch)`, since they don't act on the builder's entity. `define` is deleted; its
-callers write `setMany`, `link` and `grant`.
+The relation-id operations (`unlink(relId)`, `relPatch`) become `removeRelationById(relId)` (which already
+existed) and `updateRelation(relId, patch)`, free functions and query-face members, since they don't act on the
+builder's entity. `patchLink`'s one real caller (`reindexHandles`) already held the relation's id, so it uses
+`updateRelation` too and the builder gets no `retarget`. `define` is deleted; its callers write `setMany`,
+`link` and `grant`.
 
 `ensure` has no production caller: the console's examples (`database/fe/components/query-editor/transaction-examples.ts:59`),
 the transaction prompt (`content/prompts/db-transaction-system.ts:78`), `docs/public-facing/services-and-data.md:334`
@@ -482,10 +486,13 @@ Every phase that moves a public export runs `npm run api:update` (ears and SDK) 
 
 - **The storage format goes to 2**, with the one-off conversion above run on a copy of the prod data. This
   is the one change here that touches data on disk.
-- **The builder names.** `create(type)`, `upsert(type, id)` and `write(id)` are proposed. `write` reads well
-  in a chain (`write(id).set('title', t)`) and doesn't collide with `updateEntity`; `edit` is the
-  alternative. `upsert` is the conventional name for what five sites hand-write.
-- **`EntityId`'s shape** (see 3), settled by TYPED-EARS.md's checklist.
+- **The builder names: `create(type)`, `upsert(type, id)` and `write(id)`.** `write` reads well in a chain
+  (`write(id).set('title', t)`) and doesn't collide with `updateEntity`; `upsert` is the conventional name for
+  what five sites hand-wrote.
+- **`EntityId` keeps its `${string}-${string}` template.** Every id in the data has a dash, literal ids
+  (`'TNode-Root'`) keep compiling, and the split already turns `qx('user-note')` into a compile error, which
+  is what TYPED-EARS.md's Incidents asked for. The untyped twins reject an id-shaped name through
+  `TypeName<E>` (`write.ts`).
 
 ## What this is not
 

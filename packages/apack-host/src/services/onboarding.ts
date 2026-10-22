@@ -3,7 +3,7 @@ import type { OnboardingService } from '@apackdev/sdk/services';
 import { createAppState } from '../app-state/index.ts';
 
 /** Onboarding belongs to this app's engine, including after another runtime is bound in a test. */
-export function createOnboarding(ears: Pick<EarsQuery, 'qx' | 'tx'>): OnboardingService {
+export function createOnboarding(ears: Pick<EarsQuery, 'qx' | 'upsert'>): OnboardingService {
   const state = createAppState(ears);
   return {
     isComplete: () => state.get().hasOnboarded,

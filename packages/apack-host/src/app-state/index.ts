@@ -2,7 +2,7 @@
 // it; they learn whether the user onboarded through services.onboarding, and the renderer through the
 // application surface's CLIENT_CONNECTED. Resetting the user's settings doesn't touch it; resetting the
 // app (appData.reset()) empties it with everything else.
-import { untypedTx, untypedQx, type EarsQuery } from '@apackdev/ears';
+import { untypedUpsert, untypedQx, type EarsQuery } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 import { SETTINGS_ENTITY } from '../features/settings/be/store.ts';
 import { APPLIED_CONTENT_ENTITY } from './applied-content.ts';
@@ -75,9 +75,9 @@ type PerPackValue = string;
 type StoredAppState = Partial<AppState>;
 
 /** App state on a specific engine; the default instance follows the installed app engine. */
-export function createAppState(ears: Pick<EarsQuery, 'qx' | 'tx'>) {
+export function createAppState(ears: Pick<EarsQuery, 'qx' | 'upsert'>) {
   function stored(): StoredAppState | undefined {
-    return ears.qx(APP_STATE_ID).pickOne([...FIELDS]) as StoredAppState | undefined ?? undefined;
+    return ears.qx.ids(APP_STATE_ID).pickOne([...FIELDS]) as StoredAppState | undefined ?? undefined;
   }
 
   const state = {
@@ -99,11 +99,9 @@ export function createAppState(ears: Pick<EarsQuery, 'qx' | 'tx'>) {
 
     /** Writes the given fields, creating the row on the first write */
     update: (changes: Partial<AppState>): void => {
-      const write = stored() === undefined
-        ? ears.tx(APP_STATE_ID, true).put('entityType', APP_STATE_ENTITY)
-        : ears.tx(APP_STATE_ID);
+      const write = ears.upsert(APP_STATE_ENTITY, APP_STATE_ID);
       for (const [field, value] of Object.entries(changes)) {
-        if (value !== undefined) write.update(field, value);
+        if (value !== undefined) write.set(field, value);
       }
     },
 
@@ -118,4 +116,4 @@ export function createAppState(ears: Pick<EarsQuery, 'qx' | 'tx'>) {
   return state;
 }
 
-export const appState = createAppState({ qx: untypedQx, tx: untypedTx });
+export const appState = createAppState({ qx: untypedQx, upsert: untypedUpsert });

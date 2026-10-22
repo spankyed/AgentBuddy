@@ -51,11 +51,11 @@ describe('query step', () => {
 
   it('fails, writing nothing, when the model returns a query that writes', async () => {
     const actionId = repository.actionQueries.all().find((a: { label: string }) => a.label === 'Alpha')!.id;
-    mockInference(`tx('${actionId}').update('label', 'Changed'); return true;`);
+    mockInference(`write('${actionId}').set('label', 'Changed'); return true;`);
 
     const message = errorMessage(await run({}));
 
-    expect(message).toContain('Query step "Find actions" generated a query that writes (tx); query steps only read');
+    expect(message).toContain('Query step "Find actions" generated a query that writes (write); query steps only read');
     expect(repository.actionQueries.all().map((a: { label: string }) => a.label).sort()).toEqual(['Alpha', 'Beta']);
   });
 

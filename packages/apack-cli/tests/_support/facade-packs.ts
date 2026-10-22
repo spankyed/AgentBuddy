@@ -152,7 +152,7 @@ const APP_PACK = {
 };
 
 const CONSUMER = `
-import { EARS as PackEARS, qx, tx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.ts';
+import { EARS as PackEARS, qx, create, upsert, write, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.ts';
 import { broadcastToSurface, sendToSystem } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
@@ -268,22 +268,25 @@ openMemo(plainId);
 openMemo(tags[0]!.id);
 // A tagged link result passed straight to a generic function still infers the target's shape
 const uniqueById = <T extends { id?: EARS.EntityId }>(nodes: T[]): T[] => nodes;
-const linkedMemos = uniqueById(qx(memoId).linksPick('related', ['text'], ['Memo']));
+const linkedMemos = uniqueById(qx.ids(memoId).linksPick('related', ['text'], ['Memo']));
 export type ContextualLinkPick = Expect<Equal<(typeof linkedMemos)[number]['text'], string>>;
 
-// tx checks the values of declared fields when it knows the entity; other fields are free
-tx(memoId).put('text', 'x').put('pinned', true).put('undeclared', 42);
-tx(firstMemo).update('pinned', false);
-tx('Memo').batchPut({ text: 'x', extra: 1 });
-const createdMemo = tx('Memo').id();
-export type TxIdTagged = Expect<Equal<typeof createdMemo, EARS.EntityId<'Memo'>>>;
+// Writes check the values of declared fields when they know the entity; other fields are free
+write(memoId).set('text', 'x').set('pinned', true).set('undeclared', 42);
+write(firstMemo).set('pinned', false);
+create('Memo').setMany({ text: 'x', extra: 1 });
+upsert('Memo', plainId).set('text', 'x');
+const createdMemo = create('Memo').id();
+export type CreateIdTagged = Expect<Equal<typeof createdMemo, EARS.EntityId<'Memo'>>>;
 // @ts-expect-error a declared field's value is checked
-tx(memoId).put('text', 42);
+write(memoId).set('text', 42);
 // @ts-expect-error in batch writes too
-tx('Memo').batchPut({ pinned: 'yes' });
+create('Memo').setMany({ pinned: 'yes' });
+// @ts-expect-error and through upsert, which names the type
+upsert('Memo', plainId).set('pinned', 'yes');
 // A dependency's entity is checked the same way
 // @ts-expect-error Tag.name is a string
-tx(tags[0]!.id).put('name', 1);
+write(tags[0]!.id).set('name', 1);
 // Relation is the SDK's: available and shaped though neither pack declares it
 const relationType: 'Relation' = PackEARS.Entity.Relation;
 const relation = findAll(relationType)[0]!;
@@ -308,9 +311,11 @@ export type TNodeShape = Expect<Equal<(typeof tNodes)[number]['tNodeType'], 'flo
 const node = findAll('Node')[0]!;
 export type DependencyStepNode = Expect<Equal<Extract<typeof node, { nodeType: 'ping' }>['target'], string>>;
 // A plain id leaves writes unchecked
-tx(plainId).put('text', 42);
+write(plainId).set('text', 42);
 // @ts-expect-error undeclared entity name
-tx('Nope');
+create('Nope');
+// @ts-expect-error undeclared entity name
+upsert('Nope', plainId);
 `;
 
 /** The two packs, built, in a temp dir; node_modules link the workspace or the packed packages */
@@ -366,8 +371,10 @@ sendToSystem('|systemId|', { type: 'CLEAR_MEMOS' });
 sendToSystem('memos', { type: '|eventType|' });
 qx('Memo').pick(['|pick|']);
 qx('Memo').pickOne(['|pickOne|']);
-qx(memoId).linksPick('related', ['|linksPick|'], 'Memo');
+qx.ids(memoId).linksPick('related', ['|linksPick|'], 'Memo');
 qx('Memo').where('|where|');
+qx('Memo').has('|has|');
+qx('Memo').lacks('|lacks|');
 qx('Memo').orderBy('|orderBy|');
 qx('Memo').distinct('|distinct|');
 qx('Memo').groupBy('|groupBy|');
@@ -377,12 +384,12 @@ findWithFields('Memo', ['|findWithFields|']);
 findByIdWithFields(memoId, ['|findByIdWithFields|']);
 findAll('|findAll|');
 createEntity('|createEntity|');
-qx(memoId).linksTo('related', '|linksTo|');
-qx().ofType('|ofType|');
+qx.ids(memoId).linksTo('related', '|linksTo|');
+qx.all().ofType('|ofType|');
 qx('|qx|');
-qx('Memo').where('txet');
+qx('Memo').has('txet');
 `;
-const FIELD_POSITIONS = ['pick', 'pickOne', 'linksPick', 'where', 'orderBy', 'distinct', 'groupBy', 'getAttr', 'getAttrs', 'findWithFields', 'findByIdWithFields'];
+const FIELD_POSITIONS = ['pick', 'pickOne', 'linksPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr', 'getAttrs', 'findWithFields', 'findByIdWithFields'];
 const NAME_POSITIONS = ['findAll', 'createEntity', 'linksTo', 'ofType'];
 
 /** String completions at each marked position of COMPLETIONS, and the file's diagnostics */
@@ -522,7 +529,7 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
     expect(at.eventType, 'only the chosen system\'s events').not.toContain('ADD_TAG');
   });
 
-  // qx's name overloads come before its id overloads; in the other order a name content gets no suggestions
+  // qx takes entity names only (ids start from qx.ids), so its argument completes to the declared names
   it.each(['bundler', 'node16'] as const)('offers entity-name completions in qx() under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));

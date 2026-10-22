@@ -2,7 +2,7 @@
  * Tests verifying that default-setup imports from @apackdev/sdk and @apackdev/ears resolve to the
  * runtime the harness binds.
  */
-import { untypedTx, exists } from '@apackdev/ears';
+import { untypedCreate, exists } from '@apackdev/ears';
 import {
   findById, findByIdRaw, findAll, findWhere,
   createEntityWithDefaults, updateEntity, getAttr,
@@ -13,9 +13,9 @@ import { EARS } from '#generated/ears.ts';
 describe('Tier 1 — EARS delegates', () => {
   beforeEach(() => resetTestData());
 
-  it('tx creates and retrieves an entity', () => {
-    const id = untypedTx(EARS.Entity.Action as any)
-      .put('label', 'test-action')
+  it('create creates and retrieves an entity', () => {
+    const id = untypedCreate(EARS.Entity.Action)
+      .set('label', 'test-action')
       .id();
     expect(id).toBeDefined();
     expect(id).toMatch(/^Action-/);

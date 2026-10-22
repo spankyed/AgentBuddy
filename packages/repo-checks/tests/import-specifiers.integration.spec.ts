@@ -166,7 +166,7 @@ describe('findRawPackHelpers', () => {
     ["import { untypedBroadcastToSurface as toSurface } from '@apackdev/sdk/events';", 'untypedBroadcastToSurface from @apackdev/sdk/events'],
     ["import onConnected, { untypedSendToSystem } from '@apackdev/sdk/events';", 'untypedSendToSystem from @apackdev/sdk/events'],
     ["import { untypedBroadcastToSurface, createActionEmitter } from '@apackdev/sdk/services';", 'untypedBroadcastToSurface from @apackdev/sdk/services'],
-    ["import { registerRepository, untypedTx } from '@apackdev/ears';", 'registerRepository from @apackdev/ears'],
+    ["import { registerRepository, untypedWrite } from '@apackdev/ears';", 'registerRepository from @apackdev/ears'],
     ["import { unregisterRepository } from '@apackdev/ears';", 'unregisterRepository from @apackdev/ears'],
     ["export type { untypedBroadcastToSurface } from '@apackdev/sdk/events';", 'untypedBroadcastToSurface from @apackdev/sdk/events'],
     ["import * as events from '@apackdev/sdk/events';", '* from @apackdev/sdk/events (import the names)'],
@@ -306,7 +306,7 @@ describe('findUpwardImports', () => {
   const allowed = () => {
     layer('layers/ears', {}, { 'src/index.ts': "import { x } from './x.ts';\nimport ts from 'typescript';\n" });
     layer('layers/sdk', { dependencies: { '@apackdev/ears': '^0.1.0', yaml: '*' } }, {
-      'src/index.ts': "import { untypedTx } from '@apackdev/ears';\nexport type { Q } from '@apackdev/ears/lmdb';\nexport * from '@apackdev/sdk/events';\n",
+      'src/index.ts': "import { untypedWrite } from '@apackdev/ears';\nexport type { Q } from '@apackdev/ears/lmdb';\nexport * from '@apackdev/sdk/events';\n",
     });
     layer('layers/host', { dependencies: { '@apackdev/ears': '*', '@apackdev/sdk': '*' } }, {
       'src/index.ts': "import { createActionEmitter } from '@apackdev/sdk/services';\nimport { untypedQx } from '@apackdev/ears';\nimport { x } from '../x.ts';\n",
@@ -470,10 +470,10 @@ describe('findLmdbImports', () => {
   }));
   const allowed = () => {
     write('packages/apack-ears/src/lmdb/envs.ts', "import { open } from 'lmdb';\nimport type { Partition } from '../persistence/policy.ts';\n");
-    write('packages/apack-ears/src/index.ts', "export { tx } from './transaction.ts';\n");
+    write('packages/apack-ears/src/index.ts', "export { untypedWrite } from './write.ts';\n");
     write('packages/apack-host/src/services/app-data.ts', "import type { LmdbStore } from '@apackdev/ears/lmdb';\n");
     write('packages/api/src/setup/backend.ts', "import { openLmdbStore } from '@apackdev/ears/lmdb';\n");
-    write('packages/default-setup/src/features/notes/be/system.ts', "import { untypedTx } from '@apackdev/ears';\n");
+    write('packages/default-setup/src/features/notes/be/system.ts', "import { untypedWrite } from '@apackdev/ears';\n");
   };
 
   it('allows the LMDB store to load lmdb, and the host and the API to open it', () => {
@@ -530,7 +530,7 @@ describe('findSharedPackageLists', () => {
 
   it('allows imports of the packages and their specific modules', () => {
     write('consumer.ts', [
-      "import { untypedTx } from '@apackdev/ears';",
+      "import { untypedWrite } from '@apackdev/ears';",
       "export * from '@apackdev/sdk';",
       "const sdk = await import('@apackdev/sdk');",
       "const runtime = resolve('@apackdev/sdk/runtime');",

@@ -25,7 +25,7 @@ interface ImportResult {
 function findExistingNote(title: string, parentId: string | undefined): NoteEntity | undefined {
   const candidates = findWhere<NoteEntity>(EARS.Entity.Note, 'title', title)
   return candidates.find(note => {
-    const parents = qx(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()
+    const parents = qx.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()
     const noteParentId = parents.length > 0 ? parents[0] : undefined
     return noteParentId === parentId
   })

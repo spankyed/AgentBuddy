@@ -1,12 +1,12 @@
 // Generated handles resolve local names; raw settings targets require qualified owner identities.
 import { describe, expect, it, onTestFinished } from 'vitest';
-import { untypedQx } from '@apackdev/ears';
+import { untypedQx, type EARS } from '@apackdev/ears';
 import { getTestSettings, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apackdev/testing/harness';
 import { featureSettings } from '#generated/settings.ts';
 import { services } from '#generated/services.ts';
 import { ref } from '#generated/ref.ts';
 
-const stored = () => untypedQx('Settings-app').pickOne(['data'])?.data;
+const stored = () => untypedQx.ids('Settings-app' as EARS.EntityId).pickOne(['data'])?.data;
 
 describe('feature settings identities', () => {
   it('resolves local and qualified handles to the same owner', () => {

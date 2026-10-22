@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
-import { untypedTx, type EARS } from '@apackdev/ears';
+import { untypedCreate, type EARS } from '@apackdev/ears';
 import { openEnvAt, closeEnv, type LmdbStore } from '@apackdev/ears/lmdb';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { importDatabase } from '../../src/backup/index.ts';
@@ -28,7 +28,7 @@ const validate = createSettingsBackupValidator({ revision: 0, app: appSettingsDe
 async function fixture(settings: unknown = {}) {
   const source = tempDir('settings-backup-source-');
   await writeData(source, () => {
-    untypedTx('Settings-app' as EARS.EntityId, true).put('entityType', 'Settings').put('data', settings);
+    untypedCreate('Settings', { id: 'Settings-app' as EARS.EntityId }).set('data', settings);
   });
   const backup = tempDir('settings-backup-candidate-');
   fs.cpSync(_appDataPaths(source).lmdb, path.join(backup, 'lmdb'), { recursive: true });
@@ -65,7 +65,7 @@ it('restores and hydrates the incumbent when imported data fails hydration', asy
   await expect(service.importBackup(f.backup)).rejects.toThrow('candidate hydration failed');
   expect(f.store.envs.primary.entities.get('Note-current')).toEqual({ type: 'Note' });
   expect(f.store.envs.primary.entities.get('Note-candidate')).toBeUndefined();
-  expect(f.engine.query.qx('Note-current').pickOne(['entityType'])).not.toBeNull();
+  expect(f.engine.query.qx.ids('Note-current' as EARS.EntityId).pickOne(['entityType'])).not.toBeNull();
   expect(fs.existsSync(f.media)).toBe(false);
   expect(fs.readdirSync(path.dirname(f.store.paths.primary)).filter(name => name.startsWith('.apack-import-'))).toEqual([]);
 });

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, expect, it } from 'vitest';
-import { installedEngine, untypedQx, untypedTx } from '@apackdev/ears';
+import { installedEngine, untypedQx, untypedCreate } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { generateSettingsTypes } from '@apackdev/sdk/build';
@@ -21,7 +21,7 @@ it('derives the public SDK types from the host definition', async () => {
 it('provides and resets app preferences without default-setup and owns returned values', () => {
   const settings = store();
   expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
-  expect(untypedQx(id).pickOne(['data'])).toBeNull();
+  expect(untypedQx.ids(id).pickOne(['data'])).toBeNull();
   const first = settings.get<{ hotkeys: { switchSurfaceUp: { modifiers: string[] } } }>({ kind: 'app' });
   first.hotkeys.switchSurfaceUp.modifiers.push('changed');
   expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
@@ -44,7 +44,7 @@ it.each([
 
 it('refuses writes retaining invalid app values, including an unchanged replacement', () => {
   const data = { app: { projects: 'invalid' } };
-  untypedTx(id, true).put('entityType', 'Settings').put('data', data);
+  untypedCreate('Settings', { id }).set('data', data);
   const settings = store();
   const heard: string[] = [];
   settings.onChange(change => heard.push(change));
@@ -82,7 +82,7 @@ it('refuses newly missing required fields in feature arrays too', () => {
 
 it('refuses unknown root sections even when unchanged', () => {
   const data = { obsolete: { value: true } };
-  untypedTx(id, true).put('entityType', 'Settings').put('data', data);
+  untypedCreate('Settings', { id }).set('data', data);
   const settings = store();
   expect(() => settings.set({ kind: 'app' }, ['personal', 'name'], 'Ada')).toThrow('settings owner');
   expect(settings.getOverrides()).toEqual(data);

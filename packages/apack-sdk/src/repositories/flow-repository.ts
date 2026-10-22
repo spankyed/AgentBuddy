@@ -3,7 +3,7 @@
 // their views on top (default-setup's flows repository).
 import {
   findRelations, filterSystemFields, generateLabelWithCount, generateShortCode, getTimestamp,
-  removeRelationById, RepositoryError, RepositoryErrorCode, untypedTx, untypedQx as qx,
+  removeRelationById, updateRelation, RepositoryError, RepositoryErrorCode, untypedCreate, untypedWrite, untypedQx as qx, transact,
 } from '@apackdev/ears';
 import { EARS } from '../types/entities.ts';
 import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
@@ -34,7 +34,7 @@ export interface FlowEdge {
 /** The role of the flow the brain runs when the app starts */
 export const ROOT_FLOW = EARS.RoleKind.Custom(ROOT_FLOW_ROLE);
 
-const EDGE_KINDS = [EARS.RelKind.TRANSITIONS_TO];
+const EDGE_KINDS: readonly string[] = [EARS.RelKind.TRANSITIONS_TO];
 
 const NODE_DEFAULTS = { TYPE: 'action', LABEL: 'New Node', DESCRIPTION: '' } as const;
 const FLOW_DEFAULTS = { TYPE: 'workflow', DESCRIPTION: '' } as const;
@@ -57,7 +57,7 @@ const handleInfo = (handles?: Handles): Handles | undefined =>
  */
 function assertEdgeAllowed(sourceId: EARS.EntityId, targetId: EARS.EntityId, handles?: Handles, except?: EARS.EntityId): void {
   const isTrigger = (id: EARS.EntityId) => {
-    const nodeType = qx(id).pickOne(['nodeType'])?.nodeType;
+    const nodeType = qx.ids(id).pickOne(['nodeType'])?.nodeType;
     return typeof nodeType === 'string' && getStepDeclaration(nodeType)?.declaration.kind === 'trigger';
   };
   if (isTrigger(targetId)) {
@@ -117,53 +117,48 @@ function splitRelation(input: FlowNodeInput, field: string | undefined): { relat
 function withRelation(node: FlowNode): FlowNode {
   const field = relationField(node.nodeType);
   if (!field) return node;
-  const [linkedId] = qx(node.id).links(EARS.RelKind.INSTANCE_OF).map(({ id }) => id);
+  const [linkedId] = qx.ids(node.id).links(EARS.RelKind.INSTANCE_OF).map(({ id }) => id);
   return linkedId ? { ...node, [field]: linkedId } : node;
 }
 
 const flowNodeIds = (flowId: EARS.EntityId): EARS.EntityId[] =>
-  qx(flowId).links(EARS.RelKind.CONTAINS, EARS.Entity.Node).map(({ id }) => id);
+  qx.ids(flowId).links(EARS.RelKind.CONTAINS, EARS.Entity.Node).map(({ id }) => id);
 
 /** Reads and writes of flows, their nodes and edges, and the root flow role */
 export const flowRepository = {
   // ── Queries ──────────────────────────────────────────────────────────
 
   /** The flow with the root role */
-  rootFlow: (): EARS.EntityId | undefined => qx().withRole(ROOT_FLOW).first() ?? undefined,
+  rootFlow: (): EARS.EntityId | undefined => qx.all().withRole(ROOT_FLOW).first() ?? undefined,
 
   /** The action an action node runs */
   getNodeActionId: (nodeId: EARS.EntityId): EARS.EntityId | undefined =>
-    qx(nodeId).links(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action).map(({ id }) => id)[0],
+    qx.ids(nodeId).links(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action).map(({ id }) => id)[0],
 
   /** A node with all its fields, and its related entity's id */
   node: (nodeId: EARS.EntityId): FlowNode | undefined => {
-    const [node] = qx([nodeId]).pickAll() as unknown as FlowNode[];
+    const [node] = qx.ids(nodeId).pickAll() as unknown as FlowNode[];
     return node ? withRelation(node) : undefined;
   },
 
   /** A flow's nodes, each with its related entity's id */
   flowNodes: (flowId: EARS.EntityId): FlowNode[] =>
-    (qx(flowNodeIds(flowId)).pickAll() as unknown as FlowNode[]).map(withRelation),
+    (qx.ids(flowNodeIds(flowId)).pickAll() as unknown as FlowNode[]).map(withRelation),
 
   /** The transitions between a flow's nodes */
   flowEdges: (flowId: EARS.EntityId): FlowEdge[] => {
     const nodeIds = flowNodeIds(flowId);
-    const seen = new Set<string>();
     const edges: FlowEdge[] = [];
+    // Each relation once, so two edges between the same nodes on different handles are two edges
     for (const source of nodeIds) {
-      qx(source)
-        .links(EDGE_KINDS, [EARS.Entity.Node])
-        .filter(({ id: target }) => nodeIds.includes(target))
-        .forEach(({ relation, id: target }) => {
-          const [details] = findRelations({ sourceEntity: source, relationType: relation, targetEntity: target });
-          if (!details || seen.has(details.id)) return;
-          seen.add(details.id);
-          const handles = details.info as Handles | undefined;
-          edges.push({
-            id: details.id, kind: relation, source, target,
-            sourceHandle: handles?.sourceHandle, targetHandle: handles?.targetHandle, info: {},
-          });
+      for (const details of findRelations({ sourceEntity: source })) {
+        if (!EDGE_KINDS.includes(details.relationType) || !nodeIds.includes(details.targetEntity)) continue;
+        const handles = details.info as Handles | undefined;
+        edges.push({
+          id: details.id, kind: details.relationType, source, target: details.targetEntity,
+          sourceHandle: handles?.sourceHandle, targetHandle: handles?.targetHandle, info: {},
         });
+      }
     }
     return edges;
   },
@@ -172,30 +167,28 @@ export const flowRepository = {
 
   createFlow: (flow?: Partial<FlowEntity>): FlowEntity => {
     const ts = getTimestamp();
-    const row: Omit<FlowEntity, 'id'> & { updatedAt: number } = {
-      entityType: EARS.Entity.Flow,
+    const fields = {
       shortCode: generateShortCode(EARS.Entity.Flow, 'F'),
       label: flow?.label || generateLabelWithCount('New Flow', EARS.Entity.Flow),
       description: flow?.description || FLOW_DEFAULTS.DESCRIPTION,
       flowType: flow?.flowType || FLOW_DEFAULTS.TYPE,
-      createdAt: ts,
       updatedAt: ts,
     };
-    const id = untypedTx(EARS.Entity.Flow).batchPut(row).id();
-    return { id, ...row };
+    const id = untypedCreate(EARS.Entity.Flow, { createdAt: ts }).setMany(fields).id();
+    return { id, entityType: EARS.Entity.Flow, createdAt: ts, ...fields };
   },
 
   updateFlowLabel: (flowId: EARS.EntityId, label: string): void => {
-    untypedTx(flowId).updateBatch({ label, updatedAt: getTimestamp() });
+    untypedWrite(flowId).setMany({ label, updatedAt: getTimestamp() });
   },
 
   /** Deletes a flow with its nodes and their edges; the root flow only with `allowRoot` */
   deleteFlow: (flowId: EARS.EntityId, options?: { allowRoot?: boolean }): void => {
-    const isRoot = qx(flowId).withRole(ROOT_FLOW).first();
+    const isRoot = qx.ids(flowId).withRole(ROOT_FLOW).first();
     if (isRoot && !options?.allowRoot) {
       throw new RepositoryError('Cannot delete the root flow', RepositoryErrorCode.OPERATION_FAILED);
     }
-    if (isRoot) untypedTx(flowId).revoke(ROOT_FLOW);
+    if (isRoot) untypedWrite(flowId).revoke(ROOT_FLOW);
 
     const nodeIds = flowNodeIds(flowId);
     for (const nodeId of nodeIds) {
@@ -212,35 +205,42 @@ export const flowRepository = {
         logger.warn('Error removing relation during flow deletion', { relId, error });
       }
     }
-    untypedTx(flowId).destroy();
+    untypedWrite(flowId).destroy();
     logger.info('Deleted flow and all its contents', { flowId, deletedNodes: nodeIds.length });
   },
 
   /** Makes a flow the root flow, taking the role from the previous one */
   grantRootFlowRole: (flowId: EARS.EntityId): void => {
-    const current = qx().withRole(ROOT_FLOW).first();
-    if (current && current !== flowId) untypedTx(current).revoke(ROOT_FLOW);
-    untypedTx(flowId).grant(ROOT_FLOW);
+    untypedWrite(flowId).grantExclusive(ROOT_FLOW, qx.all().withRole(ROOT_FLOW).ids());
   },
 
   revokeRootFlowRole: (flowId: EARS.EntityId): void => {
-    untypedTx(flowId).revoke(ROOT_FLOW);
+    untypedWrite(flowId).revoke(ROOT_FLOW);
   },
 
-  /** Writes compiled flow DSL (`compileFlowDSL`): its rows, relations and roles; a root flow takes the root role */
-  importFromDSL: (compiled: CompiledRows): { flowIds: EARS.EntityId[] } => {
+  /**
+   * Writes compiled flow DSL (`compileFlowDSL`): its rows, relations and roles; a root flow takes the root role.
+   * A flow already there under a compiled id is replaced whole, its old nodes and edges with it, in one unit:
+   * the import lands entirely or not at all.
+   */
+  importFromDSL: (compiled: CompiledRows): { flowIds: EARS.EntityId[] } => transact(() => {
     const flowIds: EARS.EntityId[] = [];
     for (const entity of compiled.entity) {
-      const { id, ...fields } = entity as { id: EARS.EntityId } & Record<string, unknown>;
-      untypedTx(id, true).batchPut(fields);
-      if (fields.entityType === EARS.Entity.Flow) flowIds.push(id);
+      const { id, entityType } = entity as { id: EARS.EntityId; entityType?: string };
+      if (entityType === EARS.Entity.Flow && qx.ids(id).exists()) flowRepository.deleteFlow(id, { allowRoot: true });
+    }
+    for (const entity of compiled.entity) {
+      const { id, entityType, createdAt, ...fields } = entity as { id: EARS.EntityId; entityType: string; createdAt?: number } & Record<string, unknown>;
+      if (qx.ids(id).exists()) untypedWrite(id).destroy();
+      untypedCreate(entityType as never, { id, createdAt }).setMany(fields);
+      if (entityType === EARS.Entity.Flow) flowIds.push(id);
     }
     for (const relation of compiled.relation) {
-      untypedTx(relation.source as EARS.EntityId).link(relation.kind, relation.target as EARS.EntityId, relation.info);
+      untypedWrite(relation.source as EARS.EntityId).link(relation.kind, relation.target as EARS.EntityId, { info: relation.info });
     }
     for (const role of compiled.role) {
       if (role.role === ROOT_FLOW) flowRepository.grantRootFlowRole(role.entityId as EARS.EntityId);
-      else untypedTx(role.entityId as EARS.EntityId).grant(role.role);
+      else untypedWrite(role.entityId as EARS.EntityId).grant(role.role);
     }
     logger.info('Imported DSL flows', {
       entityCount: compiled.entity.length,
@@ -249,7 +249,7 @@ export const flowRepository = {
       flowIds,
     });
     return { flowIds };
-  },
+  }),
 
   // ── Nodes ────────────────────────────────────────────────────────────
 
@@ -273,17 +273,18 @@ export const flowRepository = {
     };
     validateNode(row as FlowNode, accepted);
 
-    const nodeId = untypedTx(EARS.Entity.Node).batchPut(row).id();
-    untypedTx(flowId).link(EARS.RelKind.CONTAINS, nodeId);
+    const { entityType: _type, createdAt: _created, ...fieldsToWrite } = row;
+    const nodeId = untypedCreate(EARS.Entity.Node, { createdAt: ts }).setMany(fieldsToWrite).id();
+    untypedWrite(flowId).link(EARS.RelKind.CONTAINS, nodeId);
     const relatedId = field && related[field];
-    if (relatedId) untypedTx(nodeId).link(EARS.RelKind.INSTANCE_OF, relatedId as EARS.EntityId);
+    if (relatedId) untypedWrite(nodeId).link(EARS.RelKind.INSTANCE_OF, relatedId as EARS.EntityId);
     return { id: nodeId, ...row } as FlowNode;
   },
 
   /** Updates a node's fields, and its related entity when the step's relation field is given */
   updateNode: (nodeId: EARS.EntityId, updates: FlowNodeInput): void => {
     const ts = getTimestamp();
-    const [current] = qx(nodeId).pickAll() as unknown as FlowNode[];
+    const [current] = qx.ids(nodeId).pickAll() as unknown as FlowNode[];
     if (!current) throw new RepositoryError(`Node ${nodeId} not found`, RepositoryErrorCode.NOT_FOUND);
     if (updates.nodeType !== undefined && updates.nodeType !== current.nodeType) {
       throw new RepositoryError('A node\'s type cannot be changed', RepositoryErrorCode.VALIDATION_ERROR);
@@ -300,14 +301,14 @@ export const flowRepository = {
 
     if (field && field in related) {
       const relatedId = related[field];
-      untypedTx(nodeId).unlinkIf(EARS.RelKind.INSTANCE_OF);
-      if (relatedId) untypedTx(nodeId).update(field, relatedId).link(EARS.RelKind.INSTANCE_OF, relatedId as EARS.EntityId);
-      else untypedTx(nodeId).drop(EARS.AttrKind.Custom(field));
+      untypedWrite(nodeId).unlink(EARS.RelKind.INSTANCE_OF);
+      if (relatedId) untypedWrite(nodeId).set(field, relatedId).link(EARS.RelKind.INSTANCE_OF, relatedId as EARS.EntityId);
+      else untypedWrite(nodeId).delete(field);
     }
 
-    const transaction = untypedTx(nodeId);
-    for (const [key, value] of Object.entries(changed)) transaction.update(key, value);
-    transaction.update('updatedAt', ts);
+    const node = untypedWrite(nodeId);
+    for (const [key, value] of Object.entries(changed)) node.set(key, value);
+    node.set('updatedAt', ts);
   },
 
   /** Deletes a node with its edges, its flow's link to it and its related entity's link */
@@ -315,36 +316,18 @@ export const flowRepository = {
     const flowId = (qx(EARS.Entity.Flow).ids() as EARS.EntityId[]).find((id) => flowNodeIds(id).includes(nodeId));
     if (!flowId) throw new RepositoryError(`Node ${nodeId} not found in any flow`, RepositoryErrorCode.NOT_FOUND);
 
+    // Every relation once, so a second edge between the same two nodes (another handle) goes with the first
     const nodeIds = flowNodeIds(flowId);
-    const edges: EARS.EntityId[] = [];
-    // Its outgoing edges
-    qx(nodeId)
-      .links(EDGE_KINDS, EARS.Entity.Node)
-      .filter(({ id: target }) => nodeIds.includes(target))
-      .forEach(({ relation, id: target }) => {
-        const relId = findRelations({ sourceEntity: nodeId, relationType: relation, targetEntity: target })[0]?.id;
-        if (relId) edges.push(relId);
-      });
-    // Its incoming edges
-    for (const source of nodeIds) {
-      if (source === nodeId) continue;
-      qx(source)
-        .links(EDGE_KINDS, EARS.Entity.Node)
-        .filter(({ id: target }) => target === nodeId)
-        .forEach(({ relation }) => {
-          const relId = findRelations({ sourceEntity: source, relationType: relation, targetEntity: nodeId })[0]?.id;
-          if (relId) edges.push(relId);
-        });
-    }
-    edges.forEach((edgeId) => removeRelationById(edgeId));
-
-    findRelations({ sourceEntity: flowId, relationType: EARS.RelKind.CONTAINS, targetEntity: nodeId })
-      .forEach((rel) => removeRelationById(rel.id));
-    for (const { id: target } of qx(nodeId).links(EARS.RelKind.INSTANCE_OF)) {
-      findRelations({ sourceEntity: nodeId, relationType: EARS.RelKind.INSTANCE_OF, targetEntity: target })
-        .forEach((rel) => removeRelationById(rel.id));
-    }
-    untypedTx(nodeId).destroy();
+    const isEdge = (rel: { relationType: string; sourceEntity: EARS.EntityId; targetEntity: EARS.EntityId }) =>
+      EDGE_KINDS.includes(rel.relationType) && nodeIds.includes(rel.sourceEntity) && nodeIds.includes(rel.targetEntity);
+    const removed = [
+      ...findRelations({ sourceEntity: nodeId }).filter(isEdge),
+      ...findRelations({ targetEntity: nodeId }).filter((rel) => rel.sourceEntity !== nodeId && isEdge(rel)),
+      ...findRelations({ sourceEntity: flowId, relationType: EARS.RelKind.CONTAINS, targetEntity: nodeId }),
+      ...findRelations({ sourceEntity: nodeId, relationType: EARS.RelKind.INSTANCE_OF }),
+    ];
+    for (const rel of removed) removeRelationById(rel.id);
+    untypedWrite(nodeId).destroy();
   },
 
   // ── Edges ────────────────────────────────────────────────────────────
@@ -355,7 +338,7 @@ export const flowRepository = {
    */
   createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId, options?: Handles): { relId: EARS.EntityId } => {
     assertEdgeAllowed(sourceId, targetId, options);
-    untypedTx(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId, handleInfo(options));
+    untypedWrite(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId, { info: handleInfo(options) });
 
     const relId = findRelations({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: targetId })
       .find((rel) => handlesMatch(rel.info, options))?.id;
@@ -370,7 +353,7 @@ export const flowRepository = {
   /** Moves an edge to new ends and handles, keeping its id; throws, leaving it as it was, when that edge isn't allowed */
   updateEdge: (edgeId: EARS.EntityId, next: { source: EARS.EntityId; target: EARS.EntityId } & Handles): void => {
     assertEdgeAllowed(next.source, next.target, next, edgeId);
-    untypedTx(next.source).relPatch(edgeId, { sourceEntity: next.source, targetEntity: next.target, info: handleInfo(next) ?? {} });
+    updateRelation(edgeId, { sourceEntity: next.source, targetEntity: next.target, info: handleInfo(next) ?? {} });
   },
 
   /**
@@ -386,10 +369,7 @@ export const flowRepository = {
       if (!match) continue;
       const index = parseInt(match[1], 10);
       if (index < threshold) continue;
-      untypedTx(nodeId).patchLink(EARS.RelKind.TRANSITIONS_TO, rel.targetEntity, {
-        newTarget: rel.targetEntity,
-        newInfo: { ...info, sourceHandle: `${prefix}-${index + direction}` },
-      });
+      updateRelation(rel.id, { info: { ...info, sourceHandle: `${prefix}-${index + direction}` } });
     }
   },
 };

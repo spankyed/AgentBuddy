@@ -11,7 +11,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { importCompiledContent, type AppliedItem, type ApplyRecord } from '@apackdev/sdk/utils';
 import { CONTENT_INDEX_FILE } from '@apackdev/sdk/build';
 import { contentEntity } from '@apackdev/sdk/content';
-import { untypedQx as qx, untypedTx, type EARS } from '@apackdev/ears';
+import { untypedQx as qx, untypedWrite, type EARS } from '@apackdev/ears';
 import { PACK_DIR, applyAfter } from './harness.ts';
 
 /** This pack's compiled content, as its build wrote them */
@@ -70,7 +70,7 @@ function apply(dir: string, previous?: ApplyRecord) {
 }
 
 const attr = <T,>(id: EARS.EntityId, name: string): T | null =>
-  (qx([id]).pickAll()[0] as Record<string, unknown> | undefined)?.[name] as T | null ?? null;
+  (qx.ids([id]).pickAll()[0] as Record<string, unknown> | undefined)?.[name] as T | null ?? null;
 
 const isFlow = (item: AppliedItem) => item.entityType === 'Flow';
 
@@ -137,7 +137,7 @@ describe('the applied content over this pack’s real content', () => {
       const id = contentEntity(item.entityType, key)?.id;
       if (!id) continue;
       compared++;
-      const stored = Object.keys((qx([id]).pickAll()[0] ?? {}) as Record<string, unknown>);
+      const stored = Object.keys((qx.ids([id]).pickAll()[0] ?? {}) as Record<string, unknown>);
       const missing = Object.keys(item.parts).filter((part) => !stored.includes(part));
       if (missing.length > 0) disagree[key] = { parts: Object.keys(item.parts).sort(), fields: stored.sort() };
     }
@@ -153,7 +153,7 @@ describe('the applied content over this pack’s real content', () => {
     for (const [key, item] of flows) {
       const id = contentEntity(item.entityType, key)!.id;
       const nodes = Object.keys(item.parts).filter((part) => part.startsWith('node:'));
-      const live = qx(id).linksTo('contains' as string, 'Node' as EARS.Entity, true).ids();
+      const live = qx.ids(id).linksTo('contains' as string, 'Node' as EARS.Entity, true).ids();
       expect(nodes.map((part) => part.slice('node:'.length)).sort(), `${key}'s node parts`).toEqual([...live].sort());
       expect(item.parts.fields, `${key} records its own fields`).toBeDefined();
       expect(item.parts.edges, `${key} records its wiring`).toBeDefined();
@@ -203,7 +203,7 @@ describe('the applied content over this pack’s real content', () => {
   it('keeps the user’s edit to one item, names the part, and applies the rest', () => {
     const [key, item] = [...first.record.written].find(([, value]) => !isFlow(value) && 'description' in value.parts)!;
     const id = contentEntity(item.entityType, key)!.id;
-    untypedTx(id).update('description' as string, 'mine');
+    untypedWrite(id).set('description' as string, 'mine');
 
     const again = apply(compiledDir({ bump: true }), first.record);
 
@@ -230,7 +230,7 @@ describe('the applied content over this pack’s real content', () => {
 
     // Recorded now, so the next apply sees the user's edit rather than adopting over it
     const [key, item] = [...upgrade.record.written].find(([, value]) => !isFlow(value) && 'description' in value.parts)!;
-    untypedTx(contentEntity(item.entityType, key)!.id).update('description' as string, 'mine');
+    untypedWrite(contentEntity(item.entityType, key)!.id).set('description' as string, 'mine');
     const again = apply(compiledDir({ bump: 'again' }), upgrade.record);
     expect([...again.record.offers.keys()]).toEqual([key]);
   });

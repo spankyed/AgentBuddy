@@ -17,7 +17,7 @@ export {
 export { getSchemaStats } from '@apackdev/sdk/database-console';
 
 // Write: only a transaction gets these; a query naming one fails with "<name> is not defined"
-export { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
+export { create, upsert, write, createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
 export {
-  untypedTx as tx, destroyEntity, prepareEntity, createRelation, removeRelation, removeRelationById, grantRole, revokeRole,
+  destroyEntity, prepareEntity, createRelation, removeRelation, removeRelationById, grantRole, revokeRole,
 } from '@apackdev/ears';

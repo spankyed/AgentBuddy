@@ -40,7 +40,7 @@ export const trash = {
 
   /** The trashed entities of a type */
   list<T extends object = object>(entityType: string): Trashed<T>[] {
-    return (ears().qx(entityType as EARS.Entity).pickAll() as Trashed<T>[]).filter(trashed);
+    return (ears().qx(entityType as never).pickAll() as Trashed<T>[]).filter(trashed);
   },
 
   /** The entities of a type trashed more than `maxAgeMs` before `now` */

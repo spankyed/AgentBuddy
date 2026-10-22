@@ -138,7 +138,7 @@ function resolveId(alias: string): EARS.EntityId {
   const target = rows[alias];
   for (const id of entityIds() as EARS.EntityId[]) {
     if (!id.startsWith(`${type}-`)) continue;
-    const row = (untypedQx(id).pickAll() as Array<Record<string, unknown>>)[0];
+    const row = (untypedQx.ids(id).pickAll() as Array<Record<string, unknown>>)[0];
     const label = row?.name ?? row?.title ?? row?.label;
     if (label === (target.name ?? target.title ?? target.label)) return id;
   }

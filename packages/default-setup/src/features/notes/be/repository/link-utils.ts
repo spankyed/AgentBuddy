@@ -1,4 +1,4 @@
-import { tx, qx } from '#generated/ears.ts';
+import { write, qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 
 import { parseReferenceHref } from '@apackdev/sdk/framework';
@@ -27,20 +27,20 @@ export function syncReferences(sourceId: EARS.EntityId, content: string): void {
   const parsed = new Set(parseNoteLinks(content));
   parsed.delete(sourceId);
   const current = new Set(
-    qx(sourceId).linksTo(REFERENCES, EARS.Entity.Note, true).ids()
+    qx.ids(sourceId).linksTo(REFERENCES, EARS.Entity.Note, true).ids()
   );
 
   // Add new references
   for (const targetId of parsed) {
     if (!current.has(targetId)) {
-      tx(sourceId).linkOne(REFERENCES, targetId);
+      write(sourceId).link(REFERENCES, targetId, { replace: true });
     }
   }
 
   // Remove stale references
   for (const targetId of current) {
     if (!parsed.has(targetId)) {
-      tx(sourceId).unlinkIf(REFERENCES, targetId);
+      write(sourceId).unlink(REFERENCES, targetId);
     }
   }
 }

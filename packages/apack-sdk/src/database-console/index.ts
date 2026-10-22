@@ -10,7 +10,7 @@ import { boundHost } from '../runtime/host-runtime.ts';
 import type { EarsNames } from '../runtime/packs-view.ts';
 import { EARS as EARS_NAMES } from '../types/index.ts';
 import {
-  defineEars, untypedQx, untypedTx, destroyEntity, getAll, getRoles, grantRole, revokeRole, prepareEntity,
+  defineEars, untypedQx, untypedCreate, untypedUpsert, untypedWrite, destroyEntity, getAll, getRoles, grantRole, revokeRole, prepareEntity,
   createRelation, removeRelation, removeRelationById, getAllEntities, getEntitiesOfType, getAllEntityTypes,
   getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo, type EARS,
@@ -59,7 +59,9 @@ const readHelpers = {
 };
 
 const writeHelpers = {
-  tx: untypedTx,
+  create: untypedCreate,
+  upsert: untypedUpsert,
+  write: untypedWrite,
   destroyEntity,
   prepareEntity,
   createEntityWithDefaults,

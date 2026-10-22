@@ -1,7 +1,7 @@
 // The Database console's code runners, which the Database surface and `apack db query`/`exec` share
 import * as os from 'node:os';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { untypedTx, untypedQx } from '@apackdev/ears';
+import { untypedCreate, untypedQx } from '@apackdev/ears';
 import { consoleEars, getSchemaStats, installedEars, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
 import { testPacks } from '../../src/testing/packs.ts';
 import { EARS } from '../../src/types/index.ts';
@@ -31,8 +31,8 @@ describe('the helpers console code sees', () => {
 
   it('gives a transaction the write helpers as well', async () => {
     expect([...WRITE_HELPER_NAMES].sort()).toEqual([
-      'createEntityWithDefaults', 'createRelation', 'destroyEntity', 'grantRole', 'prepareEntity', 'removeRelation',
-      'removeRelationById', 'revokeRole', 'tx', 'updateEntity',
+      'create', 'createEntityWithDefaults', 'createRelation', 'destroyEntity', 'grantRole', 'prepareEntity', 'removeRelation',
+      'removeRelationById', 'revokeRole', 'updateEntity', 'upsert', 'write',
     ]);
     for (const name of [...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES]) {
       await expect(runTransactionCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -42,7 +42,7 @@ describe('the helpers console code sees', () => {
 
 describe('runQueryCode', () => {
   it('returns what the code returns, reading the installed engine and the EARS it is given', async () => {
-    untypedTx('Flow-1', true).put('entityType', 'Flow').put('label', 'Main');
+    untypedCreate('Flow', { id: 'Flow-1' }).set('label', 'Main');
     await expect(runQueryCode("return qx(EARS.Entity.Flow).pickAll().map((f) => f.label)", scope)).resolves.toEqual(['Main']);
     await expect(runQueryCode('return getAttr("Flow-1", "label")', scope)).resolves.toBe('Main');
     await expect(runQueryCode('return getSchemaStats().entities', scope)).resolves.toEqual({ Flow: 1 });
@@ -66,7 +66,7 @@ describe('runQueryCode', () => {
 
 describe('runTransactionCode', () => {
   it('writes with the write helpers and reads with the read helpers', async () => {
-    const id = await runTransactionCode("const id = tx(EARS.Entity.Flow).put('label', 'New').id(); return getAttr(id, 'label')", scope);
+    const id = await runTransactionCode("const id = create(EARS.Entity.Flow).set('label', 'New').id(); return getAttr(id, 'label')", scope);
     expect(id).toBe('New');
     expect(untypedQx('Flow').ids()).toHaveLength(1);
   });
@@ -83,8 +83,8 @@ describe('runTransactionCode', () => {
 
 describe('getSchemaStats', () => {
   it('counts entities, attribute kinds and relation kinds', () => {
-    untypedTx('Flow-1', true).put('entityType', 'Flow').put('label', 'a');
-    untypedTx('Flow-2', true).put('entityType', 'Flow').put('label', 'b').link('contains', 'Flow-1');
+    untypedCreate('Flow', { id: 'Flow-1' }).set('label', 'a');
+    untypedCreate('Flow', { id: 'Flow-2' }).set('label', 'b').link('contains', 'Flow-1');
     const stats = getSchemaStats();
     expect(stats.entities.Flow).toBe(2);
     expect(stats.attributes.label).toEqual({ entityCount: 2, totalValues: 2 });
@@ -110,8 +110,8 @@ describe('the EARS console code sees', () => {
     // Another installed pack's type, as its registration declares it
     startTestRuntime({ entityTypes: ['Memo', 'Note'] });
     testPacks.earsEntities.set('Memo', 'Memo');
-    untypedTx('Memo-1' as EARS.EntityId, true).put('title', 'theirs');
-    untypedTx('Note-1' as EARS.EntityId, true).put('title', 'ours');
+    untypedCreate('Memo', { id: 'Memo-1' as EARS.EntityId }).set('title', 'theirs');
+    untypedCreate('Note', { id: 'Note-1' as EARS.EntityId }).set('title', 'ours');
 
     await expect(runQueryCode('return EARS.Entity.Memo', { EARS: installedEars() })).resolves.toBe('Memo');
     await expect(runQueryCode('return qx(EARS.Entity.Memo).ids()', { EARS: installedEars() }))

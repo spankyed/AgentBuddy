@@ -29,7 +29,7 @@ export const SCRIPT_USAGE = [
   '    return notes.map((id) => db.query.getAll(id));',
   '  };',
   '',
-  '  db     the open database: query (qx, tx, the finders), admin, store, schema, paths, userDataDir',
+  '  db     the open database: query (qx, create, upsert, write, the finders), admin, store, schema, paths, userDataDir',
   '  EARS   the entity types and relation kinds of the packs installed in the data dir',
   '  args   what follows -- on the command line',
   '  log    prints a line, like the script\'s own output',

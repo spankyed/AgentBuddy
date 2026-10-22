@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { spawn } from 'node:child_process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { installEngine, installedEngine, untypedTx, type EARS } from '@apackdev/ears';
+import { installEngine, installedEngine, untypedCreate, untypedWrite, type EARS } from '@apackdev/ears';
 import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@apackdev/host/database';
 import { exportDatabase } from '@apackdev/host/backup';
 import { closeEnv, openEnvAt } from '@apackdev/ears/lmdb';
@@ -79,12 +79,12 @@ async function appDataDir(): Promise<string> {
   fs.mkdirSync(path.dirname(packDir), { recursive: true });
   fs.cpSync(DEFAULT_SETUP_DIST, packDir, { recursive: true });
   await write(dir, () => {
-    untypedTx(id('AppState-app'), true).put('entityType', 'AppState').put('hasOnboarded', true);
-    untypedTx(id('Settings-app'), true).put('entityType', 'Settings').put('label', 'App').put('data', { app: { personal: { name: 'Developer' } } });
-    untypedTx(id('Note-a'), true).put('entityType', 'Note').put('title', 'Alpha').grant('pinned').link('parent_of', id('Note-b'));
-    untypedTx(id('Note-b'), true).put('entityType', 'Note').put('title', 'Beta, "quoted"');
+    untypedCreate('AppState', { id: id('AppState-app') }).set('hasOnboarded', true);
+    untypedCreate('Settings', { id: id('Settings-app') }).set('label', 'App').set('data', { app: { personal: { name: 'Developer' } } });
+    untypedCreate('Note', { id: id('Note-a') }).set('title', 'Alpha').grant('pinned').link('parent_of', id('Note-b'));
+    untypedCreate('Note', { id: id('Note-b') }).set('title', 'Beta, "quoted"');
     // The run history, which the app keeps in its own partition (TNode is excluded from the main one)
-    untypedTx(id('TNode-1'), true).put('entityType', 'TNode').put('status', 'completed');
+    untypedCreate('TNode', { id: id('TNode-1') }).set('status', 'completed');
   });
   return dir;
 }
@@ -173,8 +173,8 @@ describe('apack db query', () => {
 
   it("can't write, and changes nothing", async () => {
     const dir = await appDataDir();
-    const { error } = await run(['query', "tx('Note-a').put('title', 'changed')", '--data-dir', dir]);
-    expect(error?.message).toBe('tx is not defined');
+    const { error } = await run(['query', "write('Note-a').set('title', 'changed')", '--data-dir', dir]);
+    expect(error?.message).toBe('write is not defined');
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
     expect(out).toBe('Alpha');
   });
@@ -330,7 +330,7 @@ describe('naming the data dir', () => {
     try {
       expect(parseDbArgs(['--profile', 'production'], {}, 'usage').target.userDataDir).toBe(appDataDirFor('production'));
 
-      const { out, err } = await ok(['exec', "tx('Note-a').put('title', 'Named')", '--data-dir', dir]);
+      const { out, err } = await ok(['exec', "write('Note-a').set('title', 'Named')", '--data-dir', dir]);
       expect(err).toContain(`Database: ${dir} (offline)`);
       expect(out).toBe('undefined');
       expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Named');
@@ -410,7 +410,7 @@ describe('the run history', () => {
 describe('apack db exec', () => {
   it('writes with the transaction helpers', async () => {
     const dir = await appDataDir();
-    const { out } = await ok(['exec', "tx('Note-a').put('title', 'Changed'); return tx(EARS.Entity.Note).put('title', 'New').id()", '--data-dir', dir]);
+    const { out } = await ok(['exec', "write('Note-a').set('title', 'Changed'); return create(EARS.Entity.Note).set('title', 'New').id()", '--data-dir', dir]);
     expect(out).toMatch(/^Note-/);
     const titles = await ok(['query', "return qx(EARS.Entity.Note).pickAll(['title']).map((n) => n.title).sort()", '--data-dir', dir, '-o', 'json']);
     expect(JSON.parse(titles.out)).toEqual(['Beta, "quoted"', 'Changed', 'New']);
@@ -419,7 +419,7 @@ describe('apack db exec', () => {
   it('refuses while an app holds the data dir or its API answers, changing nothing', async () => {
     const locked = await appDataDir();
     holdLock(locked);
-    const byLock = await run(['exec', "tx('Note-a').put('title', 'Changed')", '--data-dir', locked]);
+    const byLock = await run(['exec', "write('Note-a').set('title', 'Changed')", '--data-dir', locked]);
     expect(byLock.error?.message).toMatch(/^apack is running on [\s\S]*quit it first/);
     // The marker outlives a crash and its pid can be one the OS has since reused, so the refusal has to
     // name the file: without it the data dir is one no tool could ever write to again
@@ -427,7 +427,7 @@ describe('apack db exec', () => {
 
     const served = await appDataDir();
     publishApi(served);
-    const byPort = await run(['exec', "tx('Note-a').put('title', 'Changed')", '--data-dir', served]);
+    const byPort = await run(['exec', "write('Note-a').set('title', 'Changed')", '--data-dir', served]);
     expect(byPort.error?.message).toMatch(new RegExp(`its API is running on port 3001 \\(pid ${process.pid}\\)`));
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', served]);
     expect(out).toBe('Alpha');
@@ -435,13 +435,13 @@ describe('apack db exec', () => {
 
   it('fails when a write never reaches the files', async () => {
     const dir = await appDataDir();
-    const { error } = await run(['exec', "tx('Note-a').put('count', 1n)", '--data-dir', dir]);
+    const { error } = await run(['exec', "write('Note-a').set('count', 1n)", '--data-dir', dir]);
     expect(error?.message).toMatch(/1 write\(s\) didn't reach the database/);
   });
 
   it('keeps what the code wrote before it threw: there is no rollback', async () => {
     const dir = await appDataDir();
-    const { error } = await run(['exec', "tx('Note-a').put('title', 'Written'); throw new Error('boom')", '--data-dir', dir]);
+    const { error } = await run(['exec', "write('Note-a').set('title', 'Written'); throw new Error('boom')", '--data-dir', dir]);
     expect(error?.message).toMatch(/^Transaction failed: boom[\s\S]*nothing is rolled back/);
     // The code runs as one function, not one transaction: what it wrote before throwing is flushed on close
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
@@ -451,7 +451,7 @@ describe('apack db exec', () => {
   it("reports the code's own error first when closing fails too", async () => {
     const dir = await appDataDir();
     // The code writes a value LMDB can't store, then throws
-    const { error } = await run(['exec', "tx('Note-a').put('count', 1n); throw new Error('boom')", '--data-dir', dir]);
+    const { error } = await run(['exec', "write('Note-a').set('count', 1n); throw new Error('boom')", '--data-dir', dir]);
     expect(error?.message).toMatch(/^Transaction failed: boom[\s\S]*failed to close: 1 write\(s\) didn't reach the database/);
     expect((error as Error).cause).toBeInstanceOf(Error);
   });
@@ -462,17 +462,17 @@ describe('apack db repl', () => {
     const dir = await appDataDir();
     const out: string[] = [];
     const err: string[] = [];
-    const input = Readable.from(["return getAttr('Note-a', 'title')\n", "tx('Note-a')\n", '\n', 'return 2\n', '.exit\n', 'return 3\n']);
+    const input = Readable.from(["return getAttr('Note-a', 'title')\n", "write('Note-a')\n", '\n', 'return 2\n', '.exit\n', 'return 3\n']);
     await dbRepl(['--data-dir', dir], { out: (l) => out.push(l), err: (l) => err.push(l) }, input);
     expect(out).toEqual(['Alpha', '2']);
-    expect(err).toContain('Error: tx is not defined');
+    expect(err).toContain('Error: write is not defined');
   });
 
   it('refuses a --write session while an app runs on the data dir, changing nothing', async () => {
     const dir = await appDataDir();
     holdLock(dir);
     const io = { out: () => {}, err: () => {} };
-    const input = Readable.from(["tx('Note-a').put('title', 'From the repl')\n"]);
+    const input = Readable.from(["write('Note-a').set('title', 'From the repl')\n"]);
     await expect(dbRepl(['--data-dir', dir, '--write'], io, input)).rejects
       .toThrow(/^apack is running on .* \(its process is running \(pid \d+\)\): quit it first/);
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
@@ -493,7 +493,7 @@ describe('apack db repl', () => {
   it('saves the writes of a --write session', async () => {
     const dir = await appDataDir();
     const io = { out: () => {}, err: () => {} };
-    await dbRepl(['--data-dir', dir, '--write'], io, Readable.from(["tx('Note-a').put('title', 'From the repl')\n"]));
+    await dbRepl(['--data-dir', dir, '--write'], io, Readable.from(["write('Note-a').set('title', 'From the repl')\n"]));
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
     expect(out).toBe('From the repl');
   });
@@ -536,7 +536,7 @@ describe('apack db script', () => {
       "import * as os from 'node:os';",
       'export default async ({ db, EARS, args, log }: any) => {',
       "  log(`renaming on ${typeof os.hostname()}`);",
-      "  db.query.tx('Note-a').put('title', args[0]);",
+      "  db.query.write('Note-a').set('title', args[0]);",
       '  return db.query.getEntitiesOfType(EARS.Entity.Note).length;',
       '};',
     ].join('\n'));
@@ -649,7 +649,7 @@ describe('apack db script', () => {
       'export default async ({ db, log }) => {',
       "  log('first');",
       '  await new Promise((resolve) => setTimeout(resolve, 250));',
-      "  db.query.tx('Note-a').put('title', 'Written late');",
+      "  db.query.write('Note-a').set('title', 'Written late');",
       "  log('second');",
       '  await new Promise((resolve) => setTimeout(resolve, 250));',
       "  return 'finished';",
@@ -671,7 +671,7 @@ describe('apack db script', () => {
       "  const answer = await lines.question('Rename Note-a? (y/N) ');",
       '  lines.close();',
       "  if (answer.trim().toLowerCase() !== 'y') return 'cancelled';",
-      "  db.query.tx('Note-a').put('title', 'Renamed');",
+      "  db.query.write('Note-a').set('title', 'Renamed');",
       "  log('renamed');",
       "  return 'done';",
       '};',
@@ -720,7 +720,7 @@ describe('apack db script', () => {
 
   it('writes by default, and only reads with --read-only, which works while an app runs', async () => {
     const dir = await appDataDir();
-    const write = writeScript(dir, 'write.ts', "export default ({ db }: any) => db.query.tx('Note-a').put('title', 'Changed');");
+    const write = writeScript(dir, 'write.ts', "export default ({ db }: any) => db.query.write('Note-a').set('title', 'Changed');");
     publishApi(dir);
     expect((await run(['script', write, '--data-dir', dir])).error?.message).toMatch(/quit it first/);
 
@@ -760,7 +760,7 @@ describe('apack db inspect', () => {
     expect(incoming.out).toBe('[Note] Note-a "Alpha"\n  roles: pinned');
 
     await write(dir, () => {
-      for (const n of [1, 2, 3, 4, 5, 6]) untypedTx(id(`Note-many-${n}`), true).put('entityType', 'Note').put('title', `Many ${n}`);
+      for (const n of [1, 2, 3, 4, 5, 6]) untypedCreate('Note', { id: id(`Note-many-${n}`) }).set('title', `Many ${n}`);
     });
     const many = await ok(['inspect', '--type', 'Note', '--data-dir', dir]);
     const lines = many.out.split('\n');
@@ -929,7 +929,7 @@ describe('apack db reset', () => {
 describe('apack db import', () => {
   const backupWith = async (title: string, options: { databases?: Array<'lmdb' | 'volatileLmdb'> } = {}) => {
     const source = await appDataDir();
-    await write(source, () => { untypedTx(id('Note-a')).put('title', title); untypedTx(id('Note-b')).destroy(); });
+    await write(source, () => { untypedWrite(id('Note-a')).set('title', title); untypedWrite(id('Note-b')).destroy(); });
     return backupOf(source, { withMedia: true, ...options });
   };
 
@@ -1061,8 +1061,8 @@ describe('apack db import', () => {
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.runtimeEntry), 'throw new Error("Offline discovery must not activate");');
     sealPackBuild(packDir, manifest);
     await write(source, () => {
-      untypedTx(id('Bookmark-1'), true).put('entityType', 'Bookmark').put('url', 'https://example.com');
-      untypedTx(id('Bookmark-2'), true).put('entityType', 'Bookmark').put('url', 'https://example.org');
+      untypedCreate('Bookmark', { id: id('Bookmark-1') }).set('url', 'https://example.com');
+      untypedCreate('Bookmark', { id: id('Bookmark-2') }).set('url', 'https://example.org');
     });
     const backup = await backupOf(source);
 
@@ -1127,7 +1127,7 @@ describe('a data dir whose packs are gone', () => {
 
   it('answers a query that names an undeclared type with that type, not with everything', async () => {
     const { dir } = await withoutItsPack();
-    const everything = await ok(['query', 'return qx().ids().length', '--data-dir', dir]);
+    const everything = await ok(['query', 'return qx.all().ids().length', '--data-dir', dir]);
     const notes = await ok(['query', 'return qx(EARS.Entity.Note).ids().sort()', '--data-dir', dir, '-o', 'json']);
 
     expect(JSON.parse(notes.out)).toEqual(['Note-a', 'Note-b']);
@@ -1147,8 +1147,8 @@ describe('a data dir whose packs are gone', () => {
   // An alias is not in the data, only its value, so this is the half observation cannot supply
   it('does not invent a relation kind, whose alias no row holds', async () => {
     const { dir, packDir } = await withoutItsPack();
-    const observed = await ok(['query', 'return typeof EARS.RelKind.PARENT_OF', '--data-dir', dir]);
-    expect(observed.out).toBe('undefined');
+    const observed = await ok(['query', "return 'PARENT_OF' in EARS.RelKind", '--data-dir', dir]);
+    expect(observed.out).toBe('false');
 
     const named = await ok(['query', 'return EARS.RelKind.PARENT_OF', '--data-dir', dir, '--schema-from', packDir]);
     expect(named.out).toBe('parent_of');

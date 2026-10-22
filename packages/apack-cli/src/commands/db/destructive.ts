@@ -153,7 +153,7 @@ export async function dbClearSettings(args: string[], io: DbIo): Promise<void> {
       io.out(`\n${DRY_RUN}`);
       return null;
     }
-    for (const row of rows) db.query.tx(row.id as EARS.EntityId).destroy();
+    for (const row of rows) db.query.write(row.id as EARS.EntityId).destroy();
     return `\nDestroyed ${rows.length} Settings row(s). apack recreates the defaults on its next start.`;
   });
   if (done) io.out(done);

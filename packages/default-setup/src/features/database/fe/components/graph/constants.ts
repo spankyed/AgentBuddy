@@ -6,14 +6,14 @@ return qx(EARS.Entity.Thread).pick(['id', 'topic', 'status', 'timestamp']).limit
 
 // Or try these examples:
 // return qx(EARS.Entity.Note).where('archived', false).pickAll();
-// return qx().where('label').pick(['id', 'label']).limit(20);
+// return qx.all().has('label').pick(['id', 'label']).limit(20);
 // return qx(EARS.Entity.Tag).pick(['id', 'name', 'color']).orderBy('name');`
 
 export const entityQueryTemplate = (value: string) =>
   `// Query all ${value} entities\nreturn qx(EARS.Entity.${value}).pickAll().limit(20);`
 
 export const attributeQueryTemplate = (value: string) =>
-  `// Query entities with ${value} attribute\nreturn qx().where('${value}').pick(['id', '${value}']).limit(20);`
+  `// Query entities with ${value} attribute\nreturn qx.all().has('${value}').pick(['id', '${value}']).limit(20);`
 
 export const relationQueryTemplate = (value: string) =>
 `// Query entities with ${value} relations
@@ -22,7 +22,7 @@ const sources = [];
 const allIds = getAllEntities();
 
 for (const sourceId of allIds) {
-  const targets = qx(sourceId).related('${value}', sourceId, true).ids();
+  const targets = qx.ids(sourceId).related('${value}', sourceId, true).ids();
   if (targets.length > 0) {
     const sourceData = getAll(sourceId);
     sources.push({

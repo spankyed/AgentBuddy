@@ -592,9 +592,9 @@ describe('a bus round-trip', () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
 
-    const pending = session.tx('return tx(...)');
+    const pending = session.tx('return write(...)');
     await settle();
-    expect(lastSend(send).event).toMatchObject({ type: 'EXECUTE_TRANSACTION', code: 'return tx(...)' });
+    expect(lastSend(send).event).toMatchObject({ type: 'EXECUTE_TRANSACTION', code: 'return write(...)' });
 
     const call = sentCall(send);
     // A QUERY_RESULT carrying the same id must not satisfy a transaction either: the type and the id

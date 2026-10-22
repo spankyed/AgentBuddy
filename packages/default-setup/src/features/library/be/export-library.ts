@@ -18,7 +18,7 @@ import type { ContentSection } from '#features/library/be/types.ts';
 import type { ExportedItem } from '#features/library/be/export-types.ts';
 
 function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
-  const entity = qx(collectionId).pickAll()[0]
+  const entity = qx.ids(collectionId).pickAll()[0]
   if (!entity) {
     return { type: 'collection', name: 'Unknown', children: [] }
   }
@@ -36,7 +36,7 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   const children: ExportedItem[] = []
 
   // Add child collections
-  const childCollections = qx(collectionId)
+  const childCollections = qx.ids(collectionId)
     .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
     .pickAll()
 
@@ -45,7 +45,7 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   }
 
   // Add documents in this collection
-  const documents = qx(collectionId)
+  const documents = qx.ids(collectionId)
     .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
     .pickAll()
 

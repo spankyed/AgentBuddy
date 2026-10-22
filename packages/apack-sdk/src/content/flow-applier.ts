@@ -1,6 +1,6 @@
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { promptRepository } from '../repositories/prompt-repository.ts';
-import { findRelations, installedEngine as ears, untypedTx } from '@apackdev/ears';
+import { findRelations, installedEngine as ears, untypedWrite } from '@apackdev/ears';
 import { loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { contentPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
@@ -313,7 +313,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         if (row) {
           const flowId = row.id as EARS.EntityId;
           const contentKey = flowContentKey(packId, name);
-          untypedTx(flowId).update(CONTENT_KEY, contentKey);
+          untypedWrite(flowId).set(CONTENT_KEY, contentKey);
           // Read back off the entities a moment after writing them, which is what makes this and
           // `driftedGraphParts` two reads of one question rather than two accounts of it
           const parts = graphParts(graphState(flowId));

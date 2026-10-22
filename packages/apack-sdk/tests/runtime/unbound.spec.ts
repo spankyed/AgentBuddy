@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
-import { createEarsEngine, untypedQx, untypedTx } from '@apackdev/ears';
+import { createEarsEngine, untypedQx, untypedCreate } from '@apackdev/ears';
 import { bindHost, unbindHost, boundHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
 import { onConnected, onIncoming, untypedBroadcastToSurface, untypedSendToSystem } from '../../src/events/index.ts';
@@ -79,7 +79,7 @@ describe('with no app bound', () => {
       ['services.filesystem', () => boundHost().services.filesystem.readFile('/tmp/x')],
       ['services.repository', () => boundHost().ears.repository],
     ];
-    for (const [name, use] of [['qx', () => untypedQx('Memo')], ['untypedTx', () => untypedTx('Memo')]] as const) {
+    for (const [name, use] of [['qx', () => untypedQx('Memo')], ['untypedCreate', () => untypedCreate('Memo')]] as const) {
       expect(use, name).toThrow('No EARS engine is installed');
     }
     for (const [name, use] of needsApp) expect(use, name).toThrow('bindHost');
@@ -153,7 +153,7 @@ describe('bindHost', () => {
 
   it("installs the app's engine for @apackdev/ears's free functions, until unbound", () => {
     bindHost(runtime);
-    const id = untypedTx('Memo').put('title', 'bound').id();
+    const id = untypedCreate('Memo').set('title', 'bound').id();
     expect(engine.query.findById(id)).toMatchObject({ title: 'bound' });
     expect(untypedQx('Memo').ids()).toEqual([id]);
     unbindHost();

@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@apackdev/sdk/build';
 import { applyRecord, importCompiledContent, type ApplyRecord, type AppliedItem, type ImportMode, type ApplyResult, type ContentSelection } from '@apackdev/sdk/utils';
-import { untypedQx as qx } from '@apackdev/ears';
+import { untypedQx as qx, type EARS } from '@apackdev/ears';
 import { entityIds } from '@apackdev/sdk/testing';
 import { resetTestData, testMediaPath } from '@apackdev/testing/harness';
 
@@ -114,7 +114,7 @@ export function snapshot(): Snapshot {
   const rows = new Map<string, Record<string, unknown>>();
   const relations: Array<{ source: string; kind: string; target: string }> = [];
   for (const id of ids) {
-    const row = (qx(id).pickAll() as Array<Record<string, unknown>>)[0];
+    const row = (qx.ids(id as EARS.EntityId).pickAll() as Array<Record<string, unknown>>)[0];
     if (!row) continue;
     if (typeOf(id) === 'Relation') {
       const details = row.relationDetails as { sourceEntity: string; targetEntity: string; relationType: string } | undefined;

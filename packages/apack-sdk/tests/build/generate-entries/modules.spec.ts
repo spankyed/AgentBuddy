@@ -150,12 +150,12 @@ describe('generated imports', () => {
 });
 
 describe('generated EARS facade', () => {
-  it('names the declared entities and passes them to the typed helpers, with tx', async () => {
+  it('names the declared entities and passes them to the typed helpers, with the writes', async () => {
     write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
     const ears = (await generate({ data: { entities: { Memo: "src/memo.ts#MemoEntity", Tag: null } }, }))['src/__generated__/ears.ts'];
     expect(ears).toContain(`export type EntityName = ${['Memo', 'Tag', ...Object.values(SDK_ENTITIES)].map((name) => `'${name}'`).join(' | ')};`);
     expect(ears).toContain('defineEars<PackShapes, EntityName>()');
-    expect(ears).toMatch(/export const \{\n  qx, tx, findById/);
+    expect(ears).toMatch(/export const \{\n  qx, create, upsert, write, transact, findById/);
   });
 });
 

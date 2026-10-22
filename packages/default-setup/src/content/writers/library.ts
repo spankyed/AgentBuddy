@@ -22,7 +22,7 @@ export interface CollectionItem extends ContentItem {
 
 /** The folder a row sits in, or undefined at the library's root */
 function folderOf(id: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId | undefined {
-  return qx(id).linksTo(relKind, EARS.Entity.Collection, false).ids()[0];
+  return qx.ids(id).linksTo(relKind, EARS.Entity.Collection, false).ids()[0];
 }
 
 /**

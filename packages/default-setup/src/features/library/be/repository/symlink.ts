@@ -31,7 +31,7 @@ export function parseSymlinkId(id: string): { collectionId: string; relativePath
 }
 
 export function getSymlinkCollectionPath(collectionId: string): string | null {
-  const collections = qx(collectionId as EARS.EntityId).pickAll()
+  const collections = qx.ids(collectionId as EARS.EntityId).pickAll()
   const collection = collections[0]
   if (!collection) return null
   return (collection.symlinkPath as string) || null
@@ -182,7 +182,7 @@ function buildSymlinkBreadcrumbs(collectionId: string, relativePath: string): Br
   const breadcrumbs: BreadcrumbItem[] = []
 
   // Get the collection name for the root breadcrumb
-  const collections = qx(collectionId as EARS.EntityId).pickAll()
+  const collections = qx.ids(collectionId as EARS.EntityId).pickAll()
   const collection = collections[0]
   if (!collection) return breadcrumbs
 
@@ -190,7 +190,7 @@ function buildSymlinkBreadcrumbs(collectionId: string, relativePath: string): Br
   let parentId: EARS.EntityId | null = findParentCollection(collectionId as EARS.EntityId)
   const parentCrumbs: BreadcrumbItem[] = []
   while (parentId) {
-    const parents = qx(parentId).pickAll()
+    const parents = qx.ids(parentId).pickAll()
     const parent = parents[0]
     if (parent) {
       parentCrumbs.unshift({
