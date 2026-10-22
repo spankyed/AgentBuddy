@@ -2809,9 +2809,10 @@ declare class LibraryService {
      * The chat's slash commands: the field sections of every command document, in document order then
      * name, one `**name**: placeholder` field per command.
      *
-     * **One source, so no precedence rule.** These used to be merged with declarations from
-     * `extensions.commands`, keyed so a document could not shadow one; commands are content now, and the
-     * two entries that were manifest keys are `src/content/commands/chat.md`.
+     * **One source, so no precedence rule.** Every command is a field of a document of
+     * `COMMANDS_DOCUMENT_TYPE`, so there is nothing to merge and no declaration a document could shadow;
+     * a name two documents define keeps the first. This pack ships its own in
+     * `src/content/commands/internal/`.
      */
     commands(): PackCommand[];
     getText(id: EARS.EntityId): Promise<string | undefined>;

@@ -4,9 +4,7 @@
 // and a file here that declares something else is what it says.
 import type { ContentCompileContext, ContentItem } from '@apackdev/sdk/build';
 import { compileLibraryTree } from './library.ts';
-
-/** The document type whose field sections the `commands` designation's owner reads as commands */
-const COMMANDS_DOCUMENT_TYPE = 'commands';
+import { COMMANDS_DOCUMENT_TYPE } from '../../features/library/be/types.ts';
 
 export default function compileCommands(context: ContentCompileContext): ContentItem[] {
   return compileLibraryTree(context, COMMANDS_DOCUMENT_TYPE);

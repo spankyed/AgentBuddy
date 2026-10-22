@@ -4,6 +4,7 @@ import type { DocumentDTO, CollectionDTO, LibraryItem } from '#features/library/
 import { EARS } from '#generated/ears.ts';
 import * as symlink from '#features/library/be/repository/symlink.ts';
 import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
+import { COMMANDS_DOCUMENT_TYPE } from '#features/library/be/types.ts';
 import type { PackCommand } from '@apackdev/sdk/commands';
 
 
@@ -58,9 +59,6 @@ function makeSymlinkCollectionDTO(id: string, name: string): CollectionDTO {
   } as CollectionDTO
 }
 
-/** A document is a command list because it says so, not because of where it sits */
-const COMMANDS_DOCUMENT_TYPE = 'commands'
-
 // ---------------------------------------------------------------------------
 // LibraryService
 // ---------------------------------------------------------------------------
@@ -108,9 +106,10 @@ export class LibraryService {
    * The chat's slash commands: the field sections of every command document, in document order then
    * name, one `**name**: placeholder` field per command.
    *
-   * **One source, so no precedence rule.** These used to be merged with declarations from
-   * `extensions.commands`, keyed so a document could not shadow one; commands are content now, and the
-   * two entries that were manifest keys are `src/content/commands/chat.md`.
+   * **One source, so no precedence rule.** Every command is a field of a document of
+   * `COMMANDS_DOCUMENT_TYPE`, so there is nothing to merge and no declaration a document could shadow;
+   * a name two documents define keeps the first. This pack ships its own in
+   * `src/content/commands/internal/`.
    */
   commands(): PackCommand[] {
     const commands = new Map<string, PackCommand>()

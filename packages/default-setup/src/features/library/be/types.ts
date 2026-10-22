@@ -1,6 +1,13 @@
 export type * from './export-types.ts';
 import type { EARS, BaseEntity } from '#generated/ears.ts'
 
+/**
+ * The `documentType` the chat's slash commands live under. Declared once because two bundles must agree
+ * on it: the `commands` content format stamps it as it writes, and this feature reads it back to serve
+ * the list.
+ */
+export const COMMANDS_DOCUMENT_TYPE = 'commands';
+
 export type DocumentShortCode = `DOC-${number}`;
 
 export interface FieldContent {

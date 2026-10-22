@@ -1,17 +1,14 @@
-// The chat's slash commands are the fields of every document that says it is a command list
-// (`documentType: 'commands'`, from a content file's frontmatter). This feature plays the `commands`
-// designation, so it is what the app asks; the app publishes the list to the shell, which every editor in
-// a window reads. This feature only says *that* the list moved — `COMMANDS_CHANGED` to `host/application`.
+// The chat's slash commands are the fields of every document of `documentType: 'commands'`. This feature
+// plays the `commands` designation, so it is what the app asks; the app publishes the list to the shell,
+// which every editor in a window reads. This feature only says *that* the list moved —
+// `COMMANDS_CHANGED` to `host/application`.
 //
-// **One source.** They used to be these documents merged with `extensions.commands` declarations, keyed so
-// a document could not shadow a declared one. Commands are content now — the two that were manifest
-// entries are `src/content/commands/chat.md` — so there is no merge, no precedence, and no folder path
-// deciding what a document is.
+// **One source.** A command is a document with a type, so there is no merge, no precedence rule and no
+// folder deciding what a document is; a name two documents define keeps the first. This pack ships its
+// own in `src/content/commands/internal/`, and a document the user types anywhere is served the same.
 //
-// **One destination.** They used to reach the chat: the threads system held the list, memoized it and sent
-// its own surface `COMMANDS_UPDATED`, so a window where threads was never spawned had no commands. Nothing
-// about a command is the chat's, so the app holds them now, beside the other two facts a window needs
-// whatever is open.
+// **One destination.** The app holds the list rather than the chat, beside the other facts a window needs
+// whatever surface is open — so an editor in a window with no chat open still offers every command.
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
