@@ -114,8 +114,48 @@ describe('the EARS console code sees', () => {
     untypedTx('Note-1' as EARS.EntityId, true).put('title', 'ours');
 
     await expect(runQueryCode('return EARS.Entity.Memo', { EARS: installedEars() })).resolves.toBe('Memo');
-    // A name the console doesn't know reads as undefined, which queries everything, so the ids say which it was
     await expect(runQueryCode('return qx(EARS.Entity.Memo).ids()', { EARS: installedEars() }))
       .resolves.toEqual(['Memo-1']);
+
+    // `Note` has rows and no pack declares it. Reading it as `undefined` made `qx` answer with the whole
+    // database — both entities here, where one was asked for — so the namespace refuses the name instead.
+    await expect(runQueryCode('return qx(EARS.Entity.Note).ids()', { EARS: installedEars() }))
+      .rejects.toThrow('"Note" is not an entity type this database can account for');
+  });
+});
+
+describe('a name the database cannot account for', () => {
+  beforeEach(() => {
+    startTestRuntime({ entityTypes: ['Memo'] });
+    testPacks.earsEntities.set('Memo', 'Memo');
+    testPacks.earsRelKinds.set('MENTIONS', 'mentions');
+  });
+
+  const ears = () => installedEars() as Record<string, Record<string, string>>;
+
+  it('says what is known, and what would supply the rest', () => {
+    expect(() => ears().Entity.Bookmark).toThrow(/^"Bookmark" is not an entity type this database can account for\./);
+    expect(() => ears().Entity.Bookmark).toThrow(/Known: .*\bMemo\b/);
+    expect(() => ears().RelKind.PARENT_OF).toThrow('"PARENT_OF" is not a relation kind this database can account for');
+
+    const withHint = consoleEars({ entities: { Memo: 'Memo' }, relKinds: {} }, { hint: 'Try --schema-from.' }) as Record<string, Record<string, string>>;
+    expect(() => withHint.Entity.Bookmark).toThrow('Try --schema-from.');
+  });
+
+  // `db script` is handed this object raw, so everything a script does with it has to keep working
+  it('can still be enumerated, spread and serialised', () => {
+    const EARS_SCOPE = ears();
+    expect(Object.keys(EARS_SCOPE.Entity)).toContain('Memo');
+    expect({ ...EARS_SCOPE.Entity }.Memo).toBe('Memo');
+    expect(JSON.parse(JSON.stringify(EARS_SCOPE.Entity)).Memo).toBe('Memo');
+    expect(() => JSON.stringify(EARS_SCOPE)).not.toThrow();
+    expect(Object.entries(EARS_SCOPE.RelKind).map(([name]) => name)).toContain('MENTIONS');
+  });
+
+  // Asking whether a name is there is a question, and awaiting a result must not look like asking for one
+  it('answers a probe rather than throwing', async () => {
+    expect('Bookmark' in ears().Entity).toBe(false);
+    expect('Memo' in ears().Entity).toBe(true);
+    await expect(Promise.resolve(ears().Entity)).resolves.toBeDefined();
   });
 });

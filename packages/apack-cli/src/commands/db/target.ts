@@ -189,5 +189,9 @@ export function undeclaredEntityTypes(db: AppDatabase): Array<{ type: string; ro
  */
 export function consoleScope(db: AppDatabase): ConsoleScope {
   const observed = Object.fromEntries(db.query.getAllEntityTypes().map((type) => [type, type]));
-  return { EARS: consoleEars({ entities: { ...observed, ...db.schema.entities }, relKinds: db.schema.relKinds }) };
+  return {
+    EARS: consoleEars({ entities: { ...observed, ...db.schema.entities }, relKinds: db.schema.relKinds }, {
+      hint: 'Name the pack that declares it with --schema-from, which takes a snapshot, a pack, or a directory of packs.',
+    }),
+  };
 }

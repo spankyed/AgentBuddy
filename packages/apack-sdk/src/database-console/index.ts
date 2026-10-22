@@ -89,11 +89,52 @@ export interface ConsoleScope {
 }
 
 /**
+ * A name the database cannot account for is an error, not a number.
+ *
+ * `EARS.Entity.Note` for a name nothing declares used to read `undefined`, and `qx(undefined)` means *every*
+ * entity — so a query for one type answered with the whole database, measured as 607 rows where 2 were asked
+ * for. That is a wrong answer rather than a failure, which is why it has to be refused here: `qx('Note')` for
+ * an unknown name is harmless (it finds nothing), and `qx()` with no start is a declared, documented overload
+ * that eight callers and this console's own examples use. The namespace is the only layer that can tell the
+ * two apart, because it is the only one that knows the name was asked for.
+ *
+ * It is a `Proxy` rather than a getter per name because the names are data: what is declared comes from the
+ * installed packs. The traps are what legitimate code does with the object — `db script` is handed it raw
+ * (`apack-cli/src/commands/db/script.ts`), so enumerating, spreading and `JSON.stringify` all have to work,
+ * and a symbol or a `then`/`toJSON` probe has to read as absent rather than throw, or awaiting a result that
+ * carries one would.
+ */
+function accountedFor<T extends object>(what: string, names: T, hint?: string): T {
+  return new Proxy(names, {
+    get(target, property, receiver) {
+      if (typeof property === 'symbol' || property in target) return Reflect.get(target, property, receiver);
+      // A probe, not a name: `await`, `JSON.stringify` and a console's inspection all ask for these by name
+      if (property === 'then' || property === 'toJSON' || property === 'inspect' || property === 'constructor') return undefined;
+      throw new Error(
+        `"${property}" is not ${what} this database can account for.\n`
+        + `  Known: ${Object.keys(target).sort().join(', ')}`
+        + (hint === undefined ? '' : `\n  ${hint}`),
+      );
+    },
+    // Asking whether a name is there is a question, not a use of it, so it answers rather than throwing
+    has: (target, property) => property in target,
+  });
+}
+
+/**
  * `EARS` for console code: the SDK's, with the entity types and relation kinds `names` declares. Console code
  * queries the whole database, so it names every installed pack's types, not only the pack running the console.
+ *
+ * `hint` is how a caller says what would supply the missing names — the CLI's `--schema-from`, for a data dir
+ * whose rows outlived their pack. The app's console has no such answer and passes none, which is why this is
+ * the caller's sentence and not a string written here.
  */
-export function consoleEars(names: EarsNames): ConsoleScope['EARS'] {
-  return { ...EARS_NAMES, Entity: { ...EARS_NAMES.Entity, ...names.entities }, RelKind: { ...EARS_NAMES.RelKind, ...names.relKinds } };
+export function consoleEars(names: EarsNames, { hint }: { hint?: string } = {}): ConsoleScope['EARS'] {
+  return {
+    ...EARS_NAMES,
+    Entity: accountedFor('an entity type', { ...EARS_NAMES.Entity, ...names.entities }, hint),
+    RelKind: accountedFor('a relation kind', { ...EARS_NAMES.RelKind, ...names.relKinds }, hint),
+  };
 }
 
 /** `EARS` for console code in a running app: every registered pack's, from the app's registry */
