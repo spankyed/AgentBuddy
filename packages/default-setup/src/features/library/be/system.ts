@@ -17,7 +17,7 @@ import * as symlink from './repository/symlink.ts'
 import { toMap, toIdentifierSet, mapArray } from '@apackdev/sdk/utils'
 import { exportLibrary } from './export-library.ts'
 import { importLibrary } from './import-library.ts'
-import type { CommandItem } from '#generated/types.ts';
+import type { PackCommand } from '@apackdev/sdk/framework';
 
 /**
  * Answers whoever asked for this, and tells every window when nobody did.
@@ -46,7 +46,7 @@ function resolveHomePath(inputPath: string): string {
  * commands folder, or the folder, was created, edited, moved, renamed, deleted or imported. `before` is the list from
  * before the change.
  */
-function notifyIfCommandsChanged(before: CommandItem[]): void {
+function notifyIfCommandsChanged(before: PackCommand[]): void {
   if (JSON.stringify(libraryService.commands()) === JSON.stringify(before)) return
   sendToSystem('threads', { type: 'COMMANDS_CHANGED' })
 }

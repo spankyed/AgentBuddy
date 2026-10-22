@@ -3,10 +3,11 @@
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
 // `apack.json` names it at `features[].surface.contract`.
+import type { PackCommand } from '@apackdev/sdk/framework';
 import type { Simplify } from '@apackdev/sdk/helpers'
 import type { HotkeysMap, NavHistory, SurfaceInbox } from '@apackdev/sdk/fe'
 import type {
-  AgentMode as AgentModeConfig, AgentSettings, AgentThreadData, CommandItem, Tab, ThreadCreateData,
+  AgentMode as AgentModeConfig, AgentSettings, AgentThreadData, Tab, ThreadCreateData,
   ThreadEntity, ThreadTagOption, ThreadViewData, ThreadsSettings,
 } from '#generated/types.ts'
 import type { ThreadTabGroup } from './canvas/agent/tabs/types.ts'
@@ -60,7 +61,7 @@ export interface ThreadsContext {
   modes: AgentModeConfig[];
   hotkeys: HotkeysMap;
   chatSettings: AgentSettings;
-  commands: CommandItem[];
+  commands: PackCommand[];
   quickPromptCursor: { x: number; y: number } | null;
   pendingThreadCwd?: string;
   pendingForceDirectoryPicker?: boolean;

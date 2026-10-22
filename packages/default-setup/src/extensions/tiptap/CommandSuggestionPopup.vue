@@ -28,7 +28,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { commandSuggestionKey, COMMAND_TRIGGER_POS } from './command-suggestion.ts'
 import { useCommandItems } from './useCommandItems.ts'
-import type { CommandItem } from './command-config.ts'
+import type { PackCommand } from '@apackdev/sdk/framework'
 
 const props = defineProps<{
   editor: Editor
@@ -160,7 +160,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('mousedown', handleClickOutside, true)
 })
 
-function selectCommand(cmd: CommandItem) {
+function selectCommand(cmd: PackCommand) {
   const state = suggestionState.value
   if (!state) return
 

@@ -10,6 +10,7 @@ import { ArtifactItem } from '@apackdev/sdk/artifacts';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
 import { HostSurfaceEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PublicSurfaceInboxOf, Qualified, Reply, SurfaceInboxOf, TypedSendToSurface, TypedSendToSystem, TypedSendToWindow } from '@apackdev/sdk/events';
 import { HotkeysMap, NavHistory, SurfaceInbox, SurfaceStateOf, TabGroup } from '@apackdev/sdk/fe';
+import { PackCommand } from '@apackdev/sdk/framework';
 import { Simplify as Simplify$1 } from '@apackdev/sdk/helpers';
 import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@apackdev/sdk/models';
 import * as _apackdev_sdk_repositories from '@apackdev/sdk/repositories';
@@ -147,7 +148,7 @@ type AgentConnectedData = {
     recentThreads: Partial<ThreadEntity>[];
     tabs: Tab[];
     settings?: AgentSettings;
-    commands?: CommandItem[];
+    commands?: PackCommand[];
 };
 
 interface AgentMode {
@@ -828,11 +829,6 @@ interface CollectionEntity extends BaseEntity {
     symlinkPath?: string;
     /** Hash of the content source at the last apply. Absent on user-created collections. */
     contentHash?: string;
-}
-
-interface CommandItem {
-    name: string;
-    placeholder: string;
 }
 
 interface CommitLogEntry {
@@ -2802,7 +2798,7 @@ declare class LibraryService {
      * of every document in the commands folder, in document
      * order (then name). A command defined twice keeps the first, so a document can't shadow a declared one.
      */
-    commands(): CommandItem[];
+    commands(): PackCommand[];
     getText(id: EARS.EntityId): Promise<string | undefined>;
     list(folderId?: EARS.EntityId): Promise<LibraryItem[]>;
     create(params: {
@@ -4161,7 +4157,7 @@ type OutgoingThreadsEvents = {
     durationMs?: number;
 } | {
     type: 'COMMANDS_UPDATED';
-    commands: CommandItem[];
+    commands: PackCommand[];
 } | {
     type: 'THREAD_CHAT_ERROR';
     threadId: string;
@@ -5309,7 +5305,7 @@ interface ThreadsContext {
     modes: AgentMode[];
     hotkeys: HotkeysMap;
     chatSettings: AgentSettings;
-    commands: CommandItem[];
+    commands: PackCommand[];
     quickPromptCursor: {
         x: number;
         y: number;

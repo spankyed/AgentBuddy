@@ -1,5 +1,6 @@
 export type * from './export-types.ts';
 import { type BaseEntity, EARS } from '#generated/ears.ts';
+import type { PackCommand } from '@apackdev/sdk/framework';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "#features/code/be/services/claude-code/types.ts";
 
@@ -311,7 +312,7 @@ export type AgentConnectedData = {
   recentThreads: Partial<ThreadEntity>[];
   tabs: Tab[];
   settings?: AgentSettings;
-  commands?: CommandItem[];
+  commands?: PackCommand[];
 };
 
 
@@ -436,11 +437,6 @@ export interface QuickPrompt {
   text: string;
 }
 
-export interface CommandItem {
-  name: string;
-  placeholder: string;
-}
-
 // ── Settings types ────────────────────────────────────────────────────────
 
 export interface ThreadStatusOption {
@@ -524,7 +520,7 @@ export type OutgoingThreadsEvents =
   | { type: 'SET_PHASE'; phase: string }
   | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
   | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
-  | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
+  | { type: 'COMMANDS_UPDATED'; commands: PackCommand[] }
   | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
   | { type: 'OLDER_MESSAGES_LOADED'; threadId: string; messages: Partial<MessageEntity>[]; hasMore: boolean; nextCursor: string | null }
 

@@ -5,7 +5,7 @@ import { EARS } from '#generated/ears.ts';
 import { getPackCommands } from '@apackdev/sdk/framework';
 import * as symlink from '#features/library/be/repository/symlink.ts';
 import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
-import type { CommandItem } from '#generated/types.ts';
+import type { PackCommand } from '@apackdev/sdk/framework';
 
 
 // ---------------------------------------------------------------------------
@@ -113,11 +113,11 @@ export class LibraryService {
    * of every document in the commands folder, in document
    * order (then name). A command defined twice keeps the first, so a document can't shadow a declared one.
    */
-  commands(): CommandItem[] {
+  commands(): PackCommand[] {
     const documents = repository.libraryQueries.getDocuments()
       .filter(inCommandsFolder)
       .sort((a: DocumentDTO, b: DocumentDTO) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name))
-    const commands = new Map<string, CommandItem>()
+    const commands = new Map<string, PackCommand>()
     for (const command of getPackCommands()) {
       if (!commands.has(command.name)) commands.set(command.name, { name: command.name, placeholder: command.placeholder })
     }

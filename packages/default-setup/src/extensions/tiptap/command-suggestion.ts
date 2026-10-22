@@ -2,13 +2,13 @@ import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import { Extension, type Editor } from '@tiptap/core'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { readSurfaceState } from '#generated/fe.ts'
-import type { CommandItem } from './command-config.ts'
+import type { PackCommand } from '@apackdev/sdk/framework'
 
 export interface CommandSuggestionState {
   active: boolean
   query: string
-  selectedCommand: CommandItem | null
-  previousCommand: CommandItem | null
+  selectedCommand: PackCommand | null
+  previousCommand: PackCommand | null
 }
 
 /** The `/` trigger is always at ProseMirror position 1 (start of first-paragraph content). */
@@ -53,7 +53,7 @@ export const commandSuggestionKey = new PluginKey<CommandSuggestionState>('comma
  */
 function plugin(
   editor: Editor,
-  getCommands: () => CommandItem[],
+  getCommands: () => PackCommand[],
 ): Plugin<CommandSuggestionState> {
   return new Plugin<CommandSuggestionState>({
     key: commandSuggestionKey,
