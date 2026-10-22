@@ -1,9 +1,12 @@
 # `Document` moves to the core, and Library becomes its editor
 
-Status: **the move is done; the two things it was for are not.** `Document`, `Collection` and `parent_of`
-are the SDK's, with their shapes, repositories and content writers, and the Library is their editor. What
-remains deferred is what the move unlocks: `getCommands()` reading the SDK's rows instead of a pack
-contribution, and `extensions.commands` as a manifest shorthand. Both sections below stand as written.
+Status: **the move is done, and so is the first thing it was for.** `Document`, `Collection` and
+`parent_of` are the SDK's, with their shapes, repositories and content writers, and the Library is their
+editor. `getCommands()` now derives the list from those rows, which retired the `commands` designation,
+`features.<id>.getCommands`, `COMMANDS_CHANGED`, the library's watcher, `registry.commandProviders`,
+`checkCommandProviderClaims` and `commands/role.ts` — and closed
+[pack-published-app-facts](../../archive/plans/pack-published-app-facts.md) with them. What remains is
+`extensions.commands` as a manifest shorthand; its section below stands as written.
 
 **The shape moved whole, and there is no line to draw.** This plan treated "which of these fields is a
 document and which is the Library's view of one" as the real work, to be settled by a second consumer.
@@ -60,7 +63,7 @@ import order in which they can be missing.
    `documentType`, so `features.<id>.getCommands`, the `commands` designation and the owner's
    `COMMANDS_CHANGED` all go. Invalidation moves to the repository that owns the writes, where the
    announcement can live beside them instead of being a pack's duty — see
-   [pack-published-app-facts.md](pack-published-app-facts.md), which this would largely retire.
+   [pack-published-app-facts.md](../../archive/plans/pack-published-app-facts.md), which this closed outright.
    It is also what makes a manifest shorthand possible at all (below).
 2. **A pack can store documents without depending on default-setup.** Today `Document` is that pack's,
    so wanting a document means taking its whole dependency.
@@ -164,11 +167,15 @@ Done:
 - `packages/default-setup/src/features/library/be/repository/` — views over the SDK's, calling them by
   the SDK's names.
 
-Still to do, and what the move was for:
+- `packages/apack-sdk/src/commands/index.ts` — `commandsFromDocuments()` derives the list from the rows
+  and `getCommands()` serves it, with the designation, the provider field, the claims check,
+  `commands/role.ts` and `COMMANDS_CHANGED`-from-a-pack all gone. **Invalidation is the repository's
+  announcement and the app's comparison**: `documentRepository` tells subscribers that documents were
+  written, without a payload and without sending anything, and the `host/application` system's watcher
+  derives the list again and publishes when it differs. The comparison is deferred to a microtask, so one
+  content apply is one publication however many documents it wrote.
 
-- `packages/apack-sdk/src/commands/index.ts` — `getCommands()` reads the repository directly, retiring
-  `features.<id>.getCommands`, the `commands` designation, `COMMANDS_CHANGED`, the library watcher,
-  `registry.commandProviders`, `checkCommandProviderClaims` and `commands/role.ts`.
+Still to do:
 
 And for the shorthand, once the above is done:
 

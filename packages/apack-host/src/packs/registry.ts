@@ -6,7 +6,6 @@ import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-import { COMMANDS_ROLE, type PackCommand } from '@apackdev/sdk/commands';
 import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
 import { eventBindingProblem } from './event-binding.ts';
 import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
@@ -319,10 +318,6 @@ function admitContributions(registration: PackRegistration, { steps: declaration
     surfaceEvents: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.surface
       ? [[ref, [...eventContracts![featureId].surface!.receives, ...SURFACE_EVENT_TYPES]] as const] : [])),
     designations: designationsOf(registration),
-    // Per ref, as systems and surfaces are: the app resolves the `commands` role to a ref and asks that
-    // feature, so what a feature declared stays attached to the feature that declared it
-    commandProviders: new Map(featuresOf(registration).flatMap(({ ref, feature }) => (feature.getCommands
-      ? [[ref, feature.getCommands] as const] : []))),
     repositories: new Map(Object.entries(registration.repositories ?? {})),
     services: new Map(Object.entries(registration.services ?? {})),
     artifacts: (registration.artifacts ?? []).map(value => [value.type, value] as const),
@@ -343,8 +338,6 @@ function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
     contentWriters: createContentWriterStore(),
     appliers: createApplierStore(),
     repositories: new Map<string, unknown>(),
-    /** A feature's own command provider, by ref: the `commands` role resolves to the ref that holds one */
-    commandProviders: new Map<string, () => PackCommand[]>(),
   };
   for (const pack of packs) {
     tables.designations.register(pack.designations);
@@ -354,7 +347,6 @@ function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
     for (const [name, value] of pack.contentWriters) tables.contentWriters.register(name, value, pack.id);
     tables.appliers.register(pack.id, pack.appliers);
     for (const [name, value] of pack.repositories) tables.repositories.set(name, value);
-    for (const [ref, provider] of pack.commandProviders) tables.commandProviders.set(ref, provider);
   }
   return tables;
 }
@@ -875,20 +867,6 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     surfaceDefaults: () => Object.fromEntries(catalog.surfaces()
       .filter(surface => surface.origin !== 'source' && surface.enabled === true && surface.declaration.defaultVisible !== undefined)
       .map(surface => [surface.featureRef, surface.declaration.defaultVisible!])),
-    /**
-     * What the feature playing the `commands` designation serves.
-     *
-     * The role resolves to that feature's ref and the ref to its own provider, so a provider declared
-     * by any other feature is never reached — which is what leaves nothing to reconcile between the two
-     * declarations. `tables.designations` has already refused a second claimant across packs, so there
-     * is one answer or none. It is called on every read: the rows are content the user edits, so there
-     * is nothing to cache.
-     */
-    commands: () => {
-      const ref = tables.designations.get(COMMANDS_ROLE);
-      const provider = ref === undefined ? undefined : tables.commandProviders.get(ref);
-      return provider ? provider().map(({ name, placeholder }) => ({ name, placeholder })) : [];
-    },
     help: catalog.help,
   };
 }

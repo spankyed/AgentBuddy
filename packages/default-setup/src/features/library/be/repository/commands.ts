@@ -192,37 +192,22 @@ const writers = {
     collectionRepository.remove(id)
   },
 
+  /** A document with no folder given moves to the root, which is `null` to the repository */
   moveDocument(
     documentId: EARS.EntityId,
     newCollectionId?: EARS.EntityId
   ): DocumentDTO {
-    const docId = documentId
-
-    const currentCollection = qx(EARS.Entity.Collection).pickAll().find(col => 
-      qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
-    )
-
-    if (currentCollection) {
-      tx(currentCollection.id as EARS.EntityId).unlinkIf(EARS.RelKind.CONTAINS, docId)
-    }
-
-    if (newCollectionId) {
-      tx(newCollectionId).link(EARS.RelKind.CONTAINS, docId)
-    }
-
-    const document = libraryQueries.findDocument(docId)
-    return document!
+    documentRepository.update(documentId, { parentId: newCollectionId ?? null })
+    return libraryQueries.findDocument(documentId)!
   },
 
   renameItem(id: EARS.EntityId, name: string, type: 'document' | 'folder'): LibraryItem {
     const entityId = id
     const now = Date.now()
     
-    tx(entityId).updateBatch({
-      name,
-      updatedAt: now,
-    })
-    
+    if (type === 'document') documentRepository.update(entityId, { name })
+    else collectionRepository.update(entityId, { name })
+
     if (type === 'document') {
       const doc = libraryQueries.findDocument(entityId)
       if (!doc) {
@@ -371,8 +356,7 @@ const writers = {
   },
 
   updateDocumentTags(documentId: EARS.EntityId, tags: string[]): void {
-    tx(documentId).update('tags', tags)
-    // tx(documentId).update('updatedAt', Date.now())
+    documentRepository.update(documentId, { tags })
   }
 } as const
 

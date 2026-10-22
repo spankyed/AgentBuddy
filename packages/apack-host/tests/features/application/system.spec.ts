@@ -9,17 +9,27 @@ import '../../packs/runtime/test-host.ts';
 import { registry } from '../../packs/runtime/test-host.ts';
 import { appState } from '../../../src/app-state/index.ts';
 import { createApplicationSystem } from '../../../src/features/application/be/system.ts';
+import { documentRepository } from '@apackdev/sdk/repositories';
+import { COMMANDS_DOCUMENT_TYPE } from '@apackdev/sdk/commands';
 
 /** A registry whose features declare `defaults` as their tabs' visibility */
-const COMMANDS = [{ name: 'standup', placeholder: 'Topic' }];
-
 const withDefaults = (visibility: Record<string, boolean>, surfaceIds: string[] = []) => ({
   surfaceDefaults: () => visibility,
   surfaceIds: () => surfaceIds,
   loadedPacks: () => [],
   getPackRuntime: () => null,
-  // The registry's, resolved from the `commands` designation; this system only passes it on
-  commands: () => COMMANDS,
+});
+
+const commandNames = (event: unknown) => ((event as { commands: Array<{ name: string }> }).commands).map((command) => command.name);
+
+/** The watcher compares on a microtask, so a write's effect is one turn away */
+const settle = () => Promise.resolve();
+
+/** A stored command: one field of one document of the commands type, which is all a command is */
+const storeCommand = (name: string, placeholder: string) => documentRepository.create({
+  name: `${name} list`,
+  content: [{ type: 'field', fields: [{ key: name, value: placeholder }] }],
+  documentType: COMMANDS_DOCUMENT_TYPE,
 });
 
 let stop: (() => void) | undefined;
@@ -88,20 +98,54 @@ describe('the host application system', () => {
   // The window's second app-level fact: an editor's command popup reads the shell, never a surface, so a window
   // with no chat open still has the list. The whole path is in default-setup's `extensions/tiptap/command-items`
   it('sends the commands when asked to publish, so every window holds them whatever is open', () => {
+    storeCommand('standup', 'Topic');
     const system = runApplicationSystem();
 
     system.send({ type: 'SEND_STATE' });
 
-    expect(system.commandsSent()).toEqual([expect.objectContaining({ to: 'host/application', event: { type: 'COMMANDS_UPDATED', commands: COMMANDS } })]);
+    expect(system.commandsSent()).toEqual([expect.objectContaining({
+      to: 'host/application',
+      event: { type: 'COMMANDS_UPDATED', commands: [{ name: 'standup', placeholder: 'Topic' }] },
+    })]);
   });
 
-  // The designation's owner says *that* they moved and the app reads them again; nothing holds a copy to compare
-  it('sends them again when the owner says they changed', () => {
+  // No pack tells the app this. The repository announces that documents were written and the system's own
+  // watcher derives the list again, so a command the user types is published by the act of storing it.
+  it('sends them again when a stored document adds a command', async () => {
     const system = runApplicationSystem();
 
-    system.send({ type: 'COMMANDS_CHANGED' });
+    storeCommand('digest', 'Week');
+    await settle();
 
     expect(system.commandsSent()).toHaveLength(1);
+    expect(system.commandsSent()[0]!.event).toEqual({
+      type: 'COMMANDS_UPDATED', commands: [{ name: 'digest', placeholder: 'Week' }],
+    });
+  });
+
+  // The announcement carries no payload, so the watcher compares the derived list. Most document writes are
+  // not commands, and a window is not told the commands moved when they did not.
+  it('says nothing when a document write leaves the list as it was', async () => {
+    const system = runApplicationSystem();
+
+    documentRepository.create({ name: 'Notes to self', content: [{ type: 'text', text: 'nothing to serve' }] });
+    await settle();
+
+    expect(system.commandsSent()).toEqual([]);
+  });
+
+  // The announcement fires per write; the comparison is deferred, so one apply is one publication however
+  // many documents it wrote — which is what a pack's content import is
+  it('sends one list for a burst of writes, not one per document', async () => {
+    const system = runApplicationSystem();
+
+    storeCommand('first', 'A');
+    storeCommand('second', 'B');
+    storeCommand('third', 'C');
+    await settle();
+
+    expect(system.commandsSent()).toHaveLength(1);
+    expect(commandNames(system.commandsSent()[0]!.event)).toEqual(['first', 'second', 'third']);
   });
 });
 

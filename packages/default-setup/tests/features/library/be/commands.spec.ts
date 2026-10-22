@@ -1,7 +1,8 @@
-// The chat's slash commands are the fields of every document of `documentType: 'commands'`. This feature
-// plays the `commands` designation, so it is what the app asks; the app publishes the list to the shell,
-// which every editor in a window reads. This feature only says *that* the list moved —
-// `COMMANDS_CHANGED` to `host/application`.
+// The chat's slash commands are the fields of every document of `documentType: 'commands'`. The documents
+// are the SDK's entities and the derivation is the SDK's (`commandsFromDocuments`), so the app reads its own
+// rows: this feature is the editor, and contributes nothing to serving the list. What this spec holds is
+// that the content pipeline still lands commands the app can read, and that editing one through this
+// feature is noticed.
 //
 // **One source.** A command is a document with a type, so there is no merge, no precedence rule and no
 // folder deciding what a document is; a name two documents define keeps the first. This pack ships its
@@ -15,9 +16,9 @@ import * as path from 'node:path'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { registerPack, startApp, unregisterPack, type TestApp } from '@apackdev/testing/harness'
 import { importCompiledContent } from '@apackdev/sdk/utils'
+import { commandsFromDocuments } from '@apackdev/sdk/commands'
 import { createFormatApplier } from '@apackdev/sdk/content'
 import { repository } from '#generated/repository.ts'
-import { services } from '#generated/services.ts'
 import manifest from '../../../../apack.json'
 
 /** Where `apack pack build` writes this pack's compiled content */
@@ -103,14 +104,14 @@ describe('slash commands from the library commands folder', () => {
     expect(names.slice(0, 2)).toEqual(['pr2md', 'instructions'])
     expect(names).toEqual(expect.arrayContaining(['cc-resume', 'cc-goal', 'cdx-resume', 'cdx-goal']))
     expect(new Set(names).size).toBe(names.length)
-    expect(names).toEqual(services.library.commands().map((command) => command.name))
+    expect(names).toEqual(commandsFromDocuments().map((command) => command.name))
   })
 
   it('lists a command from any command document, wherever it sits', async () => {
     await appliedApp()
     repository.libraryCommands.createDocument('elsewhere', field('loose', 'Anywhere'), [], undefined, undefined, undefined, 'commands')
 
-    expect(services.library.commands().map((command) => command.name)).toContain('loose')
+    expect(commandsFromDocuments().map((command) => command.name)).toContain('loose')
   })
 
   it('adds the commands of a document created in the folder, and sends the chat the new list', async () => {
@@ -149,10 +150,10 @@ describe('slash commands from the library commands folder', () => {
   // What a document is travels with it, which is the point of typing it rather than its folder
   it('keeps a command document its commands when it moves', async () => {
     const app = await appliedApp()
-    const before = services.library.commands().map((command) => command.name)
+    const before = commandsFromDocuments().map((command) => command.name)
     await app.send('library', { type: 'MOVE_ITEMS', ids: [documentNamed('Codex commands').id], targetFolderId: undefined })
     await app.settle()
-    expect(services.library.commands().map((command) => command.name)).toEqual(before)
+    expect(commandsFromDocuments().map((command) => command.name)).toEqual(before)
   })
 
   it("reports only failure for content that does not name its pack, even when no section is selected", async () => {
@@ -212,7 +213,7 @@ describe('slash commands from the library commands folder', () => {
     // The owner compares the list before and after its own write, so a document that is not a command list
     // never reaches the app at all — the one dedupe left, and the only place that can make it
     expect(app.emitted('host/application').filter((event) => event.type === 'COMMANDS_UPDATED')).toHaveLength(published)
-    expect(services.library.commands().map((command) => command.name)).not.toContain('not-a-command')
+    expect(commandsFromDocuments().map((command) => command.name)).not.toContain('not-a-command')
   })
 
   it("nests a dependent pack's command document in default-setup's folders, and lists its commands", async () => {
@@ -225,7 +226,7 @@ describe('slash commands from the library commands folder', () => {
     expect(collections.filter((collection) => collection.name === 'internal')).toHaveLength(1)
     expect(collections.find((collection) => collection.name === 'internal')!.id).toBe(before.find((collection) => collection.name === 'internal')!.id)
     expect(commandDocuments().map((document) => document.name)).toContain('Team commands')
-    expect(services.library.commands().map((command) => command.name)).toEqual(expect.arrayContaining(['team-standup', 'cc-resume']))
+    expect(commandsFromDocuments().map((command) => command.name)).toEqual(expect.arrayContaining(['team-standup', 'cc-resume']))
   })
 
   // The bus asks every system to publish when a pack is installed, updated or rebuilt while the app runs
@@ -272,8 +273,8 @@ describe('slash commands from the library commands folder', () => {
 
   it('keeps the first definition of a command two documents define', async () => {
     await appliedApp()
-    const original = services.library.commands().find((command) => command.name === 'cc-resume')!
+    const original = commandsFromDocuments().find((command) => command.name === 'cc-resume')!
     repository.libraryCommands.createDocument('zz-override', field('cc-resume', 'Shadowed'), [], undefined, undefined, undefined, 'commands')
-    expect(services.library.commands().filter((command) => command.name === 'cc-resume')).toEqual([original])
+    expect(commandsFromDocuments().filter((command) => command.name === 'cc-resume')).toEqual([original])
   })
 })

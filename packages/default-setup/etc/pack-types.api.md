@@ -8,7 +8,6 @@ import * as _apackdev_sdk from '@apackdev/sdk';
 import { ActionEntity, ActionParameter, ContentSection, DocumentShortCode, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@apackdev/sdk';
 import { ArtifactItem } from '@apackdev/sdk/artifacts';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
-import { PackCommand } from '@apackdev/sdk/commands';
 import { HostSurfaceEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PublicSurfaceInboxOf, Qualified, Reply, SurfaceInboxOf, TypedSendToSurface, TypedSendToSystem, TypedSendToWindow } from '@apackdev/sdk/events';
 import { HotkeysMap, NavHistory, SurfaceInbox, SurfaceStateOf, TabGroup } from '@apackdev/sdk/fe';
 import { Simplify as Simplify$1 } from '@apackdev/sdk/helpers';
@@ -2757,16 +2756,6 @@ declare class LibraryService {
     findByCode(shortCode: string): Promise<DocumentDTO | undefined>;
     findByName(name: string): Promise<DocumentDTO | undefined>;
     findByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined>;
-    /**
-     * The chat's slash commands: the field sections of every command document, in document order then
-     * name, one `**name**: placeholder` field per command.
-     *
-     * **One source, so no precedence rule.** Every command is a field of a document of
-     * `COMMANDS_DOCUMENT_TYPE`, so there is nothing to merge and no declaration a document could shadow;
-     * a name two documents define keeps the first. This pack ships its own in
-     * `src/content/commands/internal/`.
-     */
-    commands(): PackCommand[];
     getText(id: EARS.EntityId): Promise<string | undefined>;
     list(folderId?: EARS.EntityId): Promise<LibraryItem[]>;
     create(params: {
@@ -6201,6 +6190,7 @@ declare const libraryCommands: {
     readonly createCollection: (name: string, description?: string, parentId?: EARS.EntityId, id?: string, contentHash?: string) => CollectionDTO;
     readonly updateCollection: (id: EARS.EntityId, name: string, description?: string, contentHash?: string) => CollectionDTO;
     readonly deleteCollection: (id: EARS.EntityId) => void;
+    /** A document with no folder given moves to the root, which is `null` to the repository */
     readonly moveDocument: (documentId: EARS.EntityId, newCollectionId?: EARS.EntityId) => DocumentDTO;
     readonly renameItem: (id: EARS.EntityId, name: string, type: "document" | "folder") => LibraryItem;
     readonly deleteItems: (ids: EARS.EntityId[]) => void;

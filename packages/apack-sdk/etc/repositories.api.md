@@ -79,19 +79,20 @@ export interface DocumentInput {
     id?: string;
     // (undocumented)
     name: string;
-    parentId?: EARS.EntityId;
+    parentId?: EARS.EntityId | null;
     // (undocumented)
     tags?: string[];
 }
 
 // @public
 export const documentRepository: {
-    byId: (id: EARS.EntityId) => DocumentEntity | undefined;
-    all: () => DocumentEntity[];
-    ofType: (documentType: string) => DocumentEntity[];
-    create: (data: DocumentInput) => DocumentEntity;
-    update: (id: EARS.EntityId, updates: Partial<DocumentInput>) => void;
-    remove: (id: EARS.EntityId) => void;
+    readonly onDocumentsChanged: (listener: DocumentsListener) => () => void;
+    readonly create: (data: DocumentInput) => DocumentEntity;
+    readonly update: (id: EARS.EntityId, updates: Partial<DocumentInput>) => void;
+    readonly remove: (id: EARS.EntityId) => void;
+    readonly byId: (id: EARS.EntityId) => DocumentEntity | undefined;
+    readonly all: () => DocumentEntity[];
+    readonly ofType: (documentType: string) => DocumentEntity[];
 };
 
 // @public

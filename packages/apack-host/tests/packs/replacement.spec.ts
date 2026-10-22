@@ -232,7 +232,6 @@ describe('accepted pack replacement', () => {
     const current = f.fresh.settingsHandle(target);
     expect(() => f.registry.unregisterPack('incumbent')).toThrow('unload cleanup refused');
     expect(f.registry.getPackRegistration('incumbent')).toBeNull();
-    expect(f.registry.commands()).toEqual([]);
     expect(f.registry.designation('after')).toBeUndefined();
     expect(engine.admin.repositories()).toEqual({});
     expect(() => current.get()).toThrow('revoked');

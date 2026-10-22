@@ -114,7 +114,7 @@ Your `__generated__/pack-entry.ts` exports a registration object (`@apackdev/sdk
 ```typescript
 export const registration: PackRegistration = {
   id: string;
-  features?: Record<string, PackFeature>;  // by feature id: { designation?, system?: { machine, receives, early? }, surface?: { receives }, services?, settings?, getCommands? }
+  features?: Record<string, PackFeature>;  // by feature id: { designation?, system?: { machine, receives, early? }, surface?: { receives }, services?, settings? }
   services?: Record<string, unknown>;
   ears?: PackEARS;                 // entities, relKinds
   lifecycle?: PackLifecycleHooks;            // onInit/onShutdown (lifecycle.onInit / lifecycle.onShutdown)

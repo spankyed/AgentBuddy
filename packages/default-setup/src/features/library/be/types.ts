@@ -3,13 +3,6 @@ import type { EARS } from '#generated/ears.ts'
 import type { ContentSection, DocumentShortCode } from '@apackdev/sdk';
 
 /**
- * The `documentType` the chat's slash commands live under. Declared once because two bundles must agree
- * on it: the `commands` content format stamps it as it writes, and this feature reads it back to serve
- * the list.
- */
-export const COMMANDS_DOCUMENT_TYPE = 'commands';
-
-/**
  * The document model is the SDK's (`@apackdev/sdk`): the app reads documents, so the entities, their
  * shapes and the sections a document holds are declared there. Re-exported here because this pack's
  * code names them through its own types, and this feature is still their editor.

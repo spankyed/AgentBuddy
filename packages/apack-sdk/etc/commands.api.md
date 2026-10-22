@@ -5,7 +5,10 @@
 ```ts
 
 // @public
-export const COMMANDS_ROLE = "commands";
+export const COMMANDS_DOCUMENT_TYPE = "commands";
+
+// @public
+export function commandsFromDocuments(): PackCommand[];
 
 // @public
 export function getCommands(): PackCommand[];

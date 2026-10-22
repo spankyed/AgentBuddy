@@ -1,5 +1,4 @@
 import { PackConsumptionSchema, _serviceProviderProblem, _SERVICE_NAME_PATTERN } from './service-consumption.ts';
-import { COMMANDS_ROLE } from '../commands/role.ts';
 import { dslDefinitionsProblem } from './dsl-declarations.ts';
 import { declarationRecord } from './declaration-record.ts';
 import { hasOwn } from '../utils/shared.ts';
@@ -121,32 +120,6 @@ function checkDefaultSurfaceClaims(features: Record<string, { surface?: { defaul
   }
 }
 
-/**
- * Who may declare a command provider: the one feature playing the `commands` designation, and no other.
- *
- * Both halves matter and neither is the registry's to catch. It refuses a pack declaring a provider with no
- * feature holding the role, but it sees one provider per pack and cannot tell which feature declared it — so
- * a feature without the role declaring one, beside a sibling that holds it, would be served in its place, and
- * a second provider would be silently ignored in favour of whichever came first in the manifest.
- */
-function checkCommandProviderClaims(features: Record<string, { designation?: string; getCommands?: string }> | undefined, ctx: z.RefinementCtx): void {
-  const declared = Object.entries(features ?? {}).filter(([, feature]) => feature.getCommands !== undefined);
-  if (declared.length > 1) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['features', declared[1]![0], 'getCommands'],
-      message: `Two features declare a command provider: "${declared[0]![0]}" and "${declared[1]![0]}". Only the one playing the "commands" designation may.`,
-    });
-  }
-  for (const [id, feature] of declared) {
-    if (feature.designation === COMMANDS_ROLE) continue;
-    ctx.addIssue({
-      code: 'custom',
-      path: ['features', id, 'getCommands'],
-      message: `Feature "${id}" declares a command provider without "designation": "${COMMANDS_ROLE}". Give it that designation, or drop its "getCommands".`,
-    });
-  }
-}
 
 function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.RefinementCtx, prefix: string[]): void {
   const owners = new Map<string, string>();
@@ -191,7 +164,6 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
     description: true, entities: true, designation: true, settings: true, surface: true, references: true, services: true, repositories: true,
-    getCommands: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
   if (Object.keys(declaration.migrations?.pack ?? {}).length && declaration.version === undefined) {
@@ -659,8 +631,6 @@ export const FeatureEntrySchema = z.object({
     .describe('Services. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
   repositories: declarationRecord(IdentifierSchema, ExportTargetSchema)
     .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
-  getCommands: ExportTargetSchema
-    .describe('"path#exportName" of this feature\'s command provider: a function returning the slash commands it serves. Only the feature playing the `commands` designation may declare one — the commands themselves are content, not manifest entries.').optional(),
   references: ReferencesSchema.describe('Reference identities and presentation, with reactive item-provider exports. Entity opening is declared separately by the destination surface contract.').optional(),
 }).strict();
 
@@ -821,7 +791,6 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   checkReferenceClaims(manifest.features, ctx);
   checkApiClaims(manifest.features, manifest.extensions?.services, undefined, ctx, ['extensions', 'services']);
   checkDefaultSurfaceClaims(manifest.features, ctx);
-  checkCommandProviderClaims(manifest.features, ctx);
   checkServiceProviders(manifest, ctx);
 
   // Both kinds of entry name a format, and both are checked against the same two places

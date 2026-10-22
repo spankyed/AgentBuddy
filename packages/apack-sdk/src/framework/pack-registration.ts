@@ -68,14 +68,6 @@ export interface PackFeatureSurface {
 /** One feature of a pack: whatever it has of a system, a surface, a role, services and settings */
 export interface PackFeature {
   designation?: string;
-  /**
-   * The chat's slash commands this feature serves (apack.json `features.<id>.getCommands`) — a
-   * function, because they are content rows that change as the user edits them.
-   *
-   * Only asked of the feature playing the `commands` designation, which is where it is declared: the
-   * app resolves the role to a ref and asks that feature, so one on any other feature is never called.
-   */
-  getCommands?: () => import('../commands/index.ts').PackCommand[];
   system?: PackFeatureSystem;
   surface?: PackFeatureSurface;
   /** The keys of the services the feature provides, which `PackRegistration.services` holds */

@@ -57,7 +57,7 @@ rather than denying it.
 **Three things deferred rather than left in a conversation**, each with its revisit condition:
 [`document-in-the-core`](../../plans/deferred/document-in-the-core.md) (whose second trigger is wanting
 `extensions.commands` back — this move is what makes it buildable),
-[`pack-published-app-facts`](../../plans/deferred/pack-published-app-facts.md) and
+[`pack-published-app-facts`](../plans/pack-published-app-facts.md) and
 [`the-empty-library-source`](../../plans/deferred/the-empty-library-source.md), which records why the
 obvious fix for it is wrong. A `Command` entity is dropped for good.
 

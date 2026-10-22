@@ -17,7 +17,7 @@ export interface DocumentInput {
   content: ContentSection[];
   tags?: string[];
   /** The folder to put it in; absent leaves it at the root */
-  parentId?: EARS.EntityId;
+  parentId?: EARS.EntityId | null;
   /** What the document is: `commands` marks a slash-command list */
   documentType?: string;
   contentHash?: string;
@@ -86,8 +86,8 @@ export function nextDisplayOrder(parentId: EARS.EntityId | null): number {
   return Math.max(0, ...siblings.map(displayOrderOf)) + ORDER_GAP;
 }
 
-/** Rows and writes of documents */
-export const documentRepository = {
+/** Rows of documents, which no write announcement wraps */
+const documentReads = {
   byId: (id: EARS.EntityId): DocumentEntity | undefined => ears().findById<DocumentEntity>(id) ?? undefined,
 
   all: (): DocumentEntity[] => ears().findAll<DocumentEntity>(EARS.Entity.Document),
@@ -99,10 +99,40 @@ export const documentRepository = {
    * an accident of insertion.
    */
   ofType: (documentType: string): DocumentEntity[] =>
-    documentRepository.all()
+    documentReads.all()
       .filter((document) => document.documentType === documentType)
       .sort((a, b) => displayOrderOf(a) - displayOrderOf(b) || a.name.localeCompare(b.name)),
+};
 
+type DocumentsListener = () => void;
+
+const documentsListeners = new Set<DocumentsListener>();
+
+/**
+ * Every document write tells its subscribers, so no write decides whether its own mattered and one added
+ * later is covered without anyone remembering.
+ *
+ * **It hands subscribers no payload and makes no send.** A repository reads and writes rows; what changed
+ * is the subscriber's to work out. The app's own subscriber derives the chat's slash commands from these
+ * rows and compares the result, which is the one place that comparison is made — so an editor never has
+ * to announce that it edited a command, and a second editor would not have to either.
+ *
+ * It wraps the writes only, so the reads beside them keep their identity for a caller holding a reference.
+ */
+function announceWrites<T extends Record<string, (...args: never[]) => unknown>>(writes: T): T {
+  const announced: Record<string, unknown> = {};
+  for (const [name, write] of Object.entries(writes)) {
+    announced[name] = (...args: never[]) => {
+      const result = (write as (...a: never[]) => unknown)(...args);
+      for (const listener of documentsListeners) listener();
+      return result;
+    };
+  }
+  return announced as T;
+}
+
+/** Rows and writes of documents */
+const documentWrites = {
   create: (data: DocumentInput): DocumentEntity => {
     const { parentId, id, tags, documentType, contentHash, ...fields } = data;
     const now = Date.now();
@@ -127,9 +157,9 @@ export const documentRepository = {
   },
 
   /**
-   * Writes the fields given. A `parentId` moves the document into that folder; omitting it leaves the
-   * document in whichever folder it is already in. Moving one back out to the root is not expressible
-   * here — a move out of every folder is an unlink, which the editor's own move does.
+   * Writes the fields given. The three states of `parentId` are distinct: a folder moves the document
+   * into it, `null` moves it out to the root, and leaving it out keeps it where it is. A document at the
+   * root is one no folder `contains`, so moving it there is an unlink with nothing to follow.
    */
   update: (id: EARS.EntityId, updates: Partial<DocumentInput>): void => {
     const { parentId, id: _id, tags, documentType, contentHash, ...fields } = updates;
@@ -143,7 +173,7 @@ export const documentRepository = {
     if (tags) tx(id).updateBatch({ tags });
     if (parentId === undefined) return;
     const current = collectionOfDocument(id);
-    if (current === parentId) return;
+    if (current === (parentId ?? null)) return;
     if (current) tx(current).unlinkIf(EARS.RelKind.CONTAINS, id);
     if (parentId) tx(parentId).safeLink(EARS.RelKind.CONTAINS, id);
   },
@@ -155,6 +185,24 @@ export const documentRepository = {
     tx(id).destroy();
   },
 };
+
+/**
+ * Rows and writes of documents.
+ *
+ * **Every mutation of a document row goes through here**, which is what makes the announcement complete:
+ * a caller that reaches past it with `tx` writes a document nobody is told about. That is why the editor's
+ * rename, move and tag writes call `update` rather than writing the attribute themselves.
+ */
+export const documentRepository = {
+  ...documentReads,
+  ...announceWrites(documentWrites),
+
+  /** Follows every document write above, until the returned function is called */
+  onDocumentsChanged(listener: DocumentsListener): () => void {
+    documentsListeners.add(listener);
+    return () => documentsListeners.delete(listener);
+  },
+} as const;
 
 /** Rows and writes of the folders documents sit in */
 export const collectionRepository = {

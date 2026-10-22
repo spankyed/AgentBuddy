@@ -564,11 +564,6 @@
             },
             "description": "Repository objects. Keys are repository names on `repository` (from #generated/repository), values are \"path#exportName\" of the object in a source file."
           },
-          "getCommands": {
-            "type": "string",
-            "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
-            "description": "\"path#exportName\" of this feature's command provider: a function returning the slash commands it serves. Only the feature playing the `commands` designation may declare one — the commands themselves are content, not manifest entries."
-          },
           "references": {
             "type": "object",
             "properties": {

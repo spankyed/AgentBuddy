@@ -129,7 +129,7 @@ Ordinary pack source imports its own `services` and `Services` from `#generated/
 | `services.chat` | Chat messages and blocks (`sendBlockMessage`, `sendSystemMessage`, `sendChoiceBlock`, `sendQuestionBlock`, `createThreadAndNotify`, …) |
 | `services.threads` | Thread chat state (`updateChatState`) |
 | `services.artifact` | Artifact creation and updates (`createAndNotify`, `updateAndNotify`, `findOrCreateByType`) |
-| `services.library` | Library documents and folders (`find`, `findByCode`, `findByName`, `findByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`), and the chat's slash commands (`commands`, which it serves as the `commands` designation's owner; see [Slash commands](#slash-commands)) |
+| `services.library` | Library documents and folders (`find`, `findByCode`, `findByName`, `findByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`). The chat's slash commands are not here: they are a derivation over stored documents, read with `getCommands()` (see [Slash commands](#slash-commands)) |
 | `services.prompt` | Prompt templates (`usePrompt`, `findByLabel`) |
 | `services.action` | Look up and run actions (`findByLabel`, `executeAction`, `executeIfFound`) |
 | `services.brain` | Ad-hoc brain event listeners (`listen`, `unlisten`) |
@@ -770,19 +770,20 @@ nothing, while a file that declares something else is what it says:
 (`{ "path": "src/content/commands", "format": "default-setup:commands" }`) and gets the same rows. A name two
 documents define keeps the first.
 
-**One feature owns them, by role.** Whichever feature plays the `commands` designation
-(`features.<id>.designation: "commands"`) serves the list from whatever documents are in the database, through
-the `features.<id>.getCommands` it declares; the app resolves the role to that feature and asks it, rather than
-naming a pack. A second claimant is refused when its pack registers. In default-setup
-that feature is `library`, so the documents are the user's library and they edit them there.
+**No feature owns them: the app reads its own rows.** `Document` is an SDK entity, so the commands are a
+derivation over the stored documents whose `documentType` is `commands` — there is no role to claim, no provider
+to declare and nothing for a pack to serve. A pack *ships* commands by writing content, and a pack *edits* them
+by editing documents. In default-setup the editor is `library`, so the documents are the user's library and they
+edit them there; a second editor would need no wiring at all.
 
 **Every window holds the list, whatever surface is open.** The app publishes it to the shell — beside which
 tabs show and which surface was last open — so an editor's popup reads it from there and never from a feature's
 surface. Frontend code that needs it reads `useShell().commands` (`@apackdev/sdk/fe`), or `getCommands()`
 (`@apackdev/sdk/commands`) where there is no scope to follow it in. The app republishes whenever it is asked to
 publish: on each connection, and after a pack is installed, updated, enabled, disabled, uninstalled or rebuilt
-(the bus's `PACK_CHANGED`), or the data is replaced. The owner says only *that* the list moved, when a write of
-its own altered it.
+(the bus's `PACK_CHANGED`), or the data is replaced. Beyond that it follows the documents themselves: the SDK's
+document repository announces every write and the app compares the derived list, so storing or editing a command
+publishes it. One apply is one publication however many documents it wrote.
 
 `/` is the chat input's affordance: the popup is in the `input:chat` editor and nowhere else, so a slash in a
 note or a document is ordinary text.

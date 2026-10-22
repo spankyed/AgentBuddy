@@ -1209,9 +1209,7 @@
             "useItems": "src/features/library/fe/references.ts#useItems"
           }
         }
-      },
-      "designation": "commands",
-      "getCommands": "src/features/library/be/services/library.ts#libraryCommands"
+      }
     },
     "flows": {
       "description": "Build and manage flows of connected steps.",
