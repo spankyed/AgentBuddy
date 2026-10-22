@@ -21,6 +21,11 @@ const IMAGE = `apack-linux-test:${short(fs.readFileSync(DOCKERFILE))}`;
 /** One working copy per checkout, so two worktrees never share a container `node_modules` */
 const WORK_VOLUME = `apack-linux-work-${short(REPO_ROOT)}`;
 const NPM_CACHE_VOLUME = 'apack-linux-npm-cache';
+/**
+ * The run lock, at the volume's root. Named once because two places must agree on it: the `flock` below and
+ * the rsync filter that keeps `--delete` from removing it while this run holds it.
+ */
+const RUN_LOCK = '.apack-run.lock';
 
 /**
  * What the copy carries and leaves out, as rsync filters in order. Every `node_modules` stays out (the container
@@ -98,7 +103,7 @@ const quote = (arg: string): string => `'${arg.replace(/'/g, `'\\''`)}'`;
  * The containers share the Linux VM's kernel, so `flock` on a file in the volume holds across them.
  */
 const sync = [
-  `rsync -a --delete --exclude=/.apack-sync.lock ${FILTERS.map(quote).join(' ')} /src/ /work/`,
+  `rsync -a --delete --exclude=/${RUN_LOCK} ${FILTERS.map(quote).join(' ')} /src/ /work/`,
   'lock=$(sha256sum package-lock.json | cut -d" " -f1)',
   'if [ "$(cat node_modules/.apack-installed-lock 2>/dev/null)" != "$lock" ]; then',
   '  npm ci --no-audit --no-fund',
@@ -108,11 +113,36 @@ const sync = [
   'npm run -s packages:ensure',
   'npm run -s build:default-setup >/dev/null',
 ].join('\n');
-const script = [
-  'set -e',
-  `flock /work/.apack-sync.lock bash -ec ${quote(sync)}`,
+/**
+ * One container at a time per volume, for the whole run rather than the sync alone.
+ *
+ * **It is `flock` because the kernel releases it when the holder dies**, which is the one way a lock in here
+ * can be resolved: a container cannot tell a dead sibling's record from a live one — its hostname is the
+ * instance's and `boot_id` is the host kernel's, so there is nothing to compare a pid against. A lock file
+ * naming a pid and a hostname, which is what the pools write, is therefore held for ever once its container
+ * is gone (`exclusive-lock.ts`'s foreign-machine branch, correctly, cannot resolve it).
+ *
+ * So the orphans are cleared here, under this lock, where they are provably orphans: holding it means no
+ * other container is working in this volume, so no live pool run owns one. Killing a native run used to wedge
+ * every later one until the file was deleted by hand inside the container.
+ *
+ * Two runs sharing a volume was never safe anyway — they share `node_modules` and the platform builds the
+ * sync phase makes — so a second refuses rather than waiting, naming what holds it.
+ */
+const run = [
+  `exec 9>/work/${RUN_LOCK}`,
+  'if ! flock -n 9; then',
+  '  echo "another test:linux run holds this checkout\'s container volume (apack-linux-work)." >&2',
+  `  echo "Wait for it to finish, or stop it: docker ps --filter ancestor=${IMAGE}" >&2`,
+  '  exit 1',
+  'fi',
+  // Orphans of a container that was killed: this run holds the only slot, so none of them is live
+  'rm -f /work/node_modules/.cache/apack-unit-pool/*.lock',
+  `bash -ec ${quote(sync)}`,
+  // `exec` keeps fd 9, so the lock is held for as long as the command runs
   `exec ${command.map(quote).join(' ')}`,
 ].join('\n');
+const script = ['set -e', run].join('\n');
 
 const child = spawn('docker', [
   // IPv4 loopback only, as on CI's Linux runners: with IPv6 up, `localhost` resolves to ::1 first here, so a
