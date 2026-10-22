@@ -133,16 +133,26 @@ lifts frontmatter end to end — `tags` comes from `item.frontmatter.tags` and f
 and its `contentHash` — so a typed field is the same one-line shape and correctly counts as a content
 change.
 
-That kills `COMMANDS_FOLDER` (`library.ts:62`), a hardcoded `['internal','commands']` path which is
-where "this document is a command list" lives today. Four things follow from deleting it: renaming the
-authored folder stops silently emptying the list; a user can make a command list by setting
-frontmatter; a pack contributing commands does so **declaredly**, rather than through an undeclared
-extension point (Collection is a `container`, so any pack's documents nesting under that path are
-picked up today with no record that they were); and the `**key**: value` field convention stops being
-implicit in one filter.
+That kills `COMMANDS_FOLDER` (`library.ts:62`), the hardcoded `['internal','commands']` where "this
+document is a command list" lives today. Four things follow:
+
+- renaming the authored folder stops silently emptying the list;
+- a user can make a command list by setting frontmatter;
+- a pack contributing commands does so **declaredly**, rather than through an undeclared extension
+  point — Collection is a `container`, so any pack's documents nesting under that path are picked up
+  today with no record that they were;
+- and the `**key**: value` convention stops being implicit in one filter.
 
 **`onUserEdit: "offer"`**, not the `theirs` that library content uses today — a pack updating its
 command list should be offered to the user, not silently ignored.
+
+**One piece has to be invented, and it is the only one.** Every other mechanism here exists:
+cross-pack content formats, the apply, `onUserEdit`, `getDesignated`/`hasDesignation`. What does not
+is **resolving a role to something callable** — `getDesignated` returns a `FeatureRef`, not a provider.
+The designated feature's registration has to carry `commands()`, and the registry has to resolve ref →
+provider (`commandsFrom` in the walkthrough is a placeholder for whatever that is called). Design it
+before Phase 2 rather than during it: it is the difference between a role that addresses a capability
+and a role that is only a label.
 
 **It would be the first designation whose role does not match its feature id.** The contract allows it
 outright — *"a role rather than a name: it need not equal the feature id"* — but all four today
@@ -202,6 +212,182 @@ state directly — it owns that key now, so the manifest need not carry a predic
 Check how `declaration-binding` composes the predicate across packs before relying on this
 (`apack-host/tests/fe/declaration-binding.spec.ts`, `renderer/tests/runtime/native-editor.spec.ts`).
 
+## The change, file by file
+
+Seven hops today, three after. The decisions above say why; this says what a reader will actually edit.
+
+```
+apack.json extensions.commands (2) ──┐
+                                     ├─► library.commands() ──► threads system ──► threads
+src/content/library/internal/        │   (merge, keyed by         (broadcasts)      surface
+  commands/*.md (35) ──► Documents ──┘    COMMANDS_FOLDER)                          state
+                                                                                      │
+    popup ◄── useCommandItems ◄── readSurfaceState('threads') ◄─────────────────────┘
+```
+
+### The manifest
+
+```jsonc
+// before — two doors
+"extensions": {
+  "commands": {
+    "pr2md":        { "placeholder": "PR number or GitHub URL (optional)" },
+    "instructions": { "placeholder": "Thread instructions text" }
+  }
+},
+"content": { "sources": ["actions", "prompts", "flows", "library", "notes"] }
+```
+
+```jsonc
+// after — one door, plus the role that serves it
+"features": { "library": { "designation": "commands", … } },
+"content": {
+  "sources": ["actions", "prompts", "flows", "library", "notes", "commands"],
+  "formats": {
+    "commands": {
+      "compiler": "src/content/_compilers/library.ts",
+      "entity": ["Collection", "Document"],
+      "identity": ["name"],
+      "onUserEdit": "offer"
+    }
+  }
+}
+```
+
+`pr2md` and `instructions` become two more authored files.
+
+### The authored content — one line
+
+```md
+---
+name: Claude Code commands
+type: commands          ← this is what makes it a command list
+---
+<!-- section:field -->
+**cc-sessions**: Session ID (optional, lists all if omitted)
+```
+
+Before, nothing in the file said it was commands. Its folder did.
+
+### The compiler — the shape is already there
+
+```ts
+// before (_compilers/library.ts)
+const tags = Array.isArray(item.frontmatter.tags) ? item.frontmatter.tags.map(String) : [];
+const resolvedTags = tags.length ? tags : ['default'];
+return { entity: 'Document', name, content, tags: resolvedTags,
+         contentHash: contentHash({ name, content, tags: resolvedTags }) };
+
+// after — documentType lifted exactly as tags is, and into the hash
+const documentType = text(item.frontmatter.type);
+return { entity: 'Document', name, content, tags: resolvedTags, documentType,
+         contentHash: contentHash({ name, content, tags: resolvedTags, documentType }) };
+```
+
+In the hash matters: editing the frontmatter becomes a content change, so the apply offers it.
+
+### `library.commands()` — the merge and the magic path both go
+
+```ts
+// before
+const COMMANDS_FOLDER = ['internal', 'commands'] as const
+const inCommandsFolder = (doc) => (doc.collectionPath ?? []).join('/') === COMMANDS_FOLDER.join('/')
+
+commands(): CommandItem[] {
+  const documents = repository.libraryQueries.getDocuments().filter(inCommandsFolder).sort(…)
+  const commands = new Map<string, CommandItem>()
+  for (const command of getPackCommands()) {                    // door 1
+    if (!commands.has(command.name)) commands.set(command.name, {…})
+  }
+  for (const document of documents) {                            // door 2
+    for (const section of document.content) {
+      if (section.type !== 'field') continue
+      for (const field of section.fields) {
+        if (!commands.has(field.key)) commands.set(field.key, { name: field.key, placeholder: field.value })
+      }
+    }
+  }
+  return [...commands.values()]
+}
+
+// after — one source, so no Map, no precedence rule, no folder constant
+commands(): PackCommand[] {
+  return repository.libraryQueries.getDocuments()
+    .filter(doc => doc.documentType === 'commands')
+    .sort(byDisplayOrderThenName)
+    .flatMap(doc => doc.content
+      .filter(s => s.type === 'field')
+      .flatMap(s => s.fields.map(f => ({ name: f.key, placeholder: f.value }))))
+}
+```
+
+The `if (!commands.has(…))` precedence — *"a document can't shadow a declared one"* — disappears with
+the second door, because there is nothing left to shadow.
+
+### The accessor
+
+```ts
+// before (@apackdev/sdk/framework/pack-commands.ts)
+export function getPackCommands(): PackCommand[] {
+  return boundHost().packs.commands();          // the manifest registry
+}
+
+// after — resolve the role, ask its owner
+export function getCommands(): PackCommand[] {
+  if (!hasDesignation('commands')) return []
+  return boundHost().packs.commandsFrom(getDesignated('commands'))
+}
+```
+
+### The editor
+
+```ts
+// before — useCommandItems.ts
+const commands = useSurfaceState('threads', (s) => s.commands)
+// after
+const commands = useCommands()        // over getCommands(), no surface involved
+```
+
+```ts
+// before — command-suggestion.ts in default-setup, declared via extensions.textEditor
+export const CommandSuggestion = Extension.create({
+  name: 'commandSuggestion',
+  addProseMirrorPlugins() {
+    return [plugin(this.editor, () => readSurfaceState('threads', (s) => s.commands))]
+  },
+})
+
+// after — in @apackdev/ui, built in beside SearchAndFind, naming no pack
+export const CommandSuggestion = Extension.create({
+  name: 'commandSuggestion',
+  addProseMirrorPlugins() { return [plugin(this.editor, getCommands)] },
+})
+```
+
+```ts
+// extensions.ts — it stops being configuration
+if (cfg.searchBar) extensions.push(SearchAndFind)
+extensions.push(CommandSuggestion)
+```
+
+### Threads leaves the path
+
+Three sites in `threads/be/system.ts` go — `sendCommands`, the `commands` in `sendChatConnectedData`
+and `rememberSentCommands` — with `commands` off the threads contract and `COMMANDS_UPDATED` off the
+wire.
+
+```
+src/content/commands/*.md ──► Documents (documentType: 'commands')
+                                   │
+                              library.commands()  ← the `commands` designation
+                                   │
+    popup ◄── useCommandItems ◄── getCommands()
+```
+
+**The `| undefined` defect disappears here as a side effect**, nothing reading a surface that may not
+be spawned — but Decision 5 still holds, because the unsound signature affects every other typed
+reader and this goal must not paper over it.
+
 ## Phases
 
 **Ordered so the source is settled before its consumer moves onto it.** The editor is moved last, in
@@ -219,17 +405,19 @@ nothing.
 
 ### Phase 2 — one door, and the role that serves it
 
-**Deliverable.** Decision 1, in three pieces that land together because each is useless alone:
+**Deliverable.** Decision 1, in four pieces that land together because each is useless alone. "The
+change, file by file" above has the before and after of each.
 
-1. **Commands become a content source.** A `commands` format compiling the authored documents, with
+1. **Resolve a role to a provider**, which is the one mechanism this goal invents — see Decision 1.
+   Do it first: the other three assume it.
+2. **Commands become a content source.** A `commands` format compiling the authored documents, with
    `onUserEdit: "offer"`. The two `extensions.commands` entries (`pr2md`, `instructions`) become
-   content files beside the 35; the manifest key, its schema, and `getPackCommands()` are deleted.
+   content files beside the 35; the manifest key, its schema, and `getPackCommands()` are deleted, and
    `PackCommand` finds a home that isn't `framework/pack-commands.ts`.
-2. **`COMMANDS_FOLDER` is deleted** (`library.ts:62`), replaced by a frontmatter-typed field the
-   compiler lifts as it already lifts `tags` — into the Document *and* its `contentHash`, so a change
-   to it is a content change. Selection is on that field, not on `collectionPath`.
-3. **`designation: "commands"`** on default-setup's library feature, and one accessor over
-   `getDesignated`/`hasDesignation` (`@apackdev/sdk`), which resolve a role to a feature ref.
+3. **`COMMANDS_FOLDER` is deleted** (`library.ts:62`), replaced by a frontmatter-typed field the
+   compiler lifts as it already lifts `tags` — into the Document *and* its `contentHash`. Selection is
+   on that field, not on `collectionPath`.
+4. **`designation: "commands"`** on default-setup's library feature, carrying the provider from (1).
 
 **Dependencies.** None. This phase is about where commands come from; it touches no editor code.
 
@@ -288,3 +476,6 @@ or `extensions.commands` as a manifest key.
 - [`goal-editor-extensions.md`](../archive/goals/goal-editor-extensions.md) has landed, so
   `command-suggestion.ts` already holds the extension and its Plugin together, and the convention there
   governs where they arrive.
+- Commands stay `Document`s. A `Command` entity is a bigger change than it looks: the Library surface
+  *is* their editing UI, so a new entity needs a new editor. If a phase reaches for one, that is a
+  scope proposal.
