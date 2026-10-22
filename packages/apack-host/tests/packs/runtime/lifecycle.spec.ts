@@ -235,8 +235,8 @@ describe('activating and tearing down a pack at runtime', () => {
     writeBuild(
       sourceDir,
       PACK_ID,
-      `{ main: { designation: 'commands', system: { machine: { id: 'activate-pack-system' }, receives: [] } } }, `
-        + "commandProvider: () => [{ name: 'activate-memo', placeholder: 'Text' }], "
+      `{ main: { designation: 'commands', getCommands: () => [{ name: 'activate-memo', placeholder: 'Text' }], `
+        + `system: { machine: { id: 'activate-pack-system' }, receives: [] } } }, `
         + "appliers: [{ key: 'memos', apply: () => { globalThis.activatePackRuns.push('apply'); return { created: 1, updated: 0, skipped: 0 }; } }], "
         + "migrations: { pack: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }] }",
       {

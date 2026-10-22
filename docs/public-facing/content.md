@@ -752,15 +752,17 @@ prompt or a flow: a pack ships them in a content source, the apply writes them i
 user edits them afterwards — with the three-way merge and the offers every other content entry gets. There is
 no manifest key that lists commands, and nothing to merge: one source, so a name cannot shadow another.
 
-A command lives in a document that says it is a command list — `type: commands` in a content file's
-frontmatter — whose field section is `**name**: placeholder` lines. default-setup's are
+A command lives in a document whose field section is `**name**: placeholder` lines. What makes it a command
+list is the **format** it was compiled with, not anything in the file: a source using the `commands` format
+stamps every document it writes, so a file there cannot omit it and a file elsewhere cannot claim it. default-setup's are
 `src/content/commands/internal/*.md`, written with its `commands` format; a pack depending on it names that format
 (`{ "path": "src/content/commands", "format": "default-setup:commands" }`) and gets the same rows. A name two
 documents define keeps the first.
 
 **One feature owns them, by role.** Whichever feature plays the `commands` designation
-(`features.<id>.designation: "commands"`) serves the list from whatever documents are in the database, and the
-app asks it rather than naming a pack. A second claimant is refused when its pack registers. In default-setup
+(`features.<id>.designation: "commands"`) serves the list from whatever documents are in the database, through
+the `features.<id>.getCommands` it declares; the app resolves the role to that feature and asks it, rather than
+naming a pack. A second claimant is refused when its pack registers. In default-setup
 that feature is `library`, so the documents are the user's library and they edit them there.
 
 **Every window holds the list, whatever surface is open.** The app publishes it to the shell — beside which

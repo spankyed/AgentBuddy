@@ -555,14 +555,13 @@ export const FeatureEntrySchema: z.ZodObject<{
     surface: z.ZodOptional<z.ZodType<SurfaceDeclaration, z.ZodTypeDef, SurfaceDeclaration>>;
     services: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     repositories: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
-    commands: z.ZodOptional<z.ZodString>;
+    getCommands: z.ZodOptional<z.ZodString>;
     references: z.ZodOptional<z.ZodType<ReferenceDeclarations, z.ZodTypeDef, ReferenceDeclarations>>;
 }, "strict", z.ZodTypeAny, {
     description: string;
     entities?: Record<string, string | null> | undefined;
     references?: ReferenceDeclarations | undefined;
     types?: string | undefined;
-    commands?: string | undefined;
     surface?: SurfaceDeclaration | undefined;
     services?: Record<string, string> | undefined;
     designation?: string | undefined;
@@ -582,12 +581,12 @@ export const FeatureEntrySchema: z.ZodObject<{
         } | undefined;
     } | undefined;
     repositories?: Record<string, string> | undefined;
+    getCommands?: string | undefined;
 }, {
     description: string;
     entities?: Record<string, string | null> | undefined;
     references?: ReferenceDeclarations | undefined;
     types?: string | undefined;
-    commands?: string | undefined;
     surface?: SurfaceDeclaration | undefined;
     services?: Record<string, string> | undefined;
     designation?: string | undefined;
@@ -600,6 +599,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         } | undefined;
     } | undefined;
     repositories?: Record<string, string> | undefined;
+    getCommands?: string | undefined;
 }>;
 
 // @public
@@ -713,7 +713,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -733,12 +732,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }>, z.ZodTypeDef, Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -751,6 +750,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }>>>;
     extensions: z.ZodOptional<z.ZodObject<{
         textEditor: z.ZodOptional<z.ZodType<Record<string, {
@@ -1265,7 +1265,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -1285,6 +1284,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
     $schema?: string | undefined;
@@ -1439,7 +1439,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -1452,6 +1451,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
     $schema?: string | undefined;
@@ -1599,7 +1599,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -1619,6 +1618,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
     $schema?: string | undefined;
@@ -1773,7 +1773,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -1786,6 +1785,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
     $schema?: string | undefined;
@@ -1933,7 +1933,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -1953,6 +1952,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
     $schema?: string | undefined;
@@ -2420,7 +2420,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -2433,16 +2432,17 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }>, z.ZodTypeDef, Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }>>>;
 }, "strict", z.ZodTypeAny, {
     id: string;
@@ -2461,7 +2461,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -2474,6 +2473,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
@@ -2595,12 +2595,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
@@ -2715,7 +2715,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -2728,6 +2727,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
@@ -2849,12 +2849,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
@@ -2969,7 +2969,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description: string;
         entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
-        commands?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -2982,6 +2981,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;

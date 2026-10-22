@@ -259,7 +259,6 @@ describe('registerPack content writers', () => {
       id: 'other-pack',
       ears: { entities: { Card: 'Card' }, relKinds: {} },
       artifacts: [{ type: 'card-view' }],
-      commandProvider: () => [{ name: 'card', placeholder: 'Title' }],
       contentWriters: { Card: {}, Memo: {} },
     };
     expect(() => registerPack(other as unknown as PackRegistration))
@@ -286,8 +285,8 @@ describe('registerPack content writers', () => {
 
 describe('registerPack commands', () => {
   const commands = [{ name: 'standup', placeholder: 'Topic' }];
-  const owner = (id: string) => ({ id, features: { lib: { designation: 'commands' } },
-    commandProvider: () => commands } as unknown as PackRegistration);
+  const owner = (id: string) => ({ id,
+    features: { lib: { designation: 'commands', getCommands: () => commands } } } as unknown as PackRegistration);
 
   it('rejects a second pack claiming the role, registering none of it', () => {
     registerPack(owner('memo-pack'));

@@ -1214,7 +1214,7 @@
         }
       },
       "designation": "commands",
-      "commands": "src/features/library/be/services/library.ts#libraryCommands"
+      "getCommands": "src/features/library/be/services/library.ts#libraryCommands"
     },
     "flows": {
       "description": "Build and manage flows of connected steps.",
@@ -2479,7 +2479,7 @@
         "media": "media"
       },
       "commands": {
-        "compiler": "src/content/_compilers/library.ts",
+        "compiler": "src/content/_compilers/commands.ts",
         "entity": [
           "Collection",
           "Document"

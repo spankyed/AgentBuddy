@@ -415,6 +415,7 @@ export type PackEventContracts = Record<string, FeatureEventContract>;
 export interface PackFeature {
     // (undocumented)
     designation?: string;
+    getCommands?: () => PackCommand[];
     services?: readonly string[];
     settings?: SettingsDefinition;
     // (undocumented)
@@ -464,7 +465,6 @@ export interface PackRegistration {
     bindServices?: (access: PackServiceAccess) => () => void;
     // (undocumented)
     blocks?: BlockDefinition[];
-    commandProvider?: () => PackCommand[];
     contentWriters?: Record<string, ContentWriter>;
     declarationRevision?: string;
     // (undocumented)

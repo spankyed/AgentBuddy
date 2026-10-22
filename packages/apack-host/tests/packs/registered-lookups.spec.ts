@@ -223,7 +223,7 @@ describe('captured contribution addresses', () => {
     });
     const step: StepDefinition = { get type() { return readType(); }, kind: 'step', node: { label: 'Stuck' } };
     isolated.registerPack({ id: 'captured-address', steps: [step],
-      features: { lib: { designation: 'commands' } }, commandProvider: () => [{ name: 'leaves', placeholder: 'Cleanly' }] });
+      features: { lib: { designation: 'commands', getCommands: () => [{ name: 'leaves', placeholder: 'Cleanly' }] } } });
     const accepted = isolated.step('stuck');
     expect(accepted?.node?.label).toBe('Stuck');
     step.node!.label = 'Caller mutation';
@@ -310,8 +310,7 @@ describe('a pack whose registration is refused', () => {
       ears: { entities: { Note: 'Note' }, relKinds: {} },
       contentWriters: { Note: {} },
       appliers: [anApplier('notes')],
-      commandProvider: () => [{ name: 'standup', placeholder: 'Topic' }],
-      features: { notes: { designation: 'commands', surface: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
+      features: { notes: { designation: 'commands', getCommands: () => [{ name: 'standup', placeholder: 'Topic' }], surface: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
     });
 
     // Every kind of its own, and the role the incumbent already plays — the candidate is refused atomically
@@ -323,8 +322,7 @@ describe('a pack whose registration is refused', () => {
       ears: { entities: { Card: 'Card' }, relKinds: {} },
       contentWriters: { Card: {} },
       appliers: [anApplier('cards')],
-      commandProvider: () => [{ name: 'standup', placeholder: 'Theirs' }],
-      features: { cards: { designation: 'commands', surface: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },
+      features: { cards: { designation: 'commands', getCommands: () => [{ name: 'standup', placeholder: 'Theirs' }], surface: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },
     })).toThrow('Designation collision');
 
     // Nothing of the refused pack survives
@@ -414,16 +412,14 @@ describe('commands', () => {
    * the case the old cross-pack ordering was really about.
    */
   it('are the designated owner\'s, and come back when it registers again', () => {
-    add({ id: 'owner-pack', features: { lib: { designation: 'commands' } },
-      commandProvider: () => [{ name: 'first', placeholder: 'A' }] });
+    add({ id: 'owner-pack', features: { lib: { designation: 'commands', getCommands: () => [{ name: 'first', placeholder: 'A' }] } } });
     add({ id: 'other-pack' });
     expect(getCommands().map((command) => command.name)).toEqual(['first']);
 
     remove('owner-pack');
     expect(getCommands()).toEqual([]);
 
-    add({ id: 'owner-pack', features: { lib: { designation: 'commands' } },
-      commandProvider: () => [{ name: 'first', placeholder: 'A, rebuilt' }] });
+    add({ id: 'owner-pack', features: { lib: { designation: 'commands', getCommands: () => [{ name: 'first', placeholder: 'A, rebuilt' }] } } });
     expect(getCommands()).toEqual([{ name: 'first', placeholder: 'A, rebuilt' }]);
   });
 });

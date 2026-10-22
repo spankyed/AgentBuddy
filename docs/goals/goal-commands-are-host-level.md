@@ -262,13 +262,15 @@ src/content/library/internal/        │   (merge, keyed by         (broadcasts)
 ```md
 ---
 name: Claude Code commands
-type: commands          ← this is what makes it a command list
 ---
 <!-- section:field -->
 **cc-sessions**: Session ID (optional, lists all if omitted)
 ```
 
-Before, nothing in the file said it was commands. Its folder did.
+The file says nothing about being commands, and shouldn't: the `commands` **format** stamps every document
+it compiles (`_compilers/commands.ts`). So a file in that source cannot fail to be a command list, and one
+in another source cannot become one by naming a type. Before, its folder decided, which was the same
+coupling with nothing enforcing it.
 
 ### The compiler — the shape is already there
 
@@ -477,6 +479,6 @@ or `extensions.commands` as a manifest key.
 - [`goal-editor-extensions.md`](../archive/goals/goal-editor-extensions.md) has landed, so
   `command-suggestion.ts` already holds the extension and its Plugin together, and the convention there
   governs where they arrive.
-- Commands stay `Document`s. A `Command` entity is a bigger change than it looks: the Library surface
-  *is* their editing UI, so a new entity needs a new editor. If a phase reaches for one, that is a
-  scope proposal.
+- Commands stay `Document`s, and a `Command` entity is **dropped for good** — not deferred. The Library
+  surface *is* their editing UI, so the entity would trade the provider getter for a whole new editor.
+  Don't raise it again as an alternative or as future work.
