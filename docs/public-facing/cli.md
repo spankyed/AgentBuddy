@@ -723,7 +723,7 @@ While a command changes the database it holds a lock on the data dir (`db-write.
 
 #### `apack db query <code> | --file <path> [-o pretty|json|csv] [--out <file>]`
 
-Run query code with the Database console's read helpers: `qx`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `queryEntitiesByAttribute`, `queryEntitiesByRelationTo`, `queryEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`apack db script`) can.
+Run query code with the Database console's read helpers: `qx`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `findEntitiesByAttribute`, `findEntitiesByRelationTo`, `findEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`apack db script`) can.
 
 ```bash
 apack db query "return qx(EARS.Entity.Settings).pickAll()" -o json --out settings.json
@@ -749,9 +749,9 @@ Run a script file against the database, for work a one-liner can't do: it import
 ```ts
 // notes-report.ts
 export default async ({ db, EARS, args, log }) => {
-  const notes = db.query.getEntitiesOfType(EARS.Entity.Note);
+  const notes = db.ears.getEntitiesOfType(EARS.Entity.Note);
   log(`${notes.length} notes`);
-  return notes.map((id) => db.query.getAll(id));
+  return notes.map((id) => db.ears.getAll(id));
 };
 ```
 

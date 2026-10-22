@@ -5,7 +5,7 @@ import type { LmdbStore } from '@apackdev/ears/lmdb';
 
 export function createTraceStore(store: LmdbStore): TraceStore {
   // Over the current volatile env (reopened after a reset or import)
-  const traceQuery = () => store.query('volatileBackup');
+  const traceQuery = () => store.read('volatileBackup');
   return {
     entities() {
       const rows = store.envs.volatileBackup.entities.getRange() as Iterable<{ key: string; value: TraceEntityMeta }>;

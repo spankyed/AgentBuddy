@@ -92,7 +92,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     closeApi(api);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, readOnly: true, log: () => {} });
-    const fromTool = snapshot(db.query);
+    const fromTool = snapshot(db.ears);
     db.close();
 
     expect(fromApi.entities.length).toBeGreaterThan(10);
@@ -127,7 +127,7 @@ describe('what the tool writes', () => {
       expect([...api.engine.getRoles('Note-tool')]).toEqual(['pinned']);
       // The run history isn't hydrated, and is in the partition the app keeps it in
       expect(api.engine.getAttr('TNode-tool', 'status')).toBeNull();
-      expect(api.store.query('volatileBackup').getFirstAttr('status', 'TNode-tool')).toBe('done');
+      expect(api.store.read('volatileBackup').getFirstAttr('status', 'TNode-tool')).toBe('done');
     } finally {
       closeApi(api);
     }

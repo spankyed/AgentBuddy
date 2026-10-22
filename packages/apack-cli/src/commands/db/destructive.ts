@@ -28,7 +28,7 @@ const backupLog = (io: DbIo): BackupLog => ({
 /** Entities per type in the hydrated database, for the types that have some */
 function entityCounts(db: AppDatabase): Array<[string, number]> {
   return [...db.schema.getRegisteredEntityTypes()].sort()
-    .map((type) => [type, db.query.getEntitiesOfType(type as EARS.Entity).length] as [string, number])
+    .map((type) => [type, db.ears.getEntitiesOfType(type as EARS.Entity).length] as [string, number])
     .filter(([, count]) => count > 0);
 }
 
@@ -123,7 +123,7 @@ export interface SettingsRow {
 }
 
 function describeSettingsRow(db: AppDatabase, id: EARS.EntityId): SettingsRow {
-  const attributes = db.query.getAll(id);
+  const attributes = db.ears.getAll(id);
   const data = attributes.data;
   return {
     id,
@@ -140,7 +140,7 @@ export async function dbClearSettings(args: string[], io: DbIo): Promise<void> {
   // Without --force nothing is destroyed, so the database opens read-only
   const db = await openTarget(target, { write: force, command: 'clear-settings' }, io);
   const done = await withDatabase(db, () => {
-    const rows = db.query.getEntitiesOfType(SETTINGS_ENTITY as EARS.Entity).map((id) => describeSettingsRow(db, id));
+    const rows = db.ears.getEntitiesOfType(SETTINGS_ENTITY as EARS.Entity).map((id) => describeSettingsRow(db, id));
     if (rows.length === 0) {
       io.out('No Settings rows: nothing to destroy.');
       return null;
@@ -153,7 +153,7 @@ export async function dbClearSettings(args: string[], io: DbIo): Promise<void> {
       io.out(`\n${DRY_RUN}`);
       return null;
     }
-    for (const row of rows) db.query.write(row.id as EARS.EntityId).destroy();
+    for (const row of rows) db.ears.write(row.id as EARS.EntityId).destroy();
     return `\nDestroyed ${rows.length} Settings row(s). apack recreates the defaults on its next start.`;
   });
   if (done) io.out(done);

@@ -537,8 +537,8 @@ describe('apack db script', () => {
       "import * as os from 'node:os';",
       'export default async ({ db, EARS, args, log }: any) => {',
       "  log(`renaming on ${typeof os.hostname()}`);",
-      "  db.query.write('Note-a').set('title', args[0]);",
-      '  return db.query.getEntitiesOfType(EARS.Entity.Note).length;',
+      "  db.ears.write('Note-a').set('title', args[0]);",
+      '  return db.ears.getEntitiesOfType(EARS.Entity.Note).length;',
       '};',
     ].join('\n'));
 
@@ -550,7 +550,7 @@ describe('apack db script', () => {
   it('runs a plain module too, and writes what it returns to a file', async () => {
     const dir = await appDataDir();
     const file = writeScript(dir, 'titles.mjs', [
-      'export default ({ db }) => db.query.getEntitiesOfType("Note").map((id) => ({ id, title: db.query.getAttr(id, "title") }));',
+      'export default ({ db }) => db.ears.getEntitiesOfType("Note").map((id) => ({ id, title: db.ears.getAttr(id, "title") }));',
     ].join('\n'));
     const out = path.join(dir, 'titles.json');
     await ok(['script', file, '--data-dir', dir, '-o', 'json', '--out', out]);
@@ -559,10 +559,10 @@ describe('apack db script', () => {
 
   it('runs a TypeScript script through the real CLI, with its own imports, as a user does', async () => {
     const dir = await appDataDir();
-    writeScript(dir, 'helper.ts', "export const titleOf = (db: any, id: string): string => db.query.getAttr(id, 'title');");
+    writeScript(dir, 'helper.ts', "export const titleOf = (db: any, id: string): string => db.ears.getAttr(id, 'title');");
     const file = writeScript(dir, 'report.ts', [
       "import { titleOf } from './helper';",
-      'export default ({ db, args }: any) => ({ title: titleOf(db, args[0]), notes: db.query.getEntitiesOfType("Note").length });',
+      'export default ({ db, args }: any) => ({ title: titleOf(db, args[0]), notes: db.ears.getEntitiesOfType("Note").length });',
     ].join('\n'));
 
     // In this process vitest compiles the script; the CLI has to do it itself, so drive the binary
@@ -587,7 +587,7 @@ describe('apack db script', () => {
     fs.writeFileSync(file, [
       "import { greet } from 'greet';",
       "import * as path from 'node:path';",
-      'export default ({ db }: any) => ({ greeting: greet(db.query.getAttr("Note-a", "title")), here: path.basename(import.meta.dirname) });',
+      'export default ({ db }: any) => ({ greeting: greet(db.ears.getAttr("Note-a", "title")), here: path.basename(import.meta.dirname) });',
     ].join('\n'));
     fs.chmodSync(scripts, 0o555);
 
@@ -650,7 +650,7 @@ describe('apack db script', () => {
       'export default async ({ db, log }) => {',
       "  log('first');",
       '  await new Promise((resolve) => setTimeout(resolve, 250));',
-      "  db.query.write('Note-a').set('title', 'Written late');",
+      "  db.ears.write('Note-a').set('title', 'Written late');",
       "  log('second');",
       '  await new Promise((resolve) => setTimeout(resolve, 250));',
       "  return 'finished';",
@@ -672,7 +672,7 @@ describe('apack db script', () => {
       "  const answer = await lines.question('Rename Note-a? (y/N) ');",
       '  lines.close();',
       "  if (answer.trim().toLowerCase() !== 'y') return 'cancelled';",
-      "  db.query.write('Note-a').set('title', 'Renamed');",
+      "  db.ears.write('Note-a').set('title', 'Renamed');",
       "  log('renamed');",
       "  return 'done';",
       '};',
@@ -721,11 +721,11 @@ describe('apack db script', () => {
 
   it('writes by default, and only reads with --read-only, which works while an app runs', async () => {
     const dir = await appDataDir();
-    const write = writeScript(dir, 'write.ts', "export default ({ db }: any) => db.query.write('Note-a').set('title', 'Changed');");
+    const write = writeScript(dir, 'write.ts', "export default ({ db }: any) => db.ears.write('Note-a').set('title', 'Changed');");
     publishApi(dir);
     expect((await run(['script', write, '--data-dir', dir])).error?.message).toMatch(/quit it first/);
 
-    const read = writeScript(dir, 'read.ts', "export default ({ db }: any) => db.query.getAttr('Note-a', 'title');");
+    const read = writeScript(dir, 'read.ts', "export default ({ db }: any) => db.ears.getAttr('Note-a', 'title');");
     const { out, err } = await ok(['script', read, '--data-dir', dir, '--read-only']);
     expect(out).toBe('Alpha');
     expect(err).toMatch(/Warning: apack is running on it/);

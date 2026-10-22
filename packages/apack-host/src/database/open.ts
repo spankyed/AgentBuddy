@@ -52,7 +52,7 @@ export interface AppDatabase {
   /** The installed packs' entity types and relation kinds */
   schema: InstalledSchema;
   store: LmdbStore;
-  query: Ears;
+  ears: Ears;
   admin: EarsAdmin;
   /**
    * Flushes the writes made through the engine and closes the store, putting back the engine that was installed
@@ -84,8 +84,8 @@ export interface OpenAppDatabaseOptions {
 
 /**
  * Opens the database in `userDataDir` as the app does: the installed packs' schema (their manifests; no pack code
- * runs), the store in the layout the data dir uses, and the primary partition hydrated. The engine's query face is
- * installed, so `@apackdev/ears`'s free functions act on it until `close()`. The volatile partition (the run history)
+ * runs), the store in the layout the data dir uses, and the primary partition hydrated. The engine is bound,
+ * so `@apackdev/sdk/ears`'s operations act on it until `close()`. The volatile partition (the run history)
  * is left out, as in the app, unless `includeVolatile` asks for it.
  */
 export async function openAppDatabase({ env, userDataDir, readOnly = false, includeVolatile = false, log, schemaFrom }: OpenAppDatabaseOptions): Promise<AppDatabase> {
@@ -135,7 +135,7 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
     paths,
     schema,
     store,
-    query: engine,
+    ears: engine,
     admin: engine.admin,
     close() {
       _bindEars(previousEngine);

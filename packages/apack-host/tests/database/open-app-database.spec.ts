@@ -166,7 +166,7 @@ describe('openAppDatabase', () => {
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, schemaFrom: snapshot, ...quiet });
     try {
       expect(db.schema.degraded).toBeUndefined();
-      expect(db.query.create('Note').set('title', 'new').id().startsWith('Note-')).toBe(true);
+      expect(db.ears.create('Note').set('title', 'new').id().startsWith('Note-')).toBe(true);
     } finally {
       db.close();
     }
@@ -181,31 +181,31 @@ describe('openAppDatabase', () => {
     });
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(boundEars()).toBe(db.query);
+    expect(boundEars()).toBe(db.ears);
     expect(db.paths).toEqual(_appDataPaths(dir));
     expect(getEntitiesOfType('Note').sort()).toEqual(['Note-1', 'Note-2']);
     expect(untypedQuery('Note').ids()).toHaveLength(2);
-    expect(db.query.getRoles(id('Note-1'))).toEqual(['pinned']);
-    expect(db.query.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);
+    expect(db.ears.getRoles(id('Note-1'))).toEqual(['pinned']);
+    expect(db.ears.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);
     // The volatile partition isn't hydrated, as in the app
-    expect(db.query.getAttr(id('TNode-1'), 'step')).toBeNull();
+    expect(db.ears.getAttr(id('TNode-1'), 'step')).toBeNull();
     db.close();
 
     const withHistory = await openAppDatabase({ env: 'test', userDataDir: dir, includeVolatile: true, ...quiet });
-    expect(withHistory.query.getAttr(id('TNode-1'), 'step')).toBe('volatile');
-    expect(withHistory.query.getAttr(id('Note-1'), 'title')).toBe('kept');
+    expect(withHistory.ears.getAttr(id('TNode-1'), 'step')).toBe('volatile');
+    expect(withHistory.ears.getAttr(id('Note-1'), 'title')).toBe('kept');
     withHistory.close();
 
     const db2 = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(db2.query.getAttr(id('TNode-1'), 'step')).toBeNull();
+    expect(db2.ears.getAttr(id('TNode-1'), 'step')).toBeNull();
     // An entity type creates an entity
-    const created = db2.query.create('Note').set('title', 'new').id();
+    const created = db2.ears.create('Note').set('title', 'new').id();
     expect(created.startsWith('Note-')).toBe(true);
     db2.close();
     expect(() => boundEars()).toThrow();
 
     const again = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
-    expect(again.query.getAttr(created, 'title')).toBe('new');
+    expect(again.ears.getAttr(created, 'title')).toBe('new');
     again.close();
   });
 
@@ -213,10 +213,10 @@ describe('openAppDatabase', () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => { untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept'); });
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
-    expect(() => db.query.write(id('Note-1')).set('title', 'changed')).toThrow(/open read-only/);
+    expect(() => db.ears.write(id('Note-1')).set('title', 'changed')).toThrow(/open read-only/);
     db.close();
     const again = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
-    expect(again.query.getAttr(id('Note-1'), 'title')).toBe('kept');
+    expect(again.ears.getAttr(id('Note-1'), 'title')).toBe('kept');
     again.close();
   });
 
@@ -225,7 +225,7 @@ describe('openAppDatabase', () => {
     await writeData(dir, () => { untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept'); });
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
     // JSON can't encode a BigInt
-    db.query.write(id('Note-1')).set('count', 1n);
+    db.ears.write(id('Note-1')).set('count', 1n);
     expect(() => db.close()).toThrow(/1 write\(s\) didn't reach the database in .*BigInt/);
     expect(() => boundEars()).toThrow();
   });
@@ -238,7 +238,7 @@ describe('openAppDatabase', () => {
     _bindEars(outer);
     try {
       const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-      expect(boundEars()).toBe(db.query);
+      expect(boundEars()).toBe(db.ears);
       db.close();
       expect(boundEars()).toBe(outer);
 

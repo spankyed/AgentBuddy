@@ -40,6 +40,15 @@ export const destroyEntity: (id: EARS.EntityId, skipPersistence?: boolean) => vo
 export const exists: (id: EARS.EntityId) => boolean;
 
 // @public (undocumented)
+export const findEntitiesByAttribute: (kind: EARS.AttrKind, value?: unknown) => EARS.EntityId[];
+
+// @public (undocumented)
+export const findEntitiesByRelationTo: (relKind: string, id: EARS.EntityId, asSource?: boolean) => EARS.EntityId[];
+
+// @public (undocumented)
+export const findEntitiesInRelationTo: (target: EARS.EntityId) => EARS.EntityId[];
+
+// @public (undocumented)
 export const findRelations: (match?: RelationMatch) => RelationRow[];
 
 // @public (undocumented)
@@ -105,15 +114,6 @@ export const lowestCommonAncestor: (a: EARS.EntityId, b: EARS.EntityId, treeKind
 
 // @public
 export const NO_ENGINE_BOUND: string;
-
-// @public (undocumented)
-export const queryEntitiesByAttribute: (kind: EARS.AttrKind, value?: unknown) => EARS.EntityId[];
-
-// @public (undocumented)
-export const queryEntitiesByRelationTo: (relKind: string, id: EARS.EntityId, asSource?: boolean) => EARS.EntityId[];
-
-// @public (undocumented)
-export const queryEntitiesInRelationTo: (target: EARS.EntityId) => EARS.EntityId[];
 
 // @public (undocumented)
 export const registerRepository: (name: string, value: unknown) => void;

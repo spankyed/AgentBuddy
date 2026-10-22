@@ -72,7 +72,7 @@ Have `.where()` delegate to it and continue to use the existing `setIds()` path.
 
 The operation belongs beside attribute storage because it knows how lists represent membership.
 Do not expose bucket maps or mutable lists to the query builder, and do not add a public export.
-Use the same operation for `queryEntitiesByAttribute()` if it removes duplicate matching logic without
+Use the same operation for `findEntitiesByAttribute()` if it removes duplicate matching logic without
 changing that function's ordering or behavior. Do not sweep unrelated query helpers into the change.
 
 This first candidate still scans incoming IDs and retains one result array per eager filter. Its

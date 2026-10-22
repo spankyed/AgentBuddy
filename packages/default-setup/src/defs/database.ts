@@ -11,7 +11,7 @@ export type { BaseEntity, QueryBuilder, RelationMatch, RelationRow, RelationStat
 export { query as qx, getAttr, getAttrs } from '#generated/ears.ts';
 export {
   getAll, getRoles, getAllEntities, getEntitiesOfType,
-  queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
+  findEntitiesByAttribute, findEntitiesByRelationTo, findEntitiesInRelationTo,
   findRelations, getRelationStats,
 } from '@apackdev/sdk/ears';
 export { getSchemaStats } from '@apackdev/sdk/database-console';

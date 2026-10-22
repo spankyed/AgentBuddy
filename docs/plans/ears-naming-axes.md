@@ -1,6 +1,6 @@
 # A name carries the operation; structure carries the rest
 
-**Status:** in progress: phases 0 (the rule, in `packages/apack-ears/CLAUDE.md`), 1 (no ambient engine: the binding and the operations over it are `@apackdev/sdk/ears`) 2 (the engine is `Ears` with `admin` beside it) and 3 (`qx` is `query`, kept as the console's injected name) are done. It lands after [`ears-public-api.md`](ears-public-api.md), whose change 4
+**Status:** done: phases 0 (the rule, in `packages/apack-ears/CLAUDE.md`), 1 (no ambient engine: the binding and the operations over it are `@apackdev/sdk/ears`), 2 (the engine is `Ears` with `admin` beside it), 3 (`qx` is `query`, kept as the console's injected name) and 4 (`store.read(partition)` → `LmdbReader`, `db.ears`, `findEntities*`; `packages/apack-host/tests/query-vocabulary.spec.ts` holds `query` to the operation). It lands after [`ears-public-api.md`](ears-public-api.md), whose change 4
 it **supersedes** on one point (see [What this supersedes](#what-this-supersedes)).
 Source read at `886c11bd5` (2026-10-22). Call-site figures are text searches over `packages` for
 `*.ts`/`*.vue`, excluding `dist/`, `publish/` and `__generated__/`; each is an upper bound on the work and
