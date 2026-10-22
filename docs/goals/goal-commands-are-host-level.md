@@ -44,8 +44,8 @@ artifact viewers, display blocks and threads. `CommandSuggestion` is live in all
 
 **2. It sources its data from threads.** `command-suggestion.ts` passes
 `() => readSurfaceState('threads', s => s.commands)`, and `useCommandItems.ts` reads the same surface.
-So an app-wide affordance over a host-level registry is routed through two default-setup features:
-library merges the declared commands with its editable ones, threads publishes the result.
+So an app-wide affordance is routed through two default-setup features before it can see its own
+data: library merges the declared commands with its editable ones, threads publishes the result.
 
 **3. That read is not total, though its type says it is.** The generated facade declares `TSelected` and
 delegates to the untyped reader, which returns `TSelected | undefined`:
@@ -65,23 +65,34 @@ Decision 5.
 **And `CommandItem` is declared twice**, beside the SDK's `PackCommand`, all three structurally
 identical (`{ name: string; placeholder: string }`):
 
-| Declaration | Role |
+| Declaration | Role today |
 |---|---|
 | `PackCommand` (`apack-sdk/src/framework/pack-commands.ts`) | the manifest contribution |
 | `CommandItem` (`default-setup/src/extensions/tiptap/command-config.ts`) | the editor's view |
 | `CommandItem` (`default-setup/src/features/threads/be/types.ts:439`) | the backend's view |
 
+`PackCommand` survives as **the shape of a command, wherever it came from**; what goes with
+`extensions.commands` is `getPackCommands()` and the module's framing of it as a manifest key. The type
+moves out of `framework/pack-commands.ts` with that function, since nothing is left to justify the
+module.
+
 ### What moves
 
-`command-suggestion.ts`, `CommandSuggestionPopup.vue`,
-`useCommandItems.ts`, `command-config.ts`.
+Four files — `goal-editor-extensions.md` already merged the extension and its Plugin into one:
+
+- `command-suggestion.ts` — the extension, its ProseMirror Plugin and `commandSuggestionKey`
+- `CommandSuggestionPopup.vue`
+- `useCommandItems.ts`
+- `command-config.ts`
 
 ### What stays in default-setup
 
-**Reference suggestion**, which is genuinely a pack concern — it links threads, library and notes
-entities, and only that pack knows them. **The commands themselves** — the 35 authored ones and the two that were manifest entries — stay
-default-setup's content, served by it under the `commands` designation (Decision 1). **`command-viewer-decoration.ts`**, which decorates a rendered command in a
-message and is a threads display concern.
+- **The commands themselves.** The 35 authored ones and the two that were manifest entries stay
+  default-setup's content, served by it under the `commands` designation (Decision 1).
+- **Reference suggestion**, genuinely a pack concern: it links threads, library and notes entities, and
+  only that pack knows them.
+- **`command-viewer-decoration.ts`**, which decorates a rendered command in a message — a threads
+  display concern.
 
 ## Decisions
 
@@ -165,8 +176,12 @@ default-setup's `extensions.textEditor.suggestions` group keeps `referenceSugges
 ### 4. One shape: `PackCommand`
 
 Both `CommandItem` declarations go. The editor, the popup and threads' backend all name
-`PackCommand` from `@apackdev/sdk`. Nothing about the shape changes, so this is a rename with a
-deletion, not a contract change.
+`PackCommand` from `@apackdev/sdk`. Nothing about the *shape* changes, so Phase 1 is a rename with two
+deletions.
+
+Its *module* does move, in Phase 2: `framework/pack-commands.ts` exists to pair the type with
+`getPackCommands()`, and once that function goes there is nothing left to justify the file. That is a
+published export changing path, so `api:update` records it.
 
 ### 5. The `| undefined` defect is not fixed here
 
@@ -189,73 +204,80 @@ Check how `declaration-binding` composes the predicate across packs before relyi
 
 ## Phases
 
-### Phase 1 — the type
+**Ordered so the source is settled before its consumer moves onto it.** The editor is moved last, in
+Phase 3, because moving it first would mean reading a source Phase 2 then replaces — a temporary read
+landed only to be deleted.
 
-**Deliverable.** Both `CommandItem` declarations deleted; `PackCommand` from `@apackdev/sdk` used by the
-editor files, the popup, and threads' backend and contract.
+### Phase 1 — one shape
+
+**Deliverable.** Both `CommandItem` declarations deleted; `PackCommand` from `@apackdev/sdk` used by
+the editor files, the popup, and threads' backend and contract. Nothing else changes: all three are
+structurally identical, so this is a rename with two deletions.
 
 **Done when:** `npm run typecheck` passes and `grep -rn 'interface CommandItem' packages/` finds
 nothing.
 
-### Phase 2 — the move
-
-**Deliverable.** The five files in Scope moved to
-`packages/apack-ui/src/components/tiptap/extensions/command-suggestion.ts` plus its popup, following
-the editor-extension convention — one file, the ProseMirror Plugin private, `commandSuggestionKey`
-exported. `useCommandItems` reads the commands accessor instead of `useSurfaceState('threads', …)`.
-Phase 3 gives that accessor its one source; until then it may read `getPackCommands()`, which is the
-only ordering constraint between the two phases.
-
-`createExtensions()` gains it; `TiptapEditor.vue` renders the popup; default-setup's manifest group
-drops `commandSuggestion`; `active-suggestions.ts` asks only the reference key.
-
-**Done when:** `npm run typecheck`; `npm run exports:update -w @apackdev/ui` and `api:update` with every
-line of the diff a path this phase moved; the editor suites pass —
-`default-setup/tests/extensions/tiptap/`, `apack-host/tests/fe/declaration-binding`,
-`renderer/tests/runtime/native-editor`, `apack-cli/tests/build/editor-declarations`.
-
-Mutation: the popup opened in a window where threads was never spawned still lists the declared
-commands — the behaviour this goal exists for, and the one no current test covers.
-
-### Phase 3 — one door, and the role that serves it
+### Phase 2 — one door, and the role that serves it
 
 **Deliverable.** Decision 1, in three pieces that land together because each is useless alone:
 
 1. **Commands become a content source.** A `commands` format compiling the authored documents, with
    `onUserEdit: "offer"`. The two `extensions.commands` entries (`pr2md`, `instructions`) become
-   content files beside the 35, and the manifest key is deleted along with `getPackCommands()`'s
-   registry path.
-2. **`COMMANDS_FOLDER` is deleted**, replaced by a frontmatter-typed field the compiler lifts as it
-   already lifts `tags`. Selection is on that field, not on `collectionPath`.
+   content files beside the 35; the manifest key, its schema, and `getPackCommands()` are deleted.
+   `PackCommand` finds a home that isn't `framework/pack-commands.ts`.
+2. **`COMMANDS_FOLDER` is deleted** (`library.ts:62`), replaced by a frontmatter-typed field the
+   compiler lifts as it already lifts `tags` — into the Document *and* its `contentHash`, so a change
+   to it is a content change. Selection is on that field, not on `collectionPath`.
 3. **`designation: "commands"`** on default-setup's library feature, and one accessor over
-   `getDesignated(role)` — which the registry already resolves to a feature ref.
+   `getDesignated`/`hasDesignation` (`@apackdev/sdk`), which resolve a role to a feature ref.
 
-**Dependencies.** None beyond Phase 2. The editor reads the accessor; the accessor does not care when
-the editor arrives.
+**Dependencies.** None. This phase is about where commands come from; it touches no editor code.
 
 **Done when:**
 
-- A library-authored command appears in the popup, proven by a spec that writes a command document and
-  reads the list the editor would show.
-- `pr2md` still appears, now as content, and still triggers `command-listener-flow` when typed.
+- A library-authored command reaches the accessor, proven by a spec that writes a command document and
+  reads what the accessor returns.
+- `pr2md` still reaches it, now as content, and still triggers `command-listener-flow` when typed.
 - **Deleting a command removes the suggestion and not the capability** — typing it still reaches the
   flow, and the next apply does not write it back. This is the claim an earlier version of this
   document was wrong about; it is a case, not a comment.
-- **A second pack claiming the `commands` designation is refused**, which is the property the role was
-  chosen for.
+- **A second pack claiming the `commands` designation is refused** — the property the role was chosen
+  for, and the reason it is a designation rather than a registry.
 - Renaming the authored folder changes nothing, which is what deleting the hardcoded path buys.
 
-**Mutation:** with the designation removed, the accessor finds no owner and the popup is empty rather
+**Mutation:** with the designation removed, the accessor finds no owner and returns nothing, rather
 than silently falling back to a hardcoded feature.
+
+### Phase 3 — the move
+
+**Deliverable.** The four files in Scope move to
+`packages/apack-ui/src/components/tiptap/extensions/command-suggestion.ts` plus its popup, following
+the editor-extension convention — one file, the ProseMirror Plugin private, `commandSuggestionKey`
+exported. `useCommandItems` reads Phase 2's accessor instead of `useSurfaceState('threads', …)`.
+
+`createExtensions()` gains it; `TiptapEditor.vue` renders the popup as it already renders
+`TiptapSearchBar`; default-setup's `extensions.textEditor.suggestions` group drops `commandSuggestion`;
+`active-suggestions.ts` asks only the reference key.
+
+**Dependencies.** Phase 2's accessor, which is the whole reason this phase is last.
+
+**Done when:** `npm run typecheck`; `npm run exports:update -w @apackdev/ui` and `api:update` with
+every line of the diff a path this phase moved; the editor suites pass —
+`default-setup/tests/extensions/tiptap/`, `apack-host/tests/fe/declaration-binding`,
+`renderer/tests/runtime/native-editor`, `apack-cli/tests/build/editor-declarations`.
+
+**Mutation:** the popup opened in a window where threads was never spawned still lists every command —
+the behaviour this goal exists for, and the one no current test covers.
 
 ### Phase 4 — docs
 
-**Deliverable.** `docs/public-facing/extensions.md` and `manifest.md`, where `textEditor` and
-`extensions.commands` are described for a pack author — the latter is **removed**, and `content.md`
-gains the `commands` format beside the others a pack may name; `packages/apack-ui/CLAUDE.md`'s tiptap section;
+**Deliverable.** `docs/public-facing/manifest.md` and `extensions.md`, where `extensions.commands` is
+described for a pack author — **removed**, with `content.md` gaining the `commands` format beside the
+others a pack may name. Then `packages/apack-ui/CLAUDE.md`'s tiptap section and
 `packages/default-setup/CLAUDE.md`'s extensions list.
 
-**Done when:** `doc-links` passes and no guide describes the command suggestion as a pack contribution.
+**Done when:** `doc-links` passes, and no guide describes the command suggestion as a pack contribution
+or `extensions.commands` as a manifest key.
 
 ## Constraints
 
@@ -263,6 +285,6 @@ gains the `commands` format beside the others a pack may name; `packages/apack-u
 - `extensions.commands` is removed, not kept beside the content path. Two doors is the defect.
 - Reference suggestion is not touched. If a phase wants to, it has found a shared seam worth naming
   rather than a reason to widen scope.
-- [`goal-editor-extensions.md`](../archive/goals/goal-editor-extensions.md) has landed, so the move is a
-  one-file move: `command-suggestion.ts` holds the extension and its Plugin, and the convention there
-  governs where it arrives.
+- [`goal-editor-extensions.md`](../archive/goals/goal-editor-extensions.md) has landed, so
+  `command-suggestion.ts` already holds the extension and its Plugin together, and the convention there
+  governs where they arrive.
