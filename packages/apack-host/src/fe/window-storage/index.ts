@@ -6,6 +6,11 @@
  *
  * The storage arrives as `WindowStorage` (a window passes its `localStorage`), so this decides what moves and the
  * window supplies where it is kept.
+ *
+ * **Host keys only.** A pack's keys are namespaced by its surface's ref (`surfaceStorage`,
+ * `@apackdev/sdk/fe`), and a pack moving its own names would run at registration rather than here — late
+ * enough to have the pack's code, early enough to precede its components. Nothing wants that yet:
+ * `docs/plans/deferred/pack-window-storage-migrations.md`.
  */
 import { compareVersions } from '@apackdev/sdk/utils/compare-versions';
 import { migration as m040 } from './0.4.0.ts';

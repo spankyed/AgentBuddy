@@ -149,10 +149,12 @@ a registry.
 
 **Left open, both named in the code that raises them:**
 
-- `'code-surface-open-tabs'` is a pack's window-storage key moved by the host's frontend migration,
-  because a pack has no frontend-migration hook. The alternatives were a dual-read, which `CLAUDE.md`
-  forbids, or losing the user's open tabs. Give packs their own window migrations and it moves there
-  unchanged (`packages/apack-host/src/fe/migrations/0.4.0.ts`).
+- ~~`'code-surface-open-tabs'` is a pack's window-storage key moved by the host.~~ **Closed.** Keys are
+  no longer typed: `surfaceStorage`/`useSurfaceStorage` (`@apackdev/sdk/fe`) derive the prefix from the
+  surface's ref, the `window-storage` pack rule refuses raw `localStorage` in pack source, and the host
+  carries no pack key. What a pack still cannot do is move its own *names*, which is
+  [its own deferred plan](../../plans/deferred/pack-window-storage-migrations.md) and wanted by nothing
+  today.
 - The migration spec found that `pickOne` answers `null`, not `undefined`, for an absent attribute. That
   is a sharp edge for every future migration, not just this one, and nothing records it but that spec.
 
