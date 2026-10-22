@@ -10,6 +10,8 @@ The survey was made at 672d70800 on master (2026-10-22); inspect current code be
 Finished when:
 - `extensions.tiptapPlugins` and its whole chain are renamed, every in-repo manifest, pack,
   template, fixture, doc and recorded file migrated in the same change.
+- The four rules in Decision 3 hold for every file under a `tiptap/extensions/` directory: one file per
+  extension, no `-extension`/`-plugin` suffix, the ProseMirror Plugin private to it.
 - The guard retires the renamed spellings and keeps the three third-party vocabularies.
 - `npm run chain` passes.
 - Record Outcome, archive this document, repair links and commit closure.
@@ -131,24 +133,84 @@ library in a manifest key. I would keep `extensions` and take the repetition; it
 
 `appExtensions` (the sibling key) is untouched.
 
+### 3. The editor-extension naming convention
+
+Four rules. Everything below follows from them, and together they remove the suffix that is currently
+doing disambiguation work instead of classification work.
+
+1. **One file, one extension, named for the behaviour.** `tiptap/extensions/<behaviour>.ts`, kebab-case,
+   **no `-extension` or `-plugin` suffix**. 9 of the 11 files already do this; `search-extension.ts`
+   carries a suffix only to avoid colliding with `search-plugin.ts`, which rule 3 deletes.
+2. **The export is PascalCase, named for the behaviour, no suffix** — `BlockquotePipe`, `SearchAndFind`,
+   `CommandSuggestion`. All eight already do this.
+3. **A ProseMirror Plugin is private to its extension.** It lives in the extension's own file and is not
+   exported. Where outside code must dispatch to its state, the file exports `<behaviour>Key`.
+4. **ProseMirror's names are never aliased.** `Plugin`, `PluginKey`, `addProseMirrorPlugins` are imported
+   as written; a local holding `key.getState()` is `state`, never `pluginState`.
+
+**Rule 3 is the one with evidence behind it.** Every ProseMirror Plugin in the tree is imported by
+exactly one file — its own extension: `searchPlugin` only by `search-extension.ts`,
+`commandSuggestionPlugin` only by `command-extension.ts`, `referenceSuggestionPlugin` only by
+`reference-extension.ts`. The split into two files buys no reuse and costs the collision. The three
+files that already co-locate both levels — `image-selection-decoration.ts`,
+`image-upload-placeholder.ts`, `command-viewer-decoration.ts` — are the shape, and
+`image-upload-placeholder.ts` is the worked example: one file, the Extension exported, the Plugin not,
+`uploadPlaceholderKey` exported because other code dispatches to it.
+
+No `PluginKey` instance is read outside its own package, so none of this is consumer-facing surface.
+
+What it changes:
+
+| Now | Then |
+|---|---|
+| `search-extension.ts` + `search-plugin.ts` | `search.ts` |
+| `command-extension.ts` + `command-suggestion-plugin.ts` | `command-suggestion.ts` |
+| `reference-extension.ts` + `reference-plugin-key.ts` + `reference-suggestion-plugin.ts` | `reference-suggestion.ts` |
+| `tiptap/{reference-node,resizable-image,sub-document-link}.ts` | the same files under `tiptap/extensions/` |
+| `searchPluginKey`, `commandSuggestionPluginKey`, `referenceSuggestionPluginKey` | `searchKey`, `commandSuggestionKey`, `referenceSuggestionKey` |
+| `SearchPluginState` | `SearchState` |
+| `searchPlugin`, `commandSuggestionPlugin`, `referenceSuggestionPlugin` (exported) | unexported `plugin()` in their extension's file |
+| `pluginState` (40 locals) | `state` |
+| `imagePastePlugin`, inline in `chat/input.vue` | an extension file of its own |
+
+`uploadPlaceholderKey` already follows rule 3 and does not move.
+
 ## Phases
 
 ### Phase 1 — the guard moves first
 
 **Deliverable.** A new `editor-concept` group in `surface-vocabulary.spec.ts` holding the ten spellings
 in Scope, and the tiptap entries removed from `KEPT` — they stop being a kept vocabulary the moment
-Phase 2 lands. Park the scan (an `ALLOWED` entry for the tree) so the group's firing and kept-spelling
+Phase 3 lands. Park the scan (an `ALLOWED` entry for the tree) so the group's firing and kept-spelling
 cases are live while the rename runs.
 
-Both `KEPT` halves change: `tiptapPlugins`, `TiptapPlugin`, `TiptapPluginBinding`,
-`TiptapPluginDeclaration`, `tiptapPluginRegistry` move out; `PluginKey`, `searchPlugin`,
-`searchPluginKey`, `SearchPluginState`, `commandSuggestionPluginKey`, `addProseMirrorPlugins`,
-`registerPlugin`, `new Plugin` stay and are the case with teeth — they are what Decision 1 rests on.
+**`KEPT` shrinks to what is actually somebody else's**, which is narrower than it looks today.
+`tiptapPlugins`, `TiptapPlugin`, `TiptapPluginBinding`, `TiptapPluginDeclaration` and
+`tiptapPluginRegistry` move out as the concept. So do `searchPlugin`, `searchPluginKey` and
+`SearchPluginState` — not because they are ours, but because **Decision 3 renames them anyway**: a
+sample asserting a spelling no file contains is the inert kind of case this repo has already paid for.
+What stays is ProseMirror's own API (`Plugin`, `PluginKey`, `addProseMirrorPlugins`, `registerPlugin`,
+`new Plugin`), the bundler names, and the Claude Code argv — and those are the case with teeth, being
+what Decision 1 rests on.
 
 **Done when:** each of the ten fails the scan when planted alone; every `KEPT` sample passes; the
 `FIRES_ON`-style case covers the new group.
 
-### Phase 2 — the manifest key and its chain
+### Phase 2 — the extension files
+
+**Deliverable.** Decision 3 applied: three merges, three moves into `extensions/`, the Key and State
+renames, the Plugins unexported, `pluginState` locals renamed, and `imagePastePlugin` given a file.
+`extensions.ts` (the barrel) follows the moves.
+
+**Dependencies.** None — this is `@apackdev/ui` and `default-setup` internals plus a derived exports map.
+
+**Done when:** `npm run typecheck`, `npm run exports:update -w @apackdev/ui` with every line of the diff
+a path this phase moved, and the editor suites pass — `apack-cli/tests/build/editor-declarations`,
+`apack-host/tests/fe/declaration-binding`, `renderer/tests/runtime/native-editor`,
+`default-setup/tests/extensions/tiptap/`. Mutation: an extension dropped from the barrel fails
+`native-editor`.
+
+### Phase 3 — the manifest key and its chain
 
 **Deliverable.** `extensions.editor` through the schema (`declaration-schema.ts`,
 `frontend-declaration.ts`), codegen (`generate-entries.ts`, `module-targets.ts`), the host
@@ -164,20 +226,22 @@ proves the rename finished.
 `npm run test:external-pack` pass. Mutation: a reader left on the old key fails
 `fe-registered-lookups.spec.ts` or `declaration-binding`'s validation rather than passing silently.
 
-### Phase 3 — recorded files
+### Phase 4 — recorded files
 
 **Deliverable.** Four derivations re-taken, each read before committing:
 
 - `npm run schema:update -w @apackdev/sdk` — `apack.schema.json` carries the manifest key.
 - `npm run api:update` — `TiptapPlugin*` are published `@apackdev/sdk/fe` entries.
 - `npm run facade:update -w @app/default-setup` — `etc/pack-types.api.md`.
-- `npm run exports:update -w @apackdev/ui` is **not** needed: the one plugin-named entry in that map,
-  `./components/tiptap/extensions/search-plugin`, is a ProseMirror Plugin and stays (Decision 1).
+- `npm run exports:update -w @apackdev/ui` **is** needed once Decision 3 lands: its map is derived from
+  `src/`, and the merges and moves change the paths — `search-extension` and `search-plugin` become
+  `search`, and three extensions move into `extensions/`. Decision 1 keeps ProseMirror's *names*; it does
+  not keep a file split that nothing uses.
 
 **Done when:** `npm run typecheck` passes with no stale recorded file, and every line of each
 regenerated diff is this rename.
 
-### Phase 4 — docs, and the guard goes live
+### Phase 5 — docs, and the guard goes live
 
 **Deliverable.** `docs/public-facing/{extensions,manifest,architecture}.md` (where a pack author reads
 the key), `packages/{apack-sdk,apack-ui,apack-host,renderer,repo-checks}/CLAUDE.md`,
