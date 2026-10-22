@@ -12,6 +12,8 @@ export function resolveCompilerPath(file: string): string {
 
 /** Compare DOS and extended Windows spellings without removing extended-path component semantics. */
 export function relativeCompilerPath(from: string, to: string): string {
+  // POSIX has one root and no namespaced spellings, so `path.relative` is already the answer.
+  if (path.sep === '/') return path.relative(from, to);
   const source = path.toNamespacedPath(from), target = path.toNamespacedPath(to);
   const root = (file: string) => {
     const ordinary = file.toUpperCase().startsWith('\\\\?\\UNC\\') ? '\\\\' + file.slice(8)

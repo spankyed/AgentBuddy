@@ -77,8 +77,15 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
   function include(next: CompilerReadSnapshot, readPath = ownedPath, project: ProjectMetadata | null = projectMetadata ?? null) {
     assertOpen();
     const writable = new Set<string>();
+    // A directory checked in this pass stays bound: links are only created where nothing exists.
+    const prepared = new Set<string>();
     const pendingLinks = new Map<string, string>();
     const mkdir = (file: string): void => {
+      if (prepared.has(file)) return;
+      prepare(file);
+      prepared.add(file);
+    };
+    const prepare = (file: string): void => {
       const stat = fs.statSync(file, { throwIfNoEntry: false });
       if (!stat) {
         mkdir(path.dirname(file));
@@ -118,7 +125,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
           throw new Error(`Conflicting captured input bytes or mode: ${sourcePath(target)}`);
         }
         const bytes = file.bytes === undefined ? Buffer.alloc(0) : project?.(sourcePath(file.file), file.bytes, readPath) ?? file.bytes;
-        const hash = digest(bytes);
+        const hash = bytes === file.bytes ? sourceHash! : digest(bytes);
         if (previous?.hash === hash) {
           if (sourceHash !== undefined) previous.sourceHash = sourceHash;
           continue;

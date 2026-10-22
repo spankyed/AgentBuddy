@@ -99,8 +99,23 @@ export function createCompilerFileView(root: string, options: {
   };
   let disposed = false;
   const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };
-  const relative = (file: string) => relativeCompilerPath(origin,
-    compilerSourcePath(compilerSourcePath(file, rootAliases), paths)).split(path.sep).join('/');
+  // The mappings and origin are fixed for the view's lifetime, so each file projects to one name.
+  const projected = new Map<string, string>();
+  const relative = (file: string) => {
+    let value = projected.get(file);
+    if (value === undefined) {
+      value = relativeCompilerPath(origin, compilerSourcePath(compilerSourcePath(file, rootAliases), paths)).split(path.sep).join('/');
+      projected.set(file, value);
+    }
+    return value;
+  };
+  // Stored buffers are private and never mutated, so a buffer's digest is computed once.
+  const digests = new WeakMap<Buffer, string>();
+  const digest = (bytes: Buffer) => {
+    let value = digests.get(bytes);
+    if (value === undefined) digests.set(bytes, value = createHash('sha256').update(bytes).digest('hex'));
+    return value;
+  };
   const physical = new Map<string, string>();
   const inputs = new Map<string, FileInput>();
   const contents = new Map<string, Buffer | undefined>();
@@ -221,7 +236,7 @@ export function createCompilerFileView(root: string, options: {
     assertOpen();
     const result = createCompilerInputObservations(origin);
     if (authoredFiles) result.record(['authored-files'], authoredFiles);
-    for (const [file, bytes] of contents) if (!exclude(file)) result.record(['file', relative(file)], bytes === undefined ? null : createHash('sha256').update(bytes).digest('hex'));
+    for (const [file, bytes] of contents) if (!exclude(file)) result.record(['file', relative(file)], bytes === undefined ? null : digest(bytes));
     for (const value of inputs.values()) if (!exclude(value.file)) result.record(['namespace', relative(value.slot)], [relative(value.physical), value.kind, value.kind === 'file' ? value.mode & 0o111 : 0]);
     for (const [directory, value] of directories) if (!exclude(value.file)) result.record(['entries', relative(directory)], value.entries);
     for (const query of directoryQueries.values()) if (!exclude(query.file)) result.record(['node-directory', relative(query.file), query.options], JSON.parse(directoryResultKey(query.result, relative)));
@@ -346,7 +361,7 @@ export function createCompilerFileView(root: string, options: {
       for (const { cursor } of directoryCursors.values()) {
         try { cursor.dispose(); } catch (error) { errors.push(error); }
       }
-      for (const state of [physical, inputs, contents, dataStats, directories, globs, included, metadata, directoryQueries, directoryCursors]) state.clear();
+      for (const state of [physical, inputs, contents, dataStats, directories, globs, included, metadata, directoryQueries, directoryCursors, projected]) state.clear();
       if (errors.length) throw new AggregateError(errors, 'Could not close compiler directory cursors');
     },
     captureLocation(file: string, kind: BuildInputKind) {
