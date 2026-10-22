@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { compilerReadMapping } from '../../bin/compiler-source-hooks.mjs';
 import { compilerDiagnostic, compilerSourcePath, relativeCompilerPath, createCompilerInputObservations, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
+import { lockIsHeld } from '@apackdev/host/process-liveness';
 
 export const BUILD_INPUTS_DIRECTORY_ENV = 'APACK_BUILD_INPUTS_DIRECTORY';
 
@@ -18,6 +19,20 @@ export function removeCompilerReadTree(directory: string): void {
   };
   unlock(directory);
   fs.rmSync(directory, { recursive: true, force: true });
+}
+
+/**
+ * A standalone tree is named after its process, because nothing outside that process removes it: a process killed
+ * before its disposal leaves the tree behind. Each new standalone tree removes the ones whose process has exited.
+ * Trees in a worker's workspace need none of this; the parent removes the workspace whatever the worker did.
+ */
+function removeAbandonedReadTrees(parent: string): void {
+  for (const name of fs.readdirSync(parent)) {
+    const pid = /^apack-inputs-(\d+)-[^-]+$/.exec(name)?.[1];
+    if (pid === undefined || lockIsHeld(Number(pid))) continue;
+    try { removeCompilerReadTree(path.join(parent, name)); }
+    catch { /* another process removing it, or not ours to remove; the next tree tries again */ }
+  }
 }
 
 interface CompilerReadLocation {
@@ -40,7 +55,8 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
   const workspace = process.env[BUILD_INPUTS_DIRECTORY_ENV];
   const parent = workspace ?? os.tmpdir();
   if (!path.isAbsolute(parent)) throw new Error('Compiler input workspace must be absolute');
-  const directory = fs.realpathSync.native(fs.mkdtempSync(path.join(parent, 'apack-inputs-')));
+  if (!workspace) removeAbandonedReadTrees(parent);
+  const directory = fs.realpathSync.native(fs.mkdtempSync(path.join(parent, `apack-inputs-${process.pid}-`)));
   const roots = new Map<string, string>();
   const dataRoots = new Map<string, string>();
   const directories = new Set([directory]);

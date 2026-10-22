@@ -185,7 +185,8 @@ exercise the real bootstrap and runner.
 
 Read trees beneath `APACK_BUILD_INPUTS_DIRECTORY` retain their files until the parent settles the
 compiler process and removes the workspace. Disposing a frame closes its API and bookkeeping; it
-cannot unlink DLLs still mapped by the worker. Standalone trees own their own deletion.
+cannot unlink DLLs still mapped by the worker. Standalone trees own their own deletion, and are named after
+their process (`apack-inputs-<pid>-…`) so the next standalone tree removes any whose process died before disposing it.
 
 The macOS native-library regression compiles a small addon with `clang` and the selected Node
 installation's `include/node` headers. These are developer test requirements, not CLI runtime

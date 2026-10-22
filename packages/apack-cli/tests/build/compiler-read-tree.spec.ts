@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
 import { assertNativeCompilerObservations, createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
 import { BUILD_INPUTS_DIRECTORY_ENV, createCompilerReadTree, removeCompilerReadTree, type CompilerReadTree } from '../../src/build/compiler-read-tree.ts';
@@ -33,6 +34,24 @@ it('replays retained copy integrity after the source disappears and refuses writ
   fs.writeFileSync(copy, 'CHANGED');
   fs.chmodSync(copy, mode & ~0o222);
   expect(() => assertNativeCompilerObservations(observed)).toThrow(/changed/);
+});
+
+/** A standalone tree's process may die before disposing it; the next standalone tree removes it */
+it('removes standalone trees whose process has exited and keeps a live process\'s', () => {
+  const parent = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-standalone-trees-')));
+  roots.push(parent);
+  const exited = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' }).stdout;
+  const abandoned = path.join(parent, `apack-inputs-${exited}-AbCdEf`);
+  const live = path.join(parent, `apack-inputs-${process.pid}-GhIjKl`);
+  for (const tree of [abandoned, live]) {
+    fs.mkdirSync(path.join(tree, 'work'), { recursive: true });
+    fs.chmodSync(tree, 0o500);
+  }
+  vi.stubEnv('TMPDIR', parent);
+  trees.push(createCompilerReadTree({ files: [], locations: [], links: [] }, []));
+  expect(fs.existsSync(abandoned)).toBe(false);
+  expect(fs.existsSync(live)).toBe(true);
+  fs.chmodSync(live, 0o700);
 });
 
 it('lets the parent remove an abandoned read-only workspace without following foreign links', () => {
