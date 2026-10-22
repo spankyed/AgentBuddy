@@ -310,20 +310,16 @@ it last in this phase's commits.
 
 **Done when:** `npm run typecheck`, `npm run api:check`, `npm run schema:check -w @apackdev/sdk`,
 `npm run test:unit`, `npm run build:default-setup` and `npm run test:external-pack` pass.
-`git grep 'usePlugin\|PluginDeclaration\|features\[\]\.plugin'` finds nothing outside `docs/archive`.
+`git grep -E '\busePlugin\b|\bPluginDeclaration\b|\bdefinePlugin\b'` finds nothing outside
+`docs/archive`, `CHANGELOG.md` and the guard's own retired list.
 
-> **This condition is not met, and cannot be.** Unanchored it matches `PluginDeclaration` as a
-> substring, and all five occurrences of that string in `packages/apack-sdk/src/framework/` are
-> `TiptapPluginDeclaration` — published API Decision 2 of this document forbids moving. Satisfying the
-> grep would mean breaking the constraint printed beside it.
->
-> What was verified instead is the anchored form, which returns nothing:
-> `git grep -E '\busePlugin\b|\bPluginDeclaration\b|\bdefinePlugin\b'`, outside `docs/archive`,
-> `CHANGELOG.md` (a 2024 entry, released history) and the guard's own retired list (which has to spell
-> the names it retires).
->
-> **Replacing the condition with that form is the author's call, not the implementer's.** It is left
-> here as written so nobody reads an amended criterion as one that was met.
+**Anchored, on the author's decision, because the unanchored form could not hold beside Decision 2.**
+Written without `\b` it matched `PluginDeclaration` as a substring, and all five occurrences of that
+string in `packages/apack-sdk/src/framework/` are `TiptapPluginDeclaration` — published API Decision 2
+forbids moving, so the phase could only have been closed by breaking the constraint beside it. The two
+exceptions the condition now names are a 2024 changelog entry, which is released history, and the
+guard, which has to spell the names it retires. A later exit grep should be anchored from the start, or
+name the kept compound it will hit.
 
 ### Phase 3 — the wire: `surfaceId` and the event names
 
