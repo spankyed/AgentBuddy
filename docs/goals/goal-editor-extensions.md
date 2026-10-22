@@ -148,6 +148,55 @@ doing disambiguation work instead of classification work.
 4. **ProseMirror's names are never aliased.** `Plugin`, `PluginKey`, `addProseMirrorPlugins` are imported
    as written; a local holding `key.getState()` is `state`, never `pluginState`.
 
+**The whole convention on one real file.** `search` is the pair that collides today, so it is the
+example worth reading before any of the rest.
+
+```ts
+// Now — two files, and searchPlugin has exactly one caller
+// search-extension.ts
+import { searchPlugin } from './search-plugin.ts'
+export { searchPluginKey } from './search-plugin.ts'
+export const SearchAndFind = Extension.create({
+  addProseMirrorPlugins() { return [searchPlugin()] },
+})
+
+// search-plugin.ts
+import { Plugin, PluginKey } from '@tiptap/pm/state'
+export interface SearchPluginState { … }
+export const searchPluginKey = new PluginKey<SearchPluginState>('search')
+export function searchPlugin(): Plugin<SearchPluginState> { return new Plugin({ … }) }
+```
+
+```ts
+// Then — one file, search.ts
+import { Extension } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'   // theirs, imported as written
+
+export interface SearchState { … }                      // was SearchPluginState
+export const searchKey = new PluginKey<SearchState>('search')   // was searchPluginKey
+
+function plugin(): Plugin<SearchState> {                // was exported searchPlugin; now private
+  return new Plugin<SearchState>({ key: searchKey, … })
+}
+
+export const SearchAndFind = Extension.create({
+  name: 'searchAndFind',
+  addProseMirrorPlugins() { return [plugin()] },
+})
+```
+
+`Plugin` still appears four times after the change, and every one is ProseMirror's. **Nothing here
+abstracts ProseMirror away and nothing aliases its imports** — the only names that moved are the ones
+we chose.
+
+**The principle under rules 3 and 4: an identifier says what it holds, the type says whose class it
+is.** `const searchKey: PluginKey<SearchState>` already states that it is ProseMirror's, so repeating
+`Plugin` in the name buys nothing; the behaviour prefix earns its place because a file may hold more
+than one key. The same reading makes a local holding `searchKey.getState(state)` a `state`, and makes
+the private factory `plugin()` rather than `searchPlugin()` — it returns a `Plugin`, and it sits in the
+file that *is* search, so the prefix would stutter. A short one inlines into `addProseMirrorPlugins()`
+instead.
+
 **Rule 3 is the one with evidence behind it.** Every ProseMirror Plugin in the tree is imported by
 exactly one file — its own extension: `searchPlugin` only by `search-extension.ts`,
 `commandSuggestionPlugin` only by `command-extension.ts`, `referenceSuggestionPlugin` only by
