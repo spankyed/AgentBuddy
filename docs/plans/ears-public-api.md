@@ -1,6 +1,6 @@
 # EARS's API says what it does
 
-**Status:** proposed, not started; Phase 0 (the stored-data check) is done and recorded below. Source read
+**Status:** in progress: Phase 0 (the stored-data check) and Phase 1 (`transact`) are done. Source read
 at `ff45e4ff7` (2026-10-22). Call-site figures come from a TypeScript AST pass over every `.ts`/`.vue` file
 outside `dist/`, `__generated__/` and `node_modules`, on that tree; the typecheck is the exact count once a
 signature moves.
@@ -445,12 +445,17 @@ Each phase leaves the chain green and is one commit.
 | Phase | What | Depends on | Done when |
 |---|---|---|---|
 | 0. Check the data | The stored-data probe | — | **Done 2026-10-22**: [What the stored data says](#what-the-stored-data-says) |
-| 1. Stored type | 3: `typeOf`, hydration from `entities`, `entityType` as metadata, one record per relation, no endpoint rows, format 2 and its conversion script | 0 | Nothing parses an id; the probe reads zero for every doubled fact on a converted copy of the prod data, and the app boots on it; contract suite and bench pass |
-| 2. `transact` | 1, with the adapter's unit flush and buffered destroy | 1 | A throwing unit leaves memory and the LMDB files as they were (one case per write, each mutation-checked); a returning unit reaches one LMDB transaction per environment; bench within tolerance with and without a unit open |
-| 3. The reshape | 2, 5, 6 and 7 in one migration of every call site | 2 | No `tx`, `put`, `update`, `batchPut`, `updateBatch`, `linkOne`, `safeLink`, `unlinkIf`, `unlinkWhere`, `relPatch`, `patchLink`, `ensure`, `define`, `page` in the tree; the reserved-name and unknown-name refusals each have a firing case; DSL re-import replaces a flow whole |
-| 4. No ambient engine | 4 | 3 | `@apackdev/ears` has no module-level state, and `tests/no-module-state.spec.ts` drops its one exception |
+| 1. `transact` | 1, with the adapter's unit flush and buffered destroy | — | **Done** (`110ee8f1a`): a throwing unit leaves memory and the LMDB files as they were (one case per write, each mutation-checked); a returning unit reaches one LMDB transaction per environment; writes outside a unit cost what they did |
+| 2. The reshape | 2, 5, 6 and 7 in one migration of every call site | 1 | No `tx`, `put`, `update`, `batchPut`, `updateBatch`, `linkOne`, `safeLink`, `unlinkIf`, `unlinkWhere`, `relPatch`, `patchLink`, `ensure`, `define`, `page` in the tree; the reserved-name and unknown-name refusals each have a firing case; DSL re-import replaces a flow whole |
+| 3. Stored type | 3: `typeOf`, hydration from `entities`, `entityType` as metadata, one record per relation, no endpoint rows, format 2 and its conversion script | 0, 2 | Nothing parses an id; the probe reads zero for every doubled fact on a converted copy of the prod data, and the app boots on it; contract suite and bench pass |
+| 4. No ambient engine | 4 | 2 | `@apackdev/ears` has no module-level state, and `tests/no-module-state.spec.ts` drops its one exception |
 
-The TNode updaters' existence guard (see 2) is a bug fix that needs none of this and can land first.
+**The reshape comes before the stored type**, because storing an entity's type needs every creation to name
+one: today `tx(id, true)` names none, and the engine reads it off the id. After the split, `create` and
+`upsert` always carry a type, so the stored type has one writer and the id prefix none. `transact` comes
+first because the reshape's DSL re-import uses it.
+
+The TNode updaters' existence guard (see 2) landed first, on its own (`6ad0a966a`).
 
 Phase 3 is one pass on purpose: entry points (2) and builder members (5) appear on the same lines, and
 moving them in two passes touches every line twice. Its size, as tx-family calls outside the engine's own
@@ -473,7 +478,7 @@ Every phase that moves a public export runs `npm run api:update` (ears and SDK) 
 `entityType` attribute stops being stored; the prompts change), so `content-parity:update -w
 @app/default-setup` re-records deliberately in those two and nowhere else.
 
-## Decisions to settle before Phase 1
+## Decisions
 
 - **The storage format goes to 2**, with the one-off conversion above run on a copy of the prod data. This
   is the one change here that touches data on disk.
