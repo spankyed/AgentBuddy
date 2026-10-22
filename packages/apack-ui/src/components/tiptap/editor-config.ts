@@ -15,6 +15,7 @@ export interface EditorConfig {
   blockMenu: boolean            // block menu + image bubble (also gated by showGutter prop)
   textBubbleMenu: boolean
   searchBar: boolean
+  commandSuggestion: boolean   // `/` opens the chat's slash commands (the app's, through the `commands` designation)
 }
 
 type ConfigKey = `${TiptapMode}:${TiptapVariant}`
@@ -35,6 +36,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     blockMenu: true,
     textBubbleMenu: true,
     searchBar: true,
+    commandSuggestion: false,
   },
   'input:chat': {
     editable: true,
@@ -51,6 +53,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     blockMenu: false,
     textBubbleMenu: true,
     searchBar: false,
+    commandSuggestion: true,
   },
   'viewer:full': {
     editable: false,
@@ -67,6 +70,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     blockMenu: false,
     textBubbleMenu: false,
     searchBar: false,
+    commandSuggestion: false,
   },
   'viewer:chat': {
     editable: false,
@@ -83,6 +87,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     blockMenu: false,
     textBubbleMenu: false,
     searchBar: false,
+    commandSuggestion: false,
   },
 }
 

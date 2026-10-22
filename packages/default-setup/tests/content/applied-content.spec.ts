@@ -108,7 +108,7 @@ describe('the applied content over this pack’s real content', () => {
     const declared = entries.reduce((total, entry) => total + (entry.count ?? 0), 0);
 
     expect(entries.map((entry) => entry.key).sort(), 'the pack stopped applying a key this spec covers')
-      .toEqual(['actions', 'flows', 'library', 'notes', 'prompts']);
+      .toEqual(['actions', 'commands', 'flows', 'library', 'notes', 'prompts']);
     expect(declared, 'the index declares nothing, so every case here would pass over nothing').toBeGreaterThan(50);
     expect(first.record.written.size, 'an entry per declared item').toBe(declared);
     expect([...first.record.written].filter(([, item]) => Object.keys(item.parts).length === 0), 'an entry with no parts')

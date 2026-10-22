@@ -19,7 +19,8 @@ import { stepRegistry } from '../../src/steps/registry.ts';
 import { artifactRegistry } from '../../src/artifacts/registry.ts';
 import { blockRegistry } from '../../src/blocks/registry.ts';
 import { _contentWriterRegistry } from '../../src/content/writers.ts';
-import { getPackCommands, getSettingsCatalog, onPackCatalogChanged } from '../../src/framework/index.ts';
+import { getSettingsCatalog, onPackCatalogChanged } from '../../src/framework/index.ts';
+import { getCommands } from '../../src/commands/index.ts';
 import { importCompiledContent, registeredContentKeys } from '../../src/utils/apply.ts';
 import { getDslDeclarations } from '../../src/fe/dsl-reader.ts';
 import { textEditorExtensionsRegistry } from '../../src/fe/text-editor-extensions.ts';
@@ -108,7 +109,7 @@ describe('with no app bound', () => {
       ['registeredContentKeys', () => registeredContentKeys('memo-pack')],
       ['getSettingsCatalog', () => getSettingsCatalog()],
       ['onPackCatalogChanged', () => onPackCatalogChanged(() => {})],
-      ['getPackCommands', () => getPackCommands()],
+      ['getCommands', () => getCommands()],
     ];
     for (const [name, use] of backendLookups) expect(use, name).toThrow('bindHost(runtime)');
     for (const [name, use] of [['getDslDeclarations', () => getDslDeclarations()], ['textEditorExtensionsRegistry.getAll', () => textEditorExtensionsRegistry.getAll()]] as const) {

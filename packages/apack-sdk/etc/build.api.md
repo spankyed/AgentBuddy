@@ -555,6 +555,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     surface: z.ZodOptional<z.ZodType<SurfaceDeclaration, z.ZodTypeDef, SurfaceDeclaration>>;
     services: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     repositories: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
+    getCommands: z.ZodOptional<z.ZodString>;
     references: z.ZodOptional<z.ZodType<ReferenceDeclarations, z.ZodTypeDef, ReferenceDeclarations>>;
 }, "strict", z.ZodTypeAny, {
     description: string;
@@ -580,6 +581,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         } | undefined;
     } | undefined;
     repositories?: Record<string, string> | undefined;
+    getCommands?: string | undefined;
 }, {
     description: string;
     entities?: Record<string, string | null> | undefined;
@@ -597,6 +599,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         } | undefined;
     } | undefined;
     repositories?: Record<string, string> | undefined;
+    getCommands?: string | undefined;
 }>;
 
 // @public
@@ -729,6 +732,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }>, z.ZodTypeDef, Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
@@ -746,6 +750,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }>>>;
     extensions: z.ZodOptional<z.ZodObject<{
         textEditor: z.ZodOptional<z.ZodType<Record<string, {
@@ -876,11 +881,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
             be?: string | undefined;
         }>>>;
-        commands: z.ZodOptional<z.ZodType<Record<string, {
-            placeholder: string;
-        }>, z.ZodTypeDef, Record<string, {
-            placeholder: string;
-        }>>>;
         services: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
         dsl: z.ZodOptional<z.ZodType<Record<string, {
             entry: string;
@@ -968,9 +968,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
-        commands?: Record<string, {
-            placeholder: string;
-        }> | undefined;
         textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
@@ -1042,9 +1039,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
-        }> | undefined;
-        commands?: Record<string, {
-            placeholder: string;
         }> | undefined;
         textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
@@ -1290,6 +1284,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
     $schema?: string | undefined;
@@ -1370,9 +1365,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
-        }> | undefined;
-        commands?: Record<string, {
-            placeholder: string;
         }> | undefined;
         textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
@@ -1459,6 +1451,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
     $schema?: string | undefined;
@@ -1532,9 +1525,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
-        }> | undefined;
-        commands?: Record<string, {
-            placeholder: string;
         }> | undefined;
         textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
@@ -1628,6 +1618,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
     $schema?: string | undefined;
@@ -1708,9 +1699,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
-        }> | undefined;
-        commands?: Record<string, {
-            placeholder: string;
         }> | undefined;
         textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
@@ -1797,6 +1785,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
     $schema?: string | undefined;
@@ -1870,9 +1859,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
-        }> | undefined;
-        commands?: Record<string, {
-            placeholder: string;
         }> | undefined;
         textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
@@ -1966,6 +1952,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
     $schema?: string | undefined;
@@ -2046,9 +2033,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
-        }> | undefined;
-        commands?: Record<string, {
-            placeholder: string;
         }> | undefined;
         textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
@@ -2390,11 +2374,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }>>>>;
-    commands: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
-        placeholder: string;
-    }>, z.ZodTypeDef, Record<string, {
-        placeholder: string;
-    }>>>>;
     dsl: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -2453,6 +2432,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }>, z.ZodTypeDef, Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
@@ -2462,6 +2442,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }>>>;
 }, "strict", z.ZodTypeAny, {
     id: string;
@@ -2492,6 +2473,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
@@ -2559,9 +2541,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
-    commands?: Record<string, {
-        placeholder: string;
-    }> | undefined;
     textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2621,6 +2600,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
@@ -2680,9 +2660,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         kind?: "display" | "input" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
-    }> | undefined;
-    commands?: Record<string, {
-        placeholder: string;
     }> | undefined;
     textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
@@ -2750,6 +2727,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
@@ -2817,9 +2795,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
-    commands?: Record<string, {
-        placeholder: string;
-    }> | undefined;
     textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2879,6 +2854,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
@@ -2938,9 +2914,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         kind?: "display" | "input" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
-    }> | undefined;
-    commands?: Record<string, {
-        placeholder: string;
     }> | undefined;
     textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
@@ -3008,6 +2981,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
+        getCommands?: string | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
@@ -3074,9 +3048,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         kind?: "display" | "input" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
-    }> | undefined;
-    commands?: Record<string, {
-        placeholder: string;
     }> | undefined;
     textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
@@ -3376,7 +3347,6 @@ export const PROVENANCE_KINDS: {
     readonly relKinds: (m: ProvenanceManifest) => string[];
     readonly referenceTypes: (m: ProvenanceManifest) => string[];
     readonly referenceCategories: (m: ProvenanceManifest) => string[];
-    readonly commands: (m: ProvenanceManifest) => string[];
     readonly tiptapExtensions: (m: ProvenanceManifest) => string[];
     readonly surfaces: (m: ProvenanceManifest, packId: string) => FeatureRef[];
 };
@@ -3388,7 +3358,6 @@ export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;
 export interface ProvenanceManifest extends PackDataDeclarations {
     // (undocumented)
     extensions?: {
-        commands?: Readonly<Record<string, unknown>>;
         textEditor?: FrontendDeclaration['textEditor'];
     };
     // (undocumented)

@@ -5,6 +5,7 @@ import type { OpenEntity } from '@apackdev/sdk/events';
 import type { ContextMenuItem, HotkeyEvent, Surface, SurfaceEvent, ShellPanelSizes } from '@apackdev/sdk/fe';
 import type { HostSurfaceEvents, Message, _Asker } from '@apackdev/sdk/events';
 import type { ApplicationHotkeys } from '@apackdev/sdk/types';
+import type { PackCommand } from '@apackdev/sdk/commands';
 import type { ShellClient, ShellFailure } from '../../../fe/client.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 import type { ShellSurfaceCatalog } from '../../../fe/surface-selection.ts';
@@ -115,6 +116,8 @@ export interface ShellContext {
   surfaces: Surface[];
   /** Which tabs show, the host's (AppState) */
   surfaceVisibility: Record<string, boolean>;
+  /** The chat's slash commands, the app's: whichever feature plays the `commands` designation serves them */
+  commands: PackCommand[];
   /** The surfaces opened, for back and forward */
   surfaceHistory: string[];
   historyIndex: number;

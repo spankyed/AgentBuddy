@@ -156,7 +156,6 @@ export const PROVENANCE_KINDS = {
   relKinds: (m: ProvenanceManifest) => Object.keys(_packRelationTypes(m)),
   referenceTypes: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.types ?? {})),
   referenceCategories: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.categories ?? {})),
-  commands: (m: ProvenanceManifest) => Object.keys(m.extensions?.commands ?? {}),
   tiptapExtensions: (m: ProvenanceManifest) => Object.values(m.extensions?.textEditor ?? {}).flatMap(surface => Object.keys(surface.extensions ?? {})),
   // Keyed by ref, so a dependent reusing one of its dependency's feature ids keeps both apart
   surfaces: (m: ProvenanceManifest, packId: string) => Object.entries(m.features ?? {}).filter(([, f]) => f.surface).map(([id]) => resolveName(id, packId)),
@@ -169,7 +168,7 @@ export type PackProvenance = Partial<Record<ProvenanceKind, Record<string, strin
 
 /** The parts of a manifest `PROVENANCE_KINDS` reads; a `PackManifest` satisfies it */
 export interface ProvenanceManifest extends PackDataDeclarations {
-  extensions?: { commands?: Readonly<Record<string, unknown>>; textEditor?: import('../framework/frontend-declaration.ts').FrontendDeclaration['textEditor'] };
+  extensions?: { textEditor?: import('../framework/frontend-declaration.ts').FrontendDeclaration['textEditor'] };
   features?: Record<string, { entities?: Record<string, string | null>; surface?: unknown; references?: import('../framework/reference-declaration.ts').ReferenceDeclarations }>;
 }
 

@@ -161,14 +161,14 @@
       }
     },
     "relations": [
+      "Collection:Guides --contains--> Document:Getting Started",
       "Collection:Guides --parent_of--> Collection:advanced",
       "Collection:advanced --contains--> Document:deep dive",
-      "Collection:Guides --contains--> Document:Getting Started",
+      "Note:Projects --contains--> Note:Projects/2024",
       "Note:Projects --contains--> Note:Projects/Archive",
-      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task",
-      "Note:Projects --contains--> Note:Projects/task one",
       "Note:Projects --contains--> Note:Projects/Task Two",
-      "Note:Projects --contains--> Note:Projects/2024"
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task"
     ],
     "media": [
       "Document:Getting Started/pic.png=PNGDATA"
@@ -179,13 +179,18 @@
         "updated": 0,
         "skipped": 0
       },
-      "prompts": {
+      "commands": {
         "created": 0,
         "updated": 0,
         "skipped": 0
       },
       "library": {
         "created": 4,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 0,
         "updated": 0,
         "skipped": 0
       }

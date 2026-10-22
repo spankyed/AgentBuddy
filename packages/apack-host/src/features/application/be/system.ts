@@ -25,7 +25,7 @@ type ApplicationEvent = ApplicationClientEvent | { type: 'SEND_STATE' };
  * The host `application` system over the packs in `registry`. It records the user's choices, and sends the
  * application surface the visibility again when a choice or a pack's defaults change, so every window agrees.
  */
-export function createApplicationSystem(registry: Pick<PackRegistry, 'surfaceDefaults' | 'loadedPacks' | 'getPackRuntime'>) {
+export function createApplicationSystem(registry: Pick<PackRegistry, 'surfaceDefaults' | 'loadedPacks' | 'getPackRuntime' | 'commands'>) {
   return setup({
     types: { events: {} as ApplicationEvent },
     actions: handlers.actions({
@@ -36,6 +36,19 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'surfaceDef
           return [id, runtime.registrationId];
         }));
         broadcastToSurface('application', { type: 'PACK_RUNTIMES_UPDATED', runtimes });
+      },
+      /**
+       * The chat's slash commands, which the shell holds for every editor in the window. Read from the designation
+       * on each send rather than held here: the feature that owns the commands is the one that knows them, and this
+       * system only has to be told that they moved.
+       *
+       * **From the registry, not `getCommands()`**, although they are the same list: that helper prefers a bound
+       * frontend, whose answer is the shell's copy of what this send carries. Reading it here would make the
+       * publisher read its own output back — in the app the two hosts are different processes and it would be
+       * merely wrong, and in one process it answers empty, which is what a pack's tests run in.
+       */
+      sendCommands: () => {
+        broadcastToSurface('application', { type: 'COMMANDS_UPDATED', commands: registry.commands() });
       },
       sendVisibility: () => {
         broadcastToSurface('application', { type: 'SURFACE_VISIBILITY_UPDATED', surfaceVisibility: surfaceVisibility(registry) });
@@ -56,8 +69,9 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'surfaceDef
         guard: ({ event }) => splitRef(event.surface) !== undefined,
         actions: ({ event }) => appState.update({ lastActiveSurface: event.surface }),
       },
-      // A pack coming or going brings or takes its features' defaults
-      SEND_STATE: { actions: ['sendVisibility', 'sendRuntimes'] },
+      COMMANDS_CHANGED: { actions: 'sendCommands' },
+      // A pack coming or going brings or takes its features' defaults, and its commands with them
+      SEND_STATE: { actions: ['sendVisibility', 'sendRuntimes', 'sendCommands'] },
     },
   });
 }

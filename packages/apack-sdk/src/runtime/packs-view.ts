@@ -10,7 +10,7 @@ import type { BlockDefinition } from '../blocks/types.ts';
 import type { ContentWriter } from '../content/writers.ts';
 import type { ContentApplier } from '../utils/apply.ts';
 import type { SettingsCatalog } from '../framework/pack-settings.ts';
-import type { PackCommand } from '../framework/pack-commands.ts';
+import type { PackCommand } from '../commands/index.ts';
 import type { HelpCatalog } from '../framework/pack-help.ts';
 
 /** Entity types and relation kinds by the name they're declared under (`apack.json` `entities`, `relKinds`) */
@@ -55,6 +55,7 @@ export interface PackRegistryView extends PackExtensionsView {
   /** Navigation policy is separate from preference definitions. */
   surfaceDefaults(): Record<string, boolean>;
   /** Enabled command declarations matching accepted active runtimes, in catalog admission order. */
+  /** What the feature playing the `commands` designation serves, or none when no pack plays it */
   commands(): PackCommand[];
   /** Every registered pack's help entries, for the Settings view's Help list */
   help(): HelpCatalog;

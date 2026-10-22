@@ -377,12 +377,12 @@ describe('the snapshot format', () => {
   };
   /** What the pack contributes, which a dependent reads to know what it may send to and build with */
   const MANIFEST_EXTENSION_FIELDS: Record<keyof NonNullable<PackManifest['extensions']>, true> = {
-    artifacts: true, blocks: true, commands: true, dsl: true, appExtensions: true, textEditor: true, help: true, services: true, settings: true, steps: true,
+    artifacts: true, blocks: true, dsl: true, appExtensions: true, textEditor: true, help: true, services: true, settings: true, steps: true,
   };
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
     description: true, entities: true, designation: true, surface: true, references: true, repositories: true, services: true,
-    settings: true, system: true, types: true,
+    settings: true, system: true, types: true, getCommands: true,
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
@@ -397,10 +397,10 @@ describe('the snapshot format', () => {
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
     declarationRevision: true,
     id: true, features: true, services: true, bindServices: true, ears: true, repositories: true, lifecycle: true, migrations: true, steps: true,
-    artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, settings: true, dependencies: true,
+    artifacts: true, blocks: true, contentWriters: true, appliers: true, settings: true, dependencies: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
-    designation: true, system: true, surface: true, services: true, settings: true,
+    designation: true, system: true, surface: true, services: true, settings: true, getCommands: true,
   };
   const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { machine: true, receives: true };
   const REGISTRATION_SURFACE_FIELDS: Record<keyof PackFeatureSurface, true> = { receives: true };
@@ -441,8 +441,8 @@ describe('the snapshot format', () => {
       fields: ['declarationRevision', 'dslDefinitions', 'entityDestinations', 'eventContracts', 'facades', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: ['$schema', 'build', 'checks', 'consumes', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
-        extensions: ['appExtensions', 'artifacts', 'blocks', 'commands', 'dsl', 'help', 'services', 'settings', 'steps', 'textEditor'],
-        feature: ['description', 'designation', 'entities', 'references', 'repositories', 'services', 'settings', 'surface', 'system', 'types'],
+        extensions: ['appExtensions', 'artifacts', 'blocks', 'dsl', 'help', 'services', 'settings', 'steps', 'textEditor'],
+        feature: ['description', 'designation', 'entities', 'getCommands', 'references', 'repositories', 'services', 'settings', 'surface', 'system', 'types'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
         surface: ['canvas', 'chat', 'contract', 'default', 'defaultVisible', 'fallbackPanel', 'hotkeys', 'icon', 'isPinned', 'label', 'options', 'panel', 'state'],
@@ -451,12 +451,12 @@ describe('the snapshot format', () => {
         contentField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['appliers', 'artifacts', 'bindServices', 'blocks', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'repositories', 'services', 'settings', 'steps'],
-        feature: ['designation', 'services', 'settings', 'surface', 'system'],
+        fields: ['appliers', 'artifacts', 'bindServices', 'blocks', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'repositories', 'services', 'settings', 'steps'],
+        feature: ['designation', 'getCommands', 'services', 'settings', 'surface', 'system'],
         system: ['machine', 'receives'],
         surface: ['receives'],
       },
-      provenanceKinds: ['commands', 'entities', 'referenceCategories', 'referenceTypes', 'relKinds', 'surfaces', 'tiptapExtensions'],
+      provenanceKinds: ['entities', 'referenceCategories', 'referenceTypes', 'relKinds', 'surfaces', 'tiptapExtensions'],
       facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackGroupSettings', 'PackStepNodes', 'PackSurfaceEvents', 'PackSurfaceState', 'PackSystemEvents', 'Repositories', 'Services'],
     });
   });

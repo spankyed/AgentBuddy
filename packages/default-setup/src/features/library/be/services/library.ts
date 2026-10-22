@@ -2,10 +2,10 @@ import * as path from 'path'
 import { repository } from '#generated/repository.ts';
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '#features/library/be/types.ts';
 import { EARS } from '#generated/ears.ts';
-import { getPackCommands } from '@apackdev/sdk/framework';
 import * as symlink from '#features/library/be/repository/symlink.ts';
 import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
-import type { CommandItem } from '#generated/types.ts';
+import { COMMANDS_DOCUMENT_TYPE } from '#features/library/be/types.ts';
+import type { PackCommand } from '@apackdev/sdk/commands';
 
 
 // ---------------------------------------------------------------------------
@@ -59,12 +59,6 @@ function makeSymlinkCollectionDTO(id: string, name: string): CollectionDTO {
   } as CollectionDTO
 }
 
-/** The library folder whose documents list the chat's slash commands, one `**name**: placeholder` field per command */
-const COMMANDS_FOLDER = ['internal', 'commands'] as const
-
-const inCommandsFolder = (doc: DocumentDTO): boolean =>
-  (doc.collectionPath ?? []).join('/') === COMMANDS_FOLDER.join('/')
-
 // ---------------------------------------------------------------------------
 // LibraryService
 // ---------------------------------------------------------------------------
@@ -109,24 +103,24 @@ export class LibraryService {
   }
 
   /**
-   * The chat's slash commands: eligible pack declarations in catalog order, then the field sections
-   * of every document in the commands folder, in document
-   * order (then name). A command defined twice keeps the first, so a document can't shadow a declared one.
+   * The chat's slash commands: the field sections of every command document, in document order then
+   * name, one `**name**: placeholder` field per command.
+   *
+   * **One source, so no precedence rule.** Every command is a field of a document of
+   * `COMMANDS_DOCUMENT_TYPE`, so there is nothing to merge and no declaration a document could shadow;
+   * a name two documents define keeps the first. This pack ships its own in
+   * `src/content/commands/internal/`.
    */
-  commands(): CommandItem[] {
-    const documents = repository.libraryQueries.getDocuments()
-      .filter(inCommandsFolder)
-      .sort((a: DocumentDTO, b: DocumentDTO) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name))
-    const commands = new Map<string, CommandItem>()
-    for (const command of getPackCommands()) {
-      if (!commands.has(command.name)) commands.set(command.name, { name: command.name, placeholder: command.placeholder })
-    }
-    for (const document of documents) {
-      for (const section of document.content) {
+  commands(): PackCommand[] {
+    const commands = new Map<string, PackCommand>()
+    for (const doc of repository.libraryQueries.getDocuments()
+      .filter((doc: DocumentDTO) => doc.documentType === COMMANDS_DOCUMENT_TYPE)
+      .sort((a: DocumentDTO, b: DocumentDTO) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name))) {
+      for (const section of doc.content) {
         if (section.type !== 'field') continue
-        for (const field of section.fields) {
-          if (!commands.has(field.key)) commands.set(field.key, { name: field.key, placeholder: field.value })
-        }
+        // A name appears once. Not a precedence rule between sources — there is one source — but a
+        // display one: the chat lists each command once, and the first document to define it wins.
+        for (const field of section.fields) if (!commands.has(field.key)) commands.set(field.key, { name: field.key, placeholder: field.value })
       }
     }
     return [...commands.values()]
@@ -153,6 +147,8 @@ export class LibraryService {
     content: string | ContentSection[];
     tags?: string[];
     parentId?: string;
+    /** What the document is: `commands` makes it a slash-command list */
+    documentType?: string;
   }): Promise<DocumentDTO> {
     const { name, parentId } = params
     const content = normalizeContent(params.content)
@@ -182,7 +178,10 @@ export class LibraryService {
       name,
       content,
       tags,
-      parentId ? parentId as EARS.EntityId : undefined
+      parentId ? parentId as EARS.EntityId : undefined,
+      undefined,
+      undefined,
+      params.documentType,
     )
   }
 
@@ -332,3 +331,11 @@ export class LibraryService {
 }
 
 export const libraryService = new LibraryService();
+
+/**
+ * What this pack serves under the `commands` designation.
+ *
+ * A function rather than a list, because the rows are content the user edits: the registry calls it on
+ * every read, so there is nothing to invalidate when a command document changes.
+ */
+export const libraryCommands = (): PackCommand[] => libraryService.commands();

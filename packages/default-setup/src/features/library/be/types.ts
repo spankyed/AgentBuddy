@@ -1,6 +1,13 @@
 export type * from './export-types.ts';
 import type { EARS, BaseEntity } from '#generated/ears.ts'
 
+/**
+ * The `documentType` the chat's slash commands live under. Declared once because two bundles must agree
+ * on it: the `commands` content format stamps it as it writes, and this feature reads it back to serve
+ * the list.
+ */
+export const COMMANDS_DOCUMENT_TYPE = 'commands';
+
 export type DocumentShortCode = `DOC-${number}`;
 
 export interface FieldContent {
@@ -42,6 +49,13 @@ export interface DocumentEntity extends BaseEntity {
   displayOrder?: number
   /** Free-form tags, stored directly on the document as a string array. */
   tags?: string[]
+  /**
+   * What this document is: `commands` marks a slash-command list, which the `commands` designation's
+   * owner serves. A written document's own frontmatter `type` says so, and the format it was compiled
+   * with supplies a default where a whole source is one kind; a document created in the app carries
+   * whatever its creator passed. Absent, it is just a document.
+   */
+  documentType?: string
   /** Hash of the content source at the last apply. Absent on user-created documents. */
   contentHash?: string
 }
@@ -62,6 +76,13 @@ export interface DocumentDTO {
   content: ContentSection[]
   shortCode: DocumentShortCode
   tags: string[]
+  /**
+   * What this document is: `commands` marks a slash-command list, which the `commands` designation's
+   * owner serves. A written document's own frontmatter `type` says so, and the format it was compiled
+   * with supplies a default where a whole source is one kind; a document created in the app carries
+   * whatever its creator passed. Absent, it is just a document.
+   */
+  documentType?: string
   collectionId?: EARS.EntityId
   collectionPath?: string[]
   displayOrder: number
@@ -171,7 +192,7 @@ export type {
 } from './search-index/types/search-index.ts'
 
 export type IncomingLibraryEvents =
-  | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
+  | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string; documentType?: string }
   | { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'DELETE_DOCUMENT'; id: string }
   | { type: 'GET_DOCUMENT'; id: string }

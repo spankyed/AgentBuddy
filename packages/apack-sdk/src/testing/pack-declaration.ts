@@ -33,7 +33,6 @@ export function nativePackDeclarationFixture(fixture: PackRegistration, metadata
       ...(block.kind !== undefined && { kind: block.kind }),
       ...(block.be !== undefined && { be: `fixtures/blocks.ts#${block.type.replace(/[^A-Za-z0-9_$]/g, '_')}` }),
     }])) }),
-    ...(fixture.commands !== undefined && { commands: Object.fromEntries(fixture.commands.map(({ name, placeholder }) => [name, { placeholder }])) }),
     ...(fixture.lifecycle && { lifecycle: Object.fromEntries(Object.keys(fixture.lifecycle).map(name =>
       [name, `fixtures/lifecycle.ts#${name}`])) }),
     ...(fixture.ears && { data: {

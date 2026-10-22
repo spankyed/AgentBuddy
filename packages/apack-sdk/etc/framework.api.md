@@ -201,9 +201,6 @@ export interface FrontendDeclaration {
     textEditor?: Record<string, TextEditorExtensionsDeclaration>;
 }
 
-// @public
-export function getPackCommands(): PackCommand[];
-
 // @public (undocumented)
 export function getPackHelp(): HelpCatalog;
 
@@ -296,8 +293,6 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     artifacts?: Record<string, z.infer<typeof ArtifactEntrySchema>>;
     // (undocumented)
     blocks?: Record<string, z.infer<typeof BlockEntrySchema>>;
-    // (undocumented)
-    commands?: Record<string, z.infer<typeof CommandEntrySchema>>;
     consumes?: PackConsumption;
     content?: {
         writers?: Record<string, string>;
@@ -368,14 +363,6 @@ export interface PackCatalogView {
 }
 
 // @public
-export interface PackCommand {
-    // (undocumented)
-    name: string;
-    // (undocumented)
-    placeholder: string;
-}
-
-// @public
 export interface PackConsumption {
     readonly services: readonly string[];
 }
@@ -428,6 +415,7 @@ export type PackEventContracts = Record<string, FeatureEventContract>;
 export interface PackFeature {
     // (undocumented)
     designation?: string;
+    getCommands?: () => PackCommand[];
     services?: readonly string[];
     settings?: SettingsDefinition;
     // (undocumented)
@@ -477,7 +465,6 @@ export interface PackRegistration {
     bindServices?: (access: PackServiceAccess) => () => void;
     // (undocumented)
     blocks?: BlockDefinition[];
-    commands?: PackCommand[];
     contentWriters?: Record<string, ContentWriter>;
     declarationRevision?: string;
     // (undocumented)

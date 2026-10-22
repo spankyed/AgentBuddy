@@ -1212,7 +1212,9 @@
             "useItems": "src/features/library/fe/references.ts#useItems"
           }
         }
-      }
+      },
+      "designation": "commands",
+      "getCommands": "src/features/library/be/services/library.ts#libraryCommands"
     },
     "flows": {
       "description": "Build and manage flows of connected steps.",
@@ -2313,14 +2315,6 @@
         "fe": "src/extensions/blocks/input/ProjectSelectInput.vue"
       }
     },
-    "commands": {
-      "pr2md": {
-        "placeholder": "PR number or GitHub URL (optional)"
-      },
-      "instructions": {
-        "placeholder": "Thread instructions text"
-      }
-    },
     "dsl": {
       "action": {
         "entry": "src/defs/action.ts",
@@ -2389,12 +2383,10 @@
       "suggestions": {
         "extensions": {
           "referenceSuggestion": "src/extensions/tiptap/reference-suggestion.ts#ReferenceSuggestion",
-          "commandSuggestion": "src/extensions/tiptap/command-suggestion.ts#CommandSuggestion",
           "commandViewerDecoration": "src/extensions/tiptap/command-viewer-decoration.ts#CommandViewerDecoration"
         },
         "popups": {
-          "references": "src/extensions/tiptap/ReferenceSuggestionPopup.vue",
-          "commands": "src/extensions/tiptap/CommandSuggestionPopup.vue"
+          "references": "src/extensions/tiptap/ReferenceSuggestionPopup.vue"
         },
         "isSuggestionActive": "src/extensions/tiptap/active-suggestions.ts#isSuggestionActive"
       }
@@ -2428,6 +2420,11 @@
       "notes": {
         "path": "src/content/notes",
         "format": "notes"
+      },
+      "commands": {
+        "path": "src/content/commands",
+        "format": "commands",
+        "onUserEdit": "offer"
       }
     },
     "formats": {
@@ -2480,6 +2477,16 @@
           "name"
         ],
         "media": "media"
+      },
+      "commands": {
+        "compiler": "src/content/_compilers/commands.ts",
+        "entity": [
+          "Collection",
+          "Document"
+        ],
+        "identity": [
+          "name"
+        ]
       }
     },
     "writers": {

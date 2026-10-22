@@ -1,14 +1,13 @@
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import { Extension, type Editor } from '@tiptap/core'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import { readSurfaceState } from '#generated/fe.ts'
-import type { CommandItem } from './command-config.ts'
+import { getCommands, type PackCommand } from '@apackdev/sdk/commands'
 
 export interface CommandSuggestionState {
   active: boolean
   query: string
-  selectedCommand: CommandItem | null
-  previousCommand: CommandItem | null
+  selectedCommand: PackCommand | null
+  previousCommand: PackCommand | null
 }
 
 /** The `/` trigger is always at ProseMirror position 1 (start of first-paragraph content). */
@@ -53,7 +52,7 @@ export const commandSuggestionKey = new PluginKey<CommandSuggestionState>('comma
  */
 function plugin(
   editor: Editor,
-  getCommands: () => CommandItem[],
+  getCommands: () => PackCommand[],
 ): Plugin<CommandSuggestionState> {
   return new Plugin<CommandSuggestionState>({
     key: commandSuggestionKey,
@@ -247,6 +246,6 @@ export const CommandSuggestion = Extension.create({
   name: 'commandSuggestion',
 
   addProseMirrorPlugins() {
-    return [plugin(this.editor, () => readSurfaceState('threads', (s) => s.commands))]
+    return [plugin(this.editor, getCommands)]
   },
 })

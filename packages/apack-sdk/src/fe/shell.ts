@@ -4,6 +4,7 @@
 import { getCurrentScope, onScopeDispose, shallowReadonly, shallowRef, type Ref } from 'vue'
 import type { AnyActorRef } from 'xstate'
 import type { Surface } from './surface.ts'
+import type { PackCommand } from '../commands/index.ts'
 import { boundFeHost } from '../runtime/fe-host.ts'
 import type { _Asker } from '../events/delivery.ts'
 
@@ -30,6 +31,13 @@ export interface HostShellState {
   activeSurface: Surface;
   /** Which surfaces' tabs show, by ref; a surface absent from it shows */
   surfaceVisibility: Readonly<Record<string, boolean>>;
+  /**
+   * The chat's slash commands, as the app last published them. The shell holds them because every editor in the
+   * window needs them and no surface owns them: the feature playing the `commands` designation serves them on the
+   * backend, and this is where the window keeps its copy. Empty until the first connection, and when no pack
+   * plays the role.
+   */
+  commands: readonly PackCommand[];
   panelSizes: ShellPanelSizes;
 }
 
@@ -90,6 +98,8 @@ export interface Shell {
   surfaces: Readonly<Ref<readonly Surface[]>>;
   activeSurface: Readonly<Ref<Surface>>;
   surfaceVisibility: Readonly<Ref<Readonly<Record<string, boolean>>>>;
+  /** The chat's slash commands, as the app last published them */
+  commands: Readonly<Ref<readonly PackCommand[]>>;
   panelSizes: Readonly<Ref<ShellPanelSizes>>;
   isOnboarding: Readonly<Ref<boolean>>;
   /** Shows the canvas again when the chat is maximized */
@@ -119,6 +129,7 @@ export function useShell(): Shell {
     surfaces: snapshot.context.surfaces,
     activeSurface: snapshot.context.activeSurface,
     surfaceVisibility: snapshot.context.surfaceVisibility,
+    commands: snapshot.context.commands,
     panelSizes: snapshot.context.panelSizes,
     isOnboarding: snapshot.hasTag('onboarding'),
   })
@@ -127,6 +138,7 @@ export function useShell(): Shell {
     surfaces: shallowRef(initial.surfaces),
     activeSurface: shallowRef(initial.activeSurface),
     surfaceVisibility: shallowRef(initial.surfaceVisibility),
+    commands: shallowRef(initial.commands),
     panelSizes: shallowRef(initial.panelSizes),
     isOnboarding: shallowRef(initial.isOnboarding),
   }
@@ -143,6 +155,7 @@ export function useShell(): Shell {
     surfaces: shallowReadonly(refs.surfaces),
     activeSurface: shallowReadonly(refs.activeSurface),
     surfaceVisibility: shallowReadonly(refs.surfaceVisibility),
+    commands: shallowReadonly(refs.commands),
     panelSizes: shallowReadonly(refs.panelSizes),
     isOnboarding: shallowReadonly(refs.isOnboarding),
     restoreChat: () => shell.send({ type: 'RESTORE_CHAT' }),

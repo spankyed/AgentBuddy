@@ -1524,17 +1524,37 @@
         "label": "Set Instructions",
         "shortCode": "ACT-60"
       },
-      "Collection:commands": {
-        "contentHash": "ae90c6c91270080d",
-        "displayOrder": 1000,
-        "entityType": "Collection",
-        "name": "commands"
-      },
       "Collection:internal": {
-        "contentHash": "d3f36b087ed6c5e1",
+        "contentHash": "f6e45bbf1184b243",
         "displayOrder": 1000,
         "entityType": "Collection",
         "name": "internal"
+      },
+      "Document:Chat commands": {
+        "content": [
+          {
+            "type": "field",
+            "fields": [
+              {
+                "key": "pr2md",
+                "value": "PR number or GitHub URL (optional)"
+              },
+              {
+                "key": "instructions",
+                "value": "Thread instructions text"
+              }
+            ]
+          }
+        ],
+        "contentHash": "8324bcfddff904b6",
+        "displayOrder": 1000,
+        "documentType": "commands",
+        "entityType": "Document",
+        "name": "Chat commands",
+        "shortCode": "DOC-1",
+        "tags": [
+          "default"
+        ]
       },
       "Document:Claude Code commands": {
         "content": [
@@ -1628,11 +1648,12 @@
             ]
           }
         ],
-        "contentHash": "3fc83fb798ad55f1",
-        "displayOrder": 1000,
+        "contentHash": "0d0f41d5c5359149",
+        "displayOrder": 2000,
+        "documentType": "commands",
         "entityType": "Document",
         "name": "Claude Code commands",
-        "shortCode": "DOC-1",
+        "shortCode": "DOC-2",
         "tags": [
           "default"
         ]
@@ -1701,11 +1722,12 @@
             ]
           }
         ],
-        "contentHash": "be84d534decc5f7d",
-        "displayOrder": 2000,
+        "contentHash": "a3cd25cf0087c8ad",
+        "displayOrder": 3000,
+        "documentType": "commands",
         "entityType": "Document",
         "name": "Codex commands",
-        "shortCode": "DOC-2",
+        "shortCode": "DOC-3",
         "tags": [
           "default"
         ]
@@ -1817,9 +1839,9 @@
       }
     },
     "relations": [
-      "Collection:internal --parent_of--> Collection:commands",
-      "Collection:commands --contains--> Document:Claude Code commands",
-      "Collection:commands --contains--> Document:Codex commands"
+      "Collection:internal --contains--> Document:Chat commands",
+      "Collection:internal --contains--> Document:Claude Code commands",
+      "Collection:internal --contains--> Document:Codex commands"
     ],
     "media": [],
     "counts": {
@@ -1828,13 +1850,18 @@
         "updated": 0,
         "skipped": 0
       },
-      "prompts": {
-        "created": 6,
+      "commands": {
+        "created": 4,
         "updated": 0,
         "skipped": 0
       },
       "library": {
-        "created": 4,
+        "created": 0,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 6,
         "updated": 0,
         "skipped": 0
       }

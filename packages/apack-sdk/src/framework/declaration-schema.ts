@@ -1,4 +1,5 @@
 import { PackConsumptionSchema, _serviceProviderProblem, _SERVICE_NAME_PATTERN } from './service-consumption.ts';
+import { COMMANDS_ROLE } from '../commands/role.ts';
 import { dslDefinitionsProblem } from './dsl-declarations.ts';
 import { declarationRecord } from './declaration-record.ts';
 import { hasOwn } from '../utils/shared.ts';
@@ -120,6 +121,33 @@ function checkDefaultSurfaceClaims(features: Record<string, { surface?: { defaul
   }
 }
 
+/**
+ * Who may declare a command provider: the one feature playing the `commands` designation, and no other.
+ *
+ * Both halves matter and neither is the registry's to catch. It refuses a pack declaring a provider with no
+ * feature holding the role, but it sees one provider per pack and cannot tell which feature declared it — so
+ * a feature without the role declaring one, beside a sibling that holds it, would be served in its place, and
+ * a second provider would be silently ignored in favour of whichever came first in the manifest.
+ */
+function checkCommandProviderClaims(features: Record<string, { designation?: string; getCommands?: string }> | undefined, ctx: z.RefinementCtx): void {
+  const declared = Object.entries(features ?? {}).filter(([, feature]) => feature.getCommands !== undefined);
+  if (declared.length > 1) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['features', declared[1]![0], 'getCommands'],
+      message: `Two features declare a command provider: "${declared[0]![0]}" and "${declared[1]![0]}". Only the one playing the "commands" designation may.`,
+    });
+  }
+  for (const [id, feature] of declared) {
+    if (feature.designation === COMMANDS_ROLE) continue;
+    ctx.addIssue({
+      code: 'custom',
+      path: ['features', id, 'getCommands'],
+      message: `Feature "${id}" declares a command provider without "designation": "${COMMANDS_ROLE}". Give it that designation, or drop its "getCommands".`,
+    });
+  }
+}
+
 function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.RefinementCtx, prefix: string[]): void {
   const owners = new Map<string, string>();
   for (const [id, contribution] of Object.entries(frontend?.textEditor ?? {})) {
@@ -155,7 +183,6 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   steps: z.lazy(() => ExtensionsSchema.shape.steps),
   artifacts: z.lazy(() => ExtensionsSchema.shape.artifacts),
   blocks: z.lazy(() => ExtensionsSchema.shape.blocks),
-  commands: z.lazy(() => ExtensionsSchema.shape.commands),
   dsl: z.lazy(() => ExtensionsSchema.shape.dsl),
   dslDefinitions: declarationRecord(z.string()).optional(),
   entityDestinations: declarationRecord(z.string().min(1), z.string().min(1)).optional(),
@@ -164,6 +191,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
     description: true, entities: true, designation: true, settings: true, surface: true, references: true, services: true, repositories: true,
+    getCommands: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
   if (Object.keys(declaration.migrations?.pack ?? {}).length && declaration.version === undefined) {
@@ -610,18 +638,6 @@ export const LifecycleConfigSchema = z.object({
 const ServicesSchema = declarationRecord(z.string().regex(_SERVICE_NAME_PATTERN, 'Must be an identifier'), ExportTargetSchema);
 
 /**
- * A command's name, which is its key: what the user types after the `/`. Stricter than a contributed
- * type's, which admits an underscore — a command is typed, so it keeps to letters, digits and hyphens.
- */
-const COMMAND_NAME_SCHEMA = z.string()
-  .regex(/^[a-z][a-z0-9-]*$/, 'Must be a lowercase letter, then lowercase letters, digits and hyphens');
-
-/** A slash command a pack declares: the chat lists it, and a `user.command` event carries its name */
-export const CommandEntrySchema = z.object({
-  placeholder: z.string().min(1).describe('What the chat shows after the command: the argument it takes, or what it does.'),
-}).strict();
-
-/**
  * A feature id: the key its entry sits under. It becomes a name in generated code, so unlike a step or
  * block *type* it is an identifier — no hyphens, no underscores — and not a word generated code already
  * uses. Being a key is what makes a duplicate unrepresentable: two features with one id used to collapse
@@ -643,6 +659,8 @@ export const FeatureEntrySchema = z.object({
     .describe('Services. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
   repositories: declarationRecord(IdentifierSchema, ExportTargetSchema)
     .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
+  getCommands: ExportTargetSchema
+    .describe('"path#exportName" of this feature\'s command provider: a function returning the slash commands it serves. Only the feature playing the `commands` designation may declare one — the commands themselves are content, not manifest entries.').optional(),
   references: ReferencesSchema.describe('Reference identities and presentation, with reactive item-provider exports. Entity opening is declared separately by the destination surface contract.').optional(),
 }).strict();
 
@@ -701,16 +719,11 @@ const ExtensionsSchema = z.object({
   steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Inline node and editor data with explicit build, component, layout, type and runtime bindings.'),
   artifacts: extensionPoint(ArtifactEntrySchema, 'Artifact types this pack contributes. Each names its icon and viewer.'),
   blocks: extensionPoint(BlockEntrySchema, 'Message blocks this pack contributes. Each names where its code lives.'),
-  commands: extensionPoint(
-    CommandEntrySchema,
-    'Slash commands this pack adds to the chat, keyed by the name typed after the "/". Sending one fires a `user.command` event the pack\'s flows handle.',
-    COMMAND_NAME_SCHEMA,
-  ),
   services: ServicesSchema
     .describe('Pack-level services, belonging to no one feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file. A feature\'s own are its `services`.').optional(),
   dsl: declarationRecord(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
   ...FrontendConfigSchema.shape,
-}).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions.');
+}).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, services, DSL types, help articles and frontend extensions.');
 
 
 // ── Main manifest schema ────────────────────────────────────────────
@@ -808,6 +821,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   checkReferenceClaims(manifest.features, ctx);
   checkApiClaims(manifest.features, manifest.extensions?.services, undefined, ctx, ['extensions', 'services']);
   checkDefaultSurfaceClaims(manifest.features, ctx);
+  checkCommandProviderClaims(manifest.features, ctx);
   checkServiceProviders(manifest, ctx);
 
   // Both kinds of entry name a format, and both are checked against the same two places

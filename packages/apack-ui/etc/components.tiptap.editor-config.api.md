@@ -9,6 +9,8 @@ export interface EditorConfig {
     // (undocumented)
     blockMenu: boolean;
     // (undocumented)
+    commandSuggestion: boolean;
+    // (undocumented)
     editable: boolean;
     // (undocumented)
     editorInteractions: boolean;

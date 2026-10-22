@@ -8,6 +8,7 @@ import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';
 import { Extension, Mark, Node } from '@tiptap/core';
 import { undoDepth } from '@tiptap/pm/history';
 import { ReferenceNode } from '@apackdev/ui/components/tiptap/extensions/reference-node';
+import { commandSuggestionKey } from '@apackdev/ui/components/tiptap/extensions/command-suggestion';
 
 // Exercise the real host registration and editor; these canvases are outside the editor contract.
 vi.mock('@/views/packs/canvas.vue', () => ({ default: { render: () => null } }));
@@ -236,4 +237,42 @@ it('preserves pending formatting attributes and refuses a replacement that would
     { type: 'externalFormat', attrs: { identity: 'pending-style' } },
   ]);
   expect(updates).toHaveBeenCalledTimes(count);
+});
+
+// Escape belongs to whatever suggestion is open, and the chat input's handler would otherwise take it: with
+// `pauseAvailable` it pauses the turn, which is what a person pressing Escape to dismiss the popup would get.
+// The editor's built-in suggestions have no contributed predicate to speak for them, so the editor asks their
+// keys itself — this is the case that says so.
+it('leaves Escape to the command popup instead of pausing the turn', async () => {
+  const registry = createNativeFrontendTestRegistry([hostDeclaration]);
+  registry.registerFixture(hostFrontend);
+  // The popup reads the shell's commands, so the window needs one; the list can be empty, since `/` alone
+  // activates the suggestion whether or not anything matches it
+  const snapshot = { context: { surfaces: [], activeSurface: { id: 'host/packs' }, surfaceVisibility: {}, commands: [], panelSizes: { canvasHeight: 50, inspectionWidth: 0 } }, hasTag: () => false };
+  startFeTestRuntime({
+    packs: registry,
+    application: { getSnapshot: () => snapshot, subscribe: () => ({ unsubscribe: () => {} }), send: () => {}, system: { get: () => undefined } } as never,
+    catalog: {
+      status: () => 'ready', problem: () => undefined, references: () => [], frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], events: () => [], steps: () => [], subscribe: () => () => {},
+    },
+  });
+  const root = document.createElement('div'); document.body.appendChild(root);
+  const pause = vi.fn();
+  app = createApp({ render: () => h(TiptapEditor, { mode: 'input', variant: 'chat', modelValue: '', pauseAvailable: true, onPause: pause, ref: 'input' }) });
+  const mounted = app.mount(root);
+  const editor = () => (mounted.$refs.input as ComponentExposed<typeof TiptapEditor>).editor!;
+  await vi.waitFor(() => expect(editor()?.isInitialized).toBe(true));
+
+  editor().commands.insertContent('/');
+  await vi.waitFor(() => expect(commandSuggestionKey.getState(editor().state)?.active).toBe(true));
+  editor().view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+  expect(pause).not.toHaveBeenCalled();
+
+  // With nothing open it is the chat's again, which is what makes the check above about the popup
+  editor().commands.setContent('');
+  editor().commands.insertContent('plain');
+  await vi.waitFor(() => expect(commandSuggestionKey.getState(editor().state)?.active).toBe(false));
+  editor().view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  expect(pause).toHaveBeenCalledTimes(1);
 });

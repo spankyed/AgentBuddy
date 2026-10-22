@@ -190,44 +190,10 @@ describe('generated backend entry', () => {
     expect(entry).not.toMatch(/systems:|earlySystem|early:|receivedEventTypes|toPackSystemDefs/);
   });
 
-  it("carries the pack's declared slash commands, so registering it registers them", async () => {
-    const withCommands = await generate({ commands: { note: { placeholder: 'Text' } }, features: [system('brain')] });
-    expect(withCommands['src/__generated__/pack-entry.ts']).toContain('commands: [{"name":"note","placeholder":"Text"}],');
 
-    // A pack that declares none says nothing
-    expect((await generate({ features: [system('brain')] }))['src/__generated__/pack-entry.ts']).not.toContain('commands:');
-  });
 
-  it('fails for a command a dependency declares, which the app would refuse to register', async () => {
-    const base = { 'base-pack': dependency({ commands: { instructions: { placeholder: 'Theirs' } } }) };
-    await expect(generate({ commands: { instructions: { placeholder: 'Mine' } }, features: [system('brain')] }, base)).rejects.toThrow('Command "instructions" is declared by "base-pack", which this pack depends on');
-    expect((await generate({ commands: { memo: { placeholder: 'Mine' } }, features: [system('brain')] }, base))['src/__generated__/pack-entry.ts'])
-      .toContain('commands: [{"name":"memo","placeholder":"Mine"}],');
-  });
 
-  /**
-   * `constructor` matches the command-name pattern, so it is a name a pack may declare. Looked up on an
-   * ordinary object it finds `Object`'s constructor, and the build failed with
-   * `declared by "function Object() { [native code] }"` — for a command nothing had declared.
-   */
-  it('accepts a command named after something on Object.prototype, which no pack declared', async () => {
-    await expect(generate(
-      { dependencies: { 'base-pack': '1.0.0' }, commands: { constructor: { placeholder: 'x' } } },
-      { 'base-pack': dependency({ id: 'base-pack' }) },
-    )).resolves.toBeDefined();
-  });
 
-  it('still fails when a dependency really does declare that name', async () => {
-    await expect(generate(
-      { dependencies: { 'base-pack': '1.0.0' }, commands: { constructor: { placeholder: 'x' } } },
-      { 'base-pack': dependency({ id: 'base-pack', commands: { constructor: { placeholder: 'x' } } }) },
-    )).rejects.toThrow('Command "constructor" is declared by "base-pack"');
-  });
-
-  it("fails for a command a dependency's own dependency declares, from the snapshot's provenance", async () => {
-    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), provenance: { commands: { pr2md: 'default-setup' } } } };
-    await expect(generate({ commands: { pr2md: { placeholder: 'Mine' } }, features: [system('brain')] }, mid)).rejects.toThrow('Command "pr2md" is declared by "default-setup", which this pack depends on');
-  });
 });
 
 describe('generated registrations', () => {

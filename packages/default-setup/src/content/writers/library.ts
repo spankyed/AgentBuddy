@@ -11,6 +11,8 @@ export interface DocumentItem extends ContentItem {
   name: string;
   content: ContentSection[];
   tags?: string[];
+  /** What the document is, from its frontmatter `type`: `commands` marks a slash-command list */
+  documentType?: string;
 }
 
 export interface CollectionItem extends ContentItem {
@@ -42,11 +44,11 @@ export const documentWriter: ContentWriter<DocumentItem> = {
   },
 
   create(record, { parentId }) {
-    return repository.libraryCommands.createDocument(record.name, record.content, record.tags ?? [], parentId, undefined, record.contentHash).id;
+    return repository.libraryCommands.createDocument(record.name, record.content, record.tags ?? [], parentId, undefined, record.contentHash, record.documentType).id;
   },
 
   update(id, record) {
-    repository.libraryCommands.updateDocument(id, record.name, record.content, record.tags ?? [], undefined, record.contentHash);
+    repository.libraryCommands.updateDocument(id, record.name, record.content, record.tags ?? [], undefined, record.contentHash, record.documentType);
   },
 
   remove(id) {

@@ -31,7 +31,7 @@ export const libraryQueries = {
       return documents.filter((doc): doc is DocumentDTO => doc !== null)
     }
 
-    const documents = query.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
+    const documents = query.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder', 'documentType'])
 
     const documentsWithDetails = documents.map((doc) => {
       const tags = doc.tags || []
@@ -50,6 +50,7 @@ export const libraryQueries = {
         content: doc.content as ContentSection[],
         shortCode: doc.shortCode as DocumentShortCode,
         tags: tags as string[],
+        documentType: doc.documentType as string | undefined,
         collectionId: collection?.id,
         collectionPath,
         displayOrder: getDisplayOrder(doc),

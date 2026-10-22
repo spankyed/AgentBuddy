@@ -254,11 +254,6 @@
       "stamp": {
         "fe": "src/extensions/blocks/display/StampBlock.vue"
       }
-    },
-    "commands": {
-      "memo-note": {
-        "placeholder": "Memo text"
-      }
     }
   },
   "lifecycle": {
@@ -277,9 +272,9 @@
         "path": "src/content/quick-memos.txt",
         "format": "quick-memos"
       },
-      "library": {
-        "path": "src/content/library",
-        "format": "default-setup:library"
+      "commands": {
+        "path": "src/content/commands",
+        "format": "default-setup:commands"
       }
     },
     "formats": {

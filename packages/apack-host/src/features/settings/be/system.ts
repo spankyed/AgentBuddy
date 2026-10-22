@@ -246,9 +246,10 @@ export const settingsSystem = setup({
     // The stored keys changed: the view shows what there is now. What else acts on it hears the same event.
     secretsChanged: () => sendSecrets(),
 
+    // The commands aren't told: a reset replaces every row, and the bus follows that fact with `SEND_STATE`,
+    // which is what republishes them. Only the brain needs asking, having actors to restart rather than data.
     onResetComplete: () => {
       sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
-      sendToSystem({ role: 'threads' }, { type: 'COMMANDS_CHANGED' });
       broadcastToSurface('settings', { type: 'APP_RESET_COMPLETE' });
     },
 

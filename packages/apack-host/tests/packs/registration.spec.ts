@@ -3,7 +3,8 @@ import { _createPackServices } from '@apackdev/sdk/services';
 import { createSettingsStore, createSettingsService } from '../../src/features/settings/be/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine, installEngine, installedEngine, repository } from '@apackdev/ears';
-import { getPackCommands, getSettingsCatalog, type PackFeatureSystem, type PackRegistration } from '@apackdev/sdk/framework';
+import { getSettingsCatalog, type PackFeatureSystem, type PackRegistration } from '@apackdev/sdk/framework';
+import { getCommands } from '@apackdev/sdk/commands';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
 import { SDK_ENTITIES } from '@apackdev/sdk/types';
@@ -98,11 +99,11 @@ describe('registerPack repositories', () => {
   it("removes a pack's repositories when a later part of its registration is refused", () => {
     const engine = createEarsEngine({ isEntityType: () => false });
     installEngine(engine.query);
-    registerPack({ id: 'first-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] } as unknown as PackRegistration);
+    registerPack({ id: 'first-pack', features: { chat: { designation: 'standup' } } } as unknown as PackRegistration);
     registered.push('first-pack');
 
-    expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {} }, commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
-      .toThrow('Command collision');
+    expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {} }, features: { chat: { designation: 'standup' } } } as unknown as PackRegistration))
+      .toThrow('Designation collision');
     expect(engine.admin.repositories()).toEqual({});
   });
 });
@@ -258,7 +259,6 @@ describe('registerPack content writers', () => {
       id: 'other-pack',
       ears: { entities: { Card: 'Card' }, relKinds: {} },
       artifacts: [{ type: 'card-view' }],
-      commands: [{ name: 'card', placeholder: 'Title' }],
       contentWriters: { Card: {}, Memo: {} },
     };
     expect(() => registerPack(other as unknown as PackRegistration))
@@ -268,7 +268,7 @@ describe('registerPack content writers', () => {
     expect(_contentWriterRegistry.get('Memo')).toBe(memoHooks);
     expect(_contentWriterRegistry.get('Card')).toBeUndefined();
     expect(artifactRegistry.has('card-view')).toBe(false);
-    expect(getPackCommands()).toEqual([]);
+    expect(getCommands()).toEqual([]);
   });
 
   it("drops a pack's hooks when it unregisters, freeing the entity for another pack", () => {
@@ -285,24 +285,26 @@ describe('registerPack content writers', () => {
 
 describe('registerPack commands', () => {
   const commands = [{ name: 'standup', placeholder: 'Topic' }];
+  const owner = (id: string) => ({ id,
+    features: { lib: { designation: 'commands', getCommands: () => commands } } } as unknown as PackRegistration);
 
-  it('rejects a command another pack declares, registering none of the pack', () => {
-    registerPack({ id: 'memo-pack', commands } as unknown as PackRegistration);
+  it('rejects a second pack claiming the role, registering none of it', () => {
+    registerPack(owner('memo-pack'));
     registered.push('memo-pack');
 
-    expect(() => registerPack({ id: 'other-pack', steps: [], commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
-      .toThrow('Command collision: "standup" — pack "other-pack" vs "memo-pack"');
+    expect(() => registerPack({ ...owner('other-pack'), steps: [] })).toThrow('Designation collision');
 
     expect(getPackRegistration('other-pack')).toBeNull();
-    expect(getPackCommands()).toEqual(commands);
+    expect(getCommands()).toEqual(commands);
   });
 
   it("rolls its commands back when a later part of the registration is refused", () => {
     const invalid = { settings: { defaults: { hidden: true }, schema: {"type":"object","properties":{"hidden":{"type":"string"}},"required":["hidden"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} } };
 
-    expect(() => registerPack({ id: 'bad-pack', commands, features: { memos: invalid } } as unknown as PackRegistration)).toThrow();
+    expect(() => registerPack({ ...owner('bad-pack'),
+      features: { lib: { designation: 'commands' }, memos: invalid } } as unknown as PackRegistration)).toThrow();
 
-    expect(getPackCommands()).toEqual([]);
+    expect(getCommands()).toEqual([]);
     expect(getSettingsCatalog().features).toEqual({});
   });
 });

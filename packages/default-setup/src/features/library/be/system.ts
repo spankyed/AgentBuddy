@@ -2,11 +2,11 @@ import { featureSettings } from '#generated/settings.ts';
 // [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
 import type { Contract } from './contract.ts';
 
-import { setup } from 'xstate'
+import { setup, fromCallback } from 'xstate'
 import { defineSystem } from '@apackdev/sdk/framework'
 import type { EARS } from '#generated/ears.ts'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
-import { sendToSystem, broadcastToSurface } from '#generated/events.ts'
+import { broadcastToSurface, sendToSystem } from '#generated/events.ts'
 import { repository } from '#generated/repository.ts';
 import * as path from 'path'
 import * as os from 'os'
@@ -17,7 +17,6 @@ import * as symlink from './repository/symlink.ts'
 import { toMap, toIdentifierSet, mapArray } from '@apackdev/sdk/utils'
 import { exportLibrary } from './export-library.ts'
 import { importLibrary } from './import-library.ts'
-import type { CommandItem } from '#generated/types.ts';
 
 /**
  * Answers whoever asked for this, and tells every window when nobody did.
@@ -42,26 +41,37 @@ function resolveHomePath(inputPath: string): string {
 }
 
 /**
- * Tells the threads system the chat's slash commands changed, when a library change altered them: a document in the
- * commands folder, or the folder, was created, edited, moved, renamed, deleted or imported. `before` is the list from
- * before the change.
+ * Tells the app when this feature's writes alter the chat's slash commands, which it plays the `commands`
+ * designation to serve. The app reads the list from the designation and publishes it to every window, so this
+ * says only *that* it moved; sending the list would make it this process's answer to nobody in particular.
+ *
+ * **One comparison, here, rather than a check in each handler that writes.** Every write goes through
+ * `libraryCommands`, which announces itself, so no handler can forget to and a handler added later is covered.
+ * The commands are a derivation over documents and most library writes don't touch one, so the list is compared
+ * rather than republished: the serialized form is what "the same commands" means.
  */
-function notifyIfCommandsChanged(before: CommandItem[]): void {
-  if (JSON.stringify(libraryService.commands()) === JSON.stringify(before)) return
-  sendToSystem('threads', { type: 'COMMANDS_CHANGED' })
-}
+const commandWatcher = fromCallback(() => {
+  let last = JSON.stringify(libraryService.commands())
+  return repository.libraryCommands.onDocumentsChanged(() => {
+    const now = JSON.stringify(libraryService.commands())
+    if (now === last) return
+    last = now
+    sendToSystem('host/application', { type: 'COMMANDS_CHANGED' })
+  })
+})
 
 export const librarySystem = setup({
   types: librarySpec.types,
+  actors: { commandWatcher },
   actions: librarySpec.actions({
     createDocument: async ({ event }) => {
-      const commandsBefore = libraryService.commands()
-      const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
+      const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string; documentType?: string }
       const document = await libraryService.create({
         name: ev.name,
         content: ev.content,
         tags: ev.tags,
         parentId: ev.collectionId,
+        documentType: ev.documentType,
       })
       if (ev.collectionId && symlink.resolveSymlinkPath(ev.collectionId)) {
         const folderContents = await repository.libraryQueries.getFolderContents(ev.collectionId as EARS.EntityId)
@@ -70,10 +80,8 @@ export const librarySystem = setup({
         broadcastToSurface('library', { type: 'DOCUMENT_CREATED' as const, data: { document } })
       }
 
-      notifyIfCommandsChanged(commandsBefore)
     },
     updateDocument: async ({ event }) => {
-      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: any[]; tags: string[]; collectionId?: string }
       const document = await libraryService.update({
         id: ev.id,
@@ -83,17 +91,14 @@ export const librarySystem = setup({
       })
       broadcastToSurface('library', { type: 'DOCUMENT_UPDATED' as const, data: { document } })
 
-      notifyIfCommandsChanged(commandsBefore)
     },
     deleteDocument: async ({ event }) => {
-      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_DOCUMENT'; id: string }
       repository.libraryCommands.deleteDocument(ev.id as EARS.EntityId)
       broadcastToSurface('library', {
           type: 'DOCUMENT_DELETED' as const,
           data: { documentId: ev.id },
         })
-      notifyIfCommandsChanged(commandsBefore)
     },
     getDocument: async ({ event }) => {
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
@@ -130,7 +135,6 @@ export const librarySystem = setup({
       }
     },
     updateCollection: async ({ event }) => {
-      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'UPDATE_COLLECTION'; id: string; name: string; description?: string }
       const collection = repository.libraryCommands.updateCollection(
         ev.id as EARS.EntityId,
@@ -141,20 +145,16 @@ export const librarySystem = setup({
           type: 'COLLECTION_UPDATED' as const,
           data: { collection },
         })
-      notifyIfCommandsChanged(commandsBefore)
     },
     deleteCollection: async ({ event }) => {
-      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_COLLECTION'; id: string }
       repository.libraryCommands.deleteCollection(ev.id as EARS.EntityId)
       broadcastToSurface('library', {
           type: 'COLLECTION_DELETED' as const,
           data: { collectionId: ev.id },
         })
-      notifyIfCommandsChanged(commandsBefore)
     },
     moveDocument: async ({ event }) => {
-      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'MOVE_DOCUMENT'; documentId: string; collectionId?: string }
       const document = repository.libraryCommands.moveDocument(
         ev.documentId as EARS.EntityId,
@@ -164,7 +164,6 @@ export const librarySystem = setup({
           type: 'DOCUMENT_UPDATED' as const,
           data: { document },
         })
-      notifyIfCommandsChanged(commandsBefore)
     },
     sendInitialData: async () => {
       const librarySettings = featureSettings.forFeature('library').get()
@@ -199,7 +198,6 @@ export const librarySystem = setup({
         })
     },
     renameItem: async ({ event }) => {
-      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'RENAME_ITEM'; id: string; name: string; itemType: 'document' | 'folder' }
       if (symlink.isSymlinkId(ev.id)) {
         await libraryService.rename(ev.id, ev.name)
@@ -226,21 +224,16 @@ export const librarySystem = setup({
         const item = repository.libraryCommands.renameItem(ev.id as EARS.EntityId, ev.name, ev.itemType)
         broadcastToSurface('library', { type: 'ITEM_RENAMED' as const, data: { item } })
       }
-      notifyIfCommandsChanged(commandsBefore)
     },
     deleteItems: async ({ event }) => {
-      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_ITEMS'; ids: string[] }
       await libraryService.remove(ev.ids)
       broadcastToSurface('library', { type: 'ITEMS_DELETED' as const, data: { ids: ev.ids } })
-      notifyIfCommandsChanged(commandsBefore)
     },
     moveItems: async ({ event }) => {
-      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
       await libraryService.move(ev.ids, ev.targetFolderId)
       broadcastToSurface('library', { type: 'ITEMS_MOVED' as const, data: { ids: ev.ids, targetFolderId: ev.targetFolderId } })
-      notifyIfCommandsChanged(commandsBefore)
     },
     // [SEARCH_INDEX_FF] Search index actions — commented out
     // listSearchIndices: async ({ system, event }) => {
@@ -328,7 +321,6 @@ export const librarySystem = setup({
     },
     // Import/Export actions
     importLibraryItems: async ({ event, reply }) => {
-      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'IMPORT_LIBRARY'; directory: string }
 
       try {
@@ -366,7 +358,6 @@ export const librarySystem = setup({
           })
       }
       // An import can fail part way, after creating documents
-      notifyIfCommandsChanged(commandsBefore)
     },
     exportLibraryToFile: async ({ event, reply }) => {
       const ev = event as { type: 'EXPORT_LIBRARY'; directory: string; format: 'markdown' | 'json' }
@@ -420,6 +411,8 @@ export const librarySystem = setup({
 }).createMachine({
   id: 'library',
   initial: 'idle',
+  // Lives as long as this system does, so the subscription goes back when the actor stops
+  invoke: { src: 'commandWatcher' },
   context: () => ({
     documents: [],
     collections: [],

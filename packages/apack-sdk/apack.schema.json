@@ -559,6 +559,11 @@
             },
             "description": "Repository objects. Keys are repository names on `repository` (from #generated/repository), values are \"path#exportName\" of the object in a source file."
           },
+          "getCommands": {
+            "type": "string",
+            "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+            "description": "\"path#exportName\" of this feature's command provider: a function returning the slash commands it serves. Only the feature playing the `commands` designation may declare one — the commands themselves are content, not manifest entries."
+          },
           "references": {
             "type": "object",
             "properties": {
@@ -1293,27 +1298,6 @@
           },
           "description": "Message blocks this pack contributes. Each names where its code lives. The type is the key, so a pack cannot declare one twice."
         },
-        "commands": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "placeholder": {
-                "type": "string",
-                "minLength": 1,
-                "description": "What the chat shows after the command: the argument it takes, or what it does."
-              }
-            },
-            "required": [
-              "placeholder"
-            ],
-            "additionalProperties": false
-          },
-          "propertyNames": {
-            "pattern": "^[a-z][a-z0-9-]*$"
-          },
-          "description": "Slash commands this pack adds to the chat, keyed by the name typed after the \"/\". Sending one fires a `user.command` event the pack's flows handle. The type is the key, so a pack cannot declare one twice."
-        },
         "services": {
           "type": "object",
           "additionalProperties": {
@@ -1425,7 +1409,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions."
+      "description": "What the pack contributes to the app: steps, artifacts, blocks, services, DSL types, help articles and frontend extensions."
     },
     "lifecycle": {
       "type": "object",

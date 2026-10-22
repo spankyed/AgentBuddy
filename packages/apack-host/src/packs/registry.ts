@@ -6,7 +6,8 @@ import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
+import { COMMANDS_ROLE, type PackCommand } from '@apackdev/sdk/commands';
+import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
 import { eventBindingProblem } from './event-binding.ts';
 import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
 /**
@@ -318,20 +319,22 @@ function admitContributions(registration: PackRegistration, { steps: declaration
     surfaceEvents: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.surface
       ? [[ref, [...eventContracts![featureId].surface!.receives, ...SURFACE_EVENT_TYPES]] as const] : [])),
     designations: designationsOf(registration),
+    // Per ref, as systems and surfaces are: the app resolves the `commands` role to a ref and asks that
+    // feature, so what a feature declared stays attached to the feature that declared it
+    commandProviders: new Map(featuresOf(registration).flatMap(({ ref, feature }) => (feature.getCommands
+      ? [[ref, feature.getCommands] as const] : []))),
     repositories: new Map(Object.entries(registration.repositories ?? {})),
     services: new Map(Object.entries(registration.services ?? {})),
     artifacts: (registration.artifacts ?? []).map(value => [value.type, value] as const),
     blocks: (registration.blocks ?? []).map(value => [value.type, value] as const),
     contentWriters: Object.entries(registration.contentWriters ?? {}),
     appliers: [...(registration.appliers ?? [])],
-    commands: (registration.commands ?? []).map(value => ({ ...value })),
   };
 }
 type AdmittedPackContributions = ReturnType<typeof admitContributions>;
 
 /** Build candidate lookups without binding services or writing to the engine. */
 function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
-  const commandOwners = new Map<string, string>();
   const tables = {
     designations: createDesignationStore(),
     steps: createOwnedStepStore<StepBackendBinding>(),
@@ -340,6 +343,8 @@ function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
     contentWriters: createContentWriterStore(),
     appliers: createApplierStore(),
     repositories: new Map<string, unknown>(),
+    /** A feature's own command provider, by ref: the `commands` role resolves to the ref that holds one */
+    commandProviders: new Map<string, () => PackCommand[]>(),
   };
   for (const pack of packs) {
     tables.designations.register(pack.designations);
@@ -348,12 +353,8 @@ function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
     for (const [type, value] of pack.blocks) tables.blocks.set(type, value);
     for (const [name, value] of pack.contentWriters) tables.contentWriters.register(name, value, pack.id);
     tables.appliers.register(pack.id, pack.appliers);
-    for (const { name } of pack.commands) {
-      const owner = commandOwners.get(name);
-      if (owner !== undefined && owner !== pack.id) throw new Error(`Command collision: "${name}" — pack "${pack.id}" vs "${owner}"`);
-      commandOwners.set(name, pack.id);
-    }
     for (const [name, value] of pack.repositories) tables.repositories.set(name, value);
+    for (const [ref, provider] of pack.commandProviders) tables.commandProviders.set(ref, provider);
   }
   return tables;
 }
@@ -572,8 +573,6 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
         throw new Error(`Native pack "${registration.id}" runtime ears.relKinds does not match its admitted declarations`);
       }
-      const commands = commandBindingProblem(declaration.commands, registration.commands);
-      if (commands) throw new Error(`Native pack "${registration.id}" runtime ${commands} does not match its admitted declarations`);
       const migrationProblem = migrationBindingProblem(declaration.migrations, registration.migrations);
       if (migrationProblem) throw new Error(`Native pack "${registration.id}" runtime ${migrationProblem} does not match its admitted declarations`);
       const lifecycleProblem = lifecycleBindingProblem(declaration.lifecycle, registration.lifecycle);
@@ -736,10 +735,19 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     for (const pack of admitted.values()) {
       for (const [ref, system] of pack.systems) map.set(ref, new Set(system.receives));
     }
-    // The bus isn't a feature's system, but pack code sends it events (HostSystemEvents): from a frontend too, so the
-    // client path checks them as the backend's does. It runs where the host is registered.
+    // What pack code may send the host's own systems (`HostSystemEvents`): from a frontend too, so the client path
+    // checks them as the backend's does. It runs where the host is registered.
+    //
+    // **Merged into whatever is already there, never set over it.** One of these refs is the bus, which is no
+    // feature's system and so has no entry of its own; the rest name a host feature whose system declared its
+    // incoming events a few lines above, and overwriting that entry would drop every event the system itself
+    // accepts — leaving a system reachable only by the events packs may send it.
     if (registrations.has(HOST_PACK_ID)) {
-      for (const [ref, types] of Object.entries(HOST_SYSTEM_EVENT_TYPES)) map.set(ref, new Set(types));
+      for (const [ref, types] of Object.entries(HOST_SYSTEM_EVENT_TYPES)) {
+        const existing = map.get(ref);
+        if (existing) for (const type of types) existing.add(type);
+        else map.set(ref, new Set(types));
+      }
     }
     return map;
   }
@@ -867,16 +875,20 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     surfaceDefaults: () => Object.fromEntries(catalog.surfaces()
       .filter(surface => surface.origin !== 'source' && surface.enabled === true && surface.declaration.defaultVisible !== undefined)
       .map(surface => [surface.featureRef, surface.declaration.defaultVisible!])),
-    commands: () => catalog.commands().filter(command => {
-      if (command.enabled === false || !admitted.has(command.packId)) return false;
-      if (command.origin === 'native') {
-        const declaration = catalog.getSnapshot().native.find(pack => pack.id === command.packId);
-        return !commandBindingProblem(declaration?.commands, admitted.get(command.packId)!.commands);
-      }
-      const origin = origins.get(command.packId);
-      return origin !== undefined && origin.declarationRevision === command.declarationRevision
-        && origin.buildRevision === command.buildRevision;
-    }).map(({ name, placeholder }) => ({ name, placeholder })),
+    /**
+     * What the feature playing the `commands` designation serves.
+     *
+     * The role resolves to that feature's ref and the ref to its own provider, so a provider declared
+     * by any other feature is never reached — which is what leaves nothing to reconcile between the two
+     * declarations. `tables.designations` has already refused a second claimant across packs, so there
+     * is one answer or none. It is called on every read: the rows are content the user edits, so there
+     * is nothing to cache.
+     */
+    commands: () => {
+      const ref = tables.designations.get(COMMANDS_ROLE);
+      const provider = ref === undefined ? undefined : tables.commandProviders.get(ref);
+      return provider ? provider().map(({ name, placeholder }) => ({ name, placeholder })) : [];
+    },
     help: catalog.help,
   };
 }

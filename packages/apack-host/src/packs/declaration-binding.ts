@@ -30,14 +30,6 @@ export function apiBindingProblem(features: Readonly<Record<string, ApiOwnerDecl
   }
 }
 
-export function commandBindingProblem(declarations: Readonly<Record<string, { readonly placeholder: string }>> | undefined, bindings: unknown): string | undefined {
-  const commands = namedBindings(bindings, 'name', Object.keys(declarations ?? {}));
-  if (!commands) return 'commands';
-  for (const [name, declaration] of Object.entries(declarations ?? {})) {
-    if (commands.get(name)!.placeholder !== declaration.placeholder) return `commands.${name}.placeholder`;
-  }
-}
-
 /** Content bindings provide data operations, independently of backend activation. */
 export function contentBindingProblem(manifest: PackManifest, runtime: unknown, appliers?: unknown): string | undefined {
   const problem = (path: string) => `Pack "${manifest.id}" content runtime ${path} does not match its accepted declarations`;
@@ -83,9 +75,6 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
   if (!isDeepStrictEqual(ears.relKinds === undefined ? {} : ears.relKinds, _packRelationTypes(manifest))) return problem('ears.relKinds');
   const contentProblem = backendContentBindingProblem(manifest.content, registration);
   if (contentProblem) return problem(contentProblem);
-
-  const commands = commandBindingProblem(manifest.extensions?.commands, registration.commands);
-  if (commands) return problem(commands);
 
   const viewerProblem = backendViewerBindingProblem(manifest.extensions ?? {}, registration);
   if (viewerProblem) return problem(viewerProblem);

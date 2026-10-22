@@ -5,7 +5,8 @@
 
 Implement docs/goals/goal-commands-are-host-level.md. Follow CLAUDE.md and docs/AGENTS.md.
 Read Scope, Decisions, Phases and Constraints before continuing.
-The survey was made at 672d70800 on master (2026-10-22); inspect current code before relying on it.
+Surveyed at 672d70800 and re-verified at 8cb7e7b20, after goal-editor-extensions merged and moved
+some of the paths this names; inspect current code before relying on it.
 
 Finished when:
 - The command suggestion is a built-in editor affordance that asks whichever feature plays the
@@ -19,6 +20,59 @@ Finished when:
 Commit usable checkpoints as you go. Do not expand or reduce scope without user authorization.
 ```
 
+## Outcome (2026-10-22)
+
+**Done.** A command is content a pack ships, served by whichever feature plays the `commands`
+designation, and published to the shell so an editor in any window offers the list whatever surface is
+open. `extensions.commands` is gone; so is every read of a surface's state for it.
+
+| Phase | Commit | Evidence |
+|---|---|---|
+| 1 — one shape | `13cdd77e5` | One `PackCommand`, the SDK's; `CommandItem` gone |
+| 2 — one door, and the role that serves it | `2f3f5ca06`, `8922af1a2` | The content source, the designation, the provider; `extensions.commands`, its schema and `getPackCommands` deleted |
+| 3 — the move | `361969c75` | The suggestion in `@apackdev/ui`, config-gated to `input:chat`; threads' actor, memo and events stripped. Mutation: removing `sendCommands` from `SEND_STATE` fails three cases |
+| 4 — docs | `62287438f` | `content.md`'s section rewritten, the manifest row replaced by `features.<id>.getCommands`, four guides off `getPackCommands` |
+
+**What the review and the gate then changed, which is the part worth reading.** Four of these were
+defects the phases had introduced and two were mine in sequencing:
+
+| Change | Commit | Why |
+|---|---|---|
+| Escape stays with the open suggestion | `d61a7849c` | The editor composed `isSuggestionActive` from contributed groups only, so a built-in had nothing to speak for it: Escape paused the turn instead of closing the popup. No case covered Escape, which is why it slipped |
+| Only the role's feature may declare the provider | `5dcc627b8` | Codegen took `declared[0]` and the registry checked the *pack*, so a second provider lost to manifest order and a feature without the role could be served |
+| The role resolves to the feature that answers | `13f5511e0` | The manifest declared the provider per feature and the registration carried it per pack, so the ref was mined for a `packId`. That mismatch is what the claim check was reconciling; both failure modes are gone rather than guarded |
+| One place decides the list moved | `334ccad9c` | Ten library handlers each compared the whole list before and after a write. `libraryCommands` announces its writes; one watcher compares |
+| A command is a document with a type | `bde1deb16`, `54762313f` | The format defaults `documentType` — so a file in the commands source cannot omit it, *and* a library document that declares it is served. The first framing stamped it, which wrongly made the second impossible |
+| The document type is declared once | `7c33139ad` | Writer and reader spelled the literal separately |
+| The exports map keeps its own order | `4900457f9` | A json round-trip alphabetised all 34 keys; `published-exports` reads the non-code entries in order |
+
+**Authoring, which the goal did not ask for and the design argued into.** Removing the manifest key left
+a pack hand-writing a directory, a format reference and a field-section convention. `apack pack add
+command` and `add document` (`ed3fec238`, `f50d61ee9`, `12cf0fe22`, `ad98fb23f`) write the markdown and
+declare the source; `--content` takes a body and `add command` appends into a document already there,
+because an agent runs these and scaffold-then-edit is two steps where one does. That last one is the
+only scaffold here that writes into an existing file, and `add/write.ts`'s header states the bent rule
+rather than denying it.
+
+**Three things deferred rather than left in a conversation**, each with its revisit condition:
+[`document-in-the-core`](../../plans/deferred/document-in-the-core.md) (whose second trigger is wanting
+`extensions.commands` back — this move is what makes it buildable),
+[`pack-published-app-facts`](../../plans/deferred/pack-published-app-facts.md) and
+[`the-empty-library-source`](../../plans/deferred/the-empty-library-source.md), which records why the
+obvious fix for it is wrong. A `Command` entity is dropped for good.
+
+**`npm run chain -- --strict` passes on `ad98fb23f`**: 31 steps ok, 0 failed, 1 cached — effectively a
+cold run, with no step caveated as having read files that changed while it ran. `test:native` was the
+critical path at 297s.
+
+**Two lessons about running the gate, which cost four runs.** A pack's own `CLAUDE.md` is inside the
+pack compiler's captured namespace, so editing one mid-run invalidates the build inputs an integration
+spec checks — `docs/` is outside every pack and safe, a pack-local guide is not. And stopping a chain
+with a kill while `test:native` runs leaves its lock in the container's own `node_modules` volume,
+naming a pid and hostname the host can only ever read as held; it never clears itself. Both are in
+[pipeline-lessons.md](../references/pipeline-lessons.md#validation-loops)'s territory, and
+`--strict` is what turns the first into a refusal rather than a green run that describes another tree.
+
 ## Scope
 
 Commands enter the app through **two doors, one of which skips the machinery the other uses**, and the
@@ -30,7 +84,7 @@ with three-way merge and offers over it. `extensions.commands` is the anomaly: i
 *inline in the manifest*, bypassing that pipeline, while 35 more arrive as library content. The problem
 was never that there are two sources to merge — it is that one of them is not content.
 
-Three facts, each verified at `672d70800`:
+Three facts, each re-verified at `8cb7e7b20`:
 
 **1. The extension is already app-wide.** `TiptapEditor.vue` injects every registered pack's extensions
 into every editor it renders:
@@ -210,7 +264,7 @@ the move, default-setup's predicate asks only the reference key, and the editor 
 state directly — it owns that key now, so the manifest need not carry a predicate for it.
 
 Check how `declaration-binding` composes the predicate across packs before relying on this
-(`apack-host/tests/fe/declaration-binding.spec.ts`, `renderer/tests/runtime/native-editor.spec.ts`).
+(`apack-host/tests/fe/declaration-binding.spec.ts`, `renderer/tests/runtime/text-editor.spec.ts`).
 
 ## The change, file by file
 
@@ -261,13 +315,16 @@ src/content/library/internal/        │   (merge, keyed by         (broadcasts)
 ```md
 ---
 name: Claude Code commands
-type: commands          ← this is what makes it a command list
 ---
 <!-- section:field -->
 **cc-sessions**: Session ID (optional, lists all if omitted)
 ```
 
-Before, nothing in the file said it was commands. Its folder did.
+The file need say nothing about being commands: the `commands` **format** defaults every document it
+compiles to one (`_compilers/commands.ts`), so a file in that source cannot fail to be a command list by
+omitting it. It is a default rather than a stamp, because a command is only a document with a type — a
+library document that declares `type: commands` is served as one, and a file here that declares something
+else is what it says. Before, its folder decided, which was the same coupling with nothing enforcing it.
 
 ### The compiler — the shape is already there
 
@@ -452,7 +509,7 @@ exported. `useCommandItems` reads Phase 2's accessor instead of `useSurfaceState
 **Done when:** `npm run typecheck`; `npm run exports:update -w @apackdev/ui` and `api:update` with
 every line of the diff a path this phase moved; the editor suites pass —
 `default-setup/tests/extensions/tiptap/`, `apack-host/tests/fe/declaration-binding`,
-`renderer/tests/runtime/native-editor`, `apack-cli/tests/build/editor-declarations`.
+`renderer/tests/runtime/text-editor`, `apack-cli/tests/build/editor-declarations`.
 
 **Mutation:** the popup opened in a window where threads was never spawned still lists every command —
 the behaviour this goal exists for, and the one no current test covers.
@@ -473,9 +530,11 @@ or `extensions.commands` as a manifest key.
 - `extensions.commands` is removed, not kept beside the content path. Two doors is the defect.
 - Reference suggestion is not touched. If a phase wants to, it has found a shared seam worth naming
   rather than a reason to widen scope.
-- [`goal-editor-extensions.md`](../archive/goals/goal-editor-extensions.md) has landed, so
+- [`goal-editor-extensions.md`](goal-editor-extensions.md) has landed, so
   `command-suggestion.ts` already holds the extension and its Plugin together, and the convention there
   governs where they arrive.
-- Commands stay `Document`s. A `Command` entity is a bigger change than it looks: the Library surface
-  *is* their editing UI, so a new entity needs a new editor. If a phase reaches for one, that is a
-  scope proposal.
+- Commands stay `Document`s, and a `Command` entity is **dropped for good** — not deferred. The Library
+  surface *is* their editing UI, so the entity would trade the provider getter for a whole new editor.
+  Don't raise it again as an alternative or as future work. The direction that does hold is the inverse:
+  `Document` into the core with Library as its editor, as flows already work
+  ([document-in-the-core.md](../../plans/deferred/document-in-the-core.md)).

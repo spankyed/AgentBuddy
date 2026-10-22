@@ -5,6 +5,7 @@ import * as _apackdev_sdk from '@apackdev/sdk';
 import * as _apackdev_sdk_artifacts from '@apackdev/sdk/artifacts';
 import * as _apackdev_sdk_blocks from '@apackdev/sdk/blocks';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
+import * as _apackdev_sdk_commands from '@apackdev/sdk/commands';
 import * as _apackdev_sdk_content from '@apackdev/sdk/content';
 import * as _apackdev_sdk_cron from '@apackdev/sdk/cron';
 import * as _apackdev_sdk_database_console from '@apackdev/sdk/database-console';
@@ -33,6 +34,7 @@ export const SHARED_INSTANCE_MODULES: Readonly<Record<string, unknown>> = {
   '@apackdev/sdk/artifacts': _apackdev_sdk_artifacts,
   '@apackdev/sdk/blocks': _apackdev_sdk_blocks,
   '@apackdev/sdk/build': _apackdev_sdk_build,
+  '@apackdev/sdk/commands': _apackdev_sdk_commands,
   '@apackdev/sdk/content': _apackdev_sdk_content,
   '@apackdev/sdk/cron': _apackdev_sdk_cron,
   '@apackdev/sdk/database-console': _apackdev_sdk_database_console,

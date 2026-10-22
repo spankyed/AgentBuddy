@@ -86,7 +86,7 @@ describe('parseManifest', () => {
     expect(external.diagnostics[0].message).toContain('"first" and "second"');
     const native = _NativePackDeclarationSchema.safeParse({ id: 'editor', ...contributions });
     expect(native.success).toBe(false);
-    if (native.success) throw new Error('Duplicate native editor extension accepted');
+    if (native.success) throw new Error('Duplicate native text editor extension accepted');
     expect(native.error.issues[0].path).toEqual(['textEditor', 'second', 'extensions', 'mention']);
     expect(native.error.issues[0].message).toContain('"first" and "second"');
   });
@@ -292,6 +292,28 @@ describe('content.formats, content.sources and content.datasets', () => {
     expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
   });
 
+  // The commands are content and the role decides who serves them, so the provider is the role-holder's to
+  // declare. Neither half is the registry's to catch: it sees one provider per pack without knowing which
+  // feature declared it, so a feature declaring one beside the sibling that holds the role would be served
+  // in its place, and a second provider would lose to whichever the manifest listed first.
+  it('takes the command provider only from the feature playing the role, and refuses a second', () => {
+    const feature = (id: string, extra: Record<string, unknown> = {}) =>
+      ({ [id]: { description: `Exercise ${id} commands.`, ...extra } });
+    const provider = `src/library/be/commands.ts#commands`;
+
+    expect(messagesOf(parseManifest({ ...pack, features: { ...feature('library', { designation: 'commands', getCommands: provider }) } }))).toEqual([]);
+
+    expect(messagesOf(parseManifest({ ...pack, features: { ...feature('library', { getCommands: provider }) } })))
+      .toEqual([expect.stringMatching(/"features\.library\.getCommands": Feature "library" declares a command provider without "designation": "commands"/)]);
+
+    expect(messagesOf(parseManifest({ ...pack, features: {
+      ...feature('library', { designation: 'commands', getCommands: provider }), ...feature('notes', { getCommands: provider }),
+    } }))).toEqual([
+      expect.stringMatching(/"features\.notes\.getCommands": Two features declare a command provider: "library" and "notes"/),
+      expect.stringMatching(/"features\.notes\.getCommands": Feature "notes" declares a command provider without "designation"/),
+    ]);
+  });
+
   // Which surface opens first is an annotation on the surface, not a feature id at the root: an id there
   // could name a feature the pack doesn't have, and codegen then emitted no default at all. A pack
   // claiming none has no default surface, which the shell handles.
@@ -409,32 +431,18 @@ describe('services', () => {
   });
 });
 
-describe('commands', () => {
+describe('a feature\'s command provider', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-  const withCommands = (commands: Record<string, unknown>) => ({ ...pack, extensions: { commands } });
+  // With the designation, since only the feature playing it may declare one
+  const withProvider = (getCommands: unknown) =>
+    ({ ...pack, features: { library: { description: 'Serves them.', designation: 'commands', getCommands } } });
 
-  it('accepts lowercase names with hyphens as keys, each with its placeholder', () => {
-    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: 'Topic' }, 'team-digest': { placeholder: 'Week (optional)' } })))).toEqual([]);
+  it('accepts a path#export naming the function that serves them', () => {
+    expect(messagesOf(parseManifest(withProvider('src/features/library/be/commands.ts#commands')))).toEqual([]);
   });
 
-  it('rejects a key that is not a command: uppercase, a leading slash, digit or hyphen, a space, an underscore', () => {
-    for (const name of ['Standup', '/standup', '2do', '-standup', 'team digest', 'team_digest']) {
-      expect(messagesOf(parseManifest(withCommands({ [name]: { placeholder: 'x' } }))))
-        .toEqual([expect.stringMatching(/Must be a lowercase letter, then lowercase letters, digits and hyphens/)]);
-    }
-  });
-
-  it('rejects a command without a placeholder or with an empty one, and unknown keys on one', () => {
-    expect(messagesOf(parseManifest(withCommands({ standup: {} }))).length).toBeGreaterThan(0);
-    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: '' } })))[0]).toContain('placeholder');
-    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: 'x', action: 'Standup' } })))[0]).toContain('action');
-  });
-
-  // The name is the key, so declaring one twice is unrepresentable rather than refused: JSON cannot hold a
-  // key twice, which is why the check that used to say so is gone. What is still refused is a command on a
-  // feature — commands are the pack's.
-  it("refuses one on a feature: they're the pack's", () => {
-    expect(messagesOf(parseManifest({ ...pack, features: { memos: { description: 'Feature validation fixture.', commands: { standup: { placeholder: 'a' } } } } }))[0]).toContain('commands');
+  it('rejects a target that names no export', () => {
+    expect(messagesOf(parseManifest(withProvider('src/features/library/be/commands.ts'))).length).toBeGreaterThan(0);
   });
 });
 

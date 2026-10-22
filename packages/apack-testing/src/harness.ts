@@ -23,7 +23,7 @@ import type { FeatureRef } from '@apackdev/sdk/ids';
 import { _parseEventContracts, type PackEventContracts, type PackRegistration } from '@apackdev/sdk/framework';
 import { GENERATED_EVENT_CONTRACTS_FILE } from '@apackdev/sdk/build';
 import { createPackRegistry, readCachedDependency, readPackBuild, assertPackServiceRequirements, type PackOrigin } from '@apackdev/host/packs';
-import { createPacksSystem, createSettingsSystem, hostRegistration, hostDeclaration, packsEvents, settingsEvents } from '@apackdev/host/features';
+import { APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, hostDeclaration, packsEvents, settingsEvents } from '@apackdev/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { createSettingsService, createSettingsStore } from '@apackdev/host/settings';
 import { getSettingsCatalog, onPackCatalogChanged, type ContentRuntime } from '@apackdev/sdk/framework';
@@ -69,12 +69,15 @@ let inTest = false;
 /** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
 const registry = createPackRegistry({ nativeDeclarations: [hostDeclaration], serviceOverrides: serviceMocks, settingsForPack: (packId) => _settingsAdmin().forPack(packId) });
 // The app's own surfaces (the shell, the Packs tab, Settings), which a pack's systems may send to. The harness runs
-// two of the host's systems: settings, because a feature's own settings are the app's to store and hand back and a
-// pack's code reads them in almost every test, and packs, which owns content import and preview — a pack's tests write
-// their own compiled output constantly, and that is the system those events reach.
+// three of the host's systems: settings, because a feature's own settings are the app's to store and hand back and a
+// pack's code reads them in almost every test; packs, which owns content import and preview — a pack's tests write
+// their own compiled output constantly, and that is the system those events reach; and application, which publishes
+// the facts a window holds whatever surface is open, so a pack contributing one (the chat's commands, through the
+// `commands` designation) is tested through the system that serves it rather than through a fake.
 registry.registerPack(hostRegistration({
   settings: { machine: createSettingsSystem(), receives: [...settingsEvents] },
   packs: { machine: createPacksSystem(registry), receives: [...packsEvents] },
+  application: { machine: createApplicationSystem(registry), receives: APPLICATION_SYSTEM_EVENTS },
 }));
 setAppPacks(registry);
 

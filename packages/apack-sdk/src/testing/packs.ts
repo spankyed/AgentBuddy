@@ -10,7 +10,7 @@ import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
 import type { ContentWriter } from '../content/writers.ts';
 import type { ContentApplier } from '../utils/apply.ts';
-import type { PackCommand } from '../framework/pack-commands.ts';
+import type { PackCommand } from '../commands/index.ts';
 import type { HelpArticle } from '../framework/pack-help.ts';
 import type { SettingsCatalog } from '../framework/pack-settings.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';

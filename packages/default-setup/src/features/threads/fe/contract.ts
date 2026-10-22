@@ -6,7 +6,7 @@
 import type { Simplify } from '@apackdev/sdk/helpers'
 import type { HotkeysMap, NavHistory, SurfaceInbox } from '@apackdev/sdk/fe'
 import type {
-  AgentMode as AgentModeConfig, AgentSettings, AgentThreadData, CommandItem, Tab, ThreadCreateData,
+  AgentMode as AgentModeConfig, AgentSettings, AgentThreadData, Tab, ThreadCreateData,
   ThreadEntity, ThreadTagOption, ThreadViewData, ThreadsSettings,
 } from '#generated/types.ts'
 import type { ThreadTabGroup } from './canvas/agent/tabs/types.ts'
@@ -60,7 +60,6 @@ export interface ThreadsContext {
   modes: AgentModeConfig[];
   hotkeys: HotkeysMap;
   chatSettings: AgentSettings;
-  commands: CommandItem[];
   quickPromptCursor: { x: number; y: number } | null;
   pendingThreadCwd?: string;
   pendingForceDirectoryPicker?: boolean;
