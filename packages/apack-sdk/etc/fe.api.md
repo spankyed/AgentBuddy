@@ -100,7 +100,7 @@ export function canGoBack<T>(history: NavHistory<T>): boolean;
 export function canGoForward<T>(history: NavHistory<T>): boolean;
 
 // @public (undocumented)
-export function clearTabGroups(key: string): void;
+export function clearTabGroups(storage: SurfaceStorage, name: string): void;
 
 // @public (undocumented)
 export function contextMenu(items: ContextMenuItem[]): {
@@ -540,7 +540,7 @@ export interface KeyboardShortcut {
 }
 
 // @public (undocumented)
-export function loadTabGroups(key: string): TabGroup[];
+export function loadTabGroups(storage: SurfaceStorage, name: string): TabGroup[];
 
 // @public (undocumented)
 export function matchesHotkey(event: HotkeyEvent, config: KeyboardShortcut): boolean;
@@ -632,7 +632,7 @@ export { safeEvents as feSafeEvents }
 export { safeEvents }
 
 // @public (undocumented)
-export function saveTabGroups(key: string, groups: TabGroup[]): void;
+export function saveTabGroups(storage: SurfaceStorage, name: string, groups: TabGroup[]): void;
 
 // @public
 export interface SecretsClient {
@@ -864,6 +864,20 @@ export type SurfaceStateOf<C> = C extends {
     state: infer State;
 } ? State : never;
 
+// @public
+export interface SurfaceStorage {
+    // (undocumented)
+    get(name: string): string | null;
+    names(): string[];
+    // (undocumented)
+    remove(name: string): void;
+    // (undocumented)
+    set(name: string, value: string): void;
+}
+
+// @public
+export function surfaceStorage(ref: FeatureRef, storage?: Storage): SurfaceStorage;
+
 // @public (undocumented)
 export interface TabGroup {
     // (undocumented)
@@ -980,6 +994,9 @@ export function useStepDeclarations(): ComputedRef<readonly StepCatalogEntry[]>;
 
 // @public
 export function useSurface<T>(): T;
+
+// @public
+export function useSurfaceStorage(): SurfaceStorage;
 
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;

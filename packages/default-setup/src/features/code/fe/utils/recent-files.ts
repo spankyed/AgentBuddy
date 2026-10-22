@@ -1,3 +1,8 @@
+import { surfaceStorage } from '@apackdev/sdk/fe'
+import { ref as featureRef } from '#generated/ref.ts'
+
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = surfaceStorage(featureRef('code'))
 /**
  * Utility for managing recently opened files
  */
@@ -7,7 +12,6 @@ interface RecentFile {
   timestamp: number
 }
 
-const STORAGE_PREFIX = 'code-surface-recent-files'
 const MAX_RECENT_FILES = 50
 
 /**
@@ -15,16 +19,16 @@ const MAX_RECENT_FILES = 50
  * project's files, and coming back must restore the list this project earned. An empty
  * base directory (before the backend reports one) keeps the unscoped key.
  */
-function storageKey(baseDirectory: string): string {
-  return baseDirectory ? `${STORAGE_PREFIX}:${baseDirectory}` : STORAGE_PREFIX
+function storedAs(baseDirectory: string): string {
+  return baseDirectory ? `recent-files:${baseDirectory}` : 'recent-files'
 }
 
 /**
- * Load recently opened files from localStorage
+ * Load recently opened files from this surface's storage
  */
 export function loadRecentFiles(baseDirectory: string): string[] {
   try {
-    const stored = localStorage.getItem(storageKey(baseDirectory))
+    const stored = storage.get(storedAs(baseDirectory))
     if (!stored) return []
     
     const recentFiles: RecentFile[] = JSON.parse(stored)
@@ -42,7 +46,7 @@ export function loadRecentFiles(baseDirectory: string): string[] {
 }
 
 /**
- * Save recently opened files to localStorage
+ * Save recently opened files to this surface's storage
  */
 function saveRecentFiles(recentFiles: string[], baseDirectory: string): void {
   try {
@@ -52,7 +56,7 @@ function saveRecentFiles(recentFiles: string[], baseDirectory: string): void {
       timestamp: Date.now() - index
     }))
     
-    localStorage.setItem(storageKey(baseDirectory), JSON.stringify(timestampedFiles))
+    storage.set(storedAs(baseDirectory), JSON.stringify(timestampedFiles))
   } catch (error) {
     console.error('Failed to save recent files:', error)
   }
@@ -68,7 +72,7 @@ export function addRecentFile(recentFiles: string[], filePath: string, baseDirec
   // Add to the beginning and limit size
   const updated = [filePath, ...filtered].slice(0, MAX_RECENT_FILES)
   
-  // Save to localStorage
+  // Save to this surface's storage
   saveRecentFiles(updated, baseDirectory)
   
   return updated

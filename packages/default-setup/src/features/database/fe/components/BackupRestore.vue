@@ -283,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-import { useSurface } from '@apackdev/sdk/fe'
+import { useSurface, useSurfaceStorage } from '@apackdev/sdk/fe'
 
 import { ref, computed, watch, onMounted } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -311,6 +311,8 @@ import { sendToSystem } from '#generated/events.ts';
 import ToastNotification from '@apackdev/ui/design/ToastNotification';
 
 const actor: DatabaseState = useSurface();
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = useSurfaceStorage();
 
 // Get backup info from state
 const storedBackupInfo = useSelector(actor, (state) => state.context.backupInfo);
@@ -388,10 +390,10 @@ watch(backupResult, (result) => {
   }
 });
 
-// Load saved paths from localStorage on mount
+// Load saved paths from this surface's storage on mount
 onMounted(() => {
-  const savedExportPath = localStorage.getItem('database-backup-export-path');
-  const savedImportPath = localStorage.getItem('database-backup-import-path');
+  const savedExportPath = storage.get('backup-export-path');
+  const savedImportPath = storage.get('backup-import-path');
 
   if (savedExportPath) {
     exportPath.value = savedExportPath;
@@ -406,8 +408,8 @@ async function selectExportDirectory() {
   const directoryPath = await window.electronAPI?.fileUtils.selectDirectory();
   if (directoryPath) {
     exportPath.value = directoryPath;
-    // Save to localStorage for future use
-    localStorage.setItem('database-backup-export-path', directoryPath);
+    // Save to this surface's storage for future use
+    storage.set('backup-export-path', directoryPath);
   }
 }
 
@@ -431,8 +433,8 @@ async function selectImportDirectory() {
   const directoryPath = await window.electronAPI?.fileUtils.selectDirectory();
   if (directoryPath) {
     importPath.value = directoryPath;
-    // Save to localStorage for future use
-    localStorage.setItem('database-backup-import-path', directoryPath);
+    // Save to this surface's storage for future use
+    storage.set('backup-import-path', directoryPath);
     // Get backup info for the selected directory
     sendToSystem(id, {
       type: 'GET_BACKUP_INFO',

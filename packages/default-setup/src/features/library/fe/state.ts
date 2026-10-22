@@ -379,7 +379,7 @@ export const librarySystem = setup({
     },
     updateDocument: ({ context, event }) => {
       if (event.type === 'SAVE_DOCUMENT' && context.editingDocument) {
-        // Update tags in localStorage
+        // Update tags in this surface's storage
         const oldTags = context.editingDocument.tags || []
         const newTags = event.tags || []
 

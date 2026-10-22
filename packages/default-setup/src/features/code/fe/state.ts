@@ -1,3 +1,8 @@
+import { surfaceStorage } from '@apackdev/sdk/fe'
+import { ref as featureRef } from '#generated/ref.ts'
+
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = surfaceStorage(featureRef('code'))
 import { setup, type ActorRefFrom, type AnyActorRef, assign, enqueueActions } from 'xstate';
 
 import breadcrumb from '@apackdev/sdk/fe';
@@ -242,7 +247,7 @@ function prunePersistedTabGroups(
 function persistCodeTabs(context: CodeContext): void {
   const tabGroups = pruneEmptyTabGroups(context.openFiles, context.tabGroups)
   saveOpenTabs(context.openFiles, context.activeFilePath, context.panelTerminalId, context.panelTerminalExpanded)
-  saveTabGroups('code-surface-tab-groups', tabGroups)
+  saveTabGroups(storage, 'tab-groups', tabGroups)
 }
 
 function finalizeRestoreState(context: CodeContext): Partial<CodeContext> {
@@ -453,7 +458,7 @@ const codeState = setup({
     restorePersistedTabs: enqueueActions(({ enqueue, self }) => {
       const { tabs: persistedTabs, activeFilePath: persistedActive, panelTerminalId: persistedPanelTerminal, panelTerminalExpanded: persistedExpanded } = loadPersistedTabs()
       const persistedGroups = prunePersistedTabGroups(
-        loadTabGroups('code-surface-tab-groups'),
+        loadTabGroups(storage, 'tab-groups'),
         persistedTabs
       )
 

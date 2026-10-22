@@ -1,3 +1,8 @@
+import { surfaceStorage } from '@apackdev/sdk/fe'
+import { ref as featureRef } from '#generated/ref.ts'
+
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = surfaceStorage(featureRef('browser'))
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import type { BrowserSettings } from '#generated/types.ts';
 import type { Bookmark, BrowserContext, BrowserInboxEvent, BrowserTab, BrowserTabPersistedId } from './contract.ts';
@@ -173,15 +178,14 @@ function syncBookmarksToBackend(bookmarks: Bookmark[]) {
   }, 2000);
 }
 
-const GROUPS_STORAGE_KEY = 'browser-tab-groups';
 
 function persistState(context: BrowserContext) {
-  saveTabGroups(GROUPS_STORAGE_KEY, context.tabGroups);
+  saveTabGroups(storage, 'tab-groups', context.tabGroups);
   syncTabsToBackend(context.tabs);
 }
 
 function persistGroupsOnly(context: BrowserContext) {
-  saveTabGroups(GROUPS_STORAGE_KEY, context.tabGroups);
+  saveTabGroups(storage, 'tab-groups', context.tabGroups);
 }
 
 function generateGroupId(): string {
@@ -556,7 +560,7 @@ const browserState = setup({
         'BROWSER_CONNECTED': {
           actions: [
             assign(({ event }) => ({
-              tabGroups: loadTabGroups(GROUPS_STORAGE_KEY),
+              tabGroups: loadTabGroups(storage, 'tab-groups'),
               bookmarks: event.savedBookmarks ?? [],
             })),
             ({ context, event }) => {

@@ -348,6 +348,25 @@ const RULE_LIST = [
     },
   },
   {
+    key: 'window-storage',
+    rule: 'A surface reaches its own window storage through surfaceStorage or useSurfaceStorage from '
+      + '@apackdev/sdk/fe, whose prefix is the surface\'s ref. `localStorage` and `sessionStorage` are one flat '
+      + 'namespace per window, so a hand-written key is a name two packs can pick and a vocabulary that outlives '
+      + 'its author — `code-plugin-open-tabs` outlived the word plugin by a release',
+    check(view, place) {
+      // Source only. A pack's test asserting what its surface stored has to read storage, and routing that
+      // through the handle would make the test assert through the thing it is testing.
+      if (place.packRelative.startsWith('tests/')) return [];
+      return view.visit((node) => {
+        if (ts.isIdentifier(node) && (node.text === 'localStorage' || node.text === 'sessionStorage')
+          && !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)) {
+          return [node.text];
+        }
+        return undefined;
+      });
+    },
+  },
+  {
     key: 'repository-casts',
     rule: "Read repositories through their owner's exports — a pack through `repository` from "
       + "#generated/repository, which types its own and its dependencies' — never through a cast of the engine's "

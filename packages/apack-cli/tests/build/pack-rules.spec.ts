@@ -92,6 +92,12 @@ const FIRES: Record<PackRuleKey, { onFile?: [code: string, problem: string][]; e
     onFile: [['export const send = () => _rootEvents.emitOutgoing(event);\n', 'src/f.ts:1: _rootEvents']],
   },
   // Two shapes and eleven allowed ones, transcribed when the repo script's console rule moved here
+  'window-storage': {
+    onFile: [
+      ["const raw = localStorage.getItem('open-tabs');\n", 'src/f.ts:1: localStorage'],
+      ["sessionStorage.setItem('draft', text);\n", 'src/f.ts:1: sessionStorage'],
+    ],
+  },
   'backend-console': { elsewhere: 'backend-console fires under a backend path and not under a frontend one' },
   // A `_`-prefixed import from an @apackdev package, which needs no pack fixture to be offending
   'internal-package-imports': { elsewhere: 'internal-package-imports' },
@@ -590,7 +596,9 @@ describe('when several rules are right about one site', () => {
       'cross-feature-imports', 'own-modules', 'pack-own-aliases',
       'internal-package-imports',
       // component-sends sits beside untyped-sends: both answer "which send, from where"
-      'untyped-sends', 'component-sends', 'raw-transport', 'backend-console', 'repository-casts',
+      // window-storage sits beside backend-console: both say which API to reach for instead of a global
+      'untyped-sends', 'component-sends', 'raw-transport', 'backend-console', 'window-storage',
+      'repository-casts',
       // reserved-event-keys is last and contests nothing: no other rule reads a property name, so where it
       // sits is free, and a convention belongs after the rules about what a module imports
       'reserved-event-keys',

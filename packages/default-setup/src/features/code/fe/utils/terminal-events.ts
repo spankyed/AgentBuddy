@@ -1,16 +1,22 @@
+import { surfaceStorage } from '@apackdev/sdk/fe'
+import { ref as featureRef } from '#generated/ref.ts'
+
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = surfaceStorage(featureRef('code'))
 type TerminalOutputHandler = (terminalId: string, data: string) => void
 
 class TerminalEventBus {
   private handlers = new Map<string, Set<TerminalOutputHandler>>()
   private outputs = new Map<string, string>()
-  private readonly STORAGE_KEY_PREFIX = 'apack_terminal_output_'
+  /** One name per terminal under this stem; `storage.names()` sweeps them without knowing the prefix. */
+  private readonly OUTPUT_STEM = 'terminal-output:'
   private readonly USE_LOCAL_STORAGE = true // Can be made configurable
   private readonly MAX_OUTPUT_LENGTH = 1000000 // 1MB limit per terminal
   private saveTimers = new Map<string, NodeJS.Timeout>()
-  private readonly SAVE_DEBOUNCE_MS = 500 // Debounce localStorage writes
+  private readonly SAVE_DEBOUNCE_MS = 500 // Debounce storage writes
   
   constructor() {
-    // Load any persisted outputs from localStorage on startup
+    // Load any persisted outputs from this surface's storage on startup
     if (this.USE_LOCAL_STORAGE && typeof window !== 'undefined') {
       this.loadFromLocalStorage()
     }
@@ -18,19 +24,18 @@ class TerminalEventBus {
   
   private loadFromLocalStorage() {
     try {
-      // Find all terminal output keys in localStorage
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key && key.startsWith(this.STORAGE_KEY_PREFIX)) {
-          const terminalId = key.substring(this.STORAGE_KEY_PREFIX.length)
-          const output = localStorage.getItem(key)
+      // Find this surface's terminal output names
+      for (const name of storage.names()) {
+        if (name.startsWith(this.OUTPUT_STEM)) {
+          const terminalId = name.substring(this.OUTPUT_STEM.length)
+          const output = storage.get(name)
           if (output) {
             this.outputs.set(terminalId, output)
           }
         }
       }
     } catch (e) {
-      console.warn('Failed to load terminal outputs from localStorage:', e)
+      console.warn('Failed to load terminal outputs from storage:', e)
     }
   }
   
@@ -46,18 +51,18 @@ class TerminalEventBus {
     // Set new debounced save
     const timer = setTimeout(() => {
       try {
-        localStorage.setItem(this.STORAGE_KEY_PREFIX + terminalId, output)
+        storage.set(this.OUTPUT_STEM + terminalId, output)
         this.saveTimers.delete(terminalId)
       } catch (e) {
         // Handle quota exceeded or other errors
-        console.warn('Failed to save terminal output to localStorage:', e)
+        console.warn('Failed to save terminal output to storage:', e)
 
         // If quota exceeded, try to clear orphaned entries first
         if (e instanceof Error && e.name === 'QuotaExceededError') {
           this.reclaimQuota(terminalId)
           // Retry once after clearing
           try {
-            localStorage.setItem(this.STORAGE_KEY_PREFIX + terminalId, output)
+            storage.set(this.OUTPUT_STEM + terminalId, output)
           } catch (retryError) {
             console.error('Failed to save even after reclaiming quota:', retryError)
           }
@@ -72,9 +77,9 @@ class TerminalEventBus {
     if (!this.USE_LOCAL_STORAGE || typeof window === 'undefined') return
     
     try {
-      localStorage.removeItem(this.STORAGE_KEY_PREFIX + terminalId)
+      storage.remove(this.OUTPUT_STEM + terminalId)
     } catch (e) {
-      console.warn('Failed to remove terminal output from localStorage:', e)
+      console.warn('Failed to remove terminal output from storage:', e)
     }
   }
   
@@ -165,18 +170,17 @@ class TerminalEventBus {
 
     try {
       const liveIds = new Set(liveTerminalIds)
-      const prefix = this.STORAGE_KEY_PREFIX
+      const prefix = this.OUTPUT_STEM
       const staleKeys: string[] = []
 
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
+      for (const key of storage.names()) {
         if (!key || !key.startsWith(prefix)) continue
         const id = key.substring(prefix.length)
         if (!liveIds.has(id)) staleKeys.push(key)
       }
 
       for (const key of staleKeys) {
-        localStorage.removeItem(key)
+        storage.remove(key)
       }
     } catch (e) {
       console.warn('Failed to prune stale terminal output cache:', e)
@@ -184,7 +188,7 @@ class TerminalEventBus {
   }
   
   /**
-   * Reclaim localStorage quota without destroying active terminal scrollback.
+   * Reclaim storage quota without destroying active terminal scrollback.
    * Drops only entries whose terminal id isn't known to this session — those
    * are stale from prior runs (terminal was killed or app was closed without
    * cleanup). The currently-writing terminal (`activeId`) and every entry in
@@ -194,23 +198,22 @@ class TerminalEventBus {
    */
   private reclaimQuota(activeId: string) {
     try {
-      const prefix = this.STORAGE_KEY_PREFIX
+      const prefix = this.OUTPUT_STEM
       const liveIds = new Set<string>(this.outputs.keys())
       liveIds.add(activeId)
 
       const orphanKeys: string[] = []
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
+      for (const key of storage.names()) {
         if (!key || !key.startsWith(prefix)) continue
         const id = key.substring(prefix.length)
         if (!liveIds.has(id)) orphanKeys.push(key)
       }
 
       for (const key of orphanKeys) {
-        localStorage.removeItem(key)
+        storage.remove(key)
       }
     } catch (e) {
-      console.error('Failed to reclaim localStorage quota:', e)
+      console.error('Failed to reclaim storage quota:', e)
     }
   }
 }

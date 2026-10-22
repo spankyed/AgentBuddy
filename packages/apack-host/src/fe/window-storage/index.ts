@@ -17,7 +17,7 @@ export interface WindowStorage {
   removeItem(key: string): void;
 }
 
-export interface FrontendMigration {
+export interface WindowStorageMigration {
   /** The app version this targets: it runs when the stored version is older */
   target: string;
   description: string;
@@ -25,13 +25,13 @@ export interface FrontendMigration {
 }
 
 /** The app version a window's storage was last migrated to */
-const VERSION_KEY = 'apack-fe-version';
+const VERSION_KEY = 'apack-window-storage-version';
 
 /** In version order */
-const migrations: FrontendMigration[] = [m040];
+const migrations: WindowStorageMigration[] = [m040];
 
 /** Runs every migration newer than what `storage` was last migrated to, then records `appVersion` */
-export function runFrontendMigrations(storage: WindowStorage, appVersion: string): void {
+export function runWindowStorageMigrations(storage: WindowStorage, appVersion: string): void {
   const current = storage.getItem(VERSION_KEY) || '0.0.0';
 
   for (const m of migrations) {

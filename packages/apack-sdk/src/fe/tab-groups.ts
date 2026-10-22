@@ -1,3 +1,4 @@
+import type { SurfaceStorage } from './surface-storage.ts';
 /**
  * The colours a tab group may take, and the type of one.
  *
@@ -27,17 +28,17 @@ export function getNextAvailableColor(tabGroups: TabGroup[], isPinned = false): 
     : ALL_COLORS[nextIndex];
 }
 
-export function saveTabGroups(key: string, groups: TabGroup[]): void {
+export function saveTabGroups(storage: SurfaceStorage, name: string, groups: TabGroup[]): void {
   try {
-    localStorage.setItem(key, JSON.stringify(groups));
+    storage.set(name, JSON.stringify(groups));
   } catch (error) {
     console.error('Failed to save tab groups:', error);
   }
 }
 
-export function loadTabGroups(key: string): TabGroup[] {
+export function loadTabGroups(storage: SurfaceStorage, name: string): TabGroup[] {
   try {
-    const stored = localStorage.getItem(key);
+    const stored = storage.get(name);
     if (!stored) return [];
 
     const groups = JSON.parse(stored);
@@ -60,9 +61,9 @@ export function loadTabGroups(key: string): TabGroup[] {
   }
 }
 
-export function clearTabGroups(key: string): void {
+export function clearTabGroups(storage: SurfaceStorage, name: string): void {
   try {
-    localStorage.removeItem(key);
+    storage.remove(name);
   } catch (error) {
     console.error('Failed to clear tab groups:', error);
   }

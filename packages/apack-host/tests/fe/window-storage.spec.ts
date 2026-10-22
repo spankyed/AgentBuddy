@@ -2,7 +2,7 @@
 // on a fake here, not on a window's localStorage: the runner is given its storage, so it decides what moves and a
 // window says where that is kept.
 import { describe, expect, it } from 'vitest';
-import { runFrontendMigrations, type WindowStorage } from '../../src/fe/index.ts';
+import { runWindowStorageMigrations, type WindowStorage } from '../../src/fe/index.ts';
 
 /** A window's storage, in memory */
 function fakeStorage(initial: Record<string, string> = {}) {
@@ -19,60 +19,40 @@ describe('a window\'s migrations', () => {
   // The host keeps the last active surface now; the window's own copy would linger forever
   it('drops the last active surface a window stored before 0.4.0, and leaves the panel sizes', () => {
     const { storage, items } = fakeStorage({
-      'apack-fe-version': '0.3.14',
+      'apack-window-storage-version': '0.3.14',
       'apack-last-active-plugin': 'threads',
       'apack-panel-sizes': '{"panel":30}',
     });
 
-    runFrontendMigrations(storage, '0.4.0');
+    runWindowStorageMigrations(storage, '0.4.0');
     // Again, as the next window's boot does
-    runFrontendMigrations(storage, '0.4.0');
+    runWindowStorageMigrations(storage, '0.4.0');
 
     expect(items.get('apack-last-active-plugin')).toBeUndefined();
     expect(items.get('apack-panel-sizes')).toBe('{"panel":30}');
   });
 
-  // The code surface's open tabs: moved rather than dropped, since they are the user's and nothing else holds them
-  it("carries the code surface's open tabs over to the key it reads now", () => {
-    const tabs = '{"tabs":[{"filePath":"a.ts","order":0}],"activeFilePath":"a.ts"}';
-    const { storage, items } = fakeStorage({ 'apack-fe-version': '0.3.14', 'code-plugin-open-tabs': tabs });
-
-    runFrontendMigrations(storage, '0.4.0');
-    runFrontendMigrations(storage, '0.4.0');
-
-    expect(items.get('code-surface-open-tabs')).toBe(tabs);
-    expect(items.get('code-plugin-open-tabs')).toBeUndefined();
-  });
-
-  it('writes no tab key for a window that had none', () => {
-    const { storage, items } = fakeStorage({ 'apack-fe-version': '0.3.14' });
-
-    runFrontendMigrations(storage, '0.4.0');
-
-    expect(items.has('code-surface-open-tabs')).toBe(false);
-  });
-
   it('records the app version it migrated the storage to', () => {
     const { storage, items } = fakeStorage();
 
-    runFrontendMigrations(storage, '0.4.0');
+    runWindowStorageMigrations(storage, '0.4.0');
 
-    expect(items.get('apack-fe-version')).toBe('0.4.0');
+    expect(items.get('apack-window-storage-version')).toBe('0.4.0');
   });
 
   // Storage with no version is a window that never ran them: every migration is older than the app, so all run
   it('runs a migration for storage that names no version', () => {
     const { storage, items } = fakeStorage({ 'apack-last-active-plugin': 'threads' });
 
-    runFrontendMigrations(storage, '0.4.0');
+    runWindowStorageMigrations(storage, '0.4.0');
 
     expect(items.get('apack-last-active-plugin')).toBeUndefined();
   });
 
   it("leaves storage alone once it is at the app's version", () => {
-    const { storage, items } = fakeStorage({ 'apack-fe-version': '0.4.0', 'apack-last-active-plugin': 'kept' });
+    const { storage, items } = fakeStorage({ 'apack-window-storage-version': '0.4.0', 'apack-last-active-plugin': 'kept' });
 
-    runFrontendMigrations(storage, '0.4.0');
+    runWindowStorageMigrations(storage, '0.4.0');
 
     expect(items.get('apack-last-active-plugin')).toBe('kept');
   });

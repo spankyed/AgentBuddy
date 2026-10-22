@@ -215,7 +215,7 @@ import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, AgentMode, MessageReferences, QuickPrompt } from '#generated/types.ts'
 import { commandSuggestionPluginKey } from '../../../../extensions/tiptap/command-suggestion-plugin.ts'
-import { matchesHotkey, type HotkeyEvent, type HotkeysMap } from '@apackdev/sdk/fe'
+import { matchesHotkey, useSurfaceStorage, type HotkeyEvent, type HotkeysMap } from '@apackdev/sdk/fe'
 import QuickPromptsPopup from './QuickPromptsPopup.vue'
 import RevertHistoryPopup from './RevertHistoryPopup.vue'
 
@@ -328,12 +328,13 @@ watch(() => props.prefillReferences, (refs) => {
   if (refs) restoreFromReferences(refs)
 })
 
-const HISTORY_STORAGE_KEY = 'chat-sent-history'
+/** This surface's window storage: the prefix is its ref, so this name is scoped to it. */
+const storage = useSurfaceStorage()
 const MAX_HISTORY = 100
 
 function loadHistory(): string[] {
   try {
-    const stored = localStorage.getItem(HISTORY_STORAGE_KEY)
+    const stored = storage.get('chat-sent-history')
     if (!stored) return []
     const parsed = JSON.parse(stored)
     return Array.isArray(parsed) ? parsed : []
@@ -342,7 +343,7 @@ function loadHistory(): string[] {
 
 function saveHistory(history: string[]) {
   try {
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history.slice(-MAX_HISTORY)))
+    storage.set('chat-sent-history', JSON.stringify(history.slice(-MAX_HISTORY)))
   } catch { /* ignore */ }
 }
 

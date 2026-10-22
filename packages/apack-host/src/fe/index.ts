@@ -10,7 +10,7 @@ export { hostDeclaration, hostSurfaceDeclarations } from '../features/declaratio
 export type { PackFERegistration } from '@apackdev/sdk/fe';
 export { describeFailure, type ShellClient, type ShellConnection, type ShellFailure } from './client.ts';
 export type { LoadedPackEntry } from '../packs/layout.ts';
-export { runFrontendMigrations, type FrontendMigration, type WindowStorage } from './migrations/index.ts';
+export { runWindowStorageMigrations, type WindowStorageMigration, type WindowStorage } from './window-storage/index.ts';
 export type { ShellPackFrontends } from './pack-frontends.ts';
 
 // The app shell (`features/application/fe/`)

@@ -178,6 +178,15 @@ export function findPackBackendConsole(dirs: readonly string[] = PACK_SOURCE_DIR
 }
 
 /**
+ * `file:line: localStorage` for each raw window-storage use in a pack's source, which reaches its own
+ * storage through `surfaceStorage`/`useSurfaceStorage` from `@apackdev/sdk/fe` instead. Source only: a
+ * pack's test asserting what its surface stored has to read storage.
+ */
+export function findPackWindowStorage(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  return packRule('window-storage', dirs, root);
+}
+
+/**
  * `file:line: _call:` for each write of the reserved key a delivery door puts a call under.
  *
  * The key is the app's: `_callOn` writes it and `_callOf` reads it, so a property a pack writes under that
@@ -727,6 +736,7 @@ const RULE_LIST = [
   backed('findComponentSends', 'component-sends', findComponentSends, PACK_SOURCE_DIRS),
   backed('findRawTransport', 'raw-transport', findRawTransport, PACK_SOURCE_DIRS),
   backed('findPackBackendConsole', 'backend-console', findPackBackendConsole, PACK_SOURCE_DIRS),
+  backed('findPackWindowStorage', 'window-storage', findPackWindowStorage, PACK_SOURCE_DIRS),
   backed('findHostImports', 'host-imports', findHostImports, PACK_CODE_DIRS),
   backed('findPackOwnAliases', 'pack-own-aliases', findPackOwnAliases, PACK_CODE_DIRS),
   backed('findExtensionlessOwnModules', 'own-modules', findExtensionlessOwnModules, PACK_CODE_DIRS),

@@ -11,7 +11,7 @@ import './boot/monaco';
 import 'highlight.js/styles/github-dark.css'
 import { hostFrontend } from '@/views/packs/surface';
 import { createAppShell } from '@/runtime/shell';
-import { HOST, installFromProtocol, runFrontendMigrations } from '@apackdev/host/fe';
+import { HOST, installFromProtocol, runWindowStorageMigrations } from '@apackdev/host/fe';
 import 'virtual:host-shared-modules';
 import { bindRendererHost } from '@/runtime';
 import { fePacks } from '@/runtime/packs';
@@ -47,7 +47,7 @@ const initialSurfaceId = isSurfacePopout ? query.get('surfaceId') ?? undefined :
 // --- Pre-actor initialization ---
 window.appVersion = __APP_VERSION__;
 console.log(`apack v${__APP_VERSION__}`);
-runFrontendMigrations(localStorage, __APP_VERSION__);
+runWindowStorageMigrations(localStorage, __APP_VERSION__);
 
 // const { inspect } = createBrowserInspector();
 
