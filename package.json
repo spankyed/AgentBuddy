@@ -19,10 +19,8 @@
   "scripts": {
     "preinstall": "[ \"$NODE_ENV\" = 'production' ] && echo '\u26a0\ufe0f  NODE_ENV=production \u2014 devDependencies will be skipped. Run: unset NODE_ENV' >&2 || true",
     "postinstall": "node scripts/postinstall.mjs",
-
     "session:new": "node scripts/session.mjs new",
     "session:check": "node scripts/session.mjs check",
-
     "dev": "node packages/dev-mode.js",
     "dev:inspect": "ELECTRON_INSPECT=true node packages/dev-mode.js",
     "dev:open": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node scripts/app-dev.mjs open",
@@ -30,7 +28,6 @@
     "dev:eval": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node scripts/app-dev.mjs drive --eval",
     "dev:query": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node scripts/app-dev.mjs drive --query",
     "dev:state": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node scripts/app-dev.mjs drive --state",
-
     "build:default-setup": "npm run packages:ensure && npm run build -w @app/default-setup",
     "build:runtime": "tsx scripts/build-runtime.ts",
     "build:api": "npm run build --workspace @app/api",
@@ -39,12 +36,10 @@
     "build:preview": "tsx scripts/build-preview.ts",
     "build:production": "bash build/build.sh",
     "build:production:signed": "bash -c 'set -a; . ./.env.signing; set +a; bash build/build.sh'",
-
     "start:packaged": "tsx scripts/packaged-app.ts start",
     "reset:packaged": "tsx scripts/packaged-app.ts reset",
     "diagnostics:packaged": "tsx scripts/packaged-app.ts diagnostics",
     "verify-signing": "tsx scripts/packaged-app.ts verify-signing",
-
     "chain": "tsx scripts/chain.ts",
     "typecheck": "tsx scripts/typecheck.ts",
     "typecheck:renderer": "npm run type-check --workspace @app/renderer && echo '\u2705 Frontend type check passed'",
@@ -65,11 +60,10 @@
     "check:tiers": "tsx scripts/check-test-tiers.ts",
     "check:repro": "tsx scripts/repro.ts",
     "api:check": "tsx scripts/api-check.ts",
-    "api:update": "npm run packages:ensure && npm run api:update -w @apackdev/ears -w @apackdev/sdk -w @apackdev/ui",
+    "api:update": "npm run packages:ensure && npm run api:update -w @apackdev/ears -w @apackdev/sdk -w @apackdev/ui -w @apackdev/testing",
     "exports:check": "npm run exports:check -w @apackdev/ui",
     "facade:check": "npm run facade:check -w @app/default-setup -- --from-build",
     "schema:check": "npm run schema:check -w @apackdev/sdk",
-
     "test": "node scripts/test.mjs",
     "test:e2e": "npm run packages:ensure && node scripts/with-source.mjs playwright test",
     "test:unit": "tsx scripts/test-unit.ts",
@@ -90,18 +84,15 @@
     "spec": "tsx scripts/spec.ts",
     "spec:full": "tsx scripts/spec.ts --full",
     "spec:dry": "tsx scripts/spec.ts --dry",
-
     "packages:ensure": "tsx scripts/ensure-packages-built.ts",
     "packages:build": "npm run build:package -w @apackdev/ears -w @apackdev/sdk -w @apackdev/ui -w @apackdev/testing -w @apackdev/cli",
     "packages:check": "tsx scripts/packages-check.ts",
     "packages:version": "changeset version && npm install --package-lock-only",
     "packages:publish": "tsx scripts/publish-packages.ts",
-
     "release": "sh build/release/release.sh",
     "release:minor": "sh build/release/release.sh minor",
     "release:major": "sh build/release/release.sh major",
     "unrelease": "bash build/release/unrelease.sh",
-
     "db:query": "node scripts/db-dev.mjs query",
     "db:exec": "node scripts/db-dev.mjs exec",
     "db:repl": "node scripts/db-dev.mjs repl",
@@ -111,7 +102,6 @@
     "db:import": "node scripts/db-dev.mjs import",
     "db:reset": "node scripts/db-dev.mjs reset",
     "db:clear-settings": "node scripts/db-dev.mjs clear-settings",
-
     "check:idle": "tsx scripts/check-idle.ts",
     "measure": "tsx scripts/measure.ts",
     "test:linux": "tsx scripts/linux-runner.ts",
