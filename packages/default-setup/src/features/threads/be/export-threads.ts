@@ -5,7 +5,7 @@
  * artifacts, fork relations, and media from both instructions and messages.
  */
 
-import { qx } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts'
 import { createExportDir } from '@apackdev/sdk/utils'
 import { extractMediaRefs, copyMediaByRef } from '@apackdev/sdk/utils'
@@ -23,7 +23,7 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
 
   for (const thread of threads) {
     // Get full message data (all fields, filter deleted)
-    const messages = (qx.ids(thread.id)
+    const messages = (query.ids(thread.id)
       .linksPick(
         EARS.RelKind.CONTAINS,
         ['id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse', 'responseTimestamp', 'forkable', 'references', 'isCommand', 'command', 'deleted'] as const,
@@ -58,12 +58,12 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
       }))
 
     // Query fork source
-    const forkedFromIds = qx.ids(thread.id)
+    const forkedFromIds = query.ids(thread.id)
       .linksTo(EARS.RelKind.Custom('forked_from'), EARS.Entity.Thread, true)
       .ids()
     let forkedFrom: string | undefined
     if (forkedFromIds.length > 0) {
-      const sourceThread = qx.ids(forkedFromIds[0]).pickAll()[0]
+      const sourceThread = query.ids(forkedFromIds[0]).pickAll()[0]
       if (sourceThread?.shortCode) {
         forkedFrom = sourceThread.shortCode as string
       }

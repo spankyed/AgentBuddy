@@ -3,7 +3,7 @@
 // application surface's CLIENT_CONNECTED. Resetting the user's settings doesn't touch it; resetting the
 // app (appData.reset()) empties it with everything else.
 import { type Ears } from '@apackdev/ears';
-import { untypedUpsert, untypedQx } from '@apackdev/sdk/ears';
+import { untypedUpsert, untypedQuery } from '@apackdev/sdk/ears';
 import type { EARS } from '@apackdev/sdk';
 import { SETTINGS_ENTITY } from '../features/settings/be/store.ts';
 import { APPLIED_CONTENT_ENTITY } from './applied-content.ts';
@@ -76,9 +76,9 @@ type PerPackValue = string;
 type StoredAppState = Partial<AppState>;
 
 /** App state on a specific engine; the default instance follows the installed app engine. */
-export function createAppState(ears: Pick<Ears, 'qx' | 'upsert'>) {
+export function createAppState(ears: Pick<Ears, 'query' | 'upsert'>) {
   function stored(): StoredAppState | undefined {
-    return ears.qx.ids(APP_STATE_ID).pickOne([...FIELDS]) as StoredAppState | undefined ?? undefined;
+    return ears.query.ids(APP_STATE_ID).pickOne([...FIELDS]) as StoredAppState | undefined ?? undefined;
   }
 
   const state = {
@@ -117,4 +117,4 @@ export function createAppState(ears: Pick<Ears, 'qx' | 'upsert'>) {
   return state;
 }
 
-export const appState = createAppState({ qx: untypedQx, upsert: untypedUpsert });
+export const appState = createAppState({ query: untypedQuery, upsert: untypedUpsert });

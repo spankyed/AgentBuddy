@@ -2,7 +2,7 @@
 // engine bound and no app bound, and leave a bound one (the app's, a test's) as it was
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createEarsEngine } from '@apackdev/ears';
-import { _bindEars, boundEars, untypedQx } from '@apackdev/sdk/ears';
+import { _bindEars, boundEars, untypedQuery } from '@apackdev/sdk/ears';
 import { ROOT_FLOW_ROLE } from '../../src/types/sdk-entities.ts';
 import { EARS } from '../../src/types/entities.ts';
 import { _isHostBound } from '../../src/runtime/host-runtime.ts';
@@ -29,14 +29,14 @@ describe('a flow compile', () => {
   it("leaves the bound engine's data untouched, and compiles into its own", () => {
     const installed = createEarsEngine({ isEntityType: (name) => name === EARS.Entity.Flow });
     _bindEars(installed);
-    const appFlow = untypedQx(EARS.Entity.Flow).count() === 0 && installed.create(EARS.Entity.Flow).set('label', 'Mine').id();
+    const appFlow = untypedQuery(EARS.Entity.Flow).count() === 0 && installed.create(EARS.Entity.Flow).set('label', 'Mine').id();
     const before = installed.getAllEntities();
 
     expect(rt.roundTrip(flows.simple)).toHaveProperty('Simple');
 
     expect(boundEars()).toBe(installed);
     expect(installed.getAllEntities()).toEqual(before);
-    expect(untypedQx(EARS.Entity.Flow).pick(['label'])).toEqual([{ id: appFlow, label: 'Mine' }]);
-    expect(rt.engine().qx(EARS.Entity.Flow).pick(['label'])).toEqual([{ id: expect.any(String), label: 'Simple' }]);
+    expect(untypedQuery(EARS.Entity.Flow).pick(['label'])).toEqual([{ id: appFlow, label: 'Mine' }]);
+    expect(rt.engine().query(EARS.Entity.Flow).pick(['label'])).toEqual([{ id: expect.any(String), label: 'Simple' }]);
   });
 });

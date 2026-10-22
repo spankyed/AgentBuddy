@@ -66,7 +66,7 @@ it('restores and hydrates the incumbent when imported data fails hydration', asy
   await expect(service.importBackup(f.backup)).rejects.toThrow('candidate hydration failed');
   expect(f.store.envs.primary.entities.get('Note-current')).toEqual({ type: 'Note' });
   expect(f.store.envs.primary.entities.get('Note-candidate')).toBeUndefined();
-  expect(f.engine.qx.ids('Note-current' as EARS.EntityId).pickOne(['entityType'])).not.toBeNull();
+  expect(f.engine.query.ids('Note-current' as EARS.EntityId).pickOne(['entityType'])).not.toBeNull();
   expect(fs.existsSync(f.media)).toBe(false);
   expect(fs.readdirSync(path.dirname(f.store.paths.primary)).filter(name => name.startsWith('.apack-import-'))).toEqual([]);
 });

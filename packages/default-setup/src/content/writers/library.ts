@@ -3,7 +3,7 @@
 // PARENT_OF and hold documents with contains, like rows created in the app. Rows match by name
 // within their folder, as the library itself names them.
 import type { ContentWriter, ContentItem } from '@apackdev/sdk/content';
-import { EARS, findWhere, qx } from '#generated/ears.ts';
+import { EARS, findWhere, query } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 import type { ContentSection } from '#features/library/be/types.ts';
 
@@ -22,7 +22,7 @@ export interface CollectionItem extends ContentItem {
 
 /** The folder a row sits in, or undefined at the library's root */
 function folderOf(id: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId | undefined {
-  return qx.ids(id).linksTo(relKind, EARS.Entity.Collection, false).ids()[0];
+  return query.ids(id).linksTo(relKind, EARS.Entity.Collection, false).ids()[0];
 }
 
 /**

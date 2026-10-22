@@ -18,7 +18,7 @@ const SETTINGS_ID = `${SETTINGS_ENTITY}-app` as EARS.EntityId;
 const logger = createLogger('settings');
 export interface SettingsStoreOptions {
   /** The owning engine; test harnesses resolve the current engine after a reset. */
-  ears: () => Pick<Ears, 'qx' | 'upsert'>;
+  ears: () => Pick<Ears, 'query' | 'upsert'>;
   catalog: () => SettingsCatalog;
   /** Omit only for a fixed catalog, such as a one-shot validator. */
   onCatalogChanged?: (listener: () => void) => () => void;
@@ -47,7 +47,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
 
   function defaults(): SettingsDocument { declarations(); return validation.defaults; }
   function rawStored(): unknown {
-    const row = ears().qx.ids(SETTINGS_ID).pickOne(['data']);
+    const row = ears().query.ids(SETTINGS_ID).pickOne(['data']);
     if (row === null) return {};
     return structuredClone(row.data);
   }

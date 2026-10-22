@@ -8,7 +8,7 @@ import { Blueprint } from '@apackdev/ears';
 import type { Create } from '@apackdev/ears';
 import { EARS } from '@apackdev/ears';
 import type { Ears } from '@apackdev/ears';
-import type { Qx } from '@apackdev/ears';
+import type { Query } from '@apackdev/ears';
 import { RelationMatch } from '@apackdev/ears';
 import { RelationRow } from '@apackdev/ears';
 import { RelationStats } from '@apackdev/ears';
@@ -154,7 +154,7 @@ export const unregisterRepository: (name: string) => void;
 export const untypedCreate: Create;
 
 // @public
-export const untypedQx: Qx;
+export const untypedQuery: Query;
 
 // @public
 export const untypedUpsert: Upsert;

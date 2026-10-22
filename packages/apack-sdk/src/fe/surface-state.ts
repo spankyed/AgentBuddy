@@ -1,5 +1,5 @@
 // Reading another surface's state by ref, untyped: the escape hatch beside the typed readers `#generated/fe`
-// generates from each surface's contract, as `untypedQx` is beside `qx`.
+// generates from each surface's contract, as `untypedQuery` is beside `query`.
 //
 // `useSurface()` answers "the surface I am rendered by", which needs a `SurfaceScope`. Extension components —
 // artifact viewers, tiptap command items, step forms — are rendered by the host wherever they belong, with no such

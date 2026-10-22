@@ -34,7 +34,7 @@ import { startShell as startShellFor, stopRunningShells, type StartShellOptions,
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
 import { compileFlowDSL, compilePack, compileHelp, parseContentIndex, resolveContentSources, CONTENT_INDEX_FILE, ManifestSchema, parseSnapshot, _declarationRevision, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency } from '@apackdev/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@apackdev/sdk/repositories';
-import { boundEars, untypedQx } from '@apackdev/sdk/ears';
+import { boundEars, untypedQuery } from '@apackdev/sdk/ears';
 import { _getMediaPath, importCompiledContent, type ImportMode, type ImportResult, type ContentApplier } from '@apackdev/sdk/utils';
 
 export { takeSystemErrors, addTestSecret, type ContentRuntime };
@@ -446,7 +446,7 @@ export async function importContent(options: ImportContentOptions = {}): Promise
  */
 export function importFlows(dsl: FlowDSL): void {
   const byLabel = (rows: Array<{ id: string; label?: string }>) => new Map(rows.map((row) => [String(row.label), row.id]));
-  const flows = byLabel(untypedQx('Flow').pickAll() as Array<{ id: string; label?: string }>);
+  const flows = byLabel(untypedQuery('Flow').pickAll() as Array<{ id: string; label?: string }>);
   flowRepository.importFromDSL(compileFlowDSL(dsl, { actions: byLabel(actionRepository.all()), prompts: byLabel(promptRepository.all()), flows }));
 }
 

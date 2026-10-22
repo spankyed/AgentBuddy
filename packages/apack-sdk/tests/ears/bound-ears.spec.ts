@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, defineEars, type EARS } from '@apackdev/ears';
 import {
   _bindEars, boundEars, findRelations, isEntityType, registerRepository, repository, spawn, transact,
-  untypedCreate, untypedQx, untypedUpsert, untypedWrite,
+  untypedCreate, untypedQuery, untypedUpsert, untypedWrite,
 } from '../../src/ears/index.ts';
 import { bp } from '@apackdev/ears';
 
@@ -16,9 +16,9 @@ describe('with no engine bound', () => {
   it('every operation throws, naming how to bind one', () => {
     const typed = defineEars<{ Note: { title: string } }, 'Note'>(boundEars);
     const uses: Array<[string, () => unknown]> = [
-      ['untypedQx', () => untypedQx('Note')],
-      ['untypedQx.ids', () => untypedQx.ids('Note-1' as EARS.EntityId)],
-      ['untypedQx.all', () => untypedQx.all()],
+      ['untypedQuery', () => untypedQuery('Note')],
+      ['untypedQuery.ids', () => untypedQuery.ids('Note-1' as EARS.EntityId)],
+      ['untypedQuery.all', () => untypedQuery.all()],
       ['untypedCreate', () => untypedCreate('Note')],
       ['untypedUpsert', () => untypedUpsert('Note', 'Note-1' as EARS.EntityId)],
       ['untypedWrite', () => untypedWrite('Note-1' as EARS.EntityId)],
@@ -28,7 +28,7 @@ describe('with no engine bound', () => {
       ['spawn', () => spawn(bp('Note').build())],
       ['registerRepository', () => registerRepository('noteQueries', {})],
       ['repository', () => repository.noteQueries],
-      ['a typed facade', () => typed.qx('Note')],
+      ['a typed facade', () => typed.query('Note')],
       ['boundEars', () => boundEars()],
     ];
     for (const [name, use] of uses) expect(use, name).toThrow('No EARS engine is bound');
@@ -44,7 +44,7 @@ describe('_bindEars', () => {
     expect(isEntityType('Memo')).toBe(false);
 
     expect(_bindEars(second)).toBe(first);
-    expect(untypedQx('Note').ids()).toEqual([]);
+    expect(untypedQuery('Note').ids()).toEqual([]);
     expect(isEntityType('Memo')).toBe(true);
     expect(boundEars()).toBe(second);
 

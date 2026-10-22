@@ -20,7 +20,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { ImportMode, ApplyResult, ContentSelection } from '@apackdev/sdk/utils';
-import { untypedQx } from '@apackdev/sdk/ears';
+import { untypedQuery } from '@apackdev/sdk/ears';
 import { dropAttribute, entityIds } from '@apackdev/sdk/testing';
 import { compileContent, resetDatabase, apply, snapshot, type Snapshot } from './harness.ts';
 import type { EARS } from '@apackdev/ears';
@@ -138,7 +138,7 @@ function resolveId(alias: string): EARS.EntityId {
   const target = rows[alias];
   for (const id of entityIds() as EARS.EntityId[]) {
     if (!id.startsWith(`${type}-`)) continue;
-    const row = (untypedQx.ids(id).pickAll() as Array<Record<string, unknown>>)[0];
+    const row = (untypedQuery.ids(id).pickAll() as Array<Record<string, unknown>>)[0];
     const label = row?.name ?? row?.title ?? row?.label;
     if (label === (target.name ?? target.title ?? target.label)) return id;
   }

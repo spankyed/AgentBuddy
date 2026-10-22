@@ -1,7 +1,7 @@
 // How notes are written, for any pack whose content declares Note: through noteCommands, so written notes get
 // shortCodes, display order and REFERENCES links like notes created in the app.
 import type { ContentWriter, ContentItem } from '@apackdev/sdk/content';
-import { EARS, findWhere, qx } from '#generated/ears.ts';
+import { EARS, findWhere, query } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 
 export interface NoteItem extends ContentItem {
@@ -30,7 +30,7 @@ export const noteWriter: ContentWriter<NoteItem> = {
   /** A note with the record's title under the same parent (or at the root) */
   find(record, { parentId }) {
     const match = findWhere(EARS.Entity.Note, 'title', record.title).find((note) => {
-      const parents = qx.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+      const parents = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
       return (parents[0] as string | undefined) === parentId;
     });
     return match && { id: match.id, contentHash: match.contentHash };

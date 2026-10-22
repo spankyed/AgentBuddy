@@ -23,7 +23,7 @@ const { _settingsAdmin } = await import('@apackdev/sdk/services');
 const { boundHost } = await import('@apackdev/sdk/runtime/internals');
 const { services } = boundHost();
 const { flowRepository } = await import('@apackdev/sdk/repositories');
-const { untypedQx, untypedWrite } = await import('@apackdev/sdk/ears');
+const { untypedQuery, untypedWrite } = await import('@apackdev/sdk/ears');
 const { onIncoming } = await import('@apackdev/sdk/events');
 const { HOST } = await import('@apackdev/host/bus');
 
@@ -33,7 +33,7 @@ const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 const storedSettings = () => _settingsAdmin().getOverrides();
 
 /** The flows' ids and labels, sorted */
-const flows = () => (untypedQx('Flow').pickAll() as Array<{ id: EARS.EntityId; label?: string }>)
+const flows = () => (untypedQuery('Flow').pickAll() as Array<{ id: EARS.EntityId; label?: string }>)
   .map(({ id, label }) => ({ id, label }))
   .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -105,8 +105,8 @@ it('restores unfinished onboarding and resumes it only after an explicit restart
     if (to === 'default-setup/threads' && event.type === 'LOAD_CHAT_THREAD') opened.push(event);
   });
   const bus = createActor(createAppBus(packs), { systemId: HOST.bus }).start();
-  const threadId = () => untypedQx.all().withRole('assistant_birth').ids()[0];
-  const context = () => threadId() && untypedQx.ids(threadId()).pickOne(['context'])?.context;
+  const threadId = () => untypedQuery.all().withRole('assistant_birth').ids()[0];
+  const context = () => threadId() && untypedQuery.ids(threadId()).pickOne(['context'])?.context;
   try {
     rootEvents.emitConnected();
     rootEvents.emitPackClientConnected('default-setup');

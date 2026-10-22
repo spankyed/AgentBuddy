@@ -152,7 +152,7 @@ const APP_PACK = {
 };
 
 const CONSUMER = `
-import { EARS as PackEARS, qx, create, upsert, write, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.ts';
+import { EARS as PackEARS, query, create, upsert, write, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.ts';
 import { broadcastToSurface, sendToSystem } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
@@ -172,7 +172,7 @@ export type DependencyField = Expect<Equal<(typeof tags)[number]['name'], string
 const items = findAll('Item');
 export type DependencyItem = Expect<Equal<(typeof items)[number]['title'], string>>;
 
-const picked = qx('Memo').pickOne(['text'] as const);
+const picked = query('Memo').pickOne(['text'] as const);
 export type PickedField = Expect<Equal<NonNullable<typeof picked>['text'], string>>;
 export type Branded = Expect<Equal<ReturnType<typeof createEntity<'Memo'>>, EARS.EntityId<'Memo'>>>;
 
@@ -230,7 +230,7 @@ declare const runtimeName: string;
 const other = findAll(runtimeName)[0]!;
 // @ts-expect-error unknown field can't be used without narrowing
 other.anything.length;
-qx('Memo').linksTo('contains', runtimeName).pickAll();
+query('Memo').linksTo('contains', runtimeName).pickAll();
 findAll<{ title: string }>('Item');
 // An explicit shape reads rows of an entity named only at runtime
 const shaped = findAll<{ title: string }>(runtimeName);
@@ -245,16 +245,16 @@ findAll('Nope');
 // @ts-expect-error a generic over any string can't be checked (constrain it to EntityName)
 export function anyOf<E extends string>(entityType: E) { return findAll(entityType); }
 // @ts-expect-error undeclared entity name
-qx('Nope');
+query('Nope');
 // @ts-expect-error undeclared entity name in an apply list
-qx(['Memo', 'Nope']);
+query(['Memo', 'Nope']);
 // @ts-expect-error undeclared relation target
-qx('Memo').linksTo('contains', 'Nope');
+query('Memo').linksTo('contains', 'Nope');
 // @ts-expect-error undeclared entity name
 createEntity('Nope');
 
 // Ids from queries and rows carry their entity type, so the next lookup is typed
-const firstMemo = qx('Memo').first()!;
+const firstMemo = query('Memo').first()!;
 export type QueryIdTagged = Expect<Equal<typeof firstMemo, EARS.EntityId<'Memo'>>>;
 const memoFromQuery = findById(firstMemo)!;
 export type LookupFromQueryId = Expect<Equal<typeof memoFromQuery.text, string>>;
@@ -268,7 +268,7 @@ openMemo(plainId);
 openMemo(tags[0]!.id);
 // A tagged link result passed straight to a generic function still infers the target's shape
 const uniqueById = <T extends { id?: EARS.EntityId }>(nodes: T[]): T[] => nodes;
-const linkedMemos = uniqueById(qx.ids(memoId).linksPick('related', ['text'], ['Memo']));
+const linkedMemos = uniqueById(query.ids(memoId).linksPick('related', ['text'], ['Memo']));
 export type ContextualLinkPick = Expect<Equal<(typeof linkedMemos)[number]['text'], string>>;
 
 // Writes check the values of declared fields when they know the entity; other fields are free
@@ -304,7 +304,7 @@ findAll('Settings');
 findAll('AppState');
 // API keys aren't graph data: the host keeps them, packs see services.secrets
 // Library and notes entities belong to default-setup, not the SDK
-const tNodes = qx(PackEARS.Entity.TNode).linksTo(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
+const tNodes = query(PackEARS.Entity.TNode).linksTo(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
 export type TNodeShape = Expect<Equal<(typeof tNodes)[number]['tNodeType'], 'flow' | 'event' | 'step'>>;
 // Node rows are the dependency's step node types (app-pack defines none), a hand-written one that doesn't
 // narrow nodeType, and adds no required field, included
@@ -364,30 +364,30 @@ async function buildPacks(published: boolean, dependencyStamp?: { format?: numbe
  * Incidents), so these positions are checked directly. `|name|` marks a position in the source.
  */
 const COMPLETIONS = `
-import { EARS, qx, getAttr, getAttrs, findAll, findWithFields, findByIdWithFields, createEntity } from '#generated/ears.ts';
+import { EARS, query, getAttr, getAttrs, findAll, findWithFields, findByIdWithFields, createEntity } from '#generated/ears.ts';
 import { sendToSystem } from '#generated/events.ts';
 declare const memoId: EARS.EntityId<'Memo'>;
 sendToSystem('|systemId|', { type: 'CLEAR_MEMOS' });
 sendToSystem('memos', { type: '|eventType|' });
-qx('Memo').pick(['|pick|']);
-qx('Memo').pickOne(['|pickOne|']);
-qx.ids(memoId).linksPick('related', ['|linksPick|'], 'Memo');
-qx('Memo').where('|where|');
-qx('Memo').has('|has|');
-qx('Memo').lacks('|lacks|');
-qx('Memo').orderBy('|orderBy|');
-qx('Memo').distinct('|distinct|');
-qx('Memo').groupBy('|groupBy|');
+query('Memo').pick(['|pick|']);
+query('Memo').pickOne(['|pickOne|']);
+query.ids(memoId).linksPick('related', ['|linksPick|'], 'Memo');
+query('Memo').where('|where|');
+query('Memo').has('|has|');
+query('Memo').lacks('|lacks|');
+query('Memo').orderBy('|orderBy|');
+query('Memo').distinct('|distinct|');
+query('Memo').groupBy('|groupBy|');
 getAttr(memoId, '|getAttr|');
 getAttrs(memoId, '|getAttrs|');
 findWithFields('Memo', ['|findWithFields|']);
 findByIdWithFields(memoId, ['|findByIdWithFields|']);
 findAll('|findAll|');
 createEntity('|createEntity|');
-qx.ids(memoId).linksTo('related', '|linksTo|');
-qx.all().ofType('|ofType|');
-qx('|qx|');
-qx('Memo').has('txet');
+query.ids(memoId).linksTo('related', '|linksTo|');
+query.all().ofType('|ofType|');
+query('|query|');
+query('Memo').has('txet');
 `;
 const FIELD_POSITIONS = ['pick', 'pickOne', 'linksPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr', 'getAttrs', 'findWithFields', 'findByIdWithFields'];
 const NAME_POSITIONS = ['findAll', 'createEntity', 'linksTo', 'ofType'];
@@ -529,12 +529,12 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
     expect(at.eventType, 'only the chosen system\'s events').not.toContain('ADD_TAG');
   });
 
-  // qx takes entity names only (ids start from qx.ids), so its argument completes to the declared names
-  it.each(['bundler', 'node16'] as const)('offers entity-name completions in qx() under moduleResolution %s', (moduleResolution) => {
+  // query takes entity names only (ids start from query.ids), so its argument completes to the declared names
+  it.each(['bundler', 'node16'] as const)('offers entity-name completions in query() under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
-    expect(at.qx, 'entity-name completions in qx()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Prompt']));
-    expect(at.qx, 'no completion for an entity no pack here declares').not.toContain('Settings');
+    expect(at.query, 'entity-name completions in query()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Prompt']));
+    expect(at.query, 'no completion for an entity no pack here declares').not.toContain('Settings');
   });
 
   if (dependencyStamp) it('refuses incompatible dependency build code when compiling content', async () => {

@@ -28,17 +28,17 @@ export interface ExportFlowsOptions {
   steps?: readonly StepDefinition[];
 }
 
-function getFlowNodes({ qx }: Ears, steps: StepLookup, flowId: string): any[] {
-  const nodeIds = qx.ids(flowId as EARS.EntityId)
+function getFlowNodes({ query }: Ears, steps: StepLookup, flowId: string): any[] {
+  const nodeIds = query.ids(flowId as EARS.EntityId)
     .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
     .map(({ id }: any) => id);
 
-  const nodes = qx.ids(nodeIds as EARS.EntityId[]).pickAll();
+  const nodes = query.ids(nodeIds as EARS.EntityId[]).pickAll();
 
   return nodes.map((node: any) => {
     const rel = steps.getBuild(node.nodeType)?.relation;
     if (!rel) return node;
-    const linkedId = qx.ids(node.id as EARS.EntityId)
+    const linkedId = query.ids(node.id as EARS.EntityId)
       .links(EARS.RelKind.INSTANCE_OF)
       .map(({ id }: any) => id)[0];
     return linkedId ? { ...node, [rel.field]: linkedId } : node;
@@ -46,7 +46,7 @@ function getFlowNodes({ qx }: Ears, steps: StepLookup, flowId: string): any[] {
 }
 
 function getFlowEdges(engine: Ears, steps: StepLookup, flowId: string): any[] {
-  const { qx } = engine;
+  const { query } = engine;
   const nodes = getFlowNodes(engine, steps, flowId);
   const nodeIds = nodes.map((n: any) => n.id).filter(Boolean);
 
@@ -54,7 +54,7 @@ function getFlowEdges(engine: Ears, steps: StepLookup, flowId: string): any[] {
   const edges: any[] = [];
 
   for (const source of nodeIds) {
-    qx.ids(source as EARS.EntityId)
+    query.ids(source as EARS.EntityId)
       .links([EARS.RelKind.TRANSITIONS_TO], [EARS.Entity.Node])
       .filter(({ id: targetId }: any) => nodeIds.includes(targetId))
       .forEach(({ relation, id: target }: any) => {
@@ -331,11 +331,11 @@ export function exportFlowsToDSL(
   versioned = true,
 ): { filePath: string; flowCount: number; skipped: string[] } {
   const { rootFlowRole, flowIds, engine = boundEars() } = options;
-  const { qx } = engine;
+  const { query } = engine;
   const steps = stepLookup(options.steps);
 
-  const actions = qx(EARS.Entity.Action).pickAll() as any[];
-  const prompts = qx(EARS.Entity.Prompt).pickAll() as any[];
+  const actions = query(EARS.Entity.Action).pickAll() as any[];
+  const prompts = query(EARS.Entity.Prompt).pickAll() as any[];
 
   const actionMap = new Map<string, string>();
   for (const action of actions) actionMap.set(action.id, action.label);
@@ -343,7 +343,7 @@ export function exportFlowsToDSL(
   const promptMap = new Map<string, string>();
   for (const prompt of prompts) promptMap.set(prompt.id, prompt.label);
 
-  let flows = qx(EARS.Entity.Flow).pickAll() as any[];
+  let flows = query(EARS.Entity.Flow).pickAll() as any[];
   if (flowIds) {
     const idSet = new Set(flowIds);
     flows = flows.filter((f: any) => idSet.has(f.id));
@@ -352,7 +352,7 @@ export function exportFlowsToDSL(
   const flowMap = new Map<string, string>();
   for (const flow of flows) flowMap.set(flow.id, flow.label);
 
-  const rootFlowId = qx.all().withRole(rootFlowRole).first();
+  const rootFlowId = query.all().withRole(rootFlowRole).first();
 
   const dsl: FlowDSL = {};
   const skipped: string[] = [];

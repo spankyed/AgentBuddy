@@ -100,7 +100,7 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   }
   // **The engine knows the types in the data as well as the declared ones, and `schema` keeps meaning declared.**
   // Rows outlive the pack that declared their types, and the engine refuses a name it has never heard of — so
-  // `qx('Note')` and `create('Note')` would throw over rows that are plainly there. The
+  // `query('Note')` and `create('Note')` would throw over rows that are plainly there. The
   // types present are only knowable after hydration, and `isEntityType` is a live closure consulted per call,
   // so they are added to this set once their rows are in. It stays separate from `schema`, whose
   // `getRegisteredEntityTypes` is a backup's yardstick for "no installed pack declares this"
@@ -124,10 +124,10 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   // after hydration and not during it: nothing hydration does consults the check (a bulk load doesn't), so the
   // set it would be widening from is the data it is reading.
   for (const type of engine.getAllEntityTypes()) knownToEngine.add(type);
-  // Installed so `@apackdev/ears`'s free functions (qx, tx, the finders) read this database until `close()`, which
-  // puts back whatever was installed before rather than leaving none. `apack db`, the one caller today, has no
+  // Bound so the SDK's engine operations (`@apackdev/sdk/ears`) read this database until `close()`, which
+  // puts back whatever was bound before rather than leaving none. `apack db`, the one caller today, has no
   // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command
-  // holding one data dir open while it reads another, where uninstalling would leave the first unreachable.
+  // holding one data dir open while it reads another, where unbinding would leave the first unreachable.
   const previousEngine = _bindEars(engine);
 
   return {

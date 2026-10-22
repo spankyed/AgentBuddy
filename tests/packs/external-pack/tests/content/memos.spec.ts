@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { importContent } from '@apackdev/testing/harness';
 import { getCommands } from '@apackdev/sdk/commands';
-import { untypedQx } from '@apackdev/sdk/ears';
+import { untypedQuery } from '@apackdev/sdk/ears';
 import { repository } from '#generated/repository.ts';
 
 describe('memo content', () => {
@@ -30,7 +30,7 @@ describe('slash commands', () => {
   it("writes its command document and has its command served", async () => {
     await importContent({ keys: ['commands'] });
 
-    const document = untypedQx('Document').where('name', 'Memo commands').pickAll()[0];
+    const document = untypedQuery('Document').where('name', 'Memo commands').pickAll()[0];
     expect(document.content).toEqual([{ type: 'field', fields: [{ key: 'memo-list', value: 'Tag (optional)' }] }]);
     expect(getCommands()).toContainEqual({ name: 'memo-list', placeholder: 'Tag (optional)' });
   });

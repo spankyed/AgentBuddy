@@ -24,7 +24,7 @@ import { applyPacks } from '../../../../src/packs/runtime/apply.ts';
 import { readAppPackSources } from '../../../../src/packs/app-sources.ts';
 import { createFormatApplier } from '@apackdev/sdk/content';
 import { type EARS } from '@apackdev/ears';
-import { untypedQx, untypedWrite } from '@apackdev/sdk/ears';
+import { untypedQuery, untypedWrite } from '@apackdev/sdk/ears';
 
 const referenceDeclarations = {
   types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [] } },
@@ -997,8 +997,8 @@ describe('importing a pack’s content', () => {
        * pack's content back: an apply would read the entry it just wrote and leave the deletion alone,
        * which is exactly not what was asked for.
        */
-      const { untypedQx, untypedWrite } = await import('@apackdev/sdk/ears');
-      const memos = () => untypedQx('Memo').pickAll();
+      const { untypedQuery, untypedWrite } = await import('@apackdev/sdk/ears');
+      const memos = () => untypedQuery('Memo').pickAll();
       untypedWrite(memos()[0]!.id).destroy();
       expect(memos(), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);
 
@@ -1082,7 +1082,7 @@ describe('a user answering for one of a pack’s content items', () => {
       declarationRevision: snapshot.declarationRevision, buildRevision: revision, buildFiles: integrity.files });
   }
 
-  const describedBy = (id: string) => untypedQx.ids(id as EARS.EntityId).pickOne(['description'])?.description as string | undefined;
+  const describedBy = (id: string) => untypedQuery.ids(id as EARS.EntityId).pickOne(['description'])?.description as string | undefined;
 
   let dir: string;
   beforeEach(() => {
@@ -1100,7 +1100,7 @@ describe('a user answering for one of a pack’s content items', () => {
   });
 
   const entityOf = (key: string, entity: 'Action' | 'PackPrompt') =>
-    (untypedQx(entity).where('contentKey', key).pickAll()[0] as { id: string } | undefined)?.id;
+    (untypedQuery(entity).where('contentKey', key).pickAll()[0] as { id: string } | undefined)?.id;
 
   /**
    * **One item restored leaves every other entry alone**, which is the whole of what makes this request

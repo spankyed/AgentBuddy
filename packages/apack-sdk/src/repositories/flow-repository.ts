@@ -2,7 +2,7 @@
 // The SDK declares these entities (sdk-entities.ts), so it owns their reads and writes; packs build
 // their views on top (default-setup's flows repository).
 import { filterSystemFields, getTimestamp, RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
-import { findRelations, generateLabelWithCount, generateShortCode, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQx as qx, transact } from '../ears/index.ts';
+import { findRelations, generateLabelWithCount, generateShortCode, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
@@ -55,7 +55,7 @@ const handleInfo = (handles?: Handles): Handles | undefined =>
  */
 function assertEdgeAllowed(sourceId: EARS.EntityId, targetId: EARS.EntityId, handles?: Handles, except?: EARS.EntityId): void {
   const isTrigger = (id: EARS.EntityId) => {
-    const nodeType = qx.ids(id).pickOne(['nodeType'])?.nodeType;
+    const nodeType = query.ids(id).pickOne(['nodeType'])?.nodeType;
     return typeof nodeType === 'string' && getStepDeclaration(nodeType)?.declaration.kind === 'trigger';
   };
   if (isTrigger(targetId)) {
@@ -115,33 +115,33 @@ function splitRelation(input: FlowNodeInput, field: string | undefined): { relat
 function withRelation(node: FlowNode): FlowNode {
   const field = relationField(node.nodeType);
   if (!field) return node;
-  const [linkedId] = qx.ids(node.id).links(EARS.RelKind.INSTANCE_OF).map(({ id }) => id);
+  const [linkedId] = query.ids(node.id).links(EARS.RelKind.INSTANCE_OF).map(({ id }) => id);
   return linkedId ? { ...node, [field]: linkedId } : node;
 }
 
 const flowNodeIds = (flowId: EARS.EntityId): EARS.EntityId[] =>
-  qx.ids(flowId).links(EARS.RelKind.CONTAINS, EARS.Entity.Node).map(({ id }) => id);
+  query.ids(flowId).links(EARS.RelKind.CONTAINS, EARS.Entity.Node).map(({ id }) => id);
 
 /** Reads and writes of flows, their nodes and edges, and the root flow role */
 export const flowRepository = {
   // ── Queries ──────────────────────────────────────────────────────────
 
   /** The flow with the root role */
-  rootFlow: (): EARS.EntityId | undefined => qx.all().withRole(ROOT_FLOW).first() ?? undefined,
+  rootFlow: (): EARS.EntityId | undefined => query.all().withRole(ROOT_FLOW).first() ?? undefined,
 
   /** The action an action node runs */
   getNodeActionId: (nodeId: EARS.EntityId): EARS.EntityId | undefined =>
-    qx.ids(nodeId).links(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action).map(({ id }) => id)[0],
+    query.ids(nodeId).links(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action).map(({ id }) => id)[0],
 
   /** A node with all its fields, and its related entity's id */
   node: (nodeId: EARS.EntityId): FlowNode | undefined => {
-    const [node] = qx.ids(nodeId).pickAll() as unknown as FlowNode[];
+    const [node] = query.ids(nodeId).pickAll() as unknown as FlowNode[];
     return node ? withRelation(node) : undefined;
   },
 
   /** A flow's nodes, each with its related entity's id */
   flowNodes: (flowId: EARS.EntityId): FlowNode[] =>
-    (qx.ids(flowNodeIds(flowId)).pickAll() as unknown as FlowNode[]).map(withRelation),
+    (query.ids(flowNodeIds(flowId)).pickAll() as unknown as FlowNode[]).map(withRelation),
 
   /** The transitions between a flow's nodes */
   flowEdges: (flowId: EARS.EntityId): FlowEdge[] => {
@@ -182,7 +182,7 @@ export const flowRepository = {
 
   /** Deletes a flow with its nodes and their edges; the root flow only with `allowRoot` */
   deleteFlow: (flowId: EARS.EntityId, options?: { allowRoot?: boolean }): void => {
-    const isRoot = qx.ids(flowId).withRole(ROOT_FLOW).first();
+    const isRoot = query.ids(flowId).withRole(ROOT_FLOW).first();
     if (isRoot && !options?.allowRoot) {
       throw new RepositoryError('Cannot delete the root flow', RepositoryErrorCode.OPERATION_FAILED);
     }
@@ -209,7 +209,7 @@ export const flowRepository = {
 
   /** Makes a flow the root flow, taking the role from the previous one */
   grantRootFlowRole: (flowId: EARS.EntityId): void => {
-    untypedWrite(flowId).grantExclusive(ROOT_FLOW, qx.all().withRole(ROOT_FLOW).ids());
+    untypedWrite(flowId).grantExclusive(ROOT_FLOW, query.all().withRole(ROOT_FLOW).ids());
   },
 
   revokeRootFlowRole: (flowId: EARS.EntityId): void => {
@@ -225,11 +225,11 @@ export const flowRepository = {
     const flowIds: EARS.EntityId[] = [];
     for (const entity of compiled.entity) {
       const { id, entityType } = entity as { id: EARS.EntityId; entityType?: string };
-      if (entityType === EARS.Entity.Flow && qx.ids(id).exists()) flowRepository.deleteFlow(id, { allowRoot: true });
+      if (entityType === EARS.Entity.Flow && query.ids(id).exists()) flowRepository.deleteFlow(id, { allowRoot: true });
     }
     for (const entity of compiled.entity) {
       const { id, entityType, createdAt, ...fields } = entity as { id: EARS.EntityId; entityType: string; createdAt?: number } & Record<string, unknown>;
-      if (qx.ids(id).exists()) untypedWrite(id).destroy();
+      if (query.ids(id).exists()) untypedWrite(id).destroy();
       untypedCreate(entityType as never, { id, createdAt }).setMany(fields);
       if (entityType === EARS.Entity.Flow) flowIds.push(id);
     }
@@ -282,7 +282,7 @@ export const flowRepository = {
   /** Updates a node's fields, and its related entity when the step's relation field is given */
   updateNode: (nodeId: EARS.EntityId, updates: FlowNodeInput): void => {
     const ts = getTimestamp();
-    const [current] = qx.ids(nodeId).pickAll() as unknown as FlowNode[];
+    const [current] = query.ids(nodeId).pickAll() as unknown as FlowNode[];
     if (!current) throw new RepositoryError(`Node ${nodeId} not found`, RepositoryErrorCode.NOT_FOUND);
     if (updates.nodeType !== undefined && updates.nodeType !== current.nodeType) {
       throw new RepositoryError('A node\'s type cannot be changed', RepositoryErrorCode.VALIDATION_ERROR);
@@ -311,7 +311,7 @@ export const flowRepository = {
 
   /** Deletes a node with its edges, its flow's link to it and its related entity's link */
   deleteNode: (nodeId: EARS.EntityId): void => {
-    const flowId = (qx(EARS.Entity.Flow).ids() as EARS.EntityId[]).find((id) => flowNodeIds(id).includes(nodeId));
+    const flowId = (query(EARS.Entity.Flow).ids() as EARS.EntityId[]).find((id) => flowNodeIds(id).includes(nodeId));
     if (!flowId) throw new RepositoryError(`Node ${nodeId} not found in any flow`, RepositoryErrorCode.NOT_FOUND);
 
     // Every relation once, so a second edge between the same two nodes (another handle) goes with the first

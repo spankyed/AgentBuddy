@@ -1,29 +1,29 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
 import type { QueryBuilder } from '@apackdev/ears';
-import { EARS, qx, type EntityName, type PackShapes } from '#generated/ears.ts';
+import { EARS, query, type EntityName, type PackShapes } from '#generated/ears.ts';
 
-// ─── qx entry points ────────────────────────────────────────────────────
+// ─── query entry points ────────────────────────────────────────────────────
 
-describe('Typed QueryBuilder — qx entry points', () => {
-  it('qx(Entity.Action) returns QueryBuilder<"Action">', () => {
-    expectTypeOf(qx(EARS.Entity.Action)).toEqualTypeOf<QueryBuilder<'Action', PackShapes>>();
+describe('Typed QueryBuilder — query entry points', () => {
+  it('query(Entity.Action) returns QueryBuilder<"Action">', () => {
+    expectTypeOf(query(EARS.Entity.Action)).toEqualTypeOf<QueryBuilder<'Action', PackShapes>>();
   });
 
-  it('qx(Entity.Thread) returns QueryBuilder<"Thread">', () => {
-    expectTypeOf(qx(EARS.Entity.Thread)).toEqualTypeOf<QueryBuilder<'Thread', PackShapes>>();
+  it('query(Entity.Thread) returns QueryBuilder<"Thread">', () => {
+    expectTypeOf(query(EARS.Entity.Thread)).toEqualTypeOf<QueryBuilder<'Thread', PackShapes>>();
   });
 
-  it('qx.all() returns QueryBuilder<string, PackShapes>', () => {
-    expectTypeOf(qx.all()).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
+  it('query.all() returns QueryBuilder<string, PackShapes>', () => {
+    expectTypeOf(query.all()).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
   });
 
-  it('qx.ids(idArray) of plain ids returns an untyped QueryBuilder', () => {
+  it('query.ids(idArray) of plain ids returns an untyped QueryBuilder', () => {
     const ids = ['act-1', 'act-2'] as EARS.EntityId[];
-    expectTypeOf(qx.ids(ids)).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
+    expectTypeOf(query.ids(ids)).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
   });
 
-  // What each entry point takes: qx a type (a declared name, or one known only at runtime), qx.ids ids, typed
+  // What each entry point takes: query a type (a declared name, or one known only at runtime), query.ids ids, typed
   // by the entity an id is tagged with. An id where a type is meant, or a type that may be absent, is refused.
   it('types each entry point by what it starts from', () => {
     type QB<E extends string> = QueryBuilder<E, PackShapes, EntityName>;
@@ -32,27 +32,27 @@ describe('Typed QueryBuilder — qx entry points', () => {
       noteId: EARS.EntityId<'Note'>, plainId: EARS.EntityId, noteIds: EARS.EntityId<'Note'>[], runtimeName: string,
       maybeName: string | undefined, anyEntity: EARS.Entity,
     ) => {
-      expectTypeOf(qx('Note')).toEqualTypeOf<QB<'Note'>>();
-      expectTypeOf(qx.ids(noteId)).toEqualTypeOf<QB<'Note'>>();
-      expectTypeOf(qx.ids(noteIds)).toEqualTypeOf<QB<'Note'>>();
-      expectTypeOf(qx.ids(plainId)).toEqualTypeOf<QB<string>>();
-      expectTypeOf(qx(runtimeName)).toEqualTypeOf<QB<string>>();
-      expectTypeOf(qx(['Note', 'Flow'])).toEqualTypeOf<QB<string>>();
-      expectTypeOf(qx(anyEntity)).toEqualTypeOf<QB<EARS.Entity>>();
-      const byName = <E extends EntityName>(entityType: E) => qx(entityType);
+      expectTypeOf(query('Note')).toEqualTypeOf<QB<'Note'>>();
+      expectTypeOf(query.ids(noteId)).toEqualTypeOf<QB<'Note'>>();
+      expectTypeOf(query.ids(noteIds)).toEqualTypeOf<QB<'Note'>>();
+      expectTypeOf(query.ids(plainId)).toEqualTypeOf<QB<string>>();
+      expectTypeOf(query(runtimeName)).toEqualTypeOf<QB<string>>();
+      expectTypeOf(query(['Note', 'Flow'])).toEqualTypeOf<QB<string>>();
+      expectTypeOf(query(anyEntity)).toEqualTypeOf<QB<EARS.Entity>>();
+      const byName = <E extends EntityName>(entityType: E) => query(entityType);
       expectTypeOf(byName<'Note'>).returns.toEqualTypeOf<QB<'Note'>>();
-      const byId = <E extends string>(id: EARS.EntityId<E>) => qx.ids(id);
+      const byId = <E extends string>(id: EARS.EntityId<E>) => query.ids(id);
       expectTypeOf(byId<'Note'>).returns.toEqualTypeOf<QB<'Note'>>();
       // @ts-expect-error not a declared entity name
-      qx('Noet');
+      query('Noet');
       // @ts-expect-error not a declared entity name, in a list
-      qx(['Note', 'Noet']);
-      // @ts-expect-error an id is not an entity type: it starts from qx.ids
-      qx(noteId);
+      query(['Note', 'Noet']);
+      // @ts-expect-error an id is not an entity type: it starts from query.ids
+      query(noteId);
       // @ts-expect-error an id literal is not an entity type either
-      qx('Note-abc123');
-      // @ts-expect-error a type that may be absent: qx.all() is every entity, asked for by name
-      qx(maybeName);
+      query('Note-abc123');
+      // @ts-expect-error a type that may be absent: query.all() is every entity, asked for by name
+      query(maybeName);
     };
     expectTypeOf(check).toBeFunction();
   });

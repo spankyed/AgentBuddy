@@ -9,7 +9,7 @@
  *
  * @packageDocumentation
  */
-import type { Create, Ears, Qx, Upsert, Write } from '@apackdev/ears';
+import type { Create, Ears, Query, Upsert, Write } from '@apackdev/ears';
 
 let bound: Ears | undefined;
 
@@ -40,12 +40,12 @@ export function boundEars(): Ears {
 const onBound = <K extends keyof Ears>(name: K) =>
   ((...args: unknown[]) => (boundEars()[name] as (...a: unknown[]) => unknown)(...args)) as unknown as Ears[K];
 
-/** The unchecked query entry points on the bound engine: `qx(type)`, `qx.ids(ids)`, `qx.all()` */
-export const untypedQx: Qx = Object.assign(
-  ((start: unknown) => boundEars().qx(start as never)) as unknown as Qx,
+/** The unchecked query entry points on the bound engine: `untypedQuery(type)`, `.ids(ids)`, `.all()` */
+export const untypedQuery: Query = Object.assign(
+  ((start: unknown) => boundEars().query(start as never)) as unknown as Query,
   {
-    ids: ((ids) => boundEars().qx.ids(ids)) as Qx['ids'],
-    all: (() => boundEars().qx.all()) as Qx['all'],
+    ids: ((ids) => boundEars().query.ids(ids)) as Query['ids'],
+    all: (() => boundEars().query.all()) as Query['all'],
   },
 );
 /** `create` on the bound engine, unchecked against any pack's shapes */

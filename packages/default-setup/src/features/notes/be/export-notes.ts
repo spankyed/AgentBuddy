@@ -1,4 +1,4 @@
-import { qx } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import * as path from 'node:path'
 import { repository } from '#generated/repository.ts';
 
@@ -18,7 +18,7 @@ function buildNoteTree(): { notes: ExportedNote[]; itemCount: number } {
   const hasParent = new Set<string>()
 
   for (const note of allNotes) {
-    const parentIds = qx.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()
+    const parentIds = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()
     if (parentIds.length > 0) {
       hasParent.add(note.id)
       const parentId = parentIds[0]

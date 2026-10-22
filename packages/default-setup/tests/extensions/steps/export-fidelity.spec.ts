@@ -7,7 +7,7 @@ import * as path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { compileFlowDSL, exportFlowsToDSL } from '@apackdev/sdk/build'
 import { EARS, ROOT_FLOW_ROLE } from '@apackdev/sdk'
-import { untypedQx } from '@apackdev/sdk/ears'
+import { untypedQuery } from '@apackdev/sdk/ears'
 import { importFlows } from '@apackdev/testing/harness'
 import { repository } from '#generated/repository.ts'
 import { startTestRuntime } from '@apackdev/sdk/testing'
@@ -45,7 +45,7 @@ describe('a flow exported and imported back', () => {
   // The fixture sets every option to a non-default value; `_support/every-step-flow.ts` says why.
   it('comes back as the same graph, but for the two differences recorded here', () => {
     importFlows(EVERY_STEP_FLOW)
-    const before = nodesByLabel(untypedQx(EARS.Entity.Node).pickAll() as Record<string, unknown>[])
+    const before = nodesByLabel(untypedQuery(EARS.Entity.Node).pickAll() as Record<string, unknown>[])
 
     const { filePath, flowCount } = exportFlowsToDSL(tmp(), { rootFlowRole: ROOT_FLOW_ROLE }, false)
     const reimported = compileFlowDSL(JSON.parse(fs.readFileSync(filePath, 'utf-8')))

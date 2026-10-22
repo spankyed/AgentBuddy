@@ -8,7 +8,7 @@ export { EARS } from '@apackdev/sdk/types';
 export type { BaseEntity, QueryBuilder, RelationMatch, RelationRow, RelationStats } from '@apackdev/ears';
 
 // Read: the pack's typed helpers where there are any, the engine's otherwise
-export { qx, getAttr, getAttrs } from '#generated/ears.ts';
+export { query as qx, getAttr, getAttrs } from '#generated/ears.ts';
 export {
   getAll, getRoles, getAllEntities, getEntitiesOfType,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,

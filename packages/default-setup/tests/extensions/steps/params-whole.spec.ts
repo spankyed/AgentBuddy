@@ -5,13 +5,13 @@ import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@apackdev/testing/harness'
 import { action, entry, keepAlive, on } from '#generated/flow-helpers.ts'
 import { repository } from '#generated/repository.ts'
-import { untypedQx } from '@apackdev/sdk/ears'
+import { untypedQuery } from '@apackdev/sdk/ears'
 
 /** Past MAX_STRING_LENGTH (10 KB) and MAX_ARRAY_ITEMS (100) in the trace truncator */
 const LONG_TEXT_LENGTH = 20_000
 const LONG_LIST_LENGTH = 150
 
-const noteRows = () => untypedQx('Note').pickAll() as Array<Record<string, unknown>>
+const noteRows = () => untypedQuery('Note').pickAll() as Array<Record<string, unknown>>
 
 /** A flow whose first step returns oversized data, mapped into a create step's fields */
 async function runCreateWithBigFields() {

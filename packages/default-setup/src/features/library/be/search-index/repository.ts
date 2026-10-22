@@ -1,4 +1,4 @@
-import { qx, create, write } from '#generated/ears.ts';
+import { query, create, write } from '#generated/ears.ts';
 import { Index } from 'usearch'
 
 import { EARS } from '#generated/ears.ts'
@@ -32,7 +32,7 @@ function generateIndexedDocShortCode(): string {
 }
 
 function findIndexedDoc(indexId: string, chunkKey: string): IndexedDocEntity | null {
-  const results = qx(EARS.Entity.IndexedDoc)
+  const results = query(EARS.Entity.IndexedDoc)
     .where('indexId', indexId)
     .where('chunkKey', chunkKey)
     .pickAll()
@@ -62,7 +62,7 @@ function updateIndexedDoc(entityId: EARS.EntityId, data: IndexedDocUpdateData): 
 }
 
 function deleteIndexedDocsForIndex(indexId: string): void {
-  const docs = qx(EARS.Entity.IndexedDoc)
+  const docs = query(EARS.Entity.IndexedDoc)
     .where('indexId', indexId)
     .ids()
   
@@ -296,7 +296,7 @@ export async function createSearchIndex(
 }
 
 export async function findSearchIndex(indexId: EARS.EntityId): Promise<SearchIndex | null> {
-  const indices = qx.ids(indexId).pickAll()
+  const indices = query.ids(indexId).pickAll()
   const indexData = indices[0]
   
   if (!indexData || indexData.type !== 'SearchIndex') {
@@ -307,7 +307,7 @@ export async function findSearchIndex(indexId: EARS.EntityId): Promise<SearchInd
 }
 
 export async function getSearchIndicesForFolder(folderId: EARS.EntityId | null): Promise<SearchIndex[]> {
-  const allIndices = qx(EARS.Entity.SearchIndex)
+  const allIndices = query(EARS.Entity.SearchIndex)
     .where('folderId', folderId)
     .pickAll()
   
@@ -602,7 +602,7 @@ async function getDocumentsToIndex(
 async function getChildCollectionsRecursive(
   collectionId: EARS.EntityId
 ): Promise<EARS.EntityId[]> {
-  const children = qx.ids(collectionId)
+  const children = query.ids(collectionId)
     .linksTo(EARS.RelKind.PARENT_OF, 'Collection' as any)
     .ids()
   
@@ -646,7 +646,7 @@ export async function autoIndexNewDocument(documentId: EARS.EntityId): Promise<v
   if (!document) return
   
   // Find all indices that should include this document
-  const allIndices = qx(EARS.Entity.SearchIndex).pickAll()
+  const allIndices = query(EARS.Entity.SearchIndex).pickAll()
   
   for (const indexData of allIndices) {
     const searchIndex = indexData as unknown as SearchIndex
@@ -674,7 +674,7 @@ export async function autoIndexNewDocument(documentId: EARS.EntityId): Promise<v
 
 // Remove document from all indices when deleted
 export async function removeDocumentFromAllIndices(documentId: EARS.EntityId): Promise<void> {
-  const allIndices = qx(EARS.Entity.SearchIndex).pickAll()
+  const allIndices = query(EARS.Entity.SearchIndex).pickAll()
   
   for (const indexData of allIndices) {
     const searchIndex = indexData as unknown as SearchIndex

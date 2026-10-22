@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { create, write, findById, findAll, qx } from '#generated/ears.ts';
+import { create, write, findById, findAll, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
@@ -27,7 +27,7 @@ function findArtifactByThreadAndType(
   threadId: EARS.EntityId,
   artifactType: ArtifactType,
 ): ArtifactEntity | undefined {
-  const candidates = qx.ids(threadId)
+  const candidates = query.ids(threadId)
     .linksPick(
       EARS.RelKind.HAS,
       ['artifactType'] as const,
@@ -36,7 +36,7 @@ function findArtifactByThreadAndType(
     .filter(({ artifactType: t }) => t === artifactType);
   const first = candidates[0];
   if (!first?.id) return undefined;
-  return qx.ids([first.id as EARS.EntityId<'Artifact'>]).pickAll()[0];
+  return query.ids([first.id as EARS.EntityId<'Artifact'>]).pickAll()[0];
 }
 
 // Queries
@@ -52,17 +52,17 @@ export const threadQueries = {
 
   /** The first thread holding the role, e.g. the onboarding birth thread */
   idByRole: (role: EARS.RoleKind): EARS.EntityId | null =>
-    qx.all().withRole(role).first(),
+    query.all().withRole(role).first(),
 
   // Get thread messages
   messages: (threadId: EARS.EntityId) => 
-    qx.ids(threadId)
+    query.ids(threadId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message)
       .pick(["text", "sender", "timestamp", "compacted", "isCommand"] as const),
   
   // Get linked threads
   linkedThreads: (threadId: EARS.EntityId) =>
-    qx.ids(threadId)
+    query.ids(threadId)
       .linksPick(
         ["parent_of", "blocks", "blocked_by", "duplicates"],
         ["shortCode", "topic", "status", "timestamp"] as const,
@@ -104,7 +104,7 @@ export const threadQueries = {
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
     const extendedThreads = threads.map(thread => {
       // Compute parentId by finding threads that link to this one via 'parent_of' (reverse direction)
-      const parentIds = qx.ids(thread.id).linksTo('parent_of', EARS.Entity.Thread, false).ids();
+      const parentIds = query.ids(thread.id).linksTo('parent_of', EARS.Entity.Thread, false).ids();
       return {
         ...thread,
         ...(parentIds.length > 0 ? { parentId: parentIds[0] as string } : {}),
@@ -154,7 +154,7 @@ export const threadCommands = {
     }
 
     const ts = Date.now();
-    const count = qx(EARS.Entity.Thread).count() + 1;
+    const count = query(EARS.Entity.Thread).count() + 1;
     const shortCode = `T-${count}` as ThreadTypeShortCode;
 
     const id = create(EARS.Entity.Thread, {
@@ -216,7 +216,7 @@ export const threadCommands = {
     // Update linked threads
     if (linkedThreads !== undefined) {
       // Remove all existing custom relations
-      const existingLinks = qx.ids(id).links(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
+      const existingLinks = query.ids(id).links(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
       for (const link of existingLinks) {
         write(id).unlink(EARS.RelKind.Custom(link.relation), link.id);
       }
@@ -244,7 +244,7 @@ export const threadCommands = {
   },
 
   forkCount: (sourceThreadId: EARS.EntityId): number => {
-    return qx.ids(sourceThreadId).linksTo('forked_from', EARS.Entity.Thread, false).ids().length;
+    return query.ids(sourceThreadId).linksTo('forked_from', EARS.Entity.Thread, false).ids().length;
   },
 
   setParent: (parentId: EARS.EntityId, childIds: EARS.EntityId[]): { reparented: string[]; skipped: string[] } => {
@@ -265,7 +265,7 @@ export const threadCommands = {
       }
 
       // Remove existing parent link (reverse direction: find who has parent_of pointing to this child)
-      const oldParentIds = qx.ids(childId).linksTo('parent_of', EARS.Entity.Thread, false).ids();
+      const oldParentIds = query.ids(childId).linksTo('parent_of', EARS.Entity.Thread, false).ids();
       for (const oldParentId of oldParentIds) {
         write(oldParentId).unlink(EARS.RelKind.PARENT_OF, childId);
       }
@@ -288,14 +288,14 @@ export const threadCommands = {
     }
 
     // 1. Delete all messages linked to this thread
-    const messages = qx.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message).ids();
+    const messages = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message).ids();
     for (const messageId of messages) {
       write(messageId).destroy();
     }
 
     // 2. Remove all thread relationships (parent_of, blocks, blocked_by, duplicates)
     // First, unlink this thread from any threads it links to
-    const existingLinks = qx.ids(id).links(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
+    const existingLinks = query.ids(id).links(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
     for (const link of existingLinks) {
       write(id).unlink(EARS.RelKind.Custom(link.relation), link.id);
     }
@@ -304,7 +304,7 @@ export const threadCommands = {
     // Find threads that have this thread as a linked thread
     const allThreads = findAll<ThreadEntity>(EARS.Entity.Thread);
     for (const thread of allThreads) {
-      const linkedToThis = qx.ids(thread.id).links(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
+      const linkedToThis = query.ids(thread.id).links(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
       for (const link of linkedToThis) {
         if (link.id === id) {
           write(thread.id).unlink(EARS.RelKind.Custom(link.relation), id);
@@ -313,7 +313,7 @@ export const threadCommands = {
     }
 
     // 3. Delete any artifacts linked to this thread
-    const artifacts = qx.all().relatedTo(id).ofType(EARS.Entity.Artifact).ids();
+    const artifacts = query.all().relatedTo(id).ofType(EARS.Entity.Artifact).ids();
     for (const artifactId of artifacts) {
       write(artifactId).destroy();
     }
@@ -360,7 +360,7 @@ function getRecentThreads(limit: number = getConfiguredRecentThreadsLimit()): Pa
     "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned", "archived", "chatState", "context",
   ] as const;
 
-  const allThreads = qx(EARS.Entity.Thread).pick(threadFields)
+  const allThreads = query(EARS.Entity.Thread).pick(threadFields)
     .filter(t => !t.archived);
 
   const sortOrder = getConfiguredSortOrder();
@@ -376,7 +376,7 @@ function getArchivedThreads(): Partial<ThreadEntity>[] {
     "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned", "archived", "chatState", "context",
   ] as const;
 
-  return qx(EARS.Entity.Thread).pick(threadFields)
+  return query(EARS.Entity.Thread).pick(threadFields)
     .filter(t => t.archived)
     .sort((a, b) => getSortTimestamp(b, getConfiguredSortOrder()) - getSortTimestamp(a, getConfiguredSortOrder()));
 }
@@ -414,7 +414,7 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
 }
 
 function getThreadArtifacts(threadId: EARS.EntityId): ArtifactItem[] {
-  const artifacts = qx.all().relatedTo(threadId).ofType(EARS.Entity.Artifact)
+  const artifacts = query.all().relatedTo(threadId).ofType(EARS.Entity.Artifact)
     .pick(['id', 'title', 'content', 'artifactType', 'createdAt', 'color'] as const);
 
   if (!artifacts || artifacts.length === 0) return [];
@@ -436,7 +436,7 @@ const MESSAGE_PAGE_SIZE = 50;
 const messagePickFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asUser", "asideText", "asideContext", "status", "compacted"] as const;
 
 function getThreadFields(threadId: EARS.EntityId): AgentThreadData | null {
-  const thread = qx.ids(threadId)
+  const thread = query.ids(threadId)
     .orderBy('timestamp', 'desc')
     .limit(4)
     .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned", "chatState", "context"] as const);
@@ -444,7 +444,7 @@ function getThreadFields(threadId: EARS.EntityId): AgentThreadData | null {
 }
 
 function getAllThreadMessages(threadId: EARS.EntityId): Partial<MessageEntity>[] {
-  return (qx.ids(threadId)
+  return (query.ids(threadId)
     .linksPick(EARS.RelKind.CONTAINS, messagePickFields, EARS.Entity.Message) ?? [])
     .filter(m => !m.deleted)
     .sort((a, b) => {
@@ -459,7 +459,7 @@ function paginatedMessages(threadId: EARS.EntityId, cursor?: string | null): {
   hasMore: boolean;
   nextCursor: string | null;
 } {
-  const allMessages = (qx.ids(threadId)
+  const allMessages = (query.ids(threadId)
     .linksPick(EARS.RelKind.CONTAINS, messagePickFields, EARS.Entity.Message) ?? [])
     .filter(m => !m.deleted);
 
@@ -525,7 +525,7 @@ export const chatQueries = {
     const { threads, currentThread } = getThreadsWithCurrent();
     const tabs: Tab[] = [];
 
-    const pinnedThreads = (qx(EARS.Entity.Thread)
+    const pinnedThreads = (query(EARS.Entity.Thread)
       .where('pinned', true)
       .pick(["id", "shortCode", "topic", "archived"] as const))
       .filter(t => !t.archived);
@@ -567,7 +567,7 @@ export const chatQueries = {
   },
 
   messageById: (messageId: EARS.EntityId): MessageEntity | null => {
-    const message = qx.ids(messageId).pickOne([
+    const message = query.ids(messageId).pickOne([
       'id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse',
       'responseTimestamp', 'createdAt', 'updatedAt', 'autoHide', 'asUser', 'asideText', 'asideContext',
       'forkable', 'references', 'isCommand', 'command', 'status', 'context', 'compacted'
@@ -618,7 +618,7 @@ export const chatCommands = {
   } => {
     const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asUser, asideContext, blockResponse, responseTimestamp, asideText, compacted, context, skipRelink } = params;
 
-    const thread = qx.ids(threadId).id();
+    const thread = query.ids(threadId).id();
     if (!thread) {
       throw new RepositoryError(`Thread ${threadId} not found`, RepositoryErrorCode.NOT_FOUND);
     }
@@ -661,7 +661,7 @@ export const chatCommands = {
     // render below the current agent turn — even after a thread reload.
     // Skipped during bulk import (no queued messages in imported data).
     if (!skipRelink) {
-      const siblings = qx.ids(threadId)
+      const siblings = query.ids(threadId)
         .linksPick(EARS.RelKind.CONTAINS, ['id', 'status'] as const, EARS.Entity.Message);
       if (siblings) {
         for (const sib of siblings) {
@@ -699,7 +699,7 @@ export const chatCommands = {
   } => {
     const { messageId, response } = params;
 
-    const message = qx.ids(messageId).id();
+    const message = query.ids(messageId).id();
     if (!message) {
       throw new RepositoryError(`Message ${messageId} not found`, RepositoryErrorCode.NOT_FOUND);
     }
@@ -712,7 +712,7 @@ export const chatCommands = {
       .set('updatedAt', now);
 
     let updatedBlocks: BlockConfig[] | undefined;
-    const storedBlocks = qx.ids(messageId).pickOne(['blocks'])?.blocks;
+    const storedBlocks = query.ids(messageId).pickOne(['blocks'])?.blocks;
 
     if (Array.isArray(storedBlocks) && response.buttonId) {
       let buttonToggled = false;
@@ -754,7 +754,7 @@ export const chatCommands = {
   } => {
     const { messageId, updates } = params;
 
-    const message = qx.ids(messageId).id();
+    const message = query.ids(messageId).id();
     if (!message) {
       throw new RepositoryError(`Message ${messageId} not found`, RepositoryErrorCode.NOT_FOUND);
     }
@@ -766,7 +766,7 @@ export const chatCommands = {
     // When a message becomes queued, move it to the end of its thread's
     // CONTAINS relation so it always appears last — even after a reload.
     if (updates.status === 'queued') {
-      const threadLinks = qx.ids(messageId).links(EARS.RelKind.CONTAINS, EARS.Entity.Thread);
+      const threadLinks = query.ids(messageId).links(EARS.RelKind.CONTAINS, EARS.Entity.Thread);
       for (const { id: tid } of threadLinks) {
         relinkMessageToEnd(tid, messageId);
       }
@@ -788,7 +788,7 @@ export const chatCommands = {
   } => {
     const { threadId, text } = params;
 
-    const thread = qx.ids(threadId).id();
+    const thread = query.ids(threadId).id();
     if (!thread) {
       throw new RepositoryError(`Thread ${threadId} not found`, RepositoryErrorCode.NOT_FOUND);
     }
@@ -823,12 +823,12 @@ export const chatCommands = {
   },
 
   toggleMarkerCompacted: (markerId: EARS.EntityId, compacted: boolean): EARS.EntityId[] => {
-    const marker = qx.ids(markerId).id();
+    const marker = query.ids(markerId).id();
     if (!marker) {
       throw new RepositoryError(`Marker ${markerId} not found`, RepositoryErrorCode.NOT_FOUND);
     }
 
-    const messageIds = (qx.ids(markerId)
+    const messageIds = (query.ids(markerId)
       .linksTo(EARS.RelKind.Custom('compacts'), EARS.Entity.Message)
       .pick([] as const) ?? []).map(m => m.id);
 
@@ -887,7 +887,7 @@ export const chatCommands = {
   }): { deletedCount: number; deletedIds: string[] } => {
     const { threadId, messageId } = params;
 
-    const messages = qx.ids(threadId)
+    const messages = query.ids(threadId)
       .linksPick(EARS.RelKind.CONTAINS, ["id", "deleted"] as const, EARS.Entity.Message) ?? [];
 
     const nonDeleted = messages.filter(m => !m.deleted);

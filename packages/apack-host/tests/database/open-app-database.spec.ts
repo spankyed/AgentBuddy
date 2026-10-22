@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, type EARS } from '@apackdev/ears';
-import { getEntitiesOfType, _bindEars, boundEars, untypedQx } from '@apackdev/sdk/ears';
+import { getEntitiesOfType, _bindEars, boundEars, untypedQuery } from '@apackdev/sdk/ears';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
@@ -132,7 +132,7 @@ describe('findAppDataPaths', () => {
 describe('openAppDatabase', () => {
   /**
    * The firing case for the refusal, and the reason it exists rather than a warning. With an incomplete schema
-   * the engine does not know `Note` is an entity type, so `create('Note')` and `qx('Note')` are refused one call
+   * the engine does not know `Note` is an entity type, so `create('Note')` and `query('Note')` are refused one call
    * at a time, part way through whatever the tool was writing. A read of the same dir is fine and is the whole
    * point of the fallback.
    */
@@ -184,7 +184,7 @@ describe('openAppDatabase', () => {
     expect(boundEars()).toBe(db.query);
     expect(db.paths).toEqual(_appDataPaths(dir));
     expect(getEntitiesOfType('Note').sort()).toEqual(['Note-1', 'Note-2']);
-    expect(untypedQx('Note').ids()).toHaveLength(2);
+    expect(untypedQuery('Note').ids()).toHaveLength(2);
     expect(db.query.getRoles(id('Note-1'))).toEqual(['pinned']);
     expect(db.query.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);
     // The volatile partition isn't hydrated, as in the app

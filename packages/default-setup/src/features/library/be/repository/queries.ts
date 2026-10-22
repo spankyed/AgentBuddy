@@ -1,4 +1,4 @@
-import { qx } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import * as fs from 'fs/promises'
 
 import { EARS } from '#generated/ears.ts'
@@ -17,10 +17,10 @@ import type { ContentSection, DocumentShortCode } from '#features/library/be/typ
 
 export const libraryQueries = {
   getDocuments(collectionId?: string): DocumentDTO[] {
-    let query = qx(EARS.Entity.Document)
+    const allDocuments = query(EARS.Entity.Document)
 
     if (collectionId) {
-      const documentsInCollection = qx.ids(collectionId as EARS.EntityId)
+      const documentsInCollection = query.ids(collectionId as EARS.EntityId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
 
@@ -31,14 +31,14 @@ export const libraryQueries = {
       return documents.filter((doc): doc is DocumentDTO => doc !== null)
     }
 
-    const documents = query.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder', 'documentType'])
+    const documents = allDocuments.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder', 'documentType'])
 
     const documentsWithDetails = documents.map((doc) => {
       const tags = doc.tags || []
 
       // Find collection that contains this document
       const collectionId = findDocumentCollection(doc.id as EARS.EntityId)
-      const collection = collectionId ? qx.ids(collectionId).pickAll()[0] : null
+      const collection = collectionId ? query.ids(collectionId).pickAll()[0] : null
 
       const collectionPath = collection
         ? getCollectionPath(collection.id as EARS.EntityId)
@@ -64,15 +64,15 @@ export const libraryQueries = {
 
   findDocument(id: EARS.EntityId): DocumentDTO | null {
     const documentId = id
-    const documents = qx.ids(documentId).pickAll()
+    const documents = query.ids(documentId).pickAll()
     const document = documents[0]
 
     if (!document) return null
 
     const tags = document.tags || []
 
-    const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
-      qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
+    const collection = query(EARS.Entity.Collection).pickAll().find(col => 
+      query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
     )
 
     const collectionPath = collection
@@ -94,7 +94,7 @@ export const libraryQueries = {
   },
 
   findDocumentByShortCode(shortCode: DocumentShortCode): DocumentDTO | null {
-    const documents = qx(EARS.Entity.Document)
+    const documents = query(EARS.Entity.Document)
       .where('shortCode', shortCode)
       .pickAll()
     
@@ -108,13 +108,13 @@ export const libraryQueries = {
   /** Every document and folder by name, for the reference picker and the panel's stats */
   getIndex(): LibraryIndex {
     return {
-      documents: qx(EARS.Entity.Document).pick(['name', 'shortCode', 'tags']).map((doc) => ({
+      documents: query(EARS.Entity.Document).pick(['name', 'shortCode', 'tags']).map((doc) => ({
         id: doc.id,
         name: doc.name as string,
         shortCode: doc.shortCode as DocumentShortCode,
         tags: (doc.tags as string[] | undefined) ?? [],
       })),
-      folders: qx(EARS.Entity.Collection).pick(['name']).map((col) => ({
+      folders: query(EARS.Entity.Collection).pick(['name']).map((col) => ({
         id: col.id,
         name: col.name as string,
       })),
@@ -122,7 +122,7 @@ export const libraryQueries = {
   },
 
   getCollections(): CollectionDTO[] {
-    const rootCollections = qx(EARS.Entity.Collection)
+    const rootCollections = query(EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])
       .filter(col => isRootCollection(col.id as EARS.EntityId))
 
@@ -132,8 +132,8 @@ export const libraryQueries = {
         name: col.name as string,
         description: col.description as string | undefined,
         path: getCollectionPath(col.id as EARS.EntityId),
-        documentCount: qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().length,
-        childCollections: buildTree(qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])),
+        documentCount: query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().length,
+        childCollections: buildTree(query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])),
         displayOrder: getDisplayOrder(col),
         createdAt: new Date(col.createdAt as number).toISOString(),
         updatedAt: new Date(col.updatedAt as number || col.createdAt as number).toISOString(),
@@ -159,7 +159,7 @@ export const libraryQueries = {
 
     if (folderId === null) {
       // Root directory - get collections without parents
-      const allCollections = qx(EARS.Entity.Collection).pickAll()
+      const allCollections = query(EARS.Entity.Collection).pickAll()
       for (const col of allCollections) {
         if (isRootCollection(col.id as EARS.EntityId)) {
           folders.push(col)
@@ -167,7 +167,7 @@ export const libraryQueries = {
       }
     } else {
       // Get child collections of this folder
-      folders = qx.ids(folderId)
+      folders = query.ids(folderId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .pickAll()
     }
@@ -175,10 +175,10 @@ export const libraryQueries = {
     // Convert collections to folder items
     for (const folder of folders) {
       const itemId = folder.id
-      const childCollections = qx.ids(itemId as EARS.EntityId)
+      const childCollections = query.ids(itemId as EARS.EntityId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .pickAll()
-      const documents = qx.ids(itemId as EARS.EntityId)
+      const documents = query.ids(itemId as EARS.EntityId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
       const childCount = childCollections.length + documents.length
@@ -216,10 +216,10 @@ export const libraryQueries = {
     
     if (folderId === null) {
       // Root directory - get documents not in any collection
-      documents = qx(EARS.Entity.Document).pickAll().filter(doc => !findDocumentCollection(doc.id))
+      documents = query(EARS.Entity.Document).pickAll().filter(doc => !findDocumentCollection(doc.id))
     } else {
       // Get documents in this collection
-      documents = qx.ids(folderId)
+      documents = query.ids(folderId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
     }
@@ -284,7 +284,7 @@ export const libraryQueries = {
     
     // Walk up the parent chain to build breadcrumbs
     while (currentId) {
-      const collections = qx.ids(currentId).pickAll()
+      const collections = query.ids(currentId).pickAll()
       const collection = collections[0]
       if (collection) {
         breadcrumbs.unshift({
@@ -307,7 +307,7 @@ export const libraryQueries = {
 
 
   getDocumentsInCollection(collectionId: EARS.EntityId): DocumentDTO[] {
-    const documentIds = qx.ids(collectionId)
+    const documentIds = query.ids(collectionId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .ids()
     
@@ -334,16 +334,16 @@ export const libraryQueries = {
   },
 
   getAllDocuments(): DocumentDTO[] {
-    const documents = qx(EARS.Entity.Document)
+    const documents = query(EARS.Entity.Document)
       .pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
 
     const documentsWithDetails = documents.map((doc) => {
       const tags = doc.tags || []
 
       // Find collection that contains this document
-      const collectionLinks = qx.ids(doc.id as EARS.EntityId)
+      const collectionLinks = query.ids(doc.id as EARS.EntityId)
         .links(EARS.RelKind.CONTAINS, EARS.Entity.Collection, false)
-      const collection = collectionLinks.length > 0 ? qx.ids(collectionLinks[0].id).pickAll()[0] : null
+      const collection = collectionLinks.length > 0 ? query.ids(collectionLinks[0].id).pickAll()[0] : null
 
       const collectionPath = collection ? getCollectionPath(collection.id as EARS.EntityId) : []
 

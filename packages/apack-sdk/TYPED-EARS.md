@@ -28,7 +28,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `linksPick`, `orderBy`, `distinct`, `groupBy`, `getAttr`, `getAttrs`, `findWithFields`, `findByIdWithFields` and `updateEntity`.
 - This form is what gives editors field-name completions and makes a typo's error list the valid fields.
 - For a union shape, such as `Node` rows, only the fields every member has are accepted.
-- A query whose fields vary by member, or are only known at runtime, uses `untypedQx` from `@apackdev/ears` on purpose. The brain trigger queries in default-setup are the example. (It's the same untyped `qx` an engine has, `createEarsEngine(...).qx`.)
+- A query whose fields vary by member, or are only known at runtime, uses `untypedQuery` from `@apackdev/ears` on purpose. The brain trigger queries in default-setup are the example. (It's the same untyped `query` an engine has, `createEarsEngine(...).query`.)
 
 **Entity names.**
 - A literal entity name must be one the pack, its dependencies or the SDK declares (`EntityName`). A name typed `string` passes unchecked (`EntityNameArg`).
@@ -36,8 +36,8 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   name's `E` at its `string` default, so `findAll<Shape>('Tpyo')` compiles by design. Without a type
   argument the same call is checked.
 - A generic helper constrains its name to `EntityName`, or opts out with `as string`.
-- A name and an id go to different functions: `qx(type)`/`create(type)`/`upsert(type, id)` take a name,
-  `qx.ids(id)`/`write(id)` an id. An id passed where a name is meant is a compile error (it is no declared
+- A name and an id go to different functions: `query(type)`/`create(type)`/`upsert(type, id)` take a name,
+  `query.ids(id)`/`write(id)` an id. An id passed where a name is meant is a compile error (it is no declared
   name), and in the untyped twins too, whose name parameters are `TypeName<E>`: a dashed literal or an
   `EntityId`-typed value becomes `never`. A name typed `string` passes, and the runtime refuses it when it
   isn't a registered type.
@@ -47,7 +47,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - Typed queries return ids tagged with their entity type (`ids()`, `first()`, `pick`'s `id`, a row's `id`).
 - A plain `EARS.EntityId` carries no tag and is accepted wherever a tagged id is, including `includes` and `Set.has`. Only an id tagged with a different entity type is rejected.
 - Link ids use `NoInferType`, so a result passed straight into a generic function keeps its shape.
-- **`qx('user-note')` is a compile error**, now that no entry point takes a name *or* an id (Incidents
+- **`query('user-note')` is a compile error**, now that no entry point takes a name *or* an id (Incidents
   below has why the type alone could not fix it).
 
 **Writes.**
@@ -73,7 +73,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 
 ## Before changing any of these types
 
-0. **Check Incidents first.** Two of the things most often reported as bugs here — `qx('user-note')`
+0. **Check Incidents first.** Two of the things most often reported as bugs here — `query('user-note')`
    compiling, and `findAll<T>('Tpyo')` skipping the name check — have been investigated and measured. The
    first has two failed fix attempts recorded with their blast radius; the second is the contract. Do not
    re-derive them.
@@ -81,14 +81,14 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
    - an explicit shape
    - an `EntityName` constraint
    - a runtime name typed `string`
-   - the untyped twins (`untypedQx`, `untypedCreate`, `untypedUpsert`, `untypedWrite`)
+   - the untyped twins (`untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`)
 2. **Run the type tests** that pin the contract:
    - default-setup: `tests/typed-query-builder.spec.ts`, `branded-entity-id.spec.ts`, `entity-shape-registry.spec.ts`, `sdk-type-safety.spec.ts`, and `npm run typecheck:pack`
    - `@apackdev/cli`: `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` (a real dependent pack under bundler and node16, against both the workspace source and the packed `@apackdev/ears` and `@apackdev/sdk`) and `packages/publish-checks/tests/published-sdk-any.integration.spec.ts`
 3. **Mutation-check every rule you touch.** Break it on purpose and confirm a test fails.
 4. **Check editor completions and error messages.** `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` in `@apackdev/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.
-   - Field positions should list the entity's fields: `qx(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')`, `getAttr(id, '|')`, `findWithFields(EARS.Entity.X, ['|'])`.
-   - Entity-name positions should list entity names: `qx('|')`, `findAll('|')`, `createEntity('|')`, `.linksTo(kind, '|')`, `.ofType('|')`.
+   - Field positions should list the entity's fields: `query(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')`, `getAttr(id, '|')`, `findWithFields(EARS.Entity.X, ['|'])`.
+   - Entity-name positions should list entity names: `query('|')`, `findAll('|')`, `createEntity('|')`, `.linksTo(kind, '|')`, `.ofType('|')`.
    - A typo (`where('titel')`) should produce an error that lists the valid fields.
    - Compare against the previous version with the TypeScript language service (`getCompletionsAtPosition`), not just by compiling.
 5. **Update the API reports** (`npm run api:update` in `packages/apack-ears` and `packages/apack-sdk`) and review the `apack-ears/etc/index.api.md` and `apack-sdk/etc/types.api.md` diffs as part of the change.
@@ -98,7 +98,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - **Union field typing (2026-09-14).**
   - What happened: to make brain's trigger queries compile against the new `Node` union, the field parameters were rewritten as conditional and mapped types (`FieldArg`, `FieldsArg`, `PickedOf`). That added runtime field names and union-member fields to every field-keyed API.
   - Why tests missed it: everything compiled and every type test passed. But field completions disappeared from `pick`, `pickOne`, `linksPick`, `getAttr` and `findWithFields`, and typo errors became "not assignable to type 'never'".
-  - Resolution: reverted, and the two queries use the untyped `untypedQx` (`@apackdev/ears`). The completions test in `facade-typing.integration.spec.ts` now guards these positions.
+  - Resolution: reverted, and the two queries use the untyped `untypedQuery` (`@apackdev/ears`). The completions test in `facade-typing.integration.spec.ts` now guards these positions.
 - **`qx('user-note')` compiled: the dash heuristic (investigated 2026-09-18; resolved by the split below).**
   - What it was: `EntityId<E>` is `` `${string}-${string}` `` with an *optional* `__entity` brand. `qx` and
     `tx` took a name *or* an id, and the dash was the only thing telling those apart. So a misspelled

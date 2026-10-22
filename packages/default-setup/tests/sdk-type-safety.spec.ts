@@ -13,7 +13,7 @@ import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  qx, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
+  query, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
   type EntityShape,
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
@@ -262,27 +262,27 @@ describe('Generic flow — runtime verification', () => {
     expect(results[0].category).toBe('alpha');
   });
 
-  it('qx() fluent chain produces typed results', () => {
+  it('query() fluent chain produces typed results', () => {
     createEntityWithDefaults(
       EARS.Entity.Action as any,
       { label: 'Chain', actionFn: 'fn()' } as any,
       'ACT',
     );
 
-    const ids = qx(EARS.Entity.Action as any).ids();
+    const ids = query(EARS.Entity.Action as any).ids();
     expect(Array.isArray(ids)).toBe(true);
     expect(ids.length).toBe(1);
 
-    const count = qx(EARS.Entity.Action as any).count();
+    const count = query(EARS.Entity.Action as any).count();
     expect(typeof count).toBe('number');
     expect(count).toBe(1);
 
-    const exists = qx(EARS.Entity.Action as any).exists();
+    const exists = query(EARS.Entity.Action as any).exists();
     expect(typeof exists).toBe('boolean');
     expect(exists).toBe(true);
   });
 
-  it('qx().map() returns correctly typed array', () => {
+  it('query().map() returns correctly typed array', () => {
     // The row map() then walks
     createEntityWithDefaults(
       EARS.Entity.Action as any,
@@ -290,7 +290,7 @@ describe('Generic flow — runtime verification', () => {
       'ACT',
     );
 
-    const labels = qx(EARS.Entity.Action as any).map(
+    const labels = query(EARS.Entity.Action as any).map(
       (entityId) => `prefix-${entityId}`
     );
     expect(labels).toHaveLength(1);
@@ -304,7 +304,7 @@ describe('Generic flow — runtime verification', () => {
       .id();
 
     expect(id).toMatch(/^Action-/);
-    const label = qx.ids(id).pickOne(['label'] as const);
+    const label = query.ids(id).pickOne(['label'] as const);
     expect(label).toMatchObject({ label: 'TxChain' });
   });
 

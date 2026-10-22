@@ -1,4 +1,4 @@
-import { findWhere, qx } from '#generated/ears.ts';
+import { findWhere, query } from '#generated/ears.ts';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '#generated/repository.ts';
@@ -25,7 +25,7 @@ interface ImportResult {
 function findExistingNote(title: string, parentId: string | undefined): NoteEntity | undefined {
   const candidates = findWhere<NoteEntity>(EARS.Entity.Note, 'title', title)
   return candidates.find(note => {
-    const parents = qx.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()
+    const parents = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()
     const noteParentId = parents.length > 0 ? parents[0] : undefined
     return noteParentId === parentId
   })

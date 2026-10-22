@@ -1,4 +1,4 @@
-import { findById, findAll, qx } from '#generated/ears.ts';
+import { findById, findAll, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { trash } from '@apackdev/sdk/repositories';
 
@@ -8,11 +8,11 @@ import type { NoteEntity } from '#features/notes/be/types.ts';
 
 function toDTO(note: NoteEntity): NoteDTO {
   // Find parent: who CONTAINS this note?
-  const parents = qx.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+  const parents = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
   const parentId = parents.length > 0 ? parents[0] : null;
 
   // Count children: what does this note CONTAIN?
-  const childCount = qx.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().length;
+  const childCount = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().length;
 
   return {
     id: note.id,
@@ -52,7 +52,7 @@ export const noteQueries = {
   },
 
   children: (parentId: EARS.EntityId): NoteDTO[] => {
-    const childIds = qx.ids(parentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    const childIds = query.ids(parentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     return childIds
       .map(id => findById<NoteEntity>(id))
       .filter((n): n is NoteEntity => n !== undefined)
@@ -64,7 +64,7 @@ export const noteQueries = {
     let currentId: EARS.EntityId | null = noteId;
 
     while (currentId) {
-      const parents = qx.ids(currentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+      const parents = query.ids(currentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
       if (parents.length === 0) break;
       currentId = parents[0];
       const note = findById<NoteEntity>(currentId);
@@ -79,7 +79,7 @@ export const noteQueries = {
   },
 
   referencedBy: (noteId: EARS.EntityId): EARS.EntityId[] =>
-    qx.ids(noteId).linksTo(REFERENCES, EARS.Entity.Note, false).ids(),
+    query.ids(noteId).linksTo(REFERENCES, EARS.Entity.Note, false).ids(),
 
   trashedDTOs: (): NoteDTO[] => trash.list<NoteEntity>(EARS.Entity.Note).map(toDTO),
 

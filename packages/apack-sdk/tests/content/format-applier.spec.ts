@@ -530,7 +530,7 @@ describe("two packs' records with the same entry key and identity", () => {
 describe("a folder another pack written", () => {
   type Folder = { id: EARS.EntityId; name: string; label?: string; contentKey?: string };
   const folders = () => ears().findWhere<Folder>('Folder' as EARS.Entity, 'name', 'internal');
-  const contents = (folder: Folder) => ears().qx.ids(folder.id).linksTo('contains', 'Memo' as EARS.Entity, true).pick(['name']).map((row) => row.name as string).sort();
+  const contents = (folder: Folder) => ears().query.ids(folder.id).linksTo('contains', 'Memo' as EARS.Entity, true).pick(['name']).map((row) => row.name as string).sort();
 
   /** A pack's entry: one folder holding a memo per name, with the pack's own label on the folder */
   function tree(packId: string, memoNames: string[], entryKey = 'memos'): string {
@@ -749,7 +749,7 @@ describe("a folder another pack written", () => {
 
 describe('wipe-and-replace', () => {
   const wipeImport = (dir: string) => applier.apply({ compiledDir: dir, mode: 'wipe-and-replace', log: () => {} });
-  const folderNames = () => ears().qx('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
+  const folderNames = () => ears().query('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
 
   it("removes rows of every entity type the entry content, even types its records don't hold", () => {
     ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'old folder' });

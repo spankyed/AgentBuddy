@@ -1,7 +1,7 @@
 // Preferences reset independently of onboarding and pack lifecycle state.
 import { describe, expect, it } from 'vitest';
 import { type EARS } from '@apackdev/ears';
-import { untypedWrite, untypedQx } from '@apackdev/sdk/ears';
+import { untypedWrite, untypedQuery } from '@apackdev/sdk/ears';
 import { getTestSettings, startApp } from '@apackdev/testing/harness';
 import { featureSettings } from '#generated/settings.ts';
 import { services } from '#generated/services.ts';
@@ -20,7 +20,7 @@ describe('resetting settings', () => {
     await app.nextEmit('host/settings', 'SETTINGS_SAVED', { answering: call });
 
     expect(featureSettings.forFeature('threads').get()).not.toMatchObject({ recentThreadsSortOrder: 'created' });
-    expect(untypedQx.ids(APP_STATE_ID).pickOne(['hasOnboarded', 'packVersions', 'failedAgainst'])).toMatchObject({
+    expect(untypedQuery.ids(APP_STATE_ID).pickOne(['hasOnboarded', 'packVersions', 'failedAgainst'])).toMatchObject({
       hasOnboarded: true,
       packVersions: { 'memo-pack': '1.2.0' },
       failedAgainst: { 'memo-pack': 'provider:' },

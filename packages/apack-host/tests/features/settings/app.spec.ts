@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, expect, it } from 'vitest';
-import { boundEars, untypedQx, untypedCreate } from '@apackdev/sdk/ears';
+import { boundEars, untypedQuery, untypedCreate } from '@apackdev/sdk/ears';
 import type { EARS } from '@apackdev/sdk';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { generateSettingsTypes } from '@apackdev/sdk/build';
@@ -21,7 +21,7 @@ it('derives the public SDK types from the host definition', async () => {
 it('provides and resets app preferences without default-setup and owns returned values', () => {
   const settings = store();
   expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
-  expect(untypedQx.ids(id).pickOne(['data'])).toBeNull();
+  expect(untypedQuery.ids(id).pickOne(['data'])).toBeNull();
   const first = settings.get<{ hotkeys: { switchSurfaceUp: { modifiers: string[] } } }>({ kind: 'app' });
   first.hotkeys.switchSurfaceUp.modifiers.push('changed');
   expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);

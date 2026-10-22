@@ -260,8 +260,8 @@ describe('findHostImports', () => {
   });
 
   it('checks generated files and allows the SDK', () => {
-    write('pack/feature.ts', `import { findRelations, untypedQx } from '@apackdev/sdk/ears';\nimport { services } from '#generated/services';\n${ALLOWED}`);
-    write('pack/__generated__/ears.ts', "import { qx } from '@apackdev/host/ears';\n");
+    write('pack/feature.ts', `import { findRelations, untypedQuery } from '@apackdev/sdk/ears';\nimport { services } from '#generated/services';\n${ALLOWED}`);
+    write('pack/__generated__/ears.ts', "import { query } from '@apackdev/host/ears';\n");
     expect(findHostImports(['src/pack'], root)).toEqual(['src/pack/__generated__/ears.ts:1: @apackdev/host/ears']);
   });
 });
@@ -280,7 +280,7 @@ describe('findAppImportsInPackTests', () => {
   // derived tests-half sweep, which asserts *exactly one* claimant across every rule that reads a pack's tests.
   it('allows the SDK, the harness and the pack itself', () => {
     write('pack-tests/unit/feature.spec.ts', [
-      "import { untypedQx } from '@apackdev/sdk/ears';",
+      "import { untypedQuery } from '@apackdev/sdk/ears';",
       "import { startApp } from '@apackdev/testing/harness';",
       "import { repository } from '#generated/repository.ts';",
       "import { handler } from '../../src/extensions/steps/llm/runtime';",
@@ -309,7 +309,7 @@ describe('findUpwardImports', () => {
       'src/index.ts': "import { untypedWrite } from '@apackdev/sdk/ears';\nexport type { Q } from '@apackdev/ears/lmdb';\nexport * from '@apackdev/sdk/events';\n",
     });
     layer('layers/host', { dependencies: { '@apackdev/ears': '*', '@apackdev/sdk': '*' } }, {
-      'src/index.ts': "import { createActionEmitter } from '@apackdev/sdk/services';\nimport { untypedQx } from '@apackdev/sdk/ears';\nimport { x } from '../x.ts';\n",
+      'src/index.ts': "import { createActionEmitter } from '@apackdev/sdk/services';\nimport { untypedQuery } from '@apackdev/sdk/ears';\nimport { x } from '../x.ts';\n",
       'tests/a.spec.ts': "vi.mock('@apackdev/ears');\n",
     });
     layer('layers/api', { devDependencies: { '@apackdev/ears': '*', '@apackdev/host': '*', '@apackdev/sdk': '*' } }, {

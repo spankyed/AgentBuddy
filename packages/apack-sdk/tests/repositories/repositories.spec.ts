@@ -4,7 +4,7 @@ import { nativePackDeclarationFixture } from '../../src/testing/index.ts';
 import * as os from 'node:os';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, type PersistenceSink } from '@apackdev/ears';
-import { findRelations, _bindEars, boundEars, untypedCreate, untypedQx } from '@apackdev/sdk/ears';
+import { findRelations, _bindEars, boundEars, untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
 import { actionRepository, flowRepository, promptRepository, tnodeRepository, trash } from '../../src/repositories/index.ts';
 import { compile as compileFlowDSL } from '../../src/build/compilers/flow-compiler.ts';
 import { resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
@@ -75,8 +75,8 @@ describe('flowRepository', () => {
     flowRepository.deleteFlow(flowId, { allowRoot: true });
 
     expect(flowRepository.rootFlow()).toBeUndefined();
-    expect(untypedQx(EARS.Entity.Flow).ids()).toEqual([]);
-    for (const id of nodeIds) expect(untypedQx.ids([id]).count()).toBe(0);
+    expect(untypedQuery(EARS.Entity.Flow).ids()).toEqual([]);
+    for (const id of nodeIds) expect(untypedQuery.ids([id]).count()).toBe(0);
     expect(findRelations({ sourceEntity: flowId })).toEqual([]);
   });
 
@@ -85,7 +85,7 @@ describe('flowRepository', () => {
     const second = flowRepository.createFlow({ label: 'Second' });
     flowRepository.grantRootFlowRole(first.id);
     flowRepository.grantRootFlowRole(second.id);
-    expect(untypedQx.all().withRole(EARS.RoleKind.Custom('root_flow')).ids()).toEqual([second.id]);
+    expect(untypedQuery.all().withRole(EARS.RoleKind.Custom('root_flow')).ids()).toEqual([second.id]);
   });
 
   it("connects nodes, refusing a trigger target and a busy handle, and renumbers a node's handles", () => {
@@ -181,14 +181,14 @@ describe('flowRepository', () => {
     expect(flowRepository.importFromDSL(oneStep).flowIds).toEqual([flowId]);
     const after = flowRepository.flowNodes(flowId).map((node) => node.id).sort();
     expect(after).toHaveLength(2);
-    for (const gone of before.filter((id) => !after.includes(id))) expect(untypedQx.ids(gone).exists()).toBe(false);
-    expect(untypedQx(EARS.Entity.Node).count()).toBe(2);
+    for (const gone of before.filter((id) => !after.includes(id))) expect(untypedQuery.ids(gone).exists()).toBe(false);
+    expect(untypedQuery(EARS.Entity.Node).count()).toBe(2);
 
     // An import that fails part way (a relation from an entity it never wrote) undoes the replacement
     const broken = { ...twoSteps, relation: [...twoSteps.relation, { source: 'Node-missing', kind: EARS.RelKind.TRANSITIONS_TO, target: after[0] }] };
     expect(() => flowRepository.importFromDSL(broken as typeof twoSteps)).toThrow();
     expect(flowRepository.flowNodes(flowId).map((node) => node.id).sort()).toEqual(after);
-    expect(untypedQx(EARS.Entity.Node).count()).toBe(2);
+    expect(untypedQuery(EARS.Entity.Node).count()).toBe(2);
     expect(flowRepository.flowEdges(flowId)).toHaveLength(1);
   });
 });
@@ -200,7 +200,7 @@ describe('tnodeRepository', () => {
 
     tnodeRepository.updateTNodeResult(tNodeId, { text: 'x'.repeat(20000) });
 
-    expect(untypedQx.ids(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
+    expect(untypedQuery.ids(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
       input: 'hi',
       result: { text: expect.objectContaining({ _truncated: true, _type: 'string', _originalLength: 20000 }) },
     });
@@ -208,7 +208,7 @@ describe('tnodeRepository', () => {
 
   it('leaves a TNode that does not exist alone', () => {
     tnodeRepository.updateTNodeResult('TNode-missing' as EARS.EntityId, { ok: true });
-    expect(untypedQx.ids(['TNode-missing' as EARS.EntityId]).count()).toBe(0);
+    expect(untypedQuery.ids(['TNode-missing' as EARS.EntityId]).count()).toBe(0);
   });
 });
 
@@ -227,7 +227,7 @@ describe('actionRepository and promptRepository', () => {
     promptRepository.delete(prompt.id);
     expect(actionRepository.all()).toEqual([]);
     expect(promptRepository.all()).toEqual([]);
-    expect(untypedQx.ids([action.id]).pickOne(['deleted'])?.deleted).toBe(true);
+    expect(untypedQuery.ids([action.id]).pickOne(['deleted'])?.deleted).toBe(true);
   });
 
   it('refuse an action or prompt without its label or body, and a missing id', () => {

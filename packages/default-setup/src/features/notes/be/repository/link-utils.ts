@@ -1,4 +1,4 @@
-import { write, qx } from '#generated/ears.ts';
+import { write, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 
 import { parseReferenceHref } from '@apackdev/sdk/framework';
@@ -27,7 +27,7 @@ export function syncReferences(sourceId: EARS.EntityId, content: string): void {
   const parsed = new Set(parseNoteLinks(content));
   parsed.delete(sourceId);
   const current = new Set(
-    qx.ids(sourceId).linksTo(REFERENCES, EARS.Entity.Note, true).ids()
+    query.ids(sourceId).linksTo(REFERENCES, EARS.Entity.Note, true).ids()
   );
 
   // Add new references

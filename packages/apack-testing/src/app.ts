@@ -6,7 +6,7 @@ import type { PackLifecycleHooks } from '@apackdev/sdk/framework';
 import { newCall, type Message } from '@apackdev/sdk/events';
 import { testRootEvents } from '@apackdev/sdk/testing';
 import { type EARS } from '@apackdev/ears';
-import { untypedQx } from '@apackdev/sdk/ears';
+import { untypedQuery } from '@apackdev/sdk/ears';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
 import { ROOT_FLOW_ROLE } from '@apackdev/sdk/types';
 import { stepRegistry } from '@apackdev/sdk/steps';
@@ -233,7 +233,7 @@ type TNodeUpdated = SurfaceEvent & { type: 'TNODE_UPDATED'; data: { tNodeId: str
 const isSpawn = (event: SurfaceEvent): event is TNodeSpawned => event.type === 'TNODE_SPAWNED';
 const isUpdate = (event: SurfaceEvent): event is TNodeUpdated => event.type === 'TNODE_UPDATED';
 
-const readTNode = (id: string) => (untypedQx.ids(id as EARS.EntityId).pickAll() as Array<Record<string, unknown>>)[0];
+const readTNode = (id: string) => (untypedQuery.ids(id as EARS.EntityId).pickAll() as Array<Record<string, unknown>>)[0];
 
 function stepTrace(spawned: TNodeSpawned, lastSeen: ReadonlyMap<string, Record<string, unknown>>): FlowStepTrace {
   // The brain clears its trace nodes when it stops (its root flow finished): fall back to the row as last reported
@@ -267,7 +267,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
   const tNodeRows = new Map<string, Record<string, unknown>>();
   /** The label of the flow each reported trace node ran in, kept after the brain clears its trace */
   const flowLabels = new Map<string, string>();
-  const rootFlowLabel = () => (untypedQx.all().withRole(ROOT_FLOW_ROLE).pickAll() as Array<{ label?: string }>)[0]?.label;
+  const rootFlowLabel = () => (untypedQuery.all().withRole(ROOT_FLOW_ROLE).pickAll() as Array<{ label?: string }>)[0]?.label;
   const record = (event: SurfaceEvent) => {
     if (!isSpawn(event) && !isUpdate(event)) return;
     reports.push(event);
@@ -461,7 +461,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       if (!brainId || !systems.has(brainId)) {
         throw new Error("runFlow runs flows on the brain: start the app with the brain system, startApp({ systems: ['brain', …] })");
       }
-      const flows = untypedQx('Flow').pickAll() as Array<{ label?: string }>;
+      const flows = untypedQuery('Flow').pickAll() as Array<{ label?: string }>;
       if (!flows.some((flow) => flow.label === label)) {
         throw new Error(`No flow "${label}". Flows: ${flows.map((flow) => flow.label).join(', ') || 'none (apply the content first)'}`);
       }
@@ -499,7 +499,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
           const inner = since().filter((e): e is TNodeSpawned => isSpawn(e) && e.flowTNodeId === spawned.tNode.id && e.tNode.tNodeType !== 'event');
           return inner.length > 0 && inner.every(settledNode);
         }
-        const stepType = (untypedQx.ids(spawned.tNode.id as EARS.EntityId).pickAll() as Array<{ stepNodeType?: string }>)[0]?.stepNodeType;
+        const stepType = (untypedQuery.ids(spawned.tNode.id as EARS.EntityId).pickAll() as Array<{ stepNodeType?: string }>)[0]?.stepNodeType;
         return stepType !== undefined && stepRegistry.get(stepType)?.runtime?.waits === true;
       };
       const trackFinished = (eventTNodeId: string) =>

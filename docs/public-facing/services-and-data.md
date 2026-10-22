@@ -253,9 +253,9 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 
 | Module | What |
 |---|---|
-| `#generated/ears` | Your pack's `EARS` constants and the typed `qx`, `create`, `upsert`, `write`, `transact`, `find*`, `createEntity*`, `updateEntity`, `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
+| `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact`, `find*`, `createEntity*`, `updateEntity`, `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
 | `#generated/repository` | `repository`, typed with your and your dependencies' repositories |
-| `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQx`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, relation, role, graph and blueprint operations, and `repository` |
+| `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, relation, role, graph and blueprint operations, and `repository` |
 | `@apackdev/ears` | The engine itself: `createEarsEngine` for tests and tooling, `EarsError`, `RepositoryError`, `bp` blueprints, the core `EARS` types and `BaseEntity` |
 | `@apackdev/sdk/types` | What the SDK adds to the engine's types: its `EARS` (with the SDK's entities and relation kinds) and the SDK entity shapes |
 | `@apackdev/sdk/repositories` | The SDK entities' repositories |
@@ -286,9 +286,9 @@ EARS.RelKind.TAGGED_WITH  // "tagged_with"
 EARS queries and writes are **synchronous** — do not `await` them.
 
 ```typescript
-import { EARS, qx, create, upsert, write, transact, createEntityWithDefaults } from '#generated/ears.ts';
+import { EARS, query, create, upsert, write, transact, createEntityWithDefaults } from '#generated/ears.ts';
 
-const bookmarks = qx(EARS.Entity.Bookmark).pickAll();                 // typed with the Bookmark shape
+const bookmarks = query(EARS.Entity.Bookmark).pickAll();                 // typed with the Bookmark shape
 const id = create(EARS.Entity.Bookmark).setMany({ url, title }).id(); // EARS.EntityId<'Bookmark'>
 write(id).set('title', 'Docs');                                       // an entity that exists
 upsert(EARS.Entity.Bookmark, someId).set('title', 'Docs');            // created when no entity has someId
@@ -299,9 +299,9 @@ Each entry point takes one kind of argument and refuses what it can't account fo
 
 | Call | Starts from | Refuses |
 |---|---|---|
-| `qx(type)`, `qx([types])` | every entity of the types | a name that isn't a registered entity type, `undefined` included |
-| `qx.ids(id)`, `qx.ids([ids])` | the ids given that exist | — absent ids are dropped |
-| `qx.all()` | every entity but the relations (`findRelations` reads those) | — |
+| `query(type)`, `query([types])` | every entity of the types | a name that isn't a registered entity type, `undefined` included |
+| `query.ids(id)`, `query.ids([ids])` | the ids given that exist | — absent ids are dropped |
+| `query.all()` | every entity but the relations (`findRelations` reads those) | — |
 | `create(type, { id?, createdAt? })` | a new entity | an unregistered type; an id already in use |
 | `write(id)` | the entity with the id | an id no entity has |
 | `upsert(type, id)` | the entity with the id, created as `type` when there is none | an unregistered type; an entity of another type |
@@ -356,7 +356,7 @@ transact(() => {
 });
 ```
 
-`qx(id).links(kinds)` returns the ids an entity links to. To read the relations themselves (their ids and `info`, such as a flow edge's handles) use `findRelations`; `getRelationStats(kind)` counts them:
+`query(id).links(kinds)` returns the ids an entity links to. To read the relations themselves (their ids and `info`, such as a flow edge's handles) use `findRelations`; `getRelationStats(kind)` counts them:
 
 ```typescript
 import { findRelations, getRelationStats, removeRelationById } from '@apackdev/sdk/ears';
@@ -367,7 +367,7 @@ removeRelationById(edge.id);
 getRelationStats(EARS.RelKind.CONTAINS);   // { total, uniqueSources, uniqueTargets }
 ```
 
-`untypedQx` from `@apackdev/sdk/ears` is the unchecked query, for fields only known at runtime.
+`untypedQuery` from `@apackdev/sdk/ears` is the unchecked query, for fields only known at runtime.
 
 ### Roles
 
@@ -377,7 +377,7 @@ A role is a string tag on an entity (`EARS.RoleKind` is a `string`; `EARS.RoleKi
 |---|---|---|
 | `write(id).grant(role)` / `.revoke(role)` | `#generated/ears` | Adds / removes the role; no-op when already there / absent |
 | `write(id).grantExclusive(role, among)` | `#generated/ears` | Makes `id` the only holder among `among`: revokes the role from each of them, then grants it |
-| `qx(type).withRole(role)` | `#generated/ears` | Narrows a query to holders |
+| `query(type).withRole(role)` | `#generated/ears` | Narrows a query to holders |
 | `findWithRole(type, role)` / `findFirstWithRole(type, role)` | `#generated/ears` | Typed rows holding the role, soft-deleted rows (`deleted: true`) left out |
 | `grantRole(id, role)` / `revokeRole(id, role)` | `@apackdev/sdk/ears` | Direct attribute writes; `grantRole` doesn't check for a duplicate |
 | `getRoles(id)` | `@apackdev/sdk/ears` | The entity's roles, `string[]` |
@@ -485,7 +485,7 @@ What trashing means beyond the marks stays with your feature: trashing an entity
 
 ### Engine instances
 
-Each app has one EARS engine, which the app creates at startup. Everything above (`qx`, `create`, `write`, `repository`, the helpers from `#generated/ears` and `@apackdev/sdk/ears`) acts on the engine the app *bound*; a pack never creates or replaces it in the app.
+Each app has one EARS engine, which the app creates at startup. Everything above (`query`, `create`, `write`, `repository`, the helpers from `#generated/ears` and `@apackdev/sdk/ears`) acts on the engine the app *bound*; a pack never creates or replaces it in the app.
 
 Unit tests and tooling create their own with `createEarsEngine` from `@apackdev/ears`. A new engine is empty, and shares nothing with the app's or with other engines:
 
@@ -494,13 +494,13 @@ import { createEarsEngine } from '@apackdev/ears';
 
 const engine = createEarsEngine({ isEntityType: (name) => ['Bookmark', 'Tag'].includes(name) });
 engine.create('Bookmark').set('url', 'https://example.com');   // an operation on the engine you hold
-engine.qx('Bookmark').count();                             // 1
+engine.query('Bookmark').count();                             // 1
 
 ```
 
-- The engine's members are its operations: `qx`, `create`, `upsert`, `write`, `transact`, the finders, relation reads, graph helpers and its repository registry, untyped.
+- The engine's members are its operations: `query`, `create`, `upsert`, `write`, `transact`, the finders, relation reads, graph helpers and its repository registry, untyped.
 - `engine.admin`, beside them, is for the code that created the engine: bulk loading, clearing (`admin.clear()`), direct attribute and relation writes. Pack code never gets it.
-- `isEntityType` says which names are entity types: `create('Bookmark')` and `qx('Bookmark')` refuse `'Bookmark'` unless it returns true for it.
+- `isEntityType` says which names are entity types: `create('Bookmark')` and `query('Bookmark')` refuse `'Bookmark'` unless it returns true for it.
 - An engine you create is the one you hold: nothing acts on it but what you call on it. The functions in `@apackdev/sdk/ears` act on the app's, and with none bound (a script, a test without the harness) they throw, naming how to bind one.
 
 In a pack's unit tests you don't need any of this: `setupPackTests` from `@apackdev/testing/harness` installs an engine with your pack's and its dependencies' entity types, and gives each test a fresh one ([Testing](testing.md)).
@@ -524,7 +524,7 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
-`#generated/ears` exports: `qx`, `create`, `upsert`, `write`, `transact`, `findById`, `findByIdRaw`, `findAll`, `findWhere`, `findFirst`,
+`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findByIdRaw`, `findAll`, `findWhere`, `findFirst`,
 `findWithFields`, `findByIdWithFields`, `findWithRole`, `findFirstWithRole`, `createEntity`,
 `createEntityWithDefaults`, `updateEntity`, `getAttr` and `getAttrs`. `@apackdev/ears` exports the
 writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out soft-deleted rows (`deleted: true`), except
@@ -535,12 +535,12 @@ declared shapes), `PackShapes` (the SDK's, the dependencies' and this pack's), `
 against its shape:
 
 ```ts
-import { EARS, qx } from '#generated/ears.ts';
+import { EARS, query } from '#generated/ears.ts';
 
-qx(EARS.Entity.Bookmark).where('url', u)      // ok — declared attribute
-qx(EARS.Entity.Bookmark).where('urll', u)     // compile error
-qx(EARS.Entity.Bookmark).pickAll()[0].title   // typed, no cast needed
-qx(EARS.Entity.Bookmark).orderBy('createdAt') // BaseEntity fields are included
+query(EARS.Entity.Bookmark).where('url', u)      // ok — declared attribute
+query(EARS.Entity.Bookmark).where('urll', u)     // compile error
+query(EARS.Entity.Bookmark).pickAll()[0].title   // typed, no cast needed
+query(EARS.Entity.Bookmark).orderBy('createdAt') // BaseEntity fields are included
 ```
 
 `where`, `orderBy`, `distinct`, `groupBy`, `pickAll`, `pick` and `pickOne` all narrow this way
@@ -549,8 +549,8 @@ narrows its fields to the relation's *target* entity type. Entity types **withou
 declared shape read as `BaseEntity & Record<string, unknown>`: every field is there, but
 you have to narrow a value before using it. An id carries its entity type when it comes
 from a typed helper (`createEntity(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookmark'>`),
-so builders written with it (`qx.ids(id)`, `write(id)`, `findById(id)`, `updateEntity(id, …)`) are typed too;
-unbranded ids (`EARS.EntityId`) and `qx.all()` read as undeclared.
+so builders written with it (`query.ids(id)`, `write(id)`, `findById(id)`, `updateEntity(id, …)`) are typed too;
+unbranded ids (`EARS.EntityId`) and `query.all()` read as undeclared.
 
 ### Entity ids
 
@@ -559,7 +559,7 @@ from typed queries (`ids()`, `first()`, `pick` and a row's `id`). The next call 
 without naming the shape:
 
 ```ts
-const first = qx(EARS.Entity.Bookmark).first();   // EARS.EntityId<'Bookmark'> | null
+const first = query(EARS.Entity.Bookmark).first();   // EARS.EntityId<'Bookmark'> | null
 if (first) findById(first)?.title;                 // typed with the Bookmark shape
 ```
 

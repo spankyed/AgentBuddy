@@ -1,7 +1,7 @@
 // The Database console's code runners, which the Database surface and `apack db query`/`exec` share
 import * as os from 'node:os';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { untypedCreate, untypedQx } from '@apackdev/sdk/ears';
+import { untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
 import { consoleEars, getSchemaStats, installedEars, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
 import { testPacks } from '../../src/testing/packs.ts';
 import { EARS } from '../../src/types/index.ts';
@@ -52,7 +52,7 @@ describe('runQueryCode', () => {
     for (const name of WRITE_HELPER_NAMES) {
       await expect(runQueryCode(`return ${name}`, scope)).rejects.toThrow(new Error(`${name} is not defined`));
     }
-    expect(untypedQx('Flow').ids()).toEqual([]);
+    expect(untypedQuery('Flow').ids()).toEqual([]);
   });
 
   it('refuses blank code rather than answering undefined', async () => {
@@ -68,7 +68,7 @@ describe('runTransactionCode', () => {
   it('writes with the write helpers and reads with the read helpers', async () => {
     const id = await runTransactionCode("const id = create(EARS.Entity.Flow).set('label', 'New').id(); return getAttr(id, 'label')", scope);
     expect(id).toBe('New');
-    expect(untypedQx('Flow').ids()).toHaveLength(1);
+    expect(untypedQuery('Flow').ids()).toHaveLength(1);
   });
 
   it('prefixes its error, and says the writes it already made stand', async () => {

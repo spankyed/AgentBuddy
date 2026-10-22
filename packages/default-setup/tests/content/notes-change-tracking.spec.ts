@@ -10,7 +10,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { compileBuiltinFormat, type ContentFormatConfig, type ContentItem } from '@apackdev/sdk/build';
 import { createFormatApplier } from '@apackdev/sdk/content';
 import type { ApplyRecord, ImportMode, ApplyResult, ContentSelection } from '@apackdev/sdk/utils';
-import { untypedQx as qx, untypedWrite } from '@apackdev/sdk/ears';
+import { untypedQuery as query, untypedWrite } from '@apackdev/sdk/ears';
 import { trash } from '@apackdev/sdk/repositories';
 import { dropAttribute, entityIds } from '@apackdev/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';
@@ -81,7 +81,7 @@ function contentNotes(
 /** Every Note row with this title, deleted ones included: a recreated note is a second id, not a changed row */
 function notesTitled(title: string): EARS.EntityId[] {
   return (entityIds() as EARS.EntityId[]).filter((id) => id.startsWith('Note-')
-    && (qx.ids(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === title);
+    && (query.ids(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === title);
 }
 
 function notesOf(snap: Snapshot, { withHash = false } = {}) {
@@ -219,7 +219,7 @@ describe('notes applying (generic pipeline)', () => {
     addLinkTargets();
     contentNotes('v1');
     const welcome = (entityIds() as EARS.EntityId[]).find((id) =>
-      id.startsWith('Note-') && (qx.ids(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === 'Welcome');
+      id.startsWith('Note-') && (query.ids(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === 'Welcome');
     // `find` can miss, and `dropAttribute(undefined)` drops nothing: the case would then content, re-apply and
     // assert that an untracked note was left alone without ever having untracked one. The premise is checked.
     if (!welcome) throw new Error('no written Welcome note to untrack, so this case would assert nothing');
@@ -238,7 +238,7 @@ describe('notes applying (generic pipeline)', () => {
    * the one in the trash. The lookup seeing deleted rows is what makes the rule hold for every content key,
    * rather than for whichever key someone noticed the symptom on.
    *
-   * The assertion is that no *second* row appears: `snapshot()` reads with an unfiltered `qx`, so the trashed
+   * The assertion is that no *second* row appears: `snapshot()` reads with an unfiltered `query`, so the trashed
    * row is still there either way, and a count is what tells "left alone" from "recreated".
    */
   it('leaves a note the user deleted alone, rather than applying it again', () => {
@@ -253,7 +253,7 @@ describe('notes applying (generic pipeline)', () => {
 
     const after = notesTitled('Welcome');
     expect(after, 'the apply created a second Welcome beside the deleted one').toEqual(welcome);
-    expect((qx.ids(welcome[0]).pickAll() as Array<{ deleted?: boolean }>)[0]?.deleted, 'still the user\'s').toBe(true);
+    expect((query.ids(welcome[0]).pickAll() as Array<{ deleted?: boolean }>)[0]?.deleted, 'still the user\'s').toBe(true);
   });
 
   /**

@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { boundEars, untypedQx, untypedUpsert, untypedWrite } from '@apackdev/sdk/ears';
+import { boundEars, untypedQuery, untypedUpsert, untypedWrite } from '@apackdev/sdk/ears';
 import { resetTestData } from '@apackdev/sdk/testing';
 import type { EARS } from '@apackdev/sdk';
 import type { PackRegistration } from '@apackdev/sdk/framework';
@@ -32,7 +32,7 @@ beforeEach(() => {
   resetTestData();
   store = createSettingsStore({ ears: boundEars, catalog: () => registry.settingsCatalog() });
 });
-const rowData = () => untypedQx.ids(SETTINGS_ID).pickOne(['data'])?.data;
+const rowData = () => untypedQuery.ids(SETTINGS_ID).pickOne(['data'])?.data;
 
 describe('definitions and explicit choices', () => {
   it('reads all three owners without creating a row', () => {
@@ -40,7 +40,7 @@ describe('definitions and explicit choices', () => {
     expect(store.get(app)).toMatchObject({ projects: [], personal: {} });
     expect(store.get(assistant)).toEqual({ name: '' });
     expect(store.get(feature)).toEqual({ limit: 10, sort: 'newest' });
-    expect(untypedQx.ids(SETTINGS_ID).pickOne(['data'])).toBeNull();
+    expect(untypedQuery.ids(SETTINGS_ID).pickOne(['data'])).toBeNull();
   });
 
   it('keeps an explicit default-equal value until reset while following untouched defaults', () => {

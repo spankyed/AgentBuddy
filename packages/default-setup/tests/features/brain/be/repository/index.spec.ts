@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { repository } from '#generated/repository.ts'
-import { qx, create, EARS } from '#generated/ears.ts'
+import { query, create, EARS } from '#generated/ears.ts'
 
 describe('brainCommands writing to a TNode', () => {
   it('leave nothing behind for a TNode that is gone', () => {
@@ -10,7 +10,7 @@ describe('brainCommands writing to a TNode', () => {
     repository.brainCommands.updateTNodeStatus(id, 'completed')
     repository.brainCommands.updateTNodeAttributes(id, { payload: 1 })
 
-    expect(qx.ids(id).exists()).toBe(false)
+    expect(query.ids(id).exists()).toBe(false)
   })
 
   it('still write to a TNode that exists', () => {
@@ -19,6 +19,6 @@ describe('brainCommands writing to a TNode', () => {
     repository.brainCommands.updateTNodeStatus(id, 'completed')
     repository.brainCommands.updateTNodeAttributes(id, { payload: 1 })
 
-    expect(qx.ids(id).pickOne(['status', 'nodeAttributes'])).toMatchObject({ status: 'completed', nodeAttributes: { payload: 1 } })
+    expect(query.ids(id).pickOne(['status', 'nodeAttributes'])).toMatchObject({ status: 'completed', nodeAttributes: { payload: 1 } })
   })
 })

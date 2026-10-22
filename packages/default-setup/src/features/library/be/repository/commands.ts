@@ -1,4 +1,4 @@
-import { qx, create, write } from '#generated/ears.ts';
+import { query, create, write } from '#generated/ears.ts';
 import * as path from 'path'
 import { EARS } from '#generated/ears.ts'
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types.ts'
@@ -54,7 +54,7 @@ const writers = {
     const now = Date.now()
 
     // Generate shortcode
-    const documentCount = qx(EARS.Entity.Document).count() + 1
+    const documentCount = query(EARS.Entity.Document).count() + 1
     const shortCode = `DOC-${documentCount}` as DocumentShortCode
 
     // Get display order
@@ -116,10 +116,10 @@ const writers = {
     write(documentId).setMany({ tags })
 
     // Find collections that contain this document
-    const allCollections = qx(EARS.Entity.Collection).pickAll()
+    const allCollections = query(EARS.Entity.Collection).pickAll()
     const collections: typeof allCollections = []
     for (const col of allCollections) {
-      const docs = qx.ids(col.id as EARS.EntityId)
+      const docs = query.ids(col.id as EARS.EntityId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .ids()
       if (docs.includes(documentId as EARS.EntityId)) {
@@ -156,8 +156,8 @@ const writers = {
   deleteDocument(id: EARS.EntityId): void {
     const documentId = id
 
-    const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
-      qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
+    const collection = query(EARS.Entity.Collection).pickAll().find(col => 
+      query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
     )
 
     if (collection) {
@@ -237,13 +237,13 @@ const writers = {
     }
 
     write(collectionId).setMany(attrs)
-    const collections = qx.ids(collectionId).pickAll()
+    const collections = query.ids(collectionId).pickAll()
     const collection = collections[0]
-    const documentCount = (qx.ids(collectionId)
+    const documentCount = (query.ids(collectionId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pickAll()).length
 
-    const childCollections = qx.ids(collectionId)
+    const childCollections = query.ids(collectionId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
@@ -255,8 +255,8 @@ const writers = {
         name: child.name as string,
         description: child.description as string | undefined,
         path: getCollectionPath(child.id as EARS.EntityId),
-        documentCount: qx.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
-        childCollections: buildChildren(qx.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
+        documentCount: query.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
+        childCollections: buildChildren(query.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
         displayOrder: getDisplayOrder(child),
         createdAt: new Date(child.createdAt as number).toISOString(),
         updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),
@@ -278,7 +278,7 @@ const writers = {
   deleteCollection(id: EARS.EntityId): void {
     const collectionId = id
 
-    const documents = qx.ids(collectionId)
+    const documents = query.ids(collectionId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pickAll()
 
@@ -286,13 +286,13 @@ const writers = {
       write(collectionId).unlink(EARS.RelKind.CONTAINS, doc.id as EARS.EntityId)
     }
 
-    const parent = findParentCollection(collectionId) ? qx.ids(findParentCollection(collectionId)!).pickAll()[0] : null
+    const parent = findParentCollection(collectionId) ? query.ids(findParentCollection(collectionId)!).pickAll()[0] : null
 
     if (parent) {
       write(parent.id as EARS.EntityId).unlink(EARS.RelKind.PARENT_OF, collectionId)
     }
 
-    const children = qx.ids(collectionId)
+    const children = query.ids(collectionId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pickAll()
 
@@ -315,8 +315,8 @@ const writers = {
   ): DocumentDTO {
     const docId = documentId
 
-    const currentCollection = qx(EARS.Entity.Collection).pickAll().find(col => 
-      qx.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
+    const currentCollection = query(EARS.Entity.Collection).pickAll().find(col => 
+      query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
     )
 
     if (currentCollection) {
@@ -362,7 +362,7 @@ const writers = {
         updatedAt: new Date(now).toISOString(),
       }
     } else {
-      const collections = qx.ids(entityId).pickAll()
+      const collections = query.ids(entityId).pickAll()
       const collection = collections[0]!
       const childCount = 0 // Simplified for now
       
@@ -468,7 +468,7 @@ const writers = {
     write(collectionId).set('name', newName)
     write(collectionId).set('updatedAt', now)
 
-    const col = qx.ids(collectionId).pickAll()[0]
+    const col = query.ids(collectionId).pickAll()[0]
     const colPath = getCollectionPath(collectionId)
     const parentId = findParentCollection(collectionId) || undefined
 

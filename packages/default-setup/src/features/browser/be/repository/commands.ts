@@ -1,4 +1,4 @@
-import { qx, create, upsert, write } from '#generated/ears.ts';
+import { query, create, upsert, write } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
 import type { BrowserTabId, SavedTab, SavedBookmark } from '../types.ts';
@@ -19,7 +19,7 @@ export const browserCommands = {
       });
     }
 
-    const existingIds = qx(EARS.Entity.BrowserTab).ids() as BrowserTabId[];
+    const existingIds = query(EARS.Entity.BrowserTab).ids() as BrowserTabId[];
     const incomingIds = new Set(normalized.tabs.map(tab => tab.id));
     for (const id of existingIds) {
       if (!incomingIds.has(id)) {
@@ -40,7 +40,7 @@ export const browserCommands = {
     }
   },
   syncBookmarks: (bookmarks: SavedBookmark[]): void => {
-    const existingIds = qx(EARS.Entity.BrowserBookmark).ids();
+    const existingIds = query(EARS.Entity.BrowserBookmark).ids();
     for (const id of existingIds) {
       write(id).destroy();
     }

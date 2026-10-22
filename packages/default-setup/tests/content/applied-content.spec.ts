@@ -12,7 +12,7 @@ import { importCompiledContent, type AppliedItem, type ApplyRecord } from '@apac
 import { CONTENT_INDEX_FILE } from '@apackdev/sdk/build';
 import { contentEntity } from '@apackdev/sdk/content';
 import { type EARS } from '@apackdev/ears';
-import { untypedQx as qx, untypedWrite } from '@apackdev/sdk/ears';
+import { untypedQuery as query, untypedWrite } from '@apackdev/sdk/ears';
 import { PACK_DIR, applyAfter } from './harness.ts';
 
 /** This pack's compiled content, as its build wrote them */
@@ -71,7 +71,7 @@ function apply(dir: string, previous?: ApplyRecord) {
 }
 
 const attr = <T,>(id: EARS.EntityId, name: string): T | null =>
-  (qx.ids([id]).pickAll()[0] as Record<string, unknown> | undefined)?.[name] as T | null ?? null;
+  (query.ids([id]).pickAll()[0] as Record<string, unknown> | undefined)?.[name] as T | null ?? null;
 
 const isFlow = (item: AppliedItem) => item.entityType === 'Flow';
 
@@ -138,7 +138,7 @@ describe('the applied content over this pack’s real content', () => {
       const id = contentEntity(item.entityType, key)?.id;
       if (!id) continue;
       compared++;
-      const stored = Object.keys((qx.ids([id]).pickAll()[0] ?? {}) as Record<string, unknown>);
+      const stored = Object.keys((query.ids([id]).pickAll()[0] ?? {}) as Record<string, unknown>);
       const missing = Object.keys(item.parts).filter((part) => !stored.includes(part));
       if (missing.length > 0) disagree[key] = { parts: Object.keys(item.parts).sort(), fields: stored.sort() };
     }
@@ -154,7 +154,7 @@ describe('the applied content over this pack’s real content', () => {
     for (const [key, item] of flows) {
       const id = contentEntity(item.entityType, key)!.id;
       const nodes = Object.keys(item.parts).filter((part) => part.startsWith('node:'));
-      const live = qx.ids(id).linksTo('contains' as string, 'Node' as EARS.Entity, true).ids();
+      const live = query.ids(id).linksTo('contains' as string, 'Node' as EARS.Entity, true).ids();
       expect(nodes.map((part) => part.slice('node:'.length)).sort(), `${key}'s node parts`).toEqual([...live].sort());
       expect(item.parts.fields, `${key} records its own fields`).toBeDefined();
       expect(item.parts.edges, `${key} records its wiring`).toBeDefined();
@@ -249,6 +249,6 @@ describe('the applied content over this pack’s real content', () => {
     const promptKeys = [...first.record.written.keys()].filter((key) => key.includes(':prompts/'));
     expect(promptKeys.length).toBe(dropped.count);
     expect([...again.record.removed].sort(), 'every prompt the pack dropped').toEqual(promptKeys.sort());
-    expect(qx('Prompt' as EARS.Entity).pickAll(), 'the entities went with the content').toEqual([]);
+    expect(query('Prompt' as EARS.Entity).pickAll(), 'the entities went with the content').toEqual([]);
   });
 });
