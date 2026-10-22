@@ -3,7 +3,7 @@
 Status: **closed, because the one instance stopped being one.** This plan deferred extracting a mechanism
 until a second pack-sourced app-level fact appeared. None did, and the first one went away instead: the
 chat's slash commands are now a derivation the app makes over its own rows, since `Document` is an SDK
-entity ([document-in-the-core](../../plans/deferred/document-in-the-core.md)). No fact the shell holds comes from a pack any
+entity ([document-in-the-core](document-in-the-core.md)). No fact the shell holds comes from a pack any
 more, so there is nothing to generalize and no condition left to wait for.
 
 **Kept as the record of what the machinery was**, because the five pieces below were real and are now

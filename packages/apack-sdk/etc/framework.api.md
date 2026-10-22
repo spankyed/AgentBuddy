@@ -93,6 +93,19 @@ export type DeclarationData<T> = T extends object ? {
 } : T;
 
 // @public
+export const DECLARED_COMMANDS_KEY = "declared-commands";
+
+// @public
+export function declaredContentKeys(manifest: {
+    content?: {
+        sources?: Record<string, unknown>;
+    };
+    extensions?: {
+        commands?: unknown;
+    };
+}): string[];
+
+// @public
 export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
     type: string;
 } = {

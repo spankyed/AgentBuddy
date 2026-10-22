@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { hasOwn } from '../../utils/shared.ts';
-import { SPECIALTY_CONTENT_KEYS } from '../../framework/declaration-schema.ts';
+import { DECLARED_COMMANDS_KEY, SPECIALTY_CONTENT_KEYS } from '../../framework/declaration-schema.ts';
 import { CONTENT_COMPILERS_FILE, type PackManifest, type ContentFormatConfig } from '../manifest.ts';
 import type { ContentEditPolicy } from '../../framework/declaration-schema.ts';
 
@@ -21,6 +21,17 @@ export interface ContentCompilerModuleRef {
 /** A `content.sources` entry with its format's settings */
 export type ResolvedContentSource =
   | { kind: 'specialty'; path: string; onUserEdit?: ContentEditPolicy }
+  /**
+   * The commands a manifest declares, which have no path: the records come from the declaration itself.
+   * Synthesized under `DECLARED_COMMANDS_KEY` — the pack writes no `content.sources` entry for it.
+   */
+  | {
+    kind: 'declared';
+    /** The document the commands are written into, named here because this is where the pack id is known */
+    documentName: string;
+    commands: Array<{ name: string; placeholder: string }>;
+    onUserEdit?: ContentEditPolicy;
+  }
   | { kind: 'applier'; applier: string }
   | {
     kind: 'format';
@@ -50,7 +61,14 @@ export function resolveContentSources(
   section: 'sources' | 'datasets' = 'sources',
 ): Record<string, ResolvedContentSource> {
   const resolved: Record<string, ResolvedContentSource> = {};
+  if (section === 'sources') {
+    const declared = declaredCommands(manifest, dependencies);
+    if (declared) resolved[DECLARED_COMMANDS_KEY] = declared;
+  }
   for (const [key, entry] of Object.entries(manifest.content?.[section] ?? {})) {
+    if (key === DECLARED_COMMANDS_KEY) {
+      throw new Error(`Content "${key}" is the key the commands in extensions.commands compile under: declare them there, or name this source something else`);
+    }
     if (SPECIALTY_CONTENT_KEYS.includes(key)) {
       const sourcePath = typeof entry === 'string' ? entry : entry.path;
       if (!sourcePath) throw new Error(`Content "${key}": give its source as a path`);
@@ -109,4 +127,38 @@ function resolveFormat(
   if (!format) throw new Error(`Content "${key}": dependency "${pack}" has no format "${name}"`);
   if (!format.compiler) return { format };
   return { format, compiler: { ...(dependency.buildDir && { module: path.join(dependency.buildDir, CONTENT_COMPILERS_FILE) }), exportName: name } };
+}
+
+/**
+ * `extensions.commands` as a content source, or none when the pack declares no commands.
+ *
+ * **A name a dependency already declares is refused here**, which is what is left of the loud collision
+ * the old `extensions.commands` had. A dependency's names are knowable at build time, from the manifest
+ * resolution this function already has, so the pack author hears about it while building rather than
+ * finding their command quietly losing a first-wins race in someone's database. Across packs that know
+ * nothing of each other it stays first-wins, because nothing at build time can see them both.
+ */
+function declaredCommands(
+  manifest: PackManifest,
+  dependencies: ReadonlyMap<string, ContentDependency>,
+): Extract<ResolvedContentSource, { kind: 'declared' }> | undefined {
+  const declaration = manifest.extensions?.commands;
+  if (!declaration) return undefined;
+  const { onUserEdit, list } = declaration;
+
+  const fromDependencies = new Map<string, string>();
+  for (const [id, dependency] of dependencies) {
+    for (const name of Object.keys(dependency.manifest.extensions?.commands?.list ?? {})) {
+      if (!fromDependencies.has(name)) fromDependencies.set(name, id);
+    }
+  }
+
+  const commands = Object.entries(list).map(([name, value]) => {
+    const owner = fromDependencies.get(name);
+    if (owner !== undefined) {
+      throw new Error(`Command "${name}": dependency "${owner}" already declares it — a dependency's commands are already in the app, so rename yours`);
+    }
+    return { name, placeholder: (value as { placeholder: string }).placeholder };
+  });
+  return { kind: 'declared', documentName: `${manifest.id} commands`, commands, ...(onUserEdit && { onUserEdit }) };
 }

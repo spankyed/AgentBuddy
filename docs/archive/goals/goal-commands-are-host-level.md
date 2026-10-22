@@ -55,7 +55,7 @@ only scaffold here that writes into an existing file, and `add/write.ts`'s heade
 rather than denying it.
 
 **Three things deferred rather than left in a conversation**, each with its revisit condition:
-[`document-in-the-core`](../../plans/deferred/document-in-the-core.md) (whose second trigger is wanting
+[`document-in-the-core`](../plans/document-in-the-core.md) (whose second trigger is wanting
 `extensions.commands` back — this move is what makes it buildable),
 [`pack-published-app-facts`](../plans/pack-published-app-facts.md) and
 [`the-empty-library-source`](../../plans/deferred/the-empty-library-source.md), which records why the
@@ -537,4 +537,4 @@ or `extensions.commands` as a manifest key.
   surface *is* their editing UI, so the entity would trade the provider getter for a whole new editor.
   Don't raise it again as an alternative or as future work. The direction that does hold is the inverse:
   `Document` into the core with Library as its editor, as flows already work
-  ([document-in-the-core.md](../../plans/deferred/document-in-the-core.md)).
+  ([document-in-the-core.md](../plans/document-in-the-core.md)).

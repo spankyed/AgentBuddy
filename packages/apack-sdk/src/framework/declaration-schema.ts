@@ -302,6 +302,35 @@ export const DslEntrySchema = z.object({
 /** Content keys compiled by the SDK's own compilers; they take a path, as a string or `{ path }` */
 export const SPECIALTY_CONTENT_KEYS: readonly string[] = ['actions', 'prompts', 'flows'];
 
+/**
+ * The content key the commands a manifest declares are compiled under.
+ *
+ * It is reserved rather than named by the pack, because the pack never writes the entry: declaring
+ * `extensions.commands` is what creates it. A pack may not declare a source of this name — it would be
+ * two entries wanting one compiled file — and `commands` itself stays free, which matters because
+ * default-setup already uses it for its own content directory.
+ */
+export const DECLARED_COMMANDS_KEY = 'declared-commands';
+
+/**
+ * The content keys a manifest declares: its `content.sources`, plus the reserved one its
+ * `extensions.commands` creates.
+ *
+ * **Every check that asks what a pack declared has to ask this**, because the shorthand declares an entry
+ * the pack wrote no source for — the compiled index, the applier keys the runtime may carry, and the
+ * installed layout each derived the answer separately, and a reserved key is invisible to all three
+ * unless they share one.
+ */
+export function declaredContentKeys(manifest: { content?: { sources?: Record<string, unknown> }; extensions?: { commands?: unknown } }): string[] {
+  return [
+    ...Object.keys(manifest.content?.sources ?? {}),
+    ...(manifest.extensions?.commands ? [DECLARED_COMMANDS_KEY] : []),
+  ];
+}
+
+/** A slash command's name: what the user types after the `/` */
+const COMMAND_NAME = /^[a-z][a-z0-9-]*$/;
+
 const ContentFieldSpecSchema = z.object({
   from: z.string().regex(/^(body|filename|path|frontmatter\.[\w-]+)$/, 'Must be "body", "filename", "path" or "frontmatter.<name>"')
     .describe('Where the value comes from: the markdown body, the display name of the file or directory, its relative path, or a frontmatter field.'),
@@ -681,7 +710,34 @@ function extensionPoint<T extends z.ZodTypeAny>(
  * (`content`). Every entry is a contribution the app registers and some other pack or the shell can
  * reach; a setting that only changes what `apack pack build` produces is `build`, not one of these.
  */
+/**
+ * Slash commands declared in the manifest, as a shorthand for a content directory.
+ *
+ * **It seeds documents; it does not provide commands.** The build desugars this into ordinary content
+ * under `DECLARED_COMMANDS_KEY`, so what a user gets is a document they own: they may edit a placeholder
+ * or delete the document, and a deleted one is not written again. That is weaker than the declaration
+ * this key replaced, which came and went with the pack, and it is the price of commands being content.
+ *
+ * **`list` is nested rather than the key itself** so that `onUserEdit` has somewhere to sit that is not
+ * also a command name. A flat record with a reserved sibling parses (no command name can be spelled
+ * `onUserEdit`), but its inferred type is a catchall that every consumer of `PackManifest` then carries.
+ */
+const CommandsExtensionSchema = z.object({
+  list: declarationRecord(
+    z.string().regex(COMMAND_NAME, 'A command name must be a lowercase letter, then lowercase letters, digits and hyphens'),
+    z.object({
+      placeholder: z.string().min(1).describe('What the chat shows after the command name, as a hint for what to type.'),
+    }).strict(),
+  ).describe('The commands, keyed by the name typed after the "/".'),
+  onUserEdit: ON_USER_EDIT.optional(),
+}).strict().superRefine((commands, ctx) => {
+  if (Object.keys(commands.list).length === 0) {
+    ctx.addIssue({ code: 'custom', path: ['list'], message: 'extensions.commands declares no command: give it at least one, or leave the key out' });
+  }
+}).describe('Slash commands this pack seeds. Desugared into ordinary content, so a user owns and may delete what it writes.');
+
 const ExtensionsSchema = z.object({
+  commands: CommandsExtensionSchema.optional(),
   settings: declarationRecord(z.string().regex(FEATURE_ID_PATTERN, 'A settings group must start with a lowercase letter and contain only letters and digits'), SettingsDefinitionSchema)
     .describe('Pack-owned preference groups keyed by local group ID; stored under this pack, independently of app and feature settings.').optional(),
   help: z.object({ path: z.string().min(1).describe('Pack-root-relative directory of Markdown help articles compiled during the pack build.') }).strict()

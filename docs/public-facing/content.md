@@ -791,11 +791,48 @@ note or a document is ordinary text.
 Uninstalling a pack does not remove the commands it wrote: those documents are the user's now, so their
 commands stay listed, with no flow handling them, until the user deletes them.
 
+### Declaring commands in the manifest
+
+```json
+"extensions": {
+  "commands": {
+    "list": { "pr2md": { "placeholder": "PR number or GitHub URL (optional)" } },
+    "onUserEdit": "offer"
+  }
+}
+```
+
+A command name is lowercase letters, digits and hyphens. The names are nested under `list` so that
+`onUserEdit` has somewhere to sit that is not also a command name; it is optional and means here what it
+means for every other entry, so leave it out for the default.
+
+**The build desugars this into ordinary content**, compiled under the reserved key `declared-commands` as one
+document holding one field per command, named after your pack id. So everything the rest of this page
+describes applies unchanged: the three-way merge, removal when you stop shipping a command, offers, and the
+import dialog. There is no second path for a command, and no second way the app serves one.
+
+Your own `content.sources` keys are untouched — including a key named `commands`, which is why the reserved
+one is spelled differently. A pack may use both: a directory for the commands it wants to lay out as
+documents, and the manifest for one or two more.
+
+**Two things to know, because this key is weaker than it looks:**
+
+- **It seeds commands; it does not provide them.** What a user gets is a document they own. They may edit a
+  placeholder, move the document, or delete it — and a deleted one is not written back on the next boot. This
+  is unlike a step type or an artifact, which exist because your pack is installed and vanish when it is not.
+  If you need a command that cannot be edited away, you need a flow that handles an event, not a listed command.
+- **A name another pack already uses is not refused.** Documents dedupe first-wins and silently: whichever
+  document defines the name first keeps it, and yours is simply not listed. The build *does* refuse a name one
+  of your **dependencies** declares, because that one is knowable while you build — across packs that know
+  nothing of each other, nothing can see both, so first-wins stands.
+
 Sending `/name args` fires a `user.command` event (`$.event.data.payload.command` is the name); there's no routing from a name to an action. To add a command:
 
 1. Write the action that does the work (its `category` only groups it in the Actions UI).
 2. Handle it in a flow: an `on("user.command", ...)` branch whose switch compares `payload.command` (`command-listener-flow.ts` for standalone commands; the Claude Code and Codex flows route `cc-*` and `cdx-*`).
-3. List it: add `**name**: placeholder` to a command document — one of your pack's `commands` content files, or, in the running app, one in the Library.
+3. List it, either way:
+   - **a command document** — `**name**: placeholder` in one of your pack's `commands` content files, or, in the running app, one in the Library; or
+   - **`extensions.commands` in your manifest** — [the shorthand](#declaring-commands-in-the-manifest), for a pack that wants a command or two without a content directory.
 
 A command listed without a handler does nothing, and a handled command that isn't listed is sent as a plain message.
 

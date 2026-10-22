@@ -292,6 +292,22 @@ describe('content.formats, content.sources and content.datasets', () => {
     expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
   });
 
+  // The shorthand: names and placeholders in the manifest, desugared into ordinary content at build time.
+  // `list` is nested so `onUserEdit` has somewhere to sit that is not also a command name.
+  it('takes slash commands declared in the manifest, with an optional edit policy beside them', () => {
+    const commands = (value: unknown) => ({ ...pack, extensions: { commands: value } });
+
+    expect(messagesOf(parseManifest(commands({ list: { 'pr2md': { placeholder: 'PR number' } } })))).toEqual([]);
+    expect(messagesOf(parseManifest(commands({ onUserEdit: 'theirs', list: { 'pr2md': { placeholder: 'PR number' } } })))).toEqual([]);
+
+    expect(messagesOf(parseManifest(commands({ list: { 'PR2MD': { placeholder: 'x' } } }))))
+      .toEqual([expect.stringMatching(/A command name must be a lowercase letter/)]);
+    expect(messagesOf(parseManifest(commands({ list: { 'pr2md': { placeholder: '' } } }))).length).toBeGreaterThan(0);
+    expect(messagesOf(parseManifest(commands({ list: { 'pr2md': { placeholder: 'x', extra: 1 } } }))).length).toBeGreaterThan(0);
+    expect(messagesOf(parseManifest(commands({ list: {} })))).toEqual([expect.stringMatching(/declares no command/)]);
+    expect(messagesOf(parseManifest(commands({ onUserEdit: 'theirs' }))).length).toBeGreaterThan(0);
+  });
+
   // A pack used to name a function that served its slash commands. The app reads the stored documents
   // itself now, so there is nothing to declare and the key is refused rather than quietly ignored.
   it('refuses features[].getCommands as the unknown key it now is, in any pack', () => {

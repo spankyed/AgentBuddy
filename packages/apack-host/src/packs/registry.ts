@@ -556,7 +556,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (!declaration) throw new Error(`Native pack "${registration.id}" must declare its data before binding`);
       const eventsProblem = eventBindingProblem(declaration.eventContracts, registration.features ?? {}, true);
       if (eventsProblem) throw new Error(`Native pack "${registration.id}" runtime ${eventsProblem} does not match its admitted declarations`);
-      const contentProblem = backendContentBindingProblem(declaration.content, registration);
+      const contentProblem = backendContentBindingProblem(declaration, registration);
       if (contentProblem) throw new Error(`Native pack "${registration.id}" runtime ${contentProblem} does not match its admitted declarations`);
       const viewerProblem = backendViewerBindingProblem(declaration, registration);
       if (viewerProblem) throw new Error(`Native pack "${registration.id}" runtime ${viewerProblem} does not match its admitted declarations`);

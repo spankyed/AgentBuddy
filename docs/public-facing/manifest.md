@@ -64,6 +64,25 @@ order. `init`, `add` and the release version editor share this writer.
 
 ## Extensions
 
+### `extensions.commands`
+
+Slash commands this pack seeds, keyed by the name typed after the `/`:
+
+```json
+"extensions": { "commands": { "list": { "pr2md": { "placeholder": "PR number (optional)" } } } }
+```
+
+| field | type | required | notes |
+|---|---|---|---|
+| `list` | `{ <name>: { placeholder } }` | yes | Keyed by the name typed after the `/`: lowercase letters, digits and hyphens. `placeholder` is the hint the chat shows after the name, and may not be empty. At least one |
+| `onUserEdit` | `"offer" \| "theirs"` | no | As for any content entry. Nested beside `list` rather than among the names, so it can never collide with a command |
+
+Desugared at build time into ordinary content under the reserved key `declared-commands`, so it is merged,
+removed and offered like every other entry — and what the user gets is a document they own and may delete.
+A name a dependency declares is refused while you build; across unrelated packs it is first-wins and silent.
+See [Slash commands](content.md#slash-commands).
+
+
 `extensions` is what the pack gives the host, as against what it is made of (`features`) or what data it
 ships (`content`). Every entry is a contribution the app registers and other packs or the shell can reach.
 

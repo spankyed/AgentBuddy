@@ -9,6 +9,7 @@ export { getPackHelp, type HelpDocument, type HelpArticle, type HelpProblem, typ
 export { getSettingsCatalog, type SettingsCatalog } from './pack-settings.ts';
 export type { SettingsDefinition, SettingsSchema, SettingsProblem, SettingsValidator } from './settings-definition.ts';
 export { _packDeclarationProblem, _nativePackDeclarationProblem, _parseEventContracts } from './declaration-binding.ts';
+export { DECLARED_COMMANDS_KEY, declaredContentKeys } from './declaration-schema.ts';
 export { _compileSettingsDefinition, _settingsJsonProblems } from './settings-validation.ts';
 export { onPackCatalogChanged, type NativePackDeclaration } from './pack-catalog.ts';
 export { _eventContractsProblem, type FeatureEventContract, type PackEventContracts } from './event-contracts.ts';

@@ -1,12 +1,18 @@
 # `Document` moves to the core, and Library becomes its editor
 
-Status: **the move is done, and so is the first thing it was for.** `Document`, `Collection` and
+Status: **closed — the move and both things it was for are done.** `Document`, `Collection` and
 `parent_of` are the SDK's, with their shapes, repositories and content writers, and the Library is their
 editor. `getCommands()` now derives the list from those rows, which retired the `commands` designation,
 `features.<id>.getCommands`, `COMMANDS_CHANGED`, the library's watcher, `registry.commandProviders`,
 `checkCommandProviderClaims` and `commands/role.ts` — and closed
-[pack-published-app-facts](../../archive/plans/pack-published-app-facts.md) with them. What remains is
-`extensions.commands` as a manifest shorthand; its section below stands as written.
+[pack-published-app-facts](pack-published-app-facts.md) with them. `extensions.commands` is back as a
+manifest shorthand, desugared into ordinary content under the reserved key `declared-commands`.
+
+**Two departures from the shorthand as sketched below**, both forced by what the code turned out to be:
+the commands nest under `list` (a flat record with a reserved `onUserEdit` sibling parses, but its inferred
+type is a catchall every consumer of `PackManifest` would carry), and the entry compiles under its own
+reserved key rather than `commands`, because default-setup already uses that key for its content directory —
+so a pack can use both, which the fixture does.
 
 **The shape moved whole, and there is no line to draw.** This plan treated "which of these fields is a
 document and which is the Library's view of one" as the real work, to be settled by a second consumer.
@@ -63,7 +69,7 @@ import order in which they can be missing.
    `documentType`, so `features.<id>.getCommands`, the `commands` designation and the owner's
    `COMMANDS_CHANGED` all go. Invalidation moves to the repository that owns the writes, where the
    announcement can live beside them instead of being a pack's duty — see
-   [pack-published-app-facts.md](../../archive/plans/pack-published-app-facts.md), which this closed outright.
+   [pack-published-app-facts.md](pack-published-app-facts.md), which this closed outright.
    It is also what makes a manifest shorthand possible at all (below).
 2. **A pack can store documents without depending on default-setup.** Today `Document` is that pack's,
    so wanting a document means taking its whole dependency.
@@ -175,7 +181,15 @@ Done:
   derives the list again and publishes when it differs. The comparison is deferred to a microtask, so one
   content apply is one publication however many documents it wrote.
 
-Still to do:
+- `packages/apack-sdk/src/framework/declaration-schema.ts` — `extensions.commands`, `DECLARED_COMMANDS_KEY`
+  and `declaredContentKeys`, the one answer to "which content keys did this pack declare" that the compiled
+  index, the runtime's applier keys and the installed layout each used to derive separately.
+- `packages/apack-sdk/src/build/content/resolve.ts` — the desugaring, and the build-time refusal of a name a
+  dependency declares.
+- `packages/apack-sdk/src/build/content-compiler.ts` and `generate-entries.ts` — the one document it compiles
+  to, and its `createFormatApplier`.
+
+Done:
 
 And for the shorthand, once the above is done:
 

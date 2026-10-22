@@ -1906,6 +1906,17 @@ ${featureBindings.join('\n')}
         continue;
       }
 
+      /**
+       * The declared commands apply as ordinary Document content, so removal, offers and the three-way
+       * merge are the machinery every other entry uses — there is no second path for a command.
+       */
+      if (source.kind === 'declared') {
+        applierImports.add('createFormatApplier');
+        const options = { key, entities: [SDK_ENTITIES.Document], identity: ['name'], ...(source.onUserEdit && { onUserEdit: source.onUserEdit }) };
+        registrations.push(`createFormatApplier(${dataLiteral(options)})`);
+        continue;
+      }
+
       if (source.kind === 'specialty') {
         const specialty = SPECIALTY_APPLIERS[key]!;
         applierImports.add(specialty.factory);
