@@ -73,12 +73,12 @@ export function packSystemIds(reg: PackRegistration): FeatureRef[] {
   return systemsOf(reg).map(({ ref }) => ref);
 }
 
-/** Role → the ref of the feature playing it: its system and its surface share it */
 /** Whether one of this pack's features plays the commands role, read from what it registered */
 function playsCommandsRole(pack: { designations: Record<string, string> }): boolean {
   return pack.designations[COMMANDS_ROLE] !== undefined;
 }
 
+/** Role → the ref of the feature playing it: its system and its surface share it */
 function designationsOf(reg: PackRegistration): Record<string, FeatureRef> {
   return Object.fromEntries(featuresOf(reg).flatMap(({ ref, feature }) => (feature.designation ? [[feature.designation, ref]] : [])));
 }

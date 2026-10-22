@@ -13,8 +13,7 @@
 import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { boundFeHost, _isFeHostBound } from '../runtime/fe-host.ts';
 
-/** The role a feature plays to own and serve the commands */
-export const COMMANDS_ROLE = 'commands';
+export { COMMANDS_ROLE } from './role.ts';
 
 /** A slash command: the name typed after the `/`, and what the chat shows after it */
 export interface PackCommand {

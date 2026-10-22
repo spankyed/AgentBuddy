@@ -124,6 +124,23 @@ describe('slash commands from the library commands folder', () => {
     expect(commandNames(updated)).toContain('cc-resume')
   })
 
+  // Editing one is why they are documents at all, and it is the one cause a connection, a pack change and a
+  // data replacement all miss — so it is the whole reason the owner tells the app the list moved.
+  it('serves a command the user adds by editing a document, and publishes the new list', async () => {
+    const app = await appliedApp()
+    const document = documentNamed('Chat commands')
+
+    await app.send('library', { type: 'UPDATE_DOCUMENT', id: document.id, name: document.name, content: field('standup', 'Topic'), tags: [] })
+
+    const published = commandNames(await app.nextEmit('host/application', 'COMMANDS_UPDATED'))
+    expect(published).toContain('standup')
+    // The edit replaced that document's whole field section, so what it used to list is gone with it
+    expect(published).not.toContain('pr2md')
+    expect(published).toContain('cc-resume')
+    // An update that says nothing about the type leaves the document a command list, which is what keeps it one
+    expect(documentNamed('Chat commands').documentType).toBe('commands')
+  })
+
   it('removes the commands of a deleted document, and sends the chat the new list', async () => {
     const app = await appliedApp()
     await app.send('library', { type: 'DELETE_ITEMS', ids: [documentNamed('Claude Code commands').id] })

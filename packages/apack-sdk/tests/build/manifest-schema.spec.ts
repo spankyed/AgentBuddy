@@ -292,6 +292,28 @@ describe('content.formats, content.sources and content.datasets', () => {
     expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
   });
 
+  // The commands are content and the role decides who serves them, so the provider is the role-holder's to
+  // declare. Neither half is the registry's to catch: it sees one provider per pack without knowing which
+  // feature declared it, so a feature declaring one beside the sibling that holds the role would be served
+  // in its place, and a second provider would lose to whichever the manifest listed first.
+  it('takes the command provider only from the feature playing the role, and refuses a second', () => {
+    const feature = (id: string, extra: Record<string, unknown> = {}) =>
+      ({ [id]: { description: `Exercise ${id} commands.`, ...extra } });
+    const provider = `src/library/be/commands.ts#commands`;
+
+    expect(messagesOf(parseManifest({ ...pack, features: { ...feature('library', { designation: 'commands', commands: provider }) } }))).toEqual([]);
+
+    expect(messagesOf(parseManifest({ ...pack, features: { ...feature('library', { commands: provider }) } })))
+      .toEqual([expect.stringMatching(/"features\.library\.commands": Feature "library" declares a command provider without "designation": "commands"/)]);
+
+    expect(messagesOf(parseManifest({ ...pack, features: {
+      ...feature('library', { designation: 'commands', commands: provider }), ...feature('notes', { commands: provider }),
+    } }))).toEqual([
+      expect.stringMatching(/"features\.notes\.commands": Two features declare a command provider: "library" and "notes"/),
+      expect.stringMatching(/"features\.notes\.commands": Feature "notes" declares a command provider without "designation"/),
+    ]);
+  });
+
   // Which surface opens first is an annotation on the surface, not a feature id at the root: an id there
   // could name a feature the pack doesn't have, and codegen then emitted no default at all. A pack
   // claiming none has no default surface, which the shell handles.
@@ -411,8 +433,9 @@ describe('services', () => {
 
 describe('a feature\'s command provider', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+  // With the designation, since only the feature playing it may declare one
   const withProvider = (commands: unknown) =>
-    ({ ...pack, features: { library: { description: 'Serves them.', commands } } });
+    ({ ...pack, features: { library: { description: 'Serves them.', designation: 'commands', commands } } });
 
   it('accepts a path#export naming the function that serves them', () => {
     expect(messagesOf(parseManifest(withProvider('src/features/library/be/commands.ts#commands')))).toEqual([]);
