@@ -1,6 +1,7 @@
-// Compiles src/content/commands (the `commands` entry in apack.json) with the library compiler, stamping
-// every Document as a command list. The format is what makes a document one, so a file in this source
-// cannot omit it and a file in another source cannot claim it.
+// Compiles src/content/commands (the `commands` entry in apack.json) with the library compiler, defaulting
+// every Document to a command list. A file in this source therefore cannot fail to be one by omitting the
+// type — and a command is only a document with a type, so a library document that declares it is one too,
+// and a file here that declares something else is what it says.
 import type { ContentCompileContext, ContentItem } from '@apackdev/sdk/build';
 import { compileLibraryTree } from './library.ts';
 

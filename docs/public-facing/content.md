@@ -752,9 +752,20 @@ prompt or a flow: a pack ships them in a content source, the apply writes them i
 user edits them afterwards — with the three-way merge and the offers every other content entry gets. There is
 no manifest key that lists commands, and nothing to merge: one source, so a name cannot shadow another.
 
-A command lives in a document whose field section is `**name**: placeholder` lines. What makes it a command
-list is the **format** it was compiled with, not anything in the file: a source using the `commands` format
-stamps every document it writes, so a file there cannot omit it and a file elsewhere cannot claim it. default-setup's are
+A command lives in a document whose field section is `**name**: placeholder` lines, and what makes it one is
+the document's own `documentType`. **A command is only a document with a type**, so any library document that
+says it is a command list is served as one, and a document that says nothing is just a document.
+
+A file declares it in frontmatter (`type: commands`), and the **format** supplies a default where a whole
+source is one kind — so a file in the `commands` format's source cannot fail to be a command list by saying
+nothing, while a file that declares something else is what it says:
+
+| source's format | the file's `type:` | `documentType` |
+|---|---|---|
+| `commands` | absent | `commands` |
+| `commands` | `type: notes` | `notes` |
+| `library` | absent | none — just a document |
+| `library` | `type: commands` | `commands`, served with the rest | default-setup's are
 `src/content/commands/internal/*.md`, written with its `commands` format; a pack depending on it names that format
 (`{ "path": "src/content/commands", "format": "default-setup:commands" }`) and gets the same rows. A name two
 documents define keeps the first.

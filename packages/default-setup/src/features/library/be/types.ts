@@ -42,7 +42,12 @@ export interface DocumentEntity extends BaseEntity {
   displayOrder?: number
   /** Free-form tags, stored directly on the document as a string array. */
   tags?: string[]
-  /** What this document is, from its frontmatter `type`: `commands` marks a slash-command list. */
+  /**
+   * What this document is: `commands` marks a slash-command list, which the `commands` designation's
+   * owner serves. A written document's own frontmatter `type` says so, and the format it was compiled
+   * with supplies a default where a whole source is one kind; a document created in the app carries
+   * whatever its creator passed. Absent, it is just a document.
+   */
   documentType?: string
   /** Hash of the content source at the last apply. Absent on user-created documents. */
   contentHash?: string
@@ -64,7 +69,12 @@ export interface DocumentDTO {
   content: ContentSection[]
   shortCode: DocumentShortCode
   tags: string[]
-  /** What this document is, from its frontmatter `type`: `commands` marks a slash-command list. */
+  /**
+   * What this document is: `commands` marks a slash-command list, which the `commands` designation's
+   * owner serves. A written document's own frontmatter `type` says so, and the format it was compiled
+   * with supplies a default where a whole source is one kind; a document created in the app carries
+   * whatever its creator passed. Absent, it is just a document.
+   */
   documentType?: string
   collectionId?: EARS.EntityId
   collectionPath?: string[]

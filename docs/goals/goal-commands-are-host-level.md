@@ -267,10 +267,11 @@ name: Claude Code commands
 **cc-sessions**: Session ID (optional, lists all if omitted)
 ```
 
-The file says nothing about being commands, and shouldn't: the `commands` **format** stamps every document
-it compiles (`_compilers/commands.ts`). So a file in that source cannot fail to be a command list, and one
-in another source cannot become one by naming a type. Before, its folder decided, which was the same
-coupling with nothing enforcing it.
+The file need say nothing about being commands: the `commands` **format** defaults every document it
+compiles to one (`_compilers/commands.ts`), so a file in that source cannot fail to be a command list by
+omitting it. It is a default rather than a stamp, because a command is only a document with a type — a
+library document that declares `type: commands` is served as one, and a file here that declares something
+else is what it says. Before, its folder decided, which was the same coupling with nothing enforcing it.
 
 ### The compiler — the shape is already there
 
