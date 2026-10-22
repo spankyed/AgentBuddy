@@ -8,7 +8,39 @@ import { findParentCollection, getDisplayOrder, getNextDisplayOrder, getCollecti
 import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
 
 
-export const libraryCommands = {
+type DocumentsListener = () => void;
+
+const documentsListeners = new Set<DocumentsListener>();
+
+/**
+ * Every write below tells its subscribers, through `announceWrites`, so no method decides whether its own
+ * write mattered and a method added later is covered without anyone remembering. What changed is the
+ * subscriber's to work out — `libraryService.commands()` is a derivation over these rows, and the system's
+ * watcher compares it, which is the one place that comparison is made.
+ *
+ * It hands subscribers no payload and makes no send: a repository reads and writes rows. The listener set is
+ * module state, held only for as long as a subscriber keeps its handle, which is what the returned function
+ * gives back.
+ *
+ * **Each write keeps `writers` as its receiver**, since several of them do their work by calling a sibling
+ * (`deleteItems` deletes each document, `moveItems` moves each one). Dropping the receiver leaves `this`
+ * undefined inside those, so the write silently does nothing — `tests/features/library/be/index.spec.ts`'s
+ * deleted-document case is what says so. Calling the sibling on the plain object also keeps one announcement
+ * per call made from outside, rather than one per item.
+ */
+function announceWrites<T extends Record<string, (...args: never[]) => unknown>>(writers: T): T {
+  const announced: Record<string, unknown> = {};
+  for (const [name, write] of Object.entries(writers)) {
+    announced[name] = (...args: never[]) => {
+      const result = (write as (...a: never[]) => unknown).apply(writers, args);
+      for (const listener of documentsListeners) listener();
+      return result;
+    };
+  }
+  return announced as T;
+}
+
+const writers = {
   createDocument(
     name: string,
     content: ContentSection[],
@@ -462,3 +494,12 @@ export const libraryCommands = {
     // tx(documentId).update('updatedAt', Date.now())
   }
 } as const
+
+export const libraryCommands = {
+  ...announceWrites(writers),
+  /** Follows every write above, until the returned function is called */
+  onDocumentsChanged(listener: DocumentsListener): () => void {
+    documentsListeners.add(listener);
+    return () => documentsListeners.delete(listener);
+  },
+} as const;

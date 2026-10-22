@@ -1279,6 +1279,8 @@ interface DocumentItem {
 
 type DocumentShortCode = `DOC-${number}`;
 
+type DocumentsListener = () => void;
+
 declare namespace EARS {
     namespace Entity {
         const Thread = "Thread";
@@ -6245,6 +6247,8 @@ declare const flowsQueries: {
 declare function getHandle(key: string): CodexTurnHandle | undefined;
 
 declare const libraryCommands: {
+    /** Follows every write above, until the returned function is called */
+    readonly onDocumentsChanged: (listener: DocumentsListener) => () => void;
     readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, id?: string, contentHash?: string, documentType?: string) => DocumentDTO;
     readonly updateDocument: (id: EARS.EntityId, name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, contentHash?: string, documentType?: string) => DocumentDTO;
     readonly deleteDocument: (id: EARS.EntityId) => void;
