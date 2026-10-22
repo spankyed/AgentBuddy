@@ -241,7 +241,7 @@ const RULE_LIST = [
   },
   {
     key: 'lmdb-imports',
-    rule: 'A pack reaches its data through the engine the app installs: neither lmdb nor @apackdev/ears/lmdb is '
+    rule: 'A pack reaches its data through the engine the app binds: neither lmdb nor @apackdev/ears/lmdb is '
       + 'provided to a pack, so importing one fails at load',
     check(view, _place) {
       return view.specifiers.filter(({ text }) => /^lmdb(\/|$)/.test(text) || /^@apackdev\/ears\/lmdb(\/|$)/.test(text))
@@ -305,7 +305,7 @@ const RULE_LIST = [
           return namespace && imported.module === '@apackdev/sdk/events'
             ? ['* from @apackdev/sdk/events (import the names)'] : undefined;
         }
-        const raw = imported.module === '@apackdev/ears'
+        const raw = imported.module === '@apackdev/sdk/ears'
           ? [...EVENT_SENDS, 'registerRepository', 'unregisterRepository'] : EVENT_SENDS;
         return imported.names.filter((name) => raw.includes(name)).map((name) => `${name} from ${imported.module}`);
       });

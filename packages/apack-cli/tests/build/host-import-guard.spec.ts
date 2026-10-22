@@ -50,7 +50,7 @@ describe('apack pack build rejects @apackdev/host imports', () => {
   });
 
   it('still bundles pack code that imports @apackdev/sdk', async () => {
-    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { findRelations } from '@apackdev/ears';\nexport const registration = { findRelations };\n" });
+    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { findRelations } from '@apackdev/sdk/ears';\nexport const registration = { findRelations };\n" });
     expect(await bundlePackRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
   });
 });

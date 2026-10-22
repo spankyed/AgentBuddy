@@ -31,11 +31,12 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "export const popout = window.electronAPI?.surfaces.popout;",
     // Typed data access and events come only from the factories a pack's facade uses
     "import { defineEars } from '@apackdev/ears';",
+    "import { boundEars } from '@apackdev/sdk/ears';",
     "import { defineEvents } from '@apackdev/sdk/events';",
     "import type { EARS } from '@apackdev/sdk';",
     "type IsAny<T> = 0 extends 1 & T ? true : false;",
     "interface MemoEntity { entityType: 'Memo'; text: string }",
-    "const { findById } = defineEars<{ Memo: MemoEntity }>();",
+    "const { findById } = defineEars<{ Memo: MemoEntity }>(boundEars);",
     "declare const memoId: EARS.EntityId<'Memo'>;",
     "const memo = findById(memoId)!;",
     "export const text: string = memo.text;",
@@ -50,9 +51,9 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "// @ts-expect-error untyped query helpers aren't pack-facing",
     "export { findAll } from '@apackdev/ears';",
     // An engine is an instance a test or tool creates; its admin face comes only with it
-    "import { createEarsEngine, installEngine } from '@apackdev/ears';",
+    "import { createEarsEngine } from '@apackdev/ears';",
     "const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });",
-    "installEngine(engine.query);",
+    "engine.query.create('Memo').set('title', 'held');",
     "engine.admin.clear();",
     // Host-only modules live in the private @apackdev/host
   ] });

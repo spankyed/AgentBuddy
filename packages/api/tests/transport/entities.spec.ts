@@ -1,5 +1,5 @@
 import { beforeEach, expect, it } from 'vitest';
-import { untypedCreate, untypedWrite } from '@apackdev/ears';
+import { untypedCreate, untypedWrite } from '@apackdev/sdk/ears';
 import { resetTestData, startTestRuntime } from '@apackdev/sdk/testing';
 import { entitiesRouter } from '../../src/transport/entities';
 

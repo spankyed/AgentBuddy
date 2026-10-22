@@ -12,7 +12,8 @@ import { replace } from '../../src/commands/pack-replace';
 import { install } from '../../src/commands/pack-install';
 import { uninstall } from '../../src/commands/pack-uninstall';
 import { _appDataPaths } from '@apackdev/sdk/utils';
-import { untypedUpsert, installEngine, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedUpsert, _bindEars } from '@apackdev/sdk/ears';
 import { openProfile } from '../../src/app/profiles';
 
 let tmp: string;
@@ -68,12 +69,12 @@ it('replaces deliberately, survives boot refresh, then restores a removed defaul
   const { store, engine } = openDatabaseStore({ paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
     schema: readInstalledSchema(context), log: () => {},
   });
-  const previousEngine = installEngine(engine.query);
+  const previousEngine = _bindEars(engine.query);
   try {
     await store.hydrate();
     untypedUpsert('Settings', settingsId).set('data', choices);
   } finally {
-    installEngine(previousEngine);
+    _bindEars(previousEngine);
     expect(store.close().errorCount).toBe(0);
   }
   expect(readInstalledPacks(context.installedPacksFile)[0]).toMatchObject({ enabled: true, updatesWith: 'app' });

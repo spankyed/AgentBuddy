@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@apackdev/testing/harness'
 import { entry, keepAlive, on } from '#generated/flow-helpers.ts'
-import { untypedQx } from '@apackdev/ears'
+import { untypedQx } from '@apackdev/sdk/ears'
 
 const notes = () => untypedQx('Note').pickAll() as Array<Record<string, unknown>>
 

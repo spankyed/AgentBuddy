@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { ManifestSchema, _declarationRevision } from '@apackdev/sdk/build';
 import type { ContentRuntime } from '@apackdev/sdk/framework';
 import { startTestRuntime, resetTestData } from '@apackdev/sdk/testing';
-import { installedEngine } from '@apackdev/ears';
+import { boundEars } from '@apackdev/sdk/ears';
 import { contentBindingProblem } from '../../src/packs/declaration-binding.ts';
 
 const manifest = ManifestSchema.parse({
@@ -43,18 +43,18 @@ it('binds content while retaining declarations without backend activation', () =
   expect(registry.designation('notes')).toBeUndefined();
   expect(registry.getRegisteredServices()).toEqual({});
   expect(registry.contentWriters('ContentThing')).toBe(writer);
-  expect(installedEngine().repository.contentQueries).toBe(queries);
+  expect(boundEars().repository.contentQueries).toBe(queries);
   expect(registry.settingsCatalog().features['content-pack/notes'].defaults).toEqual({ count: 0 });
   registry.unregisterPack(manifest.id);
   expect(registry.contentWriters('ContentThing')).toBeUndefined();
-  expect(() => installedEngine().repository.contentQueries).toThrow('is not registered');
+  expect(() => boundEars().repository.contentQueries).toThrow('is not registered');
   expect(registry.settingsCatalog().features).toHaveProperty('content-pack/notes');
 });
 
 it('refuses a stale content identity before contributing repositories', () => {
   expect(() => registry.registerContentRuntime({ ...runtime, declarationRevision: 'stale' }, origin)).toThrow('rebuild');
   expect(registry.getPackRegistration(manifest.id)).toBeNull();
-  expect(() => installedEngine().repository.contentQueries).toThrow('is not registered');
+  expect(() => boundEars().repository.contentQueries).toThrow('is not registered');
 });
 
 it.each([
@@ -67,7 +67,7 @@ it.each([
   expect(contentBindingProblem(manifest, candidate)).toContain(`runtime ${path}`);
   expect(() => registry.registerContentRuntime(candidate, origin)).toThrow(`runtime ${path}`);
   expect(registry.getPackRegistration(manifest.id)).toBeNull();
-  expect(() => installedEngine().repository.contentQueries).toThrow('is not registered');
+  expect(() => boundEars().repository.contentQueries).toThrow('is not registered');
 });
 
 it('accepts a declared source applier instance and removes it with the content binding', () => {
@@ -87,6 +87,6 @@ it('refuses an undeclared or duplicate applier before registering content', () =
   for (const appliers of [[{ key: 'ghost', apply }], [{ key: 'things', apply }, { key: 'things', apply }]]) {
     expect(() => registry.registerContentRuntime(runtime, origin, appliers)).toThrow('runtime appliers');
     expect(registry.getPackRegistration(manifest.id)).toBeNull();
-    expect(() => installedEngine().repository.contentQueries).toThrow('is not registered');
+    expect(() => boundEars().repository.contentQueries).toThrow('is not registered');
   }
 });

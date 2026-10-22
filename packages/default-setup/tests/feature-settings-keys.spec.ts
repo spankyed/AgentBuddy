@@ -1,6 +1,7 @@
 // Generated handles resolve local names; raw settings targets require qualified owner identities.
 import { describe, expect, it, onTestFinished } from 'vitest';
-import { untypedQx, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedQx } from '@apackdev/sdk/ears';
 import { getTestSettings, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apackdev/testing/harness';
 import { featureSettings } from '#generated/settings.ts';
 import { services } from '#generated/services.ts';

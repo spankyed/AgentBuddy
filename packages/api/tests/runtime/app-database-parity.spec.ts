@@ -19,7 +19,7 @@ const { installPackFromLocal, installShippedPacks } = await import('@apackdev/ho
 const { openAppDatabase } = await import('@apackdev/host/database');
 const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
 const { unbindHost } = await import('@apackdev/sdk/runtime/internals');
-const { untypedCreate } = await import('@apackdev/ears');
+const { untypedCreate } = await import('@apackdev/sdk/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 

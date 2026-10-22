@@ -11,7 +11,8 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { importCompiledContent, type AppliedItem, type ApplyRecord } from '@apackdev/sdk/utils';
 import { CONTENT_INDEX_FILE } from '@apackdev/sdk/build';
 import { contentEntity } from '@apackdev/sdk/content';
-import { untypedQx as qx, untypedWrite, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedQx as qx, untypedWrite } from '@apackdev/sdk/ears';
 import { PACK_DIR, applyAfter } from './harness.ts';
 
 /** This pack's compiled content, as its build wrote them */

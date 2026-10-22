@@ -3,7 +3,8 @@ import { nativePackDeclarationFixture } from '../../src/testing/index.ts';
 // nodes and edges, step results on TNodes, and actions and prompts
 import * as os from 'node:os';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createEarsEngine, findRelations, installEngine, installedEngine, untypedCreate, untypedQx, type PersistenceSink } from '@apackdev/ears';
+import { createEarsEngine, type PersistenceSink } from '@apackdev/ears';
+import { findRelations, _bindEars, boundEars, untypedCreate, untypedQx } from '@apackdev/sdk/ears';
 import { actionRepository, flowRepository, promptRepository, tnodeRepository, trash } from '../../src/repositories/index.ts';
 import { compile as compileFlowDSL } from '../../src/build/compilers/flow-compiler.ts';
 import { resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
@@ -140,7 +141,7 @@ describe('flowRepository', () => {
       onRemoveRelation(relId, destroyed) { if (!destroyed) unlinked.push(relId); },
     };
     const sdkTypes = new Set<string>(Object.values(EARS.Entity));
-    installEngine(createEarsEngine({ persistence: sink, isEntityType: (name) => sdkTypes.has(name) }).query);
+    _bindEars(createEarsEngine({ persistence: sink, isEntityType: (name) => sdkTypes.has(name) }).query);
     const flow = flowRepository.createFlow();
     const a = flowRepository.createNode(flow.id, { nodeType: 'action' });
     const b = flowRepository.createNode(flow.id, { nodeType: 'action' });
@@ -240,8 +241,8 @@ describe('actionRepository and promptRepository', () => {
 describe('trash', () => {
   // Any entity type: prompts here
   const note = (title: string) => untypedCreate('Prompt', { id: `Prompt-${title}` as EARS.EntityId }).set('title', title).id();
-  const findById = (id: EARS.EntityId) => installedEngine().findById<Record<string, unknown>>(id);
-  const findByIdRaw = (id: EARS.EntityId) => installedEngine().findByIdRaw(id);
+  const findById = (id: EARS.EntityId) => boundEars().findById<Record<string, unknown>>(id);
+  const findByIdRaw = (id: EARS.EntityId) => boundEars().findByIdRaw(id);
 
   it('moves entities to the trash, where finders skip them, and restores them unmarked', () => {
     const [a, b] = [note('a'), note('b')];
@@ -249,7 +250,7 @@ describe('trash', () => {
     expect(trash.move([a, b, 'Prompt-missing' as EARS.EntityId], 1000)).toEqual([a, b]);
     expect(trash.move([a], 2000)).toEqual([]);
     expect(findById(a)).toBeUndefined();
-    expect(installedEngine().findAll('Prompt')).toEqual([]);
+    expect(boundEars().findAll('Prompt')).toEqual([]);
     expect(findByIdRaw(a)).toMatchObject({ deleted: true, deletedAt: 1000 });
     expect(trash.isTrashed(a)).toBe(true);
     expect(trash.list('Prompt').map((n) => n.id).sort()).toEqual([a, b].sort());

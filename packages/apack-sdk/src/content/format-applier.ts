@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
-import { destroyEntity, findRelations, installedEngine as ears, untypedWrite, untypedQx as qx } from '@apackdev/ears';
+import { destroyEntity, findRelations, boundEars as ears, untypedWrite, untypedQx as qx } from '../ears/index.ts';
 import type { QueryBuilder } from '@apackdev/ears';
 import { _getMediaPath, loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';

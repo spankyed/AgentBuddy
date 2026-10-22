@@ -2,7 +2,8 @@ import type { SettingsAdmin } from '../services/settings.ts';
 // The runtime a pack's unit tests run against: the EARS engine in memory, without the app.
 // @apackdev/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
 // (its query, repository and content-writer registries) instead of a copy.
-import { createEarsEngine, installEngine, type EarsEngine } from '@apackdev/ears';
+import { createEarsEngine, type EarsEngine } from '@apackdev/ears';
+import { _bindEars } from '../ears/index.ts';
 import type { ContentRuntime } from '../framework/content-runtime.ts';
 export { nativePackDeclarationFixture } from './pack-declaration.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
@@ -56,7 +57,7 @@ let engine: EarsEngine | undefined;
 function installFreshEngine(repositories: Record<string, unknown> = {}): EarsEngine {
   engine = createEarsEngine({ isEntityType: (value: string) => entityTypes.has(value) });
   for (const [name, repo] of Object.entries(repositories)) engine.query.registerRepository(name, repo);
-  installEngine(engine.query);
+  _bindEars(engine.query);
   return engine;
 }
 

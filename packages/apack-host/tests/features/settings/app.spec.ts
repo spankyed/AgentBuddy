@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, expect, it } from 'vitest';
-import { installedEngine, untypedQx, untypedCreate } from '@apackdev/ears';
+import { boundEars, untypedQx, untypedCreate } from '@apackdev/sdk/ears';
 import type { EARS } from '@apackdev/sdk';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { generateSettingsTypes } from '@apackdev/sdk/build';
@@ -10,7 +10,7 @@ import { createSettingsStore } from '../../../src/features/settings/be/store.ts'
 
 const id = 'Settings-app' as EARS.EntityId;
 beforeEach(() => resetTestData());
-const store = () => createSettingsStore({ ears: installedEngine, catalog: () => registry.settingsCatalog() });
+const store = () => createSettingsStore({ ears: boundEars, catalog: () => registry.settingsCatalog() });
 
 it('derives the public SDK types from the host definition', async () => {
   const generated = await generateSettingsTypes(appSettingsDefinition, 'AppSettings');
@@ -74,7 +74,7 @@ it('refuses newly missing required fields in feature arrays too', () => {
     } } }, required: ['items'] },
   } } } });
   try {
-    const settings = createSettingsStore({ ears: installedEngine, catalog: () => registry.settingsCatalog() });
+    const settings = createSettingsStore({ ears: boundEars, catalog: () => registry.settingsCatalog() });
     expect(() => settings.set({ kind: 'feature', featureRef: 'array-settings/entries' as import('@apackdev/sdk/ids').FeatureRef }, ['items'], [{}])).toThrow('name');
     expect(settings.getOverrides()).toEqual({});
   } finally { registry.unregisterPack('array-settings'); }
@@ -101,7 +101,7 @@ it('notifies a caller-bound handle when declared defaults change and stops on un
     defaults: { name },
   } } });
   catalog.setNative([declaration('Ada')]);
-  const settings = createSettingsStore({ ears: installedEngine, catalog: catalog.settings, onCatalogChanged: catalog.onChanged });
+  const settings = createSettingsStore({ ears: boundEars, catalog: catalog.settings, onCatalogChanged: catalog.onChanged });
   const service = createSettingsService(settings).forPack('observed');
   const handle = _settingsHandle<{ name: string }>({ kind: 'pack', packId: 'observed', groupId: 'assistant' }, service);
   const heard: string[] = [];

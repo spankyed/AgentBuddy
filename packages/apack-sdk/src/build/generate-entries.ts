@@ -1202,10 +1202,11 @@ ${regProps.join('\n')}
     return `${emitEARS(manifest.id, registry)}
 // ── Typed EARS helpers ──────────────────────────────────────────
 // The query helpers typed against this pack's entity shapes (its own and its
-// dependencies'). The call is pure, so bundles that only use the EARS constants above
-// drop it.
+// dependencies'), bound to the app's engine (\`boundEars\`). The call is pure, so bundles that only use the
+// EARS constants above drop it.
 
 import { defineEars, type ShapeOf } from '@apackdev/ears';
+import { boundEars } from '@apackdev/sdk/ears';
 import type { SdkEntityShapes } from '@apackdev/sdk';
 ${ownNodes ? "import type { NodeEntity } from './types.ts';\n" : ''}${shapeImports.join('\n')}
 
@@ -1240,7 +1241,7 @@ export const {
   qx, create, upsert, write, transact, findById, findByIdRaw, findAll, findWhere, findFirst,
   findWithFields, findByIdWithFields, findWithRole, findFirstWithRole,
   createEntity, createEntityWithDefaults, updateEntity, getAttr, getAttrs,
-} = /*#__PURE__*/ defineEars<PackShapes, EntityName>();
+} = /*#__PURE__*/ defineEars<PackShapes, EntityName>(boundEars);
 `;
   }
 
@@ -1749,7 +1750,7 @@ export type EntityId = EARS.EntityId;
     const entries = repositoryEntries();
     const deps = depTypeImports('Repositories');
     return `${HEADER}
-import { repository as earsRepository } from '@apackdev/ears';
+import { repository as earsRepository } from '@apackdev/sdk/ears';
 ${entries.map(([name, path, exportName]) => `import type { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
 ${deps.imports.join('\n')}
 

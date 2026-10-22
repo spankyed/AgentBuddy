@@ -33,7 +33,7 @@ function pack(repository: string): string {
 
 describe('apack pack build loads the content runtime it bundles', () => {
   it('passes a content runtime that uses only @apackdev/sdk', async () => {
-    const dir = pack("import { findRelations } from '@apackdev/ears';\nexport const memoQueries = { links: findRelations };\n");
+    const dir = pack("import { findRelations } from '@apackdev/sdk/ears';\nexport const memoQueries = { links: findRelations };\n");
     expect(await bundlePackContentRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
   });
 
@@ -41,7 +41,7 @@ describe('apack pack build loads the content runtime it bundles', () => {
     // The check loads the bundle in a child process. Inheriting --conditions=@apackdev/source would make
     // that child resolve the packages' TypeScript with no loader to read it, and the build would fail
     // naming the pack's content runtime rather than the loader.
-    const dir = pack("import { findRelations } from '@apackdev/ears';\nexport const memoQueries = { links: findRelations };\n");
+    const dir = pack("import { findRelations } from '@apackdev/sdk/ears';\nexport const memoQueries = { links: findRelations };\n");
     const before = process.env.NODE_OPTIONS;
     process.env.NODE_OPTIONS = `${before ?? ''} --conditions=@apackdev/source`.trim();
     try {

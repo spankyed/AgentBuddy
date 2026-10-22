@@ -11,7 +11,7 @@ import { importCompiledContent, type ApplyRecord } from '@apackdev/sdk/utils';
 import { registerPack, unregisterPack } from '@apackdev/testing/harness';
 import { findWhere } from '#generated/ears.ts';
 import { dropAttribute } from '@apackdev/sdk/testing';
-import { findRelations, untypedWrite } from '@apackdev/ears';
+import { findRelations, untypedWrite } from '@apackdev/sdk/ears';
 import { repository } from '#generated/repository.ts';
 import { PACK_DIR, applyAfter, resetDatabase } from './harness.ts';
 import type { EARS } from '@apackdev/ears';

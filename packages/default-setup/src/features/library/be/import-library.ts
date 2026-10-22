@@ -13,7 +13,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '#generated/repository.ts';
 import type { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@apackdev/ears';
+import { hasIdCollision } from '@apackdev/sdk/ears';
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs, toDisplayName } from '@apackdev/sdk/utils'
 import { parseFrontmatter, parseMarkdownSections } from './utils.ts'
 import type { ContentSection } from '#features/library/be/types.ts';

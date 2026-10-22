@@ -1,4 +1,4 @@
-import type { repository } from '@apackdev/ears';
+import type { repository } from '../ears/index.ts';
 import { boundHost, _boundHostGeneration, type HostRuntimeServices } from '../runtime/host-runtime.ts';
 import { createSends, untypedBroadcastToSurface, untypedSendToWindow, untypedSendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';

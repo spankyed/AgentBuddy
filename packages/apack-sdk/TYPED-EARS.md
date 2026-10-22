@@ -9,7 +9,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 
 - `packages/apack-ears/src/entities.ts`: the core `EARS` namespace (`EARS.EntityId`), `BaseEntity`, `ShapeOf`, `EntityNameArg`
 - `packages/apack-ears/src/runtime.ts`: `QueryBuilder`, `TransactionBuilder`, `FieldValue`, `FieldValues`
-- `packages/apack-ears/src/typed.ts`: `defineEars` and the `Typed*` helper signatures behind `#generated/ears` (the functions it returns act on the installed engine; `src/engine.ts`'s `EarsQuery` is untyped)
+- `packages/apack-ears/src/typed.ts`: `defineEars` and the `Typed*` helper signatures behind `#generated/ears` (the functions it returns act on the engine its getter returns, `boundEars` for a pack; `src/engine.ts`'s `EarsQuery` is untyped)
 - `packages/apack-sdk/src/types/entities.ts`: the SDK's `EARS`, aliasing the engine's types and adding the SDK's entity types and relation kinds
 - `packages/apack-sdk/src/types/sdk-entities.ts`: `SdkEntityShapes` and the SDK-owned entity shapes (Relation and the flow model: Flow, Node, TNode, Action, Prompt). Preferences use the host settings contract, without a pack-owned `Settings` entity; the host's `AppState` isn't in any pack's `EntityName`
 - `packages/apack-sdk/src/build/generate-entries.ts` (`generateEars`): the generated `PackShapes`, `EntityName` and `Node` override

@@ -2,7 +2,7 @@
 // repository, which default-setup's runtime registered on its own @apackdev/ears — and the SDK's services object
 // reaches that same registration rather than a copy of it
 import { describe, expect, it } from 'vitest';
-import { untypedCreate } from '@apackdev/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 import { services } from '#generated/services.ts';
 import { startApp } from '@apackdev/testing/harness';
 import { repository } from '#generated/repository.ts';

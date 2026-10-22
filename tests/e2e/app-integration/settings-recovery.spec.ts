@@ -8,7 +8,8 @@ import { appLaunchEnv } from '../../../packages/apack-testing/src/launch-env.ts'
 import { readSettingsOverrides } from '@apackdev/host/database';
 import { installPackFromLocal } from '@apackdev/host/packs';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
-import { untypedCreate, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 import { writeData } from '../../../packages/apack-host/tests/database/fixtures.ts';
 
 const root = path.resolve(import.meta.dirname, '../../..');

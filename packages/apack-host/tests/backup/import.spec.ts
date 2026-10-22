@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
-import { untypedCreate, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 import { openEnvAt, closeEnv, type LmdbStore } from '@apackdev/ears/lmdb';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { importDatabase } from '../../src/backup/index.ts';

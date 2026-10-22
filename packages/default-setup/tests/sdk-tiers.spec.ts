@@ -2,7 +2,7 @@
  * Tests verifying that default-setup imports from @apackdev/sdk and @apackdev/ears resolve to the
  * runtime the harness binds.
  */
-import { untypedCreate, exists } from '@apackdev/ears';
+import { untypedCreate, exists } from '@apackdev/sdk/ears';
 import {
   findById, findByIdRaw, findAll, findWhere,
   createEntityWithDefaults, updateEntity, getAttr,

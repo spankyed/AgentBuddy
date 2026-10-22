@@ -13,11 +13,12 @@ export {
   getAll, getRoles, getAllEntities, getEntitiesOfType,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
   findRelations, getRelationStats,
-} from '@apackdev/ears';
+} from '@apackdev/sdk/ears';
 export { getSchemaStats } from '@apackdev/sdk/database-console';
 
 // Write: only a transaction gets these; a query naming one fails with "<name> is not defined"
 export { create, upsert, write, createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
+export { prepareEntity } from '@apackdev/ears';
 export {
-  destroyEntity, prepareEntity, createRelation, removeRelation, removeRelationById, grantRole, revokeRole,
-} from '@apackdev/ears';
+  destroyEntity, createRelation, removeRelation, removeRelationById, grantRole, revokeRole,
+} from '@apackdev/sdk/ears';

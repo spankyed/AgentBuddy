@@ -4,7 +4,8 @@ import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createEarsEngine, getEntitiesOfType, installEngine, installedEngine, untypedQx, type EARS } from '@apackdev/ears';
+import { createEarsEngine, type EARS } from '@apackdev/ears';
+import { getEntitiesOfType, _bindEars, boundEars, untypedQx } from '@apackdev/sdk/ears';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
@@ -180,7 +181,7 @@ describe('openAppDatabase', () => {
     });
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(installedEngine()).toBe(db.query);
+    expect(boundEars()).toBe(db.query);
     expect(db.paths).toEqual(_appDataPaths(dir));
     expect(getEntitiesOfType('Note').sort()).toEqual(['Note-1', 'Note-2']);
     expect(untypedQx('Note').ids()).toHaveLength(2);
@@ -201,7 +202,7 @@ describe('openAppDatabase', () => {
     const created = db2.query.create('Note').set('title', 'new').id();
     expect(created.startsWith('Note-')).toBe(true);
     db2.close();
-    expect(() => installedEngine()).toThrow();
+    expect(() => boundEars()).toThrow();
 
     const again = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
     expect(again.query.getAttr(created, 'title')).toBe('new');
@@ -226,7 +227,7 @@ describe('openAppDatabase', () => {
     // JSON can't encode a BigInt
     db.query.write(id('Note-1')).set('count', 1n);
     expect(() => db.close()).toThrow(/1 write\(s\) didn't reach the database in .*BigInt/);
-    expect(() => installedEngine()).toThrow();
+    expect(() => boundEars()).toThrow();
   });
 
   it('puts back the engine that was installed before, however it ends', async () => {
@@ -234,19 +235,19 @@ describe('openAppDatabase', () => {
     await writeData(dir, () => { untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept'); });
     // A process that already has an engine: the app, or a test file that started a runtime
     const outer = createEarsEngine({ isEntityType: (name) => name === 'Note' });
-    installEngine(outer.query);
+    _bindEars(outer.query);
     try {
       const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-      expect(installedEngine()).toBe(db.query);
+      expect(boundEars()).toBe(db.query);
       db.close();
-      expect(installedEngine()).toBe(outer.query);
+      expect(boundEars()).toBe(outer.query);
 
       // And an open that fails installs nothing at all, rather than leaving this process without an engine
       const broken = dataDirWithPacks();
       await expect(openAppDatabase({ env: 'test', userDataDir: broken, ...quiet })).rejects.toThrow();
-      expect(installedEngine()).toBe(outer.query);
+      expect(boundEars()).toBe(outer.query);
     } finally {
-      installEngine(undefined);
+      _bindEars(undefined);
     }
   });
 

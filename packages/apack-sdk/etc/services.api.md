@@ -19,7 +19,6 @@ import type { JSONSchema7 } from 'ai';
 import type { LanguageModel } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
-import type { repository } from '@apackdev/ears';
 import type { rerank } from 'ai';
 import type { RerankingModel } from 'ai';
 import type { SpeechModel } from 'ai';

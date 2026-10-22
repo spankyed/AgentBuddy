@@ -20,7 +20,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { ImportMode, ApplyResult, ContentSelection } from '@apackdev/sdk/utils';
-import { untypedQx } from '@apackdev/ears';
+import { untypedQx } from '@apackdev/sdk/ears';
 import { dropAttribute, entityIds } from '@apackdev/sdk/testing';
 import { compileContent, resetDatabase, apply, snapshot, type Snapshot } from './harness.ts';
 import type { EARS } from '@apackdev/ears';

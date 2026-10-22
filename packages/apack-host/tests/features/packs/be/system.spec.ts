@@ -23,7 +23,8 @@ import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
 import { applyPacks } from '../../../../src/packs/runtime/apply.ts';
 import { readAppPackSources } from '../../../../src/packs/app-sources.ts';
 import { createFormatApplier } from '@apackdev/sdk/content';
-import { untypedQx, untypedWrite, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedQx, untypedWrite } from '@apackdev/sdk/ears';
 
 const referenceDeclarations = {
   types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [] } },
@@ -996,7 +997,7 @@ describe('importing a pack’s content', () => {
        * pack's content back: an apply would read the entry it just wrote and leave the deletion alone,
        * which is exactly not what was asked for.
        */
-      const { untypedQx, untypedWrite } = await import('@apackdev/ears');
+      const { untypedQx, untypedWrite } = await import('@apackdev/sdk/ears');
       const memos = () => untypedQx('Memo').pickAll();
       untypedWrite(memos()[0]!.id).destroy();
       expect(memos(), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);

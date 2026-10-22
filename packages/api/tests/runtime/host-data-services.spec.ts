@@ -18,7 +18,7 @@ process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('../../src/runtime/index.ts');
 const { store, engine, packs } = openAppStore();
-const { untypedQx, untypedCreate, untypedUpsert, untypedWrite } = await import('@apackdev/ears');
+const { untypedQx, untypedCreate, untypedUpsert, untypedWrite } = await import('@apackdev/sdk/ears');
 const { boundHost } = await import('@apackdev/sdk/runtime/internals');
 const { services } = boundHost();
 const settingsAdmin = () => boundHost().services.settings;

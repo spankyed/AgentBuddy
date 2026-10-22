@@ -1,5 +1,5 @@
 import { sendToSystem } from '#generated/events.ts';
-import { untypedQx } from '@apackdev/ears';
+import { untypedQx } from '@apackdev/sdk/ears';
 import { services as appServices, servicesForAction as ownServicesForAction } from '#generated/services.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup, sendParent, enqueueActions, raise, type AnyActorRef, type AnyStateMachine } from 'xstate';

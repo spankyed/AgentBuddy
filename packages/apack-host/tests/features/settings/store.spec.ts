@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installedEngine, untypedQx, untypedUpsert, untypedWrite } from '@apackdev/ears';
+import { boundEars, untypedQx, untypedUpsert, untypedWrite } from '@apackdev/sdk/ears';
 import { resetTestData } from '@apackdev/sdk/testing';
 import type { EARS } from '@apackdev/sdk';
 import type { PackRegistration } from '@apackdev/sdk/framework';
@@ -30,7 +30,7 @@ afterAll(() => registry.unregisterPack(pack.id));
 let store: ReturnType<typeof createSettingsStore>;
 beforeEach(() => {
   resetTestData();
-  store = createSettingsStore({ ears: installedEngine, catalog: () => registry.settingsCatalog() });
+  store = createSettingsStore({ ears: boundEars, catalog: () => registry.settingsCatalog() });
 });
 const rowData = () => untypedQx.ids(SETTINGS_ID).pickOne(['data'])?.data;
 
@@ -46,7 +46,7 @@ describe('definitions and explicit choices', () => {
   it('keeps an explicit default-equal value until reset while following untouched defaults', () => {
     store.set(feature, ['limit'], 10);
     let catalog = registry.settingsCatalog();
-    const moving = createSettingsStore({ ears: installedEngine, catalog: () => catalog });
+    const moving = createSettingsStore({ ears: boundEars, catalog: () => catalog });
     const definition = catalog.features[THREADS];
     catalog = { ...catalog, revision: catalog.revision + 1, features: { ...catalog.features, [THREADS]: { ...definition, defaults: { limit: 50, sort: 'oldest' } } } };
     expect(moving.get(feature)).toEqual({ limit: 10, sort: 'oldest' });
@@ -158,7 +158,7 @@ describe('caller policy', () => {
 
   it('restricts mutations by owner without restricting dependent reads', () => {
     const catalog = registry.settingsCatalog();
-    const guarded = createSettingsStore({ ears: installedEngine, catalog: () => ({ ...catalog,
+    const guarded = createSettingsStore({ ears: boundEars, catalog: () => ({ ...catalog,
       dependencies: { ...catalog.dependencies, dependent: ['default-setup'] },
       packs: { ...catalog.packs, 'default-setup': { assistant: { ...assistantDefinition, access: 'owner' } } },
     }) });

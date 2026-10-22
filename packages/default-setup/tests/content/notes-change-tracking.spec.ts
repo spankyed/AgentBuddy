@@ -10,7 +10,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { compileBuiltinFormat, type ContentFormatConfig, type ContentItem } from '@apackdev/sdk/build';
 import { createFormatApplier } from '@apackdev/sdk/content';
 import type { ApplyRecord, ImportMode, ApplyResult, ContentSelection } from '@apackdev/sdk/utils';
-import { untypedQx as qx, untypedWrite } from '@apackdev/ears';
+import { untypedQx as qx, untypedWrite } from '@apackdev/sdk/ears';
 import { trash } from '@apackdev/sdk/repositories';
 import { dropAttribute, entityIds } from '@apackdev/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';

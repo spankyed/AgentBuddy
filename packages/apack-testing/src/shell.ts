@@ -1,4 +1,4 @@
-import { installedEngine } from '@apackdev/ears';
+import { boundEars } from '@apackdev/sdk/ears';
 // The app shell in a pack's unit tests: the host's own shell machine, run over the in-memory bus the harness's test
 // apps use, with the test pack's surfaces registered, so a pack's frontend (navigation, the shell's state, sends to
 // its systems) is tested as the app runs it rather than against a stand-in.
@@ -145,7 +145,7 @@ export async function startShell(packId: string, options: StartShellOptions, bac
     packClientReady: async (id) => testRootEvents.emitPackClientConnected(id),
     // The test's surfaces are registered up front, as a built-in pack's are: no external pack frontends to load
     loadedPacks: async () => [],
-    entityExists: async (id, signal) => { signal.throwIfAborted(); return installedEngine().findById(id) !== undefined; },
+    entityExists: async (id, signal) => { signal.throwIfAborted(); return boundEars().findById(id) !== undefined; },
     describeConnection: async () => 'A unit test\'s shell: its client is the harness\'s in-memory bus',
   };
 

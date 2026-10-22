@@ -1,10 +1,8 @@
 // The flow model's repository: flows, their nodes and the edges between them, and the root flow role.
 // The SDK declares these entities (sdk-entities.ts), so it owns their reads and writes; packs build
 // their views on top (default-setup's flows repository).
-import {
-  findRelations, filterSystemFields, generateLabelWithCount, generateShortCode, getTimestamp,
-  removeRelationById, updateRelation, RepositoryError, RepositoryErrorCode, untypedCreate, untypedWrite, untypedQx as qx, transact,
-} from '@apackdev/ears';
+import { filterSystemFields, getTimestamp, RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
+import { findRelations, generateLabelWithCount, generateShortCode, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQx as qx, transact } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';

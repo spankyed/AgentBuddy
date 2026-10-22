@@ -1,7 +1,7 @@
 // A memo kept as a default-setup note. It's written through @apackdev/ears imported directly, not the generated
 // facade, and read back through the SDK's services with default-setup's repository: the pack, the SDK and its
 // dependency's runtime share one engine (SHARED_INSTANCE_PACKAGES).
-import { untypedCreate } from '@apackdev/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 import { services } from '#generated/services.ts';
 
 export interface MemoNoteDTO {

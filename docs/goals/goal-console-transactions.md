@@ -54,7 +54,7 @@ all through one runner:
 `runTransactionCode` (`packages/apack-sdk/src/database-console/index.ts:123`) builds a function from the
 user's code and calls it with the read and write helpers. Each helper writes as the code runs:
 
-- **In memory:** a helper reaches the installed engine (`@apackdev/ears`), which updates the attribute
+- **In memory:** a helper reaches the bound engine (`@apackdev/sdk/ears`), which updates the attribute
   store, entity index and relation index immediately. `EarsAdmin` (`packages/apack-ears/src/engine.ts:83`)
   has no commit boundary and no undo: `putAttr`, `addAttr`, `mergeAttr`, `dropAttr`, `dropIf`,
   `updateAttr`, `addRelation`, `updateRelation` and the removals take effect as they are called.

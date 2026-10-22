@@ -3,7 +3,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEarsEngine, findRelations, installEngine, installedEngine, untypedWrite } from '@apackdev/ears';
+import { createEarsEngine } from '@apackdev/ears';
+import { findRelations, _bindEars, boundEars, untypedWrite } from '@apackdev/sdk/ears';
 import { applyRecord, type ApplyRecord } from '../../src/utils/index.ts';
 
 const { createFlowApplier } = await import('../../src/content/flow-applier.ts');
@@ -22,10 +23,10 @@ const { contentPath } = await import('../../src/build/manifest.ts');
 let tmp: string | undefined;
 // The applier reads and writes the installed engine: a fresh one per test
 beforeEach(() => {
-  installEngine(createEarsEngine({ isEntityType: (name) => ['Flow', 'Node', 'Action', 'Prompt', 'Relation'].includes(name) }).query);
+  _bindEars(createEarsEngine({ isEntityType: (name) => ['Flow', 'Node', 'Action', 'Prompt', 'Relation'].includes(name) }).query);
 });
 afterEach(() => {
-  installEngine(undefined);
+  _bindEars(undefined);
   if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   tmp = undefined;
   vi.restoreAllMocks();
@@ -49,7 +50,7 @@ describe('flow applier', () => {
 
   /** The Flow entities with this label, through the installed engine's finder as the writer reads them */
   const flows = (label: string) =>
-    installedEngine().findWhere<{ id: string; label: string }>('Flow' as never, 'label', label);
+    boundEars().findWhere<{ id: string; label: string }>('Flow' as never, 'label', label);
 
   /**
    * One apply, with the record `applyPacks` builds; with none it is an import.
@@ -114,7 +115,7 @@ describe('flow applier', () => {
     const flowId = flows('Demo Flow')[0].id as never;
     const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
 
-    const added = installedEngine().createEntityWithDefaults('Node' as never, { label: 'mine' }).id;
+    const added = boundEars().createEntityWithDefaults('Node' as never, { label: 'mine' }).id;
     untypedWrite(flowId).link('contains' as never, added as never);
     // Both, and that is right: a node arrives with the `contains` edge that holds it, so the wiring moved too
     expect(driftedGraphParts(item, flowId), 'a node the user added').toEqual(['edges', `node:${added}`]);

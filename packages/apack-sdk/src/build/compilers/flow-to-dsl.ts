@@ -1,4 +1,5 @@
-import { installedEngine, type EarsQuery } from '@apackdev/ears';
+import { type EarsQuery } from '@apackdev/ears';
+import { boundEars } from '../../ears/index.ts';
 import { createExportDir, ensureDirectoryExists, writeExportJson } from '../../utils/index.ts';
 import type { StepDefinition } from '../../steps/index.ts';
 import { stepLookup, type StepLookup } from './step-lookup.ts';
@@ -329,7 +330,7 @@ export function exportFlowsToDSL(
   options: ExportFlowsOptions,
   versioned = true,
 ): { filePath: string; flowCount: number; skipped: string[] } {
-  const { rootFlowRole, flowIds, engine = installedEngine() } = options;
+  const { rootFlowRole, flowIds, engine = boundEars() } = options;
   const { qx } = engine;
   const steps = stepLookup(options.steps);
 

@@ -9,7 +9,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-restart-persistence-'
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('../../src/runtime/index.ts');
-const { untypedCreate, getEntitiesOfType } = await import('@apackdev/ears');
+const { untypedCreate, getEntitiesOfType } = await import('@apackdev/sdk/ears');
 const { _getLmdbPath } = await import('@apackdev/sdk/utils');
 const { unbindHost } = await import('@apackdev/sdk/runtime/internals');
 

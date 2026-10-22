@@ -10,7 +10,8 @@
  * correctly on the harness's in-memory engine.
  */
 import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
-import { untypedCreate, type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
+import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 import {
   qx, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
   type EntityShape,

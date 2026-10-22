@@ -1,6 +1,6 @@
 // The generic writer's merge at its edges: an entity we wrote with no recorded parts, items two packs' content
 // both identifies, content the pack has dropped, and an update hook that fails part way.
-import { installedEngine as ears, untypedWrite } from '@apackdev/ears';
+import { boundEars as ears, untypedWrite } from '@apackdev/sdk/ears';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

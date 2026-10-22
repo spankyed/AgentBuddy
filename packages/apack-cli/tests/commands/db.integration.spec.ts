@@ -6,7 +6,8 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { spawn } from 'node:child_process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { installEngine, installedEngine, untypedCreate, untypedWrite, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { _bindEars, boundEars, untypedCreate, untypedWrite } from '@apackdev/sdk/ears';
 import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@apackdev/host/database';
 import { exportDatabase } from '@apackdev/host/backup';
 import { closeEnv, openEnvAt, LMDB_FORMAT_VERSION } from '@apackdev/ears/lmdb';
@@ -61,12 +62,12 @@ async function write(userDataDir: string, change: () => void): Promise<void> {
     schema: readInstalledSchema(schemaContext(userDataDir)),
     log: () => {},
   });
-  installEngine(engine.query);
+  _bindEars(engine.query);
   try {
     await store.hydrate();
     change();
   } finally {
-    installEngine(undefined);
+    _bindEars(undefined);
     store.close();
   }
 }
@@ -157,7 +158,7 @@ describe('apack db query', () => {
     expect(JSON.parse(out)).toEqual(['Alpha', 'Beta, "quoted"']);
     expect(err).toContain(`Database: ${dir} (offline)`);
     // The engine is closed and uninstalled
-    expect(() => installedEngine()).toThrow();
+    expect(() => boundEars()).toThrow();
   });
 
   it('reads code from a file, and writes CSV to a file', async () => {

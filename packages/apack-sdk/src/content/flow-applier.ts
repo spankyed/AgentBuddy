@@ -1,6 +1,6 @@
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { promptRepository } from '../repositories/prompt-repository.ts';
-import { findRelations, installedEngine as ears, untypedWrite } from '@apackdev/ears';
+import { findRelations, boundEars as ears, untypedWrite } from '../ears/index.ts';
 import { loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { contentPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';

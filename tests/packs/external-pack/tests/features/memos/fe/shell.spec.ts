@@ -1,4 +1,4 @@
-import { untypedCreate } from '@apackdev/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 // The pack's frontend on the app's own shell (startShell): opening its surface by name, the shell's state as useShell()
 // reads it, and the surface reaching its system and hearing back over the harness's bus, with no app launched.
 import { effectScope } from 'vue';

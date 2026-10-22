@@ -5,7 +5,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@apackdev/sdk/build';
 import { applyRecord, importCompiledContent, type ApplyRecord, type AppliedItem, type ImportMode, type ApplyResult, type ContentSelection } from '@apackdev/sdk/utils';
-import { untypedQx as qx, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedQx as qx } from '@apackdev/sdk/ears';
 import { entityIds } from '@apackdev/sdk/testing';
 import { resetTestData, testMediaPath } from '@apackdev/testing/harness';
 

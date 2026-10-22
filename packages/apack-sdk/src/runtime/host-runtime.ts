@@ -1,6 +1,7 @@
 // The one port between the SDK and the app it runs in: the resources a running app owns, bound once per
 // process. Behaviour over them (sends, logging, error reports, `services`) is SDK code.
-import { installEngine, type EarsQuery } from '@apackdev/ears';
+import { type EarsQuery } from '@apackdev/ears';
+import { _bindEars } from '../ears/index.ts';
 import { setSecretValueMatcher } from '../utils/redact.ts';
 import type { RootEvents } from './root-events.ts';
 import type { AppDataService } from '../services/app-data.ts';
@@ -64,12 +65,12 @@ let generation = 0;
 /** @internal A successful bind or unbind starts a distinct host lifetime, even with the same object. */
 export const _boundHostGeneration = (): number => generation;
 
-/** Binds the running app, and installs its engine (`installEngine(runtime.ears)`); once per process */
+/** Binds the running app, and its engine as the one engine operations act on (`_bindEars`); once per process */
 export function bindHost(runtime: HostRuntime): void {
   if (bound) throw new Error('A host is already bound in this process: bindHost runs once, at boot');
   bound = runtime;
   generation++;
-  installEngine(runtime.ears);
+  _bindEars(runtime.ears);
   setSecretValueMatcher(runtime.redaction && ((text, from, to) => runtime.redaction!.matchesSecret(text, from, to)));
 }
 
@@ -77,7 +78,7 @@ export function bindHost(runtime: HostRuntime): void {
 export function unbindHost(): void {
   bound = undefined;
   generation++;
-  installEngine(undefined);
+  _bindEars(undefined);
   setSecretValueMatcher(undefined);
 }
 

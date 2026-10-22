@@ -1,6 +1,7 @@
 // Opening an app's database: the one composition of the LMDB store and the engine, which the API's boot and tools
 // (apack db) share, so both hydrate a data dir the same way
-import { createEarsEngine, installEngine, makePolicy, type EarsAdmin, type EarsEngine, type EarsQuery, type PartitionPolicy } from '@apackdev/ears';
+import { createEarsEngine, makePolicy, type EarsAdmin, type EarsEngine, type EarsQuery, type PartitionPolicy } from '@apackdev/ears';
+import { _bindEars } from '@apackdev/sdk/ears';
 import { openLmdbStore, type LmdbPaths, type LmdbStore, type WriteFailure } from '@apackdev/ears/lmdb';
 import { resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import type { _AppDataPaths } from '@apackdev/sdk/utils';
@@ -127,7 +128,7 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   // puts back whatever was installed before rather than leaving none. `apack db`, the one caller today, has no
   // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command
   // holding one data dir open while it reads another, where uninstalling would leave the first unreachable.
-  const previousEngine = installEngine(engine.query);
+  const previousEngine = _bindEars(engine.query);
 
   return {
     userDataDir,
@@ -137,7 +138,7 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
     query: engine.query,
     admin: engine.admin,
     close() {
-      installEngine(previousEngine);
+      _bindEars(previousEngine);
       const { errorCount, lastError } = store.close();
       if (errorCount > 0) {
         const cause = (lastError as { error?: unknown } | null)?.error ?? lastError;

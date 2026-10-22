@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEarsEngine, installEngine } from '@apackdev/ears';
+import { createEarsEngine } from '@apackdev/ears';
+import { _bindEars } from '@apackdev/sdk/ears';
 import { _createPackServices, type SettingsService } from '@apackdev/sdk/services';
 import { startTestRuntime } from '@apackdev/sdk/testing';
 import type { PackRegistration } from '@apackdev/sdk/framework';
@@ -8,13 +9,13 @@ import { createPackRegistry } from '../../src/packs/registry.ts';
 startTestRuntime();
 
 const target = { kind: 'app' } as const;
-let previousEngine: ReturnType<typeof installEngine>;
+let previousEngine: ReturnType<typeof _bindEars>;
 let engine: ReturnType<typeof createEarsEngine>;
 beforeEach(() => {
   engine = createEarsEngine({ isEntityType: () => false });
-  previousEngine = installEngine(engine.query);
+  previousEngine = _bindEars(engine.query);
 });
-afterEach(() => { installEngine(previousEngine); vi.restoreAllMocks(); });
+afterEach(() => { _bindEars(previousEngine); vi.restoreAllMocks(); });
 
 function fixture() {
   const listeners = new Set<() => void>();

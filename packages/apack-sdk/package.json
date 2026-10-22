@@ -74,6 +74,11 @@
       "types": "./dist/ids/index.d.ts",
       "default": "./dist/ids/index.js"
     },
+    "./ears": {
+      "@apackdev/source": "./src/ears/index.ts",
+      "types": "./dist/ears/index.d.ts",
+      "default": "./dist/ears/index.js"
+    },
     "./database-console": {
       "@apackdev/source": "./src/database-console/index.ts",
       "types": "./dist/database-console/index.d.ts",

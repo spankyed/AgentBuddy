@@ -1,6 +1,7 @@
 import { write, findById, findByIdRaw, qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
+import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
+import { createRelation, removeRelation } from '@apackdev/sdk/ears';
 import { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
 import { trash } from '@apackdev/sdk/repositories';
 

@@ -6,8 +6,8 @@
  */
 
 import { EARS } from '#generated/ears.ts';
-import { getEntitiesOfType, getAllEntityTypes, getAll } from '@apackdev/ears';
-import { findRelations } from '@apackdev/ears';
+import { getEntitiesOfType, getAllEntityTypes, getAll } from '@apackdev/sdk/ears';
+import { findRelations } from '@apackdev/sdk/ears';
 
 /**
  * Build a query context from live data for AI query generation.

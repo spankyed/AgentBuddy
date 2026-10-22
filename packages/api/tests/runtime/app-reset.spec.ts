@@ -23,7 +23,7 @@ const { _settingsAdmin } = await import('@apackdev/sdk/services');
 const { boundHost } = await import('@apackdev/sdk/runtime/internals');
 const { services } = boundHost();
 const { flowRepository } = await import('@apackdev/sdk/repositories');
-const { untypedQx, untypedWrite } = await import('@apackdev/ears');
+const { untypedQx, untypedWrite } = await import('@apackdev/sdk/ears');
 const { onIncoming } = await import('@apackdev/sdk/events');
 const { HOST } = await import('@apackdev/host/bus');
 

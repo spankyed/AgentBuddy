@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assign, setup } from 'xstate';
 import { getTestSettings, mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apackdev/testing/harness';
-import { untypedCreate, untypedUpsert } from '@apackdev/ears';
+import { untypedCreate, untypedUpsert } from '@apackdev/sdk/ears';
 import type { EARS } from '@apackdev/sdk';
 
 

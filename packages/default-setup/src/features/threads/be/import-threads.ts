@@ -12,7 +12,7 @@ import { create, write } from '#generated/ears.ts';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@apackdev/ears';
+import { hasIdCollision } from '@apackdev/sdk/ears';
 import { restoreJsonMediaRefs } from '@apackdev/sdk/utils'
 import { repository } from '#generated/repository.ts';
 import type { ExportedThreadsData } from './export-types.ts'

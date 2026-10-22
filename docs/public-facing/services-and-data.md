@@ -255,7 +255,8 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 |---|---|
 | `#generated/ears` | Your pack's `EARS` constants and the typed `qx`, `create`, `upsert`, `write`, `transact`, `find*`, `createEntity*`, `updateEntity`, `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
 | `#generated/repository` | `repository`, typed with your and your dependencies' repositories |
-| `@apackdev/ears` | The engine's untyped API: `untypedQx`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, `EarsError`, relation, role, graph and blueprint helpers, `RepositoryError`, the core `EARS` types, `BaseEntity`, and `createEarsEngine`/`installEngine` for tests and tooling |
+| `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQx`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, relation, role, graph and blueprint operations, and `repository` |
+| `@apackdev/ears` | The engine itself: `createEarsEngine` for tests and tooling, `EarsError`, `RepositoryError`, `bp` blueprints, the core `EARS` types and `BaseEntity` |
 | `@apackdev/sdk/types` | What the SDK adds to the engine's types: its `EARS` (with the SDK's entities and relation kinds) and the SDK entity shapes |
 | `@apackdev/sdk/repositories` | The SDK entities' repositories |
 
@@ -339,7 +340,7 @@ write(id).set('clickCount', 3)        // ok: not declared, not checked
 write(plainId).set('title', 42)       // ok: a plain id doesn't say which entity it is
 ```
 
-`untypedCreate`, `untypedUpsert` and `untypedWrite` from `@apackdev/ears` are the same functions, unchecked.
+`untypedCreate`, `untypedUpsert` and `untypedWrite` from `@apackdev/sdk/ears` are the same functions on the app's engine, unchecked.
 
 The query builder narrows with `where(k, v)` (a value, or a function tested against each value), `has(k)` and
 `lacks(k)`, `withRole`, `ofType`, `related`/`relatedTo`, and navigates with `linksTo`.
@@ -358,7 +359,7 @@ transact(() => {
 `qx(id).links(kinds)` returns the ids an entity links to. To read the relations themselves (their ids and `info`, such as a flow edge's handles) use `findRelations`; `getRelationStats(kind)` counts them:
 
 ```typescript
-import { findRelations, getRelationStats, removeRelationById } from '@apackdev/ears';
+import { findRelations, getRelationStats, removeRelationById } from '@apackdev/sdk/ears';
 
 const [edge] = findRelations({ sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO });
 edge.info;                         // { sourceHandle: 'yes' }
@@ -366,7 +367,7 @@ removeRelationById(edge.id);
 getRelationStats(EARS.RelKind.CONTAINS);   // { total, uniqueSources, uniqueTargets }
 ```
 
-`untypedQx` from `@apackdev/ears` is the unchecked query, for fields only known at runtime.
+`untypedQx` from `@apackdev/sdk/ears` is the unchecked query, for fields only known at runtime.
 
 ### Roles
 
@@ -378,12 +379,12 @@ A role is a string tag on an entity (`EARS.RoleKind` is a `string`; `EARS.RoleKi
 | `write(id).grantExclusive(role, among)` | `#generated/ears` | Makes `id` the only holder among `among`: revokes the role from each of them, then grants it |
 | `qx(type).withRole(role)` | `#generated/ears` | Narrows a query to holders |
 | `findWithRole(type, role)` / `findFirstWithRole(type, role)` | `#generated/ears` | Typed rows holding the role, soft-deleted rows (`deleted: true`) left out |
-| `grantRole(id, role)` / `revokeRole(id, role)` | `@apackdev/ears` | Direct attribute writes; `grantRole` doesn't check for a duplicate |
-| `getRoles(id)` | `@apackdev/ears` | The entity's roles, `string[]` |
+| `grantRole(id, role)` / `revokeRole(id, role)` | `@apackdev/sdk/ears` | Direct attribute writes; `grantRole` doesn't check for a duplicate |
+| `getRoles(id)` | `@apackdev/sdk/ears` | The entity's roles, `string[]` |
 
 ### Relation and entity helpers
 
-From `@apackdev/ears` (untyped):
+From `@apackdev/sdk/ears` (untyped, on the app's engine):
 
 | Call | Does |
 |---|---|
@@ -401,7 +402,8 @@ From `@apackdev/ears` (untyped):
 `bp(entityType)` builds a description of an entity graph; `spawn(blueprint)` writes it and returns the root id:
 
 ```typescript
-import { bp, spawn } from '@apackdev/ears';
+import { bp } from '@apackdev/ears';
+import { spawn } from '@apackdev/sdk/ears';
 
 const tag = bp(EARS.Entity.Tag).attr('name', 'docs').build();
 const id = spawn(
@@ -418,7 +420,7 @@ Nested blueprints are spawned and linked (replacing an identical existing relati
 
 ### Graph helpers
 
-From `@apackdev/ears`; each walks relations of the given kind(s) and returns ids:
+From `@apackdev/sdk/ears`; each walks relations of the given kind(s) and returns ids:
 
 | Call | Returns |
 |---|---|
@@ -483,25 +485,23 @@ What trashing means beyond the marks stays with your feature: trashing an entity
 
 ### Engine instances
 
-Each app has one EARS engine, which the app creates at startup. Everything above (`qx`, `create`, `write`, `repository`, the helpers from `#generated/ears` and `@apackdev/ears`) acts on the engine that's *installed*; a pack never creates or replaces it in the app.
+Each app has one EARS engine, which the app creates at startup. Everything above (`qx`, `create`, `write`, `repository`, the helpers from `#generated/ears` and `@apackdev/sdk/ears`) acts on the engine the app *bound*; a pack never creates or replaces it in the app.
 
 Unit tests and tooling create their own with `createEarsEngine` from `@apackdev/ears`. A new engine is empty, and shares nothing with the app's or with other engines:
 
 ```typescript
-import { createEarsEngine, installEngine } from '@apackdev/ears';
+import { createEarsEngine } from '@apackdev/ears';
 
 const engine = createEarsEngine({ isEntityType: (name) => ['Bookmark', 'Tag'].includes(name) });
 engine.query.create('Bookmark').set('url', 'https://example.com');   // the engine's own query face
 engine.query.qx('Bookmark').count();                             // 1
 
-installEngine(engine.query);   // now the free functions (untypedQx, untypedCreate, repository…) act on it
 ```
 
 - `engine.query` has `qx`, `create`, `upsert`, `write`, `transact`, the finders, relation reads, graph helpers and its repository registry, untyped.
 - `engine.admin` is for the code that created the engine: bulk loading, clearing (`admin.clear()`), direct attribute and relation writes. Pack code never gets it.
 - `isEntityType` says which names are entity types: `create('Bookmark')` and `qx('Bookmark')` refuse `'Bookmark'` unless it returns true for it.
-- `installEngine(engine.query)` returns the engine it replaced, so a tool can put it back (`installEngine(undefined)` uninstalls).
-- Calling `qx`, `create`, `write` or `repository` with no engine installed throws, naming how to install one.
+- An engine you create is the one you hold: nothing acts on it but what you call on it. The functions in `@apackdev/sdk/ears` act on the app's, and with none bound (a script, a test without the harness) they throw, naming how to bind one.
 
 In a pack's unit tests you don't need any of this: `setupPackTests` from `@apackdev/testing/harness` installs an engine with your pack's and its dependencies' entity types, and gives each test a fresh one ([Testing](testing.md)).
 

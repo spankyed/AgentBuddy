@@ -5,7 +5,7 @@
 // so a backup has to carry it: restore a backup without it and every entity reads as either the user's own or
 // as one they deleted, which is how a merge would destroy exactly the data the restore was for. The primary
 // partition is what `exportDatabase` copies, and a new entity type lands there by default.
-import { untypedUpsert, untypedWrite, untypedQx } from '@apackdev/ears';
+import { untypedUpsert, untypedWrite, untypedQx } from '@apackdev/sdk/ears';
 import type { EARS } from '@apackdev/sdk';
 import type { AppliedItem, ContentOffer } from '@apackdev/sdk/utils';
 

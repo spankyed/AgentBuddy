@@ -1,6 +1,6 @@
 import { qx, create, write, findById } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import { findRelations, untypedQx } from '@apackdev/ears';
+import { findRelations, untypedQx } from '@apackdev/sdk/ears';
 import type { FlowTNodeData, EventListenerEntity } from '../types.ts';
 import type { NodeEntity } from '#generated/types.ts';
 import type { FlowNode } from '#extensions/steps/subflow/types.ts';

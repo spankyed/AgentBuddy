@@ -9,12 +9,8 @@
 import { boundHost } from '../runtime/host-runtime.ts';
 import type { EarsNames } from '../runtime/packs-view.ts';
 import { EARS as EARS_NAMES } from '../types/index.ts';
-import {
-  defineEars, untypedQx, untypedCreate, untypedUpsert, untypedWrite, destroyEntity, getAll, getRoles, grantRole, revokeRole, prepareEntity,
-  createRelation, removeRelation, removeRelationById, getAllEntities, getEntitiesOfType, getAllEntityTypes,
-  getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations,
-  queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo, type EARS,
-} from '@apackdev/ears';
+import { defineEars, prepareEntity, type EARS } from '@apackdev/ears';
+import { boundEars, untypedQx, untypedCreate, untypedUpsert, untypedWrite, destroyEntity, getAll, getRoles, grantRole, revokeRole, createRelation, removeRelation, removeRelationById, getAllEntities, getEntitiesOfType, getAllEntityTypes, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations, queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo } from '../ears/index.ts';
 import { errorMessage } from '../utils/shared.ts';
 
 /** Entities per type, and each attribute kind's and relation kind's use, over the whole database */
@@ -40,7 +36,7 @@ export function getSchemaStats(): SchemaStats {
   return stats;
 }
 
-const { getAttr, getAttrs, createEntityWithDefaults, updateEntity } = /*#__PURE__*/ defineEars();
+const { getAttr, getAttrs, createEntityWithDefaults, updateEntity } = /*#__PURE__*/ defineEars(boundEars);
 
 const readHelpers = {
   qx: untypedQx,

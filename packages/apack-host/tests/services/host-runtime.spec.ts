@@ -6,7 +6,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { createEarsEngine, installEngine, type EARS } from '@apackdev/ears';
+import { createEarsEngine, type EARS } from '@apackdev/ears';
+import { _bindEars } from '@apackdev/sdk/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
 import { testRootEvents } from '@apackdev/sdk/testing';
 import { createHostRuntime } from '../../src/services/index.ts';
@@ -91,7 +92,7 @@ describe('createHostRuntime', () => {
     });
     const first = runtime(firstEngine);
     const second = runtime(secondEngine);
-    const previous = installEngine(secondEngine.query);
+    const previous = _bindEars(secondEngine.query);
     try {
       first.services.settings.set({ kind: 'app' }, ['personal', 'name'], 'First');
       second.services.settings.set({ kind: 'app' }, ['personal', 'name'], 'Second');
@@ -100,7 +101,7 @@ describe('createHostRuntime', () => {
       first.services.onboarding.complete();
       expect(first.services.onboarding.isComplete()).toBe(true);
       expect(second.services.onboarding.isComplete()).toBe(false);
-    } finally { installEngine(previous); }
+    } finally { _bindEars(previous); }
   });
 
   it('holds the bus, version, engine, registered packs and host services', () => {

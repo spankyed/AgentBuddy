@@ -1,6 +1,7 @@
 // Scoped resets remove one owner's overrides; resetting everything is a separate host operation.
 import { describe, expect, it } from 'vitest';
-import { untypedQx, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedQx } from '@apackdev/sdk/ears';
 import { getTestSettings, startApp } from '@apackdev/testing/harness';
 import { featureSettings, packSettings } from '#generated/settings.ts';
 import { services } from '#generated/services.ts';

@@ -1,5 +1,5 @@
 // Step executions' records (TNode rows): the SDK declares TNode, and its error reports write here
-import { untypedWrite, untypedQx as qx } from '@apackdev/ears';
+import { untypedWrite, untypedQx as qx } from '../ears/index.ts';
 import type { EARS } from '../types/entities.ts';
 import { truncateResult } from '../steps/result-truncator.ts';
 

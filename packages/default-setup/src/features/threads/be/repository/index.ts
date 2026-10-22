@@ -6,7 +6,7 @@ import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { trash } from '@apackdev/sdk/repositories';
 import { updateEntity } from '#generated/ears.ts';
-import { wouldCreateCycle } from '@apackdev/ears';
+import { wouldCreateCycle } from '@apackdev/sdk/ears';
 import { b64Encode, b64Decode } from '@apackdev/ears';
 import type {
   ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,

@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '#generated/repository.ts';
 import { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@apackdev/ears';
+import { hasIdCollision } from '@apackdev/sdk/ears';
 
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@apackdev/sdk/utils'
 import { toDisplayName } from '@apackdev/sdk/utils'

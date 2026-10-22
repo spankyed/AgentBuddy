@@ -1,6 +1,7 @@
 // Preferences reset independently of onboarding and pack lifecycle state.
 import { describe, expect, it } from 'vitest';
-import { untypedWrite, untypedQx, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedWrite, untypedQx } from '@apackdev/sdk/ears';
 import { getTestSettings, startApp } from '@apackdev/testing/harness';
 import { featureSettings } from '#generated/settings.ts';
 import { services } from '#generated/services.ts';
