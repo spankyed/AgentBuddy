@@ -2809,6 +2809,11 @@ paths. Readings stream `subsystem == "com.apple.syspolicy.exec"` with `/usr/bin/
   store for pack dependencies' native addons was built (`750ed76c1`, `ffd9e5ceb`) on the opposite assumption;
   a repeat of the integration half with it in place (485s) showed the same 15 `fsevents.node` and 8 `node`
   paths among 38 rows, and it was reverted (`b7c9f8e44`).
+- **What a capture costs** (five back-to-back `captureCompilerInstallation()` calls of the real CLI compiler in
+  one process, same Mac, 2026-10-21): before the store, every capture copied and verified the graph again,
+  4.4–6.3s each. With it, the first capture into an empty store took about 5.5s and each later one 2.5s,
+  verifying the existing entry instead of copying it. So the store cuts the cost of a capture as well as
+  removing the new executable paths.
 
 Consequence: the integration half runs directly on a Mac; the native half, which executes fresh fixtures
 and runtime copies by design, still runs in the Linux container. The incident's cause remains unproven;
