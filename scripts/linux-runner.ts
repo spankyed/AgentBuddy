@@ -21,6 +21,11 @@ const IMAGE = `apack-linux-test:${short(fs.readFileSync(DOCKERFILE))}`;
 /** One working copy per checkout, so two worktrees never share a container `node_modules` */
 const WORK_VOLUME = `apack-linux-work-${short(REPO_ROOT)}`;
 const NPM_CACHE_VOLUME = 'apack-linux-npm-cache';
+/**
+ * The run lock, at the volume's root. Named once because two places must agree on it: the `flock` below and
+ * the rsync filter that keeps `--delete` from removing it while this run holds it.
+ */
+const RUN_LOCK = '.apack-run.lock';
 
 /**
  * What the copy carries and leaves out, as rsync filters in order. Every `node_modules` stays out (the container
@@ -98,7 +103,7 @@ const quote = (arg: string): string => `'${arg.replace(/'/g, `'\\''`)}'`;
  * The containers share the Linux VM's kernel, so `flock` on a file in the volume holds across them.
  */
 const sync = [
-  `rsync -a --delete --exclude=/.apack-run.lock ${FILTERS.map(quote).join(' ')} /src/ /work/`,
+  `rsync -a --delete --exclude=/${RUN_LOCK} ${FILTERS.map(quote).join(' ')} /src/ /work/`,
   'lock=$(sha256sum package-lock.json | cut -d" " -f1)',
   'if [ "$(cat node_modules/.apack-installed-lock 2>/dev/null)" != "$lock" ]; then',
   '  npm ci --no-audit --no-fund',
@@ -125,7 +130,7 @@ const sync = [
  * sync phase makes — so a second refuses rather than waiting, naming what holds it.
  */
 const run = [
-  'exec 9>/work/.apack-run.lock',
+  `exec 9>/work/${RUN_LOCK}`,
   'if ! flock -n 9; then',
   '  echo "another test:linux run holds this checkout\'s container volume (apack-linux-work)." >&2',
   `  echo "Wait for it to finish, or stop it: docker ps --filter ancestor=${IMAGE}" >&2`,
