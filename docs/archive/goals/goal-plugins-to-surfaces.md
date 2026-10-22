@@ -391,13 +391,11 @@ the rename touched and fix what now reads wrong, including each guide's prose.
 
 Also the agent memory at
 `~/.claude/projects/-Users-spankyed-Develop-Projects-AgentBuddy/memory/`, which no guard can see
-because it is outside the repo. Four files name something this goal retires:
+because it is outside the repo. Three files name something this goal retires:
 `feedback_no_mirror_or_text_tests.md` and `feedback_no_silent_design_calls.md` use `sendToPlugin` and
-`usePlugin` as their worked examples, `feedback_prefer_flows_over_systems.md` says "its own frontend
-plugin", and `hermes-integration.md` names `packages/renderer/src/plugins/hermes/` and
-`packages/api/src/systems/hermes/` — **already stale, both paths gone, independent of this goal.**
-Update `MEMORY.md`'s pointers with them. `launch-film-edit-system.md` is a separate project's
-vocabulary; leave it.
+`usePlugin` as their worked examples, and `feedback_prefer_flows_over_systems.md` says "its own
+frontend plugin". Update `MEMORY.md`'s pointers with them. `launch-film-edit-system.md` is a separate
+project's vocabulary; leave it.
 
 **Dependencies.** Phase 5.
 
