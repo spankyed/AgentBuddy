@@ -94,3 +94,23 @@ it('declares only the source for the kind being added', async () => {
 
   expect(Object.keys(manifestOf(root).content.sources)).toEqual(['library']);
 });
+
+// These are mostly run by an agent, which has the content in hand: scaffolding boilerplate for it to edit
+// afterwards would be two steps where one does
+it('writes the body it is given, in the section it is given', async () => {
+  const root = pack({ dependencies: { 'default-setup': '*' } });
+
+  await addDocument(['runbook', '--content', 'Restart the API, then reload the pack.', '--section', 'code'], root);
+
+  expect(read(root, 'src/content/library/runbook.md')).toBe(
+    '---\nname: Runbook\ntags: [default]\n---\n<!-- section:code -->\nRestart the API, then reload the pack.\n');
+});
+
+// Without content it explains the convention instead, which is what a person opening the file needs
+it('explains the section convention when given no body', async () => {
+  const root = pack({ dependencies: { 'default-setup': '*' } });
+
+  await addDocument(['notes'], root);
+
+  expect(read(root, 'src/content/library/notes.md')).toContain('A `<!-- section:<type> -->` marker starts a section');
+});
