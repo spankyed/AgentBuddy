@@ -2,10 +2,10 @@ import type { EditorState } from '@tiptap/pm/state';
 import { referenceSuggestionKey } from './reference-suggestion.ts';
 
 /**
- * Whether one of **this pack's** suggestions is open.
+ * Whether one of **this pack's** suggestions is open, which is what holds Escape for it.
  *
- * It used to ask the command key too, across two unrelated suggestion systems. The command suggestion
- * is the editor's own now, so it answers for its own key and this answers for the one pack still owns.
+ * Only the keys this pack owns: the editor's built-in suggestions answer for theirs, and a group's
+ * predicate is asked about its own group alone.
  */
 export function isSuggestionActive(state: EditorState): boolean {
   return referenceSuggestionKey.getState(state)?.active === true;
