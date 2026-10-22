@@ -1,8 +1,7 @@
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
-import { Extension } from '@tiptap/core'
-import { readSurfaceState } from '#generated/fe.ts'
+import { Extension, type Editor } from '@tiptap/core'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import type { Editor } from '@tiptap/core'
+import { readSurfaceState } from '#generated/fe.ts'
 import type { CommandItem } from './command-config.ts'
 
 export interface CommandSuggestionState {

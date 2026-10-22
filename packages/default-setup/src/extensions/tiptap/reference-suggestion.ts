@@ -1,6 +1,5 @@
-import { Extension } from '@tiptap/core'
+import { Extension, type Editor } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
-import type { Editor } from '@tiptap/core'
 import { getReferenceCategoryDeclarations } from '@apackdev/sdk/fe/references'
 
 export interface ReferenceSuggestionState {
@@ -104,6 +103,7 @@ function plugin(editor: Editor): Plugin<ReferenceSuggestionState> {
   })
 }
 
+/** Suggestions use the host's reference node without owning the stored document schema. */
 export const ReferenceSuggestion = Extension.create({
   name: 'referenceSuggestion',
 
