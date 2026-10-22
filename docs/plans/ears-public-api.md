@@ -1,6 +1,6 @@
 # EARS's API says what it does
 
-**Status:** in progress: Phase 0 (the stored-data check) and Phase 1 (`transact`) are done. Source read
+**Status:** done through phase 3; phase 4 (change 4) is carried out as [`ears-naming-axes.md`](ears-naming-axes.md)'s phase 1. Source read
 at `ff45e4ff7` (2026-10-22). Call-site figures come from a TypeScript AST pass over every `.ts`/`.vue` file
 outside `dist/`, `__generated__/` and `node_modules`, on that tree; the typecheck is the exact count once a
 signature moves.
@@ -208,72 +208,39 @@ Nothing in `qx` stands in the way: `setIds` re-enters with `start === undefined`
 `qx` is a one-argument wrapper over it (`query.ts:276`). So `qx.all()` is a change to the public entry
 alone, and the chaining is untouched.
 
-### 3. The type is stored, not parsed from the id
+### 3. One record of each fact
 
-**Today.** An entity's type is the substring of its id before the first `-`, computed in two places:
-`entityTypeOf` (`attribute-storage.ts`), which keys the entity index, and `entTypeOf` in
-`lmdb/adapter.ts`. A type name containing `-` corrupts both and nothing refuses one; an id that doesn't
-start with `<Type>-` can't exist, and the adapter drops a relation whose endpoint id has no dash
-(`onAddRelation`, `onUpdateRelation`). The LMDB `entities` row already records `type`, but hydration
-(`lmdb/hydrate.ts`) never reads that table: it rebuilds the index from attribute keys, so in memory an entity
-exists exactly when it has an attribute.
+**Implemented** (the phase this plan called "stored type"), and the code changed the plan on the way. This
+section first proposed moving an entity's type off its id into a stored map. By the time it was built, the
+id had become the frontend's record of the type: `entityTypeOf` is exported through `@apackdev/sdk/fe` and
+routes `openEntity(id)` (`apack-sdk/src/fe/navigation.ts`), and reference nodes keep ids inside stored
+documents. An id therefore has to go on naming its type as long as any document holds one, and a stored type
+beside it would be a second record of the same fact, which is the problem this phase exists to remove. So
+**the id is the type's one record**, and the rest of the phase removes each other record:
 
-Around that sit the four doubled facts from [What the stored data says](#what-the-stored-data-says): the
-`entityType` attribute beside the index, two `createdAt`s, relation details in an attribute and a table,
-and entity rows written for endpoints rather than for creations.
+- **One parser.** `entityTypeOf` (`attribute-storage.ts`) is the only code that reads an id's type; the
+  router's and the policy's private copies are gone (`PartitionPolicy.routeEntity` takes a type). `create`
+  refuses an id naming another type, which is what keeps the contract true.
+- **`entityType` is read from the id**, on every row and through `getAttr`/`getAttrs`/`where`, and stored
+  nowhere. That fixes the 39,899 stored rows that lacked it without touching them.
+- **`createdAt` stays one attribute**, written by the engine (`create`, or `create(type, { createdAt })` for
+  an import). Entity rows no longer carry the flush-time copy that disagreed with it on 22,679 entities.
+- **A relation is its row in the relations table.** Its details are no longer persisted as an attribute,
+  which is where the 29,814 misrouted copies came from, and it has no entity row. A removed relation leaves no
+  entity behind in memory either.
+- **An entity row is `{ type }`, written by `onCreateEntity` and nothing else**: no rows for a relation's
+  ends, none for an attribute write.
 
-**Change.**
+**Stored data.** `LMDB_FORMAT_VERSION` is 2. A database that records no format and holds data is format 1
+and is refused at open, naming the conversion; a new, empty one is stamped 2. `convertToFormat2`
+(`@apackdev/ears/lmdb`) converts one environment in place, and `scripts/ears-format-2.ts` runs it over a
+data dir's partitions. Nothing at boot calls it, per the root CLAUDE.md's rule for stored developer data.
 
-- Storage holds `typeOf: Map<EntityId, Entity>`, set by `create`/`upsert` and by hydration, and the index is
-  keyed from it. `entityTypeOf` and `entTypeOf` are deleted, and with them the adapter's dash checks on
-  relation endpoints; nothing parses an id.
-- **`getAllEntityTypes()` changes meaning, for the better**: it is `entityIndex.keys()`
-  (`attribute-storage.ts:310`), so today it answers "every prefix seen on an attribute key" and afterwards
-  "every type something was created as". That retires one of the three objections in
-  [`undeclared-entity-names.md`](undeclared-entity-names.md#context) to deriving a schema from the data —
-  that observation launders a junk row whose id is literally `Note` into the entity type `Note`
-  (`entityTypeOf` returns the whole id when it holds no dash, `attribute-storage.ts:21-24`). Its Part 2 merges this
-  list into the console's namespace, so that part's cases assert on created types rather than on id
-  prefixes, whichever plan lands first.
-- Hydration reads the `entities` table first, so an entity exists because it was created, not because it
-  has a value. The adapter writes a row on create only, never for a relation's endpoints.
-- **`entityType` is metadata, read from `typeOf`**: present on every row a query returns, never stored as
-  an attribute. This fixes the 39,899 rows that lack it today without touching them. `BaseEntity` still
-  declares it, so the typed contract doesn't move. `getEntityMeta` in `apack-sdk/src/testing/host.ts:130`
-  reads `typeOf` instead of the attribute.
-- **`createdAt` stays a stored attribute, written by the engine and nobody else.** The attribute is the
-  authoritative copy (see the data), so it is the row's `createdAt` that goes: the adapter stops writing it.
-  `create` stamps the attribute with now, or with `createdAt` when the caller passes one, which is how an
-  importer preserves an original time (`import-threads.ts:125`, the flow compiler's rows). `orderBy` and
-  `pick` read it unchanged.
-- **`updatedAt` is unaffected**: an ordinary attribute that the helpers stamp (`prepareEntity`,
-  `createEntityWithDefaults`, `updateEntity` in `transaction-helpers.ts`) and that callers legitimately
-  rewrite.
-- **The `relations` table is the one record of a relation.** The sink stops persisting the
-  `relationDetails` attribute; hydration already rebuilds it from the table (`hydrate.ts`), so memory is
-  unchanged and the 29,814 misrouted copies stop being written.
-- Generated ids keep the readable `<Type>-<suffix>` shape, because it helps a human reading a dump; no code
-  reads it. A caller-chosen id (`create(type, { id })`) can be any non-empty string. All ten production
-  sites that choose an id today choose one whose prefix matches its type.
-- `EARS.EntityId` is a `${string}-${string}` template today (`entities.ts`). Loosening it is a change to
-  the change-controlled typed contract: follow `packages/apack-sdk/TYPED-EARS.md`'s checklist, completions
-  included, before touching it. If the checklist argues for keeping the template, caller-chosen ids keep a
-  dash and nothing else here changes.
-
-**Stored data.** Hydration reading `entities` would turn the endpoint-only and orphaned rows into entities,
-and leaving the stored `entityType` attributes and misrouted `relationDetails` attributes in place would keep
-two records of each. The root CLAUDE.md rules out a runtime fallback that tolerates either, so the store
-moves to `LMDB_FORMAT_VERSION` 2 (`lmdb/envs.ts`), which makes an unconverted file refused rather than
-misread, and the existing data is converted once, explicitly, on a copy:
-
-- delete every `entityType` attribute (2,533 rows in prod primary, 1 in trace);
-- delete every `relationDetails` attribute (75,612 in prod primary; the table holds every relation);
-- delete every `entities` row that no attribute names and that is not a relation row (the 71 endpoint rows
-  in trace, the 506 orphaned `Relation` rows in primary);
-- stamp format 2.
-
-The conversion is a script under `scripts/`, never part of the app's boot, and is verified by re-running the
-Phase 0 probe on the converted copy: every count above that should be zero is zero.
+Run 2026-10-22 on a fresh copy of the prod data dir: primary lost 2,533 `entityType` attributes, 75,612
+relation-detail attributes and 76,118 relation rows, and rewrote 22,817 entity rows; trace lost 1
+`entityType` attribute and 71 endpoint rows and rewrote 19,616. Hydrated afterwards, the primary partition
+holds 45,798 relations, the relations table's count (it held 75,612 before, the phantoms included), none
+with a missing end, and rows read with `entityType` and `createdAt`.
 
 ### 4. The package holds no ambient engine
 
@@ -450,14 +417,13 @@ Each phase leaves the chain green and is one commit.
 |---|---|---|---|
 | 0. Check the data | The stored-data probe | — | **Done 2026-10-22**: [What the stored data says](#what-the-stored-data-says) |
 | 1. `transact` | 1, with the adapter's unit flush and buffered destroy | — | **Done** (`110ee8f1a`): a throwing unit leaves memory and the LMDB files as they were (one case per write, each mutation-checked); a returning unit reaches one LMDB transaction per environment; writes outside a unit cost what they did |
-| 2. The reshape | 2, 5, 6 and 7 in one migration of every call site | 1 | No `tx`, `put`, `update`, `batchPut`, `updateBatch`, `linkOne`, `safeLink`, `unlinkIf`, `unlinkWhere`, `relPatch`, `patchLink`, `ensure`, `define`, `page` in the tree; the reserved-name and unknown-name refusals each have a firing case; DSL re-import replaces a flow whole |
-| 3. Stored type | 3: `typeOf`, hydration from `entities`, `entityType` as metadata, one record per relation, no endpoint rows, format 2 and its conversion script | 0, 2 | Nothing parses an id; the probe reads zero for every doubled fact on a converted copy of the prod data, and the app boots on it; contract suite and bench pass |
-| 4. No ambient engine | 4 | 2 | `@apackdev/ears` has no module-level state, and `tests/no-module-state.spec.ts` drops its one exception |
+| 2. The reshape | 2, 5, 6 and 7 in one migration of every call site | 1 | **Done** (`467f2be2d`): no `tx`, `put`, `update`, `batchPut`, `updateBatch`, `linkOne`, `safeLink`, `unlinkIf`, `unlinkWhere`, `relPatch`, `patchLink`, `ensure`, `define`, `page` in the tree; the reserved-name and unknown-name refusals each have a firing case; DSL re-import replaces a flow whole |
+| 3. One record of each fact | 3: one id parser, `entityType` read from the id, one record per relation, no endpoint rows, format 2 and its conversion | 0, 2 | **Done**: every doubled fact reads zero on a converted copy of the prod data, which hydrates with no phantom relations |
+| 4. No ambient engine | 4 | 2 | Carried out as [`ears-naming-axes.md`](ears-naming-axes.md)'s phase 1, which supersedes change 4's `engine.query` |
 
-**The reshape comes before the stored type**, because storing an entity's type needs every creation to name
-one: today `tx(id, true)` names none, and the engine reads it off the id. After the split, `create` and
-`upsert` always carry a type, so the stored type has one writer and the id prefix none. `transact` comes
-first because the reshape's DSL re-import uses it.
+**The reshape comes before phase 3**, because phase 3's sink takes the type at create, and only after the
+split does every creation (`create`, `upsert`) name one. `transact` comes first because the reshape's DSL
+re-import uses it.
 
 The TNode updaters' existence guard (see 2) landed first, on its own (`6ad0a966a`).
 

@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { installEngine, installedEngine, untypedCreate, untypedWrite, type EARS } from '@apackdev/ears';
 import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@apackdev/host/database';
 import { exportDatabase } from '@apackdev/host/backup';
-import { closeEnv, openEnvAt } from '@apackdev/ears/lmdb';
+import { closeEnv, openEnvAt, LMDB_FORMAT_VERSION } from '@apackdev/ears/lmdb';
 import { createSecretsStore, memoryKeyVault } from '@apackdev/host/secrets';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { _appDirOf, appDataDirFor, resolveAppEnvironment } from '@apackdev/sdk/env';
@@ -962,7 +962,7 @@ describe('apack db import', () => {
     // The databases themselves are what a newer apack would have written
     writeStorageFormat(path.join(backup, 'lmdb'), 99);
     const refused = await run(['import', backup, '--force', '--data-dir', dir]);
-    expect(refused.error?.message).toMatch(/is in storage format 99, but this version reads format 1/);
+    expect(refused.error?.message).toMatch(new RegExp(`is in storage format 99, but this version reads format ${LMDB_FORMAT_VERSION}`));
     expect(refused.error?.message).toContain('(backup made by apack 0.3.14)');
     expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
   });
@@ -977,7 +977,7 @@ describe('apack db import', () => {
 
     const refused = await run(['import', backup, '--force', '--data-dir', dir]);
 
-    expect(refused.error?.message).toMatch(/is in storage format 99, but this version reads format 1/);
+    expect(refused.error?.message).toMatch(new RegExp(`is in storage format 99, but this version reads format ${LMDB_FORMAT_VERSION}`));
     // Nothing was put in place: the import says so for each database it replaces, and the rollback would have had to
     // put the user's data back
     expect(refused.err).not.toContain('Imported ');
