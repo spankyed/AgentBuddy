@@ -117,7 +117,7 @@ describe('host package boundaries', () => {
 
   // The shell and the frontend registry run in the renderer and in a pack's tests alike, so what differs between
   // those (the framework, the API client, the window) arrives as options rather than imports. Frontend code is
-  // `src/fe` (the plumbing) and each host feature's `fe` (the shell, the Packs plugin), so the rule follows both.
+  // `src/fe` (the plumbing) and each host feature's `fe` (the shell, the Packs surface), so the rule follows both.
   // The app is the pack `host`, so its own features are laid out as a pack's. Before that, one feature's system
   // lived in `bus/` and the other's in `packs/runtime/`, with both frontends in `fe/`, which is how `bus/` came to
   // export a feature's system and `packs/` to run both other packs and one of the host's own.

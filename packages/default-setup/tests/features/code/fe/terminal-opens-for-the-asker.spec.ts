@@ -1,6 +1,6 @@
 // A terminal opens in the window that asked for it, and appears in every window's list.
 //
-// Those are two jobs and they used to be one event. `terminal.CREATED` is a broadcast — `broadcastToPlugin`
+// Those are two jobs and they used to be one event. `terminal.CREATED` is a broadcast — `broadcastToSurface`
 // reaches every window — and its handler both grew the list *and* routed the terminal into this window's
 // panel and ran the pending command. So opening a terminal in one window opened it in all of them, and ran
 // there a command nobody had typed there.
@@ -136,7 +136,7 @@ it('opens two terminals asked for together the way each was asked for', () => {
  * An answer settles its ask, whether it opened a terminal or failed to.
  *
  * Both are replied, so both name the call. Without the removal on the error path a create that failed would
- * leave its target and command in the map for the life of the plugin — and the map is the one piece of state
+ * leave its target and command in the map for the life of the surface — and the map is the one piece of state
  * here that grows per ask.
  */
 it('holds an intent only while its ask is outstanding', () => {

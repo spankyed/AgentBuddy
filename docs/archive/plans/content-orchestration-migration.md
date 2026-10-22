@@ -7,13 +7,13 @@
 > system (`packages/apack-host/src/features/packs/be/system.ts`) rather than `packs/runtime/packs-system.ts`.
 > `Settings` is a host-declared entity beside `AppState`, which no pack may declare, so the store, its one
 > writer and the system answering the view are the app's; what a pack owns is the *content* of every section
-> but `plugins`, which is opaque to the host.
+> but `surfaces`, which is opaque to the host.
 
 ## Disposition
 
 - **Moved**: `PREVIEW_PACK_CONTENT`, `IMPORT_PACK_CONTENT`, and `toContentSelection`, to the packs system. Their answers
-  still go to the settings plugin, which draws them, so the FE's incoming types did not change — all host
-  features share one `broadcastToPlugin`, and `host/settings` maps to `SettingsPluginEvents` whichever system
+  still go to the settings surface, which draws them, so the FE's incoming types did not change — all host
+  features share one `broadcastToSurface`, and `host/settings` maps to `SettingsSurfaceEvents` whichever system
   sends. Only the sends moved.
 - **Not moved**: `RESET_APP`. The Open Question below asked whether it belongs on packs; the code answers it.
   Reset is interlocked with backup import through `refuseResetWhileReplacing`, and both its exits run
@@ -21,7 +21,7 @@
   exclusion and a re-baseline across a system boundary, for no gain. The two content events had no such
   interlock — `whileBusy` never covered them — which is why they moved cleanly.
 - **Not removed**: the outgoing types in `OutgoingSettingsEvents`. Step 8 says to remove them, which contradicts
-  step 6's choice to answer the settings plugin: a plugin declares what it receives, and it still receives these.
+  step 6's choice to answer the settings surface: a surface declares what it receives, and it still receives these.
   They carry a comment naming the packs system as their sender instead.
 - **Unforeseen cost**: `@apackdev/testing`'s harness deliberately ran exactly one of the host's systems, settings.
   Content import moving means it runs two, since a pack's tests content their own compiled output constantly. That
@@ -62,7 +62,7 @@ The packs system (`features/packs/be/system.ts`) handles the operations. It alre
 
 ### Settings becomes a pass-through
 
-The settings FE plugin sends `PREVIEW_PACK_CONTENT` / `IMPORT_PACK_CONTENT` / `RESET_APP` to the **packs** system instead of settings. The settings backend system drops the event handlers, the outgoing event types, and the apply-related imports entirely.
+The settings FE surface sends `PREVIEW_PACK_CONTENT` / `IMPORT_PACK_CONTENT` / `RESET_APP` to the **packs** system instead of settings. The settings backend system drops the event handlers, the outgoing event types, and the apply-related imports entirely.
 
 ### SDK / shared utilities
 
@@ -85,11 +85,11 @@ The settings FE plugin sends `PREVIEW_PACK_CONTENT` / `IMPORT_PACK_CONTENT` / `R
 
 5. **Update settings FE state machine.** Change the settings system sends of `PREVIEW_PACK_CONTENT` (now `sendToSystem('settings', { type: 'PREVIEW_PACK_CONTENT', ... })`) to target the `packs` system. Same for `IMPORT_PACK_CONTENT` and `RESET_APP`.
 
-6. **Update settings FE incoming events.** The response events (`PACK_CONTENT_PREVIEW`, `PACK_CONTENT_IMPORTED`, etc.) now come from the packs plugin, not settings. Either:
-   - The packs system emits to the settings plugin (knows the plugin ID), or
+6. **Update settings FE incoming events.** The response events (`PACK_CONTENT_PREVIEW`, `PACK_CONTENT_IMPORTED`, etc.) now come from the packs surface, not settings. Either:
+   - The packs system emits to the settings surface (knows the surface ID), or
    - The FE subscribes to packs events directly.
 
-   Option (a) is simpler — the packs system emits back to the `settings` plugin channel. The FE state machine's incoming event types stay the same.
+   Option (a) is simpler — the packs system emits back to the `settings` surface channel. The FE state machine's incoming event types stay the same.
 
 ### Phase 3 — Clean up settings
 
@@ -113,4 +113,4 @@ The settings FE plugin sends `PREVIEW_PACK_CONTENT` / `IMPORT_PACK_CONTENT` / `R
 ## Open Questions
 
 - **Should `RESET_APP` live on packs or be a separate host system?** Reset wipes everything, not just pack data. Could argue for a dedicated "host" or "lifecycle" system. Packs is the pragmatic choice since it already exists.
-- **Should the packs system emit directly to the settings FE plugin?** This creates a coupling (packs knows about settings). Alternative: packs emits to a general channel and the FE subscribes. The current pattern (systems emit to plugins via `emit(pluginId, ...)`) is established though.
+- **Should the packs system emit directly to the settings FE surface?** This creates a coupling (packs knows about settings). Alternative: packs emits to a general channel and the FE subscribes. The current pattern (systems emit to surfaces via `emit(surfaceId, ...)`) is established though.

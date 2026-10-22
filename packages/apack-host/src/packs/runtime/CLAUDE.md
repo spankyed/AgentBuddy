@@ -98,7 +98,7 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
                                      (@apackdev/ears/lmdb) with appPartitionPolicy(), createEarsEngine({ persistence: store.sink }),
                                      bindHost(createHostRuntime({ ..., packs })), which installs the engine's query face
                                      and binds the registry for the SDK's lookups; every step below works on it
-1. registerPack(hostRegistration) — the app's own features as the pack `host`: the application and packs systems and plugins
+1. registerPack(hostRegistration) — the app's own features as the pack `host`: the application and packs systems and surfaces
 2. prepareHostDataDirs()           — record host version; recover staging in packs/
 3. forwardSecretsChanges()         — settings system hears of API key changes (@apackdev/host/secrets)
 4. installShippedPacks()           — install absent shipped ids unless deliberately removed; refresh only
@@ -125,7 +125,7 @@ A pack's `__generated__/pack-entry.ts` (built-in, and bundled into an external p
 ```typescript
 export const registration: PackRegistration = {
   id: string;
-  features?: Record<string, PackFeature>;  // by feature id: designation?, system?: { machine, receives } (packSystem), plugin?: { receives }, services?, settings?
+  features?: Record<string, PackFeature>;  // by feature id: designation?, system?: { machine, receives } (packSystem), surface?: { receives }, services?, settings?
   services?: Record<string, unknown>;
   ears?: PackEARS;           // entities + relKinds
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
@@ -140,7 +140,7 @@ export const registration: PackRegistration = {
 };
 ```
 
-Designations come from the manifest's `features[].designation`, which generate-entries puts on the feature, and `registerPack()` maps each role to the feature's ref, `<packId>/<featureId>`, whether it has a system or none. A designation is a role, not a name, and need not equal the feature id: both registries map the role to the id of the system or plugin that plays it. `apack pack validate` rejects one role claimed by two features of a pack; across packs `registerPack` throws.
+Designations come from the manifest's `features[].designation`, which generate-entries puts on the feature, and `registerPack()` maps each role to the feature's ref, `<packId>/<featureId>`, whether it has a system or none. A designation is a role, not a name, and need not equal the feature id: both registries map the role to the id of the system or surface that plays it. `apack pack validate` rejects one role claimed by two features of a pack; across packs `registerPack` throws.
 
 ## Collision detection
 

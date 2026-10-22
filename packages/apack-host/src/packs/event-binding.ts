@@ -1,5 +1,5 @@
 import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
-import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import { SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 
 /** Match endpoint membership without constructing actors or executing handlers. */
@@ -9,7 +9,7 @@ export function eventBindingProblem(contracts: Readonly<PackEventContracts> | un
   for (const id of new Set([...Object.keys(contracts ?? {}), ...Object.keys(actual)])) {
     const feature = actual[id];
     if (feature !== undefined && !isPlainObject(feature)) return `features.${id}`;
-    for (const kind of ['system', 'plugin'] as const) {
+    for (const kind of ['system', 'surface'] as const) {
       const declared = contracts?.[id]?.[kind];
       const binding = feature?.[kind];
       const path = `features.${id}.${kind}`;
@@ -18,7 +18,7 @@ export function eventBindingProblem(contracts: Readonly<PackEventContracts> | un
       if (!declared) continue;
       if (!isPlainObject(binding) || !Array.isArray(binding.receives)
         || binding.receives.some(name => typeof name !== 'string' || !name)) return `${path}.receives`;
-      const protocol = kind === 'system' ? SYSTEM_EVENT_TYPES : PLUGIN_EVENT_TYPES;
+      const protocol = kind === 'system' ? SYSTEM_EVENT_TYPES : SURFACE_EVENT_TYPES;
       const expected = new Set([...('incoming' in declared ? declared.incoming : declared.receives), ...protocol]);
       const received = new Set([...binding.receives, ...protocol]);
       if (expected.size !== received.size || [...expected].some(name => !received.has(name))) return `${path}.receives`;

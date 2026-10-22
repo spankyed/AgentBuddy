@@ -18,7 +18,7 @@ import { _compileSettingsDefinition, _SettingsDefaultsError, _settingsJsonProble
 import type { SettingsDefinition } from './settings-definition.ts';
 import type { PackMigrations } from './pack-registration.ts';
 import type { ReferenceDeclarations } from './reference-declaration.ts';
-import { _entityDestinationsProblem, type PluginDeclaration } from './plugin-declaration.ts';
+import { _entityDestinationsProblem, type SurfaceDeclaration } from './surface-declaration.ts';
 import type { FrontendDeclaration, TiptapPluginDeclaration } from './frontend-declaration.ts';
 import type { StepFrontendDeclaration, StepLayoutDeclaration } from './step-frontend-declaration.ts';
 
@@ -76,7 +76,7 @@ const DataSchema = z.object({ entities: EntitiesSchema.optional(), relations: Re
   .describe('Pack-level data declarations without a feature owner.');
 
 const FeatureDescriptionSchema = z.string().regex(/\S/, 'Feature description must not be blank')
-  .describe('What this feature does, independently of its plugin display label.');
+  .describe('What this feature does, independently of its surface display label.');
 
 /** Zod record decoding drops an own __proto__ key; opaque JSON data must preserve every key. */
 const JsonObjectSchema = z.custom<Record<string, unknown>>(value => value !== null && typeof value === 'object' && !Array.isArray(value), 'Expected a JSON object')
@@ -108,22 +108,22 @@ const SettingsDefinitionSchema = z.preprocess((raw, ctx) => {
   return raw;
 }, SettingsDefinitionValueSchema);
 
-function checkDefaultPluginClaims(features: Record<string, { plugin?: { default?: boolean } }> | undefined, ctx: z.RefinementCtx): void {
-  // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing
-  const claimedDefault = Object.entries(features ?? {}).filter(([, feature]) => feature.plugin?.default);
+function checkDefaultSurfaceClaims(features: Record<string, { surface?: { default?: boolean } }> | undefined, ctx: z.RefinementCtx): void {
+  // Which surface opens first is one surface's annotation, so a pack naming two has said nothing
+  const claimedDefault = Object.entries(features ?? {}).filter(([, feature]) => feature.surface?.default);
   if (claimedDefault.length > 1) {
     ctx.addIssue({
       code: 'custom',
-      path: ['features', claimedDefault[1]![0], 'plugin', 'default'],
-      message: `Two features claim the default plugin: "${claimedDefault[0]![0]}" and "${claimedDefault[1]![0]}". Only one may.`,
+      path: ['features', claimedDefault[1]![0], 'surface', 'default'],
+      message: `Two features claim the default surface: "${claimedDefault[0]![0]}" and "${claimedDefault[1]![0]}". Only one may.`,
     });
   }
 }
 
 function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.RefinementCtx, prefix: string[]): void {
   const owners = new Map<string, string>();
-  for (const [id, plugin] of Object.entries(frontend?.tiptapPlugins ?? {})) {
-    for (const name of Object.keys(plugin.extensions ?? {})) {
+  for (const [id, editorPlugin] of Object.entries(frontend?.tiptapPlugins ?? {})) {
+    for (const name of Object.keys(editorPlugin.extensions ?? {})) {
       const previous = owners.get(name);
       if (previous !== undefined) ctx.addIssue({ code: 'custom', path: [...prefix, 'tiptapPlugins', id, 'extensions', name],
         message: `Tiptap extension "${name}" declared by both groups "${previous}" and "${id}"` });
@@ -137,7 +137,7 @@ const PackVersionSchema = z.string().regex(_PACK_VERSION_PATTERN, 'Must be a com
 const EventNamesSchema = z.array(z.string().min(1)).refine(names => new Set(names).size === names.length, 'Event names must be unique');
 export const _EventContractsSchema = declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.object({
   system: z.object({ incoming: EventNamesSchema, outgoing: EventNamesSchema }).strict().optional(),
-  plugin: z.object({ receives: EventNamesSchema }).strict().optional(),
+  surface: z.object({ receives: EventNamesSchema }).strict().optional(),
 }).strict());
 
 export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.object({
@@ -163,7 +163,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
-    description: true, entities: true, designation: true, settings: true, plugin: true, references: true, services: true, repositories: true,
+    description: true, entities: true, designation: true, settings: true, surface: true, references: true, services: true, repositories: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
   if (Object.keys(declaration.migrations?.pack ?? {}).length && declaration.version === undefined) {
@@ -178,7 +178,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   checkContentWriterClaims(declaration, ctx);
   checkFrontendClaims(declaration, ctx, []);
   checkReferenceClaims(declaration.features, ctx);
-  checkDefaultPluginClaims(declaration.features, ctx);
+  checkDefaultSurfaceClaims(declaration.features, ctx);
   checkApiClaims(declaration.features, declaration.services, declaration.repositories, ctx);
   checkServiceProviders(declaration, ctx);
 }));
@@ -499,36 +499,36 @@ const ReferencesSchema: z.ZodType<ReferenceDeclarations> = z.object({
   }).strict()).describe('Reference picker category IDs and their declared item providers.'),
 }).strict();
 
-const PluginSchema: z.ZodType<PluginDeclaration> = z.object({
+const SurfaceSchema: z.ZodType<SurfaceDeclaration> = z.object({
   label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label')
-    .describe('Plugin display name used by shell navigation and menus.'),
+    .describe('Surface display name used by shell navigation and menus.'),
   state: ModuleTargetSchema.describe('Machine module, by default export or path#exportName.'),
   icon: z.union([z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must name a lucide-vue-next export'), ComponentModuleSchema])
     .describe('Lucide icon export name or component module displayed in shell navigation.').optional(),
   canvas: z.union([ComponentTargetSchema, z.object({ routes: declarationRecord(z.string().min(1)
     .refine(route => !['__proto__', 'constructor', 'prototype'].includes(route), 'Reserved route name'), ComponentTargetSchema)
     .refine(routes => Object.keys(routes).length > 0, 'Must declare at least one route')
-    .describe('Canvas components keyed by the route names published by this plugin.') }).strict()])
+    .describe('Canvas components keyed by the route names published by this surface.') }).strict()])
     .describe('Main canvas component, or an explicit nonempty map of routed canvas components.').optional(),
   panel: ComponentTargetSchema.describe('Context panel component shown alongside the canvas.').optional(),
-  chat: ComponentTargetSchema.describe('Chat component supplied by this plugin.').optional(),
-  isPinned: z.boolean().describe('Place this plugin in the pinned toolbar group.').optional(),
+  chat: ComponentTargetSchema.describe('Chat component supplied by this surface.').optional(),
+  isPinned: z.boolean().describe('Place this surface in the pinned toolbar group.').optional(),
   hotkeys: z.array(z.object({
     action: z.string().min(1).describe('Action name matched against the configured keyboard shortcut.'),
-    global: z.boolean().describe('Allow this action while another plugin is active; omission limits it to the active plugin.').optional(),
-  }).strict()).describe('Keyboard actions exposed by this plugin; actual shortcuts are configured in settings.').optional(),
+    global: z.boolean().describe('Allow this action while another surface is active; omission limits it to the active surface.').optional(),
+  }).strict()).describe('Keyboard actions exposed by this surface; actual shortcuts are configured in settings.').optional(),
   options: z.object({ headerClass: z.string().describe('CSS classes applied to the canvas and popout header.').optional() }).strict()
-    .describe('Shell presentation options for this plugin.').optional(),
+    .describe('Shell presentation options for this surface.').optional(),
   fallbackPanel: z.object({
     label: z.string().min(1).describe('Shell menu label for toggling this shared context panel.'),
-    toggle: z.object({ type: z.string().min(1).describe('Event type sent to this plugin machine to toggle its panel.') }).strict()
-      .describe('Toggle event delivered to the panel-owning plugin.'),
-    isShown: ExportTargetSchema.describe('Named predicate export that reads this plugin snapshot to decide whether its fallback panel is shown.'),
-  }).strict().describe('Offer this plugin panel to plugins without their own panel, with a toggle event and visibility predicate.').optional(),
+    toggle: z.object({ type: z.string().min(1).describe('Event type sent to this surface machine to toggle its panel.') }).strict()
+      .describe('Toggle event delivered to the panel-owning surface.'),
+    isShown: ExportTargetSchema.describe('Named predicate export that reads this surface snapshot to decide whether its fallback panel is shown.'),
+  }).strict().describe('Offer this surface panel to surfaces without their own panel, with a toggle event and visibility predicate.').optional(),
   defaultVisible: z.boolean().describe('Default navigation visibility, independent of settings values and the startup default claim.').optional(),
-  contract: ExportTargetSchema.describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
-  default: z.boolean().describe('Claim initial navigation for this plugin. At most one feature per pack may claim it. Enabled native claims precede installed claims, then qualified feature references sort in English lexical order; frontend loading order does not affect selection.').optional(),
-} satisfies Record<keyof PluginDeclaration, z.ZodTypeAny>).strict();
+  contract: ExportTargetSchema.describe('"path#exportName" of this surface\'s contract: a declared type holding the state it publishes and the inbox other surfaces may send to (SurfaceInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the surface\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a surface that publishes nothing: it still receives its own feature\'s system events.').optional(),
+  default: z.boolean().describe('Claim initial navigation for this surface. At most one feature per pack may claim it. Enabled native claims precede installed claims, then qualified feature references sort in English lexical order; frontend loading order does not affect selection.').optional(),
+} satisfies Record<keyof SurfaceDeclaration, z.ZodTypeAny>).strict();
 
 
 /** Names a feature id can't take: reserved words, since a feature id becomes an identifier in generated code */
@@ -638,12 +638,12 @@ export const FeatureEntrySchema = z.object({
   settings: SettingsDefinitionSchema.describe('Declarative feature preferences: effective-value schema and explicit defaults.').optional(),
   types: z.string().min(1).regex(_MODULE_PATH_PATTERN, 'Must name a TypeScript module, not a single export').describe('Pack-root-relative TypeScript module whose public types are re-exported through #generated/types. Only declared modules contribute; no feature-path inference.').optional(),
   system: SystemSchema.describe('Backend system module.').optional(),
-  plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
+  surface: SurfaceSchema.describe('Frontend surface definition.').optional(),
   services: ServicesSchema
     .describe('Services. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
   repositories: declarationRecord(IdentifierSchema, ExportTargetSchema)
     .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
-  references: ReferencesSchema.describe('Reference identities and presentation, with reactive item-provider exports. Entity opening is declared separately by the destination plugin contract.').optional(),
+  references: ReferencesSchema.describe('Reference identities and presentation, with reactive item-provider exports. Entity opening is declared separately by the destination surface contract.').optional(),
 }).strict();
 
 export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'network', 'terminal']);
@@ -796,7 +796,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   permissions: z.array(PackPermissionSchema).describe('Capabilities this pack requires from the host.').optional(),
   data: DataSchema.optional(),
   features: declarationRecord(FEATURE_ID_SCHEMA, FeatureEntrySchema)
-    .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
+    .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend surface, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
   extensions: ExtensionsSchema.optional(),
   lifecycle: LifecycleConfigSchema.optional(),
   content: ContentConfigSchema.optional(),
@@ -807,7 +807,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   checkFrontendClaims(manifest.extensions, ctx, ['extensions']);
   checkReferenceClaims(manifest.features, ctx);
   checkApiClaims(manifest.features, manifest.extensions?.services, undefined, ctx, ['extensions', 'services']);
-  checkDefaultPluginClaims(manifest.features, ctx);
+  checkDefaultSurfaceClaims(manifest.features, ctx);
   checkServiceProviders(manifest, ctx);
 
   // Both kinds of entry name a format, and both are checked against the same two places

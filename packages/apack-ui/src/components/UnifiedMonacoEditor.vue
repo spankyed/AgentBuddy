@@ -298,7 +298,7 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
 
   // Suppress VS Code-only "findInFiles" keybinding that crashes standalone Monaco.
   // Re-dispatch on window so the global hotkey system picks it up
-  // (routes to the code plugin's search panel via focusSearch).
+  // (routes to the code surface's search panel via focusSearch).
   const isMac = navigator.platform.toUpperCase().includes('MAC')
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
     window.dispatchEvent(new KeyboardEvent('keydown', {

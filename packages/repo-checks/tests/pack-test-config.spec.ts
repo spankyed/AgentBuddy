@@ -14,7 +14,7 @@ import { repoFiles } from './_support/repo-files.ts';
  * is a check and not a convention.
  *
  * The rule is deliberately blunt: **call the helper, and declare no `test` block of your own.** Everything a
- * pack needs is an option (`dataDirPrefix`, `exclude`, `plugins`, `setupFiles`, `vue`), so a `test` block
+ * pack needs is an option (`dataDirPrefix`, `exclude`, `surfaces`, `setupFiles`, `vue`), so a `test` block
  * means the pack has stopped delegating — and an exception below then records which pack had to escape and
  * why, which is the part worth knowing.
  */

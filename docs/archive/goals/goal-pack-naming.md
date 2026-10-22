@@ -325,7 +325,7 @@ the argument for the guard.
   | Vue components filling named app-shell slots | `fe.appExtensions` | app extensions |
   | Which of a feature's things are linkable from an editor | `features[].contributions`, `@apackdev/sdk/fe/contributions` | references |
 
-  The third was the mis-named one. `ContributionTypeConfig` is `{ protocol, category, plugin, icon,
+  The third was the mis-named one. `ContributionTypeConfig` is `{ protocol, category, surface, icon,
   svgElements, navigate }` — typing `#` in an editor opens a picker, and choosing an item inserts a
   `note://ab12` link that `navigate()` opens. Its only consumers are `reference-config.ts`,
   `reference-node.ts` and `referenceSuggestionPlugin`, and the inserted node is literally `name: 'reference'`.

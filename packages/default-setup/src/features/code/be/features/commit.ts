@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
+import { broadcastToSurface, sendToSystem } from '#generated/events.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { assign, setup, enqueueActions, fromCallback, type AnyActorRef } from 'xstate'
 
@@ -8,7 +8,7 @@ import { GitRepository, StashConflictError } from '../services/git.ts'
 import { GitWatcherService } from '../services/gitwatcher.ts'
 import { requireGitRepository } from '../utils/git-helpers.ts'
 
-const pluginId = 'code' as const
+const surfaceId = 'code' as const
 
 // Incoming events from frontend
 
@@ -89,7 +89,7 @@ export const commitSystem = setup({
 
       context.gitRepository.isGitRepository().then((isGitRepo) => {
         if (!isGitRepo) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'commit.ERROR_RECEIVED',
             data: { message: 'Not a git repository' }
           })
@@ -102,7 +102,7 @@ export const commitSystem = setup({
           context.gitRepository!.isCurrentBranchPublished(),
           context.gitRepository!.getCommitsAheadBehind()
         ]).then(([status, branch, hasUpstream, commitsInfo]) => {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'commit.STATUS_RECEIVED',
             data: { files: status, branch, hasUpstream, commitsAhead: commitsInfo.ahead, commitsBehind: commitsInfo.behind }
           })
@@ -115,7 +115,7 @@ export const commitSystem = setup({
           errorMessage = 'This directory is not a Git repository. Initialize with "git init" first.'
         }
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: errorMessage }
         })
@@ -175,7 +175,7 @@ export const commitSystem = setup({
           }
         }
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.DIFF_RECEIVED',
           data: {
             path: ev.path || 'all',
@@ -187,7 +187,7 @@ export const commitSystem = setup({
           }
         })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -200,13 +200,13 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stageFiles(ev.paths).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.FILES_STAGED',
           data: { paths: ev.paths }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -228,13 +228,13 @@ export const commitSystem = setup({
         }
         return context.gitRepository!.unstageFiles([...allPaths])
       }).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.FILES_UNSTAGED',
           data: { paths: ev.paths }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -247,12 +247,12 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.revertFile(ev.path).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.FILE_REVERTED',
           data: { path: ev.path }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'explorer.FILE_CHANGED_EXTERNALLY',
           data: {
             path: ev.path,
@@ -261,7 +261,7 @@ export const commitSystem = setup({
           }
         })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -274,13 +274,13 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.revertFiles(ev.paths).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.FILES_REVERTED',
           data: { paths: ev.paths }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         for (const path of ev.paths) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'explorer.FILE_CHANGED_EXTERNALLY',
             data: {
               path,
@@ -290,7 +290,7 @@ export const commitSystem = setup({
           })
         }
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -302,13 +302,13 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.resolveConflict(ev.path, ev.strategy).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.CONFLICT_RESOLVED',
           data: { path: ev.path }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -320,13 +320,13 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stageFiles([ev.path]).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.CONFLICT_RESOLVED',
           data: { path: ev.path }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -342,10 +342,10 @@ export const commitSystem = setup({
         for (const f of unmerged) {
           await context.gitRepository!.resolveConflict(f.path, ev.strategy)
         }
-        broadcastToPlugin(pluginId, { type: 'commit.ALL_CONFLICTS_RESOLVED' })
+        broadcastToSurface(surfaceId, { type: 'commit.ALL_CONFLICTS_RESOLVED' })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -359,7 +359,7 @@ export const commitSystem = setup({
 
       context.gitRepository.getStagedFiles().then((stagedFiles) => {
         if (stagedFiles.length === 0) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'commit.ERROR_RECEIVED',
             data: { message: 'No files staged for commit. Please stage files before committing.' }
           })
@@ -367,7 +367,7 @@ export const commitSystem = setup({
         }
 
         return context.gitRepository!.commit(ev.message).then(() => {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'commit.COMMIT_SUCCESS',
             data: { message: ev.message }
           })
@@ -381,7 +381,7 @@ export const commitSystem = setup({
           errorMessage = 'Git user not configured. Run "git config --global user.email" and "git config --global user.name"'
         }
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: errorMessage }
         })
@@ -392,12 +392,12 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.getCurrentBranch().then((branch) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.BRANCH_RETRIEVED',
           data: { branch }
         })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -408,12 +408,12 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.getAllBranches().then((branches) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.BRANCHES_RECEIVED',
           data: { branches }
         })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -428,7 +428,7 @@ export const commitSystem = setup({
       context.gitRepository.checkoutBranch(ev.branchName).then(() => {
         context.gitRepository!.clearCache()
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.BRANCH_CHECKOUT_SUCCESS',
           data: { branchName: ev.branchName }
         })
@@ -437,7 +437,7 @@ export const commitSystem = setup({
 
         context.code?.send({ type: 'pr.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -452,13 +452,13 @@ export const commitSystem = setup({
         branchName = currentBranch
         return context.gitRepository!.pushBranch()
       }).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.BRANCH_PUSHED',
           data: { branchName }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -473,7 +473,7 @@ export const commitSystem = setup({
         return context.gitRepository!.getDiff(undefined, staged)
       }).then(async (diff) => {
         if (!diff.trim()) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'commit.ERROR_RECEIVED',
             data: { message: 'No changes found to generate a commit message from.' }
           })
@@ -494,7 +494,7 @@ export const commitSystem = setup({
           payload: { diff: truncatedDiff, branch, repoName, provider },
         })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -511,13 +511,13 @@ export const commitSystem = setup({
       }).then(() => {
         context.gitRepository!.forceFetchOnce()
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.BRANCH_PULLED',
           data: { branchName }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -545,14 +545,14 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stashPush(ev.message, ev.stagedOnly).then((result) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.STASH_SUCCESS',
           data: { message: result }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.STASH_LIST' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -563,12 +563,12 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stashList().then((stashes) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.STASH_LIST_RECEIVED',
           data: { stashes }
         })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -581,21 +581,21 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stashApply(ev.index).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.STASH_SUCCESS',
           data: { message: 'Stash applied successfully' }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
         if (error instanceof StashConflictError) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'commit.STASH_SUCCESS',
             data: { message: error.message }
           })
           self.send({ type: 'commit.GIT_STATUS_CHANGED' })
           return
         }
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -608,7 +608,7 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stashPop(ev.index).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.STASH_SUCCESS',
           data: { message: 'Stash popped successfully' }
         })
@@ -616,7 +616,7 @@ export const commitSystem = setup({
         self.send({ type: 'commit.STASH_LIST' })
       }).catch((error: any) => {
         if (error instanceof StashConflictError) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'commit.STASH_SUCCESS',
             data: { message: error.message }
           })
@@ -624,7 +624,7 @@ export const commitSystem = setup({
           self.send({ type: 'commit.STASH_LIST' })
           return
         }
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -639,7 +639,7 @@ export const commitSystem = setup({
       context.gitRepository.stashDrop(ev.index).then(() => {
         self.send({ type: 'commit.STASH_LIST' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -652,7 +652,7 @@ export const commitSystem = setup({
       context.gitRepository.stashClear().then(() => {
         self.send({ type: 'commit.STASH_LIST' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -663,12 +663,12 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.gitLog().then((commits) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.LOG_LIST_RECEIVED',
           data: { commits }
         })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -681,14 +681,14 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.revertCommit(ev.hash).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.REVERT_COMMIT_SUCCESS',
           data: { hash: ev.hash }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.LOG_LIST' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -701,14 +701,14 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.resetToCommit(ev.hash).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.RESET_COMMIT_SUCCESS',
           data: { hash: ev.hash }
         })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.LOG_LIST' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -719,12 +719,12 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.worktreeList().then((worktrees) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.WORKTREE_LIST_RECEIVED',
           data: { worktrees }
         })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -736,13 +736,13 @@ export const commitSystem = setup({
       const ev = event as { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
 
       context.gitRepository.worktreeAdd(ev.path, ev.branch, ev.createBranch).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.WORKTREE_ADDED',
           data: { path: ev.path, branch: ev.branch || '' }
         })
         self.send({ type: 'commit.WORKTREE_LIST' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
@@ -754,13 +754,13 @@ export const commitSystem = setup({
       const ev = event as { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
 
       context.gitRepository.worktreeRemove(ev.path, ev.force).then(() => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.WORKTREE_REMOVED',
           data: { path: ev.path }
         })
         self.send({ type: 'commit.WORKTREE_LIST' })
       }).catch((error: any) => {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })

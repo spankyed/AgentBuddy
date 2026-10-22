@@ -21,7 +21,7 @@ invalidated it could still compile the template stale.
 
 A browser cannot meet either: Vite sends its HMR message only after invalidating, and the browser then re-imports
 the component before its template. Why macOS passed was not measured; its temporary directory sits behind the
-`/var` → `/private/var` link, which is consistent with the plugin's cache missing and the file being read fresh.
+`/var` → `/private/var` link, which is consistent with the surface's cache missing and the file being read fresh.
 
 ## Fix
 

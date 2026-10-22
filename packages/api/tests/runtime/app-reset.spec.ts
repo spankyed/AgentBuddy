@@ -82,7 +82,7 @@ describe('services.appData.reset()', () => {
     expect(services.onboarding.isComplete()).toBe(false);
   });
 
-  // Without this the Database plugin refreshed itself and nothing else did, so a reset left Notes, Threads
+  // Without this the Database surface refreshed itself and nothing else did, so a reset left Notes, Threads
   // and the rest rendering the previous database until the app was restarted
   it('tells the bus that every row was replaced', async () => {
     const announced: string[] = [];

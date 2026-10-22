@@ -19,9 +19,9 @@ export function runtimePack(root: string) {
   fs.writeFileSync(helper, "export const marker = 'BEFORE';");
   const pack = preparePack(root, 'runtime-consumer', {
     'apack.json': JSON.stringify({ id: 'runtime-consumer', name: 'Runtime Consumer', version: '1.0.0',
-      features: { view: { description: 'Imported runtime value.', plugin: { label: 'View', state: 'src/plugin.ts' } } } }),
+      features: { view: { description: 'Imported runtime value.', surface: { label: 'View', state: 'src/surface.ts' } } } }),
     'package.json': packageJson('runtime-consumer'), 'tsconfig.json': tsconfig,
-    'src/plugin.ts': "import { createMachine } from 'xstate'; import { marker } from 'borrowed'; export default createMachine({ context: { marker } });",
+    'src/surface.ts': "import { createMachine } from 'xstate'; import { marker } from 'borrowed'; export default createMachine({ context: { marker } });",
   }, modules);
   return { pack, helper, frontend: path.join(pack, 'dist/runtime/fe.js') };
 }
@@ -29,7 +29,7 @@ export function runtimePack(root: string) {
 export function vueRuntimePack(root: string, kind: 'inline' | 'external' | 'linked' = 'inline') {
   const consumer = runtimePack(root);
   const { pack } = consumer;
-  fs.writeFileSync(path.join(pack, 'src/plugin.ts'), "import { createMachine } from 'xstate'; export default createMachine({});");
+  fs.writeFileSync(path.join(pack, 'src/surface.ts'), "import { createMachine } from 'xstate'; export default createMachine({});");
   const script = kind === 'external' ? '<script src="../../outside.ts" lang="ts"></script>'
     : '<script setup lang="ts">import { marker } from "borrowed";</script>';
   if (kind === 'external') fs.writeFileSync(path.join(root, 'outside.ts'), "import { marker } from 'borrowed'; export default { data: () => ({ marker }) };");
@@ -44,7 +44,7 @@ export function vueRuntimePack(root: string, kind: 'inline' | 'external' | 'link
   } else fs.writeFileSync(canvas, `${script}<template><div>{{ marker }}</div></template>`);
   const manifestFile = path.join(pack, 'apack.json');
   const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-  manifest.features.view.plugin.canvas = 'src/canvas.vue';
+  manifest.features.view.surface.canvas = 'src/canvas.vue';
   fs.writeFileSync(manifestFile, JSON.stringify(manifest));
   return consumer;
 }

@@ -51,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -65,7 +65,7 @@ import PrimitiveDisplay from './components/PrimitiveDisplay.vue';
 import type { DatabaseState } from '../../state.ts'
 
 // State Management
-const actor: DatabaseState = usePlugin();
+const actor: DatabaseState = useSurface();
 const queryResult = useSelector(actor, (state) => state.context.queryResult);
 const isLoading = useSelector(actor, (state) => state.context.isLoading);
 const error = useSelector(actor, (state) => state.context.error);

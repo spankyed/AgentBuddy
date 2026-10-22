@@ -51,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -72,7 +72,7 @@ defineEmits<{
   openFile: [file: GitStatusFile]
 }>()
 
-const codeActor: CodeState = usePlugin()
+const codeActor: CodeState = useSurface()
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 
 const fileDisplay = computed(() => {

@@ -51,11 +51,11 @@ test('backup import restores all settings owners and updates an open window', as
     await appPage.evaluate(packSlug => (window as any).__sendToSystem('host/packs', {
       type: 'INSTALL_PACK', packSlug, sourceKind: 'local',
     }), companion);
-    await app.waitForPlugin('bundled-ui-fixture/scribbles');
+    await app.waitForSurface('bundled-ui-fixture/scribbles');
     const original = await change('Saved');
     const companionRuntime = await acceptedRuntime(appPage, 'bundled-ui-fixture');
     const opened = electronApp.waitForEvent('window');
-    await appPage.evaluate(() => (window as any).electronAPI.plugins.popout('host/settings', 'Settings'));
+    await appPage.evaluate(() => (window as any).electronAPI.surfaces.popout('host/settings', 'Settings'));
     second = await opened;
     await second.waitForLoadState('domcontentloaded');
     await second.getByRole('button', { name: 'Features', exact: true }).click();
@@ -156,7 +156,7 @@ test('two external assistant groups survive independent edits, disable, reset an
     type: 'INSTALL_PACK', packSlug, sourceKind: 'local',
   }), companion);
   await install();
-  await app.waitForPlugin('bundled-ui-fixture/scribbles');
+  await app.waitForSurface('bundled-ui-fixture/scribbles');
   await app.navigate('host/settings');
   await appPage.locator('[data-onboarding-id="settings-packs-tab"]').click();
   const select = (owner: string) => appPage.getByText(`${owner}/assistant`, { exact: true }).click();
@@ -199,7 +199,7 @@ test('two external assistant groups survive independent edits, disable, reset an
   await appPage.evaluate(() => (window as any).__sendToSystem('host/packs', { type: 'UNINSTALL_PACK', packId: 'bundled-ui-fixture' }));
   await expect(appPage.getByText('bundled-ui-fixture/assistant', { exact: true })).toHaveCount(0);
   await install();
-  await app.waitForPlugin('bundled-ui-fixture/scribbles');
+  await app.waitForSurface('bundled-ui-fixture/scribbles');
   await select('bundled-ui-fixture');
   await expect(scribbles).toHaveValue('Restored Sydney');
   await select('e2e-fixture');
@@ -249,7 +249,7 @@ test('accepted dependency credentials enforce shared, owner-only and reload boun
     await appPage.evaluate(packSlug => (window as any).__sendToSystem('host/packs', {
       type: 'INSTALL_PACK', packSlug, sourceKind: 'local',
     }), companion);
-    await app.waitForPlugin('bundled-ui-fixture/scribbles');
+    await app.waitForSurface('bundled-ui-fixture/scribbles');
     fs.symlinkSync(path.join(root, 'node_modules'), path.join(dependent, 'node_modules'), 'dir');
     fs.writeFileSync(path.join(dependent, 'package.json'), JSON.stringify({ name: id, type: 'module' }));
     fs.writeFileSync(path.join(dependent, 'apack.json'), JSON.stringify({ id, name: 'Settings dependent', version: '1.0.0',

@@ -1,6 +1,6 @@
 // Compile-time checks of the typed sends, run by `tsc --noEmit`: the sends sit in functions that never run.
 import { describe, expectTypeOf, it } from 'vitest';
-import type { TypedSendToPlugin, TypedSendToSystem, TypedSendToWindow } from '../../src/events/index.ts';
+import type { TypedSendToSurface, TypedSendToSystem, TypedSendToWindow } from '../../src/events/index.ts';
 import type { FeatureRef } from '../../src/ids/index.ts';
 
 type Systems = {
@@ -13,14 +13,14 @@ type Systems = {
   tags: { type: 'ADD_TAG'; name: string };
 };
 
-type Plugins = {
+type Surfaces = {
   memos: { type: 'MEMO_ADDED'; text: string } | { type: 'MEMOS_CLEARED' };
   tags: { type: 'TAG_ADDED'; name: string };
 };
 
 declare const sendToSystem: TypedSendToSystem<Systems>;
-declare const sendToPlugin: TypedSendToPlugin<Plugins>;
-declare const sendToWindow: TypedSendToWindow<Plugins>;
+declare const sendToSurface: TypedSendToSurface<Surfaces>;
+declare const sendToWindow: TypedSendToWindow<Surfaces>;
 
 describe('sendToSystem', () => {
   it('checks the event its type names', () => {
@@ -68,27 +68,27 @@ describe('sendToSystem', () => {
   });
 });
 
-describe('sendToPlugin', () => {
-  it("check the plugin's events", () => {
+describe('sendToSurface', () => {
+  it("check the surface's events", () => {
     expectTypeOf(() => {
-      sendToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });
-      // @ts-expect-error the memos plugin doesn't receive TAG_ADDED
-      sendToPlugin('memos', { type: 'TAG_ADDED', name: 'x' });
+      sendToSurface('memos', { type: 'MEMO_ADDED', text: 'x' });
+      // @ts-expect-error the memos surface doesn't receive TAG_ADDED
+      sendToSurface('memos', { type: 'TAG_ADDED', name: 'x' });
       // @ts-expect-error MEMO_ADDED needs its text
-      sendToPlugin('memos', { type: 'MEMO_ADDED' });
+      sendToSurface('memos', { type: 'MEMO_ADDED' });
     }).toBeFunction();
   });
 
-  it('reject a union plugin id', () => {
-    expectTypeOf((pluginId: 'memos' | 'tags') => {
-      // @ts-expect-error one plugin per send
-      sendToPlugin(pluginId, { type: 'TAG_ADDED', name: 'x' });
+  it('reject a union surface id', () => {
+    expectTypeOf((surfaceId: 'memos' | 'tags') => {
+      // @ts-expect-error one surface per send
+      sendToSurface(surfaceId, { type: 'TAG_ADDED', name: 'x' });
     }).toBeFunction();
   });
 });
 
 /**
- * The addressed send, which is `sendToPlugin`'s checking with the connection in front.
+ * The addressed send, which is `sendToSurface`'s checking with the connection in front.
  *
  * **This is the only thing exercising the declared shape.** `defineEvents` casts its implementation to
  * `TypedEvents`, and no pack calls the typed `sendToWindow` yet, so without these the declaration could
@@ -96,10 +96,10 @@ describe('sendToPlugin', () => {
  * would — but they keep the half a reader relies on honest.
  */
 describe('sendToWindow', () => {
-  it("checks the plugin's events, with the connection first", () => {
+  it("checks the surface's events, with the connection first", () => {
     expectTypeOf(() => {
       sendToWindow('c-main', 'memos', { type: 'MEMO_ADDED', text: 'x' });
-      // @ts-expect-error the memos plugin doesn't receive TAG_ADDED
+      // @ts-expect-error the memos surface doesn't receive TAG_ADDED
       sendToWindow('c-main', 'memos', { type: 'TAG_ADDED', name: 'x' });
       // @ts-expect-error MEMO_ADDED needs its text
       sendToWindow('c-main', 'memos', { type: 'MEMO_ADDED' });
@@ -110,28 +110,28 @@ describe('sendToWindow', () => {
     }).toBeFunction();
   });
 
-  it('rejects a union plugin id, as the broadcast does', () => {
-    expectTypeOf((pluginId: 'memos' | 'tags') => {
-      // @ts-expect-error one plugin per send
-      sendToWindow('c-main', pluginId, { type: 'TAG_ADDED', name: 'x' });
+  it('rejects a union surface id, as the broadcast does', () => {
+    expectTypeOf((surfaceId: 'memos' | 'tags') => {
+      // @ts-expect-error one surface per send
+      sendToWindow('c-main', surfaceId, { type: 'TAG_ADDED', name: 'x' });
     }).toBeFunction();
   });
 });
 
 // A feature this pack's maps don't name (another pack's, found at run time) still takes what every system and
-// plugin takes, by its ref: default-setup's settings system tells any feature its settings changed
+// surface takes, by its ref: default-setup's settings system tells any feature its settings changed
 describe('a feature named by its ref', () => {
-  it('takes the events every system and plugin takes, and no other', () => {
+  it('takes the events every system and surface takes, and no other', () => {
     const feature = 'other-pack/board' as FeatureRef;
     expectTypeOf(() => {
       sendToSystem(feature, { type: 'FEATURE_SETTINGS_UPDATED', settings: {}, changes: null });
       sendToSystem(feature, { type: 'PACK_CHANGED', packId: 'other-pack' });
-      sendToPlugin(feature, { type: 'FEATURE_SETTINGS_UPDATED', settings: {} });
+      sendToSurface(feature, { type: 'FEATURE_SETTINGS_UPDATED', settings: {} });
       sendToWindow('c-main', feature, { type: 'FEATURE_SETTINGS_UPDATED', settings: {} });
       // @ts-expect-error only the app-wide events: nothing declares what else that system takes
       sendToSystem(feature, { type: 'ADD_MEMO', text: 'x' });
-      // @ts-expect-error a plugin takes only the settings update from outside its pack's maps
-      sendToPlugin(feature, { type: 'MEMO_ADDED', text: 'x' });
+      // @ts-expect-error a surface takes only the settings update from outside its pack's maps
+      sendToSurface(feature, { type: 'MEMO_ADDED', text: 'x' });
     }).toBeFunction();
   });
 });

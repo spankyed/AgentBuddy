@@ -15,7 +15,7 @@ test('a reloaded pack is left running', async ({ app, appPage }) => {
   expect(apiPort, 'the renderer knows the API port').toBeTruthy();
   expect(apiToken, 'the renderer knows the API token').toBeTruthy();
 
-  await app.waitForPlugin('memos');
+  await app.waitForSurface('memos');
   const previous = await appPage.evaluate(packId => {
     const shell = (window as any).applicationState;
     return { runtime: shell.getSnapshot().context.acceptedPackRuntimes[packId],

@@ -1,7 +1,7 @@
 import { test, expect } from '@apackdev/testing';
 
 test('pack pane and form failures leave other panes and host settings usable', async ({ appPage, app }) => {
-  await app.waitForPlugin('faults');
+  await app.waitForSurface('faults');
   await app.navigate('faults');
   const canvas = appPage.locator('[data-contribution-owner="e2e-fixture/faults"][data-contribution-area="canvas"]');
   const panel = appPage.locator('[data-contribution-owner="e2e-fixture/faults"][data-contribution-area="panel"]');

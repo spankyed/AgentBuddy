@@ -21,7 +21,7 @@ vi.mock('@/main', async () => {
   return { applicationState: shell };
 });
 vi.mock('@/views/WebApp.vue', () => ({ default: defineComponent({ render: () => h('div', { class: 'web-app' }) }) }));
-vi.mock('@/views/PluginPopoutApp.vue', () => ({ default: defineComponent({ render: () => h('div', { class: 'popout' }) }) }));
+vi.mock('@/views/SurfacePopoutApp.vue', () => ({ default: defineComponent({ render: () => h('div', { class: 'popout' }) }) }));
 vi.mock('@/views/settings/SettingsRecovery.vue', () => ({ default: defineComponent({ render: () => h('div', { class: 'recovery' }) }) }));
 // A real ref, not a plain object: `App.vue` branches on `v-if="recovery"`, and a plain `{ value: undefined }`
 // is truthy there, so the window would render the recovery view and none of what this case is about

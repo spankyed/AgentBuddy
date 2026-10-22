@@ -52,7 +52,7 @@ Never:
   compat shims, loosened assertions.
 - loosen `send-scope.spec.ts`'s "every window" case or `outgoing-events.spec.ts`'s "exactly as sent" case.
   Both are contract. Amend by adding a case beside them; if one must change, stop and ask.
-- stamp an origin on an outbound event (system → plugin). Decision 4 scopes stamping to inbound only, and
+- stamp an origin on an outbound event (system → surface). Decision 4 scopes stamping to inbound only, and
   `outgoing-events.spec.ts` is what that protects.
 - accept a client id from the wire. It is minted in `createContext` and stamped server-side; reading one
   from `bus.send`'s input makes a return address forgeable.
@@ -82,8 +82,8 @@ Three things are missing, each checked in source at this commit:
 1. **No client identity exists anywhere.** `packages/api/src/transport/context.ts` is two lines:
    `export const createContext = () => ({});`. It discards the ws adapter's argument, which carries the
    per-client socket. The API token and `startupId` are per app *run* and identical in every window.
-   `main | <pluginRef>` is already unique per window by construction (single-instance lock, popouts keyed
-   by plugin id) but reaches neither the renderer's client nor the API.
+   `main | <surfaceRef>` is already unique per window by construction (single-instance lock, popouts keyed
+   by surface id) but reaches neither the renderer's client nor the API.
 2. **An envelope cannot name one connection.** `Message` is `{ to, event, from?, via? }`. `to` is a
    feature ref resolved to an in-process actor (`bus/machine.ts:185`, `system.get(to)`). `bus.send`'s zod
    input names every field explicitly, with the reason in a comment at `bus.ts:18-20`: *"zod strips what
@@ -91,7 +91,7 @@ Three things are missing, each checked in source at this commit:
 3. **A receiver has nowhere to put a return address.** An XState actor receives an event object and
    nothing else. `outgoing-events.spec.ts:58` pins the invariant that makes this awkward — *"Where it goes
    travels beside the event, so a field of the event's own is never taken for it"* — with a deliberate
-   `pluginId` collision case.
+   `surfaceId` collision case.
 
 **What the ws adapter actually does**, read from the installed bundle
 (`node_modules/@trpc/server/dist/ws-CnhJbg02.mjs`) rather than assumed, because Decision 1 rests on it:
@@ -138,7 +138,7 @@ Final.
    `ctx.client`; it gains **no input**. `bus.send` stamps `ctx.client` onto what it passes
    `receiveClientEvent`, and the zod input schema does **not** accept it — so a return address cannot be
    forged, and the id dies with the socket, which is why the absent disconnect signal does not matter.
-   Chosen over deriving it from the window (`main | <pluginRef>`): that is stable across a reconnect but
+   Chosen over deriving it from the window (`main | <surfaceRef>`): that is stable across a reconnect but
    costs changes in `packages/main`, preload, the renderer client and `bus.sub`'s shape, and a round trip
    does not need an address outliving its socket.
 2. **`Message` gains `client?: string`**, meaning *deliver only to this connection; absent means every
@@ -155,17 +155,17 @@ Final.
    `features/application/fe/connection.ts` needs no change.
 4. **Stamping is inbound-to-systems only.** The bus stamps the origin onto the event it delivers to a
    system, under a framework-reserved `_origin`, overwriting whatever was there. It does **not** stamp
-   outbound events, which is what keeps `outgoing-events.spec.ts:58` intact. A plugin replying to a driver
+   outbound events, which is what keeps `outgoing-events.spec.ts:58` intact. A surface replying to a driver
    is therefore out of scope; the driver talks to systems and systems answer.
 5. **`replyTo(incoming)` is the pack-facing API**, exported from `@apackdev/sdk/events`, returning a send
    bound to that message's origin. Pack code never names an address, never reads `_origin`, and keeps
    working unchanged if it does not reply. `_origin` takes the `_` prefix that is already this repo's mark
-   for a host-stamped internal (`_rootEvents`, `_sendToLocalPlugin`), so `check:specifiers` can keep packs
+   for a host-stamped internal (`_rootEvents`, `_sendToLocalSurface`), so `check:specifiers` can keep packs
    off it by the underscore, as it does for those.
 6. **The driver joins as `host/drive`**, a fifth entry in `refs.ts`'s `HOST` table, following `bus`'s
    precedent. Resolution gains one branch: resolve `to` to an in-process actor, else to a connection that
    has claimed that name, else `reportDrop` exactly as today.
-7. **`send-scope.spec.ts` is amended, never loosened.** Its *"delivers a backend send to that plugin in
+7. **`send-scope.spec.ts` is amended, never loosened.** Its *"delivers a backend send to that surface in
    every window"* (`:47`) is contract and must keep passing untouched; the one-connection behaviour gains
    a new case beside it.
 
@@ -267,7 +267,7 @@ exists, no event can carry a forged one, and that spec is untouched by construct
 is no `_origin`.
 
 **Decision 5's `replyTo(event)(…)` became an argument-free `reply(…)`**, and the reply's target comes from
-`Message.sender` rather than from the handler naming a plugin. Both were settled with the user mid-implementation
+`Message.sender` rather than from the handler naming a surface. Both were settled with the user mid-implementation
 after the original shape was found to need something the envelope does not carry. The mechanism is
 `AsyncLocalStorage` on the backend and a synchronous holder in the renderer, behind one SDK interface
 (`events/delivery.ts`), because `@apackdev/sdk/events` is bundled into pack frontends and a browser has no
@@ -275,7 +275,7 @@ equivalent.
 
 **`sender` is accepted from the wire; `client` is not.** This looks like an inconsistency and is not. Every caller
 already holds the API token, which lets it send anything to anything, so a forged `sender` is a bug rather than an
-escalation — and the client is the only party that knows which of its plugins asked. `client` is withheld because
+escalation — and the client is the only party that knows which of its surfaces asked. `client` is withheld because
 the server knows it for free, so taking it from the wire would be strictly worse for nothing.
 
 **`Message.sender` is not `MessageSender`.** `MessageSender = Pick<Message, 'from' | 'via'>` predates this and
@@ -306,15 +306,15 @@ also invalidates Phase 5's own criteria.
 - **The driver is not a bus client.** `/qx` runs `page.evaluateWith` → the *renderer's* `untypedSendToSystem`, so
   the send comes from the window. Making the driver a participant in its own right means giving `@apackdev/testing`
   a tRPC/ws client — new dependency surface in a package every pack's tests load.
-- **A plugin's own sends are not stamped.** `deliverPluginEvents` wraps only what the *shell* routes. A UI-triggered
-  send (`usePlugin().send(…)` → an action → `sendToSystem`) runs outside any delivery, so it carries no `sender`
-  and `reply()` would throw for it. Closing that means wrapping what `usePlugin` returns, which is pack-facing API
+- **A surface's own sends are not stamped.** `deliverSurfaceEvents` wraps only what the *shell* routes. A UI-triggered
+  send (`useSurface().send(…)` → an action → `sendToSystem`) runs outside any delivery, so it carries no `sender`
+  and `reply()` would throw for it. Closing that means wrapping what `useSurface` returns, which is pack-facing API
   used in every component — a scope expansion this goal did not authorise.
 
 ### Open items
 
 1. **Phase 5, re-specified.** The honest version keeps a request id for concurrency and takes the real win:
-   replies arrive *addressed*, so a person using the Database plugin no longer collides with a driving session and
+   replies arrive *addressed*, so a person using the Database surface no longer collides with a driving session and
    the engine stops reading a firehose of unrelated events. Worth doing; needs the criterion rewritten first.
 
    **The blocker is one thing, and it is smaller than it looks.** Checked rather than assumed: `@apackdev/sdk/events`
@@ -329,7 +329,7 @@ also invalidates Phase 5's own criteria.
 
    That message carries `sender: 'host/drive'`, so the system's `reply` addresses its answer there. What is still
    missing is the **claim**: with nothing holding `host/drive`, `notify` drops the answer, because no pack declares
-   it as a plugin. `bus.claim` is a tRPC procedure over the WebSocket, and the driver has no client — it drives the
+   it as a surface. `bus.claim` is a tRPC procedure over the WebSocket, and the driver has no client — it drives the
    page. So Phase 5 needs either a ws client in `@apackdev/testing` (a new dependency in a package every pack's tests
    load) or the claim made from the page, which needs the window's client reachable there and today it is not.
 
@@ -343,18 +343,18 @@ also invalidates Phase 5's own criteria.
    What is left for whoever picks this up is therefore smaller than it looked: the stamping half is free, the
    connection is free, and the one thing addressing still cannot do is tell two concurrent requests apart — so a
    request id stays.
-2. ~~**Stamp a plugin's own sends**~~ — **done**, after this Outcome was first written. `usePlugin` hands back the
-   actor with its `send` run inside a delivery naming that plugin (`apack-sdk/src/fe/plugin-send-scope.spec.ts`),
+2. ~~**Stamp a surface's own sends**~~ — **done**, after this Outcome was first written. `useSurface` hands back the
+   actor with its `send` run inside a delivery naming that surface (`apack-sdk/src/fe/surface-send-scope.spec.ts`),
    so a component's send stamps `Message.sender` and `reply` answers it. The risk recorded against this — that a
    Proxy over the actor would break `@xstate/vue`'s reactivity — was **asserted and then measured false**:
    `useSelector` follows a change through the wrapper, `subscribe` and `getSnapshot` are unaffected, and the one
-   real obstacle was that `actor.id` had to be the ref, which it is because the shell spawns a plugin with its ref
+   real obstacle was that `actor.id` had to be the ref, which it is because the shell spawns a surface with its ref
    as both `id` and `systemId`. The lesson is the obvious one: the claim cost a paragraph of documentation and the
    check cost one throwaway spec.
 3. ~~**A reply to a *system*.**~~ — **done**, and this item was wrong twice. It said `reply` "throws rather
-   than guessing"; there was no such check, so an answer to a system went out on the plugin path. That is not a
-   silent loss either: a feature's system and plugin share one ref, so for any asker that also has a plugin —
-   the common case — the private answer was delivered to that plugin **in every open window**, which is the
+   than guessing"; there was no such check, so an answer to a system went out on the surface path. That is not a
+   silent loss either: a feature's system and surface share one ref, so for any asker that also has a surface —
+   the common case — the private answer was delivered to that surface **in every open window**, which is the
    failure `reply` exists to prevent. Found by review rather than by a case, because nothing in the repo asks a
    system and replies, and because `reply.spec.ts` asserted the broadcast as correct ("the answer is then for
    every window, as before").
@@ -363,7 +363,7 @@ also invalidates Phase 5's own criteria.
    to that one, absent means the ask came from the backend and the answer goes **in**, to the asking system.
    The decision recorded here — refuse rather than support — was reversed deliberately, because a handler whose
    behaviour depends on who asked is the thing `reply` was built to remove. **The ref cannot make this
-   decision**, which is why routing on it was tried and abandoned: `systemIds()` and `pluginIds()` both hold
+   decision**, which is why routing on it was tried and abandoned: `systemIds()` and `surfaceIds()` both hold
    feature refs and are not disjoint. The harness gained a `client` on `app.send` so a spec can stand for a
    window rather than only for a system.
 4. **Typed replies.** Still deferred, as the plan said: an `answers` contract field, a codegen reader and a rebuild
@@ -393,11 +393,11 @@ outgoing path has no schema, the subscription emits the object directly.
 
 ## Deferred
 
-- **Outbound stamping, so a plugin can `replyTo`.** Decision 4 scopes this out to keep
+- **Outbound stamping, so a surface can `replyTo`.** Decision 4 scopes this out to keep
   `outgoing-events.spec.ts` intact.
 - **Typed replies.** A typed `reply` needs an `answers` contract field, a codegen reader and a rebuild of
   every pack. Untyped first; revisit once Phase 5 shows what converted.
-- **Deriving a durable per-window address** (`main | <pluginRef>`), per Decision 1.
+- **Deriving a durable per-window address** (`main | <surfaceRef>`), per Decision 1.
 - **The terminal issue's `T4`**, the one-window slot collision, which addressing does not reach.
 - **The 221-row census and the per-reader guards it was to police.** Cancelled: the mechanism removes the
   need. The six existing guards in `packages/default-setup` are not this goal's to remove — the three-jobs

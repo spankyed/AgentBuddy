@@ -6,10 +6,10 @@ const group = { kind: 'pack', packId: 'owner', groupId: 'shared' } as const;
 const featureForm = { name: 'FeatureForm' };
 const groupForm = { name: 'GroupForm' };
 
-it('registers feature and group forms independently of plugins and keeps identical local names distinct', () => {
+it('registers feature and group forms independently of surfaces and keeps identical local names distinct', () => {
   const packs = createNativeFrontendTestRegistry();
   packs.registerFixture({ id: 'owner', features: { shared: { settingsForm: featureForm } }, settingsForms: { shared: groupForm } });
-  expect(packs.getRegisteredPlugins()).toEqual([]);
+  expect(packs.getRegisteredSurfaces()).toEqual([]);
   expect(packs.settingsForm(feature)).toBe(featureForm);
   expect(packs.settingsForm(group)).toBe(groupForm);
   packs.registerFixture({ id: 'other', settingsForms: { shared: { name: 'OtherForm' } } });

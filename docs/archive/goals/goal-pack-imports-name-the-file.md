@@ -114,7 +114,7 @@ Two things depend on that goal having run:
 - **`resolveWithExtensions` need not move to `@apackdev/host/build/`.** That goal's Decision 4 moves it so
   `packages/api` and `@apackdev/cli` can share it. If this goal runs after, nothing needs it at all and it is
   deleted instead — so if both are planned, skip the move and delete it here.
-- **`packages/api`'s `resolve-at-aliases` plugin** is deleted by that goal, not this one.
+- **`packages/api`'s `resolve-at-aliases` surface** is deleted by that goal, not this one.
 
 If this goal runs *first* instead, nothing breaks; it simply deletes nothing, because the `@/` resolvers
 resolve extensionlessly and `resolveWithExtensions` still serves them.
@@ -135,7 +135,7 @@ Final.
    rejects a relative `.js` specifier that names a TypeScript module in the `@apackdev` packages. Pack sources
    join its scope, and a companion refuses an *extensionless* own-module specifier. One mechanism, one place.
 5. **The extension-supplying machinery goes when nothing needs it.** `resolveWithExtensions` and the
-   subpath plugin's suffix-guessing exist only for extensionless specifiers. Deleting them is the point of
+   subpath surface's suffix-guessing exist only for extensionless specifiers. Deleting them is the point of
    the exercise, not a side effect — code whose only job is guessing what the author could have said.
 
 ## Open decision — settle before Phase 3
@@ -202,7 +202,7 @@ which is the one check that authors a pack from the templates outside the monore
 
 ### Phase 4 — delete the guessing
 
-`resolveWithExtensions` and the subpath plugin's suffix search go, along with `subpath-imports.spec.ts`'s
+`resolveWithExtensions` and the subpath surface's suffix search go, along with `subpath-imports.spec.ts`'s
 cases for them (the `readSubpathImports` half stays — reading `package.json` `imports` is still needed).
 
 **Done when:** `npm run test:external-pack` and `npm run test:packaged-authoring` pass with the machinery
@@ -267,9 +267,9 @@ error, and the machinery that used to guess is gone rather than kept for externa
 ### Corrections to the Decisions
 
 - **Decision 5 said the machinery goes "when nothing needs it"; nothing did, including the two bundler
-  plugins.** The plan expected to delete `resolveWithExtensions` and keep the plugins that called it. With
+  surfaces.** The plan expected to delete `resolveWithExtensions` and keep the surfaces that called it. With
   every specifier naming a file, esbuild and Vite resolve a pack's `imports` map themselves: removing both
-  plugins left `apack build` over the fixture pack and default-setup green, its 32 tests passing, and the
+  surfaces left `apack build` over the fixture pack and default-setup green, its 32 tests passing, and the
   API's tsup build writing 52 of 53 files byte for byte identical (`server.cjs` is not reproducible between
   two runs of the *same* config, and matched on a second pair). The file search survives, unexported, inside
   the diagnostic — its job is no longer to resolve but to name the file the author meant, which is why `.vue`

@@ -1,17 +1,17 @@
-import type { PluginDeclaration } from './plugin-declaration.ts';
+import type { SurfaceDeclaration } from './surface-declaration.ts';
 
 /** SVG geometry available before a reference provider executes. */
 export type ReferenceSvgElement = readonly ['path', { readonly d: string }] | readonly ['rect', Readonly<Record<string, string>>] | readonly ['circle', Readonly<Record<string, string>>];
 
 export interface ReferenceTypeDeclaration {
   category: string;
-  icon: NonNullable<PluginDeclaration['icon']>;
+  icon: NonNullable<SurfaceDeclaration['icon']>;
   svgElements: readonly ReferenceSvgElement[];
 }
 
 export interface ReferenceCategoryDeclaration {
   label: string;
-  icon: NonNullable<PluginDeclaration['icon']>;
+  icon: NonNullable<SurfaceDeclaration['icon']>;
   useItems: string;
 }
 

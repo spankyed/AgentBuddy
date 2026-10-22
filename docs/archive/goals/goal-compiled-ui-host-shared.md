@@ -30,7 +30,7 @@ Never:
 
 ## Background
 
-- `@apackdev/ui` ships its `.vue` files as source (`dist/**/*.vue`), and each pack's Vite build compiles them and inlines the components into the pack's `fe.js` (`packages/apack-cli/src/build/fe-bundler.ts`). Only `@apackdev/sdk/fe` and the libraries in `SDK_FE_MODULES` / `SHARED_DEPS` (`packages/apack-host/src/build/shared-deps.ts`) come from the host through `window.__apack`, which the renderer's `virtual:host-deps` plugin builds (`packages/renderer/vite.config.ts`).
+- `@apackdev/ui` ships its `.vue` files as source (`dist/**/*.vue`), and each pack's Vite build compiles them and inlines the components into the pack's `fe.js` (`packages/apack-cli/src/build/fe-bundler.ts`). Only `@apackdev/sdk/fe` and the libraries in `SDK_FE_MODULES` / `SHARED_DEPS` (`packages/apack-host/src/build/shared-deps.ts`) come from the host through `window.__apack`, which the renderer's `virtual:host-deps` surface builds (`packages/renderer/vite.config.ts`).
 - Consequences of inlining:
   - Every pack that uses `TiptapEditor` or the Monaco editors ships its own copy of them and of lowlight.
   - Stateful UI modules (e.g. `components/monaco-config.ts`) get a separate instance per pack. The DSL type registry already had to move into `@apackdev/sdk/fe` for this reason.
@@ -38,7 +38,7 @@ Never:
 - The `.ts` specifier spike (`docs/archive/goals/goal-ts-import-specifiers.md`) failed only because of the shipped SFC source: `tsc` rewrote the SDK's and host's JS correctly, but copied `.vue` files kept `./x.ts` imports that don't exist in `dist/`.
 - What other libraries do (published tarballs and build configs checked 2026-09-13):
   - 19 of 20 Vue component libraries publish compiled JS as the runtime: Reka UI (tsdown, `dts: { vue: true }`), Ark UI (Vite `preserveModules` + vite-plugin-dts), Element Plus (Rollup + plugin-vue, `preserveModules`), PrimeVue (Rollup), Vuetify, Naive UI, Ant Design Vue, Quasar, Headless UI, Vue Flow, Tiptap Vue 3. Nuxt UI ships `.vue` source, and only works with its own Nuxt/Vite plugin in the consumer's build.
-  - Plugin hosts provide the UI kit at runtime. Grafana's plugin build marks `@grafana/ui`, `@grafana/runtime` and `@grafana/data` external by default (`bundleGrafanaUI: false` opts into bundling); `@grafana/ui` is compiled and uses a source export condition like ours. Directus shares `vue`, `vue-router`, `vue-i18n`, `pinia` and its SDK with extensions and registers its app components globally.
+  - Surface hosts provide the UI kit at runtime. Grafana's surface build marks `@grafana/ui`, `@grafana/runtime` and `@grafana/data` external by default (`bundleGrafanaUI: false` opts into bundling); `@grafana/ui` is compiled and uses a source export condition like ours. Directus shares `vue`, `vue-router`, `vue-i18n`, `pinia` and its SDK with extensions and registers its app components globally.
   - Reka UI's tsdown config avoids per-file ("unbundle") output for SFCs ("creates a lot of unwanted files because of the multiple sections of SFC files") and relies on shared chunks.
 
 ## Decisions
@@ -79,7 +79,7 @@ Record the results in a "Spike results" section of this doc before Phase 1.
 3. CSS: scoped styles and `tiptap-theme.css` end up in CSS the compiled modules import.
 4. Build time and `dist/` size.
 
-Pick the tool that passes 1–3. If both pass, pick the one with fewer config lines and no custom output plugins. If neither passes 1, stop and record why in this doc.
+Pick the tool that passes 1–3. If both pass, pick the one with fewer config lines and no custom output surfaces. If neither passes 1, stop and record why in this doc.
 
 **B. Host sharing.** On top of A's output:
 1. The renderer exposes every UI export on `window.__apack`. Record the renderer's main chunk size before and after (`npm run build -w @app/renderer`); the difference must be under 5%, since the renderer already imports most components statically.
@@ -95,7 +95,7 @@ Tools: Vite 7.0.6 with `@vitejs/plugin-vue`; tsdown 0.21.10 (rolldown 1.0.0-rc.1
 |---|---|---|
 | 1. Shared modules once | ✅ `registeredDslLibs = new Set()` only in `components/monaco-config.js` | ✅ only in `components/monaco-config.js` (per-file `unbundle` mode too) |
 | 2. Layout, declarations | Two files per component (`X.js` re-exporting `X.vue.js`). Not taken further. | One `X.js` per export (82 JS incl. 2 shared chunks). With vue-tsc declarations in the real package: attw exit 0, `publint --strict` "All good!", `published-ui-types` 2/2, `published-exports` 2/2. |
-| 3. CSS | ❌ One `ui.css` no module imports; with `cssCodeSplit: true`, 17 component CSS files and still no imports. Needs a third-party CSS-injection plugin. | ✅ With `css: { inject: true }` each component imports its CSS (15 imports, 14 files). Two findings: unplugin-vue under tsdown can't resolve `<style src="./tiptap-theme.css">` (ENOENT; it resolves from the working directory), so `TiptapEditor.vue` uses `<style>@import "./tiptap-theme.css";</style>`; and the `@import` is only inlined with the `postcss` transformer (tsdown loads `postcss-import` for it). The default left `@import "./tiptap-theme.css"` in the emitted CSS, which a pack build then failed on, so `transformer: 'postcss'` is explicit and a dist test rejects unresolved relative `@import`s. |
+| 3. CSS | ❌ One `ui.css` no module imports; with `cssCodeSplit: true`, 17 component CSS files and still no imports. Needs a third-party CSS-injection surface. | ✅ With `css: { inject: true }` each component imports its CSS (15 imports, 14 files). Two findings: unplugin-vue under tsdown can't resolve `<style src="./tiptap-theme.css">` (ENOENT; it resolves from the working directory), so `TiptapEditor.vue` uses `<style>@import "./tiptap-theme.css";</style>`; and the `@import` is only inlined with the `postcss` transformer (tsdown loads `postcss-import` for it). The default left `@import "./tiptap-theme.css"` in the emitted CSS, which a pack build then failed on, so `transformer: 'postcss'` is explicit and a dist test rejects unresolved relative `@import`s. |
 | 4. Time, size | 2 s, 788 KB (127 JS, 1 CSS) | ~1 s compile; the package's `dist/` is 916 KB with declarations (82 JS, 14 CSS, 80 declarations) |
 
 tsdown passes 1–3; Vite fails 3.

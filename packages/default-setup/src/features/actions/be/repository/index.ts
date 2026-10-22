@@ -4,7 +4,7 @@ import type { ActionEntity } from '@apackdev/sdk';
 
 /**
  * Action Repository: the SDK's action repository (`actionRepository`), which owns their reads and writes, as the
- * actions plugin uses it, and the plugin's views. The SDK's methods are taken as they are, not wrapped.
+ * actions surface uses it, and the surface's views. The SDK's methods are taken as they are, not wrapped.
  */
 
 // Queries

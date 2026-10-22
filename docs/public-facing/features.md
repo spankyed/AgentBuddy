@@ -1,6 +1,6 @@
-# Features — Systems & Plugins
+# Features — Systems & Surfaces
 
-A **feature** is the primary unit of pack functionality. It bundles a backend system (XState state machine), a frontend plugin (sidebar tab with canvas/panel UI), settings, and services into a single declaration.
+A **feature** is the primary unit of pack functionality. It bundles a backend system (XState state machine), a frontend surface (sidebar tab with canvas/panel UI), settings, and services into a single declaration.
 
 ## Scaffolding
 
@@ -11,7 +11,7 @@ apack pack add feature bookmarks --description "Save and organize bookmarks." --
 | Flag | Default | Effect |
 |---|---|---|
 | `--description` | Required | Nonblank feature purpose |
-| `--label <Label>` | derived from the name | The plugin's display label in the manifest |
+| `--label <Label>` | derived from the name | The surface's display label in the manifest |
 | `--icon <LucideIcon>` | `Box` | The Lucide icon declared in the manifest and imported by generated bindings |
 | `--designation <role>` | none | Writes `"designation"`: the role the feature plays, which need not be its name |
 
@@ -27,7 +27,7 @@ src/features/bookmarks/
     repository/
       index.ts                   # bookmarksQueries / bookmarksCommands (declared in apack.json repositories)
   fe/
-    plugin.ts                    # Frontend plugin definition
+    surface.ts                    # Frontend surface definition
     state.ts                     # Frontend XState machine
     canvas/
       list.vue                   # Main view component
@@ -69,8 +69,8 @@ export type OutgoingBookmarksEvents =
 // src/features/bookmarks/be/system.ts
 import { setup } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
-// broadcastToPlugin is typed with the events each of this pack's plugins receives
-import { broadcastToPlugin } from '#generated/events.ts';
+// broadcastToSurface is typed with the events each of this pack's surfaces receives
+import { broadcastToSurface } from '#generated/events.ts';
 import type { Contract } from './contract.ts';
 
 // The spec types the machine from the same contract. Its identity is its feature's, from apack.json
@@ -81,7 +81,7 @@ export const bookmarksSystem = setup({
   types: bookmarksSpec.types,
   actions: {
     sendConnectedData: () => {
-      broadcastToPlugin('bookmarks', {
+      broadcastToSurface('bookmarks', {
         type: 'BOOKMARKS_CONNECTED',
         data: [],
       });
@@ -112,7 +112,7 @@ export default bookmarksEntry;
 `defineSystem<Contract>()` returns the spec. It takes no id: the system is its feature's, which the manifest names it under, and runs at the feature's ref, `<packId>/<featureId>`; code names it by the feature id (see below).
 
 The build materializes each endpoint's event names into `eventContracts` in the snapshot. Systems record
-`incoming` and `outgoing`; plugin `receives` combines its own system's outgoing events with its declared
+`incoming` and `outgoing`; surface `receives` combines its own system's outgoing events with its declared
 inbox. Shared SDK lifecycle events are implicit in both protocols. `apack pack info --json` exposes this
 under `build.metadata.eventContracts` without importing pack modules or requiring authored sources.
 An installed build missing a declared endpoint's contract is refused; an unbuilt source preview reports
@@ -123,9 +123,9 @@ The contract is a **declared type**, not a value, and it lives in a leaf module 
 
 | Field | What it is |
 |---|---|
-| `incoming` | what anything outside the system sends it: another system, a plugin, a dependent pack. Required unless the system only broadcasts |
+| `incoming` | what anything outside the system sends it: another system, a surface, a dependent pack. Required unless the system only broadcasts |
 | `internal` | what the system's own children send it (a `fromCallback` child telling its parent). These reach the machine's event union and nothing a dependent pack can see, so they can't be sent from outside. Optional |
-| `outgoing` | every event the system sends to plugins, and the one place they're declared: the build types `broadcastToPlugin` from it and lists what each plugin receives. Required |
+| `outgoing` | every event the system sends to surfaces, and the one place they're declared: the build types `broadcastToSurface` from it and lists what each surface receives. Required |
 | `context` | the machine's context, `{}` when omitted |
 
 The spec it returns:
@@ -137,34 +137,34 @@ The spec it returns:
 
 ### Key rules
 
-- **Keep contracts in their own modules.** A system entry uses its default export. Plugin state and component targets use default exports or explicit `path#exportName` references. Events come from the contract; your pack's typecheck reports a machine built from a different contract.
-- **Always handle `SEND_STATE`, and usually nothing else** — the app asks every system for its state whenever anything could have changed what it holds: a frontend connected, a pack was installed, updated, enabled, disabled, uninstalled or rebuilt while the app runs, its content were imported from Settings, or the data was reset or restored from a backup. Answer by broadcasting the full state your plugin starts from; the plugin doesn't need to ask for it. Because the ask is the same whatever caused it, you write it once and stay correct as new causes are added — including ones that didn't exist when your pack was written. An installed pack with frontend code (an FE entry or plugins) is asked once each window has tried loading that frontend, at startup, on activation and when the window reconnects, whether the load added plugins or failed; every system of the pack is asked, those without a plugin too. Every open window receives what you send, not only the one that asked.
+- **Keep contracts in their own modules.** A system entry uses its default export. Surface state and component targets use default exports or explicit `path#exportName` references. Events come from the contract; your pack's typecheck reports a machine built from a different contract.
+- **Always handle `SEND_STATE`, and usually nothing else** — the app asks every system for its state whenever anything could have changed what it holds: a frontend connected, a pack was installed, updated, enabled, disabled, uninstalled or rebuilt while the app runs, its content were imported from Settings, or the data was reset or restored from a backup. Answer by broadcasting the full state your surface starts from; the surface doesn't need to ask for it. Because the ask is the same whatever caused it, you write it once and stay correct as new causes are added — including ones that didn't exist when your pack was written. An installed pack with frontend code (an FE entry or surfaces) is asked once each window has tried loading that frontend, at startup, on activation and when the window reconnects, whether the load added surfaces or failed; every system of the pack is asked, those without a surface too. Every open window receives what you send, not only the one that asked.
 - **Handle a fact only for what publishing cannot fix** — `CLIENT_CONNECTED`, `PACK_CHANGED { packId }` and `DATA_REPLACED` are delivered before the ask that follows them, for work that re-sending data cannot do: tearing down something held over rows that are gone, or tracking whether a client is attached. If your answer to one of them would be "send my data again", delete it and handle `SEND_STATE` instead.
-- **Use `broadcastToPlugin()` to send to the frontend** — `broadcastToPlugin(name, event)`, in a system's actions or anywhere else (services, callbacks), routes the event through the bus to the plugin that name stands for, in **every** window showing it (a plugin runs once per window). The renderer's own `sendToPlugin(name, event)`, from the same module, goes to one window's actor instead. It's dropped while no client is connected, which is also why the app doesn't ask a system to publish until one is. It comes from `#generated/events` and accepts only the events that plugin receives. Don't import it from `@apackdev/sdk/events`, whose untyped version accepts any event. Only features that have a `plugin` are named there: a feature with a system and no plugin has nothing to receive events, so it gets no key. A plugin that should also take events from another feature or another pack declares them itself, in the `inbox` half of its `Contract` — the receiver says what it handles, so a pack widens only its own plugins.
-- **An event arrives exactly as you sent it** — where it goes travels beside it (`{ to, event }`), so any field name is yours to use, `pluginId` included.
+- **Use `broadcastToSurface()` to send to the frontend** — `broadcastToSurface(name, event)`, in a system's actions or anywhere else (services, callbacks), routes the event through the bus to the surface that name stands for, in **every** window showing it (a surface runs once per window). The renderer's own `sendToSurface(name, event)`, from the same module, goes to one window's actor instead. It's dropped while no client is connected, which is also why the app doesn't ask a system to publish until one is. It comes from `#generated/events` and accepts only the events that surface receives. Don't import it from `@apackdev/sdk/events`, whose untyped version accepts any event. Only features that have a `surface` are named there: a feature with a system and no surface has nothing to receive events, so it gets no key. A surface that should also take events from another feature or another pack declares them itself, in the `inbox` half of its `Contract` — the receiver says what it handles, so a pack widens only its own surfaces.
+- **An event arrives exactly as you sent it** — where it goes travels beside it (`{ to, event }`), so any field name is yours to use, `surfaceId` included.
 
 ### Communication patterns
 
-Your code names features: your own by id (`'bookmarks'`), and every other as `<packId>/<featureId>` (`'default-setup/logs'`; the app is the pack `host`, so its plugin is `'host/application'`). Every API that reaches a system or plugin takes that name. A feature's system and plugin both run under its ref, `<packId>/<featureId>`, the same spelling you write for another pack's features: a bare name is only short for your own pack's. Actions name systems and plugins `<packId>/<featureId>`, their own pack's included (see [`services.emitter`](services-and-data.md#host-services)).
+Your code names features: your own by id (`'bookmarks'`), and every other as `<packId>/<featureId>` (`'default-setup/logs'`; the app is the pack `host`, so its surface is `'host/application'`). Every API that reaches a system or surface takes that name. A feature's system and surface both run under its ref, `<packId>/<featureId>`, the same spelling you write for another pack's features: a bare name is only short for your own pack's. Actions name systems and surfaces `<packId>/<featureId>`, their own pack's included (see [`services.emitter`](services-and-data.md#host-services)).
 
 | To | Use |
 |---|---|
-| send to a plugin from a system | `broadcastToPlugin(name, event)` (`#generated/events`) — every window |
-| send to a plugin from the frontend | `sendToPlugin(name, event)` (`#generated/events`) — this window |
-| send to a system, from a plugin or from another system | `sendToSystem(name, event)` (`#generated/events`), typed with the events that system declares |
+| send to a surface from a system | `broadcastToSurface(name, event)` (`#generated/events`) — every window |
+| send to a surface from the frontend | `sendToSurface(name, event)` (`#generated/events`) — this window |
+| send to a system, from a surface or from another system | `sendToSystem(name, event)` (`#generated/events`), typed with the events that system declares |
 | send to whichever system plays a role | `sendToSystem({ role }, event)`: `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType })` fires a flow event |
-| reach your plugin's actor from its components | `usePlugin<MyActor>()` (`@apackdev/sdk/fe`): the app renders a plugin's canvas, panel, chat and settings as part of it. Name your machine's actor type — which plugin a component belongs to is where it is rendered, so nothing at the call site can infer it, and an unnamed one would read a context field your machine dropped and still compile |
-| read another plugin's state | `usePluginState(name, selector)` from `#generated/fe` in a component's setup or an effect scope, and `readPluginState(name, selector)` once, outside one (a machine's action). The selector takes that plugin's published state, not an XState snapshot. Your own pack's plugins are always running, so the value is never `undefined`; a dependency's frontend may still be loading, so reading one of its plugins gives `undefined` until it arrives, and fills in when it does. For a ref that arrives as data, `useUntypedPluginState`/`readUntypedPluginState` (`@apackdev/sdk/fe`) are the untyped escape hatch |
-| declare what other plugins may send yours | the `inbox` half of your plugin's `Contract`, a declared type in a leaf module `apack.json` names at `features.<id>.plugin.contract`: `export type Contract = { state: MyContext; inbox: PluginInbox<{ public: MyInbox }> }`. Your own feature's system needs no declaration — its outgoing events are already your plugin's. The `public` half is what a pack that depends on yours may send, and what types `sendToPlugin` and `openPlugin`. The leaf imports no machine, so codegen can read the contract without resolving one |
-| offer another of your features your plugin's state or events | put them in your plugin's `Contract` — `state` is read through the generated readers, `inbox` types the sends. A feature imports nothing of another feature's frontend (`check:specifiers`), so the contract is the whole of what crosses |
-| open a plugin, optionally handing it events | `openPlugin(name, event?)` (`#generated/fe`), which takes only the names your pack can write: its own features' and its dependencies'. The events are that plugin's inbox, the same `sendToPlugin` takes — this hands them to its actor too |
-| open a plugin a piece of data names (a link's target) | `untypedOpenPlugin(ref, event?)` (`@apackdev/sdk/fe`). It throws for a string that isn't a `<packId>/<featureId>`; otherwise the app opens the plugin, waiting while the pack that provides it is still loading, and tells the user if no installed pack provides it |
+| reach your surface's actor from its components | `useSurface<MyActor>()` (`@apackdev/sdk/fe`): the app renders a surface's canvas, panel, chat and settings as part of it. Name your machine's actor type — which surface a component belongs to is where it is rendered, so nothing at the call site can infer it, and an unnamed one would read a context field your machine dropped and still compile |
+| read another surface's state | `useSurfaceState(name, selector)` from `#generated/fe` in a component's setup or an effect scope, and `readSurfaceState(name, selector)` once, outside one (a machine's action). The selector takes that surface's published state, not an XState snapshot. Your own pack's surfaces are always running, so the value is never `undefined`; a dependency's frontend may still be loading, so reading one of its surfaces gives `undefined` until it arrives, and fills in when it does. For a ref that arrives as data, `useUntypedSurfaceState`/`readUntypedSurfaceState` (`@apackdev/sdk/fe`) are the untyped escape hatch |
+| declare what other surfaces may send yours | the `inbox` half of your surface's `Contract`, a declared type in a leaf module `apack.json` names at `features.<id>.surface.contract`: `export type Contract = { state: MyContext; inbox: SurfaceInbox<{ public: MyInbox }> }`. Your own feature's system needs no declaration — its outgoing events are already your surface's. The `public` half is what a pack that depends on yours may send, and what types `sendToSurface` and `openSurface`. The leaf imports no machine, so codegen can read the contract without resolving one |
+| offer another of your features your surface's state or events | put them in your surface's `Contract` — `state` is read through the generated readers, `inbox` types the sends. A feature imports nothing of another feature's frontend (`check:specifiers`), so the contract is the whole of what crosses |
+| open a surface, optionally handing it events | `openSurface(name, event?)` (`#generated/fe`), which takes only the names your pack can write: its own features' and its dependencies'. The events are that surface's inbox, the same `sendToSurface` takes — this hands them to its actor too |
+| open a surface a piece of data names (a link's target) | `untypedOpenSurface(ref, event?)` (`@apackdev/sdk/fe`). It throws for a string that isn't a `<packId>/<featureId>`; otherwise the app opens the surface, waiting while the pack that provides it is still loading, and tells the user if no installed pack provides it |
 
 ```typescript
-import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
+import { broadcastToSurface, sendToSystem } from '#generated/events.ts';
 
-// System -> Plugin (via bus)
-broadcastToPlugin('bookmarks', { type: 'BOOKMARK_CREATED', bookmark });
+// System -> Surface (via bus)
+broadcastToSurface('bookmarks', { type: 'BOOKMARK_CREATED', bookmark });
 
 // System -> System (via bus), checked against what the tags system declares it receives
 sendToSystem('tags', { type: 'SOME_EVENT' });
@@ -175,7 +175,7 @@ Frontend code (and backend code) sends events to systems with `sendToSystem` fro
 ```typescript
 import { sendToSystem } from '#generated/events.ts';
 
-// Plugin -> System: this pack's systems by feature id, a dependency's as <dependency>/<feature>
+// Surface -> System: this pack's systems by feature id, a dependency's as <dependency>/<feature>
 sendToSystem('bookmarks', { type: 'CREATE_BOOKMARK', url, title });
 sendToSystem('default-setup/notes', { type: 'GET_TRASHED_NOTES' });
 ```
@@ -189,15 +189,15 @@ Backend code that needs the connection or every incoming event subscribes with `
 - `createLogger(source)` from `@apackdev/sdk/logger` logs with your source; its entries reach the app's log. `createLogger(source, { debug: true })` logs `debug` messages only while `setDebugEnabled(source, true)` is in effect (on by default outside production). Backend pack code doesn't call `console.*`.
 - `reportError({ error, source, title?, operation?, entityId?, severity?, userMessage? })` logs an error and shows it to the user. A flow step passes `step: { phase, tNodeId, nodeId, … }` instead: the error is recorded on the step's trace node and shown in the flow, and `reportError` returns it for `actor.send({ type: 'ERROR', error })`.
 
-## Frontend plugin
+## Frontend surface
 
-### Defining a plugin
+### Defining a surface
 
-Declare the plugin under its feature in `apack.json`. Codegen combines this data with the referenced
+Declare the surface under its feature in `apack.json`. Codegen combines this data with the referenced
 machine and views; the host addresses it at `<packId>/bookmarks`.
 
 ```json
-"plugin": {
+"surface": {
   "label": "Bookmarks",
   "icon": "Bookmark",
   "state": "src/features/bookmarks/fe/state.ts",
@@ -211,7 +211,7 @@ A custom icon uses `{ "entry": "src/icon.vue" }`; a string icon names a Lucide e
 A routed canvas uses `{ "routes": { "list": "src/list.vue", "view": "src/view.vue" } }`.
 Discovery reads these declarations without loading the machine or component modules.
 
-### Plugin declaration
+### Surface declaration
 
 | Field | Required | Meaning |
 |---|---|---|
@@ -236,7 +236,7 @@ Custom settings forms are declared independently at `features.<id>.settings.form
 // src/features/bookmarks/fe/state.ts
 import { setup, type ActorRefFrom } from 'xstate';
 
-// The feature's name: the machine's id, and how the pack's code sends to and looks up this plugin
+// The feature's name: the machine's id, and how the pack's code sends to and looks up this surface
 export const id = 'bookmarks';
 export type BookmarksState = ActorRefFrom<typeof bookmarksState>;
 
@@ -294,7 +294,7 @@ Each feature declares a JSON Schema and explicit defaults in `apack.json`; forms
           "syncInterval": 300
         }
       },
-      "plugin": {
+      "surface": {
         "label": "Bookmarks",
         "icon": "Bookmark",
         "state": "src/features/bookmarks/fe/state.ts",
@@ -306,8 +306,8 @@ Each feature declares a JSON Schema and explicit defaults in `apack.json`; forms
 }
 ```
 
-- `plugin.default: true` claims the initial default. At most one feature per pack may claim it. Across packs, enabled native claims precede installed claims, then fully qualified feature refs sort in English lexical order. Selection uses declarations, so a faster frontend import cannot take another pack's default. A saved destination, popout target or explicit navigation takes precedence; the host remains usable while the selected frontend loads.
-- `plugin.defaultVisible` controls whether the sidebar tab shows by default (it shows when omitted). What the user shows or hides is the app's own state, kept by the host (`host/application`), and wins over it.
+- `surface.default: true` claims the initial default. At most one feature per pack may claim it. Across packs, enabled native claims precede installed claims, then fully qualified feature refs sort in English lexical order. Selection uses declarations, so a faster frontend import cannot take another pack's default. A saved destination, popout target or explicit navigation takes precedence; the host remains usable while the selected frontend loads.
+- `surface.defaultVisible` controls whether the sidebar tab shows by default (it shows when omitted). What the user shows or hides is the app's own state, kept by the host (`host/application`), and wins over it.
 - The host stores overrides under `features.<packId>/<featureId>`; the declaration does not repeat that ID.
 - Settings use JSON Schema draft-07 and required explicit `defaults`. Invalid declarations fail the build and registration; invalid changed values are refused at the shared store. Validation does not coerce, populate defaults or transform values. See [Feature settings](manifest.md#feature-settings).
 - The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack leaves its discovered definitions and defaults available; a new version's defaults apply to every key the user didn't change.
@@ -359,7 +359,7 @@ Array order is significant. Values must be JSON-compatible (or `undefined`). The
 or effect scope; disposal stops its watcher. It does not save automatically.
 
 The host's raw `services.settings` and frontend settings port support migrations, app-wide sections, and transport. Ordinary feature code uses the generated accessors.
-- When a feature's settings change, however they changed (a setting, the settings replaced or reset, a pack's defaults coming or going), its system gets `FEATURE_SETTINGS_UPDATED { settings, changes }` (`changes`: what changed in each list, by its key) and its plugin `FEATURE_SETTINGS_UPDATED { settings }`. Every system and plugin receives it, like `SEND_STATE`: nothing declares it, and a feature without a system or a plugin just doesn't get that half.
+- When a feature's settings change, however they changed (a setting, the settings replaced or reset, a pack's defaults coming or going), its system gets `FEATURE_SETTINGS_UPDATED { settings, changes }` (`changes`: what changed in each list, by its key) and its surface `FEATURE_SETTINGS_UPDATED { settings }`. Every system and surface receives it, like `SEND_STATE`: nothing declares it, and a feature without a system or a surface just doesn't get that half.
 
 ## Manifest entry
 
@@ -377,7 +377,7 @@ The host's raw `services.settings` and frontend settings port support migrations
     "entry": "src/features/bookmarks/be/system.ts",
     "contract": "src/features/bookmarks/be/contract.ts#Contract"
   },
-  "plugin": {
+  "surface": {
     "label": "Bookmarks",
     "icon": "Bookmark",
     "state": "src/features/bookmarks/fe/state.ts",
@@ -394,7 +394,7 @@ The host's raw `services.settings` and frontend settings port support migrations
 }
 ```
 
-A feature can omit `system` (frontend-only) or `plugin` (backend-only). `services` and `repositories` are optional. Plugin presentation, pane references and shortcut descriptors live in the manifest; codegen supplies the bound `PluginDefinition`. Each service entry names the service object a module exports, `"bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"` (see [Services](services-and-data.md#services)); repositories work the same way (see [Repository pattern](services-and-data.md#repository-pattern)).
+A feature can omit `system` (frontend-only) or `surface` (backend-only). `services` and `repositories` are optional. Surface presentation, pane references and shortcut descriptors live in the manifest; codegen supplies the bound `SurfaceDefinition`. Each service entry names the service object a module exports, `"bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"` (see [Services](services-and-data.md#services)); repositories work the same way (see [Repository pattern](services-and-data.md#repository-pattern)).
 
 Other feature fields:
 
@@ -405,7 +405,7 @@ Other feature fields:
 | `types` | Types module re-exported from `#generated/types`; explicit pack-root-relative module path; no inferred default |
 | `references` | Inline type/category declarations and explicit function exports; see [reference declarations](manifest.md#reference-declarations) |
 
-A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack pack add feature bookmarks --description "Save and organize bookmarks." --designation bookmarks` writes it. One feature plays a role: `apack pack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack pack validate` also reports a `settings.form`, `system.entry` or `plugin.state` and component-target file that doesn't exist.
+A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack pack add feature bookmarks --description "Save and organize bookmarks." --designation bookmarks` writes it. One feature plays a role: `apack pack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack pack validate` also reports a `settings.form`, `system.entry` or `surface.state` and component-target file that doesn't exist.
 
 ## Types dependents see
 

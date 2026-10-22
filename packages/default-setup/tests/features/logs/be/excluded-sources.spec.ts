@@ -1,4 +1,4 @@
-// The logs plugin hides entries whose source matches an excluded pattern: exact, with `*` matching anything
+// The logs surface hides entries whose source matches an excluded pattern: exact, with `*` matching anything
 import { describe, expect, it } from 'vitest';
 import { filterLogsByExcludedSources, isSourceExcluded } from '#features/logs/be/utils.ts';
 import type { LogEntry } from '#features/logs/be/types.ts';

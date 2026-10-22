@@ -88,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, computed, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -103,7 +103,7 @@ const props = defineProps<{
   toast: { success: (title: string, message: string) => void } | undefined
 }>()
 
-const codeActor: CodeState = usePlugin()
+const codeActor: CodeState = useSurface()
 const commitActor = codeChild(codeActor, 'commit')!
 
 const commitLog = useSelector(commitActor, (state) => state.context.commitLog) as import('vue').Ref<CommitLogEntry[]>

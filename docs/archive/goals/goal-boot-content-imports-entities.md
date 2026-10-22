@@ -111,7 +111,7 @@ The `settings` entry in `content.sources` is three unrelated things in one manif
 
 It is pre-0.4.0 shape. Settings are now the host's (`packages/apack-host/src/features/settings/`,
 `@apackdev/host/settings`): **the row holds only what the user changed**, and the store composes the
-registration's defaults underneath it, keyed by feature ref (`plugins['default-setup/threads']`). So there
+registration's defaults underneath it, keyed by feature ref (`surfaces['default-setup/threads']`). So there
 is nothing to write at boot, and `services.settings.reset()` is all-or-nothing where the document's shape
 would support per-feature.
 
@@ -146,7 +146,7 @@ Final.
    `src/content/default-settings.ts` directly. The `settings` content entry, the `settings` format and
    `src/content/settings/applier.ts` go.
 4. **The base-file validation survives the format.** `_compilers/settings.ts` refuses a base file that
-   sets a plugin's slice; that check moves to where the base is read (an assertion in
+   sets a surface's slice; that check moves to where the base is read (an assertion in
    `src/app-settings/`) rather than being a reason to round-trip through disk.
 5. **Resetting settings is the host's, per feature and per section.** The capability goes on
    `services.settings` / the host's settings store — reset one feature's slice or one section — and is

@@ -5,18 +5,18 @@ import { setup } from 'xstate';
 import { SYSTEM_EVENT_TYPES } from '@apackdev/sdk/framework';
 import type { PackFeature } from '@apackdev/sdk/framework';
 import { hostRegistration } from '../../src/features/registration.ts';
-import { PACKS_PLUGIN_EVENT_TYPES } from '../../src/features/event-contracts.ts';
-import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import { PACKS_SURFACE_EVENT_TYPES } from '../../src/features/event-contracts.ts';
+import { SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 
-/** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
-const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
+/** The events a pack's surface receives: what its pack declares, and what the app sends every surface */
+const receives = (...types: string[]) => new Set([...types, ...SURFACE_EVENT_TYPES]);
 
 const { getEventValidationMap, registerPack, unregisterPack } = createNativePackTestRegistry();
 
 const machine = setup({}).createMachine({});
 
-/** A feature with a plugin that receives `types` */
-const plugin = (types: string[] = []): PackFeature => ({ plugin: { receives: types } });
+/** A feature with a surface that receives `types` */
+const surface = (types: string[] = []): PackFeature => ({ surface: { receives: types } });
 
 describe('getEventValidationMap', () => {
   it('follows packs registering and unregistering, with no manual invalidation', () => {
@@ -45,72 +45,72 @@ describe('getEventValidationMap', () => {
   });
 });
 
-describe('getPluginEventValidationMap', () => {
+describe('getSurfaceEventValidationMap', () => {
   const registry = createNativePackTestRegistry();
 
   it('follows packs registering and unregistering, with no manual invalidation', () => {
-    expect(registry.getPluginEventValidationMap().has('memo-pack/memos')).toBe(false);
+    expect(registry.getSurfaceEventValidationMap().has('memo-pack/memos')).toBe(false);
 
-    registry.registerPack({ id: 'memo-pack', features: { memos: plugin(['MEMO_ADDED', 'MEMOS_CONNECTED']) } });
-    expect(registry.getPluginEventValidationMap().get('memo-pack/memos')).toEqual(receives('MEMO_ADDED', 'MEMOS_CONNECTED'));
+    registry.registerPack({ id: 'memo-pack', features: { memos: surface(['MEMO_ADDED', 'MEMOS_CONNECTED']) } });
+    expect(registry.getSurfaceEventValidationMap().get('memo-pack/memos')).toEqual(receives('MEMO_ADDED', 'MEMOS_CONNECTED'));
 
     registry.unregisterPack('memo-pack');
-    expect(registry.getPluginEventValidationMap().has('memo-pack/memos')).toBe(false);
+    expect(registry.getSurfaceEventValidationMap().has('memo-pack/memos')).toBe(false);
   });
 
-  it('leaves a feature without a plugin absent, so a send to it is caught', () => {
+  it('leaves a feature without a surface absent, so a send to it is caught', () => {
     registry.registerPack({ id: 'silent-pack', features: { silent: { system: { machine, receives: [] } } } });
-    expect(registry.getPluginEventValidationMap().has('silent-pack/silent')).toBe(false);
+    expect(registry.getSurfaceEventValidationMap().has('silent-pack/silent')).toBe(false);
     registry.unregisterPack('silent-pack');
   });
 
-  // A plugin its pack's systems send nothing to gets only the app's events: any other send there is a mistake
-  it('gives a plugin with no declared events only the app\'s', () => {
-    registry.registerPack({ id: 'quiet-pack', features: { quiet: plugin() } });
-    expect(registry.getPluginEventValidationMap().get('quiet-pack/quiet')).toEqual(receives());
+  // A surface its pack's systems send nothing to gets only the app's events: any other send there is a mistake
+  it('gives a surface with no declared events only the app\'s', () => {
+    registry.registerPack({ id: 'quiet-pack', features: { quiet: surface() } });
+    expect(registry.getSurfaceEventValidationMap().get('quiet-pack/quiet')).toEqual(receives());
     registry.unregisterPack('quiet-pack');
   });
 });
 
-describe('a pack cannot widen a plugin it does not own', () => {
+describe('a pack cannot widen a surface it does not own', () => {
   // A pack names its own features, and the host is the pack `host`, so `application` in a manifest is this
-  // pack's `application` feature and never the host's plugin.
-  it("cannot add event types to the host's plugin, because a pack's feature is under its own pack", () => {
+  // pack's `application` feature and never the host's surface.
+  it("cannot add event types to the host's surface, because a pack's feature is under its own pack", () => {
     const registry = createNativePackTestRegistry();
-    const host = registry.getPluginEventValidationMap().get('host/application');
+    const host = registry.getSurfaceEventValidationMap().get('host/application');
 
-    registry.registerPack({ id: 'impostor-pack', features: { application: plugin(['ANYTHING']) } });
+    registry.registerPack({ id: 'impostor-pack', features: { application: surface(['ANYTHING']) } });
 
-    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(host);
-    expect(registry.getPluginEventValidationMap().get('impostor-pack/application')).toEqual(receives('ANYTHING'));
+    expect(registry.getSurfaceEventValidationMap().get('host/application')).toEqual(host);
+    expect(registry.getSurfaceEventValidationMap().get('impostor-pack/application')).toEqual(receives('ANYTHING'));
   });
 
-  // Each pack's plugin has its own address, so neither can widen or shadow the other's contract
+  // Each pack's surface has its own address, so neither can widen or shadow the other's contract
   it("gives a second pack naming the same feature its own entry, leaving the first's", () => {
     const registry = createNativePackTestRegistry();
-    registry.registerPack({ id: 'first-pack', features: { memos: plugin(['MEMO_ADDED']) } });
-    registry.registerPack({ id: 'second-pack', features: { memos: plugin(['HIJACKED']) } });
+    registry.registerPack({ id: 'first-pack', features: { memos: surface(['MEMO_ADDED']) } });
+    registry.registerPack({ id: 'second-pack', features: { memos: surface(['HIJACKED']) } });
 
-    expect(registry.getPluginEventValidationMap().get('first-pack/memos')).toEqual(receives('MEMO_ADDED'));
-    expect(registry.getPluginEventValidationMap().get('second-pack/memos')).toEqual(receives('HIJACKED'));
+    expect(registry.getSurfaceEventValidationMap().get('first-pack/memos')).toEqual(receives('MEMO_ADDED'));
+    expect(registry.getSurfaceEventValidationMap().get('second-pack/memos')).toEqual(receives('HIJACKED'));
   });
 });
 
 describe('native fixture admission', () => {
-  it('publishes declarations before binding plugins, independently of runtime validation maps', () => {
+  it('publishes declarations before binding surfaces, independently of runtime validation maps', () => {
     const registry = createNativePackTestRegistry();
     let seen: Set<string> | undefined = 'unset' as never;
     const stop = registry.onCatalogChanged(() => {
       expect(registry.settingsCatalog().features['memo-pack/memos']).toBeDefined();
-      seen = registry.getPluginEventValidationMap().get('memo-pack/memos');
+      seen = registry.getSurfaceEventValidationMap().get('memo-pack/memos');
     });
     registry.registerPack({
       id: 'memo-pack',
-      features: { memos: { ...plugin(['MEMO_ADDED']), settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } } },
+      features: { memos: { ...surface(['MEMO_ADDED']), settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } } },
     });
     stop();
     expect(seen).toBeUndefined();
-    expect(registry.getPluginEventValidationMap().get('memo-pack/memos')).toEqual(receives('MEMO_ADDED'));
+    expect(registry.getSurfaceEventValidationMap().get('memo-pack/memos')).toEqual(receives('MEMO_ADDED'));
   });
 
   // The rollback has to take it back out again, or a refused pack stays listed
@@ -119,28 +119,28 @@ describe('native fixture admission', () => {
     // Two appliers for one key: refused before registering any contribution
     expect(() => registry.registerPack({
       id: 'clumsy-pack',
-      features: { memos: plugin(['MEMO_ADDED']) },
+      features: { memos: surface(['MEMO_ADDED']) },
       appliers: [{ key: 'notes' } as never, { key: 'notes' } as never],
     })).toThrow('runtime appliers does not match its admitted declarations');
-    expect(registry.getPluginEventValidationMap().has('clumsy-pack/memos')).toBe(false);
+    expect(registry.getSurfaceEventValidationMap().has('clumsy-pack/memos')).toBe(false);
     expect(registry.getRegisteredPackSystemIds('clumsy-pack')).toEqual([]);
   });
 });
 
-describe('a host plugin', () => {
+describe('a host surface', () => {
   it('is checked with the event types its registration declares', () => {
     const registry = createNativePackTestRegistry();
     registry.registerPack(hostRegistration());
-    expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_PLUGIN_EVENT_TYPES));
-    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN', 'PACK_RUNTIMES_UPDATED'));
+    expect(registry.getSurfaceEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_SURFACE_EVENT_TYPES));
+    expect(registry.getSurfaceEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'SURFACE_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_SURFACE', 'PACK_RUNTIMES_UPDATED'));
   });
 
   // The host is the pack `host`, so a pack with a `packs` feature of its own is not a contest
   it("keeps its ref whatever a pack names its own feature", () => {
     const registry = createNativePackTestRegistry();
-    registry.registerPack({ id: 'owner-pack', features: { packs: plugin(['NOT_THE_HOSTS']) } });
+    registry.registerPack({ id: 'owner-pack', features: { packs: surface(['NOT_THE_HOSTS']) } });
     registry.registerPack(hostRegistration());
-    expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_PLUGIN_EVENT_TYPES));
-    expect(registry.getPluginEventValidationMap().get('owner-pack/packs')).toEqual(receives('NOT_THE_HOSTS'));
+    expect(registry.getSurfaceEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_SURFACE_EVENT_TYPES));
+    expect(registry.getSurfaceEventValidationMap().get('owner-pack/packs')).toEqual(receives('NOT_THE_HOSTS'));
   });
 });

@@ -146,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, computed } from 'vue';
 import { 
@@ -165,7 +165,7 @@ import {
 import { useSelector } from '@xstate/vue';
 import { type DatabaseState } from '../state.ts';
 
-const actor: DatabaseState = usePlugin()
+const actor: DatabaseState = useSurface()
 const schema = useSelector(actor, (state) => state.context.schema);
 const isRefreshing = useSelector(actor, (state) => state.context.isRefreshing || false);
 

@@ -1,8 +1,8 @@
 import { test, expect } from '@apackdev/testing';
 
 test('pack loads and renders', async ({ app }) => {
-  await app.waitForPlugin('__PLUGIN_ID__');
-  await app.navigate('__PLUGIN_ID__');
+  await app.waitForSurface('__SURFACE_ID__');
+  await app.navigate('__SURFACE_ID__');
   await app.screenshot('pack-default');
 });
 

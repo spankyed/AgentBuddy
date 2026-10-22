@@ -39,7 +39,7 @@ function write(file: string, content: string): void {
 }
 
 const CONTRACTS = ['src/features/memos/be/contract.ts', 'src/features/memos/fe/contract.ts'] as const;
-const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/plugin.ts'] as const;
+const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/surface.ts'] as const;
 
 /**
  * A pack that makes codegen emit **all** of `GENERATED_MODULES`. A minimal one-feature manifest emits fifteen, and
@@ -53,7 +53,7 @@ function fixture(): PackManifest {
   write(CONTRACTS[0]!, "export type Contract = { incoming: { type: 'NOTES_RUN' }; outgoing: { type: 'NOTES_CONNECTED' } };\n");
   write(CONTRACTS[1]!, "export type Contract = { state: { ready: boolean }; inbox: { public: { type: 'NOTE.OPEN' } } };\n");
   write(ENTRIES[0]!, 'export default { spec: undefined as never, machine: undefined as never };\n');
-  write(ENTRIES[1]!, 'declare const plugin: { label: string };\nexport default plugin;\n');
+  write(ENTRIES[1]!, 'declare const surface: { label: string };\nexport default surface;\n');
   write('src/features/memos/be/repository/index.ts', 'export const memoQueries = { all: () => [] };\n');
   write('src/extensions/steps/tick/types.ts', "export type TickNode = { every: string };\n");
   write('src/defs/action.ts', 'export interface NoteDTO { text: string }');
@@ -66,7 +66,7 @@ function fixture(): PackManifest {
       memos: {
         description: 'Manage memos.',
         system: { entry: ENTRIES[0], contract: `${CONTRACTS[0]}#Contract` },
-        plugin: { label: 'Fixture', state: ENTRIES[1], contract: `${CONTRACTS[1]}#Contract` },
+        surface: { label: 'Fixture', state: ENTRIES[1], contract: `${CONTRACTS[1]}#Contract` },
         repositories: { memoQueries: 'src/features/memos/be/repository/index.ts#memoQueries' },
       },
     },

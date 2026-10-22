@@ -10,7 +10,7 @@ import { contentBindingProblem } from '../../src/packs/declaration-binding.ts';
 const manifest = ManifestSchema.parse({
   id: 'content-pack', name: 'Content', version: '1.0.0', data: { entities: { ContentThing: null } },
   features: { notes: { description: 'Feature declaration fixture.',
-    designation: 'notes', system: { entry: 'system.ts' }, plugin: { label: 'Fixture', state: 'plugin.ts' },
+    designation: 'notes', system: { entry: 'system.ts' }, surface: { label: 'Fixture', state: 'surface.ts' },
     services: { notes: 'notes.ts#notes' }, repositories: { contentQueries: 'queries.ts#queries' },
     settings: { schema: { type: 'object' }, defaults: { count: 0 } },
   } },
@@ -39,7 +39,7 @@ afterEach(() => {
 it('binds content while retaining declarations without backend activation', () => {
   registry.registerContentRuntime(runtime, origin);
   expect(registry.systemIds()).toEqual([]);
-  expect(registry.pluginIds()).toEqual([]);
+  expect(registry.surfaceIds()).toEqual([]);
   expect(registry.designation('notes')).toBeUndefined();
   expect(registry.getRegisteredServices()).toEqual({});
   expect(registry.contentWriters('ContentThing')).toBe(writer);

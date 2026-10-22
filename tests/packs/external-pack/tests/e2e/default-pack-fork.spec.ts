@@ -28,7 +28,7 @@ if (!restarting) test('an externally built default fork refreshes both windows a
   await app.navigate('host/settings');
   await appPage.getByRole('button', { name: 'Personal', exact: true }).click();
   const preferenceWindow = electronApp.waitForEvent('window');
-  await appPage.evaluate(() => (window as any).electronAPI.plugins.popout('host/settings', 'Settings'));
+  await appPage.evaluate(() => (window as any).electronAPI.surfaces.popout('host/settings', 'Settings'));
   const observer = await preferenceWindow;
   try {
     await observer.waitForLoadState('domcontentloaded');
@@ -41,11 +41,11 @@ if (!restarting) test('an externally built default fork refreshes both windows a
   const source = await appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
     .getSnapshot().context.appPackSources.find((source: any) => source.id === 'default-setup'));
   const opened = electronApp.waitForEvent('window');
-  await appPage.evaluate(() => (window as any).electronAPI.plugins.popout('host/packs', 'Packs'));
+  await appPage.evaluate(() => (window as any).electronAPI.surfaces.popout('host/packs', 'Packs'));
   const second = await opened;
   let replaced = false;
   const label = (page: typeof appPage) => page.evaluate(() => (window as any).applicationState.getSnapshot()
-    .context.plugins.find((plugin: any) => plugin.id === 'default-setup/notes')?.label);
+    .context.surfaces.find((surface: any) => surface.id === 'default-setup/notes')?.label);
   const runtime = (page: typeof appPage) => page.evaluate(() => (window as any).applicationState?.getSnapshot()
     .context.acceptedPackRuntimes['default-setup'] as string | undefined);
   const waitForReplacement = (page: typeof appPage, previous: string | undefined) => expect.poll(async () => {
@@ -110,7 +110,7 @@ if (restarting) test('default lifecycle survives normal boot', async ({ app, app
     const { packs: records } = JSON.parse(fs.readFileSync(context.installedPacksFile, 'utf8'));
     expect(records.find((record: any) => record.id === 'default-setup')).toMatchObject({ suppressAppInstall: true });
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.getSnapshot()
-      .context.plugins.some((plugin: any) => plugin.id.startsWith('default-setup/')))).toBe(false);
+      .context.surfaces.some((surface: any) => surface.id.startsWith('default-setup/')))).toBe(false);
     await app.navigate('host/packs');
     await expect(appPage.getByTestId('missing-app-defaults')).toBeVisible();
   } else {
@@ -118,7 +118,7 @@ if (restarting) test('default lifecycle survives normal boot', async ({ app, app
       .toBe(fs.readFileSync(path.join(data, 'accepted-fork-receipt.json'), 'utf8'));
     else if (bootCheck !== 'restored') throw new Error(`Unknown fork boot phase: ${bootCheck}`);
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.getSnapshot()
-      .context.plugins.find((plugin: any) => plugin.id === 'default-setup/notes')?.label)).toBe(bootCheck === 'fork' ? 'Fork Notes' : 'Notes');
+      .context.surfaces.find((surface: any) => surface.id === 'default-setup/notes')?.label)).toBe(bootCheck === 'fork' ? 'Fork Notes' : 'Notes');
     await app.navigate('host/packs');
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
       .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.updatesWith)).toBe(bootCheck === 'fork' ? 'user' : 'app');

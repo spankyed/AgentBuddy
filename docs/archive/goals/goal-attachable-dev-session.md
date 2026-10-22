@@ -211,7 +211,7 @@ Final.
 15. **A question attaches; a program gets a dir.** `drive --eval` attaches, and `drive <script>` goes on
     launching its own app through the fixture, in whichever profile it was given. That is a decision and
     not a leftover: a script is a sequence of clicks and reads whose result would otherwise depend on
-    whatever plugin was left open and whatever rows were half-edited, which is undeclared input. A script
+    whatever surface was left open and whatever rows were half-edited, which is undeclared input. A script
     that wants the developer's *data* already has it — `--profile` hands the fixture that dir
     (`E2E_DATA_DIR`, `drive.ts:495`); what it cannot share is the *process*, costing a launch and the
     chance to watch it in the window already open. Making the fixture yield a connected page instead
@@ -496,7 +496,7 @@ No pack here: holding the app. Ctrl-C to close it.
 
 $ apack drive --state             # another terminal
 Attached to the development app (pid 36307).
-{"value":{"running":"connected"},"plugin":"default-setup/threads","plugins":[…]}
+{"value":{"running":"connected"},"surface":"default-setup/threads","surfaces":[…]}
 ```
 
 Four decisions the phase settled, each because the obvious placement was wrong:

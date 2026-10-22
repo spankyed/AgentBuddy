@@ -36,7 +36,7 @@ __attribute__((constructor)) static void initialize(void) {
   FILE *marker = fopen(${JSON.stringify(marker)}, "w"); if (marker) fclose(marker);
 }`, outside);
     packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
-      files: { 'src/pack-entry-fe.ts': 'export const plugins = [];',
+      files: { 'src/pack-entry-fe.ts': 'export const surfaces = [];',
         'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
     process.env.DYLD_INSERT_LIBRARIES = '/usr/lib/libSystem.B.dylib';
     await builder.build({ args: ['--skip-fe'], signal: AbortSignal.timeout(120_000) });

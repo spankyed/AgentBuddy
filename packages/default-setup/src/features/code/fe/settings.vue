@@ -374,7 +374,7 @@
     <div class="border-t border-neutral-800 pt-8">
       <CollapsibleSection label="Code Hotkeys" :default-open="true" class="mb-8">
         <p class="text-sm text-neutral-500 mb-4">
-          Keyboard shortcuts available when the code plugin is active
+          Keyboard shortcuts available when the code surface is active
         </p>
         <div class="space-y-6">
           <div class="group">
@@ -460,7 +460,7 @@ import KeyboardShortcutInput from '@apackdev/ui/components/KeyboardShortcutInput
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 import DirectorySelect from '@apackdev/ui/design/DirectorySelect'
 
-import { useSettingsDraft, untypedOpenPlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, untypedOpenSurface } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
@@ -646,7 +646,7 @@ const deleteScript = (index: number) => {
 }
 
 const goToProjects = () => {
-  untypedOpenPlugin(HOST_SETTINGS, [
+  untypedOpenSurface(HOST_SETTINGS, [
     { type: 'TAB.SELECT', tab: 'general' },
     { type: 'GENERAL_NAV.SELECT', item: 'projects' }
   ])

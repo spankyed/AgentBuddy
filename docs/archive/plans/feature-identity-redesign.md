@@ -8,7 +8,7 @@ Surveyed 2026-09-21 at `ff80ea9ee` on `AS/designations-and-addressing`. A propos
 The public docs said this from `160d437be` (2026-09-15) until `02d655f68`:
 
 > A system's bus id is the feature id in a built-in pack, and `<packId>.<featureId>` in an external pack
-> (`my-pack.bookmarks`). Plugin ids stay the feature id. Don't write bus ids by hand: `busId` from
+> (`my-pack.bookmarks`). Surface ids stay the feature id. Don't write bus ids by hand: `busId` from
 > `#generated/bus-ids` maps each of your features that has a system to its bus id. […] Actions don't need
 > it: they name a system `<packId>/<featureId>`.
 
@@ -17,8 +17,8 @@ That paragraph made four decisions:
 1. **A routing id is a separate thing from a name.** A bus id had its own spelling (`.`), and authors wrote
    another (`/`), so something had to translate between them.
 2. **Bare ids are privileged.** Built-in features and the host shared one unqualified namespace.
-3. **Identity rides inside the payload.** A plugin id was just a feature id, and it travelled as
-   `pluginId` on the event itself.
+3. **Identity rides inside the payload.** A surface id was just a feature id, and it travelled as
+   `surfaceId` on the event itself.
 4. **Identity is a lookup table.** `busId` was a generated map, and code carried its results around.
 
 The follow-up goal removed the first-class/second-class split: every pack is now addressed alike, and pack
@@ -27,9 +27,9 @@ code never holds an address. The shape of each decision is still in the code, th
 | Decision | What still carries it | Measured at `ff80ea9ee` |
 |---|---|---|
 | 1. Two spellings | `<pack>.<feature>` on the wire and in storage, `<pack>/<feature>` in code and actions, and a bare name as a third form. `resolveName` tells them apart by punctuation. Five helpers exist for one concept (`qualifiedId`, `addressOf`, `parseAddress`, `resolveName`, `asHostAddress`), plus the `FeatureAddress` brand to keep the forms apart. | 46 `resolveName` calls, 10 `parseAddress` calls, 68 `default-setup.<feature>` literals in code and tests |
-| 2. Bare ids are privileged | The host's ids (`application`, `packs`, `bus`) are bare, so a bare name means either "my feature" or "the host's". `resolveName` needs a `hostIds` list, and a pack feature named `application` is shadowed. | 27 `HOST_PLUGIN_IDS`/`hostIds` references |
-| 3. Identity in the payload | `emit`/`broadcastToPlugin` spread `pluginId` into the event, and `sendToSystem` spreads `systemId`. The root CLAUDE.md has to warn: "never use `pluginId` as a field name". | 56 `pluginId` references in the bus, the renderer and the events module; 76 `systemId` references |
-| 4. Identity as a table | A feature's identity is spread over `systems[]`, `features[]`, `receivedEventTypes`, `boot.earlySystem`, and on the frontend `plugins`, `defaultPlugin` and `designations`; the registry reassembles it (review finding F7, deferred). Stored settings are keyed by the routing string, with the reserved `_meta` key in the same map. | 7 registration fields; 60 `_meta` references |
+| 2. Bare ids are privileged | The host's ids (`application`, `packs`, `bus`) are bare, so a bare name means either "my feature" or "the host's". `resolveName` needs a `hostIds` list, and a pack feature named `application` is shadowed. | 27 `HOST_SURFACE_IDS`/`hostIds` references |
+| 3. Identity in the payload | `emit`/`broadcastToSurface` spread `surfaceId` into the event, and `sendToSystem` spreads `systemId`. The root CLAUDE.md has to warn: "never use `surfaceId` as a field name". | 56 `surfaceId` references in the bus, the renderer and the events module; 76 `systemId` references |
+| 4. Identity as a table | A feature's identity is spread over `systems[]`, `features[]`, `receivedEventTypes`, `boot.earlySystem`, and on the frontend `surfaces`, `defaultSurface` and `designations`; the registry reassembles it (review finding F7, deferred). Stored settings are keyed by the routing string, with the reserved `_meta` key in the same map. | 7 registration fields; 60 `_meta` references |
 
 Two bugs fixed this week are these decisions leaking out:
 - The logs `earlySystem` was never addressed (`f6f8aa08b`). A fifth place held identity, and nothing
@@ -42,11 +42,11 @@ Two bugs fixed this week are these decisions leaking out:
 Two holes the typed generated API doesn't cover. Each exists because one function serves two kinds of caller.
 
 **1. Frontend lookups accept any string.** Sends are checked: `sendToSystem('notez', …)` fails to compile. The
-frontend lookups aren't. `navigateToPlugin('default-setp/notes')`, `navigateToPlugin('whatever.anything')` and
-`actorOf('default-setp/notes')` all compile, because `PluginName` includes `${string}/${string}` and
+frontend lookups aren't. `navigateToSurface('default-setp/notes')`, `navigateToSurface('whatever.anything')` and
+`actorOf('default-setp/notes')` all compile, because `SurfaceName` includes `${string}/${string}` and
 `${string}.${string}`, and fail only at runtime. The escape hatches are there for code whose target arrives as
-data: `LinkBlock`'s `target` from block data, the Settings plugin list's registered ids, and settings'
-`PLUGIN.SELECT`. To accept those, the function gave up checking for code that knows its target.
+data: `LinkBlock`'s `target` from block data, the Settings surface list's registered ids, and settings'
+`SURFACE.SELECT`. To accept those, the function gave up checking for code that knows its target.
 
 **2. System-to-system sends take two paths, and the common one is untyped.** Backend code reaches another
 system with `actorOf(system, 'brain').send(ev)`, 24 times in default-setup.
@@ -93,7 +93,7 @@ export function resolveName(name: string, packId: string): FeatureRef {
 export function splitRef(ref: FeatureRef): { packId: string; featureId: string } { … }
 ```
 
-- The bus, xstate system ids, plugin actor ids, settings keys, `_meta.visibility`, `lastActivePlugin`,
+- The bus, xstate system ids, surface actor ids, settings keys, `_meta.visibility`, `lastActiveSurface`,
   `localStorage` and log sources all use `default-setup/threads`.
 - `addressOf`, `qualifiedId`, `parseAddress` and `asHostAddress` go away. So does `NameContext`, because the
   resolver needs only the pack id.
@@ -108,7 +108,7 @@ export function splitRef(ref: FeatureRef): { packId: string; featureId: string }
 
 - `application`, `packs` and `bus` become `host/application`, `host/packs` and `host/bus`.
 - `host` is a reserved pack id, and the manifest schema refuses it.
-- `HOST_PLUGIN_IDS`, the `hostIds` parameter, and the "a host id shadows your feature" rule all go away. A
+- `HOST_SURFACE_IDS`, the `hostIds` parameter, and the "a host id shadows your feature" rule all go away. A
   bare name always means the writing pack's own feature. Pack code names the host's features like any
   dependency's: `'host/application'`.
 
@@ -116,17 +116,17 @@ export function splitRef(ref: FeatureRef): { packId: string; featureId: string }
 
 ```ts
 // before: identity spread into the payload
-{ type: 'NOTE_SAVED', noteId, pluginId: 'default-setup.notes' }
+{ type: 'NOTE_SAVED', noteId, surfaceId: 'default-setup.notes' }
 
 // after: the transport's message; `event` is exactly what the sender wrote
-{ to: 'default-setup/notes', side: 'plugin', event: { type: 'NOTE_SAVED', noteId } }
+{ to: 'default-setup/notes', side: 'surface', event: { type: 'NOTE_SAVED', noteId } }
 ```
 
-- `emit`, `broadcastToPlugin` and `sendToSystem` build envelopes, and the bus and the renderer route on `to` and
+- `emit`, `broadcastToSurface` and `sendToSystem` build envelopes, and the bus and the renderer route on `to` and
   `side`.
-- A system's or plugin's machine only ever sees `event`. The CLAUDE.md warning goes away, because no field
+- A system's or surface's machine only ever sees `event`. The CLAUDE.md warning goes away, because no field
   name is reserved any more.
-- A feature's system and its plugin share one `FeatureRef`, and `side` says which one a message is for.
+- A feature's system and its surface share one `FeatureRef`, and `side` says which one a message is for.
   Today they share an address by convention; this makes the pairing explicit.
 - The wire format is never persisted, so this can land at any time without a migration.
 
@@ -137,7 +137,7 @@ interface PackRegistration {
   id: string;
   features: Record<string /* featureId */, {
     system?: { machine: AnyStateMachine; receives: readonly string[]; early?: true };
-    plugin?: { receives: readonly string[] };   // the backend's knowledge of the FE side
+    surface?: { receives: readonly string[] };   // the backend's knowledge of the FE side
     designation?: string;
     services?: Record<string, unknown>;
     settings?: FeatureSettings;
@@ -146,28 +146,28 @@ interface PackRegistration {
 }
 ```
 
-- The registry derives refs, the validation maps, designations and plugin ownership from this one map.
+- The registry derives refs, the validation maps, designations and surface ownership from this one map.
 - `systems[]`, `features[]`, `receivedEventTypes` and `boot.earlySystem` go away, so an early system is
   just a system with `early: true` and can't be missed.
-- The frontend's `PackFERegistration.plugins` is already keyed by feature, so the two sides now match.
+- The frontend's `PackFERegistration.surfaces` is already keyed by feature, so the two sides now match.
 - The manifest redesign (`goal-manifest-redesign.md`, on `AS/external-pack-authoring`) makes `apack.json`
   feature-keyed too. The generated registration would then mirror the manifest one-to-one.
 
 ### T5. Settings keyed by the feature, and UI state owned by the host
 
 - A feature's settings slice is keyed by its `FeatureRef`, the same spelling as everywhere else.
-- `_meta` stops being a reserved key inside the plugins map. Sidebar visibility and the last-active plugin
+- `_meta` stops being a reserved key inside the surfaces map. Sidebar visibility and the last-active surface
   are the host shell's UI state, so they move to `host/application`.
   - Today default-setup's settings blob stores them for the renderer, and the renderer also keeps a copy in
     `localStorage`: two copies of one fact, owned by a pack that isn't the shell.
-  - The Settings → Plugins tab still shows the toggles; it reads and writes through the application
-    plugin.
+  - The Settings → Surfaces tab still shows the toggles; it reads and writes through the application
+    surface.
 - This is the most negotiable part. It removes a reserved key and a cross-owner write, but it moves data
   between owners, and that needs a migration. See [Scope options](#scope-options).
 
 ### T6. One typed system-to-system send
 
-- `sendToSystem` is the one way to reach a system, whoever the sender is: a frontend plugin, a backend system,
+- `sendToSystem` is the one way to reach a system, whoever the sender is: a frontend surface, a backend system,
   or pack code outside an action. With the envelope (T3), the bus routes a backend sender's message in-process
   as a system-to-system message, not as a client event.
 - The backend `actorOf`, and the `ActorLookup` parameter with it, go away. A system send is checked against the
@@ -180,30 +180,30 @@ interface PackRegistration {
 
 ### T7. Code-known targets and data-borne targets get separate doors
 
-- Lookups by name (`navigateToPlugin`, the frontend's `actorOf`) take only the literal union of known names:
+- Lookups by name (`navigateToSurface`, the frontend's `actorOf`) take only the literal union of known names:
   own features, dependencies' `<pack>/<feature>`, and the host's. The `${string}` escape hatches go.
-- A target that arrives as data goes through a runtime-checked door, which opens a registered plugin or
-  reports that no such plugin exists: `openPlugin(ref: string)`, or `featureAt(ref)` with handles (see
+- A target that arrives as data goes through a runtime-checked door, which opens a registered surface or
+  reports that no such surface exists: `openSurface(ref: string)`, or `featureAt(ref)` with handles (see
   [Open questions](#open-questions)).
-- About ten call sites pass data today: `LinkBlock`, the Settings plugin list, and settings' `PLUGIN.SELECT`.
+- About ten call sites pass data today: `LinkBlock`, the Settings surface list, and settings' `SURFACE.SELECT`.
 - Internal only, so it can land at any time.
 
-### T8. `usePlugin()` and explicitly shared state
+### T8. `useSurface()` and explicitly shared state
 
-- A component reaches its own plugin through `usePlugin()`, which the host provides when it renders the
-  plugin's canvas and panel. The own-feature `actorOf(id)` lookups (about 55) and the `export const id`
+- A component reaches its own surface through `useSurface()`, which the host provides when it renders the
+  surface's canvas and panel. The own-feature `actorOf(id)` lookups (about 55) and the `export const id`
   constants that exist to serve them go away.
-- Reading another plugin's machine context goes away (about 15 reads, mostly settings). Settings get a read
-  API (`useSettings(name)`), and each remaining cross-plugin read becomes explicitly shared state or an event.
+- Reading another surface's machine context goes away (about 15 reads, mostly settings). Settings get a read
+  API (`useSettings(name)`), and each remaining cross-surface read becomes explicitly shared state or an event.
 - With T6 and T9, no pack code looks up an actor by name, so `actorOf`, `actorAt` and `useActorSystem` go.
   Of the 79 `useActorSystem()` calls today, 73 are declared and never used.
 
 ### T9. One send verb, and private child actors
 
-- `system.get(bus).send(emit(…))` (193 uses) and `broadcastToPlugin` (189) are one delivery spelled two ways.
+- `system.get(bus).send(emit(…))` (193 uses) and `broadcastToSurface` (189) are one delivery spelled two ways.
   They collapse, together with `sendToSystem` and `sendToBrainSystem` (a send to a role hard-coded for one
-  role), into one typed send whose target is a feature's system, its plugin, or a role.
-- A feature's child actors get no global `systemId`. Today the code plugin spawns `explorer`, `terminal`,
+  role), into one typed send whose target is a feature's system, its surface, or a role.
+- A feature's child actors get no global `systemId`. Today the code surface spawns `explorer`, `terminal`,
   `search`, `commit`, `pr`, `codeActions` and `codePrompts` into the renderer's shared actor system, a bare
   global namespace one level down, and other features reach in (`actorOf('code')?.system.get('codeActions')`).
   Other features send the feature its public events, and it routes them to its children internally.
@@ -257,13 +257,13 @@ Each phase can land on its own and has a mutation check.
    - *Done when* no `.` address is built or parsed anywhere (`git grep` for the five removed helpers finds
      nothing), and a migration spec takes 0.3.14 settings to `/` keys, run twice.
 2. **The host is a pack (T2).**
-   - Add the reserved `host` pack id; delete `HOST_PLUGIN_IDS` and `hostIds`.
+   - Add the reserved `host` pack id; delete `HOST_SURFACE_IDS` and `hostIds`.
    - The migration also moves a stored last-active `application` to `host/application`.
    - *Done when* a pack feature named `application` resolves to the pack's own feature, and the schema
      refuses a pack id of `host`.
 3. **The envelope (T3).**
-   - Transport messages carry `to` and `side`, and events arrive without `pluginId` or `systemId`.
-   - *Done when* a spec sends an event with a `pluginId` field and it arrives intact, and the CLAUDE.md
+   - Transport messages carry `to` and `side`, and events arrive without `surfaceId` or `systemId`.
+   - *Done when* a spec sends an event with a `surfaceId` field and it arrives intact, and the CLAUDE.md
      warning is gone.
 4. **One feature-keyed registration (T4).** Resolves F7.
    - *Done when* `PackRegistration` has no `systems`, `receivedEventTypes` or `boot.earlySystem`, and a
@@ -277,9 +277,9 @@ Each phase can land on its own and has a mutation check.
    - *Done when* no backend code reaches another system through `system.get` or `actorOf`, and a spec shows
      that a system-to-system send of an event the receiver doesn't declare fails to compile.
 7. **Separate doors for code and data (T7).**
-   - Remove the `${string}` escape hatches from `PluginName`, and route the data-borne call sites through
+   - Remove the `${string}` escape hatches from `SurfaceName`, and route the data-borne call sites through
      the runtime-checked door.
-   - *Done when* `navigateToPlugin('default-setp/notes')` fails to compile (an `@ts-expect-error` spec), and
+   - *Done when* `navigateToSurface('default-setp/notes')` fails to compile (an `@ts-expect-error` spec), and
      a spec shows the data door refusing an unregistered ref.
 
 ## Open questions
@@ -292,22 +292,22 @@ instead of writing strings:
 ```ts
 // #generated/features.ts (sketch)
 export const features = {
-  notes: feature<NotesSystemEvents, NotesPluginEvents>('default-setup/notes', { system: true, plugin: true }),
+  notes: feature<NotesSystemEvents, NotesSurfaceEvents>('default-setup/notes', { system: true, surface: true }),
   // …a feature without a system has no `.system` at all
 };
 export const deps = { defaultSetup: { threads: feature<…>('default-setup/threads', …) } };  // in a dependent pack
-export const host = { application: feature<never, ApplicationEvents>('host/application', { plugin: true }) };
+export const host = { application: feature<never, ApplicationEvents>('host/application', { surface: true }) };
 ```
 
 | Today | With handles |
 |---|---|
 | `sendToSystem('notes', { type: 'SAVE_NOTE', id })` | `features.notes.system.send({ type: 'SAVE_NOTE', id })` |
 | `sendToSystem('default-setup/threads', ev)` | `deps.defaultSetup.threads.system.send(ev)` |
-| `system.get(bus).send(emit('notes', ev))` | `system.get(bus).send(features.notes.plugin.emit(ev))` |
+| `system.get(bus).send(emit('notes', ev))` | `system.get(bus).send(features.notes.surface.emit(ev))` |
 | `actorOf(system, 'brain').send(ev)` | `features.brain.system.send(ev)` (T6: no actor, no `system`) |
-| `navigateToPlugin('settings', ev)` | `features.settings.plugin.open(ev)` |
-| `actorOf('flows')` (frontend) | `features.flows.plugin.actor()` |
-| a target from data | `featureAt(ref)?.plugin?.open(ev)`, checked at runtime |
+| `navigateToSurface('settings', ev)` | `features.settings.surface.open(ev)` |
+| `actorOf('flows')` (frontend) | `features.flows.surface.actor()` |
+| a target from data | `featureAt(ref)?.surface?.open(ev)`, checked at runtime |
 
 What handles buy:
 - **Pack code can't misspell a target**, because it passes no strings.
@@ -322,23 +322,23 @@ What they cost:
 - **Stored actions keep a string API.** Actions are text and can't import a handle, so `services.emitter`
   keeps taking `'<pack>/<feature>'`. That's true today too; handles make the split explicit.
 - **A migration.** About 400 call sites (174 `sendToSystem(id`, 104 `sendToSystem('code'`, 64 `actorOf`, plus
-  `emit` and `navigateToPlugin`). It's mechanical and codemod-able, but big.
+  `emit` and `navigateToSurface`). It's mechanical and codemod-able, but big.
 - **A new idiom** for every pack author to learn.
 
 Strict strings (T6 and T7 alone) close the same measured gaps with a much smaller change and keep strings
 as the one form. The choice isn't about safety, since both are safe; it's whether pack code should see
 identity strings at all.
 
-### What settings exposes, and the fate of each cross-plugin read
+### What settings exposes, and the fate of each cross-surface read
 
 T8 needs a decision per read: settings become `useSettings(name)` (which fields, and whether it's reactive
-over `SETTINGS_UPDATED`), and each other read of another plugin's context becomes shared state that plugin
+over `SETTINGS_UPDATED`), and each other read of another surface's context becomes shared state that surface
 exposes, or an event it sends.
 
-### Whether the renderer keeps a `localStorage` copy of the last-active plugin
+### Whether the renderer keeps a `localStorage` copy of the last-active surface
 
-With T5, the last-active plugin belongs to `host/application`. The renderer also keeps a copy in
-`localStorage`, only so the window opens on the right plugin before the backend answers:
+With T5, the last-active surface belongs to `host/application`. The renderer also keeps a copy in
+`localStorage`, only so the window opens on the right surface before the backend answers:
 - **Keeping it** means two copies of one fact, reconciled on connect. The one reconciliation bug so far was
   a stale id in the copy, now dropped on read.
-- **Deleting it** means one copy, but the window shows the default plugin for a moment and then switches.
+- **Deleting it** means one copy, but the window shows the default surface for a moment and then switches.

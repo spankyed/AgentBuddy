@@ -247,7 +247,7 @@
 
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { usePlugin, useShell } from '@apackdev/sdk/fe'
+import { useSurface, useShell } from '@apackdev/sdk/fe'
 import type { CodeState } from '#features/code/fe/state.ts'
 import { refKey } from '#features/code/fe/features/pull-request/state.ts'
 import {
@@ -269,7 +269,7 @@ import { codeChild } from '../children.ts';
 
 // Get actors
 const shell = useShell()
-const codeActor: CodeState = usePlugin()
+const codeActor: CodeState = useSurface()
 const prActor = codeChild(codeActor, 'pr')!
 const commitActor = codeChild(codeActor, 'commit')!
 

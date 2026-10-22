@@ -11,13 +11,13 @@ const PLAYWRIGHT_RANGE = '^1.54.1';
 
 /**
  * Two files rather than one template with a placeholder: the difference is two *statements* — real calls when
- * the pack has a plugin, commented-out ones when it does not — and a placeholder in a statement slot would stop
+ * the pack has a surface, commented-out ones when it does not — and a placeholder in a statement slot would stop
  * the template parsing as TypeScript, which is what lets every rule read it (`src/templates.ts`).
  */
-function sampleTest(pluginId: string | undefined): string {
-  return pluginId
-    ? renderTemplate('pack/tests/e2e/smoke.spec.ts', { PLUGIN_ID: pluginId })
-    : renderTemplate('pack/tests/e2e/smoke-without-plugin.spec.ts');
+function sampleTest(surfaceId: string | undefined): string {
+  return surfaceId
+    ? renderTemplate('pack/tests/e2e/smoke.spec.ts', { SURFACE_ID: surfaceId })
+    : renderTemplate('pack/tests/e2e/smoke-without-surface.spec.ts');
 }
 
 export async function initTests(_args: string[]): Promise<void> {
@@ -31,8 +31,8 @@ export async function initTests(_args: string[]): Promise<void> {
   }
 
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-  const feat = packFeatures(manifest).find((f) => f.plugin);
-  const pluginId: string | undefined = feat?.id;
+  const feat = packFeatures(manifest).find((f) => f.surface);
+  const surfaceId: string | undefined = feat?.id;
 
   const configPath = path.join(cwd, 'playwright.config.ts');
   if (fs.existsSync(configPath)) {
@@ -49,7 +49,7 @@ export async function initTests(_args: string[]): Promise<void> {
   if (fs.existsSync(smokeFile)) {
     console.log('tests/e2e/smoke.spec.ts already exists, skipping');
   } else {
-    fs.writeFileSync(smokeFile, sampleTest(pluginId));
+    fs.writeFileSync(smokeFile, sampleTest(surfaceId));
     console.log('Created tests/e2e/smoke.spec.ts');
   }
 

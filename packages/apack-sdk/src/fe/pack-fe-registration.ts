@@ -1,24 +1,24 @@
 import type { ReferenceBindings } from './reference-types.ts';
 import type { Component } from 'vue';
-import type { PluginDefinition } from './plugin.ts';
+import type { SurfaceDefinition } from './surface.ts';
 import type { TiptapPlugin } from './tiptap-plugins.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
 import type { StepDefinition } from '../steps/types.ts';
 
 /**
- * A feature's frontend: its plugin, the role it plays and whether it's the plugin to open by default. A feature with
- * no plugin is listed for its role alone, so the frontend resolves every role the backend does
+ * A feature's frontend: its surface, the role it plays and whether it's the surface to open by default. A feature with
+ * no surface is listed for its role alone, so the frontend resolves every role the backend does
  */
 export interface PackFEFeature {
-  plugin?: PluginDefinition;
+  surface?: SurfaceDefinition;
   /** Checked reference bindings owned by this feature. Discovery uses its declaration separately. */
   references?: ReferenceBindings;
-  /** Custom presentation for this feature's declared preferences, independent of its plugin. */
+  /** Custom presentation for this feature's declared preferences, independent of its surface. */
   settingsForm?: Component;
   /** The role the feature plays (apack.json `features[].designation`) */
   designation?: string;
-  /** This pack's plugin to open when the app starts; only a feature with a plugin claims it */
+  /** This pack's surface to open when the app starts; only a feature with a surface claims it */
   default?: true;
 }
 
@@ -30,7 +30,7 @@ export interface PackFERegistration {
   id: string;
   /** Prepare caller-bound access; the host activates it at publication and disposes it on refusal or unload. */
   bindSettings?: (settings: import('./settings.ts').SettingsPort) => { activate(): void; dispose(): void };
-  /** Feature id → its frontend, as `PackRegistration.features` is its backend. Each plugin runs at `<packId>/<featureId>` */
+  /** Feature id → its frontend, as `PackRegistration.features` is its backend. Each surface runs at `<packId>/<featureId>` */
   features?: Record<string, PackFEFeature>;
   /** Pack settings group id → its declared custom form. */
   settingsForms?: Record<string, Component>;

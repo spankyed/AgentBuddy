@@ -8,8 +8,8 @@ import * as _apackdev_sdk from '@apackdev/sdk';
 import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@apackdev/sdk';
 import { ArtifactItem } from '@apackdev/sdk/artifacts';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
-import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, Reply, TypedSendToPlugin, TypedSendToSystem, TypedSendToWindow } from '@apackdev/sdk/events';
-import { HotkeysMap, NavHistory, PluginInbox, PluginStateOf, TabGroup } from '@apackdev/sdk/fe';
+import { HostSurfaceEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PublicSurfaceInboxOf, Qualified, Reply, SurfaceInboxOf, TypedSendToSurface, TypedSendToSystem, TypedSendToWindow } from '@apackdev/sdk/events';
+import { HotkeysMap, NavHistory, SurfaceInbox, SurfaceStateOf, TabGroup } from '@apackdev/sdk/fe';
 import { Simplify as Simplify$1 } from '@apackdev/sdk/helpers';
 import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@apackdev/sdk/models';
 import * as _apackdev_sdk_repositories from '@apackdev/sdk/repositories';
@@ -64,7 +64,7 @@ interface ActionsContext {
      * **A domain id cannot do this job, for two independent reasons.** It does not distinguish windows, so
      * another window's answer for the same action satisfies it; and it does not distinguish asks, so a slot
      * holding one is only ever overwritten, never emptied — which names the last ask for the life of the
-     * plugin. A call is per ask and per window, and the slot is cleared when its answer lands.
+     * surface. A call is per ask and per window, and the slot is cleared when its answer lands.
      */
     pendingActionCall: string | null;
     actions: ActionEntity[];
@@ -99,7 +99,7 @@ interface ActionsContext {
     };
 }
 
-/** Paging and editing, which the code plugin's actions panel asks of it */
+/** Paging and editing, which the code surface's actions panel asks of it */
 type ActionsInboxEvent = {
     type: 'ACTION.SELECT';
     actionId: EARS.EntityId;
@@ -407,7 +407,7 @@ interface BrainContext {
     brainIsDead: boolean;
     /** Why the brain couldn't start, while it stays stopped for that reason */
     startError?: string;
-    /** The root flow the running brain started with; the flows plugin's root flow differing from it takes a restart */
+    /** The root flow the running brain started with; the flows surface's root flow differing from it takes a restart */
     runningRootFlowId?: string;
     brainIsPaused: boolean;
     latestRuntimeError?: StepRuntimeError;
@@ -583,7 +583,7 @@ interface CliServiceType {
     };
     /**
      * Claude Code wrapper. Highlights only — the full surface (sessions, mcp,
-     * plugins, skills, …) is available via `import { claudeCode } from
+     * surfaces, skills, …) is available via `import { claudeCode } from
      * '#features/code/be/services/claude-code/index.ts'`.
      */
     /** Clear-cache resolve + exec test — same path as the Settings test button. */
@@ -724,7 +724,7 @@ type CodeContext = {
 };
 
 /**
- * What other features ask of the code plugin: which panel to show, a write to its state, and a job for one of its
+ * What other features ask of the code surface: which panel to show, a write to its state, and a job for one of its
  * children. The `<child>.*` events aren't in this machine's own union — it routes them to its child actors by
  * prefix — so they are spelled out, and each names the child that handles it.
  */
@@ -889,14 +889,14 @@ type ContextReferenceType = 'document' | 'folder' | 'note' | 'task' | 'tasklist'
 
 type Contract = {
     state: LogsContext;
-    inbox: PluginInbox<{
+    inbox: SurfaceInbox<{
         public: LogsInboxEvent;
     }>;
 };
 
 type Contract$1 = {
     state: DatabaseContext;
-    inbox: PluginInbox<{
+    inbox: SurfaceInbox<{
         pack: DatabaseInboxEvent;
     }>;
 };
@@ -908,7 +908,7 @@ type Contract$2 = {
 type Contract$3 = {
     opens: 'Prompt';
     state: PromptsContext;
-    inbox: PluginInbox<{
+    inbox: SurfaceInbox<{
         pack: PromptsInboxEvent;
     }>;
 };
@@ -916,7 +916,7 @@ type Contract$3 = {
 type Contract$4 = {
     opens: 'Action';
     state: ActionsContext;
-    inbox: PluginInbox<{
+    inbox: SurfaceInbox<{
         pack: ActionsInboxEvent;
     }>;
 };
@@ -924,7 +924,7 @@ type Contract$4 = {
 type Contract$5 = {
     opens: 'Flow';
     state: FlowsContext;
-    inbox: PluginInbox<{
+    inbox: SurfaceInbox<{
         pack: FlowsInboxEvent;
     }>;
 };
@@ -932,14 +932,14 @@ type Contract$5 = {
 type Contract$6 = {
     opens: 'Collection' | 'Document';
     state: LibraryContext;
-    inbox: PluginInbox<{
+    inbox: SurfaceInbox<{
         pack: LibraryInboxEvent;
     }>;
 };
 
 type Contract$7 = {
     state: BrowserContext;
-    inbox: PluginInbox<{
+    inbox: SurfaceInbox<{
         pack: BrowserInboxEvent;
     }>;
 };
@@ -947,14 +947,14 @@ type Contract$7 = {
 type Contract$8 = {
     opens: 'Note';
     state: NotesContext;
-    inbox: PluginInbox<{
+    inbox: SurfaceInbox<{
         pack: NotesInboxEvent;
     }>;
 };
 
 type Contract$9 = {
     state: CodeContext;
-    inbox: PluginInbox<{
+    inbox: SurfaceInbox<{
         pack: CodeInboxEvent;
     }>;
 };
@@ -962,7 +962,7 @@ type Contract$9 = {
 type Contract$a = {
     opens: 'Thread';
     state: ThreadsContext;
-    inbox: PluginInbox<{
+    inbox: SurfaceInbox<{
         pack: ThreadsInboxEvent;
     }>;
 };
@@ -1924,7 +1924,7 @@ type IncomingBrainEvents = {
     type: 'GO_BACK_TNODE';
     currentFlowTNodeId?: string;
 } | {
-    type: 'REQUEST_PLUGIN_DATA';
+    type: 'REQUEST_SURFACE_DATA';
     flowTNodeId?: string;
 } | {
     type: 'GET_TNODE_DETAILS';
@@ -2900,7 +2900,7 @@ interface LogsContext$1 {
     logs: LogEntry[];
 }
 
-/** A log line any pack's system may hand the logs plugin */
+/** A log line any pack's system may hand the logs surface */
 type LogsInboxEvent = {
     type: 'LOG_ADDED';
     log: LogEntry;
@@ -3156,7 +3156,7 @@ type OutgoingActionsEvents = {
 };
 
 type OutgoingBrainEvents = {
-    type: 'RECEIVE_PLUGIN_DATA';
+    type: 'RECEIVE_SURFACE_DATA';
     data: FlowTNodeData;
 } | {
     type: 'TNODE_OPENED';
@@ -3210,7 +3210,7 @@ type OutgoingCodeEvents = OutgoingExplorerEvents | OutgoingSearchEvents | Outgoi
     type: 'CODE_CONNECTED';
     data: CodeConnectedData;
 }
-/** What testing a CLI found, for the Settings view that asked (the host declares its plugin takes it) */
+/** What testing a CLI found, for the Settings view that asked (the host declares its surface takes it) */
  | {
     type: 'CLI_TEST_RESULT';
     provider: string;
@@ -3385,7 +3385,7 @@ type OutgoingDatabaseEvents = {
  *
  * **Its own event because it answers nothing.** It is broadcast, not replied, so it carries no call — and
  * the guard on `QUERY_ERROR` takes only an answer whose call is the one outstanding. Sent as a
- * `QUERY_ERROR` it would be dropped by that guard every time and the plugin's loading flag would never
+ * `QUERY_ERROR` it would be dropped by that guard every time and the surface's loading flag would never
  * clear, which is the failure this split prevents. An answer and an announcement are different things,
  * and one event cannot be both.
  */
@@ -4187,24 +4187,6 @@ type OwnEntityShapes = {
     'Collection': CollectionEntity;
 };
 
-/**
- * Plugin id → the events that plugin receives: its own feature's system's, and every audience of the inbox its
- * contract declares. This pack's own sends are checked against it, so a sibling may send the `pack` half.
- */
-type OwnPluginEvents = {
-    'threads': __events_threads | __accepts_threads;
-    'code': __events_code | __accepts_code;
-    'notes': __events_notes | __accepts_notes;
-    'browser': __events_browser | __accepts_browser;
-    'library': __events_library | __accepts_library;
-    'flows': __events_flows | __accepts_flows;
-    'actions': __events_actions | __accepts_actions;
-    'prompts': __events_prompts | __accepts_prompts;
-    'brain': __events_brain | __accepts_brain;
-    'database': __events_database | __accepts_database;
-    'logs': __events_logs | __accepts_logs;
-};
-
 /** The repositories this pack declares (apack.json features[].repositories) */
 type OwnRepositories = {
     threadQueries: typeof threadQueries;
@@ -4230,18 +4212,36 @@ type OwnRepositories = {
 };
 
 /**
- * `services.emitter`, typed with this pack's events. A system and a plugin are both named
+ * Surface id → the events that surface receives: its own feature's system's, and every audience of the inbox its
+ * contract declares. This pack's own sends are checked against it, so a sibling may send the `pack` half.
+ */
+type OwnSurfaceEvents = {
+    'threads': __events_threads | __accepts_threads;
+    'code': __events_code | __accepts_code;
+    'notes': __events_notes | __accepts_notes;
+    'browser': __events_browser | __accepts_browser;
+    'library': __events_library | __accepts_library;
+    'flows': __events_flows | __accepts_flows;
+    'actions': __events_actions | __accepts_actions;
+    'prompts': __events_prompts | __accepts_prompts;
+    'brain': __events_brain | __accepts_brain;
+    'database': __events_database | __accepts_database;
+    'logs': __events_logs | __accepts_logs;
+};
+
+/**
+ * `services.emitter`, typed with this pack's events. A system and a surface are both named
  * `<pack>/<feature>`, this pack's own and the host's too; a system may also be a role.
  *
  * Naming its own pack is the point, not a gap left by the action having no pack scope. An action is content,
- * not source: a row a user can edit in the Actions plugin, read in the DB console, export to a content file and
+ * not source: a row a user can edit in the Actions surface, read in the DB console, export to a content file and
  * copy into another pack. A bare name would rebind on that copy — `'threads'` quietly meaning the new pack's
  * feature, or nothing — where a ref that no longer fits is wrong visibly, and is refused at the bus rather
  * than doing something else.
  */
-type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem' | 'sendToWindow'> & {
-    broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
-    sendToWindow: TypedSendToWindow<QualifiedPluginEvents>;
+type PackEmitter = Omit<HostServices['emitter'], 'broadcastToSurface' | 'sendToSystem' | 'sendToWindow'> & {
+    broadcastToSurface: TypedSendToSurface<QualifiedSurfaceEvents>;
+    sendToWindow: TypedSendToWindow<QualifiedSurfaceEvents>;
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 
@@ -4265,12 +4265,23 @@ type PackGroupSettings = {
 };
 
 /**
- * Feature id → the `public` half of the inbox this pack's plugin declares (dependents name it
+ * Every entity shape this pack can read: the SDK's, its own and its dependencies'. Node is the union of
+ * the step node types (NodeBase when no step defines one), not an intersection of each pack's.
+ */
+type PackShapes = Omit<SdkEntityShapes & OwnEntityShapes, 'Node'> & {
+    Node: [PackStepNodes] extends [never] ? SdkEntityShapes['Node'] : PackStepNodes;
+};
+
+/** The step node types of this pack and its dependencies; never when none defines one */
+type PackStepNodes = NodeEntity;
+
+/**
+ * Feature id → the `public` half of the inbox this pack's surface declares (dependents name it
  * `default-setup/<feature>`). Neither its own system's events nor its `pack` audience are here: the first is
  * between the two halves of one feature, the second between this pack's features. What is left is what a dependent
  * pack may send, and it mirrors `PackSystemEvents`.
  */
-type PackPluginEvents = {
+type PackSurfaceEvents = {
     'threads': __public_threads;
     'code': __public_code;
     'notes': __public_notes;
@@ -4284,31 +4295,20 @@ type PackPluginEvents = {
     'logs': __public_logs;
 };
 
-/** Feature id → the state this pack's plugin for that feature publishes (dependents name it `default-setup/<feature>`). */
-type PackPluginState = {
-    'threads': PluginStateOf<Contract$a>;
-    'code': PluginStateOf<Contract$9>;
-    'notes': PluginStateOf<Contract$8>;
-    'browser': PluginStateOf<Contract$7>;
-    'library': PluginStateOf<Contract$6>;
-    'flows': PluginStateOf<Contract$5>;
-    'actions': PluginStateOf<Contract$4>;
-    'prompts': PluginStateOf<Contract$3>;
-    'brain': PluginStateOf<Contract$2>;
-    'database': PluginStateOf<Contract$1>;
-    'logs': PluginStateOf<Contract>;
+/** Feature id → the state this pack's surface for that feature publishes (dependents name it `default-setup/<feature>`). */
+type PackSurfaceState = {
+    'threads': SurfaceStateOf<Contract$a>;
+    'code': SurfaceStateOf<Contract$9>;
+    'notes': SurfaceStateOf<Contract$8>;
+    'browser': SurfaceStateOf<Contract$7>;
+    'library': SurfaceStateOf<Contract$6>;
+    'flows': SurfaceStateOf<Contract$5>;
+    'actions': SurfaceStateOf<Contract$4>;
+    'prompts': SurfaceStateOf<Contract$3>;
+    'brain': SurfaceStateOf<Contract$2>;
+    'database': SurfaceStateOf<Contract$1>;
+    'logs': SurfaceStateOf<Contract>;
 };
-
-/**
- * Every entity shape this pack can read: the SDK's, its own and its dependencies'. Node is the union of
- * the step node types (NodeBase when no step defines one), not an intersection of each pack's.
- */
-type PackShapes = Omit<SdkEntityShapes & OwnEntityShapes, 'Node'> & {
-    Node: [PackStepNodes] extends [never] ? SdkEntityShapes['Node'] : PackStepNodes;
-};
-
-/** The step node types of this pack and its dependencies; never when none defines one */
-type PackStepNodes = NodeEntity;
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it `default-setup/<feature>`). */
 type PackSystemEvents = {
@@ -4461,7 +4461,7 @@ interface PromptsContext {
      * **A domain id cannot do this job, for two independent reasons.** It does not distinguish windows, so
      * another window's answer for the same prompt satisfies it; and it does not distinguish asks, so a slot
      * holding one is only ever overwritten, never emptied — which names the last ask for the life of the
-     * plugin. A call is per ask and per window, and the slot is cleared when its answer lands.
+     * surface. A call is per ask and per window, and the slot is cleared when its answer lands.
      */
     pendingPromptCall: string | null;
     prompts: PromptEntity[];
@@ -4496,7 +4496,7 @@ interface PromptsContext {
     };
 }
 
-/** Paging and editing, which the code plugin's prompts panel asks of it */
+/** Paging and editing, which the code surface's prompts panel asks of it */
 type PromptsInboxEvent = {
     type: 'PROMPTS.LOAD_ALL';
 } | {
@@ -4523,11 +4523,11 @@ type PromptsInboxEvent = {
 };
 
 /**
- * Every plugin this pack's code can send to, by ref: its own, its dependencies' and the host's. A plugin owned
+ * Every surface this pack's code can send to, by ref: its own, its dependencies' and the host's. A surface owned
  * elsewhere takes the inbox its own pack declares — a pack widens only its own. Actions (`services.emitter`)
  * send with it.
  */
-type QualifiedPluginEvents = Qualified<'default-setup', OwnPluginEvents> & HostPluginEvents;
+type QualifiedSurfaceEvents = Qualified<'default-setup', OwnSurfaceEvents> & HostSurfaceEvents;
 
 /** Every system this pack's code can send to, by ref: its own, its dependencies' and the host's. */
 type QualifiedSystemEvents = Qualified<'default-setup', PackSystemEvents> & HostSystemEvents;
@@ -5330,7 +5330,7 @@ interface ThreadsContext$1 {
     sentCommands?: string;
 }
 
-/** What the artifact viewers, the dashboard and the tiptap command items ask of the threads plugin */
+/** What the artifact viewers, the dashboard and the tiptap command items ask of the threads surface */
 type ThreadsInboxEvent = {
     type: 'SELECT_ARTIFACT';
     artifactId: string;
@@ -5717,27 +5717,27 @@ declare namespace __PackSettings_Assistant {
     }
 }
 
-type __accepts_actions = PluginInboxOf<Contract$4>;
+type __accepts_actions = SurfaceInboxOf<Contract$4>;
 
-type __accepts_brain = PluginInboxOf<Contract$2>;
+type __accepts_brain = SurfaceInboxOf<Contract$2>;
 
-type __accepts_browser = PluginInboxOf<Contract$7>;
+type __accepts_browser = SurfaceInboxOf<Contract$7>;
 
-type __accepts_code = PluginInboxOf<Contract$9>;
+type __accepts_code = SurfaceInboxOf<Contract$9>;
 
-type __accepts_database = PluginInboxOf<Contract$1>;
+type __accepts_database = SurfaceInboxOf<Contract$1>;
 
-type __accepts_flows = PluginInboxOf<Contract$5>;
+type __accepts_flows = SurfaceInboxOf<Contract$5>;
 
-type __accepts_library = PluginInboxOf<Contract$6>;
+type __accepts_library = SurfaceInboxOf<Contract$6>;
 
-type __accepts_logs = PluginInboxOf<Contract>;
+type __accepts_logs = SurfaceInboxOf<Contract>;
 
-type __accepts_notes = PluginInboxOf<Contract$8>;
+type __accepts_notes = SurfaceInboxOf<Contract$8>;
 
-type __accepts_prompts = PluginInboxOf<Contract$3>;
+type __accepts_prompts = SurfaceInboxOf<Contract$3>;
 
-type __accepts_threads = PluginInboxOf<Contract$a>;
+type __accepts_threads = SurfaceInboxOf<Contract$a>;
 
 type __events_actions = OutgoingEventsOf<SystemContracts['actions']>;
 
@@ -5761,27 +5761,27 @@ type __events_prompts = OutgoingEventsOf<SystemContracts['prompts']>;
 
 type __events_threads = OutgoingEventsOf<SystemContracts['threads']>;
 
-type __public_actions = PublicPluginInboxOf<Contract$4>;
+type __public_actions = PublicSurfaceInboxOf<Contract$4>;
 
-type __public_brain = PublicPluginInboxOf<Contract$2>;
+type __public_brain = PublicSurfaceInboxOf<Contract$2>;
 
-type __public_browser = PublicPluginInboxOf<Contract$7>;
+type __public_browser = PublicSurfaceInboxOf<Contract$7>;
 
-type __public_code = PublicPluginInboxOf<Contract$9>;
+type __public_code = PublicSurfaceInboxOf<Contract$9>;
 
-type __public_database = PublicPluginInboxOf<Contract$1>;
+type __public_database = PublicSurfaceInboxOf<Contract$1>;
 
-type __public_flows = PublicPluginInboxOf<Contract$5>;
+type __public_flows = PublicSurfaceInboxOf<Contract$5>;
 
-type __public_library = PublicPluginInboxOf<Contract$6>;
+type __public_library = PublicSurfaceInboxOf<Contract$6>;
 
-type __public_logs = PublicPluginInboxOf<Contract>;
+type __public_logs = PublicSurfaceInboxOf<Contract>;
 
-type __public_notes = PublicPluginInboxOf<Contract$8>;
+type __public_notes = PublicSurfaceInboxOf<Contract$8>;
 
-type __public_prompts = PublicPluginInboxOf<Contract$3>;
+type __public_prompts = PublicSurfaceInboxOf<Contract$3>;
 
-type __public_threads = PublicPluginInboxOf<Contract$a>;
+type __public_threads = PublicSurfaceInboxOf<Contract$a>;
 
 declare const actionCommands: {
     readonly create: (data: _apackdev_sdk_repositories.ActionInput) => ActionEntity;
@@ -5792,7 +5792,7 @@ declare const actionCommands: {
 
 /**
  * Action Repository: the SDK's action repository (`actionRepository`), which owns their reads and writes, as the
- * actions plugin uses it, and the plugin's views. The SDK's methods are taken as they are, not wrapped.
+ * actions surface uses it, and the surface's views. The SDK's methods are taken as they are, not wrapped.
  */
 declare const actionQueries: {
     readonly byId: (id: _apackdev_sdk.EARS.EntityId) => ActionEntity | undefined;
@@ -6389,7 +6389,7 @@ declare const promptCommands: {
 
 /**
  * Prompts Repository: the SDK's prompt repository (`promptRepository`), which owns their reads and writes, as the
- * prompts plugin uses it, and the plugin's views. The SDK's methods are taken as they are, not wrapped.
+ * prompts surface uses it, and the surface's views. The SDK's methods are taken as they are, not wrapped.
  */
 declare const promptQueries: {
     byId: (id: _apackdev_sdk.EARS.EntityId) => _apackdev_sdk.PromptEntity | undefined;
@@ -6654,5 +6654,5 @@ declare function viewByFile(filePath: string, opts?: {
     offset?: number;
 }): Promise<any[]>;
 
-export type { PackShapes as PackEntityShapes, PackFeatureSettings, PackGroupSettings, PackPluginEvents, PackPluginState, PackStepNodes, PackSystemEvents, Repositories, Services };
+export type { PackShapes as PackEntityShapes, PackFeatureSettings, PackGroupSettings, PackStepNodes, PackSurfaceEvents, PackSurfaceState, PackSystemEvents, Repositories, Services };
 ```

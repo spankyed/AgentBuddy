@@ -21,9 +21,9 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { PROVENANCE_KINDS, _buildProvenance } from '../../../src/build/manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../../src/types/sdk-entities.ts';
-import type { PackFeatureEntry, PackManifest, PackPluginEntry, PackSnapshot, PackSystemEntry, ContentFormatConfig } from '../../../src/build/manifest.ts';
-import type { PackFeature, PackFeaturePlugin, PackFeatureSystem, PackRegistration } from '../../../src/framework/index.ts';
-import { setupPackFixture, PACK_SNAPSHOT_FORMAT, dependency, facade, generate, generatePackFiles, manifest, root, system, withPlugin, withPluginState, write, writePluginState, writeSystemEntry  } from './_support/pack.ts';
+import type { PackFeatureEntry, PackManifest, PackSurfaceEntry, PackSnapshot, PackSystemEntry, ContentFormatConfig } from '../../../src/build/manifest.ts';
+import type { PackFeature, PackFeatureSurface, PackFeatureSystem, PackRegistration } from '../../../src/framework/index.ts';
+import { setupPackFixture, PACK_SNAPSHOT_FORMAT, dependency, facade, generate, generatePackFiles, manifest, root, system, withSurface, withSurfaceState, write, writeSurfaceState, writeSystemEntry  } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -381,12 +381,12 @@ describe('the snapshot format', () => {
   };
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
-    description: true, entities: true, designation: true, plugin: true, references: true, repositories: true, services: true,
+    description: true, entities: true, designation: true, surface: true, references: true, repositories: true, services: true,
     settings: true, system: true, types: true,
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
-  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, defaultVisible: true, label: true, state: true, icon: true, canvas: true, panel: true, chat: true, isPinned: true, hotkeys: true, options: true, fallbackPanel: true };
+  const MANIFEST_SURFACE_FIELDS: Record<keyof PackSurfaceEntry, true> = { contract: true, default: true, defaultVisible: true, label: true, state: true, icon: true, canvas: true, panel: true, chat: true, isPinned: true, hotkeys: true, options: true, fallbackPanel: true };
   /** A dependency's content formats, which a dependent's `content.sources` compiles its own sources with */
   const FORMAT_FIELDS: Record<keyof ContentFormatConfig, true> = {
     compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
@@ -400,15 +400,15 @@ describe('the snapshot format', () => {
     artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, settings: true, dependencies: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
-    designation: true, system: true, plugin: true, services: true, settings: true,
+    designation: true, system: true, surface: true, services: true, settings: true,
   };
   const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { machine: true, receives: true };
-  const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { receives: true };
+  const REGISTRATION_SURFACE_FIELDS: Record<keyof PackFeatureSurface, true> = { receives: true };
 
-  /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
+  /** Every name generated code imports from a dependency's facade, with a send to one of its surfaces */
   async function facadeImports(): Promise<string[]> {
-    const deps = { 'base-pack': dependency({ services: { search: 'unavailable.ts#search' }, features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: writePluginState('y') } }] }, withPluginState(facade({ Services: '{ search: { read(): string } }' }), ['memos'])) };
-    const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, consumes: { services: ['base-pack/search'] }, features: [withPlugin(system('actions'))] }, deps);
+    const deps = { 'base-pack': dependency({ services: { search: 'unavailable.ts#search' }, features: [{ id: 'memos', system: { entry: 'x' }, surface: { label: 'Fixture', state: writeSurfaceState('y') } }] }, withSurfaceState(facade({ Services: '{ search: { read(): string } }' }), ['memos'])) };
+    const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, consumes: { services: ['base-pack/search'] }, features: [withSurface(system('actions'))] }, deps);
     const names = Object.values(files).flatMap((file) => [...file.matchAll(/import type \{ (\w+) as \w+ \} from '\.\/deps\/base-pack\.ts'/g)].map((m) => m[1]));
     return [...new Set(names)].sort();
   }
@@ -423,7 +423,7 @@ describe('the snapshot format', () => {
         feature: Object.keys(MANIFEST_FEATURE_FIELDS).sort(),
         system: Object.keys(MANIFEST_SYSTEM_FIELDS).sort(),
         systemEvents: Object.keys(MANIFEST_SYSTEM_EVENTS_FIELDS).sort(),
-        plugin: Object.keys(MANIFEST_PLUGIN_FIELDS).sort(),
+        surface: Object.keys(MANIFEST_SURFACE_FIELDS).sort(),
         contentFormat: Object.keys(FORMAT_FIELDS).sort(),
         contentTree: Object.keys(TREE_FIELDS).sort(),
         contentField: Object.keys(FIELD_FIELDS).sort(),
@@ -432,7 +432,7 @@ describe('the snapshot format', () => {
         fields: Object.keys(REGISTRATION_FIELDS).sort(),
         feature: Object.keys(REGISTRATION_FEATURE_FIELDS).sort(),
         system: Object.keys(REGISTRATION_SYSTEM_FIELDS).sort(),
-        plugin: Object.keys(REGISTRATION_PLUGIN_FIELDS).sort(),
+        surface: Object.keys(REGISTRATION_SURFACE_FIELDS).sort(),
       },
       provenanceKinds: Object.keys(PROVENANCE_KINDS).sort(),
       facadeImports: await facadeImports(),
@@ -442,22 +442,22 @@ describe('the snapshot format', () => {
       manifest: {
         fields: ['$schema', 'build', 'checks', 'consumes', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
         extensions: ['appExtensions', 'artifacts', 'blocks', 'commands', 'dsl', 'help', 'services', 'settings', 'steps', 'tiptapPlugins'],
-        feature: ['description', 'designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'types'],
+        feature: ['description', 'designation', 'entities', 'references', 'repositories', 'services', 'settings', 'surface', 'system', 'types'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
-        plugin: ['canvas', 'chat', 'contract', 'default', 'defaultVisible', 'fallbackPanel', 'hotkeys', 'icon', 'isPinned', 'label', 'options', 'panel', 'state'],
+        surface: ['canvas', 'chat', 'contract', 'default', 'defaultVisible', 'fallbackPanel', 'hotkeys', 'icon', 'isPinned', 'label', 'options', 'panel', 'state'],
         contentFormat: ['compiler', 'entity', 'fields', 'format', 'identity', 'media', 'tree'],
         contentTree: ['branch', 'branchEntity', 'relKind'],
         contentField: ['default', 'from', 'type'],
       },
       registration: {
         fields: ['appliers', 'artifacts', 'bindServices', 'blocks', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'repositories', 'services', 'settings', 'steps'],
-        feature: ['designation', 'plugin', 'services', 'settings', 'system'],
+        feature: ['designation', 'services', 'settings', 'surface', 'system'],
         system: ['machine', 'receives'],
-        plugin: ['receives'],
+        surface: ['receives'],
       },
-      provenanceKinds: ['commands', 'entities', 'plugins', 'referenceCategories', 'referenceTypes', 'relKinds', 'tiptapExtensions'],
-      facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackGroupSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
+      provenanceKinds: ['commands', 'entities', 'referenceCategories', 'referenceTypes', 'relKinds', 'surfaces', 'tiptapExtensions'],
+      facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackGroupSettings', 'PackStepNodes', 'PackSurfaceEvents', 'PackSurfaceState', 'PackSystemEvents', 'Repositories', 'Services'],
     });
   });
 });

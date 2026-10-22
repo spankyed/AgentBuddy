@@ -185,10 +185,10 @@ export interface TestPacks {
     readonly earsRelKinds: Map<string, string>;
     // (undocumented)
     readonly help: Map<string, HelpArticle[]>;
-    readonly plugins: Set<string>;
     readonly services: Map<string, unknown>;
     readonly stepDeclarations: Map<string, StepCatalogEntry>;
     readonly steps: Map<string, StepDefinition>;
+    readonly surfaces: Set<string>;
     readonly systems: Set<string>;
 }
 

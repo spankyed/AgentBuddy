@@ -28,7 +28,7 @@ const test = base.extend<{}, { hostOnlyData: string }>({
 });
 
 test('host preferences and shortcuts work with default-setup disabled', async ({ app, appPage }) => {
-  expect((await app.getContext()).pluginIds.some(id => id.startsWith('default-setup/'))).toBe(false);
+  expect((await app.getContext()).surfaceIds.some(id => id.startsWith('default-setup/'))).toBe(false);
   await app.navigate('host/settings');
   await appPage.getByRole('button', { name: 'General', exact: true }).click();
   await appPage.getByRole('button', { name: 'Personal', exact: true }).click();
@@ -36,9 +36,9 @@ test('host preferences and shortcuts work with default-setup disabled', async ({
   await expect(appPage.getByText('Settings saved', { exact: true })).toBeVisible();
   await appPage.getByRole('button', { name: 'Application', exact: true }).click();
   await expect(appPage.getByRole('heading', { name: 'Keyboard Shortcuts', exact: true })).toBeVisible();
-  await appPage.getByText('Previous Plugin', { exact: true }).locator('..').click();
+  await appPage.getByText('Previous Surface', { exact: true }).locator('..').click();
   await appPage.keyboard.press('Control+Alt+9');
-  await expect(appPage.getByText('Previous Plugin', { exact: true }).locator('..')).toContainText('9');
+  await expect(appPage.getByText('Previous Surface', { exact: true }).locator('..')).toContainText('9');
   await appPage.getByRole('heading', { name: 'Keyboard Shortcuts', exact: true }).click();
   await expect(appPage.getByText('Settings saved', { exact: true })).toBeVisible();
   await appPage.evaluate(() => (window as any).applicationState.system.get('host/settings')
@@ -48,13 +48,13 @@ test('host preferences and shortcuts work with default-setup disabled', async ({
   const values = await appPage.evaluate(() => JSON.parse((window as any).monaco.editor.getEditors().find((editor: any) =>
     editor.getDomNode()?.getBoundingClientRect().width > 0 && editor.getModel()?.getLanguageId() === 'json').getModel().getValue()));
   expect(values.app.personal.name).toBe('Host without a starter pack');
-  expect(values.app.hotkeys.switchPluginUp.key).toBe('9');
+  expect(values.app.hotkeys.switchSurfaceUp.key).toBe('9');
   await appPage.keyboard.press('Control+Alt+9');
-  await expect.poll(async () => (await app.getContext()).activePluginId).not.toBe('host/settings');
+  await expect.poll(async () => (await app.getContext()).activeSurfaceId).not.toBe('host/settings');
 });
 
 test('the host-only editor preserves saved references without activating default-setup', async ({ app, appPage }) => {
-  expect((await app.getContext()).pluginIds.some(id => id.startsWith('default-setup/'))).toBe(false);
+  expect((await app.getContext()).surfaceIds.some(id => id.startsWith('default-setup/'))).toBe(false);
   const mounted = await appPage.evaluateHandle(async () => {
     const { createApp } = await import('vue');
     const componentPath = '@apackdev/ui/components/tiptap/TiptapEditor';
@@ -81,7 +81,7 @@ test('the host-only editor preserves saved references without activating default
 });
 
 test('an open editor follows installed pack activation without losing its draft', async ({ app, appPage }) => {
-  expect((await app.getContext()).pluginIds.some(id => id.startsWith('default-setup/'))).toBe(false);
+  expect((await app.getContext()).surfaceIds.some(id => id.startsWith('default-setup/'))).toBe(false);
   const mounted = await appPage.evaluateHandle(async () => {
     const { createApp } = await import('vue');
     const componentPath = '@apackdev/ui/components/tiptap/TiptapEditor';
@@ -119,9 +119,9 @@ test('an open editor follows installed pack activation without losing its draft'
   } finally {
     await mounted.evaluate(({ component, root }) => { component.unmount(); root.remove(); });
     await mounted.dispose();
-    if ((await app.getContext()).pluginIds.some(id => id.startsWith('default-setup/'))) {
+    if ((await app.getContext()).surfaceIds.some(id => id.startsWith('default-setup/'))) {
       await toggle();
-      await expect.poll(async () => (await app.getContext()).pluginIds.some(id => id.startsWith('default-setup/'))).toBe(false);
+      await expect.poll(async () => (await app.getContext()).surfaceIds.some(id => id.startsWith('default-setup/'))).toBe(false);
     }
   }
 });
@@ -131,7 +131,7 @@ test('shortcut drafts follow another window and preserve the global flag', async
   await appPage.getByRole('button', { name: 'General', exact: true }).click();
   await appPage.getByRole('button', { name: 'Application', exact: true }).click();
   const opened = electronApp.waitForEvent('window');
-  await appPage.evaluate(() => (window as any).electronAPI.plugins.popout('host/settings', 'Settings'));
+  await appPage.evaluate(() => (window as any).electronAPI.surfaces.popout('host/settings', 'Settings'));
   const second = await opened;
   try {
     await second.waitForLoadState('domcontentloaded');
@@ -145,12 +145,12 @@ test('shortcut drafts follow another window and preserve the global flag', async
       const model = (window as any).monaco.editor.getEditors().find((editor: any) =>
         editor.getDomNode()?.getBoundingClientRect().width > 0 && editor.getModel()?.getLanguageId() === 'json').getModel();
       const values = JSON.parse(model.getValue());
-      values.app.hotkeys.switchPluginUp = { key: 'F8', modifiers: [], global: true };
+      values.app.hotkeys.switchSurfaceUp = { key: 'F8', modifiers: [], global: true };
       model.setValue(JSON.stringify(values, null, 2));
     });
     await second.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(second.getByText('Saved', { exact: true })).toBeVisible();
-    const shortcut = appPage.getByText('Previous Plugin', { exact: true }).locator('..');
+    const shortcut = appPage.getByText('Previous Surface', { exact: true }).locator('..');
     await expect(shortcut).toContainText('F8');
     await expect(shortcut).toContainText('Global');
     await shortcut.click();
@@ -159,7 +159,7 @@ test('shortcut drafts follow another window and preserve the global flag', async
     await expect.poll(() => second.evaluate(() => {
       const model = (window as any).monaco.editor.getEditors().find((editor: any) =>
         editor.getDomNode()?.getBoundingClientRect().width > 0 && editor.getModel()?.getLanguageId() === 'json').getModel();
-      return JSON.parse(model.getValue()).app.hotkeys.switchPluginUp;
+      return JSON.parse(model.getValue()).app.hotkeys.switchSurfaceUp;
     })).toEqual({ key: 'F7', modifiers: [], global: true });
   } finally {
     await second.close();

@@ -1,5 +1,5 @@
 // The browser feature holds its own settings, as the other nine do. It was the one feature that never handled
-// `FEATURE_SETTINGS_UPDATED`, so it reached into the settings plugin's actor instead — from a machine action,
+// `FEATURE_SETTINGS_UPDATED`, so it reached into the settings surface's actor instead — from a machine action,
 // where no composable can run. That is what this replaces.
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
@@ -11,7 +11,7 @@ const started = () => {
   return actor;
 };
 
-describe("the browser plugin's own settings", () => {
+describe("the browser surface's own settings", () => {
   it('starts with none and takes them from the app', () => {
     const actor = started();
     expect(actor.getSnapshot().context.settings).toEqual({});

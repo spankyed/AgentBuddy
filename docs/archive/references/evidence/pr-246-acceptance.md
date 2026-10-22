@@ -81,10 +81,10 @@ No pending item above is claimed passed until its runner evidence is inspected.
 ## Focused repair checkpoint, 2026-10-20
 
 The seven general-app failures were: two navigation event waits (Library and Logs), two settings
-update assertion waits against the removed `SETTINGS.UPDATE` event, one assertion on removed plugin
+update assertion waits against the removed `SETTINGS.UPDATE` event, one assertion on removed surface
 settings metadata, one reset-button locator wait against its old title, and one offline-database
 assertion assuming declarative defaults create a stored Settings row. No cleanup failure was reported.
-Tests now await the relevant pack plugin, use real preference forms and the rendered settings catalog,
+Tests now await the relevant pack surface, use real preference forms and the rendered settings catalog,
 and save an explicit override before querying offline. The reset assertion uses the current form action.
 
 External-pack cases refused before app launch; these were setup failures, not native execution hangs.

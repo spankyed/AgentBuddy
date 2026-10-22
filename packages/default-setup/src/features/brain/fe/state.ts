@@ -46,11 +46,11 @@ type UIEvent =
   // The event pulse's animation ended
   | { type: 'CLEAR_PULSE' }
 
-type PluginEvent =
-  | { type: 'PLUGIN_ACTIVATED' }
-  | { type: 'PLUGIN_DEACTIVATED' }
+type SurfaceEvent =
+  | { type: 'SURFACE_ACTIVATED' }
+  | { type: 'SURFACE_DEACTIVATED' }
 
-export type BrainEvents = UIEvent | SystemEvent | PluginEvent | TrailClickEvent
+export type BrainEvents = UIEvent | SystemEvent | SurfaceEvent | TrailClickEvent
 const typeOf = safeEvents<BrainEvents>()
 
 function normalizeFlowTNodeData(data: FlowTNodeData): {
@@ -77,7 +77,7 @@ const brainState = setup({
   actions: {
     setBrainData: assign(({ context, event }) => {
       if (context.brainIsDead) return {};
-      const typedEv = typeOf('RECEIVE_PLUGIN_DATA', event);
+      const typedEv = typeOf('RECEIVE_SURFACE_DATA', event);
       const { normalizedTree, tNodeTree } = normalizeFlowTNodeData(typedEv.data);
       return {
         flowTNodeId: typedEv.data.flowTNodeId,
@@ -186,9 +186,9 @@ const brainState = setup({
         currentFlowTNodeId: context.flowTNodeId,
       });
     },
-    requestPluginData: ({ context }) => {
+    requestSurfaceData: ({ context }) => {
       sendToSystem(id, {
-        type: 'REQUEST_PLUGIN_DATA',
+        type: 'REQUEST_SURFACE_DATA',
         ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId }),
       });
     },
@@ -395,7 +395,7 @@ const brainState = setup({
   states: {
     loading: {
       on: {
-        RECEIVE_PLUGIN_DATA: {
+        RECEIVE_SURFACE_DATA: {
           target: 'ready',
           actions: 'setBrainData'
         },
@@ -434,7 +434,7 @@ const brainState = setup({
         ]),
       },
       on: {
-        RECEIVE_PLUGIN_DATA: {
+        RECEIVE_SURFACE_DATA: {
           actions: 'setBrainData'
         },
         'NODE.CLICK': {
@@ -471,10 +471,10 @@ const brainState = setup({
           guard: 'answersSelectedNode',
           actions: 'setStepNodeDetails'
         },
-        PLUGIN_ACTIVATED: {
-          actions: 'requestPluginData'
+        SURFACE_ACTIVATED: {
+          actions: 'requestSurfaceData'
         },
-        PLUGIN_DEACTIVATED: {
+        SURFACE_DEACTIVATED: {
           // No action needed for deactivation
         },
         TNODE_OPENED: {
@@ -496,7 +496,7 @@ const brainState = setup({
             // Pass the current flowTNodeId to maintain the current view
             setTimeout(() => {
               sendToSystem(id, {
-                type: 'REQUEST_PLUGIN_DATA',
+                type: 'REQUEST_SURFACE_DATA',
                 ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId }),
               });
             }, 100);

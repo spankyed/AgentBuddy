@@ -516,7 +516,8 @@ const digestOf = (contents: Buffer | null): string =>
  * one must invalidate it, which is the one hole the deleted stamp could not see. `content` is a pack's
  * content sources, compiled into entities a user gets. `templates` is the CLI's scaffold, rendered into a
  * new pack.
- * `fixtures` is test input.
+ * `fixtures` is test input. `docs` is the document tree `doc-links` resolves every relative link in, which
+ * is why it is an input of `@app/repo-checks` rather than of every repo-scope step.
  *
  * **The condition that would make this wrong** is a check that asserts one of these files' *text*: it would
  * then be a real input, and skipping it would let that check cache over a doc that had gone stale. One
@@ -526,7 +527,7 @@ const digestOf = (contents: Buffer | null): string =>
  * `fingerprint-scope.integration.spec.ts` holds each of these trees to being unskippable rather than
  * trusting the list, and mutates it to prove it can fail.
  */
-export const READS_MARKDOWN: ReadonlySet<string> = new Set(['etc', 'content', 'help', 'templates', 'fixtures']);
+export const READS_MARKDOWN: ReadonlySet<string> = new Set(['etc', 'content', 'help', 'templates', 'fixtures', 'docs']);
 
 const GUIDE = 'CLAUDE.md';
 

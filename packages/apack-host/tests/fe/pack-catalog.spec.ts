@@ -21,7 +21,7 @@ describe('window declaration catalog', () => {
   it('publishes static endpoints and refuses malformed replacement metadata without losing the accepted frame', () => {
     const { reader, catalog, sessions, wire } = fixture();
     catalog.setNative([{ id: 'native', features: { shell: { description: 'Coordinate a window.' } },
-      eventContracts: { shell: { system: { incoming: ['START'], outgoing: ['DONE'] }, plugin: { receives: ['DONE'] } } },
+      eventContracts: { shell: { system: { incoming: ['START'], outgoing: ['DONE'] }, surface: { receives: ['DONE'] } } },
     }]);
     reader.connect(); sessions[0].receive(wire());
     expect(reader.catalog.events()).toEqual(catalog.events());
@@ -71,18 +71,18 @@ describe('window declaration catalog', () => {
   it('preserves compiled entity claims across the window data frame without source modules', () => {
     const { reader, catalog, sessions, wire } = fixture();
     const manifest = { id: 'installed', name: 'Installed', version: '1.0.0', features: {
-      view: { description: 'Open actions', plugin: { label: 'View', state: 'missing.ts' } },
+      view: { description: 'Open actions', surface: { label: 'View', state: 'missing.ts' } },
     } };
     const snapshot = { manifest, eventContracts: eventContractsFixture(manifest), declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
       types: { entities: {}, relKinds: {} }, facades: {}, entityDestinations: { Action: 'view' } };
     catalog.replace([{ dir: '/missing/installed', enabled: false, snapshot }]);
     reader.connect(); sessions[0].receive(wire());
-    expect(reader.plugins()).toEqual(catalog.plugins());
-    expect(reader.plugins()[0]).toMatchObject({ enabled: false, opens: ['Action'] });
-    expect(Reflect.set(reader.plugins()[0].opens!, 0, 'Prompt')).toBe(false);
+    expect(reader.surfaces()).toEqual(catalog.surfaces());
+    expect(reader.surfaces()[0]).toMatchObject({ enabled: false, opens: ['Action'] });
+    expect(Reflect.set(reader.surfaces()[0].opens!, 0, 'Prompt')).toBe(false);
     catalog.replace([{ dir: '/missing/installed', enabled: true, snapshot }]);
     sessions[0].receive(wire());
-    expect(reader.plugins()[0]).toMatchObject({ enabled: true, opens: ['Action'] });
+    expect(reader.surfaces()[0]).toMatchObject({ enabled: true, opens: ['Action'] });
     const before = reader.getSnapshot();
     const invalid = wire();
     Object.assign(invalid.snapshot, { revision: invalid.snapshot.revision + 1 });
@@ -94,24 +94,24 @@ describe('window declaration catalog', () => {
     reader.dispose();
   });
 
-  it('exposes local native plugin declarations before connection, without importing their modules', () => {
-    const native = { id: 'host', features: { settings: { description: 'Host settings.', plugin: { label: 'Settings', state: 'never.ts' } } } };
+  it('exposes local native surface declarations before connection, without importing their modules', () => {
+    const native = { id: 'host', features: { settings: { description: 'Host settings.', surface: { label: 'Settings', state: 'never.ts' } } } };
     const reader = createWindowPackCatalog({ subscribe: () => () => {} }, [native]);
-    native.features.settings.plugin.label = 'mutated';
+    native.features.settings.surface.label = 'mutated';
     expect(reader.status()).toBe('disconnected');
-    expect(reader.plugins()).toMatchObject([{ featureRef: 'host/settings', origin: 'native', enabled: true, declaration: { label: 'Settings' } }]);
-    expect(reader.plugins()).toBe(reader.plugins());
-    expect(Reflect.set(reader.plugins()[0].declaration, 'label', 'changed')).toBe(false);
-    reader.dispose(); expect(reader.plugins()).toEqual([]);
+    expect(reader.surfaces()).toMatchObject([{ featureRef: 'host/settings', origin: 'native', enabled: true, declaration: { label: 'Settings' } }]);
+    expect(reader.surfaces()).toBe(reader.surfaces());
+    expect(Reflect.set(reader.surfaces()[0].declaration, 'label', 'changed')).toBe(false);
+    reader.dispose(); expect(reader.surfaces()).toEqual([]);
   });
 
   it('accepts data without executable registration and keeps an immutable owned snapshot', () => {
     const { reader, catalog, sessions, wire } = fixture();
-    catalog.setNative([{ id: 'native-pack', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Cold', state: 'src/state.ts' } } } }]);
+    catalog.setNative([{ id: 'native-pack', features: { view: { description: 'Feature declaration fixture.', surface: { label: 'Cold', state: 'src/state.ts' } } } }]);
     reader.connect();
     const frame = wire(); sessions[0].receive(frame);
     expect(reader.status()).toBe('ready');
-    expect(reader.getSnapshot()?.native[0].features?.view.plugin?.label).toBe('Cold');
+    expect(reader.getSnapshot()?.native[0].features?.view.surface?.label).toBe('Cold');
     (frame.snapshot.native[0] as { id: string }).id = 'changed';
     expect(reader.getSnapshot()?.native[0].id).toBe('native-pack');
     expect(Reflect.set(reader.getSnapshot()!, 'revision', 900)).toBe(false);
@@ -124,8 +124,8 @@ describe('window declaration catalog', () => {
     const frontend = { tiptapPlugins: { suggestions: { extensions: { mention: 'never.ts#Mention' } } } };
     const viewers = { artifacts: { memo: { icon: 'FileText', fe: 'never.vue' } },
       blocks: { reply: { kind: 'input' as const, fe: 'never.vue', be: 'never.ts#backend' } } };
-    catalog.setNative([{ id: 'native-pack', ...frontend, ...viewers, features: { memos: { description: 'Feature declaration fixture.', references, plugin: { label: 'Native memos', state: 'never.ts' } } } }]);
-    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', extensions: { ...frontend, ...viewers }, features: { memos: { description: 'Feature declaration fixture.', references, plugin: { label: 'Memos', state: 'never.ts' } } } };
+    catalog.setNative([{ id: 'native-pack', ...frontend, ...viewers, features: { memos: { description: 'Feature declaration fixture.', references, surface: { label: 'Native memos', state: 'never.ts' } } } }]);
+    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', extensions: { ...frontend, ...viewers }, features: { memos: { description: 'Feature declaration fixture.', references, surface: { label: 'Memos', state: 'never.ts' } } } };
     catalog.setSources([{ dir: '/isolated/source', manifest, declarationRevision: _declarationRevision(manifest) }]);
     const installed = { ...manifest, id: 'installed-pack' };
     catalog.replace([{ dir: '/isolated/installed', enabled: false, snapshot: {
@@ -135,12 +135,12 @@ describe('window declaration catalog', () => {
     reader.connect(); sessions[0].receive(wire());
     const entries = reader.catalog.references();
     const editorEntries = reader.catalog.frontend();
-    expect(reader.plugins()).toMatchObject([
+    expect(reader.surfaces()).toMatchObject([
       { featureRef: 'native-pack/memos', enabled: true, origin: 'native' },
       { featureRef: 'installed-pack/memos', enabled: false, origin: 'installed', declarationRevision: _declarationRevision(installed) },
       { featureRef: 'source-pack/memos', origin: 'source' },
     ]);
-    expect(reader.plugins()).toBe(reader.plugins());
+    expect(reader.surfaces()).toBe(reader.surfaces());
     expect(editorEntries).toMatchObject([
       { packId: 'native-pack', origin: 'native', enabled: true, declaration: frontend },
       { packId: 'installed-pack', origin: 'installed', enabled: false, declarationRevision: _declarationRevision(installed) },

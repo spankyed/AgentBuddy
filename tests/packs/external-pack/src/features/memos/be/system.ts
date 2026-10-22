@@ -1,5 +1,5 @@
 import type { Contract } from './contract.ts';
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { setup } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
 
@@ -12,23 +12,23 @@ export const memosSystem = setup({
   types: memosSpec.types,
   actions: memosSpec.actions({
     sendConnectedData: () => {
-      broadcastToPlugin('memos', { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() });
+      broadcastToSurface('memos', { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() });
     },
     addMemo: ({ event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO', event);
-      broadcastToPlugin('memos', { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) });
+      broadcastToSurface('memos', { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) });
     },
-    // A send to a dependency's plugin, named as code names another pack's feature; that plugin declares it takes it
+    // A send to a dependency's surface, named as code names another pack's feature; that surface declares it takes it
     announceMemo: ({ event }) => {
       const { text } = memosSpec.typeOf('ANNOUNCE_MEMO', event);
-      broadcastToPlugin('default-setup/logs', {
+      broadcastToSurface('default-setup/logs', {
         type: 'LOG_ADDED',
         log: { id: `memo-${Date.now()}`, timestamp: Date.now(), level: 'info', message: text, source: 'memos' },
       });
     },
     addMemoNote: ({ event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO_NOTE', event);
-      broadcastToPlugin('memos', { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) });
+      broadcastToSurface('memos', { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) });
     },
   }),
 }).createMachine({

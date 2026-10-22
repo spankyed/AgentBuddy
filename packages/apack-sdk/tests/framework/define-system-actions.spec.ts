@@ -36,7 +36,7 @@ let stopListening: () => void;
 
 beforeEach(() => {
   sent = [];
-  stopListening = testRootEvents.onPluginSend((message) => {
+  stopListening = testRootEvents.onSurfaceSend((message) => {
     sent.push({ to: message.to, type: message.event.type, client: message.client });
   });
 });
@@ -142,7 +142,7 @@ describe('an action built from the spec', () => {
  * The connection the handler is serving, handed beside the answer.
  *
  * `reply` answers whoever asked; `client` is the window they asked *from*, which is what a system needs to
- * reach a *different* plugin in that same window (`sendToWindow`). Both come off one read at entry, and the
+ * reach a *different* surface in that same window (`sendToWindow`). Both come off one read at entry, and the
  * last case here is why: a handler that stores it and runs later still has the right window, where a send
  * that looked the connection up when called would find none.
  */

@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import type { PluginDefinition } from '@apackdev/sdk/fe';
+import type { SurfaceDefinition } from '@apackdev/sdk/fe';
 
 import { resetTestData } from '@apackdev/sdk/testing';
 import { registry } from './test-host.ts';
@@ -331,7 +331,7 @@ describe('activating and tearing down a pack at runtime', () => {
 
     registry.registerPack({
       id: 'stuck-pack',
-      features: { stuck: { plugin: { receives: [] }, settings: { defaults: { a: 1 }, schema: { type: 'object' } } } },
+      features: { stuck: { surface: { receives: [] }, settings: { defaults: { a: 1 }, schema: { type: 'object' } } } },
     });
     const stopListening = onPackCatalogChanged(() => { throw new Error('a settings listener threw'); });
 
@@ -403,15 +403,15 @@ describe('registry source and update tracking', () => {
 });
 
 describe('FE pack deregistration', () => {
-  it('unregisterPackFE removes extensions and returns removed plugins', async () => {
+  it('unregisterPackFE removes extensions and returns removed surfaces', async () => {
     const { registerFixture, unregisterPackFE } = createNativeFrontendTestRegistry();
 
-    const testPlugin = { label: 'Test', state: createMachine({}) } satisfies PluginDefinition;
-    registerFixture({ id: 'test-pack', features: { testPlugin: { plugin: testPlugin } } });
+    const testSurface = { label: 'Test', state: createMachine({}) } satisfies SurfaceDefinition;
+    registerFixture({ id: 'test-pack', features: { testSurface: { surface: testSurface } } });
 
     const removed = unregisterPackFE('test-pack');
     expect(removed).toHaveLength(1);
-    expect(removed[0].id).toBe('test-pack/testPlugin');
+    expect(removed[0].id).toBe('test-pack/testSurface');
 
     // Calling again should return empty
     const removedAgain = unregisterPackFE('test-pack');
@@ -420,16 +420,16 @@ describe('FE pack deregistration', () => {
 
   // A shipped pack's registration carries its id like any other, so it comes out the same way
   it('takes a shipped pack\'s frontend back out like any other pack\'s', async () => {
-    const { registerFixture, unregisterPackFE, getRegisteredPlugins } = createNativeFrontendTestRegistry();
-    registerFixture({ id: 'default-setup', features: { main: { plugin: { label: 'Built-in', state: createMachine({}) } } } });
-    const shipped = getRegisteredPlugins()[0];
+    const { registerFixture, unregisterPackFE, getRegisteredSurfaces } = createNativeFrontendTestRegistry();
+    registerFixture({ id: 'default-setup', features: { main: { surface: { label: 'Built-in', state: createMachine({}) } } } });
+    const shipped = getRegisteredSurfaces()[0];
     expect(shipped).toMatchObject({ label: 'Built-in', id: 'default-setup/main' });
 
     expect(unregisterPackFE('default-setup')).toEqual([shipped]);
-    expect(getRegisteredPlugins()).toEqual([]);
+    expect(getRegisteredSurfaces()).toEqual([]);
   });
 
-  // Two packs with the same feature each have their own plugin; unregistering one leaves the other's
+  // Two packs with the same feature each have their own surface; unregistering one leaves the other's
   it('unregisterPackFE handles pack with no extensions gracefully', async () => {
     const { unregisterPackFE } = createNativeFrontendTestRegistry();
 

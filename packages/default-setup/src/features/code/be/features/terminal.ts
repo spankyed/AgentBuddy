@@ -1,7 +1,7 @@
 import { featureSettings } from '#generated/settings.ts';
 import type { OutgoingTerminalEvents } from '../contract.ts'
 
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup, assign, fromPromise } from 'xstate'
 
@@ -11,7 +11,7 @@ import { createLogger } from '@apackdev/sdk/logger';
 
 const logger = createLogger('terminal');
 
-const pluginId = 'code' as const
+const surfaceId = 'code' as const
 
 // Incoming events from frontend
 
@@ -39,9 +39,9 @@ export type Event =
   | { type: 'terminal.UPDATE_BASE_DIRECTORY'; path: string }
   | { type: 'CODE_CONNECTED' };
 
-/** Emit an event to the frontend code plugin */
+/** Emit an event to the frontend code surface */
 const emitToFrontend = (event: OutgoingTerminalEvents) => {
-  broadcastToPlugin(pluginId, event)
+  broadcastToSurface(surfaceId, event)
 }
 
 // Pre-compiled regex patterns for OSC sequence detection (hot path — runs on every terminal data event)
@@ -153,13 +153,13 @@ export const terminalSystem = setup({
         const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.kill(ev.terminalId)
         if (!success) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'terminal.ERROR',
             data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
         }
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         })
@@ -173,13 +173,13 @@ export const terminalSystem = setup({
         const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.write(ev.terminalId, ev.data)
         if (!success) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'terminal.ERROR',
             data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
         }
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         })
@@ -193,13 +193,13 @@ export const terminalSystem = setup({
         const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.resize(ev.terminalId, ev.cols, ev.rows)
         if (!success) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'terminal.ERROR',
             data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
         }
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         })
@@ -213,19 +213,19 @@ export const terminalSystem = setup({
         const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.rename(ev.terminalId, ev.customTitle)
         if (!success) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'terminal.ERROR',
             data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
         } else {
           // Emit success event
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'terminal.RENAMED',
             data: { terminalId: ev.terminalId, customTitle: ev.customTitle }
           })
         }
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         })
@@ -235,12 +235,12 @@ export const terminalSystem = setup({
     listTerminals: () => {
       try {
         const terminals = terminalService.list()
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'terminal.TERMINALS_LISTED',
           data: terminals
         })
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'terminal.ERROR',
           data: { message: error.message }
         })
@@ -254,12 +254,12 @@ export const terminalSystem = setup({
         const terminal = terminals.find(t => t.id === ev.terminalId)
         
         if (terminal) {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'terminal.TERMINAL_TAB_OPENED',
             data: terminal
           })
         } else {
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'terminal.ERROR',
             data: { 
               message: `Terminal not found`, 
@@ -268,7 +268,7 @@ export const terminalSystem = setup({
           })
         }
       } catch (error: any) {
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         })

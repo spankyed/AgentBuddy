@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -56,7 +56,7 @@ import PromptsPanel from '#features/code/fe/features/prompts/PromptsPanel.vue'
 import PanelTerminalSection from '#features/code/fe/features/terminal/PanelTerminalSection.vue'
 import PanelResizer from '@apackdev/ui/layout/panel-resizer'
 
-const actor: CodeState = usePlugin()
+const actor: CodeState = useSurface()
 
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 const panelTerminalExpanded = useSelector(actor, (state) => state.context.panelTerminalExpanded)

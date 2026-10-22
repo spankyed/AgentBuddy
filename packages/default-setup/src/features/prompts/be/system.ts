@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { setup } from 'xstate';
 import type { Reply } from '@apackdev/sdk/events';
 import type { OutgoingPromptEvents } from './types.ts';
@@ -21,7 +21,7 @@ import { exportPrompts } from './repository/export-prompts.ts';
  * data the import changed is separate news and stays a broadcast.
  */
 const answer = (reply: Reply<OutgoingPromptEvents> | undefined, event: OutgoingPromptEvents): void =>
-  (reply ? reply(event) : broadcastToPlugin('prompts', event));
+  (reply ? reply(event) : broadcastToSurface('prompts', event));
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('prompts');
@@ -35,7 +35,7 @@ export const promptsSystem = setup({
       const connectedData = repository.promptQueries.connectedData();
       const promptsSettings = featureSettings.forFeature('prompts').get();
       
-      broadcastToPlugin('prompts', { 
+      broadcastToSurface('prompts', { 
         type: 'PROMPTS_CONNECTED',
         data: {
           ...connectedData,
@@ -45,7 +45,7 @@ export const promptsSystem = setup({
     },
     /**
      * **Answered, not broadcast**, because a broadcast cannot be correlated by anything this event carries.
-     * Sent to every window's prompts plugin it would be admitted on the prompt id alone, so two windows
+     * Sent to every window's prompts surface it would be admitted on the prompt id alone, so two windows
      * looking at the same prompt would each accept the other's answer, and a window that had moved on since
      * asking would take an answer it was no longer waiting for. `reply` sends to the asker on the connection
      * they asked from, and the call names the ask within it.
@@ -76,7 +76,7 @@ export const promptsSystem = setup({
         category: ev.category
       });
 
-      broadcastToPlugin('prompts', {
+      broadcastToSurface('prompts', {
         type: 'PROMPT_CREATED',
         prompt: prompt,
         promptId: prompt.id,
@@ -97,7 +97,7 @@ export const promptsSystem = setup({
 
       const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
       if (updatedPrompt) {
-        broadcastToPlugin('prompts', {
+        broadcastToSurface('prompts', {
           type: 'PROMPT_UPDATED',
           prompt: updatedPrompt,
           promptId: updatedPrompt.id,
@@ -108,7 +108,7 @@ export const promptsSystem = setup({
       const ev = promptsSpec.typeOf('DELETE_PROMPT', event);
       repository.promptCommands.delete(ev.promptId as EARS.EntityId);
       
-      broadcastToPlugin('prompts', {
+      broadcastToSurface('prompts', {
         type: 'PROMPT_DELETED',
         promptId: ev.promptId as EARS.EntityId,
       });
@@ -117,7 +117,7 @@ export const promptsSystem = setup({
       const ev = promptsSpec.typeOf('FETCH_PROMPTS_PAGE', event);
       const data = repository.promptQueries.connectedData(ev.page || 1);
 
-      broadcastToPlugin('prompts', {
+      broadcastToSurface('prompts', {
         type: 'PROMPTS_PAGE_LOADED',
         data: {
           prompts: data.prompts,
@@ -128,14 +128,14 @@ export const promptsSystem = setup({
     },
     fetchAllPrompts: () => {
       const allPrompts = repository.promptQueries.all();
-      broadcastToPlugin('prompts', {
+      broadcastToSurface('prompts', {
         type: 'PROMPTS_ALL_LOADED',
         data: { prompts: allPrompts }
       });
     },
     importPrompts: ({ event, reply }) => {
       const { prompts: importData } = promptsSpec.typeOf('IMPORT_PROMPTS', event);
-      const pluginId = 'prompts' as const;
+      const surfaceId = 'prompts' as const;
 
       logger.info('Importing prompts', { count: Array.isArray(importData) ? importData.length : 0 });
 
@@ -167,7 +167,7 @@ export const promptsSystem = setup({
             category: item.category,
           });
 
-          broadcastToPlugin(pluginId, {
+          broadcastToSurface(surfaceId, {
             type: 'PROMPT_CREATED',
             prompt,
             promptId: prompt.id,
@@ -197,7 +197,7 @@ export const promptsSystem = setup({
       // Refresh the full prompts list
       const connectedData = repository.promptQueries.connectedData();
       const promptsSettings = featureSettings.forFeature('prompts').get();
-      broadcastToPlugin(pluginId, {
+      broadcastToSurface(surfaceId, {
         type: 'PROMPTS_CONNECTED',
         data: {
           ...connectedData,
@@ -257,7 +257,7 @@ export const promptsSystem = setup({
           repository.promptCommands.update(p.id, { category: nextCategory });
           const updated = repository.promptQueries.byId(p.id);
           if (updated) {
-            broadcastToPlugin('prompts', {
+            broadcastToSurface('prompts', {
               type: 'PROMPT_UPDATED', 
               prompt: updated, 
               promptId: updated.id

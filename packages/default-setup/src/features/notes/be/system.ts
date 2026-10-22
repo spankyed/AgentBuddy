@@ -1,7 +1,7 @@
 import { featureSettings } from '#generated/settings.ts';
 
 import { qx } from '#generated/ears.ts';
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { setup } from 'xstate';
 import type { Reply } from '@apackdev/sdk/events';
 import type { OutgoingNotesEvents } from './types.ts';
@@ -27,7 +27,7 @@ import type { NoteEntity } from '#features/notes/be/types.ts';
  * (`@apackdev/host`) is the same shape for the same reason.
  */
 const answer = (reply: Reply<OutgoingNotesEvents> | undefined, event: OutgoingNotesEvents): void =>
-  (reply ? reply(event) : broadcastToPlugin('notes', event));
+  (reply ? reply(event) : broadcastToSurface('notes', event));
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('notes');
@@ -49,7 +49,7 @@ export const notesSystem = setup({
     sendNotesConnectedData: () => {
       const connectedData = repository.noteQueries.connectedData();
       const settings = featureSettings.forFeature('notes').get();
-      broadcastToPlugin('notes', {
+      broadcastToSurface('notes', {
         type: 'NOTES_CONNECTED',
         data: { ...connectedData, settings },
       });
@@ -69,7 +69,7 @@ export const notesSystem = setup({
 
       const noteDTO = repository.noteQueries.byIdDTO(note.id as EARS.EntityId);
       if (noteDTO) {
-        broadcastToPlugin('notes', {
+        broadcastToSurface('notes', {
           type: 'NOTE_CREATED',
           note: noteDTO,
         });
@@ -88,7 +88,7 @@ export const notesSystem = setup({
         if (ev.parentId) {
           const parentDTO = repository.noteQueries.byIdDTO(ev.parentId as EARS.EntityId);
           if (parentDTO) {
-            broadcastToPlugin('notes', {
+            broadcastToSurface('notes', {
               type: 'NOTE_UPDATED',
               note: parentDTO,
             });
@@ -135,7 +135,7 @@ export const notesSystem = setup({
           if (affectedId !== noteId) {
             const affectedDTO = repository.noteQueries.byIdDTO(affectedId as EARS.EntityId);
             if (affectedDTO) {
-              broadcastToPlugin('notes', {
+              broadcastToSurface('notes', {
                 type: 'NOTE_UPDATED',
                 note: affectedDTO,
               });
@@ -146,7 +146,7 @@ export const notesSystem = setup({
 
       const updatedNote = repository.noteQueries.byIdDTO(noteId);
       if (updatedNote) {
-        broadcastToPlugin('notes', {
+        broadcastToSurface('notes', {
           type: 'NOTE_UPDATED',
           note: updatedNote,
         });
@@ -165,7 +165,7 @@ export const notesSystem = setup({
 
               const updatedParent = repository.noteQueries.byIdDTO(updatedNote.parentId as EARS.EntityId);
               if (updatedParent) {
-                broadcastToPlugin('notes', {
+                broadcastToSurface('notes', {
                   type: 'NOTE_UPDATED',
                   note: updatedParent,
                 });
@@ -191,7 +191,7 @@ export const notesSystem = setup({
       const deletedIds = repository.noteCommands.softDelete(ev.id as EARS.EntityId);
 
       for (const deletedId of deletedIds) {
-        broadcastToPlugin('notes', {
+        broadcastToSurface('notes', {
           type: 'NOTE_DELETED',
           noteId: deletedId,
         });
@@ -205,7 +205,7 @@ export const notesSystem = setup({
         if (parentIds.length > 0) {
           const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
           if (parentDTO) {
-            broadcastToPlugin('notes', {
+            broadcastToSurface('notes', {
               type: 'NOTE_UPDATED',
               note: parentDTO,
             });
@@ -221,7 +221,7 @@ export const notesSystem = setup({
       for (const restoredId of restoredIds) {
         const noteDTO = repository.noteQueries.byIdDTO(restoredId as EARS.EntityId);
         if (noteDTO) {
-          broadcastToPlugin('notes', {
+          broadcastToSurface('notes', {
             type: 'NOTE_RESTORED',
             note: noteDTO,
           });
@@ -233,7 +233,7 @@ export const notesSystem = setup({
       if (parentIds.length > 0) {
         const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
         if (parentDTO) {
-          broadcastToPlugin('notes', {
+          broadcastToSurface('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
           });
@@ -281,7 +281,7 @@ export const notesSystem = setup({
         // Emit update for the moved note
         const movedDTO = repository.noteQueries.byIdDTO(id);
         if (movedDTO) {
-          broadcastToPlugin('notes', {
+          broadcastToSurface('notes', {
             type: 'NOTE_UPDATED',
             note: movedDTO,
           });
@@ -292,7 +292,7 @@ export const notesSystem = setup({
       for (const parentId of affectedParentIds) {
         const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
         if (parentDTO) {
-          broadcastToPlugin('notes', {
+          broadcastToSurface('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
           });
@@ -316,7 +316,7 @@ export const notesSystem = setup({
       // Emit updates for the reordered note
       const reorderedDTO = repository.noteQueries.byIdDTO(noteId);
       if (reorderedDTO) {
-        broadcastToPlugin('notes', {
+        broadcastToSurface('notes', {
           type: 'NOTE_UPDATED',
           note: reorderedDTO,
         });
@@ -327,7 +327,7 @@ export const notesSystem = setup({
         if (affectedId !== noteId) {
           const affectedDTO = repository.noteQueries.byIdDTO(affectedId as EARS.EntityId);
           if (affectedDTO) {
-            broadcastToPlugin('notes', {
+            broadcastToSurface('notes', {
               type: 'NOTE_UPDATED',
               note: affectedDTO,
             });
@@ -342,7 +342,7 @@ export const notesSystem = setup({
       for (const parentId of affectedParentIds) {
         const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
         if (parentDTO) {
-          broadcastToPlugin('notes', {
+          broadcastToSurface('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
           });
@@ -354,7 +354,7 @@ export const notesSystem = setup({
       const ev = notesSpec.typeOf('SEARCH_NOTES', event);
       const query = ev.query.trim().toLowerCase();
       if (!query) {
-        broadcastToPlugin('notes', {
+        broadcastToSurface('notes', {
           type: 'NOTES_SEARCH_RESULTS',
           results: [],
         });
@@ -364,7 +364,7 @@ export const notesSystem = setup({
       const results = allNotes.filter((n: NoteDTO) =>
         (n.title || '').toLowerCase().includes(query)
       );
-      broadcastToPlugin('notes', {
+      broadcastToSurface('notes', {
         type: 'NOTES_SEARCH_RESULTS',
         results,
       });
@@ -392,7 +392,7 @@ export const notesSystem = setup({
         // Refresh notes data
         const connectedData = repository.noteQueries.connectedData();
         const settings = featureSettings.forFeature('notes').get();
-        broadcastToPlugin('notes', {
+        broadcastToSurface('notes', {
           type: 'NOTES_CONNECTED',
           data: { ...connectedData, settings },
         });
@@ -430,7 +430,7 @@ export const notesSystem = setup({
       repository.noteCommands.update(ev.id as EARS.EntityId, { lastSeen: Date.now() }, true);
       const updatedNote = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
       if (updatedNote) {
-        broadcastToPlugin('notes', {
+        broadcastToSurface('notes', {
           type: 'NOTE_UPDATED',
           note: updatedNote,
         });
@@ -486,7 +486,7 @@ export const notesSystem = setup({
 
         const updatedRef = repository.noteQueries.byIdDTO(refId as EARS.EntityId);
         if (updatedRef) {
-          broadcastToPlugin('notes', {
+          broadcastToSurface('notes', {
             type: 'NOTE_UPDATED',
             note: updatedRef,
           });
@@ -513,12 +513,12 @@ export const notesSystem = setup({
       repository.noteCommands.softDelete(ev.id as EARS.EntityId);
 
       // Notify about deleted note and all descendants
-      broadcastToPlugin('notes', {
+      broadcastToSurface('notes', {
         type: 'NOTE_DELETED',
         noteId: ev.id,
       });
       for (const descId of descendantIds) {
-        broadcastToPlugin('notes', {
+        broadcastToSurface('notes', {
           type: 'NOTE_DELETED',
           noteId: descId,
         });
@@ -528,7 +528,7 @@ export const notesSystem = setup({
       if (parentId) {
         const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
         if (parentDTO) {
-          broadcastToPlugin('notes', {
+          broadcastToSurface('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
           });
@@ -540,7 +540,7 @@ export const notesSystem = setup({
       const ev = notesSpec.typeOf('PERMANENTLY_DELETE_NOTE', event);
       try {
         repository.noteCommands.delete(ev.id as EARS.EntityId);
-        broadcastToPlugin('notes', {
+        broadcastToSurface('notes', {
           type: 'NOTE_DELETED',
           noteId: ev.id,
         });
@@ -554,7 +554,7 @@ export const notesSystem = setup({
       for (const note of trashed) {
         try {
           repository.noteCommands.delete(note.id as EARS.EntityId);
-          broadcastToPlugin('notes', {
+          broadcastToSurface('notes', {
             type: 'NOTE_DELETED',
             noteId: note.id,
           });
@@ -566,7 +566,7 @@ export const notesSystem = setup({
 
     sendTrashedNotes: () => {
       const trashed = repository.noteQueries.trashedDTOs();
-      broadcastToPlugin('notes', {
+      broadcastToSurface('notes', {
         type: 'TRASHED_NOTES',
         notes: trashed,
       });

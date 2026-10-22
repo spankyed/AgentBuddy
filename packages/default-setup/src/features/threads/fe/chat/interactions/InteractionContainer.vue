@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin, getBlockBinding, useBlockDeclarations } from '@apackdev/sdk/fe'
+import { useSurface, getBlockBinding, useBlockDeclarations } from '@apackdev/sdk/fe'
 
 import type { BlockConfig } from '#generated/types.ts'
 import { ref, computed } from 'vue'
@@ -31,7 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
   isDisabled: false
 })
 
-const threadsActor: ThreadsState = usePlugin()
+const threadsActor: ThreadsState = useSurface()
 
 // ─── Block component resolution ─────────────────────────────────────
 const declarations = useBlockDeclarations()

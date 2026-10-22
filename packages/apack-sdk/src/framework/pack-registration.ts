@@ -54,10 +54,10 @@ export interface PackFeatureSystem {
   receives: readonly string[];
 }
 
-/** What the backend knows of a feature's plugin: the event types it receives, which the app checks a send against */
-export interface PackFeaturePlugin {
+/** What the backend knows of a feature's surface: the event types it receives, which the app checks a send against */
+export interface PackFeatureSurface {
   /**
-   * Generated from its own feature's system's outgoing events and every audience of the inbox the plugin's
+   * Generated from its own feature's system's outgoing events and every audience of the inbox the surface's
    * `Contract` declares. One flat list: a passing check means the event's shape was accepted, not that this sender
    * was allowed to send it. `Message.from` is a label the generated sends stamp, not a claim the bus checks —
    * `docs/archive/goals/goal-sender-enforced-audiences.md` says why.
@@ -65,11 +65,11 @@ export interface PackFeaturePlugin {
   receives: readonly string[];
 }
 
-/** One feature of a pack: whatever it has of a system, a plugin, a role, services and settings */
+/** One feature of a pack: whatever it has of a system, a surface, a role, services and settings */
 export interface PackFeature {
   designation?: string;
   system?: PackFeatureSystem;
-  plugin?: PackFeaturePlugin;
+  surface?: PackFeatureSurface;
   /** The keys of the services the feature provides, which `PackRegistration.services` holds */
   services?: readonly string[];
   /** The feature's default settings (apack.json `features.<id>.settings`) */
@@ -82,7 +82,7 @@ export interface PackRegistration {
   declarationRevision?: string;
   /**
    * The pack's features by id. The app runs each at `<packId>/<featureId>` and derives the rest from here:
-   * the systems it starts and the events each accepts, the plugins and what each receives, the roles.
+   * the systems it starts and the events each accepts, the surfaces and what each receives, the roles.
    */
   features?: Record<string, PackFeature>;
   services?: Record<string, unknown>;

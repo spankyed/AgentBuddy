@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -23,7 +23,7 @@ import ExampleCard from './ExampleCard.vue';
 import { queryExamples } from './query-examples.ts';
 import { transactionExamples } from './transaction-examples.ts';
 
-const actor: DatabaseState = usePlugin();
+const actor: DatabaseState = useSurface();
 const mode = useSelector(actor, (state) => state.context.mode);
 
 const examples = computed(() => 

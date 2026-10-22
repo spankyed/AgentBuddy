@@ -15,9 +15,9 @@ export interface RootEvents {
   /** A message for a backend system, which the bus routes */
   emitIncoming(message: Message): void;
   onIncoming(callback: (message: Message) => void): () => void;
-  /** A message for a frontend plugin sent outside a system (`broadcastToPlugin`), which the bus delivers while a client is connected */
-  emitPluginSend(message: Message): void;
-  onPluginSend(callback: (message: Message) => void): () => void;
+  /** A message for a frontend surface sent outside a system (`broadcastToSurface`), which the bus delivers while a client is connected */
+  emitSurfaceSend(message: Message): void;
+  onSurfaceSend(callback: (message: Message) => void): () => void;
   /** A message the clients receive */
   emitOutgoing(message: Message): void;
   onOutgoing(callback: (message: Message) => void): () => void;
@@ -37,8 +37,8 @@ export const _rootEvents: RootEvents = {
   onPackClientConnected: (callback) => bus().onPackClientConnected(callback),
   emitIncoming: (event) => bus().emitIncoming(event),
   onIncoming: (callback) => bus().onIncoming(callback),
-  emitPluginSend: (event) => bus().emitPluginSend(event),
-  onPluginSend: (callback) => bus().onPluginSend(callback),
+  emitSurfaceSend: (event) => bus().emitSurfaceSend(event),
+  onSurfaceSend: (callback) => bus().onSurfaceSend(callback),
   emitOutgoing: (event) => bus().emitOutgoing(event),
   onOutgoing: (callback) => bus().onOutgoing(callback),
 };

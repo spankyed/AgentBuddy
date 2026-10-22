@@ -10,7 +10,7 @@ The library's search index editor and tester. **The feature is switched off:** n
 | `DetailsSection.vue` | Details tab: name, description, embedding model, index metric (`cosine` or `dot_product`) and connectors (8, 16, 32, 64) |
 | `ScopeSection.vue` | Scope tab: excluded documents and excluded folders, each added through an autocomplete input, and an "exclude all subfolders" toggle |
 | `SectionsConfig.vue` | Sections tab: a toggle for section-based indexing, segment rules (type Text Block, List or Field; an occurrence; a key for fields; combined or separate indexing for lists and fields), and a `{{segment N}}` template with a preview |
-| `TestIndexView.vue` | Runs test searches against an index through the library plugin's state (`UPDATE_TEST_QUERY`, `EXECUTE_TEST_SEARCH`; reads `testingIndex`, `testQuery`, `testResults`, `isSearching`) and shows results grouped by document, with scores and copyable chunks |
+| `TestIndexView.vue` | Runs test searches against an index through the library surface's state (`UPDATE_TEST_QUERY`, `EXECUTE_TEST_SEARCH`; reads `testingIndex`, `testQuery`, `testResults`, `isSearching`) and shows results grouped by document, with scores and copyable chunks |
 | `form/OccurrenceInput.vue` | Occurrence input with quick picks (`first`, `last`, `all`, `N`, `N-X`) |
 | `form/SegmentedSlider.vue` | Segmented control (the connectors picker) |
 | `form/ToggleSwitch.vue` | Boolean toggle |

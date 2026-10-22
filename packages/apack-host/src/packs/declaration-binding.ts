@@ -67,7 +67,7 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
     const feature = features[id];
     if (!isPlainObject(feature)) return problem(`features.${id}`);
     if (feature.designation !== declaration.designation) return problem(`features.${id}.designation`);
-    for (const kind of ['system', 'plugin'] as const) {
+    for (const kind of ['system', 'surface'] as const) {
       if ((feature[kind] !== undefined) !== (declaration[kind] !== undefined)) return problem(`features.${id}.${kind}`);
       if (declaration[kind] && !isPlainObject(feature[kind])) return problem(`features.${id}.${kind}`);
     }

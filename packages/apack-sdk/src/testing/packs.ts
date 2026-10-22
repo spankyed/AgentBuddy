@@ -21,8 +21,8 @@ export interface TestPacks {
   readonly designations: Map<string, string>;
   /** Refs of systems a test says run, besides the registered packs': what `services.emitter` resolves a send against */
   readonly systems: Set<string>;
-  /** Refs of plugins a test says are there, besides the registered packs' */
-  readonly plugins: Set<string>;
+  /** Refs of surfaces a test says are there, besides the registered packs' */
+  readonly surfaces: Set<string>;
   /** Step definitions by type */
   readonly steps: Map<string, StepDefinition>;
   /** Explicit declaration data, independent of executable test doubles. */
@@ -52,7 +52,7 @@ function createTestPacks(): TestPacks {
   const lookups = {
     designations: new Map<string, string>(),
     systems: new Set<string>(),
-    plugins: new Set<string>(),
+    surfaces: new Set<string>(),
     steps: new Map<string, StepDefinition>(),
     stepDeclarations: new Map<string, StepCatalogEntry>(),
     artifacts: new Map<string, ArtifactDefinition>(),
@@ -134,12 +134,12 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     getRegisteredServices: () => ({ ...registered?.getRegisteredServices(), ...Object.fromEntries(testPacks.services) }),
     // A test names a ref as it likes, as it does a role's
     systemIds: () => [...new Set([...(registered?.systemIds() ?? []), ...testPacks.systems])] as FeatureRef[],
-    pluginIds: () => [...new Set([...(registered?.pluginIds() ?? []), ...testPacks.plugins])] as FeatureRef[],
+    surfaceIds: () => [...new Set([...(registered?.surfaceIds() ?? []), ...testPacks.surfaces])] as FeatureRef[],
     contentWriters: (entity) => testPacks.contentWriters.get(entity) ?? registered?.contentWriters(entity),
     appliers: (packId) => testPacks.appliers.get(packId) ?? registered?.appliers(packId) ?? [],
     settingsCatalog: () => registered?.settingsCatalog() ?? noSettings,
     onCatalogChanged: (listener) => registered?.onCatalogChanged(listener) ?? (() => {}),
-    pluginDefaults: () => registered?.pluginDefaults() ?? {},
+    surfaceDefaults: () => registered?.surfaceDefaults() ?? {},
     commands: () => [...(registered?.commands() ?? []), ...[...testPacks.commands.values()].flat()],
     help: () => ({ articles: [...(registered?.help().articles ?? []), ...[...testPacks.help.values()].flat()], problems: registered?.help().problems ?? [] }),
     earsNames: () => {

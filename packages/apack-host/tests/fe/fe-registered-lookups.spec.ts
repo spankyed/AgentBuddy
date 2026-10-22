@@ -1,11 +1,11 @@
 import { createMachine } from 'xstate';
-import { selectDefaultPluginDeclaration, getEligiblePlugin } from '../../src/fe/plugin-selection.ts';
+import { selectDefaultSurfaceDeclaration, getEligibleSurface } from '../../src/fe/surface-selection.ts';
 import type { FeatureRef } from '@apackdev/sdk/ids';
 import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 // What a pack's frontend registration contributes, read the way the renderer and pack frontends read it: each
 // lookup sees the pack once it registers and loses it when it unregisters.
 import { afterEach, describe, expect, it } from 'vitest';
-import type { Plugin, PluginDefinition, PackFERegistration, TiptapPlugin } from '@apackdev/sdk/fe';
+import type { Surface, SurfaceDefinition, PackFERegistration, TiptapPlugin } from '@apackdev/sdk/fe';
 import { tiptapPluginRegistry, getStepFrontendBindings } from '@apackdev/sdk/fe';
 import { bindFeHost } from '@apackdev/sdk/runtime';
 import { type StepDefinition } from '@apackdev/sdk/steps';
@@ -18,13 +18,13 @@ const registry = createNativeFrontendTestRegistry();
 bindFeHost({ catalog: {} as never, application: {} as never, secrets: {} as never, settings: {} as never, client: {} as never, packs: registry });
 const register = (packId: string, registration: Omit<PackFERegistration, 'id'>) => registry.registerFixture({ id: packId, ...registration });
 const unregister = (packId: string) => registry.unregisterPackFE(packId);
-const plugins = () => registry.getRegisteredPlugins();
-const defaultPlugin = () => {
-  const catalog = { status: () => 'ready' as const, subscribe: () => () => {}, plugins: () => [...registry.pluginBindings()].map(([featureRef, accepted]) => ({
+const surfaces = () => registry.getRegisteredSurfaces();
+const defaultSurface = () => {
+  const catalog = { status: () => 'ready' as const, subscribe: () => () => {}, surfaces: () => [...registry.surfaceBindings()].map(([featureRef, accepted]) => ({
     featureRef: featureRef as FeatureRef, packId: accepted.packId, origin: 'native' as const, enabled: true, declaration: accepted.declaration,
   })) };
-  const owner = selectDefaultPluginDeclaration(catalog);
-  return owner && getEligiblePlugin(catalog, registry.pluginBindings(), owner.featureRef);
+  const owner = selectDefaultSurfaceDeclaration(catalog);
+  return owner && getEligibleSurface(catalog, registry.surfaceBindings(), owner.featureRef);
 };
 const appExtension = (slot: string) => registry.getAppExtension(slot);
 
@@ -38,12 +38,12 @@ function add(packId: string, registration: Omit<PackFERegistration, 'id'>): void
   packs.push(packId);
 }
 
-function remove(packId: string): Plugin[] {
+function remove(packId: string): Surface[] {
   packs.splice(packs.indexOf(packId), 1);
   return unregister(packId);
 }
 
-const plugin = (label: string) => ({ label, state: createMachine({}) }) satisfies PluginDefinition;
+const surface = (label: string) => ({ label, state: createMachine({}) }) satisfies SurfaceDefinition;
 // A frontend registration carries `node` beside `fe`: the label and the field defaults are what both
 // halves read, so codegen emits that facet into this registration and the backend's alike
 const NoteNode = {}; const NoteForm = {}; const CardView = {}; const Choice = {};
@@ -56,7 +56,7 @@ const Welcome = { name: 'Welcome' };
 describe("a pack's frontend", () => {
   it('is found once it registers, and gone once it unregisters', () => {
     add('notebook-pack', {
-      features: { notebookMain: { plugin: plugin('Notebook'), designation: 'notebook' } },
+      features: { notebookMain: { surface: surface('Notebook'), designation: 'notebook' } },
       steps: [noteStepFE],
       artifacts: [cardView],
       blocks: [choice],
@@ -65,7 +65,7 @@ describe("a pack's frontend", () => {
     });
 
     // Registered at the feature's address, which also answers the role
-    expect(plugins()).toMatchObject([{ label: 'Notebook', id: 'notebook-pack/notebookMain' }]);
+    expect(surfaces()).toMatchObject([{ label: 'Notebook', id: 'notebook-pack/notebookMain' }]);
     expect(getDesignated('notebook')).toBe('notebook-pack/notebookMain');
     expect(getStepFrontendBindings().get('note')?.binding.node?.label).toBe('Note');
     expect(getStepFrontendBindings().get('note')?.binding.fe).toBeDefined();
@@ -81,7 +81,7 @@ describe("a pack's frontend", () => {
     expect(appExtension('welcome')).toBe(Welcome);
 
     expect(remove('notebook-pack')).toMatchObject([{ label: 'Notebook', id: 'notebook-pack/notebookMain' }]);
-    expect(plugins()).toEqual([]);
+    expect(surfaces()).toEqual([]);
     expect(hasDesignation('notebook')).toBe(false);
     expect(getStepFrontendBindings().get('note')?.binding).toBeUndefined();
     expect([...getStepFrontendBindings().values()].map(entry => entry.binding)).toEqual([]);
@@ -118,39 +118,39 @@ describe("a pack's frontend", () => {
     expect(appExtension('welcome')).toBe(Welcome);
   });
 
-  // Two packs with a `notes` feature each get a plugin, because a plugin is addressed by its pack. Only
+  // Two packs with a `notes` feature each get a surface, because a surface is addressed by its pack. Only
   // the default follows declaration order, independently of registration order.
-  it("gives each pack its own plugin, and selects its default by declaration identity", () => {
-    add('first-pack', { features: { notes: { plugin: plugin('First notes'), default: true } } });
-    add('second-pack', { features: { notes: { plugin: plugin('Second notes') }, cards: { plugin: plugin('Cards'), default: true } } });
-    expect(plugins().map((p) => p.id)).toEqual(['first-pack/notes', 'second-pack/notes', 'second-pack/cards']);
-    expect(defaultPlugin()?.id).toBe('first-pack/notes');
+  it("gives each pack its own surface, and selects its default by declaration identity", () => {
+    add('first-pack', { features: { notes: { surface: surface('First notes'), default: true } } });
+    add('second-pack', { features: { notes: { surface: surface('Second notes') }, cards: { surface: surface('Cards'), default: true } } });
+    expect(surfaces().map((p) => p.id)).toEqual(['first-pack/notes', 'second-pack/notes', 'second-pack/cards']);
+    expect(defaultSurface()?.id).toBe('first-pack/notes');
     expect(remove('second-pack').map((p) => p.id)).toEqual(['second-pack/notes', 'second-pack/cards']);
-    expect(defaultPlugin()?.id, "the first pack's default left with the second").toBe('first-pack/notes');
+    expect(defaultSurface()?.id, "the first pack's default left with the second").toBe('first-pack/notes');
   });
 
   it('promotes the next default on removal and preserves priority during replacement', () => {
-    add('first-pack', { features: { main: { plugin: plugin('First'), default: true } } });
-    add('second-pack', { features: { main: { plugin: plugin('Second'), default: true } } });
-    registry.replaceFixture({ id: 'first-pack', features: { main: { plugin: plugin('Updated'), default: true } } });
-    expect(defaultPlugin()?.id).toBe('first-pack/main');
-    expect(defaultPlugin()?.label).toBe('Updated');
+    add('first-pack', { features: { main: { surface: surface('First'), default: true } } });
+    add('second-pack', { features: { main: { surface: surface('Second'), default: true } } });
+    registry.replaceFixture({ id: 'first-pack', features: { main: { surface: surface('Updated'), default: true } } });
+    expect(defaultSurface()?.id).toBe('first-pack/main');
+    expect(defaultSurface()?.label).toBe('Updated');
     remove('first-pack');
-    expect(defaultPlugin()?.id).toBe('second-pack/main');
-    add('first-pack', { features: { main: { plugin: plugin('Returned'), default: true } } });
-    expect(defaultPlugin()?.id).toBe('first-pack/main');
+    expect(defaultSurface()?.id).toBe('second-pack/main');
+    add('first-pack', { features: { main: { surface: surface('Returned'), default: true } } });
+    expect(defaultSurface()?.id).toBe('first-pack/main');
     remove('second-pack');
-    expect(defaultPlugin()?.id).toBe('first-pack/main');
+    expect(defaultSurface()?.id).toBe('first-pack/main');
   });
 
-  it('refuses duplicate defaults atomically and refuses a default without a plugin', () => {
-    add('owner', { features: { main: { plugin: plugin('Accepted'), default: true } } });
+  it('refuses duplicate defaults atomically and refuses a default without a surface', () => {
+    add('owner', { features: { main: { surface: surface('Accepted'), default: true } } });
     expect(() => registry.replaceFixture({ id: 'owner', features: {
-      first: { plugin: plugin('First'), default: true }, second: { plugin: plugin('Second'), default: true },
-    } })).toThrow('Two features claim the default plugin');
-    expect(defaultPlugin()?.id).toBe('owner/main');
-    expect(plugins().map(plugin => plugin.id)).toEqual(['owner/main']);
-    expect(() => register('invalid', { features: { absent: { default: true } } })).toThrow('without a plugin');
+      first: { surface: surface('First'), default: true }, second: { surface: surface('Second'), default: true },
+    } })).toThrow('Two features claim the default surface');
+    expect(defaultSurface()?.id).toBe('owner/main');
+    expect(surfaces().map(surface => surface.id)).toEqual(['owner/main']);
+    expect(() => register('invalid', { features: { absent: { default: true } } })).toThrow('without a surface');
     expect(registry.hasPackFE('invalid')).toBe(false);
   });
 });

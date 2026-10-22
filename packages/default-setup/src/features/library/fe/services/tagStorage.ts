@@ -1,5 +1,8 @@
-const TAGS_KEY = 'library-tags'
-const TAG_USAGE_KEY = 'library-tag-usage'
+import { surfaceStorage } from '@apackdev/sdk/fe'
+import { ref as featureRef } from '#generated/ref.ts'
+
+/** This surface's window storage: the prefix is its ref, so these names are scoped to it. */
+const storage = surfaceStorage(featureRef('library'))
 
 class TagStorageService {
   private static instance: TagStorageService
@@ -15,7 +18,7 @@ class TagStorageService {
 
   getAllTags(): string[] {
     try {
-      const tags = localStorage.getItem(TAGS_KEY)
+      const tags = storage.get('tags')
       return tags ? JSON.parse(tags) : []
     } catch {
       return []
@@ -24,7 +27,7 @@ class TagStorageService {
 
   getTagUsage(): Record<string, number> {
     try {
-      const usage = localStorage.getItem(TAG_USAGE_KEY)
+      const usage = storage.get('tag-usage')
       return usage ? JSON.parse(usage) : {}
     } catch {
       return {}
@@ -84,23 +87,23 @@ class TagStorageService {
 
   private saveTags(tags: string[]): void {
     try {
-      localStorage.setItem(TAGS_KEY, JSON.stringify(tags.sort()))
+      storage.set('tags', JSON.stringify(tags.sort()))
     } catch (e) {
-      console.error('Failed to save tags to localStorage:', e)
+      console.error('Failed to save tags to storage:', e)
     }
   }
 
   private saveUsage(usage: Record<string, number>): void {
     try {
-      localStorage.setItem(TAG_USAGE_KEY, JSON.stringify(usage))
+      storage.set('tag-usage', JSON.stringify(usage))
     } catch (e) {
-      console.error('Failed to save tag usage to localStorage:', e)
+      console.error('Failed to save tag usage to storage:', e)
     }
   }
 
   clearAll(): void {
-    localStorage.removeItem(TAGS_KEY)
-    localStorage.removeItem(TAG_USAGE_KEY)
+    storage.remove('tags')
+    storage.remove('tag-usage')
   }
 }
 

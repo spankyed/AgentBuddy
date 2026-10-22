@@ -194,7 +194,7 @@
 
 <script setup lang="ts">
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, useSurface } from '@apackdev/sdk/fe'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 
 import { ref } from 'vue'
@@ -255,7 +255,7 @@ const removeTag = (index: number) => {
 }
 
 // Get library actor and state via selectors
-const libraryActor: LibraryActor = usePlugin()
+const libraryActor: LibraryActor = useSurface()
 
 // Import state
 const isImporting = useSelector(libraryActor, (state) => state.context.libraryImport.status === 'importing')

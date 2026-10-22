@@ -8,7 +8,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { CompilerState, Extractor, ExtractorConfig, ExtractorLogLevel } from '@microsoft/api-extractor';
-import { packagesBuiltOrRefuse } from '@apackdev/host/build/packages-built';
+import { packagesBuiltOrRefuse, PUBLISHED_TREES } from '@apackdev/host/build/packages-built';
 import { componentContracts, type ComponentEntry } from './component-contracts.ts';
 import { reportEntries, reportName } from './lib/api-entries.ts';
 
@@ -35,12 +35,25 @@ const reportFolder = path.join(pkgDir, 'etc');
  */
 packagesBuiltOrRefuse('npm run packages:build');
 
-/** Exports with declarations: [subpath, declaration file in .temp/api-types] */
+/**
+ * Exports with declarations: [subpath, declaration file in .temp/api-types].
+ *
+ * Two kinds of package, because two kinds resolve differently. `@apackdev/ears`, `/sdk` and `/ui` carry an
+ * `@apackdev/source` branch per entry, which names the source file directly. A **bundled** package
+ * (`@apackdev/testing`) deliberately carries none — it resolves its built bundle for everyone, which is what
+ * makes the fixture a pack runs the one this repo runs — so its entry is read from `types` instead, whose
+ * path is its published tree (`PUBLISHED_TREES`) plus the `dist/` tsc emits into. Declarations under
+ * `.temp/api-types` mirror `src/` either way, so both arrive at the same relative path.
+ */
 function entries(): [string, string][] {
+  const bundled = PUBLISHED_TREES[path.basename(pkgDir)];
   return reportEntries(pkg as { exports?: Record<string, unknown> }).map((key) => {
-    const source = ((pkg.exports as Record<string, Record<string, unknown>>)[key])['@apackdev/source'] as string;
-    const rel = source.replace(/^\.\/src\//, '');
-    const declaration = rel.endsWith('.vue') ? `${rel}.d.ts` : rel.replace(/\.ts$/, '.d.ts');
+    const target = (pkg.exports as Record<string, Record<string, unknown>>)[key];
+    const source = target['@apackdev/source'] as string | undefined;
+    const rel = source !== undefined
+      ? source.replace(/^\.\/src\//, '')
+      : (target.types as string).replace(new RegExp(`^\\./${bundled}/dist/`), '');
+    const declaration = rel.endsWith('.vue') ? `${rel}.d.ts` : rel.replace(/\.(ts|d\.ts)$/, '.d.ts');
     return [key, path.join(typesDir, declaration)];
   });
 }
@@ -130,10 +143,16 @@ for (const { key, config } of prepared) {
   }
 }
 
-/** Component entries (a .ts module re-exporting an SFC's default) */
+/**
+ * Component entries (a .ts module re-exporting an SFC's default).
+ *
+ * An entry with no `@apackdev/source` branch is a bundled package's, which has no source tree to read and
+ * no SFC to find: components are `@apackdev/ui`'s, and that one names its source.
+ */
 function componentEntries(): ComponentEntry[] {
   return entries().flatMap(([key, declaration]) => {
     const source = (pkg.exports[key] as Record<string, string>)['@apackdev/source'];
+    if (source === undefined) return [];
     const sfc = /export\s*\{\s*default\s*\}\s*from\s*['"]([^'"]+\.vue)['"]/.exec(fs.readFileSync(path.join(pkgDir, source), 'utf-8'));
     if (!sfc) return [];
     // The entry only re-exports; the SFC's own declaration is where the component is declared

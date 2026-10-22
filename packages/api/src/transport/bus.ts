@@ -15,19 +15,19 @@ import { bindSettingsRequest, SETTINGS_MUTATIONS, SettingsRefusedError } from '@
 const logger = createLogger('app-events');
 
 /**
- * Whether `ref` names something a reply could reach: a registered system, a registered plugin, or a name a
+ * Whether `ref` names something a reply could reach: a registered system, a registered surface, or a name a
  * connection claimed. The symmetric check to the one `receiveClientEvent` makes on `to` — without it a stale or
  * misspelled `sender` becomes an answer the bus drops into a diagnostic, one step removed from the send that
  * caused it.
  *
- * The two maps rather than `systemIds()`/`pluginIds()`, which spread a cached map's keys into a new array on
+ * The two maps rather than `systemIds()`/`surfaceIds()`, which spread a cached map's keys into a new array on
  * every call: most of a window's sends carry a `sender`, so this runs on the common path and a lookup there
  * should cost nothing. The third clause is the one the drive engine lives on — `host/drive` is claimed, never
  * registered, so it appears in neither map.
  */
 const addressable = (ref: string): boolean =>
   appPacks.getEventValidationMap().has(ref)
-  || appPacks.getPluginEventValidationMap().has(ref)
+  || appPacks.getSurfaceEventValidationMap().has(ref)
   || appClaims.clientFor(ref) !== undefined;
 
 export const systemBusRouter = router({
@@ -41,7 +41,7 @@ export const systemBusRouter = router({
     // knows it for free, so taking it from the wire would be strictly worse for no gain.
     //
     // `sender` is named, and that is not the same decision. It is where an answer goes, and a client has to be
-    // able to say — a window knows which of its plugins asked, and a participant which name it claimed.
+    // able to say — a window knows which of its surfaces asked, and a participant which name it claimed.
     //
     // `call` and `answering` are named for the same reason, in both directions: a window's ask crosses inbound
     // and must be answerable, and a *system* asking a window is answered inbound — so a round trip correlates
@@ -51,18 +51,18 @@ export const systemBusRouter = router({
     //
     // **It is checked for existence and not for identity, and the difference is worth knowing.** A `sender` must
     // name something addressable, the way `to` must; what it cannot do is prove the caller *is* that thing. One
-    // window could name another's plugin, and the bound on that is `client`: a reply goes to the connection the
+    // window could name another's surface, and the bound on that is `client`: a reply goes to the connection the
     // ask arrived on, so the worst a forged `sender` buys is making a system answer *you* while believing it
     // answered somebody else. That is a bug rather than an escalation only while every caller is trusted, which
     // today means every caller holds the API token and no pack exists outside this repo — a premise the root
-    // CLAUDE.md gives an expiry for. Closing it properly needs per-connection knowledge of which plugins a
+    // CLAUDE.md gives an expiry for. Closing it properly needs per-connection knowledge of which surfaces a
     // window actually loaded, which `packClientReady` does not keep.
     .input(z.object({ to: z.string().min(1), from: z.string().min(1).optional(), via: z.string().min(1).optional(), sender: z.string().min(1).optional(), call: z.string().min(1).optional(), answering: z.string().min(1).optional(), settingsCredential: z.string().min(1).optional(), event: z.object({ type: z.string().min(1) }).passthrough() }))
     .mutation(({ input, ctx }) => {
       if (input.sender !== undefined && !addressable(input.sender)) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: `"${input.sender}" can't be a sender: it names no registered system, no registered plugin and no claimed participant. An answer to it would be sent nowhere and dropped.`,
+          message: `"${input.sender}" can't be a sender: it names no registered system, no registered surface and no claimed participant. An answer to it would be sent nowhere and dropped.`,
         });
       }
       try {
@@ -85,8 +85,8 @@ export const systemBusRouter = router({
    * subscription reconnected: the pack's systems get CLIENT_CONNECTED, which the connection's broadcast and
    * the activation skip for external packs with frontend code. Their replies still reach every client rather
    * than this one — not because an outgoing message cannot name a connection, which it can, but because a
-   * system answering CLIENT_CONNECTED sends its startup data with `broadcastToPlugin`, which names none. That
-   * is the right reach for it: the data is for every window showing the plugin, not for whoever connected.
+   * system answering CLIENT_CONNECTED sends its startup data with `broadcastToSurface`, which names none. That
+   * is the right reach for it: the data is for every window showing the surface, not for whoever connected.
    */
   packClientReady: procedure
     .input(z.object({ packId: z.string().min(1), registrationId: z.string().min(1) }).strict())
@@ -126,7 +126,7 @@ export const systemBusRouter = router({
       observable<Message>((emit) => {
         const unsubscribe = rootEvents.onOutgoing((message) => {
           // Absent `client` means every connection, which is what a notification is: a mutation broadcast is
-          // aimed at every view, and a plugin runs once per window. A message that names a connection is an
+          // aimed at every view, and a surface runs once per window. A message that names a connection is an
           // answer to something that connection asked, and goes only there.
           if (message.client !== undefined && message.client !== ctx.client) return;
           emit.next(message);

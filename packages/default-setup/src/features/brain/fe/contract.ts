@@ -1,8 +1,8 @@
-// The brain plugin's contract. It declares no inbox: nothing outside the feature sends it events, and its own
+// The brain surface's contract. It declares no inbox: nothing outside the feature sends it events, and its own
 // system's outgoing union already reaches it. What it publishes is its state.
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears`.
-// `apack.json` names it at `features[].plugin.contract`.
+// `apack.json` names it at `features[].surface.contract`.
 import type { EventListenerEntity } from '#generated/types.ts'
 import type { StepRuntimeError, TNodeEntity, TrackTree } from '@apackdev/sdk/steps'
 import type { NormalizedTNodeTree } from './trace-tree.ts'
@@ -22,7 +22,7 @@ export interface BrainContext {
   brainIsDead: boolean;
   /** Why the brain couldn't start, while it stays stopped for that reason */
   startError?: string;
-  /** The root flow the running brain started with; the flows plugin's root flow differing from it takes a restart */
+  /** The root flow the running brain started with; the flows surface's root flow differing from it takes a restart */
   runningRootFlowId?: string;
   brainIsPaused: boolean;
   latestRuntimeError?: StepRuntimeError;

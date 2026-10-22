@@ -52,10 +52,10 @@ it('captures every metadata container while retaining machines, components and c
   const replacement = { render: vi.fn() };
   const state = createMachine({});
   const isShown = vi.fn(() => true);
-  const plugin = { label: 'Items', state, icon: component, canvas: { list: component }, panel: component,
+  const surface = { label: 'Items', state, icon: component, canvas: { list: component }, panel: component,
     hotkeys: [{ action: 'OPEN', global: true }], options: { headerClass: 'initial' },
     fallbackPanel: { label: 'Fallback', toggle: { type: 'TOGGLE' }, isShown } };
-  const registration = { id: 'owner', features: { view: { plugin, settingsForm: component } },
+  const registration = { id: 'owner', features: { view: { surface, settingsForm: component } },
     settingsForms: { extra: component }, appExtensions: { welcome: component },
     artifacts: [{ type: 'card', fe: { icon: component, component } }],
     blocks: [{ type: 'answer', fe: { component } }],
@@ -63,7 +63,7 @@ it('captures every metadata container while retaining machines, components and c
   } satisfies PackFERegistration;
   const preference = { schema: { type: 'object' }, defaults: {}, form: 'native/form.vue' };
   const declaration: NativePackDeclaration = { id: 'owner',
-    features: { view: { description: 'Show items.', settings: preference, plugin: {
+    features: { view: { description: 'Show items.', settings: preference, surface: {
       label: 'Items', state: 'native/state.ts#State', icon: 'Box', canvas: { routes: { list: 'native/list.vue' } }, panel: 'native/panel.vue',
       hotkeys: [{ action: 'OPEN', global: true }], options: { headerClass: 'initial' },
       fallbackPanel: { label: 'Fallback', toggle: { type: 'TOGGLE' }, isShown: 'native/state.ts#isShown' },
@@ -77,14 +77,14 @@ it('captures every metadata container while retaining machines, components and c
   const registry = createFePackRegistry();
   const prepared = registry.preparePackFE({ kind: 'native', declaration }, registration);
   expect(registry.stepBindings().size).toBe(0);
-  plugin.label = 'Changed'; plugin.canvas.list = replacement; plugin.hotkeys[0].action = 'CHANGED';
-  plugin.options.headerClass = 'changed'; plugin.fallbackPanel.label = 'Changed'; plugin.fallbackPanel.toggle.type = 'CHANGED';
+  surface.label = 'Changed'; surface.canvas.list = replacement; surface.hotkeys[0].action = 'CHANGED';
+  surface.options.headerClass = 'changed'; surface.fallbackPanel.label = 'Changed'; surface.fallbackPanel.toggle.type = 'CHANGED';
   registration.features.view.settingsForm = replacement;
   registration.settingsForms.extra = replacement; registration.appExtensions.welcome = replacement;
   registration.artifacts[0].fe.component = replacement; registration.blocks[0].fe.component = replacement;
   registration.steps[0].node.label = 'Changed'; declaration.steps!.memo.node.label = 'Changed';
   prepared.commit(); prepared.dispose();
-  const accepted = registry.getRegisteredPlugins()[0];
+  const accepted = registry.getRegisteredSurfaces()[0];
   expect(accepted).toMatchObject({ label: 'Items', hotkeys: [{ action: 'OPEN', global: true }],
     options: { headerClass: 'initial' }, fallbackPanel: { label: 'Fallback', toggle: { type: 'TOGGLE' }, isShown } });
   expect(accepted.state).toBe(state);

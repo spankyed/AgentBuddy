@@ -20,7 +20,7 @@ describe('keyed declaration preservation', () => {
   it('preserves keyed feature contributions, routes, globals and module targets', () => {
     const fields = { features: { notes: { description: 'Edit notes.', entities: own(null),
       services: own('src/services.ts#service'), repositories: own('src/repositories.ts#repository'),
-      plugin: { label: 'Notes', state: 'src/state.ts', canvas: { routes: { toString: 'src/view.vue' } } },
+      surface: { label: 'Notes', state: 'src/state.ts', canvas: { routes: { toString: 'src/view.vue' } } },
     } }, extensions: { dsl: own({ entry: 'src/types.ts', targets: ['monaco'], globals: own('Item') }),
       appExtensions: own('src/view.vue'), tiptapPlugins: own({ extensions: own('src/editor.ts#Extension'), popups: own('src/popup.vue') }),
     }, content: { writers: own('src/writers.ts#writer') } };

@@ -19,7 +19,7 @@ describe('code persisted tabs', () => {
   })
 
   it('normalizes invalid and duplicate persisted tabs on load', () => {
-    localStorage.setItem('code-plugin-open-tabs', JSON.stringify({
+    localStorage.setItem('default-setup/code:open-tabs', JSON.stringify({
       tabs: [
         { path: '/tmp/a.ts', type: 'file', order: 5 },
         { path: '/tmp/a.ts', type: 'file', order: 6 },
@@ -60,7 +60,7 @@ describe('code persisted tabs', () => {
   it('persists an empty tab list when all tabs are closed', () => {
     saveOpenTabs([], null)
 
-    expect(JSON.parse(localStorage.getItem('code-plugin-open-tabs')!)).toEqual({
+    expect(JSON.parse(localStorage.getItem('default-setup/code:open-tabs')!)).toEqual({
       tabs: [],
       activeFilePath: null,
       panelTerminalId: null,
@@ -89,7 +89,7 @@ describe('code persisted tabs', () => {
       } as any,
     ], 'terminal:Terminal-a', 'Terminal-a', true)
 
-    expect(JSON.parse(localStorage.getItem('code-plugin-open-tabs')!)).toEqual({
+    expect(JSON.parse(localStorage.getItem('default-setup/code:open-tabs')!)).toEqual({
       tabs: [
         {
           path: 'terminal:Terminal-a',
@@ -106,7 +106,7 @@ describe('code persisted tabs', () => {
   })
 
   it('clears duplicate panel terminal placement when loading persisted terminal tabs', () => {
-    localStorage.setItem('code-plugin-open-tabs', JSON.stringify({
+    localStorage.setItem('default-setup/code:open-tabs', JSON.stringify({
       tabs: [
         {
           path: 'terminal:Terminal-a',
@@ -140,12 +140,12 @@ describe('code persisted tabs', () => {
   })
 
   it('prunes stale terminal output cache entries', () => {
-    localStorage.setItem('apack_terminal_output_Terminal-live', 'live')
-    localStorage.setItem('apack_terminal_output_Terminal-stale', 'stale')
+    localStorage.setItem('default-setup/code:terminal-output:Terminal-live', 'live')
+    localStorage.setItem('default-setup/code:terminal-output:Terminal-stale', 'stale')
 
     terminalEventBus.prunePersistedOutputs(['Terminal-live'])
 
-    expect(localStorage.getItem('apack_terminal_output_Terminal-live')).toBe('live')
-    expect(localStorage.getItem('apack_terminal_output_Terminal-stale')).toBeNull()
+    expect(localStorage.getItem('default-setup/code:terminal-output:Terminal-live')).toBe('live')
+    expect(localStorage.getItem('default-setup/code:terminal-output:Terminal-stale')).toBeNull()
   })
 })

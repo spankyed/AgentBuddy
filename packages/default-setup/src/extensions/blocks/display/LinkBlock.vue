@@ -17,7 +17,7 @@
 <script setup lang="ts">
 import { ExternalLink, FileText, MessageSquare, Settings, Link as LinkIcon } from 'lucide-vue-next'
 import type { Component } from 'vue'
-import { untypedOpenPlugin } from '@apackdev/sdk/fe'
+import { untypedOpenSurface } from '@apackdev/sdk/fe'
 
 export type SupportedLinkIcon =
   | 'external-link'
@@ -29,7 +29,7 @@ export type SupportedLinkIcon =
 export interface Link {
   label: string
   event: {
-    /** `external` opens `data.url` outside the app; anything else is the ref of the plugin to open, handed `data` */
+    /** `external` opens `data.url` outside the app; anything else is the ref of the surface to open, handed `data` */
     target: 'external' | string
     data: any
   }
@@ -47,8 +47,8 @@ const handleLinkClick = (link: Link) => {
   if (target === 'external') {
     window.open(data.url, '_blank')
   } else {
-    // A link's target is data, so it's checked when the link opens: a registered plugin's `<packId>/<featureId>`
-    untypedOpenPlugin(target, data)
+    // A link's target is data, so it's checked when the link opens: a registered surface's `<packId>/<featureId>`
+    untypedOpenSurface(target, data)
   }
 }
 

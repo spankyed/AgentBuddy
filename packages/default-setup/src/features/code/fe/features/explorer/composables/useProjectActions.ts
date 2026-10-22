@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { untypedOpenPlugin } from '@apackdev/sdk/fe'
+import { untypedOpenSurface } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
@@ -116,7 +116,7 @@ export function useProjectActions() {
 
   // Navigate to projects settings
   const navigateToProjects = () => {
-    untypedOpenPlugin(HOST_SETTINGS, [
+    untypedOpenSurface(HOST_SETTINGS, [
       { type: 'TAB.SELECT', tab: 'general' },
       { type: 'GENERAL_NAV.SELECT', item: 'projects' }
     ])

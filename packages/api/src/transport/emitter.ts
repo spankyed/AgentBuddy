@@ -49,7 +49,7 @@ class RootEventEmitter extends EventEmitter implements RootEvents {
     this.emit('connected');
   }
 
-  /** A client has loaded a pack's frontend (its plugin actors exist) and is ready for its systems' data */
+  /** A client has loaded a pack's frontend (its surface actors exist) and is ready for its systems' data */
   emitPackClientConnected(packId: string) {
     this.emit('pack-connected', packId);
   }
@@ -59,9 +59,9 @@ class RootEventEmitter extends EventEmitter implements RootEvents {
     this.emit('incoming', message);
   }
 
-  /** A send to a plugin from outside a system, which the bus delivers once a client is connected */
-  emitPluginSend(message: Message) {
-    this.emit('plugin-send', message);
+  /** A send to a surface from outside a system, which the bus delivers once a client is connected */
+  emitSurfaceSend(message: Message) {
+    this.emit('surface-send', message);
   }
 
   emitOutgoing(message: Message) {
@@ -83,9 +83,9 @@ class RootEventEmitter extends EventEmitter implements RootEvents {
     return () => this.off('pack-connected', callback);
   }
 
-  onPluginSend(callback: (message: Message) => void) {
-    this.on('plugin-send', callback);
-    return () => this.off('plugin-send', callback);
+  onSurfaceSend(callback: (message: Message) => void) {
+    this.on('surface-send', callback);
+    return () => this.off('surface-send', callback);
   }
 
   // Subscribe to outgoing events

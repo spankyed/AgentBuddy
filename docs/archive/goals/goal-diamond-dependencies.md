@@ -6,7 +6,7 @@
 > Two notes for a later reader:
 >
 > - **Phase 2 asks the diamond to assert `typeOwners.entities`, which no longer exists.** The goal it
->   landed inside replaced `typeOwners`, `dependencyCommands` and `dependencyPlugins` with one
+>   landed inside replaced `typeOwners`, `dependencyCommands` and `dependencySurfaces` with one
 >   `provenance` field, so the assertion is on `provenance.entities` — same claim, current shape.
 > - **The measured cost this goal asked for:** the new spec runs in **26.1s** (8 tests, 25.9s of it in
 >   the tests themselves), for 9 `apack build` invocations. That is over the four-build budget its
@@ -183,8 +183,8 @@ genuine-collision case passing.
 - In the same spec, after building `base-pack`, strip one name from
   `snapshot.defs[PACK_TYPES_DEF]` in its written snapshot (Decision 4) and build a dependent against it.
 - Assert the build fails, and that the message names both the missing export and `base-pack`.
-- Assert the `PackEvents` half separately: a dependent whose `system.sendsTo` names a plugin of a
-  dependency whose facade lacks `PackEvents` fails, and one that names no such plugin builds.
+- Assert the `PackEvents` half separately: a dependent whose `system.sendsTo` names a surface of a
+  dependency whose facade lacks `PackEvents` fails, and one that names no such surface builds.
 
 **Done when:** both cases pass. Mutation: removing `'Repositories'` from `REQUIRED_FACADE_EXPORTS` fails
 the missing-export case; removing the `eventDeps` requirement fails the `sendsTo` case.

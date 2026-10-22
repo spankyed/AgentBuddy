@@ -6,7 +6,7 @@ setupPackFixture();
 
 function destination(id: string, opens: string) {
   write(`src/${id}.ts`, `export type Contract = { opens: ${opens} }; throw new Error('Never execute'); export default {};`);
-  return { description: 'Opens declared entities', plugin: { label: id, state: `src/${id}.ts`, contract: `src/${id}.ts#Contract` } };
+  return { description: 'Opens declared entities', surface: { label: id, state: `src/${id}.ts`, contract: `src/${id}.ts#Contract` } };
 }
 
 it('materializes SDK, own and dependency destinations as deterministic data', async () => {

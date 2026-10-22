@@ -28,7 +28,7 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "export type Meta = ActionMeta;",
     // @apackdev/sdk/fe declares the preload bridge on window
     "import '@apackdev/sdk/fe';",
-    "export const popout = window.electronAPI?.plugins.popout;",
+    "export const popout = window.electronAPI?.surfaces.popout;",
     // Typed data access and events come only from the factories a pack's facade uses
     "import { defineEars } from '@apackdev/ears';",
     "import { defineEvents } from '@apackdev/sdk/events';",
@@ -40,13 +40,13 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "const memo = findById(memoId)!;",
     "export const text: string = memo.text;",
     "export const textNotAny: IsAny<typeof memo.text> = false;",
-    "const { broadcastToPlugin, sendToSystem } = defineEvents<{ memos: { type: 'MEMO_ADDED'; id: string } }, { memos: { type: 'ADD_MEMO'; text: string } }>('demo');",
+    "const { broadcastToSurface, sendToSystem } = defineEvents<{ memos: { type: 'MEMO_ADDED'; id: string } }, { memos: { type: 'ADD_MEMO'; text: string } }>('demo');",
     "sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });",
     "// @ts-expect-error ADD_MEMO needs its text",
     "sendToSystem('memos', { type: 'ADD_MEMO' });",
-    "broadcastToPlugin('memos', { type: 'MEMO_ADDED', id: 'm1' });",
-    "// @ts-expect-error the memos plugin doesn't receive this event",
-    "broadcastToPlugin('memos', { type: 'MEMO_REMOVED' });",
+    "broadcastToSurface('memos', { type: 'MEMO_ADDED', id: 'm1' });",
+    "// @ts-expect-error the memos surface doesn't receive this event",
+    "broadcastToSurface('memos', { type: 'MEMO_REMOVED' });",
     "// @ts-expect-error untyped query helpers aren't pack-facing",
     "export { findAll } from '@apackdev/ears';",
     // An engine is an instance a test or tool creates; its admin face comes only with it

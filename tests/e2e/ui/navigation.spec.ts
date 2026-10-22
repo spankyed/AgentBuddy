@@ -1,25 +1,25 @@
 import { test, expect } from '@apackdev/testing';
 
-// Every plugin renders as part of itself (usePlugin() in its components), its settings included, which the settings
-// plugin renders for each plugin in turn: a component that reaches for a plugin it isn't rendered in fails here
-test('opens every plugin, and every plugin\'s settings, without a renderer error', async ({ app, appPage }) => {
+// Every surface renders as part of itself (useSurface() in its components), its settings included, which the settings
+// surface renders for each surface in turn: a component that reaches for a surface it isn't rendered in fails here
+test('opens every surface, and every surface\'s settings, without a renderer error', async ({ app, appPage }) => {
   const errors: string[] = [];
   appPage.on('pageerror', (error) => errors.push(error.message));
   appPage.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
 
-  await app.waitForPlugin('default-setup/threads');
-  const { pluginIds, activePluginId: first } = await app.getContext();
-  expect(pluginIds.length).toBeGreaterThan(5);
+  await app.waitForSurface('default-setup/threads');
+  const { surfaceIds, activeSurfaceId: first } = await app.getContext();
+  expect(surfaceIds.length).toBeGreaterThan(5);
 
-  for (const pluginId of pluginIds) {
-    await app.navigate(pluginId);
-    expect((await app.getContext()).activePluginId).toBe(pluginId);
+  for (const surfaceId of surfaceIds) {
+    await app.navigate(surfaceId);
+    expect((await app.getContext()).activeSurfaceId).toBe(surfaceId);
   }
 
   const settings = 'host/settings';
   await app.navigate(settings);
   await appPage.evaluate((ref) => (window as any).applicationState.system.get(ref).send({ type: 'TAB.SELECT', tab: 'features' }), settings);
-  // Read the declared preferences rendered by Settings, rather than removed plugin metadata.
+  // Read the declared preferences rendered by Settings, rather than removed surface metadata.
   const choices = appPage.getByTestId('feature-settings-list').locator('button[data-active]');
   await expect.poll(() => choices.count()).toBeGreaterThan(5);
   const featureIds = await choices.locator('span').allTextContents();
@@ -35,7 +35,7 @@ test('opens every plugin, and every plugin\'s settings, without a renderer error
 
 
 test('an open feature form follows its settings being reset', async ({ app, appPage }) => {
-  await app.waitForPlugin('default-setup/code');
+  await app.waitForSurface('default-setup/code');
   await app.navigate('host/settings');
   await appPage.evaluate(() => {
     const settings = (window as any).applicationState.system.get('host/settings');

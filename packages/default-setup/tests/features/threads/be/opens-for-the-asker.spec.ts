@@ -17,7 +17,7 @@ const THREADS = 'default-setup/threads'
 const MAIN = 'c-main'
 
 /**
- * Every message the bus carried to a plugin, with the connection it was addressed to.
+ * Every message the bus carried to a surface, with the connection it was addressed to.
  *
  * `app.emitted()` hands back the events alone, and the whole subject here is `Message.client` — a broadcast
  * and an answer are the same event and differ only in where they went.
@@ -28,7 +28,7 @@ let stop: () => void
 beforeEach(() => {
   sent = []
   stop?.()
-  stop = testRootEvents.onPluginSend((message) => {
+  stop = testRootEvents.onSurfaceSend((message) => {
     if (message.to === THREADS) sent.push({ type: message.event.type, client: message.client })
   })
 })

@@ -4,17 +4,17 @@ import { PACK_SNAPSHOT_FORMAT, _declarationRevision, type PackManifest } from '@
 import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const machine = setup({}).createMachine({});
-const events = { system: { incoming: ['START'], outgoing: ['DONE'] }, plugin: { receives: ['DONE', 'SHOW'] } };
+const events = { system: { incoming: ['START'], outgoing: ['DONE'] }, surface: { receives: ['DONE', 'SHOW'] } };
 
 it('retains admitted endpoints across caller mutation and later validation-map refresh', () => {
   const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native',
     features: { shell: { description: 'Coordinate the shell.' } }, eventContracts: { shell: events },
   }, { id: 'peer' }] });
-  const feature = { system: { machine, receives: ['START'] }, plugin: { receives: ['DONE', 'SHOW'] } };
+  const feature = { system: { machine, receives: ['START'] }, surface: { receives: ['DONE', 'SHOW'] } };
   const registration = { id: 'native', features: { shell: feature } };
   registry.registerPack(registration);
   feature.system.receives.push('PRIVATE');
-  feature.plugin.receives.push('INJECTED');
+  feature.surface.receives.push('INJECTED');
   feature.system.machine = setup({}).createMachine({});
   Reflect.deleteProperty(registration.features, 'shell');
   registry.registerPack({ id: 'peer' });
@@ -22,8 +22,8 @@ it('retains admitted endpoints across caller mutation and later validation-map r
   expect(registry.getRegisteredSystems().get('native/shell')).toBe(machine);
   expect(registry.getEventValidationMap().get('native/shell')).toContain('START');
   expect(registry.getEventValidationMap().get('native/shell')).not.toContain('PRIVATE');
-  expect(registry.getPluginEventValidationMap().get('native/shell')).toContain('SHOW');
-  expect(registry.getPluginEventValidationMap().get('native/shell')).not.toContain('INJECTED');
+  expect(registry.getSurfaceEventValidationMap().get('native/shell')).toContain('SHOW');
+  expect(registry.getSurfaceEventValidationMap().get('native/shell')).not.toContain('INJECTED');
 });
 
 it('discovers a native shell inbox without a UI pane or bound system and retains metadata after unload', () => {
@@ -32,14 +32,14 @@ it('discovers a native shell inbox without a UI pane or bound system and retains
   }] });
   const before = registry.catalog.events();
   expect(before).toMatchObject([{ featureRef: 'native/shell', status: 'compiled', declaration: events }]);
-  expect(registry.catalog.plugins()).toEqual([]);
+  expect(registry.catalog.surfaces()).toEqual([]);
   expect(registry.getEventValidationMap().has('native/shell')).toBe(false);
-  registry.registerPack({ id: 'native', features: { shell: { plugin: { receives: ['SHOW', 'DONE'] } } } });
+  registry.registerPack({ id: 'native', features: { shell: { surface: { receives: ['SHOW', 'DONE'] } } } });
   registry.unregisterPack('native');
   expect(registry.catalog.events()).toEqual(before);
 });
 
-it.each([['system', ['PRIVATE']], ['plugin', ['SHOW']], ['system', null]] as const)(
+it.each([['system', ['PRIVATE']], ['surface', ['SHOW']], ['system', null]] as const)(
   'refuses changed %s event membership before granting runtime authority', (kind, receives) => {
     const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native',
       features: { shell: { description: 'Coordinate the shell.' } }, eventContracts: { shell: events },
@@ -57,7 +57,7 @@ it.each([['system', ['PRIVATE']], ['plugin', ['SHOW']], ['system', null]] as con
 
 it('keeps disabled installed endpoint data discoverable without authored source or runtime imports', () => {
   const manifest: PackManifest = { id: 'offline', name: 'Offline', version: '1.0.0', features: {
-    jobs: { description: 'Run jobs.', system: { entry: 'missing/system.ts' }, plugin: { label: 'Jobs', state: 'missing/plugin.ts' } },
+    jobs: { description: 'Run jobs.', system: { entry: 'missing/system.ts' }, surface: { label: 'Jobs', state: 'missing/surface.ts' } },
   } };
   const registry = createPackRegistry();
   registry.catalog.replace([{ dir: '/nonexistent/pack', enabled: false, snapshot: {
@@ -66,7 +66,7 @@ it('keeps disabled installed endpoint data discoverable without authored source 
   } }]);
   expect(registry.catalog.events()).toMatchObject([{ featureRef: 'offline/jobs', enabled: false, status: 'compiled', declaration: events }]);
   expect(registry.loadedPacks()).toEqual([]);
-  expect(registry.getPluginEventValidationMap().size).toBe(0);
+  expect(registry.getSurfaceEventValidationMap().size).toBe(0);
   registry.catalog.setSources([{ manifest: { ...manifest, id: 'authoring' }, dir: '/source-only',
     declarationRevision: _declarationRevision({ ...manifest, id: 'authoring' }),
   }]);

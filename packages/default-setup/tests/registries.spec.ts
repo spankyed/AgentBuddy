@@ -5,8 +5,8 @@
 
 describe('boot exports — source modules', () => {
   it('default-exports the logs entry (early boot system)', async () => {
-    // System modules default-export their SystemEntry, the same way plugin
-    // modules default-export their Plugin.
+    // System modules default-export their SystemEntry, the same way surface
+    // modules default-export their Surface.
     const { default: logsEntry } = await import('#features/logs/be/system.ts');
 
     expect(logsEntry).toBeDefined();

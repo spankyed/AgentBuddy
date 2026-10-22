@@ -6,9 +6,9 @@ it('sends current shell hotkeys and settings after an app preferences reset', as
   const app = await startApp({ systems: ['host/settings'] });
   await app.connect();
   const defaults = getTestSettings().getAll().app.hotkeys;
-  getTestSettings().forPack('default-setup').set({ kind: 'app' }, ['hotkeys', 'switchPluginUp', 'key'], 'F9');
+  getTestSettings().forPack('default-setup').set({ kind: 'app' }, ['hotkeys', 'switchSurfaceUp', 'key'], 'F9');
   await app.settle();
-  expect(getTestSettings().getAll().app.hotkeys.switchPluginUp?.key).toBe('F9');
+  expect(getTestSettings().getAll().app.hotkeys.switchSurfaceUp?.key).toBe('F9');
   const before = app.emitted('host/application').filter(event => event.type === 'APPLICATION_HOTKEYS').length;
 
   const call = await app.send('host/settings', { type: 'RESET_SETTINGS', target: { kind: 'app' } },

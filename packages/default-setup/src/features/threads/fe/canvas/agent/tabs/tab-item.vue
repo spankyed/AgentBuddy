@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, computed } from 'vue';
 import { X, SquarePen, Pin } from 'lucide-vue-next';
@@ -139,7 +139,7 @@ defineEmits<{
   'create-group': [];
 }>();
 
-const threadsActor: ThreadsState = usePlugin();
+const threadsActor: ThreadsState = useSurface();
 const chatStates = useSelector(threadsActor, (state) => state.context.chatStates);
 const chatStateOverrides = useSelector(threadsActor, (state) => state.context.chatStateOverrides);
 const settings = useSelector(threadsActor, (state) => state.context.settings);

@@ -11,7 +11,7 @@ Phase 4 originally moved `logs` to the host pack so `earlySystem` could leave th
 is being deleted on its own instead, which removes more and moves nothing — so the move is no longer
 *needed* for the goal.
 
-What it would still buy is the thing the move was always really about: **the Logs plugin becoming a core app
+What it would still buy is the thing the move was always really about: **the Logs surface becoming a core app
 feature**, shipped and updated only by a full app release rather than as pack content. That is a product
 question, not a refactor one, and it is open.
 
@@ -35,10 +35,10 @@ has, whose machine is `features/settings/fe/machine.ts` and whose components liv
 | `fe/state.ts` | `apack-host/src/features/logs/fe/machine.ts` — the name all three host features use |
 | `fe/{contract,search}.ts` | `apack-host/src/features/logs/fe/` |
 | `settings.ts` | `apack-host/src/features/logs/settings.ts`, **verbatim** |
-| `fe/plugin.ts`, `fe/canvas.vue`, `fe/settings.vue` | `renderer/src/views/logs/` |
+| `fe/surface.ts`, `fe/canvas.vue`, `fe/settings.vue` | `renderer/src/views/logs/` |
 
 The defaults file moves unchanged: it is already a plain `FeatureSettings`
-(`{ visible: false, plugins: { logs: … } }`), `PackRegistration.features[].settings` already exists, and
+(`{ visible: false, surfaces: { logs: … } }`), `PackRegistration.features[].settings` already exists, and
 `registry.ts:383` registers defaults for **every** registration including the host's.
 `checkFeatureSettings` keys on the feature id, which stays `logs`; only the ref becomes `host/logs`.
 
@@ -47,7 +47,7 @@ The defaults file moves unchanged: it is already a plain `FeatureSettings`
 | in the feature | becomes |
 |---|---|
 | `services` from `#generated/services.ts` | `@apackdev/sdk/services`, as `features/settings/be/system.ts` does |
-| `broadcastToPlugin` / `sendToSystem` from `#generated/events.ts` | `apack-host/src/events.ts`, both halves |
+| `broadcastToSurface` / `sendToSystem` from `#generated/events.ts` | `apack-host/src/events.ts`, both halves |
 | `ref('logs')` from `#generated/ref.ts` | `HOST.logs` |
 | `LogsSettings` from `#generated/types.ts` | a relative import — that generated file is only `export type * from '../features/logs/be/types.ts'` |
 | `OutgoingLogsEvents` from `#features/logs/be/types.ts` | `../be/types.ts` |
@@ -58,17 +58,17 @@ The defaults file moves unchanged: it is already a plain `FeatureSettings`
 
 1. **`src/refs.ts`** — `logs: resolveName('logs', HOST_PACK_ID)` on `HOST`.
 2. **`src/features/registration.ts`** — widen `systems` with `logs?: PackFeatureSystem`, and add the feature
-   with its `settings` and `plugin: { receives: [...LOGS_PLUGIN_EVENT_TYPES,
-   ...HOST_PLUGIN_EVENT_TYPES['host/logs']] }` — the two-source shape `settings` already uses.
-3. **`src/events.ts`** — `host/logs` into `HostPlugins` (the system broadcasts to it) and `HostSystems` (the
+   with its `settings` and `surface: { receives: [...LOGS_SURFACE_EVENT_TYPES,
+   ...HOST_SURFACE_EVENT_TYPES['host/logs']] }` — the two-source shape `settings` already uses.
+3. **`src/events.ts`** — `host/logs` into `HostSurfaces` (the system broadcasts to it) and `HostSystems` (the
    frontend sends `CLEAR_LOGS` / `REQUEST_LOGS_UPDATE`). Its own comment says these maps are
    `registration.ts`'s `receives` expressions as types, and to keep them together.
-4. **`@apackdev/sdk`'s `events/index.ts`** — `'host/logs'` into `HostPluginEvents` and
-   `HOST_PLUGIN_EVENT_TYPES`. **Load-bearing, not bookkeeping:** that record is the only source of host
+4. **`@apackdev/sdk`'s `events/index.ts`** — `'host/logs'` into `HostSurfaceEvents` and
+   `HOST_SURFACE_EVENT_TYPES`. **Load-bearing, not bookkeeping:** that record is the only source of host
    names in pack codegen (`generate-entries.ts:830`), so without it no pack can name `host/logs` and the
    fixture's send cannot compile.
 5. **The call sites that pass the system** — `api/src/runtime/index.ts:134`, the harness if logs should run
-   there, `renderer/src/views/packs/plugin.ts`'s `hostFrontend.features`, and the `src/features/index.ts`
+   there, `renderer/src/views/packs/surface.ts`'s `hostFrontend.features`, and the `src/features/index.ts`
    and `src/fe/index.ts` re-exports.
 
 ## Early start, which has to come back
@@ -99,10 +99,10 @@ explicit operation on a copy if needed, outside normal boot/import behavior.
 ## The sharpest edge: the fixture's typed send
 
 `tests/packs/external-pack` sends `LOG_ADDED` to `default-setup/logs`
-(`src/features/memos/be/system.ts:24`), typed through the **dependency snapshot** and the plugin contract's
+(`src/features/memos/be/system.ts:24`), typed through the **dependency snapshot** and the surface contract's
 `public` inbox — the only place in the repo exercising that split from outside the declaring pack.
 
-Afterwards the target types through `HOST_PLUGIN_EVENT_TYPES`, which is why wiring 4 is required. The
+Afterwards the target types through `HOST_SURFACE_EVENT_TYPES`, which is why wiring 4 is required. The
 fixture keeps `"dependencies": { "default-setup": "*" }`: it also sends to
 `default-setup/{library,notes,code}` and content with `default-setup:library`.
 
@@ -116,17 +116,17 @@ changed.
 **Four move** to `apack-host/tests/features/logs/{be,fe}/`. `be/excluded-sources.spec.ts` and
 `fe/search.spec.ts` are pure and move with import paths only. `be/system.spec.ts` re-points its ref
 literals and aims its registration assertion at `hostRegistration()`. `fe/link-navigation.spec.ts` belongs
-on the host side anyway — its own comment names `features/settings/fe/plugin-select.spec.ts` as the
+on the host side anyway — its own comment names `features/settings/fe/surface-select.spec.ts` as the
 counterpart.
 
 **The ref literal changes** in `apack-host/tests/bus/outgoing-events.spec.ts:261-265`,
-`features/application/fe/open-plugin.spec.ts` (4 sites), `features/application/system.spec.ts:40,49`,
-`features/settings/fe/plugin-select.spec.ts:28,32`,
+`features/application/fe/open-surface.spec.ts` (4 sites), `features/application/system.spec.ts:40,49`,
+`features/settings/fe/surface-select.spec.ts:28,32`,
 `tests/e2e/app-integration/feature-addressing.spec.ts:56-66`, `tests/e2e/ui/fallback-panel.spec.ts:6`, and
 the three fixture specs.
 
 **Two default-setup specs are repointed**: `tests/registries.spec.ts:7-10` (the logs entry is no longer the
-pack's) and `tests/harness-shell-lookups.spec.ts:7,10` (swap for another plugin's state).
+pack's) and `tests/harness-shell-lookups.spec.ts:7,10` (swap for another surface's state).
 
 ## Docs
 
@@ -155,11 +155,11 @@ npm run chain
 remaining `ref('logs')` or bare-`'logs'` send inside default-setup becomes a compile error, and the
 fixture's send fails until wiring 4 lands.
 
-**Then the app, because this is a plugin.** `npm run dev`: the Logs tab appears, shows lines, its settings
-panel writes (max logs, excluded sources), and the toolbar link still opens Settings on the Logs plugin.
+**Then the app, because this is a surface.** `npm run dev`: the Logs tab appears, shows lines, its settings
+panel writes (max logs, excluded sources), and the toolbar link still opens Settings on the Logs surface.
 
 **The migration, against real data.** Boot an app whose data dir predates the change and confirm the logs
-slice, the tab's visibility and `lastActivePlugin` survive under the new ref; boot again and confirm
+slice, the tab's visibility and `lastActiveSurface` survive under the new ref; boot again and confirm
 nothing moves the second time. Mutation: skip the rename step and that case fails.
 
 ## Risks

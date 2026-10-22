@@ -1,8 +1,8 @@
-import { usePluginState } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
 import { threadsFromStore } from './state.ts'
 import type { ReferenceItem } from '@apackdev/sdk/fe/references'
 
-export const useItems = () => usePluginState('threads', (state): ReferenceItem[] => {
+export const useItems = () => useSurfaceState('threads', (state): ReferenceItem[] => {
   const threadMap = state.threadMap
   const threadIds = state.threadIds
   const sorted = threadsFromStore(threadMap, threadIds)

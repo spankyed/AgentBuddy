@@ -1,6 +1,6 @@
 // Names claimed by a connection rather than registered by a pack.
 //
-// A system and a plugin are addressable because a pack declared them: the registry knows their refs and what
+// A system and a surface are addressable because a pack declared them: the registry knows their refs and what
 // events they take. A driver is neither — it is a process outside the app holding a connection — and that is the
 // whole reason an agent had to reconstruct "was this for me?" from a correlation id. It could send, and nothing
 // could send to it.

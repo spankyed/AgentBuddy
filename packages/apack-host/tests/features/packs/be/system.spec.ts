@@ -93,7 +93,7 @@ async function stubRelease(source: string) {
 }
 
 /**
- * The packs system running next to a bus that records what it is sent, and what it sends its plugin. A bus told
+ * The packs system running next to a bus that records what it is sent, and what it sends its surface. A bus told
  * to `deferStops` holds each teardown's completion in `stops`, as a real one does until the actors have stopped.
  */
 function runPacksSystem({ deferStops = false } = {}) {
@@ -108,7 +108,7 @@ function runPacksSystem({ deferStops = false } = {}) {
       }
     } } },
   });
-  const stopListening = testRootEvents.onPluginSend((message) => void sent.push({ type: 'OUTGOING', message }));
+  const stopListening = testRootEvents.onSurfaceSend((message) => void sent.push({ type: 'OUTGOING', message }));
   const root = setup({ actors: { bus: busStub, packs: createPacksSystem(registry) } }).createMachine({
     invoke: [
       { src: 'bus', systemId: HOST.bus },
@@ -353,7 +353,7 @@ describe('pack information without activation', () => {
     const manifest = { id: PACK_ID, name: 'Declared pack', version: '1.0.0',
       data: { relations: ['parent'] },
       features: { notes: { description: 'Feature declaration fixture.', entities: { Memo: null }, designation: 'notes', system: { entry: 'src/system.ts' },
-        plugin: { label: 'Fixture', state: 'src/plugin.ts' }, references: referenceDeclarations, services: { notesApi: 'src/api.ts#notesApi' } } },
+        surface: { label: 'Fixture', state: 'src/surface.ts' }, references: referenceDeclarations, services: { notesApi: 'src/api.ts#notesApi' } } },
       extensions: { services: { packApi: 'src/api.ts#packApi' }, artifacts: { memo: { icon: 'File' } } },
       migrations: { pack: { '1.0.0': { description: 'Create notes', up: 'src/migration.ts#up' } } },
       lifecycle: { onInit: 'src/hooks.ts#onInit' } };
@@ -381,7 +381,7 @@ describe('pack information without activation', () => {
         entities: { Memo: 'Memo' }, entityCount: 1, relKinds: { PARENT: 'parent' }, hasFrontend: true,
         systems: [`${PACK_ID}/notes`], services: ['packApi', 'notesApi'], artifacts: ['memo'],
         migrationCount: 1, lifecycleHooks: ['onInit'],
-        features: [{ id: 'notes', description: manifest.features.notes.description, designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, references: referenceDeclarations, services: ['notesApi'] }] });
+        features: [{ id: 'notes', description: manifest.features.notes.description, designation: 'notes', hasSystem: true, surface: manifest.features.notes.surface, references: referenceDeclarations, services: ['notesApi'] }] });
       expect(registry.getPackRegistration(PACK_ID)).toBeNull();
       expect(fs.existsSync(marker)).toBe(kind === 'activation-failed');
     } finally { system.stop(); }
@@ -1196,7 +1196,7 @@ describe('a user answering for one of a pack’s content items', () => {
 
 
 it('refuses a conflicting destination before saving enablement or importing its runtime', async () => {
-  const feature = { description: 'Open actions', plugin: { label: 'Actions', state: 'missing.ts' } };
+  const feature = { description: 'Open actions', surface: { label: 'Actions', state: 'missing.ts' } };
   const marker = path.join(tmpDir, 'conflicting-runtime-imported');
   for (const id of ['incumbent', PACK_ID]) {
     const source = packSource('1.0.0', { id, manifest: { features: { view: feature } },

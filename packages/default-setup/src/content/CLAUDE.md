@@ -24,7 +24,7 @@ Content sources `apack pack build` compiles to JSON, as `apack.json` `content.fo
 
 ## Settings
 
-Each feature declares JSON Schema and explicit defaults in `apack.json` under `features.<id>.settings`. The registry keeps values under `<packId>/<featureId>`; navigation defaults live in `features.<id>.plugin.defaultVisible`.
+Each feature declares JSON Schema and explicit defaults in `apack.json` under `features.<id>.settings`. The registry keeps values under `<packId>/<featureId>`; navigation defaults live in `features.<id>.surface.defaultVisible`.
 
 **Settings are declarations, not content.** Pack groups live in `apack.json` `extensions.settings`,
 feature preferences in `features.<id>.settings`, and app preferences belong to the host. The host
@@ -36,7 +36,7 @@ help articles are manifest contributions, not content datasets. Help lives in `s
 and is bundled from `extensions.help.path`.
 
 Onboarding, versions and content hashes belong to the host's `AppState`, not preferences. Feature
-navigation visibility is declared in `features.<id>.plugin.defaultVisible`; user visibility choices
+navigation visibility is declared in `features.<id>.surface.defaultVisible`; user visibility choices
 also belong to `AppState`. A feature with only navigation visibility needs no settings definition.
 
 ## Notes

@@ -1,4 +1,4 @@
-// Reading the call a plugin's machine asked under, for a spec that drives one with `sendToSystem` mocked.
+// Reading the call a surface's machine asked under, for a spec that drives one with `sendToSystem` mocked.
 //
 // A machine mints its own call and hands it to `sendToSystem` as the third argument, so this is the only
 // place a spec can learn what the real backend's `reply` would echo — there is no field on the event to read

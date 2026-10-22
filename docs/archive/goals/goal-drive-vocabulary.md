@@ -31,7 +31,7 @@ Finished when:
   verb added to it survives the next run.
 - No POST path is a noun and no GET path is a verb; one concept has one field name across every request
   and response in the table. A spec derives both from `engineVerbs` and fails on a new violation.
-- `/plugin`, `/click`, `/fill`, `/press`, `/snapshot` and `/logs` answer against a running app, shown by
+- `/surface`, `/click`, `/fill`, `/press`, `/snapshot` and `/logs` answer against a running app, shown by
   driving one — not only by a unit case.
 - `npm run typecheck`, `npm run lint:check`, `npm run test:unit`, `npm run api:update` (and the committed
   `etc/`), `npm run test:external-pack:contract`, `npm run chain`.
@@ -82,18 +82,18 @@ has to be added to `@apackdev/testing` and shipped to every pack, or not added a
 | | |
 |---|---|
 | the source a verb runs | `/eval` takes **`body`**; `/query` and `/transact` take **`code`** |
-| a plugin | `/navigate` takes **`plugin`**; `/state` returns **`activePluginId`** and **`pluginIds`** |
+| a surface | `/navigate` takes **`surface`**; `/state` returns **`activeSurfaceId`** and **`surfaceIds`** |
 | sending an event | `/send` takes `{ event }`; `/system` takes `{ to, event }` — two verbs for one act |
 | naming | every POST is a verb except `/system`, a noun; `/qx` and `/tx` are engine jargon on a public wire |
 | reads | `/events`, `/drops` and `/errors` are **GET requests that clear**, so a retry returns different data |
 
-The first row is not cosmetic: `/state` hands back `activePluginId`, and the only verb that consumes a
-plugin rejects that name.
+The first row is not cosmetic: `/state` hands back `activeSurfaceId`, and the only verb that consumes a
+surface rejects that name.
 
 **It cannot use the UI.** There is no `/click`, no `/fill`, no `/press` — `grep` for them in `engine/`
 returns nothing. A thing called "drive" can send bus events and `eval`, and cannot press a button a user
-presses. Reading a plugin's state has no verb either: doing it takes a ~200-character `/eval` expression,
-which this session wrote out **four separate times** to answer one question about the Notes plugin. And the
+presses. Reading a surface's state has no verb either: doing it takes a ~200-character `/eval` expression,
+which this session wrote out **four separate times** to answer one question about the Notes surface. And the
 backend's own log has no verb, so `packages/apack-testing/CLAUDE.md` tells a reader to go and open
 `drive/results/app-<n>.log` by hand.
 
@@ -120,7 +120,7 @@ records from last time. Extra verbs are merged *over* the core table, so a scaff
   the app's root actor, which is what `/send` does today). `/qx` and `/tx` become `/query` and `/transact`;
   the names `qx` and `tx` stay inside the code you write, where they are the real API.
 - **One concept, one field name, in requests and responses.** `code` is any source the session runs.
-  `plugin` and `plugins` name plugins everywhere, so `/state` stops saying `activePluginId`.
+  `surface` and `surfaces` name surfaces everywhere, so `/state` stops saying `activeSurfaceId`.
 - **Every response stays `{ ok, value }` or `{ ok: false, error }`**, with `4xx` reserved for a request
   that never ran. Unchanged; it is the one part of the surface that is already consistent.
 
@@ -172,7 +172,7 @@ response that produces it.
 
 | verb | takes | does |
 |---|---|---|
-| `POST /plugin` | `{ plugin, select? }` | the plugin's published state, optionally a dotted path into it |
+| `POST /surface` | `{ surface, select? }` | the surface's published state, optionally a dotted path into it |
 | `POST /click` | `{ selector }` | clicks it |
 | `POST /fill` | `{ selector, text }` | types into it |
 | `POST /press` | `{ key, selector? }` | a key, to the page or an element |
@@ -204,7 +204,7 @@ threads or the library is not here, and Phase 1 is where it goes.
 ## Deferred
 
 - **`/flow`** — see D7. Its own goal; Phase 1 makes it writable as a scaffold verb first.
-- **`/windows`** — list and focus windows. A plugin runs once per window and the whole `client` routing
+- **`/windows`** — list and focus windows. A surface runs once per window and the whole `client` routing
   exists for that, so multi-window bugs are real here; no evidence yet of an agent needing to drive two.
 - **The empty test** at `packages/repo-checks/tests/with-source.spec.ts` —
   `it('leaves it off for a run that declared it resolves the published packages', () => {})` asserts
@@ -237,7 +237,7 @@ threads or the library is not here, and Phase 1 is where it goes.
 |---|---|---|
 | 1 — scaffold generated once, takes verbs | done | `writeEngineFiles` joins `scaffold()`'s write-if-absent loop; `driveEngineBody({ verbs })` returns the body. Three cases in `apack-cli/tests/commands/drive.spec.ts`, two in `server.spec.ts`. |
 | 2 — the vocabulary | done | `vocabulary.spec.ts` derives the population from `engineVerbs` and the field names from each verb's own protocol error. |
-| 3 — the missing verbs | done | `/plugin`, `/click`, `/fill`, `/press`, `/snapshot`, `/logs`, each with a case against the fake page and each exercised live. |
+| 3 — the missing verbs | done | `/surface`, `/click`, `/fill`, `/press`, `/snapshot`, `/logs`, each with a case against the fake page and each exercised live. |
 | 4 — domain verbs | part | `/settings` and `/set-setting` landed. `/secrets` and `/inference` deferred, below. |
 
 ### What the invariants are, and what holds them
@@ -246,7 +246,7 @@ threads or the library is not here, and Phase 1 is where it goes.
   `packages/apack-testing/tests/engine/vocabulary.spec.ts`. The population is `engineVerbs`' own keys and
   the field names come from asking each verb with an empty body, so neither half is a list that can go
   stale. It fired twice during the work it was written for: once when six verbs arrived unclassified, once
-  when `/settings` wanted a second name (`path`) for what `/plugin` called `select`. They are both `path`.
+  when `/settings` wanted a second name (`path`) for what `/surface` called `select`. They are both `path`.
 - **The scaffold survives a second `--serve`** — held by `drive.spec.ts`'s "keeps a session file that has
   been extended".
 - **A verb is testable in process** — held by nothing automatic. Every verb added here has a case against
@@ -270,16 +270,16 @@ exists would mean a drive session making real model calls, which is worse than n
   exactly three, and the spec classifies each path so a fourth is a decision rather than a default.
 - **`/snapshot` takes no selector.** A GET carrying a body to narrow itself is awkward for every client, so
   it answers with the whole tree and a subtree stays `/eval`'s job.
-- **`AppHelper.getContext()` keeps `activePluginId`/`pluginIds`.** The rename is the HTTP surface; that is a
+- **`AppHelper.getContext()` keeps `activeSurfaceId`/`surfaceIds`.** The rename is the HTTP surface; that is a
   typed TypeScript API whose consumers are E2E specs, where the explicit name reads fine.
 - **The thirteen session methods were not renamed.** `session.qx` stays `qx` behind `/query`: those are the
   names of the code a caller writes, and the coupling being removed was at the wire.
 
 ### Live verification
 
-One `npm run drive:serve` session, every verb once. `/state` answered with `plugin` and `plugins`;
-`/plugin` read the notes plugin's state in one call; `/snapshot` answered with an ARIA tree;
+One `npm run drive:serve` session, every verb once. `/state` answered with `surface` and `surfaces`;
+`/surface` read the notes surface's state in one call; `/snapshot` answered with an ARIA tree;
 `/fill` typed into the note title and `/eval` read it back; `/set-setting` wrote
-`plugins['default-setup/code'].baseDirectory` and `/settings` read it back; `/events`, `/drops` and
+`surfaces['default-setup/code'].baseDirectory` and `/settings` read it back; `/events`, `/drops` and
 `/errors` refused GET with "wants POST"; and `/note` — this repo's own scaffold verb — created a note,
 which is Phase 1's extension point working against a running app rather than against a fake.

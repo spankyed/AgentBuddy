@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -98,7 +98,7 @@ import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
 import SimpleMonacoEditor from '@apackdev/ui/components/SimpleMonacoEditor';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
 
-const actor: DatabaseState = usePlugin();
+const actor: DatabaseState = useSurface();
 const currentQuery = useSelector(actor, (state) => state.context.currentQuery);
 const isLoading = useSelector(actor, (state) => state.context.isLoading);
 const error = useSelector(actor, (state) => state.context.error);

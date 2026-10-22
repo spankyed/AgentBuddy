@@ -7,7 +7,7 @@ import type { Message } from '../events/index.ts';
 import type { SecretsClient } from '../fe/secrets-client.ts';
 import type { SettingsPort } from '../fe/settings.ts';
 import type { Component } from 'vue';
-import type { Plugin } from '../fe/plugin.ts';
+import type { Surface } from '../fe/surface.ts';
 import type { HostShell } from '../fe/shell.ts';
 import type { TiptapPluginBinding } from '../fe/tiptap-plugins.ts';
 import type { PackExtensionsView } from './packs-view.ts';
@@ -25,8 +25,8 @@ export interface FeClient {
 export interface FePackRegistryView extends PackExtensionsView {
   /** Observe committed contribution changes; refused or disposed candidates publish nothing. */
   onChanged(listener: (packId: string) => void): () => void;
-  /** Every registered plugin, in registration order */
-  plugins(): Plugin[];
+  /** Every registered surface, in registration order */
+  surfaces(): Surface[];
   tiptapPlugins(): TiptapPluginBinding[];
   /** Accepted step bindings; catalog declarations can outlive their implementations. */
   stepBindings(): ReadonlyMap<string, StepFrontendBinding>;
@@ -43,7 +43,7 @@ export interface FePackRegistryView extends PackExtensionsView {
 export interface FeHostRuntime {
   /** Common declarations, independent of the accepted executable frontend registry. */
   catalog: PackCatalogView;
-  /** The app shell, which spawns the plugins, holds which is open and lays out the panels */
+  /** The app shell, which spawns the surfaces, holds which is open and lays out the panels */
   application: HostShell;
   /** The API's secrets procedures */
   secrets: SecretsClient;
@@ -57,7 +57,7 @@ export interface FeHostRuntime {
 
 let bound: FeHostRuntime | undefined;
 
-/** Binds the renderer's app; once per window, before any plugin or pack frontend runs */
+/** Binds the renderer's app; once per window, before any surface or pack frontend runs */
 export function bindFeHost(runtime: FeHostRuntime): void {
   if (bound) throw new Error('A frontend host is already bound: bindFeHost runs once, at boot');
   bound = runtime;

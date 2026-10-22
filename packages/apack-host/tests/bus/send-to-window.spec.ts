@@ -6,13 +6,13 @@ import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // connection instead, and the connection is **given** to it: a handler is handed the window it is serving
 // (`client`, beside `reply`), which is what lets the address outlive an `await`.
 //
-// The pair is the subject. `broadcastToPlugin` is news every window needs; `sendToWindow` is for what only
+// The pair is the subject. `broadcastToSurface` is news every window needs; `sendToWindow` is for what only
 // the window that asked should act on, and the cases below are the same send differing in `Message.client`.
 //
 // Which window a handler is *handed* is `apack-sdk`'s `define-system-actions.spec.ts`; this file is what
 // the send does with one.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { untypedBroadcastToPlugin, untypedSendToWindow, type Message } from '@apackdev/sdk/events';
+import { untypedBroadcastToSurface, untypedSendToWindow, type Message } from '@apackdev/sdk/events';
 import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { deliverAs } from '../../src/bus/delivery.ts';
@@ -28,7 +28,7 @@ let stop: () => void;
 
 beforeEach(() => {
   sent = [];
-  stop = testRootEvents.onPluginSend((message) => { sent.push(message); });
+  stop = testRootEvents.onSurfaceSend((message) => { sent.push(message); });
 });
 afterEach(() => stop());
 
@@ -46,7 +46,7 @@ describe('a system serving one window', () => {
   // The pair: the same send, broadcast, names no connection — which is how the bus reaches every window
   it('reaches every window when it broadcasts instead', () => {
     deliverAs(FROM_A_WINDOW, () => {
-      untypedBroadcastToPlugin(MEMOS, { type: 'MEMO_ADDED' });
+      untypedBroadcastToSurface(MEMOS, { type: 'MEMO_ADDED' });
     });
 
     expect(sent.map(({ client }) => client), 'absent means every connection').toEqual([undefined]);
@@ -61,8 +61,8 @@ describe('a system serving one window', () => {
     expect(sent[0].sender, 'so the window it asks can answer *it*').toBe(MEMOS);
   });
 
-  /** A reply goes to the asker; this goes to a plugin of the sender's choosing in that same window */
-  it('addresses a different plugin on that connection', () => {
+  /** A reply goes to the asker; this goes to a surface of the sender's choosing in that same window */
+  it('addresses a different surface on that connection', () => {
     deliverAs({ to: MEMOS, sender: MEMOS, client: 'c-popout' }, () => {
       untypedSendToWindow('c-popout', 'memo-pack/sidebar', { type: 'MEMO_ADDED' });
     });
@@ -138,6 +138,6 @@ describe('given no connection', () => {
   // The error names where a handler gets one, and the verb that does reach every window
   it('says where a connection comes from and what to use instead', () => {
     expect(() => untypedSendToWindow('', MEMOS, { type: 'MEMO_ADDED' }))
-      .toThrow(/handed the one it is serving as `client`[\s\S]*broadcastToPlugin/);
+      .toThrow(/handed the one it is serving as `client`[\s\S]*broadcastToSurface/);
   });
 });

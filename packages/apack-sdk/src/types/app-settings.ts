@@ -5,8 +5,8 @@ export interface AppSettings {
   projects: AppProject[];
 }
 export interface ApplicationHotkeys {
-  switchPluginUp?: KeyboardShortcut;
-  switchPluginDown?: KeyboardShortcut;
+  switchSurfaceUp?: KeyboardShortcut;
+  switchSurfaceDown?: KeyboardShortcut;
   toggleInspectionPanel?: KeyboardShortcut;
   custom?: CustomHotkey[];
 }

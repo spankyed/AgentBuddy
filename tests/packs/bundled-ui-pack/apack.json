@@ -18,7 +18,7 @@
         },
         "defaults": {}
       },
-      "plugin": {
+      "surface": {
         "defaultVisible": true,
         "label": "Scribbles",
         "icon": "NotebookPen",

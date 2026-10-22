@@ -23,7 +23,7 @@ for it and will not be built.
 
 | Input | Moves when |
 |---|---|
-| the manifest (`apack.json`) | a feature, plugin path, entity, extension, repository or content format changes |
+| the manifest (`apack.json`) | a feature, surface path, entity, extension, repository or content format changes |
 | the generator | codegen's own output pattern changes (`codegenSource()` is what hashes it) |
 | the pack's `src/` | a service export's shape, a step's `build.ts`/`types.ts`, which `*-fe.ts` files exist |
 | a resolved dependency's snapshot | generated flow helpers and `deps/<id>.d.ts` follow every dependency |
@@ -55,7 +55,7 @@ wrote. `staleReason` asks three questions in that order: is there a record, is e
 there, does the hash still match. The missing-output check is first on purpose, and the source comment has the
 measurement: recording only the hash let `rm src/__generated__/paths.ts` leave the pack unbuildable while the
 command printed *"inputs unchanged, skipping"*. The list is recorded rather than fixed because the output set
-follows the manifest — a pack with no plugins never writes `fe.ts`, and a hard-coded expectation would call it
+follows the manifest — a pack with no surfaces never writes `fe.ts`, and a hard-coded expectation would call it
 stale for ever. It is the shape `unitStaleReason` (`@apackdev/host/build/packages-built`) uses for the package
 builds, asked in the same order.
 
@@ -78,12 +78,12 @@ unrelated source file moves — the cheaper direction, at 0.8s of work.
 Two layers, and only the first of them is a virtual module:
 
 ```
-Loading       virtual:built-in-pack-loaders  (api, tsup plugin)      → import('pack-entry.ts')
+Loading       virtual:built-in-pack-loaders  (api, tsup surface)      → import('pack-entry.ts')
               virtual:built-in-packs         (renderer, vite plugin) → import('pack-entry-fe.ts')
 Generation    the on-disk barrels those two import from
 ```
 
-Both plugins scan `packages/` for `apack.json` at build time and generate a map of `import()` expressions;
+Both surfaces scan `packages/` for `apack.json` at build time and generate a map of `import()` expressions;
 `packages/api/src/runtime/index.ts` and `packages/renderer/src/main.ts` are what consume them.
 
 **That top layer is what [`goal-one-kind-of-pack.md`](../goals/goal-one-kind-of-pack.md) takes apart, and the generation layer
@@ -97,7 +97,7 @@ stops returning early, so it records the `runtime` and `fe` phases like any pack
 through `apack build`, which already regenerates.
 
 **It makes the refusal below stronger rather than weaker.** After step 3 no production bundler is positioned to
-synthesise a barrel at all: the renderer's plugin is dev-only and each pack's own `apack build` produces its
+synthesise a barrel at all: the renderer's surface is dev-only and each pack's own `apack build` produces its
 bundles, so the number of tools that need a file on disk goes up.
 
 ## Virtualising the barrels: won't do
@@ -110,7 +110,7 @@ A virtual module has no file, so every tool that reads pack code has to be taugh
 pack's own typecheck is one of those tools. `vue-tsc --noEmit` compiles `src/**` (the pack's
 `tsconfig.json` `include`), reaching the barrels through a `#generated/*` mapping that is declared **twice** by
 necessity, in `package.json` `imports` for the runtimes and `tsconfig.json` `paths` for the compiler. `tsc`
-has no plugin to ask, so a virtual barrel is `TS2307` to it, and the declarations would have to be written to
+has no surface to ask, so a virtual barrel is `TS2307` to it, and the declarations would have to be written to
 disk anyway — which is the file the plan wanted to remove. The same reasoning retired the `@/` path aliases
 ([`goal-one-way-to-name-your-own-modules.md`](../goals/goal-one-way-to-name-your-own-modules.md)):
 four bundler configs each re-implementing a mapping no runtime reads. `goal-one-kind-of-pack.md` reaches the same

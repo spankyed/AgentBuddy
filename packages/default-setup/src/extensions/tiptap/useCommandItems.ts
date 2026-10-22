@@ -1,9 +1,9 @@
 import { computed, type Ref } from 'vue'
-import { usePluginState } from '#generated/fe.ts'
+import { useSurfaceState } from '#generated/fe.ts'
 import type { CommandItem } from './command-config.ts'
 
 export function useCommandItems(query: Ref<string>) {
-  const commands = usePluginState('threads', (s) => s.commands)
+  const commands = useSurfaceState('threads', (s) => s.commands)
 
   const filteredCommands = computed<CommandItem[]>(() => {
     const q = query.value.toLowerCase()

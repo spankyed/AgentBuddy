@@ -19,7 +19,7 @@ describe('snapshot data reader', () => {
     data.eventContracts = { jobs: { system: { incoming: ['START'], outgoing: [] } } };
     expect(parseSnapshot(data).status).toBe('valid');
     expect(parseSnapshot({ ...data, eventContracts: { foreign: data.eventContracts.jobs } }).status).toBe('invalid');
-    expect(parseSnapshot({ ...data, eventContracts: { jobs: { plugin: { receives: [] } } } }).status).toBe('invalid');
+    expect(parseSnapshot({ ...data, eventContracts: { jobs: { surface: { receives: [] } } } }).status).toBe('invalid');
     expect(parseSnapshot({ ...data, eventContracts: { jobs: { system: { incoming: ['START', 'START'], outgoing: [] } } } }).status).toBe('invalid');
   });
   it('requires complete, exclusively declared Monaco definitions without requiring globals', () => {
@@ -70,7 +70,7 @@ describe('snapshot data reader', () => {
   it('reads all supported fields without changing the snapshot', () => {
     const data: PackSnapshot = {
       ...snapshot(), sdkVersion: '0.4.0',
-      provenance: { entities: { Memo: 'ancestor' }, plugins: { 'fixture-pack/notes': 'fixture-pack' } },
+      provenance: { entities: { Memo: 'ancestor' }, surfaces: { 'fixture-pack/notes': 'fixture-pack' } },
       flowHelpers: { exports: ['memo'], module: 'export const memo = 1;', types: 'export declare const memo: number;' },
     };
     const before = structuredClone(data);
@@ -117,7 +117,7 @@ describe('snapshot data reader', () => {
 
   it.each([
     ['manifest', { id: 'fixture-pack', version: '1.0.0' }, ['manifest', 'name']],
-    ['manifest', { id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features: { notes: { plugin: {} } } }, ['manifest', 'features', 'notes', 'plugin', 'label']],
+    ['manifest', { id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features: { notes: { surface: {} } } }, ['manifest', 'features', 'notes', 'surface', 'label']],
     ['types', {}, ['types', 'entities']],
     ['types', { entities: { Memo: 1 }, relKinds: {} }, ['types', 'entities', 'Memo']],
     ['facades', { 'pack-types': false }, ['facades', 'pack-types']],
@@ -183,18 +183,18 @@ describe('compiled entity destinations', () => {
     expect(parseDependencySnapshot(missing).status).toBe('invalid');
   });
 
-  it('accepts known entities only at an own declared plugin feature', () => {
+  it('accepts known entities only at an own declared surface feature', () => {
     const data = snapshot();
-    data.manifest.features = { notes: { description: 'Opens notes', plugin: { label: 'Notes', state: 'src/notes.ts' } } };
+    data.manifest.features = { notes: { description: 'Opens notes', surface: { label: 'Notes', state: 'src/notes.ts' } } };
     data.types.entities = { Note: 'Note' };
     data.entityDestinations = { Note: 'notes', Action: 'notes' };
-    data.eventContracts = { notes: { plugin: { receives: [] } } };
+    data.eventContracts = { notes: { surface: { receives: [] } } };
     data.declarationRevision = _declarationRevision(data.manifest);
     expect(parseSnapshot(data).snapshot?.entityDestinations).toEqual(data.entityDestinations);
     for (const invalid of [{ Missing: 'notes' }, { Note: 'missing' }, { Note: 'constructor' }]) {
       expect(parseSnapshot({ ...data, entityDestinations: invalid }).diagnostics[0].code).toBe('snapshot.entityDestinations');
     }
-    data.manifest.features.notes = { description: 'No longer a plugin' };
+    data.manifest.features.notes = { description: 'No longer a surface' };
     data.eventContracts = {};
     expect(parseSnapshot(data).diagnostics[0].code).toBe('snapshot.entityDestinations');
   });

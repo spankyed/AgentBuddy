@@ -30,8 +30,8 @@ That one call is the whole config. It gives you:
 - **`include: ['tests/**/*.spec.ts']`**, because a spec's path mirrors the source it covers, less `tests/e2e/`
   (Playwright's, run by `apack pack test`) and `tests/_support/` (helpers and fixtures, not specs).
 - **A stub for your `.vue` files**, so `vitest related` and `--changed` can walk your pack's module graph.
-  Without it they stop at the first SFC they reach, which is any pack with a plugin. Your specs can import a
-  plugin module and read everything but the component; rendering one throws and says how to enable it.
+  Without it they stop at the first SFC they reach, which is any pack with a surface. Your specs can import a
+  surface module and read everything but the component; rendering one throws and says how to enable it.
 - **`globals: true`**, and timeouts that match what a pack's unit tests are allowed.
 - **No `resolve.conditions`** — and you should not add any. A pack's tests resolve its `@apackdev` packages
   exactly as `apack pack build` does, to the `dist` each published package ships, which is the one layout a pack
@@ -43,7 +43,7 @@ What you may pass it:
 |---|---|
 | `dataDirPrefix` | naming the run's temp dir, so leftovers say which suite made them |
 | `vue: true` | compiling and rendering your components instead of stubbing them. Install `@vitejs/plugin-vue` |
-| `plugins`, `exclude`, `setupFiles` | anything your pack needs on top |
+| `surfaces`, `exclude`, `setupFiles` | anything your pack needs on top |
 
 - **Keep vitest's `isolate` on** (the default). The harness keeps one registry, database and set of mocks per
   test file, and `setupPackTests` fails, saying so, when it runs a second time in one process (`isolate: false`).
@@ -117,10 +117,10 @@ it('stores a memo a client adds and sends it back', async () => {
 | Member | What it does |
 |---|---|
 | `startApp({ systems })` | Starts the named systems in registration order; `'*'` starts all. A bare id is tried as given, then as your pack's `<packId>/<featureId>`: use your feature ids, a built-in dependency's feature ids (default-setup's `notes`), or an external dependency's full bus id (`<depId>.<featureId>`) |
-| `connect()` | Sends `CLIENT_CONNECTED` and then `SEND_STATE`, which reach every running app, as a client connecting does. Every running system gets them (the harness has no client that loads pack frontends later), and sends to frontend plugins are delivered from then on. Events for systems don't wait for it: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks), reach them from `startApp`, as in the app |
+| `connect()` | Sends `CLIENT_CONNECTED` and then `SEND_STATE`, which reach every running app, as a client connecting does. Every running system gets them (the harness has no client that loads pack frontends later), and sends to frontend surfaces are delivered from then on. Events for systems don't wait for it: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks), reach them from `startApp`, as in the app |
 | `send(systemId, event)` | Sends a system an event, connected or not |
-| `emitted(pluginId?)` | Events sent to frontend plugins (`broadcastToPlugin`). Both go through the bus, as in the app, so one sent before `connect()` is dropped and never appears here (systems send their startup data once a client connects, so `connect()` first) |
-| `nextEmit(pluginId, type, { timeoutMs? })` | The next such event no earlier call returned, waiting for it (default 5000 ms) |
+| `emitted(surfaceId?)` | Events sent to frontend surfaces (`broadcastToSurface`). Both go through the bus, as in the app, so one sent before `connect()` is dropped and never appears here (systems send their startup data once a client connects, so `connect()` first) |
+| `nextEmit(surfaceId, type, { timeoutMs? })` | The next such event no earlier call returned, waiting for it (default 5000 ms) |
 | `settle()` | Resolves once the systems have no work left |
 | `system(systemId)` | A running system's actor |
 | `stop()` | Stops the systems; pending and later `connect`, `send`, `nextEmit`, `settle` and `runFlow` calls fail with "The test app stopped", and so does `system`. `emitted` still reads what was sent. Once no app runs, each registered pack's `boot.onShutdown` runs, as when the app stops a pack, so what pack modules keep outside their systems (default-setup's cron jobs and brain listeners) doesn't reach the next test. The harness stops apps after each test |
@@ -131,38 +131,38 @@ it('stores a memo a client adds and sends it back', async () => {
 
 ## Frontend
 
-`startShell` runs the app's own shell with your plugins registered, so plugin code that navigates, reads the shell's
-state or sends to its system is tested as the app runs it. Pass each plugin's state machine rather than its plugin
+`startShell` runs the app's own shell with your surfaces registered, so surface code that navigates, reads the shell's
+state or sends to its system is tested as the app runs it. Pass each surface's state machine rather than its surface
 module: the module imports `.vue` components, which a unit test doesn't load.
 
 ```typescript
 import { startApp, startShell } from '@apackdev/testing/harness';
-import { openPlugin } from '#generated/fe.ts';
+import { openSurface } from '#generated/fe.ts';
 import memosState from '../../src/features/memos/fe/state.ts';
 import notesState from '../../src/features/notes/fe/state.ts';
 
 it('opens memos with an event', async () => {
-  const shell = await startShell({ plugins: { notes: { state: notesState }, memos: { state: memosState } } });
-  openPlugin('memos', { type: 'MEMOS_CONNECTED', memos: [] });
+  const shell = await startShell({ surfaces: { notes: { state: notesState }, memos: { state: memosState } } });
+  openSurface('memos', { type: 'MEMOS_CONNECTED', memos: [] });
   expect(shell.opened()).toBe('my-pack/memos');
 });
 
 it('reaches its system and hears back', async () => {
   const app = await startApp({ systems: ['memos'] });
   await app.connect();
-  const shell = await startShell({ plugins: { memos: { state: memosState } } });
-  shell.plugin('memos').send({ type: 'MEMOS.ADD', text: 'hello' });
+  const shell = await startShell({ surfaces: { memos: { state: memosState } } });
+  shell.surface('memos').send({ type: 'MEMOS.ADD', text: 'hello' });
   await app.settle();
-  expect(shell.plugin('memos').getSnapshot().context.memos).toHaveLength(1);
+  expect(shell.surface('memos').getSnapshot().context.memos).toHaveLength(1);
 });
 ```
 
 | Member | What it does |
 |---|---|
-| `startShell({ plugins, defaultPlugin?, designations? })` | Starts the shell with `plugins` (by feature id: each one's `state`, and anything else of its definition the test needs) registered as your pack's, opens `defaultPlugin` (the first listed when unset), and binds the frontend host, so `openPlugin`, `openEntity` and `useShell()` reach it. Its client is the harness's bus: what plugins send reaches a `startApp` app's systems, and what those systems send plugins reaches your plugins' actors. It resolves once the shell is connected |
-| `opened()` | The ref of the plugin open |
-| `plugin(name)` | A plugin's running actor, named as your pack names it |
-| `notices` | What the shell told the user went wrong (a plugin it couldn't open, say), in order |
+| `startShell({ surfaces, defaultSurface?, designations? })` | Starts the shell with `surfaces` (by feature id: each one's `state`, and anything else of its definition the test needs) registered as your pack's, opens `defaultSurface` (the first listed when unset), and binds the frontend host, so `openSurface`, `openEntity` and `useShell()` reach it. Its client is the harness's bus: what surfaces send reaches a `startApp` app's systems, and what those systems send surfaces reaches your surfaces' actors. It resolves once the shell is connected |
+| `opened()` | The ref of the surface open |
+| `surface(name)` | A surface's running actor, named as your pack names it |
+| `notices` | What the shell told the user went wrong (a surface it couldn't open, say), in order |
 | `actor` | The shell's actor |
 | `stop()` | Stops the shell and unbinds the frontend host; the harness stops shells after each test |
 
@@ -250,7 +250,7 @@ it('summarizes a note', async () => {
   - It returns a `FlowRun`: `eventTNodeIds`, the trace nodes of the tracks the event triggered, and `steps`, the steps those tracks ran in start order, each a `FlowStepTrace` (`tNodeId`, `label`, `tNodeType` (`step`, or `flow` for a subflow), `status`, `nodeAttributes` (with `result`) and `params` (the inputs resolved from the event and earlier steps)).
   - It never makes a flow the root flow or restarts the brain; it fails naming the running flows when `label` isn't one.
   - The result holds only the tracks `event` triggered. Tracks started by events those tracks send (a `fire` step, a `TRIGGER_BRAIN_EVENT` sent to the brain's role) aren't in it: `await app.settle()`, then read them with `flowTrace`.
-  - It doesn't connect the app: flows run, and events from `fire` steps and schedule ticks reach the brain, without a client. Connect only to read what systems send to plugins (`emitted`, `nextEmit`).
+  - It doesn't connect the app: flows run, and events from `fire` steps and schedule ticks reach the brain, without a client. Connect only to read what systems send to surfaces (`emitted`, `nextEmit`).
 - **`flowTrace(label)`** returns the steps a flow has run so far in the app, the root flow or a subflow, by the flow's label (not the label of the step that runs it). It still reads after `stop()`: rows are kept as the brain last reported them.
 - **Without a root flow** the brain doesn't start: it reports that no flow has the root role when flows exist, and stays stopped with no flows at all.
 - **Schedule triggers** register through the `scheduler` service. Mock it (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) and call the tick it receives to run the track. Unmocked, real cron jobs run while the app runs and stop when it stops.
@@ -260,15 +260,15 @@ it('summarizes a note', async () => {
 `@apackdev/testing/harness`:
 
 - **Setup and data:** `setupPackTests` (`PackTestOptions`), `importContent` (`ImportContentOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `ContentRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
-- **Frontend:** `startShell` (`StartShellOptions`, `TestShell`, `TestPlugin`).
-- **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `PluginEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
+- **Frontend:** `startShell` (`StartShellOptions`, `TestShell`, `TestSurface`).
+- **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `SurfaceEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
 - **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`, `getTestSettings`.
 
 `@apackdev/testing/vitest`: `isolatedDataDir` (`IsolatedDataDir`).
 
 `@apackdev/sdk/testing`, for the two cases the harness doesn't cover:
 
-- **`startFeTestRuntime(options?)` / `stopFeTestRuntime()`** — a frontend host for a test file that exercises plugin code, a tiptap plugin or a DSL type, which read the bound frontend the way a pack's backend reads the bound app. Bind it once per file and unbind at the end; nothing is registered unless the test passes it, so an extension that registers itself on import is one this returns. It has no app shell: code that reaches the shell fails naming `startShell`, which binds a frontend host with the real one.
+- **`startFeTestRuntime(options?)` / `stopFeTestRuntime()`** — a frontend host for a test file that exercises surface code, a tiptap plugin or a DSL type, which read the bound frontend the way a pack's backend reads the bound app. Bind it once per file and unbind at the end; nothing is registered unless the test passes it, so an extension that registers itself on import is one this returns. It has no app shell: code that reaches the shell fails naming `startShell`, which binds a frontend host with the real one.
 
   ```typescript
   import { startFeTestRuntime } from '@apackdev/sdk/testing';

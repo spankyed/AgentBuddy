@@ -28,6 +28,6 @@ export function eventCatalogEntries(snapshot: Pick<PackCatalogSnapshot, 'native'
       { enabled: pack.enabled, declarationRevision: pack.snapshot.declarationRevision, buildRevision: pack.buildRevision })),
     ...snapshot.sourcePacks.flatMap(pack => collect(pack.manifest.id, pack.eventContracts, 'source',
       { declarationRevision: pack.declarationRevision }, Object.entries(pack.manifest.features ?? {})
-        .filter(([, feature]) => feature.system || feature.plugin).map(([id]) => id))),
+        .filter(([, feature]) => feature.system || feature.surface).map(([id]) => id))),
   ]);
 }

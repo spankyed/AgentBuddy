@@ -17,13 +17,13 @@ const logWrite = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const { bindRendererHost } = await import('@/runtime');
 const { fePacks } = await import('@/runtime/packs');
 const { resolveName } = await import('@apackdev/sdk/ids');
-const { secretsClient, untypedOpenPlugin, getStepFrontendBindings, getDesignated, tiptapPluginRegistry } = await import('@apackdev/sdk/fe');
+const { secretsClient, untypedOpenSurface, getStepFrontendBindings, getDesignated, tiptapPluginRegistry } = await import('@apackdev/sdk/fe');
 const { untypedSendToSystem } = await import('@apackdev/sdk/events');
 const { unbindFeHost } = await import('@apackdev/sdk/runtime/internals');
 
 const application = {
   getSnapshot: () => ({
-    context: { plugins: [{ id: 'default-setup/notes' }, { id: 'default-setup/settings' }], activePlugin: { id: 'default-setup/notes' }, defaultToggles: { canvas: false } },
+    context: { surfaces: [{ id: 'default-setup/notes' }, { id: 'default-setup/settings' }], activeSurface: { id: 'default-setup/notes' }, defaultToggles: { canvas: false } },
   }),
   send: vi.fn(),
   system: { get: () => undefined },
@@ -44,7 +44,7 @@ it("gives the SDK's frontend lookups the window's registered pack frontends", ()
   const note = { type: 'note', node: { label: 'Note' }, fe: { nodeConfig: { icon, category: 'data', connectionRules: { inputs: 1, outputs: 1 } } } } satisfies StepDefinition;
   const registration = {
     id: 'fe-host-pack',
-    features: { notebookMain: { plugin: { label: 'Notebook', state: createMachine({}) }, designation: 'notebook' } },
+    features: { notebookMain: { surface: { label: 'Notebook', state: createMachine({}) }, designation: 'notebook' } },
     steps: [note],
     tiptapPlugins: { mentions },
   };
@@ -68,24 +68,24 @@ it('binds before the application actor exists, naming it when SDK code reaches t
   // eslint-disable-next-line prefer-const
   let created: typeof application | undefined;
   bindRendererHost(() => created as never);
-  expect(() => untypedOpenPlugin(settingsAddress)).toThrow(/isn't created yet/);
+  expect(() => untypedOpenSurface(settingsAddress)).toThrow(/isn't created yet/);
   created = application;
-  untypedOpenPlugin(settingsAddress);
-  expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [] });
+  untypedOpenSurface(settingsAddress);
+  expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_SURFACE', surface: 'default-setup/settings', events: [] });
 });
 
-it('gives secretsClient the API client and untypedOpenPlugin the application actor', async () => {
+it('gives secretsClient the API client and untypedOpenSurface the application actor', async () => {
   bindRendererHost(() => application as never);
   await expect(secretsClient.list()).resolves.toMatchObject({ secrets: [] });
-  untypedOpenPlugin(settingsAddress);
-  expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [] });
+  untypedOpenSurface(settingsAddress);
+  expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_SURFACE', surface: 'default-setup/settings', events: [] });
 });
 
-// Whether a ref names a registered plugin is the shell's to answer, once pack frontends have loaded; a string that
+// Whether a ref names a registered surface is the shell's to answer, once pack frontends have loaded; a string that
 // isn't a ref at all never reaches it
 it('refuses a string that is not a ref, rather than asking the shell to open it', () => {
   bindRendererHost(() => application as never);
-  expect(() => untypedOpenPlugin('code')).toThrow(`"code" doesn't name a plugin`);
+  expect(() => untypedOpenSurface('code')).toThrow(`"code" doesn't name a surface`);
   expect(application.send).not.toHaveBeenCalled();
 });
 

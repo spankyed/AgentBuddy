@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { setup } from 'xstate';
 import type { Reply } from '@apackdev/sdk/events';
 import type { OutgoingFlowsEvents } from './types.ts';
@@ -22,7 +22,7 @@ import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type V
  * data the import changed is separate news and stays a broadcast.
  */
 const answer = (reply: Reply<OutgoingFlowsEvents> | undefined, event: OutgoingFlowsEvents): void =>
-  (reply ? reply(event) : broadcastToPlugin('flows', event));
+  (reply ? reply(event) : broadcastToSurface('flows', event));
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('flows');
@@ -73,9 +73,9 @@ function formatValidationErrors(
 
 export const flowsSpec = defineSystem<Contract>();
 
-/** Sends the plugin its flows, the root flow among them (the flow with the root role), and its settings */
+/** Sends the surface its flows, the root flow among them (the flow with the root role), and its settings */
 function sendConnectedData(): void {
-  broadcastToPlugin('flows', {
+  broadcastToSurface('flows', {
     type: 'FLOWS_CONNECTED',
     data: {
       ...repository.flowsQueries.connectedData(),
@@ -100,7 +100,7 @@ export const flowsSystem = setup({
     },
 
     createFlow: ({ reply }) => {
-      const pluginId = 'flows' as const;
+      const surfaceId = 'flows' as const;
       
       logger.info('Creating new flow');
       
@@ -109,7 +109,7 @@ export const flowsSystem = setup({
       const data = repository.flowsQueries.extendedData(flow.id);
       
       // Every window's list grows; only the window that asked opens it
-      broadcastToPlugin(pluginId, { type: 'FLOW_CREATED', flow, flowId: flow.id, data });
+      broadcastToSurface(surfaceId, { type: 'FLOW_CREATED', flow, flowId: flow.id, data });
       reply?.({ type: 'FLOW_OPENED', flow, flowId: flow.id, data });
     },
     
@@ -123,14 +123,14 @@ export const flowsSystem = setup({
 
     deleteFlow: ({ event }) => {
       const { flowId } = flowsSpec.typeOf('DELETE_FLOW', event);
-      const pluginId = 'flows' as const;
+      const surfaceId = 'flows' as const;
 
       logger.info('Deleting flow', { flowId });
 
       try {
         repository.flowsCommands.deleteFlow(flowId as EARS.EntityId);
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'FLOW_DELETED',
           flowId: flowId as EARS.EntityId,
         });
@@ -144,13 +144,13 @@ export const flowsSystem = setup({
     
     createNode: ({ event }) => {
       const { flowId, tempId, nodeData } = flowsSpec.typeOf('CREATE_NODE', event);
-      const pluginId = 'flows' as const;
+      const surfaceId = 'flows' as const;
       
       logger.info('Creating new node', { flowId, tempId, nodeType: nodeData.nodeType });
       
       const node = repository.flowsCommands.createNode(flowId as EARS.EntityId, nodeData);
       
-      broadcastToPlugin(pluginId, {
+      broadcastToSurface(surfaceId, {
         type: 'NODE_CREATED',
         tempId,
         nodeId: node.id,
@@ -160,7 +160,7 @@ export const flowsSystem = setup({
     
     updateNode: ({ event }) => {
       const { flowId, nodeId, nodeData } = flowsSpec.typeOf('UPDATE_NODE', event);
-      const pluginId = 'flows' as const;
+      const surfaceId = 'flows' as const;
       
       logger.info('Updating node', { flowId, nodeId, updates: nodeData });
       
@@ -168,7 +168,7 @@ export const flowsSystem = setup({
       
       const node = repository.flowsQueries.node(nodeId as EARS.EntityId);
       
-      broadcastToPlugin(pluginId, {
+      broadcastToSurface(surfaceId, {
         type: 'NODE_UPDATED',
         nodeId: nodeId as EARS.EntityId,
         node,
@@ -177,14 +177,14 @@ export const flowsSystem = setup({
     
     deleteNode: ({ event }) => {
       const { flowId, nodeId } = flowsSpec.typeOf('DELETE_NODE', event);
-      const pluginId = 'flows' as const;
+      const surfaceId = 'flows' as const;
       
       logger.info('Deleting node', { flowId, nodeId });
       
       repository.flowsCommands.deleteNode(nodeId as EARS.EntityId);
       
       // Send confirmation back to frontend
-      broadcastToPlugin(pluginId, {
+      broadcastToSurface(surfaceId, {
         type: 'NODE_DELETED',
         nodeId,
       });
@@ -192,7 +192,7 @@ export const flowsSystem = setup({
     
     createEdge: ({ event }) => {
       const { flowId, sourceId, targetId, sourceHandle, targetHandle } = flowsSpec.typeOf('CREATE_EDGE', event);
-      const pluginId = 'flows' as const;
+      const surfaceId = 'flows' as const;
 
       logger.info('Creating edge', { flowId, sourceId, targetId, sourceHandle, targetHandle });
 
@@ -203,7 +203,7 @@ export const flowsSystem = setup({
           { sourceHandle, targetHandle }
         );
 
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'EDGE_CREATED',
           sourceId: sourceId as EARS.EntityId,
           targetId: targetId as EARS.EntityId,
@@ -213,7 +213,7 @@ export const flowsSystem = setup({
         });
       } catch (err: any) {
         logger.warn('Edge creation failed', { sourceId, targetId, error: err.message });
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'EDGE_CREATE_FAILED',
           sourceId,
           targetId,
@@ -224,13 +224,13 @@ export const flowsSystem = setup({
     
     deleteEdge: ({ event }) => {
       const { flowId, edgeId } = flowsSpec.typeOf('DELETE_EDGE', event);
-      const pluginId = 'flows' as const;
+      const surfaceId = 'flows' as const;
       
       logger.info('Deleting edge', { flowId, edgeId });
       
       repository.flowsCommands.deleteEdge(edgeId as EARS.EntityId);
       
-      broadcastToPlugin(pluginId, {
+      broadcastToSurface(surfaceId, {
         type: 'EDGE_DELETED',
         edgeId,
       });
@@ -238,7 +238,7 @@ export const flowsSystem = setup({
     
     updateEdge: ({ event }) => {
       const { flowId, edgeId, source, target, sourceHandle, targetHandle } = flowsSpec.typeOf('UPDATE_EDGE', event);
-      const pluginId = 'flows' as const;
+      const surfaceId = 'flows' as const;
 
       logger.info('Updating edge', { flowId, edgeId, source, target, sourceHandle, targetHandle });
 
@@ -249,7 +249,7 @@ export const flowsSystem = setup({
           sourceHandle,
           targetHandle,
         });
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'EDGE_UPDATED',
           edgeId: edgeId as EARS.EntityId,
           source: source as EARS.EntityId,
@@ -260,12 +260,12 @@ export const flowsSystem = setup({
       } catch (err: any) {
         logger.warn('Edge update failed', { edgeId, source, target, error: err.message });
         // The canvas already moved the edge: send the flow as stored, and the reason
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'FLOW_REFRESHED',
           flowId: flowId as EARS.EntityId,
           data: repository.flowsQueries.extendedData(flowId as EARS.EntityId),
         });
-        broadcastToPlugin(pluginId, {
+        broadcastToSurface(surfaceId, {
           type: 'EDGE_UPDATE_FAILED',
           edgeId,
           error: err.message || 'Edge update failed',

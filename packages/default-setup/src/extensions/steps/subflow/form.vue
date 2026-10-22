@@ -142,7 +142,7 @@ import BaseForm from '@apackdev/ui/components/BaseForm'
 import TipSection from '@apackdev/ui/components/TipSection'
 import type { NodeEntity } from '#generated/types.ts'
 import type { FormResources } from '../form-props.ts'
-import { sendToPlugin } from '#generated/events.ts'
+import { sendToSurface } from '#generated/events.ts'
 import type { FlowEntity } from '@apackdev/sdk'
 
 const props = defineProps<{
@@ -216,8 +216,8 @@ const updateEntryPayload = (source: string) => {
 
 const openFlow = () => {
   if (selectedFlow.value) {
-    // Navigate to the flow in flows plugin
-    sendToPlugin('flows', { type: 'FLOW.SELECT', flowId: selectedFlow.value.id });
+    // Navigate to the flow in flows surface
+    sendToSurface('flows', { type: 'FLOW.SELECT', flowId: selectedFlow.value.id });
   }
 }
 </script>

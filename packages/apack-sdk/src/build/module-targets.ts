@@ -1,6 +1,6 @@
 import { _stepBackendParts } from '../framework/step-backend-declaration.ts';
 import { _packEntities } from '../framework/data-declaration.ts';
-import { _pluginTargets } from '../framework/plugin-declaration.ts';
+import { _surfaceTargets } from '../framework/surface-declaration.ts';
 import { _referenceTargets } from '../framework/reference-declaration.ts';
 import { _stepFrontendTargets } from '../framework/step-frontend-declaration.ts';
 import { packFeatures, type PackManifest } from './manifest.ts';
@@ -33,11 +33,11 @@ export function _packModuleTargets(manifest: Partial<PackManifest>): ModuleTarge
     }
     field('system.entry', feature.system?.entry, 'script', 'module');
     field('system.contract', feature.system?.contract, 'type');
-    field('plugin.contract', feature.plugin?.contract, 'type');
+    field('surface.contract', feature.surface?.contract, 'type');
     for (const [name, target] of Object.entries(feature.services ?? {})) field(`services.${name}`, target);
     for (const [name, target] of Object.entries(feature.repositories ?? {})) field(`repositories.${name}`, target);
-    for (const [name, target] of feature.plugin ? _pluginTargets(feature.plugin) : []) {
-      field(`plugin.${name}`, target, name === 'state' || name === 'fallbackPanel.isShown' ? 'script' : 'component', name === 'fallbackPanel.isShown' ? 'named' : 'default');
+    for (const [name, target] of feature.surface ? _surfaceTargets(feature.surface) : []) {
+      field(`surface.${name}`, target, name === 'state' || name === 'fallbackPanel.isShown' ? 'script' : 'component', name === 'fallbackPanel.isShown' ? 'named' : 'default');
     }
     field('types', feature.types, 'types', 'module');
   }
@@ -67,11 +67,11 @@ export function _packModuleTargets(manifest: Partial<PackManifest>): ModuleTarge
   }
   for (const [name, entry] of Object.entries(manifest.extensions?.artifacts ?? {})) add(['extensions', 'artifacts', name, 'fe'], entry.fe, 'component', 'module');
   for (const [name, entry] of Object.entries(manifest.extensions?.dsl ?? {})) add(['extensions', 'dsl', name, 'entry'], entry.entry, 'types', 'module');
-  for (const [id, plugin] of Object.entries(manifest.extensions?.tiptapPlugins ?? {})) {
+  for (const [id, editorPlugin] of Object.entries(manifest.extensions?.tiptapPlugins ?? {})) {
     const prefix = ['extensions', 'tiptapPlugins', id];
-    for (const [name, target] of Object.entries(plugin.extensions ?? {})) add([...prefix, 'extensions', name], target);
-    for (const [name, target] of Object.entries(plugin.popups ?? {})) add([...prefix, 'popups', name], target, 'component', 'module');
-    add([...prefix, 'isSuggestionActive'], plugin.isSuggestionActive);
+    for (const [name, target] of Object.entries(editorPlugin.extensions ?? {})) add([...prefix, 'extensions', name], target);
+    for (const [name, target] of Object.entries(editorPlugin.popups ?? {})) add([...prefix, 'popups', name], target, 'component', 'module');
+    add([...prefix, 'isSuggestionActive'], editorPlugin.isSuggestionActive);
   }
   for (const [name, target] of Object.entries(manifest.extensions?.appExtensions ?? {})) add(['extensions', 'appExtensions', name], target, 'component', 'module');
   for (const [name, target] of Object.entries(manifest.lifecycle ?? {})) add(['lifecycle', name], target);

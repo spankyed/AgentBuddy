@@ -54,7 +54,7 @@ const matchCount = ref(0)
 const currentIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
 
-function readPluginState() {
+function readSearchState() {
   const state = searchPluginKey.getState(props.editor.state)
   if (state) {
     matchCount.value = state.matches.length
@@ -65,7 +65,7 @@ function readPluginState() {
 function dispatchMeta(meta: Record<string, unknown>) {
   const { view } = props.editor
   view.dispatch(view.state.tr.setMeta(searchPluginKey, meta))
-  readPluginState()
+  readSearchState()
 }
 
 function open() {
@@ -137,7 +137,7 @@ function onTransaction({ transaction }: { transaction: import('@tiptap/pm/state'
   }
   // Keep match count in sync when document changes while search is open
   if (isOpen.value) {
-    readPluginState()
+    readSearchState()
   }
 }
 

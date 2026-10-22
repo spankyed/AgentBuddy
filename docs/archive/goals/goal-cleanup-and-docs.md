@@ -74,7 +74,7 @@ The items below are what's left from the reviews and audits of that work.
 **State:**
 - **The files:** 14 of them, 12 in default-setup plus `tests/fixtures/external-pack` and `tests/fixtures/bundled-ui-pack`, each `{ name, settings, designation? }`. Nothing imports them.
 - **Only reader:** `validateFeatures()` (`packages/apack-sdk/src/build/validate.ts` ~38-85) via `apack validate`. It checks `name` and that the settings file exists, never `designation`, and scans folders instead of `features[]`.
-- **Where designations come from:** the manifest. generate-entries ~439-466 and ~553 pass `features[].designation` to systems and plugins.
+- **Where designations come from:** the manifest. generate-entries ~439-466 and ~553 pass `features[].designation` to systems and surfaces.
 - **Stale docs:** `packages/default-setup/CLAUDE.md` still says systems pass `designation` from `feature.config.ts`; that was removed on 09-09.
 
 **History:**
@@ -86,12 +86,12 @@ The items below are what's left from the reviews and audits of that work.
 
 **Bugs:**
 - **Designation ignored:** `apack add feature --designation X` writes X only into `feature.config.ts`, never into `apack.json`, so the designation silently does nothing (`packages/apack-cli/src/commands/add/feature.ts`).
-- **Inconsistent precedence:** the generated frontend entry lets the manifest win, but `packages/renderer/src/packs/pack-loader.ts` ~87 lets a plugin's own `designation` win.
+- **Inconsistent precedence:** the generated frontend entry lets the manifest win, but `packages/renderer/src/packs/pack-loader.ts` ~87 lets a surface's own `designation` win.
 - **Unchecked id rule:** the designation registry maps role → role (`packages/apack-sdk/src/designations/index.ts` ~8), so a designation only routes correctly when it equals the feature id. Nothing checks that.
 
 **Do:**
 1. **Delete the 14 files** and `FeatureConfig` from `packages/apack-sdk/src/build/types.ts` and its index.
-2. **Replace `validateFeatures`** with a check over `features[]` in the manifest: each `settings`, `system.entry` and `plugin.entry` file exists, and a designation equals its feature id. Update `apack validate`.
+2. **Replace `validateFeatures`** with a check over `features[]` in the manifest: each `settings`, `system.entry` and `surface.entry` file exists, and a designation equals its feature id. Update `apack validate`.
 3. **`apack add feature`:** stop writing the file, and write `--designation` into `apack.json`. Add a scaffold test.
 4. **One designation source:**
    - Remove `designation` from `defineSystem` options and from `SystemSpec`/`SystemEntry` (`framework/define-system.ts`, `system-utils.ts`), then run `api:update`.
@@ -174,7 +174,7 @@ Fix what would make a reader fail first. Every item is verified against the code
 - **Root `CLAUDE.md`:**
   - Migrations live in `packages/default-setup/src/migrations` (`PackMigration`); `packages/api/src/setup/migrations` holds only the runner.
   - `npm run test-build` doesn't exist.
-  - `packages/default-setup/src/registries/plugins.ts` doesn't exist; plugins come from `features[].plugin` via the generated FE entry.
+  - `packages/default-setup/src/registries/surfaces.ts` doesn't exist; surfaces come from `features[].surface` via the generated FE entry.
   - The bus machine is `createBusMachine` in `packages/apack-host/src/bus`; `api/src/systems.ts` wires it.
   - Repositories are `index.ts`/`queries.ts`/`commands.ts` declared in `features[].repositories`, not `startup/read/create/update`.
 - **`packages/api/src/setup/migrations/CLAUDE.md`:** unclear which `index.ts` it means, and `runPackMigrations` isn't described.
@@ -214,7 +214,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - feature ids `^[a-z][a-zA-Z0-9]*$`;
   - service/repository keys as identifiers with `path#export` values;
   - the `boot.hooks` exports (`onInit`, `onShutdown`, `content`);
-  - the `features[].settings` contract (only `plugins.<id>` and `plugins._meta.visibility.<id>`);
+  - the `features[].settings` contract (only `surfaces.<id>` and `surfaces._meta.visibility.<id>`);
   - entity/relKind names that can't redeclare SDK ones;
   - `contentWriters` keys;
   - the `content.formats` name rule;

@@ -15,7 +15,7 @@ the tree already follows.
 
 | | follow the convention exactly |
 |---|---|
-| feature paths (`system`, `plugin`, both contracts, `settings`, `references`, `typesEntry`) | **59 of 59** |
+| feature paths (`system`, `surface`, both contracts, `settings`, `references`, `typesEntry`) | **59 of 59** |
 | feature services and repositories | **30 of 31** — and the 31st differs only in being a folder |
 | step facets (`build`/`fe`/`trigger`) | **26 of 26** are `<type-dir>/<facet>.ts` |
 
@@ -30,7 +30,7 @@ no runtime handler. `action` and `switch` are exactly the two with a `helpers.ts
 the two declaring `dsl: { custom: true }`.
 
 **And the manifest does not describe the pack.** 90 actions, 6 prompts and 5 flows are a directory
-pointer; each plugin's accepted events are 11 literal arrays inside `dist/runtime/index.cjs`. Answering
+pointer; each surface's accepted events are 11 literal arrays inside `dist/runtime/index.cjs`. Answering
 "what does this pack contribute" needs the manifest *plus* the compiled content *plus* the backend bundle,
 and no artifact holds all three.
 
@@ -75,7 +75,7 @@ provenance, facade types and flow helpers — and carries no inventory.
 "flows": { "about": "Authoring and running flows" }
 ```
 
-`be/system.ts`, `be/contract.ts#Contract`, `fe/plugin.ts`, `fe/contract.ts#Contract`, `settings.ts`,
+`be/system.ts`, `be/contract.ts#Contract`, `fe/surface.ts`, `fe/contract.ts#Contract`, `settings.ts`,
 `fe/references`, `be/types.ts`, each `be/services/<n>.ts`, each export of `be/repository/index.ts` — all
 derived. `code`'s one exception is inline and feature-relative
 (`"Terminal": "be/repository/index.ts#TerminalEntity"`), and `library` says `"SearchIndex": null` —
@@ -120,7 +120,7 @@ and discards the inventory. The snapshot gains it:
 "contributes": {
   "actions":  [{ "key": "claude-code/cc-command", "label": "CC: Run Command", "category": "claude-code" }],
   "flows":    [{ "key": "Onboarding Flow", "uses": ["Init Onboarding", "Handle Onboarding Response"] }],
-  "features": { "threads": { "provides": ["system", "plugin", "settings", "references"],
+  "features": { "threads": { "provides": ["system", "surface", "settings", "references"],
                              "receives": ["AGENT_CONNECTED", "NOTE_CREATED"] } },
   "steps":    ["action", "llm", "schedule"]
 }
@@ -163,7 +163,7 @@ Against [`goal-manifest-redesign.md`](../goals/goal-manifest-redesign.md):
    artifacts, services, repositories and content. A spec fails when the documented table and the constant
    disagree.
 3. **`contributes` in the snapshot**, written by the build from what it already computed, with each
-   plugin's `receives` lifted out of the backend bundle. `apack pack info` reads it.
+   surface's `receives` lifted out of the backend bundle. `apack pack info` reads it.
 4. **The authored manifest**, in the shape of the example: default-setup, both fixture packs, the `apack
    init` scaffold, `packFixture`'s `DEFAULT_MANIFEST` and `generate-entries`' spec-support `manifest()`.
 5. **`apack pack add` writes the short form**, and the canonical key order at all three levels (root,

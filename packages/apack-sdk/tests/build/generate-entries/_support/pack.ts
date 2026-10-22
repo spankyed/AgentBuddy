@@ -84,7 +84,7 @@ const EXTENSION_KEYS = ['steps', 'artifacts', 'blocks', 'commands', 'dsl', 'tipt
  * `features` may be written as a list of entries carrying their `id`, which this keys by that id, and a
  * contribution key may be written at the root, which this moves under `extensions`. Both are because
  * these cases are about what codegen *emits*: a list reads better where a case declares several features
- * and the `system()`/`withPlugin()` helpers build them, and one flat key reads better than a section
+ * and the `system()`/`withSurface()` helpers build them, and one flat key reads better than a section
  * wrapping it. The manifest's own shape is `manifest-schema.spec.ts`'s subject — that a duplicate feature
  * id is unrepresentable, and that a contribution key at the root is refused.
  */
@@ -109,7 +109,7 @@ export function manifest(fields: Record<string, unknown>): PackManifest {
 export const FACADE_DEFAULTS = {
   PackEntityShapes: '{}',
   PackStepNodes: 'never',
-  PackPluginEvents: '{}',
+  PackSurfaceEvents: '{}',
   PackSystemEvents: '{}',
   PackFeatureSettings: '{}',
   PackGroupSettings: '{}',
@@ -128,10 +128,10 @@ export function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, s
   return { [PACK_TYPES_FACADE]: body };
 }
 
-/** A dependency facade whose plugins declare no state contract, so each publishes never. */
-export function withPluginState(facades: Record<string, string>, plugins: readonly string[]): Record<string, string> {
-  const state = plugins.map(id => `${JSON.stringify(id)}: never`).join('; ');
-  return { ...facades, [PACK_TYPES_FACADE]: `${facades[PACK_TYPES_FACADE]}\nexport type PackPluginState = { ${state} };` };
+/** A dependency facade whose surfaces declare no state contract, so each publishes never. */
+export function withSurfaceState(facades: Record<string, string>, surfaces: readonly string[]): Record<string, string> {
+  const state = surfaces.map(id => `${JSON.stringify(id)}: never`).join('; ');
+  return { ...facades, [PACK_TYPES_FACADE]: `${facades[PACK_TYPES_FACADE]}\nexport type PackSurfaceState = { ${state} };` };
 }
 
 export function dependency(fields: Record<string, unknown>, facades: Record<string, string> = facade()): PackSnapshot {
@@ -147,25 +147,25 @@ export async function generate(fields: Record<string, unknown>, deps: Record<str
  * them, with no import: codegen reads the sent events from the default export's spec.
  */
 /**
- * A plugin entry, and beside it the contract leaf when the plugin declares one. The contract is a plain declared
+ * A surface entry, and beside it the contract leaf when the surface declares one. The contract is a plain declared
  * type: these fixtures are bare temp dirs with no `@apackdev/sdk` to resolve, and a declared type needs no import to
  * read — which is the point of reading one rather than a value's phantom property.
  */
-export function writePluginState(file: string, inbox?: string): string {
+export function writeSurfaceState(file: string, inbox?: string): string {
   write(file.endsWith('.ts') ? file : `${file}.ts`, ['declare const state: import("xstate").AnyStateMachine;', 'export default state;'].join('\n') + '\n');
   if (inbox !== undefined) writeContract(`${file.replace(/(\.ts)?$/, '')}.types.ts`, inbox);
   return file;
 }
 
-/** A contract leaf: the state the plugin publishes, and the inbox it opens */
+/** A contract leaf: the state the surface publishes, and the inbox it opens */
 export function writeContract(file: string, inbox?: string, state = '{ ready: boolean }'): string {
   write(file, `export type Contract = { state: ${state}${inbox === undefined ? '' : `; inbox: { public: ${inbox} }`} };\n`);
   return `${file}#Contract`;
 }
 
-/** The manifest `plugin` object for a feature whose contract sits beside its entry */
-export const pluginWithContract = (entry: string, inbox?: string) => ({
-  label: 'Fixture', state: writePluginState(entry, inbox),
+/** The manifest `surface` object for a feature whose contract sits beside its entry */
+export const surfaceWithContract = (entry: string, inbox?: string) => ({
+  label: 'Fixture', state: writeSurfaceState(entry, inbox),
   ...(inbox === undefined ? {} : { contract: `${entry.replace(/(\.ts)?$/, '')}.types.ts#Contract` }),
 });
 
@@ -193,7 +193,7 @@ export function writeSystemContract(id: string, outgoing: string, incoming = `{ 
 
 /**
  * A feature with a system, and the system entry it names. The entry declares the events the system
- * emits: each plugin's generated `receives` is read from it, so a fixture without one is a pack
+ * emits: each surface's generated `receives` is read from it, so a fixture without one is a pack
  * whose sends could not be checked.
  */
 export const system = (id: string, extra: Record<string, unknown> = {}) => {
@@ -207,12 +207,12 @@ export const system = (id: string, extra: Record<string, unknown> = {}) => {
     : {};
   return { id, description: `Test system for ${id}.`, system: { entry, ...contract, ...extra } };
 };
-export const withPlugin = (feature: Record<string, unknown>, inbox?: string) => ({ ...feature, plugin: pluginWithContract(`src/features/${feature.id}/fe/index.ts`, inbox) });
+export const withSurface = (feature: Record<string, unknown>, inbox?: string) => ({ ...feature, surface: surfaceWithContract(`src/features/${feature.id}/fe/index.ts`, inbox) });
 
-/** The event types the generated pack entry says a feature's plugin receives, or undefined when it has no plugin */
+/** The event types the generated pack entry says a feature's surface receives, or undefined when it has no surface */
 export function receives(files: Record<string, string>, featureId: string): string[] | undefined {
   const entry = files['src/__generated__/pack-entry.ts'];
   const feature = entry.slice(entry.indexOf(`    '${featureId}': {`));
-  const match = /^ {4}'[^']+': \{\n(?:(?! {4}\}).*\n)*? {6}plugin: \{ receives: \[(.*)\] \}/.exec(feature);
+  const match = /^ {4}'[^']+': \{\n(?:(?! {4}\}).*\n)*? {6}surface: \{ receives: \[(.*)\] \}/.exec(feature);
   return match ? JSON.parse(`[${match[1]}]`) as string[] : undefined;
 }

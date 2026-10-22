@@ -8,7 +8,7 @@
 // is on the case, because the two halves of that defence overlap.
 //
 // `sender` sits on the named side although it routes, which looks like the exception to the rule and is not: the
-// client is the only one who knows which of its plugins asked. It is checked for **existence** — it must name
+// client is the only one who knows which of its surfaces asked. It is checked for **existence** — it must name
 // something a reply could reach, as `to` must — and not for identity, which is why the registry is mocked here
 // at all. What that leaves open, and the bound `client` puts on it, is on `bus.ts`.
 //
@@ -34,7 +34,7 @@ let claimed: string | undefined;
 vi.mock('../../src/runtime/index.ts', () => ({
   appPacks: {
     getEventValidationMap: () => new Map([['memo-pack/memos', new Set(['ADD_MEMO'])]]),
-    getPluginEventValidationMap: () => new Map([['memo-pack/memos', new Set(['MEMO_ADDED'])]]),
+    getSurfaceEventValidationMap: () => new Map([['memo-pack/memos', new Set(['MEMO_ADDED'])]]),
   },
   appClaims: { clientFor: (ref: string) => (ref === claimed ? 'c-drive' : undefined) },
 }));
@@ -80,7 +80,7 @@ describe('bus.send carries the sender across the boundary', () => {
   /**
    * A `sender` naming nothing is refused, which is the symmetric half of the check `to` already gets.
    *
-   * Without it the send is accepted and the answer is what fails: `reply` addresses a ref no plugin holds, the
+   * Without it the send is accepted and the answer is what fails: `reply` addresses a ref no surface holds, the
    * bus drops it with a diagnostic, and the report is one step removed from the call that caused it. Refusing
    * here puts the error on the send.
    */

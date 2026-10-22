@@ -70,14 +70,14 @@ const BASE_PACK = {
     features: {
       calendar: { description: 'Feature declaration fixture.',
         system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
-        plugin: { label: 'Fixture', state: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
+        surface: { label: 'Fixture', state: 'src/surface.ts', contract: 'src/surface.types.ts#Contract' },
         services: { search: 'src/search.ts#searchService' },
         repositories: { tagQueries: 'src/repository.ts#tagQueries' },
       },
-      // A second plugin of the dependency, which declares no inbox: nothing may send it
+      // A second surface of the dependency, which declares no inbox: nothing may send it
       inbox: { description: 'Feature declaration fixture.',
         system: { entry: 'src/inbox.ts', contract: 'src/inbox.contract.ts#Contract' },
-        plugin: { label: 'Fixture', state: 'src/inbox-plugin.ts' },
+        surface: { label: 'Fixture', state: 'src/inbox-surface.ts' },
       },
     },
   }),
@@ -95,13 +95,13 @@ const BASE_PACK = {
     'const entry = { spec: threadsSpec, machine: setup({ types: threadsSpec.types }).createMachine({ id: "calendar" }) };',
     'export default entry;',
   ].join('\n'),
-  'src/plugin.ts': [
+  'src/surface.ts': [
     "import type { AnyStateMachine } from 'xstate';",
     "export default { id: 'calendar' } as unknown as AnyStateMachine;",
   ].join('\n') + '\n',
-  // The plugin's contract: a declared type in a leaf the plugin's own module never imports, which is what the
-  // dependent's facade carries as this plugin's published inbox
-  'src/plugin.types.ts': "export type Contract = { state: { tags: string[] }; inbox: { public: { type: 'TAG_ADDED'; name: string } } };\n",
+  // The surface's contract: a declared type in a leaf the surface's own module never imports, which is what the
+  // dependent's facade carries as this surface's published inbox
+  'src/surface.types.ts': "export type Contract = { state: { tags: string[] }; inbox: { public: { type: 'TAG_ADDED'; name: string } } };\n",
   'src/inbox.contract.ts': [
     "export type OutgoingInboxEvents = { type: 'MAIL_ARRIVED'; from: string };",
     "export type Contract = { incoming: { type: 'FETCH_MAIL' }; outgoing: OutgoingInboxEvents };",
@@ -114,7 +114,7 @@ const BASE_PACK = {
     'const entry = { spec: inboxSpec, machine: setup({ types: inboxSpec.types }).createMachine({ id: "inbox" }) };',
     'export default entry;',
   ].join('\n'),
-  'src/inbox-plugin.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'inbox' } as unknown as AnyStateMachine;\n",
+  'src/inbox-surface.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'inbox' } as unknown as AnyStateMachine;\n",
   'src/search.ts': 'export const searchService = { query: (q: string): string[] => [q] };\n',
   'src/repository.ts': [
     "import { findAll, EARS } from '#generated/ears.ts';",
@@ -132,10 +132,10 @@ const APP_PACK = {
     data: { entities: { Memo: "src/types.ts#ItemEntity" } },
     // Same type name as the dependency's Item shape
 
-    features: { memos: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { label: 'Fixture', state: 'src/plugin.ts' } } },
+    features: { memos: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, surface: { label: 'Fixture', state: 'src/surface.ts' } } },
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
-  'src/plugin.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'memos' } as unknown as AnyStateMachine;\n",
+  'src/surface.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'memos' } as unknown as AnyStateMachine;\n",
   'src/system.contract.ts': [
     "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
     "export type IncomingMemosEvents = { type: 'ADD_MEMO'; text: string } | { type: 'CLEAR_MEMOS' } | { type: 'PIN_MEMO' | 'UNPIN_MEMO'; id: string };",
@@ -153,7 +153,7 @@ const APP_PACK = {
 
 const CONSUMER = `
 import { EARS as PackEARS, qx, tx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.ts';
-import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
+import { broadcastToSurface, sendToSystem } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
 import type { EARS } from '@apackdev/sdk';
@@ -182,19 +182,19 @@ export type RepositoryService = Expect<Equal<typeof services.repository, typeof 
 // @ts-expect-error not a service of this pack or its dependency
 services.nope;
 
-// A plugin of the dependency, and the host's: each takes what its own owner declares it accepts
-broadcastToPlugin('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });
-broadcastToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });
-broadcastToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });
-// A plugin someone else owns keeps the events its owner declares it receives; a pack widens only its own
-// @ts-expect-error the calendar plugin doesn't receive this event
-broadcastToPlugin('base-pack/calendar', { type: 'MEMO_ADDED', text: 'x' });
-// @ts-expect-error a dependency's plugin is named <dependency>/<feature>
-broadcastToPlugin('calendar', { type: 'TAG_ADDED', name: 'x' });
-// @ts-expect-error the host declares what its application plugin receives
-broadcastToPlugin('host/application', { type: 'MEMO_ADDED', text: 'x' });
-// @ts-expect-error the dependency's inbox plugin declares no inbox, so nothing may be sent to it
-broadcastToPlugin('base-pack/inbox', { type: 'MAIL_ARRIVED', from: 'x' });
+// A surface of the dependency, and the host's: each takes what its own owner declares it accepts
+broadcastToSurface('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });
+broadcastToSurface('memos', { type: 'MEMO_ADDED', text: 'x' });
+broadcastToSurface('host/application', { type: 'SURFACE_VISIBILITY_UPDATED', surfaceVisibility: { 'demo-pack/memos': false } });
+// A surface someone else owns keeps the events its owner declares it receives; a pack widens only its own
+// @ts-expect-error the calendar surface doesn't receive this event
+broadcastToSurface('base-pack/calendar', { type: 'MEMO_ADDED', text: 'x' });
+// @ts-expect-error a dependency's surface is named <dependency>/<feature>
+broadcastToSurface('calendar', { type: 'TAG_ADDED', name: 'x' });
+// @ts-expect-error the host declares what its application surface receives
+broadcastToSurface('host/application', { type: 'MEMO_ADDED', text: 'x' });
+// @ts-expect-error the dependency's inbox surface declares no inbox, so nothing may be sent to it
+broadcastToSurface('base-pack/inbox', { type: 'MAIL_ARRIVED', from: 'x' });
 
 // Systems: this pack's by feature id, the dependency's as <dependency>/<feature>
 sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
@@ -211,16 +211,16 @@ declare const systemId: 'memos' | 'base-pack/calendar';
 // @ts-expect-error one system per send
 sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
 
-// Actions get services.emitter, which names every system and plugin <pack>/<feature>, this pack's own too.
+// Actions get services.emitter, which names every system and surface <pack>/<feature>, this pack's own too.
 // Its own pack included is the point: an action is content, not source — a row a user edits, exports and copies
 // into another pack — and a bare name would rebind on that copy instead of staying visibly wrong.
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO', text: 'x' });
 services.emitter.sendToSystem('base-pack/calendar', { type: 'ADD_TAG', name: 'x' });
-services.emitter.broadcastToPlugin('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });
+services.emitter.broadcastToSurface('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error a bare name would rebind if this action were copied to another pack
 services.emitter.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
-// @ts-expect-error and its plugins, for the same reason
-services.emitter.broadcastToPlugin('calendar', { type: 'TAG_ADDED', name: 'x' });
+// @ts-expect-error and its surfaces, for the same reason
+services.emitter.broadcastToSurface('calendar', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error ADD_MEMO needs its text
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO' });
 

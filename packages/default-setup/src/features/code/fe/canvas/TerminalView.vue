@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import ScrollToBottomFob from '@apackdev/ui/design/ScrollToBottomFob'
@@ -76,7 +76,7 @@ defineEmits<{
   'restart-terminal': []
 }>()
 
-const codeActor: CodeState = usePlugin()
+const codeActor: CodeState = useSurface()
 const terminalActor = codeChild(codeActor, 'terminal')
 
 /* --------------------------------------------------------------------------

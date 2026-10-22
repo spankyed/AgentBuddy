@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSurface } from '@apackdev/sdk/fe'
 import { computed } from 'vue';
 import type { Category } from '#generated/types.ts';
 import { ExternalLink } from 'lucide-vue-next';
@@ -120,7 +120,7 @@ import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import JsonSchemaEditor from '@apackdev/ui/components/JsonSchemaEditor';
-import { openPlugin } from '#generated/fe.ts'
+import { openSurface } from '#generated/fe.ts'
 import { useCollapsibleState } from '@apackdev/ui/composables/useCollapsibleState';
 import type { ActionsState } from '#features/actions/fe/state.ts';
 import type { ActionEntity } from '@apackdev/sdk';
@@ -151,7 +151,7 @@ const emit = defineEmits<{
 }>();
 
 // Get the actions state machine actor
-const actor: ActionsState = usePlugin();
+const actor: ActionsState = useSurface();
 
 // Use the composable for managing collapsible section states
 const parametersExpanded = useCollapsibleState(actor, ['formData', 'parametersExpanded'], 'TOGGLE_PARAMETERS_SECTION');
@@ -178,8 +178,8 @@ function handleKeydown(event: KeyboardEvent) {
 function openInEditor() {
   if (!props.action) return;
 
-  // The code plugin routes a codeActions.* event to its actions panel
-  openPlugin('code', [
+  // The code surface routes a codeActions.* event to its actions panel
+  openSurface('code', [
     { type: 'UPDATE_STATE', updates: { selectedPanel: 'actions' } },
     { type: 'codeActions.OPEN_ACTION', actionId: props.action.id },
   ]);

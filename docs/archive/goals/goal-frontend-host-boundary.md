@@ -8,9 +8,9 @@
 ```
 # Goal: the renderer renders — pack management is the host's, as it is on the backend
 
-Implement docs/goals/goal-frontend-host-boundary.md on AS/shell-owned-plugins, at or after 90f45841d —
+Implement docs/goals/goal-frontend-host-boundary.md on AS/shell-owned-surfaces, at or after 90f45841d —
 the base its Background was surveyed at.
-Before Phase 1, confirm the base: packages/renderer/src/packs/{state,pack-loader,pack-install,plugin}.ts
+Before Phase 1, confirm the base: packages/renderer/src/packs/{state,pack-loader,pack-install,surface}.ts
 and packages/apack-host/src/fe/shell/ exist at HEAD. If they don't, stop and say so — the plan was
 surveyed somewhere else.
 Read Background, Decisions, Phases, Keeping the loop fast and Constraints first. Decisions are final:
@@ -57,20 +57,20 @@ Never:
 
 The backend splits cleanly today: `packages/api` is transport, process boot and composition, and
 `@apackdev/host` is what the app *does*. The frontend doesn't. `packages/renderer/src/packs` holds the
-Packs plugin's machine, the pack-frontend loader and the install handling — app behaviour that has no
+Packs surface's machine, the pack-frontend loader and the install handling — app behaviour that has no
 more to do with Vue than the pack runtime has to do with tRPC. This goal moves that behaviour into
 `@apackdev/host/fe`, so a frontend is as replaceable as the API already is.
 
 ## Background
 
-### What's there now (2026-09-22, at 502d870e7 on AS/shell-owned-plugins)
+### What's there now (2026-09-22, at 502d870e7 on AS/shell-owned-surfaces)
 
 | File | Lines | What it is |
 |---|---|---|
-| `src/packs/state.ts` | 205 | The Packs plugin's XState machine. Vue-free. Mirrors the `host/packs` system's events and sends `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS` |
+| `src/packs/state.ts` | 205 | The Packs surface's XState machine. Vue-free. Mirrors the `host/packs` system's events and sends `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS` |
 | `src/packs/pack-loader.ts` | 100 | Loads a pack's frontend: `import()` of `pack://<id>/<entry>?v=<rev>`, a `<link>` per stylesheet, `fePacks.registerPackFE`, and the unload that undoes both |
 | `src/packs/pack-install.ts` | 25 | Parses `apack://install?pack=…&source=…` and sends `INSTALL_PACK` |
-| `src/packs/plugin.ts` | 16 | The plugin definition: label, icon, machine, canvas |
+| `src/packs/surface.ts` | 16 | The surface definition: label, icon, machine, canvas |
 | `src/packs/canvas/*.vue` | 569 | The Packs list and detail UI |
 | `src/packs/__tests__/` | 3 files | The loader, the breadcrumb and `PackDetail` |
 
@@ -79,7 +79,7 @@ more to do with Vue than the pack runtime has to do with tRPC. This goal moves t
 The app shell moved the same way (`docs/archive/goals/goal-host-shell.md`): its machine is
 `@apackdev/host/fe/shell/`, its window I/O arrives as options (`client`, `packFrontends`, `storage`,
 `notify`, `target`), and `packages/renderer/src/core/app-shell.ts` only composes them. That goal
-explicitly deferred "moving the Packs plugin's frontend into the host", which is this goal, and set
+explicitly deferred "moving the Packs surface's frontend into the host", which is this goal, and set
 the constraint that keeps the split honest: no Vue, no tRPC, no browser globals in `@apackdev/host`
 (`packages/apack-host/tests/boundaries.spec.ts`).
 
@@ -89,7 +89,7 @@ the constraint that keeps the split honest: no Vue, no tRPC, no browser globals 
 |---|---|---|
 | Framework, transport, process | `packages/api`: tRPC routers, `server.ts`, websockets | `packages/renderer`: Vue components, `main.ts`, the tRPC client, window I/O |
 | Behaviour and state | `@apackdev/host`: the bus, systems, the pack runtime | `@apackdev/host/fe`: the shell machine, the pack registry, the packs machine, pack-frontend loading |
-| The app's own feature | `host/packs` system (`packs/runtime/packs-system.ts`) | `host/packs` plugin's machine (`fe/packs/machine.ts`) |
+| The app's own feature | `host/packs` system (`packs/runtime/packs-system.ts`) | `host/packs` surface's machine (`fe/packs/machine.ts`) |
 
 The renderer keeps the Packs view's `.vue` files on purpose: rendering is the frontend's job, the way
 serving `packs.loaded` over tRPC is the API's. `PackDetail.vue` is the counterpart of
@@ -105,7 +105,7 @@ serving `packs.loaded` over tRPC is the API's. `PackDetail.vue` is the counterpa
 2. **What moves:** the packs machine, pack-frontend loading and unloading, and the install request,
    into `@apackdev/host/fe/packs/`.
 3. **What stays:** the `.vue` files, and a small composition module that puts the machine and the
-   components together into the plugin the window registers — the shape `app-shell.ts` already has.
+   components together into the surface the window registers — the shape `app-shell.ts` already has.
    The alternative is the closer mirror of the backend: `hostFeRegistration({ canvas })` in the host,
    beside `hostRegistration(systems)` (`packs/host-pack.ts:46`), with the component injected as the
    I/O ports are. It is not chosen because the two are not alike in the way that matters:
@@ -127,7 +127,7 @@ serving `packs.loaded` over tRPC is the API's. `PackDetail.vue` is the counterpa
 8. **The shell is the only owner of pack-frontend loading and unloading.** Today loading goes through
    it (`LOAD_PACK_FRONTENDS`) while `state.ts:85-89` unloads directly and tells the shell afterwards,
    so one operation has two paths. This needs no new event: the machine keeps sending
-   `PACK_PLUGINS_UNLOADED`, and the shell's handler for it (`fe/shell/machine.ts:177`, which already
+   `PACK_SURFACES_UNLOADED`, and the shell's handler for it (`fe/shell/machine.ts:177`, which already
    does the bookkeeping) makes the `packFrontends.unload` call. Passing `unloadPackFrontend` into the
    machine as an option would carry both paths into the host instead.
 
@@ -136,12 +136,12 @@ serving `packs.loaded` over tRPC is the API's. `PackDetail.vue` is the counterpa
 ### Phase 1 — the packs machine moves
 
 - `packages/apack-host/src/fe/packs/machine.ts`: `state.ts` as it is, minus its import of the
-  renderer's loader: `PACK_DEACTIVATED` stops unloading and only sends `PACK_PLUGINS_UNLOADED`, which
+  renderer's loader: `PACK_DEACTIVATED` stops unloading and only sends `PACK_SURFACES_UNLOADED`, which
   the shell's handler now acts on (Decision 8), so the machine needs no loader of its own.
-- The renderer's `plugin.ts` composes machine + canvas.
+- The renderer's `surface.ts` composes machine + canvas.
 - **Done when** the renderer's `src/packs` holds no XState, the shell holds the only call to
   `packFrontends.unload` (mutation-checked: breaking that call fails a spec over a deactivated pack's
-  stylesheet and plugins), the host's machine has its spec, and `npm run typecheck:host`, the host
+  stylesheet and surfaces), the host's machine has its spec, and `npm run typecheck:host`, the host
   suite and the renderer suite pass.
 
 ### Phase 2 — pack-frontend loading moves behind a port
@@ -157,7 +157,7 @@ serving `packs.loaded` over tRPC is the API's. `PackDetail.vue` is the counterpa
 - The failure log keeps its exact text: `@apackdev/testing`'s fixture fast-fails a pack under test on
   `[pack-loader] Failed to load FE entry pack://<id>/` (`packages/apack-testing/src/index.ts:379`,
   documented in `tests/e2e/CLAUDE.md:49`). Reword it and nothing fails — the match just stops firing,
-  and a pack whose frontend won't load becomes a plugin-wait timeout with a worse message. A green
+  and a pack whose frontend won't load becomes a surface-wait timeout with a worse message. A green
   suite doesn't prove this; a pack with a deliberately broken FE entry, failing fast, does.
 - **Done when** `document` appears in no host file, the loader's spec runs against a fake port in
   `packages/apack-host/tests/fe/packs/`, E2E pack loading still passes, and the fast-fail above was
@@ -166,11 +166,11 @@ serving `packs.loaded` over tRPC is the API's. `PackDetail.vue` is the counterpa
 ### Phase 3 — the install request, docs and the boundary check
 
 - `install-url.ts` (parsing) moves; the renderer keeps only the protocol subscription in `main.ts`.
-- `core/app-shell.ts:16` re-exports `visiblePluginsOf` and `withHostLast` from `@apackdev/host/fe`.
-  `withHostLast` is used nowhere in the renderer and `visiblePluginsOf` only through that
+- `core/app-shell.ts:16` re-exports `visibleSurfacesOf` and `withHostLast` from `@apackdev/host/fe`.
+  `withHostLast` is used nowhere in the renderer and `visibleSurfacesOf` only through that
   indirection (`WebApp.vue:101`): delete the line and import from `@apackdev/host/fe` directly, so the
   composition module composes and re-exports nothing.
-- Update `packages/renderer/CLAUDE.md` ("Packs plugin", "Pack loading"), `packages/apack-host/CLAUDE.md`
+- Update `packages/renderer/CLAUDE.md` ("Packs surface", "Pack loading"), `packages/apack-host/CLAUDE.md`
   (a `fe/packs` section beside the shell's) and the module map.
 - Add the renderer's own layout check, in the renderer's suite: `src/packs` holds only `.vue` files
   and the composition module. It belongs there, not in `boundaries.spec.ts` — that spec reads the
@@ -240,7 +240,7 @@ Phases 1–3 landed as planned. Three things differed, or were decided while imp
 
 The fast-fail this goal's Phase 2 called a contract was verified rather than assumed: making the fixture pack's FE entry
 throw produced `[pack-loader] Failed to load FE entry pack://e2e-fixture/runtime/fe.js…` and failed the run, instead of
-timing out on a plugin that never registered.
+timing out on a surface that never registered.
 
 Since then the host itself was restructured (`06978cf72`): what this goal put in `fe/packs/` and `fe/shell/` now lives in
 `features/packs/fe/` and `features/application/fe/`, laid out as any pack's features are. The paths below are the ones
@@ -254,7 +254,7 @@ this plan named, not the current ones.
 - A frontend-side counterpart of `packages/api/tests/unit/source-layout.spec.ts` listing what
   `renderer/src` may hold, beyond the packs-folder check in Phase 3.
 - Consolidating the frontend's three notions of which packs are loaded: the Packs machine's
-  `context.packs`, the shell's `packFrontendsLoaded` / `packPluginIds` / `packsUnloadedWhileLoading`
+  `context.packs`, the shell's `packFrontendsLoaded` / `packSurfaceIds` / `packsUnloadedWhileLoading`
   (`fe/shell/types.ts:85-98`), and the registry's registrations. They answer different questions and
   are correct today; what the move changes is that all three land in one package, where the overlap
   can be seen and either consolidated or given one documented owner each. Not part of this goal: it

@@ -50,9 +50,9 @@ shipped examples. Measured against a data dir with its `host-packs/` removed:
 A wrong answer, not an error. Three things make it worse than it first looks:
 
 - **It is not just the CLI.** The same namespace reaches `db query/exec/repl/script`, default-setup's
-  Database plugin, and the **LLM `query` step** (`default-setup/src/extensions/steps/query/runtime.ts:65`),
+  Database surface, and the **LLM `query` step** (`default-setup/src/extensions/steps/query/runtime.ts:65`),
   which inspects the result only for `"<name> is not defined"` and so records 607 rows as a success.
-- **One click produces it.** The Database plugin's Schema panel lists entity types from the *data*
+- **One click produces it.** The Database surface's Schema panel lists entity types from the *data*
   (`getAllEntityTypes`), and selecting one generates `qx(EARS.Entity.<thatName>)`
   (`default-setup/src/features/database/fe/constants.ts:19`). Any type present on disk that no registered
   pack declares is one click from a whole-database query.

@@ -380,7 +380,7 @@ Trim:
 
 Delete:
 - `bus/client-events.spec.ts`: "logs arrays over 5 items as their count and first 5".
-- `fe/pack-store-designations.spec.ts`: "resolve a role to the plugin that plays it, and drop it when the
+- `fe/pack-store-designations.spec.ts`: "resolve a role to the surface that plays it, and drop it when the
   pack unregisters" (duplicate of `fe/fe-registered-lookups.spec.ts`).
 - `packs/registered-lookups.spec.ts`: "(content hooks) are found once their pack registers…", "don't change
   when a pack's settings are refused", "(commands) aren't changed by a registration that collides".
@@ -393,8 +393,8 @@ Delete:
   the spec's own `moduleState` helper). Keep "keep no state at module scope".
 - `packs/runtime/lifecycle.spec.ts`: "hostVersion gating prevents loading incompatible packs", "stores
   source field in registry when GitHub slug is used", "stores availableVersion and lastUpdateCheck after
-  update check", "unregisterPackFE removes contributions and returns removed plugins", "unregisterPackFE
-  leaves a plugin another registration owns when the pack declared the same id", "registerPack then
+  update check", "unregisterPackFE removes contributions and returns removed surfaces", "unregisterPackFE
+  leaves a surface another registration owns when the pack declared the same id", "registerPack then
   unregisterPack cleans up SDK registries".
 - `packs/runtime/loader.spec.ts`: "handles features without system entry", "content from runtime/content".
 - `packs/runtime/sdk-bridge-drift.spec.ts`: "keeps unbridged leaf modules free of imports"
@@ -406,7 +406,7 @@ Trim:
 - `build/shared-deps.spec.ts`: check that each `APP_ONLY_EXPORTS` key names an existing export instead of
   pinning the list; drop the removed `@apackdev/ears/internals` line.
 - `bus/client-events.spec.ts` "puts an accepted event on the bus and logs it": drop the exact log message.
-- `fe/pack-store-designations.spec.ts` "keep a role with the plugin that played it first",
+- `fe/pack-store-designations.spec.ts` "keep a role with the surface that played it first",
   `packs/staging.spec.ts`, `secrets/store.spec.ts`: drop the pinned `console.warn` text; assert it was
   called if the call matters.
 - `packs/backend-contributions.spec.ts` and `packs/registered-lookups.spec.ts` ("appear and disappear
@@ -528,7 +528,7 @@ Delete:
   entity ID", "RepositoryError is constructable and instanceof Error", "RepositoryErrorCode has expected
   values", "repository proxy delegates registerRepository", "getAttr reads stored attributes",
   "resetTestData resets all state", "emit and safeEvents are callable", "getAppVersion reads the host
-  version", "content helpers are callable", "broadcastToPlugin and sendToBrainSystem are callable", and the
+  version", "content helpers are callable", "broadcastToSurface and sendToBrainSystem are callable", and the
   source-grep test for the `@/core` alias (with the sibling `@/repository` and `@/services` greps, which
   `check:specifiers` covers). Keep the rest of the file.
 - `tests/unit/sdk-type-safety.spec.ts`: "qx() returns a QueryBuilder typed with the pack shapes",
@@ -572,7 +572,7 @@ Delete:
   describe (three tests) and the setup only it uses; `apack-ears/tests/contract/relations.spec.ts` and
   `installed-engine.spec.ts` cover them.
 - `packages/api/tests/unit/bus-client-connected.spec.ts`: "reaches every system when a client connects"
-  and "reaches an external pack with plugins once…" (both in `apack-host/tests/bus/app-bus.spec.ts`).
+  and "reaches an external pack with surfaces once…" (both in `apack-host/tests/bus/app-bus.spec.ts`).
 - `packages/renderer/src/core/__tests__/fe-host.spec.ts`: "throws, naming bindFeHost, before the renderer
   binds it" (SDK behaviour, covered by `apack-sdk/tests/runtime/unbound.spec.ts`).
 

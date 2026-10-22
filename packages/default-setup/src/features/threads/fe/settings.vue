@@ -273,7 +273,7 @@
       <!-- Agent Hotkeys -->
       <CollapsibleSection label="Agent Hotkeys" :default-open="true" class="mb-8">
         <p class="text-sm text-neutral-500 mb-4">
-          Keyboard shortcuts available when the agent plugin is active
+          Keyboard shortcuts available when the agent surface is active
         </p>
         <div class="space-y-6">
           <div class="group">
@@ -685,7 +685,7 @@
 <script setup lang="ts">
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
-import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, useSurface } from '@apackdev/sdk/fe'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 
 import { ref, computed, nextTick, type Directive } from 'vue'
@@ -1007,7 +1007,7 @@ const removeTag = (index: number) => {
 }
 
 // Get threads actor for import/export state
-const threadsActor: ThreadsState = usePlugin()
+const threadsActor: ThreadsState = useSurface()
 
 // Import state
 const isImporting = useSelector(threadsActor, (state) => state.context.threadsImport.status === 'importing')

@@ -29,7 +29,7 @@ test('a reference in a stored thread message opens its note in another feature',
   let noteId: string | undefined;
   let imported = false;
   try {
-    await app.waitForPlugin('default-setup/notes');
+    await app.waitForSurface('default-setup/notes');
     await app.navigate('default-setup/notes');
     await send(appPage, 'notes', { type: 'CREATE_NOTE', title, content: body });
     await expect.poll(async () => {

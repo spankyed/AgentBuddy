@@ -1,4 +1,4 @@
-// How a name in pack code becomes the ref a system or plugin runs under. Every conversion calls this,
+// How a name in pack code becomes the ref a system or surface runs under. Every conversion calls this,
 // so a name that belongs to no pack fails here, at the call, rather than as a send nobody receives.
 import { describe, expect, it } from 'vitest';
 import { refProblem, resolveName, resolveRegistered, splitRef } from '../../src/ids/index.ts';
@@ -43,7 +43,7 @@ describe('splitRef', () => {
     expect(splitRef('default-setup.notes')).toBeUndefined();
     expect(splitRef('default-setup/a.b')).toBeUndefined();
     expect(splitRef('Default_Setup/notes')).toBeUndefined();
-    // A popout's URL carries a plugin's ref, which main checks with this
+    // A popout's URL carries a surface's ref, which main checks with this
     for (const ref of ['', '../x', 'a b/notes', 'default-setup/notes?x=1']) expect(splitRef(ref), ref).toBeUndefined();
   });
 });
@@ -54,13 +54,13 @@ describe('resolveRegistered', () => {
   const registered = ['memo-pack/memos', 'default-setup/threads', 'host/application'];
 
   it('resolves a name in its pack, or a ref with none, to a registered feature', () => {
-    expect(resolveRegistered('plugin', 'memos', { packId: 'memo-pack', registered })).toBe('memo-pack/memos');
-    expect(resolveRegistered('plugin', 'host/application', { registered })).toBe('host/application');
+    expect(resolveRegistered('surface', 'memos', { packId: 'memo-pack', registered })).toBe('memo-pack/memos');
+    expect(resolveRegistered('surface', 'host/application', { registered })).toBe('host/application');
   });
 
   it("throws for what isn't registered, naming the ref it would be and the feature it probably meant", () => {
-    expect(() => resolveRegistered('plugin', 'threads', { packId: 'memo-pack', registered }))
-      .toThrow('No registered plugin is named "threads" (it would be "memo-pack/threads"): name this pack\'s own plugins by feature id and another pack\'s as "<packId>/<featureId>" — did you mean "default-setup/threads"? Registered: memo-pack/memos, default-setup/threads, host/application');
+    expect(() => resolveRegistered('surface', 'threads', { packId: 'memo-pack', registered }))
+      .toThrow('No registered surface is named "threads" (it would be "memo-pack/threads"): name this pack\'s own surfaces by feature id and another pack\'s as "<packId>/<featureId>" — did you mean "default-setup/threads"? Registered: memo-pack/memos, default-setup/threads, host/application');
     expect(() => resolveRegistered('system', 'threads', { registered, form: 'actions name a system "<packId>/<featureId>"' }))
       .toThrow('No registered system is named "threads": actions name a system "<packId>/<featureId>" — did you mean "default-setup/threads"?');
   });
@@ -71,8 +71,8 @@ describe('refProblem', () => {
   const installed = ['memo-pack/memos', 'default-setup/threads'];
 
   it('is undefined for a name that stands for one of the refs', () => {
-    expect(refProblem('plugin', 'memos', { packId: 'memo-pack', registered: installed })).toBeUndefined();
-    expect(refProblem('plugin', 'default-setup/threads', { registered: installed })).toBeUndefined();
+    expect(refProblem('surface', 'memos', { packId: 'memo-pack', registered: installed })).toBeUndefined();
+    expect(refProblem('surface', 'default-setup/threads', { registered: installed })).toBeUndefined();
   });
 
   it('names the refs by what they are among, and the one a name probably meant', () => {
@@ -83,7 +83,7 @@ describe('refProblem', () => {
   });
 
   it("reports a name that can't be a ref, rather than throwing", () => {
-    expect(refProblem('plugin', 'Not An Id', { packId: 'memo-pack', registered: installed })).toContain(`isn't a feature's ref`);
+    expect(refProblem('surface', 'Not An Id', { packId: 'memo-pack', registered: installed })).toContain(`isn't a feature's ref`);
   });
 });
 

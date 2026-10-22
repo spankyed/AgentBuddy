@@ -1,6 +1,6 @@
 import type { Contract } from './contract.ts';
 import type { ApplicationHotkeys } from '@apackdev/sdk/types';
-import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
+import { broadcastToSurface, sendToSystem } from '../../../events.ts';
 import { assign, setup, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
 import { detectAllArrayChanges, errorMessage } from '@apackdev/sdk/utils/pure';
@@ -38,7 +38,7 @@ function refusal(error: unknown, what: string): Extract<SettingsAnswer, { type: 
   };
 }
 
-/** Each plugin's settings as they apply: what features were last told */
+/** Each surface's settings as they apply: what features were last told */
 const appliedFeatureSettings = (): Record<string, unknown> => preferences().getRecovery() ? {} : { ...preferences().getAll().features };
 
 /** What each feature was last told of its settings, by feature ref */
@@ -61,22 +61,22 @@ const whileBusy = (reason: string) => ({
 export const settingsSpec = defineSystem<Contract>();
 
 /**
- * Sends the settings plugin all the settings, as `type` (on first load with the FAQs), and the app shell the hotkeys
+ * Sends the settings surface all the settings, as `type` (on first load with the FAQs), and the app shell the hotkeys
  * in them: whatever changed the settings, both views follow.
  */
 function broadcastSettings(type: 'SETTINGS_LOADED' | 'SETTINGS_UPDATED' | 'SETTINGS_RESET'): void {
   const recovery = preferences().getRecovery();
-  if (recovery) { broadcastToPlugin('settings', { type: 'SETTINGS_RECOVERY', recovery }); return; }
+  if (recovery) { broadcastToSurface('settings', { type: 'SETTINGS_RECOVERY', recovery }); return; }
   const snapshot = preferences().getSnapshot();
-  broadcastToPlugin('settings', { type, snapshot });
+  broadcastToSurface('settings', { type, snapshot });
   const data = snapshot.values;
-  broadcastToPlugin('application', { type: 'APPLICATION_HOTKEYS', hotkeys: appHotkeys(data) });
+  broadcastToSurface('application', { type: 'APPLICATION_HOTKEYS', hotkeys: appHotkeys(data) });
 }
 
-/** CLI path overrides, in the code plugin's settings */
-/** Sends the settings plugin the stored API keys (no values) and how they're protected */
+/** CLI path overrides, in the code surface's settings */
+/** Sends the settings surface the stored API keys (no values) and how they're protected */
 function sendSecrets(): void {
-  broadcastToPlugin('settings', { type: 'SECRETS_UPDATED', secrets: hostService('secrets').list(), status: hostService('secrets').status() });
+  broadcastToSurface('settings', { type: 'SECRETS_UPDATED', secrets: hostService('secrets').list(), status: hostService('secrets').status() });
 }
 
 export const settingsSystem = setup({
@@ -98,7 +98,7 @@ export const settingsSystem = setup({
     },
   },
   actions: settingsSpec.actions({
-    refuseUnauthorizedReset: () => broadcastToPlugin('settings', {
+    refuseUnauthorizedReset: () => broadcastToSurface('settings', {
       type: 'APP_RESET_FAILED', error: 'Resetting the app requires host-issued settings administration.',
     }),
     sendSettingsStartupData: () => {
@@ -122,7 +122,7 @@ export const settingsSystem = setup({
           const settings = after ?? {};
           const to = feature as FeatureRef;
           sendToSystem(to, { type: 'FEATURE_SETTINGS_UPDATED', settings, changes: detectAllArrayChanges(before ?? {}, settings) });
-          broadcastToPlugin(to, { type: 'FEATURE_SETTINGS_UPDATED', settings });
+          broadcastToSurface(to, { type: 'FEATURE_SETTINGS_UPDATED', settings });
         }
         return now;
       },
@@ -140,16 +140,16 @@ export const settingsSystem = setup({
           if (!splitRef(feature)) continue;
           const to = feature as FeatureRef;
           sendToSystem(to, { type: 'FEATURE_SETTINGS_UPDATED', settings: settings ?? {}, changes: null });
-          broadcastToPlugin(to, { type: 'FEATURE_SETTINGS_UPDATED', settings: settings ?? {} });
+          broadcastToSurface(to, { type: 'FEATURE_SETTINGS_UPDATED', settings: settings ?? {} });
         }
         return now;
       },
     }),
 
-    // The settings plugin's view of all the settings, after a change it didn't make itself
+    // The settings surface's view of all the settings, after a change it didn't make itself
     sendSettingsUpdate: () => broadcastSettings('SETTINGS_UPDATED'),
 
-    refuseResetWhileReplacing: () => broadcastToPlugin('settings', {
+    refuseResetWhileReplacing: () => broadcastToSurface('settings', {
       type: 'APP_RESET_FAILED',
       error: 'App data is being replaced. Reset the app once it has finished.',
     }),
@@ -191,7 +191,7 @@ export const settingsSystem = setup({
 
     updateSettings: ({ event, reply }) => {
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
-      // A plugin's settings are keyed by its ref, which the frontend resolves before sending and the store checks
+      // A surface's settings are keyed by its ref, which the frontend resolves before sending and the store checks
       const outcome = ((): SettingsAnswer => {
         try {
           settingsRequestAccess(event).service.set(ev.target, ev.path, ev.value, ev.condition);
@@ -249,14 +249,14 @@ export const settingsSystem = setup({
     onResetComplete: () => {
       sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
       sendToSystem({ role: 'threads' }, { type: 'COMMANDS_CHANGED' });
-      broadcastToPlugin('settings', { type: 'APP_RESET_COMPLETE' });
+      broadcastToSurface('settings', { type: 'APP_RESET_COMPLETE' });
     },
 
     onResetFailed: ({ event }) => {
       const err = (event as unknown as ErrorActorEvent).error;
       const message = errorMessage(err);
       logger.error('Reset app failed', { error: err });
-      broadcastToPlugin('settings', { type: 'APP_RESET_FAILED', error: message });
+      broadcastToSurface('settings', { type: 'APP_RESET_FAILED', error: message });
     },
 
   }),
@@ -280,7 +280,7 @@ export const settingsSystem = setup({
         },
         // Every write reaches the features it changed through here, whoever made it
         SETTINGS_WRITTEN: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
-        // Still a fact handler, and `sendSettingsUpdate` is why: this plugin takes `SETTINGS_LOADED` only
+        // Still a fact handler, and `sendSettingsUpdate` is why: this surface takes `SETTINGS_LOADED` only
         // while it is loading and `SETTINGS_UPDATED` once ready, so what publishing means here depends on
         // the receiver's state. The ask covers the first; this covers the second and the features whose defaults came or went
         PACK_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },

@@ -262,11 +262,11 @@ Fully isolated. The app bundles its own `node_modules/` inside the Electron app.
 - **Files**: new `services/user-services.ts`, extend settings system
 
 ### Phase 2: Settings UI
-- Services subtab in Settings plugin
+- Services subtab in Settings surface
 - Install from GitHub URL
 - Per-service: enable/disable, config editor, status/error display
 - Built-in services listed with same UI (enable/disable, config where applicable)
-- **Files**: new Vue component in settings plugin
+- **Files**: new Vue component in settings surface
 
 ### Phase 3: Type intellisense
 - Extract return type of `createService()` via TypeScript compiler API

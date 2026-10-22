@@ -67,10 +67,10 @@ export function secretsSnapshot(): SecretsSnapshot {
 /**
  * Sends every system that declares it `SECRETS_CHANGED` (no values) on the root event bus whenever the stored keys or
  * their protection change, through the API's procedures, `services.secrets` or a failing credential store, so it
- * refreshes its plugin and key checks. The app calls it once at boot. Before a settings system is registered there's
+ * refreshes its surface and key checks. The app calls it once at boot. Before a settings system is registered there's
  * none to tell (in `registry`): once it runs, it sends the current keys on CLIENT_CONNECTED. Returns the unsubscribe.
  */
-export function forwardSecretsChanges(registry: Pick<PackRegistry, 'getPluginEventValidationMap' | 'getEventValidationMap'>): () => void {
+export function forwardSecretsChanges(registry: Pick<PackRegistry, 'getSurfaceEventValidationMap' | 'getEventValidationMap'>): () => void {
   return secretsStore.onChange(() => {
     // Every system that says it takes the event, not one designated feature: which keys the user has is the app's
     // news, and more than the settings view acts on it — starting the assistant's first flow once it can call a

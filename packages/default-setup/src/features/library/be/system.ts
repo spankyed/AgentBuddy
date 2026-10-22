@@ -6,7 +6,7 @@ import { setup } from 'xstate'
 import { defineSystem } from '@apackdev/sdk/framework'
 import type { EARS } from '#generated/ears.ts'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
-import { sendToSystem, broadcastToPlugin } from '#generated/events.ts'
+import { sendToSystem, broadcastToSurface } from '#generated/events.ts'
 import { repository } from '#generated/repository.ts';
 import * as path from 'path'
 import * as os from 'os'
@@ -27,7 +27,7 @@ import type { CommandItem } from '#generated/types.ts';
  * data the import changed is separate news and stays a broadcast.
  */
 const answer = (reply: Reply<OutgoingLibraryEvents> | undefined, event: OutgoingLibraryEvents): void =>
-  (reply ? reply(event) : broadcastToPlugin('library', event));
+  (reply ? reply(event) : broadcastToSurface('library', event));
 import type { Reply } from '@apackdev/sdk/events';
 import type { OutgoingLibraryEvents } from './types.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
@@ -65,9 +65,9 @@ export const librarySystem = setup({
       })
       if (ev.collectionId && symlink.resolveSymlinkPath(ev.collectionId)) {
         const folderContents = await repository.libraryQueries.getFolderContents(ev.collectionId as EARS.EntityId)
-        broadcastToPlugin('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents })
+        broadcastToSurface('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents })
       } else {
-        broadcastToPlugin('library', { type: 'DOCUMENT_CREATED' as const, data: { document } })
+        broadcastToSurface('library', { type: 'DOCUMENT_CREATED' as const, data: { document } })
       }
 
       notifyIfCommandsChanged(commandsBefore)
@@ -81,7 +81,7 @@ export const librarySystem = setup({
         content: ev.content,
         tags: ev.tags,
       })
-      broadcastToPlugin('library', { type: 'DOCUMENT_UPDATED' as const, data: { document } })
+      broadcastToSurface('library', { type: 'DOCUMENT_UPDATED' as const, data: { document } })
 
       notifyIfCommandsChanged(commandsBefore)
     },
@@ -89,7 +89,7 @@ export const librarySystem = setup({
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_DOCUMENT'; id: string }
       repository.libraryCommands.deleteDocument(ev.id as EARS.EntityId)
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'DOCUMENT_DELETED' as const,
           data: { documentId: ev.id },
         })
@@ -99,13 +99,13 @@ export const librarySystem = setup({
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
       const document = await libraryService.find(ev.id as EARS.EntityId)
       if (document) {
-        broadcastToPlugin('library', { type: 'DOCUMENT_LOADED' as const, data: { document } })
+        broadcastToSurface('library', { type: 'DOCUMENT_LOADED' as const, data: { document } })
       } else {
-        broadcastToPlugin('library', { type: 'LIBRARY_ERROR' as const, data: { error: 'Document not found' } })
+        broadcastToSurface('library', { type: 'LIBRARY_ERROR' as const, data: { error: 'Document not found' } })
       }
     },
     sendIndex: () => {
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'LIBRARY_INDEX_LOADED' as const,
           data: { index: repository.libraryQueries.getIndex() },
         })
@@ -119,14 +119,14 @@ export const librarySystem = setup({
           parentId: ev.parentId,
         })
         const folderContents = await repository.libraryQueries.getFolderContents(ev.parentId as EARS.EntityId)
-        broadcastToPlugin('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents })
+        broadcastToSurface('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents })
       } else {
         const collection = repository.libraryCommands.createCollection(
           ev.name,
           ev.description,
           ev.parentId ? ev.parentId as EARS.EntityId : undefined
         )
-        broadcastToPlugin('library', { type: 'COLLECTION_CREATED' as const, data: { collection } })
+        broadcastToSurface('library', { type: 'COLLECTION_CREATED' as const, data: { collection } })
       }
     },
     updateCollection: async ({ event }) => {
@@ -137,7 +137,7 @@ export const librarySystem = setup({
         ev.name,
         ev.description
       )
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'COLLECTION_UPDATED' as const,
           data: { collection },
         })
@@ -147,7 +147,7 @@ export const librarySystem = setup({
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_COLLECTION'; id: string }
       repository.libraryCommands.deleteCollection(ev.id as EARS.EntityId)
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'COLLECTION_DELETED' as const,
           data: { collectionId: ev.id },
         })
@@ -160,7 +160,7 @@ export const librarySystem = setup({
         ev.documentId as EARS.EntityId,
         ev.collectionId ? ev.collectionId as EARS.EntityId : undefined
       )
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'DOCUMENT_UPDATED' as const,
           data: { document },
         })
@@ -169,7 +169,7 @@ export const librarySystem = setup({
     sendInitialData: async () => {
       const librarySettings = featureSettings.forFeature('library').get()
 
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'LIBRARY_CONNECTED' as const,
           data: {
             index: repository.libraryQueries.getIndex(),
@@ -181,7 +181,7 @@ export const librarySystem = setup({
     getFolderContents: async ({ event }) => {
       const ev = event as { type: 'GET_FOLDER_CONTENTS'; folderId: string | null }
       const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'FOLDER_CONTENTS_LOADED' as const,
           data: folderContents,
         })
@@ -189,11 +189,11 @@ export const librarySystem = setup({
     navigateToFolder: async ({ event }) => {
       const ev = event as { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
       const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'FOLDER_CONTENTS_LOADED' as const,
           data: folderContents,
         })
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'NAVIGATION_CHANGED' as const,
           data: { folderId: ev.folderId, path: folderContents.currentPath },
         })
@@ -221,10 +221,10 @@ export const librarySystem = setup({
         const folderContents = await repository.libraryQueries.getFolderContents(
           parentFolderId ? parentFolderId as EARS.EntityId : null
         )
-        broadcastToPlugin('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents })
+        broadcastToSurface('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents })
       } else {
         const item = repository.libraryCommands.renameItem(ev.id as EARS.EntityId, ev.name, ev.itemType)
-        broadcastToPlugin('library', { type: 'ITEM_RENAMED' as const, data: { item } })
+        broadcastToSurface('library', { type: 'ITEM_RENAMED' as const, data: { item } })
       }
       notifyIfCommandsChanged(commandsBefore)
     },
@@ -232,14 +232,14 @@ export const librarySystem = setup({
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_ITEMS'; ids: string[] }
       await libraryService.remove(ev.ids)
-      broadcastToPlugin('library', { type: 'ITEMS_DELETED' as const, data: { ids: ev.ids } })
+      broadcastToSurface('library', { type: 'ITEMS_DELETED' as const, data: { ids: ev.ids } })
       notifyIfCommandsChanged(commandsBefore)
     },
     moveItems: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
       await libraryService.move(ev.ids, ev.targetFolderId)
-      broadcastToPlugin('library', { type: 'ITEMS_MOVED' as const, data: { ids: ev.ids, targetFolderId: ev.targetFolderId } })
+      broadcastToSurface('library', { type: 'ITEMS_MOVED' as const, data: { ids: ev.ids, targetFolderId: ev.targetFolderId } })
       notifyIfCommandsChanged(commandsBefore)
     },
     // [SEARCH_INDEX_FF] Search index actions — commented out
@@ -249,7 +249,7 @@ export const librarySystem = setup({
     //   const indices = await searchIndexRepo.getSearchIndicesForFolder(
     //     ev.folderId ? ev.folderId as EARS.EntityId : null
     //   )
-    //   broadcastToPlugin('library', { type: 'SEARCH_INDICES_LOADED', data: { indices } })
+    //   broadcastToSurface('library', { type: 'SEARCH_INDICES_LOADED', data: { indices } })
     // },
     // createSearchIndex: async ({ system, event }) => {
     //   const ev = event as { type: 'CREATE_SEARCH_INDEX'; config: any; folderId: string | null }
@@ -258,7 +258,7 @@ export const librarySystem = setup({
     //     ev.config,
     //     ev.folderId ? ev.folderId as EARS.EntityId : null
     //   )
-    //   broadcastToPlugin('library', { type: 'SEARCH_INDEX_CREATED', data: { index } })
+    //   broadcastToSurface('library', { type: 'SEARCH_INDEX_CREATED', data: { index } })
     // },
     // updateSearchIndex: async ({ system, event }) => {
     //   const ev = event as { type: 'UPDATE_SEARCH_INDEX'; id: string; config: any }
@@ -267,13 +267,13 @@ export const librarySystem = setup({
     //     ev.id as EARS.EntityId,
     //     ev.config
     //   )
-    //   broadcastToPlugin('library', { type: 'SEARCH_INDEX_UPDATED', data: { index } })
+    //   broadcastToSurface('library', { type: 'SEARCH_INDEX_UPDATED', data: { index } })
     // },
     // deleteSearchIndex: async ({ system, event }) => {
     //   const ev = event as { type: 'DELETE_SEARCH_INDEX'; id: string }
     //   const searchIndexRepo = await import('./search-index/repository')
     //   await searchIndexRepo.deleteSearchIndex(ev.id as EARS.EntityId)
-    //   broadcastToPlugin('library', { type: 'SEARCH_INDEX_DELETED', data: { indexId: ev.id } })
+    //   broadcastToSurface('library', { type: 'SEARCH_INDEX_DELETED', data: { indexId: ev.id } })
     // },
     // searchInIndex: async ({ system, event }) => {
     //   const ev = event as { type: 'SEARCH_IN_INDEX'; indexId: string; query: string; limit?: number }
@@ -283,7 +283,7 @@ export const librarySystem = setup({
     //     ev.query,
     //     ev.limit
     //   )
-    //   broadcastToPlugin('library', { type: 'SEARCH_RESULTS', data: { results } })
+    //   broadcastToSurface('library', { type: 'SEARCH_RESULTS', data: { results } })
     // },
     // Symlink actions
     createSymlinkCollection: async ({ event }) => {
@@ -294,7 +294,7 @@ export const librarySystem = setup({
         resolvedPath,
         ev.parentId ? ev.parentId as EARS.EntityId : undefined
       )
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'COLLECTION_CREATED' as const,
           data: { collection },
         })
@@ -309,7 +309,7 @@ export const librarySystem = setup({
         const stat = await fs.stat(resolvedPath)
         if (!stat.isDirectory()) throw new Error('Not a directory')
       } catch {
-        broadcastToPlugin('library', {
+        broadcastToSurface('library', {
             type: 'LIBRARY_ERROR' as const,
             data: { error: `Path does not exist: ${resolvedPath}` },
           })
@@ -321,7 +321,7 @@ export const librarySystem = setup({
         resolvedPath
       )
 
-      broadcastToPlugin('library', {
+      broadcastToSurface('library', {
           type: 'SYMLINK_UPDATED' as const,
           data: { collection },
         })
@@ -351,7 +351,7 @@ export const librarySystem = setup({
         // Refresh library data
         const librarySettings = featureSettings.forFeature('library').get()
 
-        broadcastToPlugin('library', {
+        broadcastToSurface('library', {
             type: 'LIBRARY_CONNECTED' as const,
             data: {
               index: repository.libraryQueries.getIndex(),
@@ -408,7 +408,7 @@ export const librarySystem = setup({
           repository.libraryCommands.updateDocumentTags(doc.id, nextTags)
           const updated = repository.libraryQueries.findDocument(doc.id)
           if (updated) {
-            broadcastToPlugin('library', {
+            broadcastToSurface('library', {
                 type: 'DOCUMENT_UPDATED' as const,
                 data: { document: updated },
               })

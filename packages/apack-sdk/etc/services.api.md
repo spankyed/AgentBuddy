@@ -71,7 +71,7 @@ export function _captureHostServices(): {
     forAction(sender: ActionSender): {
         logger: Logger;
         emitter: {
-            broadcastToPlugin: typeof untypedBroadcastToPlugin;
+            broadcastToSurface: typeof untypedBroadcastToSurface;
             sendToWindow: typeof untypedSendToWindow;
             sendToSystem: typeof untypedSendToSystem;
         };
@@ -128,7 +128,7 @@ export interface FilesystemService {
 export interface HostServices {
     appData: AppDataService;
     emitter: {
-        broadcastToPlugin: typeof untypedBroadcastToPlugin;
+        broadcastToSurface: typeof untypedBroadcastToSurface;
         sendToWindow: typeof untypedSendToWindow;
         sendToSystem: typeof untypedSendToSystem;
     };

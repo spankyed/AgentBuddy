@@ -26,7 +26,7 @@ export interface ShellConnection {
   onConnected(): void;
   /** The connection dropped; `onConnected` follows when it's back */
   onDisconnected(): void;
-  /** A message a backend system sent a plugin, exactly as sent */
+  /** A message a backend system sent a surface, exactly as sent */
   onMessage(message: Message): void;
   /** The backend failed and won't recover by itself: why, for the error page */
   onFailed(error: ShellFailure): void;

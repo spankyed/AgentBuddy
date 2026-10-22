@@ -141,7 +141,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { usePlugin, useShell } from '@apackdev/sdk/fe'
+import { useSurface, useShell } from '@apackdev/sdk/fe'
 import type { CodeState, QuickOpenResult } from '#features/code/fe/state.ts'
 import { fuzzySearch, highlightMatches } from '#features/code/fe/utils/fuzzy-search.ts'
 import { getRecencyScore } from '#features/code/fe/utils/recent-files.ts'
@@ -162,7 +162,7 @@ interface EnhancedSearchResult {
 
 // Get state
 const shell = useShell()
-const codeActor: CodeState = usePlugin()
+const codeActor: CodeState = useSurface()
 
 // State selectors
 const isVisible = useSelector(codeActor, (state) => state.context.isQuickOpenVisible)

@@ -6,10 +6,10 @@ import type { PackEventContracts } from '@apackdev/sdk/framework';
 
 /** Synthetic compiled endpoint data; callers supply names when their fixture exposes an inbox. */
 export function eventContractsFixture(manifest: Pick<PackManifest, 'id' | 'features'>, overrides: PackEventContracts = {}): PackEventContracts {
-  return Object.fromEntries(Object.entries(manifest.features ?? {}).filter(([, feature]) => feature.system || feature.plugin)
+  return Object.fromEntries(Object.entries(manifest.features ?? {}).filter(([, feature]) => feature.system || feature.surface)
     .map(([id, feature]) => [id, overrides[id] ?? {
       ...(feature.system && { system: { incoming: feature.system.events?.incoming ?? [], outgoing: [] } }),
-      ...(feature.plugin && { plugin: { receives: [] } }),
+      ...(feature.surface && { surface: { receives: [] } }),
     }]));
 }
 

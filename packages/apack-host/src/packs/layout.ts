@@ -260,7 +260,7 @@ function readCompiledContent(dir: string, manifest: PackManifest, integrity: Pac
 function assertRequiredEntries(manifest: PackManifest, integrity: PackIntegrity): void {
   // Match the contributions emitted by generateFrontendEntry; inline data alone needs no frontend.
   const frontend = Object.values(manifest.features ?? {}).some(feature =>
-    feature.plugin || feature.designation || feature.settings?.form || feature.references)
+    feature.surface || feature.designation || feature.settings?.form || feature.references)
     || Object.values(manifest.extensions?.settings ?? {}).some(definition => definition.form)
     || (['steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions'] as const)
       .some(kind => Object.keys(manifest.extensions?.[kind] ?? {}).length > 0);

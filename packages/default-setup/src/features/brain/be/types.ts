@@ -98,7 +98,7 @@ export type BrainSettings = import('#generated/settings.ts').SettingsOf<'brain'>
 export type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }
   | { type: 'GO_BACK_TNODE'; currentFlowTNodeId?: string }
-  | { type: 'REQUEST_PLUGIN_DATA'; flowTNodeId?: string }
+  | { type: 'REQUEST_SURFACE_DATA'; flowTNodeId?: string }
   | { type: 'GET_TNODE_DETAILS'; tNodeId: string }
   | { type: 'TOGGLE_INSPECT' }
   | { type: 'START_BRAIN' }
@@ -119,7 +119,7 @@ export type BrainInternalEvents =
   | { type: 'CHILD_COMPLETED'; stepId?: EARS.EntityId; tNodeId?: EARS.EntityId; stepLabel?: string; result?: any; final?: boolean; eventTNodeId?: EARS.EntityId; isFlow?: boolean }
 
 export type OutgoingBrainEvents =
-  | { type: 'RECEIVE_PLUGIN_DATA'; data: FlowTNodeData }
+  | { type: 'RECEIVE_SURFACE_DATA'; data: FlowTNodeData }
   // | { type: 'BRAIN_CONNECTED'; data: FlowTNodeData }
   | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }

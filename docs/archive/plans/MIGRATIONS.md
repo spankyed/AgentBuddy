@@ -67,7 +67,7 @@ const migrations: Migration[] = [m010, m020];  // maintain version order
 
 | Version | File | Description |
 |---------|------|-------------|
-| 0.1.0 | `0.1.0.ts` | Migrate agent plugin settings to `threads.chat`, update stale `lastActivePlugin` |
+| 0.1.0 | `0.1.0.ts` | Migrate agent surface settings to `threads.chat`, update stale `lastActiveSurface` |
 
 ## Frontend Migrations
 

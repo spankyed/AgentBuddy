@@ -333,12 +333,12 @@ describe('the inputs stamp', () => {
     log.mockRestore();
   });
 
-  // The case that makes the list recorded rather than fixed: a pack with no plugins never writes `fe.ts`,
+  // The case that makes the list recorded rather than fixed: a pack with no surfaces never writes `fe.ts`,
   // and an expectation hard-coded from a fuller pack would call it stale on every run, forever.
   it('does not treat a file this pack never generates as missing', async () => {
     writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
     await generateEntries([], tmpDir, undefined, compilation);
-    expect(fs.existsSync(generated('fe.ts')), 'no plugins, so no fe.ts').toBe(false);
+    expect(fs.existsSync(generated('fe.ts')), 'no surfaces, so no fe.ts').toBe(false);
 
     const stamp = JSON.parse(fs.readFileSync(path.join(tmpDir, '.apack/generate-entries.json'), 'utf-8')) as { files: Record<string, string> };
     expect(Object.keys(stamp.files), 'and it is not recorded as an output').not.toContain('src/__generated__/fe.ts');

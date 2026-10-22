@@ -7,7 +7,7 @@ export const acceptedRuntime = (page: Page, packId: string): Promise<string | un
 
 /**
  * Waits until the window accepts a frontend for the pack other than `previous`. Enabling a pack registers and
- * activates it and then reloads its frontend, so what that frontend renders (its plugins, its settings form, its
+ * activates it and then reloads its frontend, so what that frontend renders (its surfaces, its settings form, its
  * steps) appears only once the shell has accepted the new runtime — seconds after the toggle on a hosted runner.
  */
 export async function frontendAccepted(page: Page, packId: string, previous: string | undefined): Promise<void> {

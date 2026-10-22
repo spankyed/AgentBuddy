@@ -1,8 +1,8 @@
 import { test, expect } from '@apackdev/testing';
 
-// A plugin offers its panel for plugins without one (`fallbackPanel`) and says itself when it shows: the brain's
+// A surface offers its panel for surfaces without one (`fallbackPanel`) and says itself when it shows: the brain's
 // inspect mode. The app shell asks only through that, never reading the brain's state.
-test("inspect mode shows the brain's panel beside a plugin that has none", async ({ app, appPage }) => {
+test("inspect mode shows the brain's panel beside a surface that has none", async ({ app, appPage }) => {
   await app.navigate('default-setup/logs');
   const panel = appPage.locator('[data-onboarding-id="inspection-panel"]');
   await expect(panel).toHaveCount(0);

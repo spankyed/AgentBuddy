@@ -79,9 +79,9 @@ Five packages share responsibilities that should each have one home, and the cod
   |---|---|---|---|
   | `services.repository` | 30 files, 81 action uses | the SDK's repository registry (no host module) | the bound engine's registry (`HostRuntime.ears.repository`, `@apackdev/ears`) |
   | `services.logger`, `createLogger` (with `{ debug }`), `onLog` (`@apackdev/sdk/logger`) | action uses name the logger `action:<label>` (`runActionCode`) | registry key `logger` | SDK code over `HostRuntime.transport` |
-  | `services.emitter`, `emit`, `broadcastToPlugin`, `sendToSystem` (typed, from `#generated/events`), `sendToBrainSystem`, `onConnected`, `onIncoming` (`@apackdev/sdk/events`) | every pack send; `rootEvents` and `trpc.bus` are rejected in pack sources (`check:specifiers`) | registry key `event-transport` | SDK code over `HostRuntime.transport` (the renderer's `FeTransport` for sends to systems) |
-  | `secretsClient` (`@apackdev/sdk/fe`) | the settings plugin's Secrets page | registry key `secrets-client` (renderer) | `bindFeHost({ secrets })` |
-  | `navigateToPlugin` | 21 frontend files | registry key `application` (renderer) | `bindFeHost({ application })` |
+  | `services.emitter`, `emit`, `broadcastToSurface`, `sendToSystem` (typed, from `#generated/events`), `sendToBrainSystem`, `onConnected`, `onIncoming` (`@apackdev/sdk/events`) | every pack send; `rootEvents` and `trpc.bus` are rejected in pack sources (`check:specifiers`) | registry key `event-transport` | SDK code over `HostRuntime.transport` (the renderer's `FeTransport` for sends to systems) |
+  | `secretsClient` (`@apackdev/sdk/fe`) | the settings surface's Secrets page | registry key `secrets-client` (renderer) | `bindFeHost({ secrets })` |
+  | `navigateToSurface` | 21 frontend files | registry key `application` (renderer) | `bindFeHost({ application })` |
   | `useActorSystem` | 82 frontend files | Vue `inject` (no registry) | unchanged |
   | `services.appData`, `services.traceStore`, `services.inference`, `services.secrets` | 2, 1, 2 and 1 files | registry keys `app-data`, `trace-store`, `inference`, `secrets` | `HostRuntime.services` |
   | `reportError` (`@apackdev/sdk/logger`), `getAppVersion` (`@apackdev/sdk/env`), the SDK's migrations runner | step runtimes and systems; 1 file each for the other two | registry keys `system-errors` (without `step`), `version`, `migrations` | `transport`, `HostRuntime.appVersion`; the runner left the SDK (the one pack caller, the reset actor, calls `services.appData.reset()`) |
@@ -106,7 +106,7 @@ Five packages share responsibilities that should each have one home, and the cod
     - the flow applier (`importFromDSL`, `deleteFlow`, `promptQueries.all`)
     - the settings applier (`resetSettings`)
     - boot apply (`contentRevision`)
-    - `utils/resolve-cli.ts` (the code plugin's `cliPaths`)
+    - `utils/resolve-cli.ts` (the code surface's `cliPaths`)
     - `steps/runtime-errors.ts` (`brainCommands.updateTNodeResult`)
   - Host reads them through `host/src/settings`, `repository as unknown as HostSettingsRepositories`. That covers app state in `settings.internal`:
     - `hasOnboarded` (`api/src/systems.ts`, `packs/pack-apply.ts`)
@@ -114,7 +114,7 @@ Five packages share responsibilities that should each have one home, and the cod
     - `packContentRevisions` (`setup/backend.ts`, `packs/pack-lifecycle.ts`, `packs/pack-reload.ts`)
     - `contentRevision` and `contentStatFingerprint` (`packs/pack-apply.ts`, `sdk/src/content/boot-apply.ts`)
   - **Consequence:** the app's own state lives inside default-setup's Settings row, and `settingsCommands.resetSettings()` (`settings/be/repository/index.ts:116-119`) writes `data: {}`. Resetting settings therefore also erases the onboarding flag, app version, pack versions and content hashes.
-  - *Done since:* API keys left EARS for the host's encrypted store (`@apackdev/host/secrets`, several labelled keys per provider with one selected, `services.secrets` for metadata), and CLI path overrides moved to the code plugin's settings (`plugins.code.cliPaths`).
+  - *Done since:* API keys left EARS for the host's encrypted store (`@apackdev/host/secrets`, several labelled keys per provider with one selected, `services.secrets` for metadata), and CLI path overrides moved to the code surface's settings (`surfaces.code.cliPaths`).
 - **One shared instance, listed in eight places.** Packs, dependency runtimes, the app and tests must share one SDK instance. Each of these knows separately which packages must not be duplicated:
   - `apack-cli/src/build/be-bundler.ts:35, 99, 146` (backend bundles) and `:193` (the content runtime bundle);
   - `fe-bundler.ts` (SDK detection);
@@ -213,9 +213,9 @@ Final.
    - **What reads the binding:**
      - The SDK's `@internal` `rootEvents` (`@apackdev/sdk/runtime`) is `transport.rootEvents`; packs never use it directly (they send through `@apackdev/sdk/events`), and `initRpc()` is deleted.
      - `secretsClient` reads the frontend port's `secrets` (today the `secrets-client` host module).
-     - `navigateToPlugin` reads the frontend port's `application`.
+     - `navigateToSurface` reads the frontend port's `application`.
      - `services` reads `packs` for pack services and `services` for the app-implemented four. The SDK builds `logger`, `emitter` and `repository` itself (Decision 6).
-     - From Phase 7, the SDK's lookups of what packs registered (designations, steps, artifacts, blocks, content hooks and appliers, feature settings defaults, pack commands, and in the frontend plugins, tiptap plugins, app extensions and DSL types) read `packs`.
+     - From Phase 7, the SDK's lookups of what packs registered (designations, steps, artifacts, blocks, content hooks and appliers, feature settings defaults, pack commands, and in the frontend surfaces, tiptap plugins, app extensions and DSL types) read `packs`.
    - **Bindings:**
      - the api's composition root binds `createHostRuntime(...)` from `@apackdev/host`;
      - `@apackdev/sdk/testing`'s `startTestRuntime` binds an in-memory `HostRuntime`;
@@ -223,12 +223,12 @@ Final.
    - `runtime/host.ts` and its registry are deleted.
 6. **Plumbing moves into the SDK; the app implements only four services.** The rule: **bind resources, derive behaviour.** A resource has identity per running app (the event bus, the engine and its data, the pack registry, services doing I/O with user data or keys) and is a `HostRuntime` member. Behaviour is a function over a resource, written once in the SDK for every app, test and tool.
    - **Event sends, logging and error reports are SDK code over `transport`**, not host implementations. They're a few lines each over the event bus today (`api/src/core/router/event-transport.ts`, `core/shared/debug/logger.ts`, `core/shared/system-errors.ts`) and move next to the functions the SDK already exports:
-     - `broadcastToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onConnected`, `onIncoming` → `@apackdev/sdk/events`. The sends stay on `services.emitter`, which sandboxed actions use;
+     - `broadcastToSurface`, `sendToSystem`, `sendToBrainSystem`, `onConnected`, `onIncoming` → `@apackdev/sdk/events`. The sends stay on `services.emitter`, which sandboxed actions use;
      - `createLogger`, `onLog` → `@apackdev/sdk/logger`. Bound, it formats and emits log events on `transport`; the api's log capture writes them to the console and streams them to the client, so nothing is logged twice. **Unbound, it writes to the console**: tooling runs SDK and host code without binding a runtime. For example, the CLI installs packs through `@apackdev/host/packs`, whose registry, discovery and updater log.
      - `reportError` → `@apackdev/sdk/logger` (its system-error half, which calls the `system-errors` module today).
 
      Their registry keys (`event-transport`, `logger`, `system-errors`) go away with no replacement. `bus-emitter` stays in the api as the `transport` it supplies, including its app event log file (`APACK_LOG_DIR`).
-   - **Only transport-bound functions throw unbound.** `broadcastToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onConnected`, `onIncoming`, `onLog`, `reportError` and the four app services throw, naming `bindHost`. `createLogger` falls back to the console. `getAppVersion()` throws.
+   - **Only transport-bound functions throw unbound.** `broadcastToSurface`, `sendToSystem`, `sendToBrainSystem`, `onConnected`, `onIncoming`, `onLog`, `reportError` and the four app services throw, naming `bindHost`. `createLogger` falls back to the console. `getAppVersion()` throws.
    - **The app version** is `HostRuntime.appVersion`; `getAppVersion()` reads it.
    - **Migrations leave the SDK.** `runMigrations` is removed from `@apackdev/sdk/utils`. The only pack caller is default-setup's reset actor (`settings/be/system.ts`), which today runs the app's reset itself: `appData.reset()`, `createDefaultSettings()`, `contentData(...)`, `runMigrations()`. `services.appData.reset()` does all of it in host (wipe stores, run every pack's boot hooks and boot apply, run app migrations), and the actor only calls `reset()`.
    - **`services` keeps its seven host services, of two kinds:**
@@ -259,11 +259,11 @@ Final.
      default-setup keeps its UI projections (`connectedData`, `extendedData`, action and prompt export) on top of them. `builtin-repositories.ts` is deleted.
    - **Secrets** — *done:* API keys aren't an entity. The host owns them in an encrypted store (`@apackdev/host/secrets`), with several labelled keys per provider and one selected, and packs see metadata through `services.secrets`. The `Secret` entity, the secrets partition and `general.secrets` are gone.
    - **App state:** a new entity `AppState` (one row) holds `hasOnboarded`, `version`, `packVersions`, `packContentRevisions`, and the boot apply's hashes and stat fingerprints per built-in pack (`contentRevisions`, `contentStatFingerprints`). Host declares it (registered with the engine next to the SDK's entities), and `@apackdev/host/app-state` owns its reads and writes. The SDK and packs never read it; `hasOnboarded` reaches the renderer in the `CLIENT_CONNECTED` event, as today. Resetting settings no longer touches it.
-   - **Settings** (UI settings: general, plugins): it's default-setup's data. default-setup declares the `Settings` entity and owns the settings content format and applier; the SDK stops declaring and applying it. `packSettingsRegistry` (pack feature defaults) stays in `@apackdev/sdk/framework`; Phase 7 moves the defaults it holds into the registered packs instance, and its reads stay there.
-   - **CLI paths:** `resolve-cli` (resolving and the `cliPaths` override) moves to default-setup's code feature, which owns the CLI integrations. *Done:* the override already lives in that feature's plugin settings (`plugins.code.cliPaths`).
+   - **Settings** (UI settings: general, surfaces): it's default-setup's data. default-setup declares the `Settings` entity and owns the settings content format and applier; the SDK stops declaring and applying it. `packSettingsRegistry` (pack feature defaults) stays in `@apackdev/sdk/framework`; Phase 7 moves the defaults it holds into the registered packs instance, and its reads stay there.
+   - **CLI paths:** `resolve-cli` (resolving and the `cliPaths` override) moves to default-setup's code feature, which owns the CLI integrations. *Done:* the override already lives in that feature's surface settings (`surfaces.code.cliPaths`).
    - **Migrations:** an app migration targeting the next release moves stored data, following `migrations/CLAUDE.md`:
      - `settings.internal` → `AppState`
-     - (*done:* `general.secrets.cliPaths` → the code plugin's settings; `general.secrets` dropped)
+     - (*done:* `general.secrets.cliPaths` → the code surface's settings; `general.secrets` dropped)
 
      It's idempotent and has a spec on a copy of old-shaped data.
 8. **Renames and naming.**
@@ -401,10 +401,10 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
 
 ### Phase 3 — The `HostRuntime` port and SDK plumbing
 - Replace the organization goal's interim `event-transport` host module with `HostRuntime.transport` (backend), and the renderer's `secrets-client` host module with `bindFeHost`'s `secrets` (frontend).
-- **The one behaviour change in this goal:** `broadcastToPlugin` and `services.emitter.broadcastToPlugin` send `OUTGOING` through the bus actor, so every backend-to-frontend send is dropped until a client connects, as `emit` inside systems already is. E2E covers the code and browser systems' early sends (terminal output, file watchers), and a harness spec shows a send before `connect()` doesn't reach the client.
+- **The one behaviour change in this goal:** `broadcastToSurface` and `services.emitter.broadcastToSurface` send `OUTGOING` through the bus actor, so every backend-to-frontend send is dropped until a client connects, as `emit` inside systems already is. E2E covers the code and browser systems' early sends (terminal output, file watchers), and a harness spec shows a send before `connect()` doesn't reach the client.
 - Add `HostRuntime`, `bindHost` and `bindFeHost` (Decision 5).
 - Move event sends, logging and error reports into the SDK over `transport` (Decision 6), with their specs. `getAppVersion()` reads `appVersion`.
-- Convert the remaining SDK readers to the bound runtime: `rootEvents` (`runtime/root-events.ts`), `secretsClient` (`fe/secrets-client.ts`), `services`, and `navigateToPlugin` (`fe/navigation.ts`). Delete `initRpc()` and the renderer's `secrets-client` host module registration.
+- Convert the remaining SDK readers to the bound runtime: `rootEvents` (`runtime/root-events.ts`), `secretsClient` (`fe/secrets-client.ts`), `services`, and `navigateToSurface` (`fe/navigation.ts`). Delete `initRpc()` and the renderer's `secrets-client` host module registration.
 - The api binds `createHostRuntime`, and the renderer binds the frontend port with its `application` actor and secrets client (`renderer/src/core/secrets-client.ts`).
 - `startTestRuntime` binds the in-memory runtime (its test bus as `transport`), and the harness binds with its `packs`.
   - The test host prints log events from its bus to the console, as its console logger does today.
@@ -417,10 +417,10 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
 - `bindHost` twice throws.
 - An unbound `services.inference` call throws naming `bindHost`.
 - `HostRuntime` compiles only when complete.
-- An SDK spec shows `broadcastToPlugin`, `sendToBrainSystem`, `onIncoming`, `reportError` and `createLogger` reaching a bound test bus, and the api's log capture logging each log event once.
+- An SDK spec shows `broadcastToSurface`, `sendToBrainSystem`, `onIncoming`, `reportError` and `createLogger` reaching a bound test bus, and the api's log capture logging each log event once.
 - A default-setup spec runs a content action that uses `services.emitter`, `services.logger` and `services.repository` on the action step, and checks the event it emitted, the log event and the row it wrote.
 - The logs system receives log events through `onLog` on the bound runtime (`logs-system.spec.ts`).
-- The SDK's frontend client works with the host module gone: the settings plugin's Secrets E2E, and a renderer spec that `secretsClient` reaches the bound client.
+- The SDK's frontend client works with the host module gone: the settings surface's Secrets E2E, and a renderer spec that `secretsClient` reaches the bound client.
 - All unit suites, E2E, `test:external-pack` and `test:packaged-authoring` pass.
 - A spec shows `createLogger` writing to the console with nothing bound, and a CLI command that logs through `@apackdev/host/packs` runs.
 - A harness spec shows a system error reported by a system fails the test unless taken, with the error's message in the failure.
@@ -507,7 +507,7 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
 Phase 6 gives each app its own engine. This phase does the same for the other thing an app owns: the packs it registered, and everything they contributed. After it, no module keeps per-app state at module scope, which completes Decision 1's "one owner per concern".
 
 **Today.** What packs registered is held in module-level globals, one copy per process:
-- **Host:** `packs/pack-registration.ts` (the registrations, host systems, the entity-type and services caches, and Phase 0's event validation map cache), the shutdown hooks Phase 0 moved into host, `fe/pack-store.ts` (plugins, the default plugin, each pack's contributions) and `fe/app-extensions.ts`.
+- **Host:** `packs/pack-registration.ts` (the registrations, host systems, the entity-type and services caches, and Phase 0's event validation map cache), the shutdown hooks Phase 0 moved into host, `fe/pack-store.ts` (surfaces, the default surface, each pack's contributions) and `fe/app-extensions.ts`.
 - **SDK lookups host fills at registration:**
   - `designations/index.ts`
   - `steps/registry.ts`, `artifacts/registry.ts`, `blocks/registry.ts`
@@ -589,7 +589,7 @@ All nine phases are implemented on `AS/package-boundaries`. Each phase ran the f
 | 0 — pack runtime into host | done | `api/src/packs` and `systems.ts` gone; `@apackdev/host/packs/runtime`, `createAppBus()`; `apack-host/tests/boundaries.spec.ts` (transport, barrel and bus clear of the runtime, no self-imports, no `api/src/packs`); event validation map owned by the registry (`event-validation-map.spec.ts`); `app-bus.spec.ts`; `db:cli` on a temp data dir |
 | 1 — `@apackdev/ears` | done | `packages/apack-ears` (0.1.0, fixed release group, API reports, publint/attw, TS 5.7 floor); `SHARED_INSTANCE_PACKAGES` with generated `shared-modules.ts`; `findSharedPackageLists`, `findUpwardImports`; fixture shared-engine spec and E2E prove one instance |
 | 2 — `@apackdev/ears/lmdb` | done | `openLmdbStore`; host/api EARS and persistence dirs deleted; `findLmdbImports`; `restart-persistence.spec.ts` (mutation: skipping the sink fails it); packaged `electron-builder --dir` smoke persisted a note across a restart |
-| 3 — `HostRuntime` | done | `runtime/host.ts` deleted, `no-host-modules.spec.ts`; `bindHost`/`bindFeHost`; sends, logging and error reports over `transport`; `broadcastToPlugin` through the bus (E2E `plugin-sends.spec.ts`, harness spec); `takeSystemErrors` returns `SYSTEM_ERROR` events |
+| 3 — `HostRuntime` | done | `runtime/host.ts` deleted, `no-host-modules.spec.ts`; `bindHost`/`bindFeHost`; sends, logging and error reports over `transport`; `broadcastToSurface` through the bus (E2E `surface-sends.spec.ts`, harness spec); `takeSystemErrors` returns `SYSTEM_ERROR` events |
 | 4 — app runtime out of the api | done | `@apackdev/host/migrations` (with its CLAUDE.md, `runner.spec.ts`); `createHostRuntime`; `receiveClientEvent`, `secretsSnapshot`, `forwardSecretsChanges`; `source-layout.spec.ts` lists the api's files; `boundaries.spec.ts` compares `src/services` to `HostRuntime['services']`; `app-reset.spec.ts` |
 | 5 — data ownership | done | SDK `flowRepository`, `tnodeRepository`, `actionRepository`, `promptRepository`; `builtin-repositories.ts` deleted; `@apackdev/host/app-state` and the host 0.4.0 app migration (`app-state-0.4.0.spec.ts`, run twice); Settings, its content format and applier in default-setup; `resolve-cli` in the code feature; `findRepositoryCasts`; `settings-reset-app-state.spec.ts` unskipped; the built api booted onboarded on old-shaped data in a temp dir |
 | 6 — engine instance | done | `createEarsEngine` (query/admin faces), `installEngine`; contract suite (32 + 4 persistence specs) passed before and after; `no-module-state.spec.ts`, `no-engine-state-access.spec.ts`, `installed-engine.spec.ts` (unbound errors, two engines); benchmark within tolerance (table above) |
@@ -603,11 +603,11 @@ Every new guard, helper and spec was mutation-checked in its phase (each phase's
 - **Phase 0:** `loaded-packs.ts` stays in `packs/runtime/`, the one runtime module the bus guard allows; `@apackdev/host` is `sideEffects: false`; `PackBundleEntry` lives in `packs/bundle.ts`; `createAppBus()` reads the SDK-bound `rootEvents` (which gained `onPackClientConnected`); `bundledLoaders` is required for `never`, and for `prefer` when it falls back.
 - **Phase 1:** the SDK depends on `@apackdev/ears` (not a peer); `@internal` tags sit on declarations; the loader's bridge is a generated, checked-in module (`APP_UNBRIDGED` = actions, testing); pack frontends don't share `@apackdev/ears`; `sharedInstanceExports` falls back to the SDK's copy of `@apackdev/ears`. Completion of `entityType` in a bare `BaseEntity` literal now suggests only `Relation` (the engine knows no SDK names); pack-typed completions are unchanged.
 - **Phase 2:** the persistence port is public in the `@apackdev/ears` root; `@apackdev/ears/lmdb` isn't bridged (`APP_ONLY_EXPORTS`); the partition policy follows registration by itself; the store has no close-on-exit hook; error counters are per adapter.
-- **Phase 3:** `startTestRuntime` binds `packs`/`appVersion` on its first call; every log event is printed once (step and system errors included); the renderer's failed sends log under `fe-host`. Behaviour notes: sends to plugins are dropped until a client connects; CLI install lines are prefixed `[pack-installer]`.
+- **Phase 3:** `startTestRuntime` binds `packs`/`appVersion` on its first call; every log event is printed once (step and system errors included); the renderer's failed sends log under `fe-host`. Behaviour notes: sends to surfaces are dropped until a client connects; CLI install lines are prefixed `[pack-installer]`.
 - **Phase 4:** composition lives in `setup/backend.ts` (`openAppStore()`); the app version comes from the root `package.json`; `createHostRuntime` takes no `userDataDir` (nothing needed it); `packClientReady` and subscriptions stay in the router (transport); the reset spec lives in the api, which has the composition and the built runtime; `release.sh` points at default-setup's migrations. Behaviour note: Reset Database now leaves the written app data (boot apply, root flow), not an empty database.
 - **Phase 5:** SDK repositories are plain exports of `@apackdev/sdk/ears`, not engine-registry entries; onboarding reaches packs as `appData.hasOnboarded()`/`completeOnboarding()`; settings are a default-setup content format (`content.sources` entries may be `{ path, format, applier }`); `AppState` keeps boot-content hashes and stat fingerprints per built-in pack, and the old single hash is filed under each; `lastInteractionTimestamp` was dropped; data with no version runs the host migrations, then counts as new.
 - **Phase 6:** repositories arrive in `PackRegistration.repositories` and `registerPack` registers them with the installed engine (no import-time registration); the LMDB store takes an engine getter; `EarsAdmin` includes `getAttr` and `repositories()`; `installEngine(undefined)` uninstalls and returns the previous engine; the ears, sdk and default-setup suites run with file parallelism. The contract suite pins three existing quirks (a removed relation's id stays in the type index; `leaves()` without a type counts relation rows; granting a role twice).
-- **Phase 7:** shared lookups read the frontend binding when bound, else the backend's; the view's method names are `designation`, `step(s)`, `artifact(s)`, `block(s)`, `contentWriters`, `appliers`, `settingsDefaults`, `onSettingsDefaultsChanged`, `commands` (plus `plugins`, `defaultPlugin`, `tiptapPlugins`, `appExtension`, `dslTypes` in the frontend); `testPacks` is the SDK stand-in; the harness exports `registerPack`/`unregisterPack`; the CLI registers a build's loaded definitions as one registration in a private registry; step, artifact and block type collisions still merge or replace; thread teardown moved into default-setup; module state that isn't a registration (the loader's built-in list, `loaded-packs.ts`, the packs system's built-in list) stays; the api exports its registry as the live binding `appPacks`.
+- **Phase 7:** shared lookups read the frontend binding when bound, else the backend's; the view's method names are `designation`, `step(s)`, `artifact(s)`, `block(s)`, `contentWriters`, `appliers`, `settingsDefaults`, `onSettingsDefaultsChanged`, `commands` (plus `surfaces`, `defaultSurface`, `tiptapPlugins`, `appExtension`, `dslTypes` in the frontend); `testPacks` is the SDK stand-in; the harness exports `registerPack`/`unregisterPack`; the CLI registers a build's loaded definitions as one registration in a private registry; step, artifact and block type collisions still merge or replace; thread teardown moved into default-setup; module state that isn't a registration (the loader's built-in list, `loaded-packs.ts`, the packs system's built-in list) stays; the api exports its registry as the live binding `appPacks`.
 - **Phase 8:** the host's app migrations runner is named `runAppMigrations` (was `runMigrations`), so no doc names the SDK export this goal removed; finished and superseded goal docs moved to `docs/archive/goals/`; the removed-names guard lives in the host suite (it runs in `npm run test:unit` with no build step).
 
 ### Corrections to the Decisions

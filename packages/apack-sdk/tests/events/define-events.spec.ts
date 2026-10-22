@@ -5,14 +5,14 @@
 // Nothing routes or refuses on it: it is what lets a dropped message name who sent it.
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { defineEvents, untypedSendToSystem, type PluginEvents, type SystemEventMap } from '../../src/events/index.ts';
+import { defineEvents, untypedSendToSystem, type SurfaceEvents, type SystemEventMap } from '../../src/events/index.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
 
 process.env.APACK_ENV ??= 'test';
 process.env.APACK_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime();
 
-type Plugins = PluginEvents & { memos: { type: 'MEMO_ADDED' } };
+type Surfaces = SurfaceEvents & { memos: { type: 'MEMO_ADDED' } };
 type Systems = SystemEventMap & { memos: { type: 'ADD_MEMO'; text: string }; 'default-setup/settings': { type: 'GET_SETTINGS' } };
 
 function incoming(send: () => void): unknown[] {
@@ -37,7 +37,7 @@ describe('a send made outside a pack', () => {
 });
 
 describe('defineEvents', () => {
-  const events = defineEvents<Plugins, Systems>('memo-pack');
+  const events = defineEvents<Surfaces, Systems>('memo-pack');
 
   it("sends to the pack's own system at its address", () => {
     expect(incoming(() => events.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' })))
@@ -49,22 +49,22 @@ describe('defineEvents', () => {
       .toEqual([{ to: 'default-setup/settings', call: expect.any(String), event: { type: 'GET_SETTINGS' }, from: 'memo-pack' }]);
   });
 
-  it('broadcasts to a plugin at its ref', () => {
+  it('broadcasts to a surface at its ref', () => {
     const outgoing: unknown[] = [];
-    const stop = testRootEvents.onPluginSend((event) => outgoing.push(event));
+    const stop = testRootEvents.onSurfaceSend((event) => outgoing.push(event));
     try {
-      events.broadcastToPlugin('memos', { type: 'MEMO_ADDED' });
+      events.broadcastToSurface('memos', { type: 'MEMO_ADDED' });
     } finally {
       stop();
     }
     expect(outgoing).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'MEMO_ADDED' }, from: 'memo-pack' }]);
   });
 
-  // The host is a pack: its plugins are named by ref, and a bare name is always this pack's own feature
-  it("broadcasts to a host plugin by its ref, and takes a bare name as this pack's own", () => {
-    const untyped = events.broadcastToPlugin as unknown as (name: string, event: { type: string }) => void;
+  // The host is a pack: its surfaces are named by ref, and a bare name is always this pack's own feature
+  it("broadcasts to a host surface by its ref, and takes a bare name as this pack's own", () => {
+    const untyped = events.broadcastToSurface as unknown as (name: string, event: { type: string }) => void;
     const sent: Array<{ to: string }> = [];
-    const stop = testRootEvents.onPluginSend((message) => sent.push(message));
+    const stop = testRootEvents.onSurfaceSend((message) => sent.push(message));
     try {
       untyped('host/application', { type: 'APPLICATION_HOTKEYS' });
       untyped('application', { type: 'APPLICATION_HOTKEYS' });

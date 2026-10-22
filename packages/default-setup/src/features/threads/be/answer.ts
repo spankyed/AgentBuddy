@@ -7,7 +7,7 @@
 // It takes the answer rather than finding one, so the two arms are ordinary arguments and a service can be
 // told how to answer without reaching for the delivery in scope. Reply **or** broadcast, never both: a window
 // showing the result of work it did not do is the whole defect.
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import type { Reply } from '@apackdev/sdk/events';
 import type { OutgoingThreadsEvents } from './types.ts';
 
@@ -23,7 +23,7 @@ import type { OutgoingThreadsEvents } from './types.ts';
 export const answer = (
   reply: Reply<OutgoingThreadsEvents> | undefined,
   event: OutgoingThreadsEvents,
-): void => (reply ? reply(event) : broadcastToPlugin('threads', event));
+): void => (reply ? reply(event) : broadcastToSurface('threads', event));
 
 // Named `answer` to match the five sibling features' helpers, which `an-outcome-goes-to-whoever-asked.spec.ts`
 // finds by the call in front of an outcome's payload. The module name says whose it is; only this feature's

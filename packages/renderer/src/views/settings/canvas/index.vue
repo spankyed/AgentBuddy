@@ -31,7 +31,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useSettingsStatus, usePlugin } from '@apackdev/sdk/fe'
+import { useSettingsStatus, useSurface } from '@apackdev/sdk/fe'
 
 import { useSelector } from '@xstate/vue'
 import GeneralTab from './tabs/GeneralTab.vue'
@@ -42,7 +42,7 @@ import type { SettingsState } from '@apackdev/host/fe'
 
 const settingsStatus = useSettingsStatus()
 const settingsReady = computed(() => settingsStatus.value === 'ready' || settingsStatus.value === 'replacing')
-const actor: SettingsState = usePlugin()
+const actor: SettingsState = useSurface()
 
 const activeTab = useSelector(actor, (state) => state.context.activeTab)
 

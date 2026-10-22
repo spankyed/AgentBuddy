@@ -21,10 +21,10 @@ test('app reaches connected state', async ({ app }) => {
   expect(state).toEqual({ running: 'connected' });
 });
 
-test('applicationState is accessible with plugins loaded', async ({ app }) => {
+test('applicationState is accessible with surfaces loaded', async ({ app }) => {
   const ctx = await app.getContext();
-  expect(ctx.activePluginId).toBeTruthy();
-  expect(ctx.pluginIds.length).toBeGreaterThan(0);
+  expect(ctx.activeSurfaceId).toBeTruthy();
+  expect(ctx.surfaceIds.length).toBeGreaterThan(0);
 });
 
 test('runs in an isolated per-worker test data dir', async ({ electronApp, appPage: _ready }) => {

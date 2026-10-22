@@ -17,7 +17,7 @@ pack's systems. There are **no activation events** — `grep` finds no `activati
 equivalent anywhere in the SDK's build or the host's pack runtime.
 
 VS Code's `activationEvents` (`onCommand`, `onLanguage`, `onView`) exist because this is the single largest
-lever on a plugin host's startup: an extension that nothing has asked for should not have run.
+lever on a surface host's startup: an extension that nothing has asked for should not have run.
 
 **The evidence that it matters here is indirect but real.** `goal-one-kind-of-pack` moved `test:smoke` from
 9s to 25s, and the recorded cause is that a fresh data dir now installs a pack — so a boot's pack work is
@@ -53,8 +53,8 @@ candidates below are conditional on that evidence.
   flows is insufficient proof of disuse: commands, lifecycle hooks and other runtime callers may need it.
 - **A role on demand.** `sendToSystem({ role })` already resolves a role to a system; it becomes the trigger
   that starts that system's pack rather than assuming it is up.
-- **A plugin the user opens.** The renderer imports pack frontends dynamically through `pack://`, currently during startup;
-  the backend half could follow the same signal (`pluginVisibility` and `lastActivePlugin` are in `AppState`
+- **A surface the user opens.** The renderer imports pack frontends dynamically through `pack://`, currently during startup;
+  the backend half could follow the same signal (`surfaceVisibility` and `lastActiveSurface` are in `AppState`
   already).
 
 **What cannot be lazy, and must be said out loud:** migrations and content. A pack's stored data has to be

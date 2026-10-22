@@ -228,7 +228,7 @@ export const explorerState = setup({
     handleCodeError: ({ event, self }) => {
       const ev = event as { type: 'explorer.CODE_ERROR'; data: { message: string; code?: string; path?: string } }
 
-      // A tab restored from localStorage whose file has since gone: drop the tab rather
+      // A tab restored from storage whose file has since gone: drop the tab rather
       // than leave one that can never load. Pinned tabs are kept by removeTabs.
       if (ev.data.code === 'NOT_FOUND' && ev.data.path) {
         const parentContext = getParentContext(self)
@@ -665,5 +665,5 @@ export const explorerState = setup({
   }
 });
 
-/** The explorer child's actor, as the code plugin's components reach it with `codeChild()` */
+/** The explorer child's actor, as the code surface's components reach it with `codeChild()` */
 export type ExplorerActor = ActorRefFrom<typeof explorerState>;

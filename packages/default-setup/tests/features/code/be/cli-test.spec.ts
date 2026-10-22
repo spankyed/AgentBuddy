@@ -1,7 +1,7 @@
 import { featureSettings } from '#generated/settings.ts';
 // Testing a CLI provider belongs to the code feature: `resolve-cli` is its own, and so are the stored paths
 // (`features['default-setup/code'].cliPaths`). The Settings view asks for it and is told the result, which is why
-// the settings plugin declares it in its inbox (`accepts`, beside the plugin). It lived in the settings system until settings
+// the settings surface declares it in its inbox (`accepts`, beside the surface). It lived in the settings system until settings
 // became the app's.
 //
 // What this covers is the routing, not `resolve-cli`: whether a CLI is on this machine's PATH is not the
@@ -13,7 +13,7 @@ const cliPaths = () => featureSettings.forFeature('code').get().cliPaths ?? {};
 
 describe('TEST_CLI_PROVIDER', () => {
   // A name no CLI answers to is the user's to fix, so it is answered rather than reported as a system error
-  it('answers an unknown provider on the settings plugin, and stores nothing', async () => {
+  it('answers an unknown provider on the settings surface, and stores nothing', async () => {
     const app = await startApp({ systems: ['code', 'host/settings'] });
     await app.connect();
 
@@ -25,9 +25,9 @@ describe('TEST_CLI_PROVIDER', () => {
     expect(cliPaths()['not-a-cli']).toBeUndefined();
   });
 
-  // The move's real risk: the code system takes the event at all, and its answer reaches the settings plugin
+  // The move's real risk: the code system takes the event at all, and its answer reaches the settings surface
   // rather than its own. Whether the CLI is found depends on the machine, so only the address is asserted.
-  it('takes a known provider and answers the settings plugin, not its own', async () => {
+  it('takes a known provider and answers the settings surface, not its own', async () => {
     const app = await startApp({ systems: ['code', 'host/settings'] });
     await app.connect();
 

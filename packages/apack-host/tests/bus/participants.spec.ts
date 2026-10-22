@@ -1,8 +1,8 @@
 import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // Being addressable without a pack having registered you.
 //
-// A system and a plugin are addressable because a pack declared them; the bus checks every outgoing message
-// against what the target plugin says it receives, and drops one nothing declares. A driver is declared by
+// A system and a surface are addressable because a pack declared them; the bus checks every outgoing message
+// against what the target surface says it receives, and drops one nothing declares. A driver is declared by
 // nobody, which is why an agent could send to the app and the app could not send back — the gap this closes.
 //
 // A claimed name takes the same grammar as a feature ref, so nothing that reads a ref had to be taught about it.
@@ -11,7 +11,7 @@ import { createNativePackTestRegistry } from '@apackdev/host/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type AnyActorRef } from 'xstate';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
-import { untypedBroadcastToPlugin, type Message } from '@apackdev/sdk/events';
+import { untypedBroadcastToSurface, type Message } from '@apackdev/sdk/events';
 import { onLog } from '@apackdev/sdk/logger';
 import { createAppBus } from '../../src/bus/index.ts';
 import { createParticipantClaims } from '../../src/bus/participants.ts';
@@ -57,7 +57,7 @@ describe('a name a connection claimed', () => {
   it('is addressed to the connection holding it', async () => {
     claims.claim(HOST.drive, 'c-driver');
 
-    untypedBroadcastToPlugin(HOST.drive, { type: 'QX_RESULT', rows: 1 });
+    untypedBroadcastToSurface(HOST.drive, { type: 'QX_RESULT', rows: 1 });
     await flush();
 
     expect(toDrive()).toHaveLength(1);
@@ -68,7 +68,7 @@ describe('a name a connection claimed', () => {
   it('takes a send from a system that never asked it anything', async () => {
     claims.claim(HOST.drive, 'c-driver');
 
-    untypedBroadcastToPlugin(HOST.drive, { type: 'ANYTHING_AT_ALL' });
+    untypedBroadcastToSurface(HOST.drive, { type: 'ANYTHING_AT_ALL' });
     await flush();
 
     expect(toDrive()[0].event.type, 'no declared event list to fail against').toBe('ANYTHING_AT_ALL');
@@ -85,7 +85,7 @@ describe('a name a connection claimed', () => {
   });
 
   it('is dropped, and said so, when nobody holds it', async () => {
-    untypedBroadcastToPlugin(HOST.drive, { type: 'QX_RESULT' });
+    untypedBroadcastToSurface(HOST.drive, { type: 'QX_RESULT' });
     await flush();
 
     expect(toDrive(), 'an unclaimed name is not a broadcast').toHaveLength(0);

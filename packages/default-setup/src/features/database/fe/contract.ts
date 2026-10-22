@@ -1,9 +1,9 @@
-// The database plugin's contract: the state it publishes and what other plugins may send it.
+// The database surface's contract: the state it publishes and what other surfaces may send it.
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
-// `apack.json` names it at `features[].plugin.contract`.
-import type { PluginInbox } from '@apackdev/sdk/fe'
+// `apack.json` names it at `features[].surface.contract`.
+import type { SurfaceInbox } from '@apackdev/sdk/fe'
 import type { TNodeEntity } from '@apackdev/sdk'
 import type { DatabaseSettings } from '#generated/types.ts'
 import type { DatabaseSchemaInfo } from '../be/types.ts'
@@ -70,5 +70,5 @@ export type DatabaseInboxEvent = { type: 'VIEW_BACKUP' }
 
 export type Contract = {
   state: DatabaseContext
-  inbox: PluginInbox<{ pack: DatabaseInboxEvent }>
+  inbox: SurfaceInbox<{ pack: DatabaseInboxEvent }>
 }

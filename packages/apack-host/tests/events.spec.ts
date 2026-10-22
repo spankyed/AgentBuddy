@@ -4,10 +4,10 @@ import { installedEngine } from '@apackdev/ears';
 // nothing routes or refuses on the stamp — so absent is a sender with nothing to declare rather than a fault.
 import { describe, expect, it } from 'vitest';
 import type { Message } from '@apackdev/sdk/events';
-import { untypedBroadcastToPlugin, untypedSendToSystem } from '@apackdev/sdk/events';
+import { untypedBroadcastToSurface, untypedSendToSystem } from '@apackdev/sdk/events';
 import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { HOST_ENTITY_TYPES } from '../src/app-state/index.ts';
-import { broadcastToPlugin, sendToSystem } from '../src/events.ts';
+import { broadcastToSurface, sendToSystem } from '../src/events.ts';
 import { HOST } from '../src/refs.ts';
 import { createSettingsStore } from '../src/features/settings/be/store.ts';
 import { createContributionCatalog } from '../src/packs/catalog.ts';
@@ -18,10 +18,10 @@ const catalog = createContributionCatalog(appSettingsDefinition);
 const snapshot = createSettingsStore({ ears: installedEngine, catalog: () => catalog.settings() }).getSnapshot();
 
 /** What a send emitted, whichever direction it went */
-function emitted(send: () => void, listen: 'plugin' | 'system'): Message[] {
+function emitted(send: () => void, listen: 'surface' | 'system'): Message[] {
   const seen: Message[] = [];
-  const stop = listen === 'plugin'
-    ? testRootEvents.onPluginSend((message) => seen.push(message))
+  const stop = listen === 'surface'
+    ? testRootEvents.onSurfaceSend((message) => seen.push(message))
     : testRootEvents.onIncoming((message) => seen.push(message));
   try {
     send();
@@ -32,8 +32,8 @@ function emitted(send: () => void, listen: 'plugin' | 'system'): Message[] {
 }
 
 describe('the host sends as itself', () => {
-  it('stamps a send to one of its own plugins, named as a pack names its own', () => {
-    expect(emitted(() => broadcastToPlugin('settings', { type: 'SETTINGS_LOADED', snapshot }), 'plugin'))
+  it('stamps a send to one of its own surfaces, named as a pack names its own', () => {
+    expect(emitted(() => broadcastToSurface('settings', { type: 'SETTINGS_LOADED', snapshot }), 'surface'))
       .toEqual([{ to: HOST.settings, from: 'host', call: expect.any(String), event: { type: 'SETTINGS_LOADED', snapshot } }]);
   });
 
@@ -44,17 +44,17 @@ describe('the host sends as itself', () => {
 
   // The unbound sends take a ref and check nothing: they are what an action reaches through `services.emitter`
   it('leaves a send made outside a pack unstamped, and unchecked', () => {
-    expect(emitted(() => untypedBroadcastToPlugin(HOST.settings, { type: 'SETTINGS_LOADED' }), 'plugin'))
+    expect(emitted(() => untypedBroadcastToSurface(HOST.settings, { type: 'SETTINGS_LOADED' }), 'surface'))
       .toEqual([{ to: HOST.settings, call: expect.any(String), event: { type: 'SETTINGS_LOADED' } }]);
     expect(emitted(() => untypedSendToSystem(HOST.packs, { type: 'GET_PACKS' }), 'system'))
       .toEqual([{ to: HOST.packs, call: expect.any(String), event: { type: 'GET_PACKS' } }]);
   });
 
-  /** The map is the check: a name nothing declares, and an event that plugin doesn't take, are both compile errors */
+  /** The map is the check: a name nothing declares, and an event that surface doesn't take, are both compile errors */
   it('refuses a feature it has none of, and an event that feature does not take', () => {
     // @ts-expect-error the host has no `nope` feature
-    expect(() => broadcastToPlugin('nope', { type: 'SETTINGS_LOADED', snapshot })).toBeDefined();
+    expect(() => broadcastToSurface('nope', { type: 'SETTINGS_LOADED', snapshot })).toBeDefined();
     // @ts-expect-error the packs view doesn't take a settings event
-    expect(() => broadcastToPlugin('packs', { type: 'SETTINGS_LOADED', snapshot })).toBeDefined();
+    expect(() => broadcastToSurface('packs', { type: 'SETTINGS_LOADED', snapshot })).toBeDefined();
   });
 });

@@ -2,40 +2,40 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createActor, setup, type Actor } from 'xstate';
 import type { OpenEntity } from '@apackdev/sdk/events';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
-import { fakeShell, plugin, settle } from './fakes.ts';
+import { fakeShell, surface, settle } from './fakes.ts';
 
 const running: Actor<ShellMachine>[] = [];
 afterEach(() => running.splice(0).forEach(actor => actor.stop()));
 
 async function fixture(loading = false) {
   const received = vi.fn();
-  const note = { ...plugin('notes/view'), state: setup({ types: { events: {} as OpenEntity } })
+  const note = { ...surface('notes/view'), state: setup({ types: { events: {} as OpenEntity } })
     .createMachine({ on: { OPEN_ENTITY: { actions: ({ event }) => received(event) } } }) };
-  const shell = fakeShell({ plugins: [plugin('host/home'), ...(loading ? [] : [note])] });
-  if (loading) shell.acceptPlugin(note);
+  const shell = fakeShell({ surfaces: [surface('host/home'), ...(loading ? [] : [note])] });
+  if (loading) shell.acceptSurface(note);
   const declaration = { ...shell.declarations.get(note.id)!, opens: ['Note'] };
   shell.declarations.set(note.id, declaration);
   shell.bindings.set(note.id, { ...shell.bindings.get(note.id)!, opens: ['Note'] });
-  let finishLoad!: (plugins: typeof note[]) => void;
+  let finishLoad!: (surfaces: typeof note[]) => void;
   if (loading) {
     shell.bindings.delete(note.id);
     shell.client.loadedPacks.mockResolvedValue([{ id: 'notes', feEntry: 'runtime/fe.js' }]);
     shell.packFrontends.load.mockImplementation(() => new Promise(resolve => { finishLoad = resolve; }));
   }
-  const app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActivePlugin: false } }).start();
+  const app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActiveSurface: false } }).start();
   running.push(app);
   shell.client.connect();
-  shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
+  shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, surfaceVisibility: {} } });
   await settle();
   return { ...shell, app, received, note, declaration, finishLoad };
 }
 
-it('checks existence, opens the declared plugin, delivers only the ID and releases the request', async () => {
+it('checks existence, opens the declared surface, delivers only the ID and releases the request', async () => {
   const shell = await fixture();
   shell.app.send({ type: 'OPEN_ENTITY', id: 'Note-one' });
   await settle();
   expect(shell.client.entityExists).toHaveBeenCalledWith('Note-one', expect.any(AbortSignal));
-  expect(shell.app.getSnapshot().context.activePlugin.id).toBe('notes/view');
+  expect(shell.app.getSnapshot().context.activeSurface.id).toBe('notes/view');
   expect(shell.received).toHaveBeenCalledExactlyOnceWith({ type: 'OPEN_ENTITY', id: 'Note-one' });
   expect(shell.app.getSnapshot().context.entityOpening.getSnapshot().context.request).toBeNull();
   shell.publishCatalog();
@@ -87,9 +87,9 @@ it.each(['replace', 'disable', 'unload', 'disconnect', 'navigate', 'breadcrumb',
   switch (reason) {
     case 'replace': shell.bindings.set('notes/view', { ...shell.bindings.get('notes/view')! }); shell.publishCatalog(); break;
     case 'disable': shell.declarations.set('notes/view', { ...shell.declaration, enabled: false }); shell.publishCatalog(); break;
-    case 'unload': shell.app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'notes' }); break;
+    case 'unload': shell.app.send({ type: 'PACK_SURFACES_UNLOADED', packId: 'notes' }); break;
     case 'disconnect': shell.client.dropConnection(); break;
-    case 'navigate': shell.app.send({ type: 'OPEN_PLUGIN', plugin: 'host/home', events: [] }); break;
+    case 'navigate': shell.app.send({ type: 'OPEN_SURFACE', surface: 'host/home', events: [] }); break;
     case 'breadcrumb': shell.app.send({ type: 'TRAIL_CLICK', target: 'home' }); break;
     case 'back': shell.app.send({ type: 'NAVIGATE_BACK' }); break;
     case 'forward': shell.app.send({ type: 'NAVIGATE_FORWARD' }); break;
@@ -112,7 +112,7 @@ it('holds an entity request until its declared frontend is ready, then delivers 
   shell.catalog.status.mockReturnValue('ready'); shell.publishCatalog();
   shell.app.send({ type: 'OPEN_ENTITY', id: 'Note-one' }); await settle();
   expect(shell.received).not.toHaveBeenCalled();
-  expect(shell.app.getSnapshot().context.awaitingPlugin).toHaveLength(1);
+  expect(shell.app.getSnapshot().context.awaitingSurface).toHaveLength(1);
   shell.finishLoad([shell.note]); await settle(); await settle();
   expect(shell.received).toHaveBeenCalledExactlyOnceWith({ type: 'OPEN_ENTITY', id: 'Note-one' });
   expect(shell.app.getSnapshot().context.entityOpening.getSnapshot().context.request).toBeNull();
@@ -122,7 +122,7 @@ it('does not deliver a queued request after its declared destination changes', a
   const shell = await fixture(true);
   shell.catalog.status.mockReturnValue('ready'); shell.publishCatalog();
   shell.app.send({ type: 'OPEN_ENTITY', id: 'Note-one' }); await settle();
-  expect(shell.app.getSnapshot().context.awaitingPlugin).toHaveLength(1);
+  expect(shell.app.getSnapshot().context.awaitingSurface).toHaveLength(1);
   shell.declarations.set(shell.note.id, { ...shell.declaration, declaration: { ...shell.declaration.declaration, label: 'Replacement' } });
   shell.publishCatalog();
   shell.finishLoad([shell.note]); await settle(); await settle();
@@ -134,7 +134,7 @@ it('does not deliver a queued request after its declared destination changes', a
 it('refuses delivery when the admitted destination actor is absent', async () => {
   const shell = await fixture();
   const getActor = shell.app.system.get.bind(shell.app.system);
-  const lookup = vi.spyOn(shell.app.system, 'get').mockImplementation(id => id === shell.note.id && shell.app.getSnapshot().context.activePlugin.id === shell.note.id ? undefined : getActor(id));
+  const lookup = vi.spyOn(shell.app.system, 'get').mockImplementation(id => id === shell.note.id && shell.app.getSnapshot().context.activeSurface.id === shell.note.id ? undefined : getActor(id));
   try {
     shell.app.send({ type: 'OPEN_ENTITY', id: 'Note-one' }); await settle();
     expect(shell.received).not.toHaveBeenCalled();

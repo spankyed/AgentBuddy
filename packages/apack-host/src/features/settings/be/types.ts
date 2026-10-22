@@ -2,7 +2,7 @@ import type { ApplicationHotkeys, SettingsTarget, SettingsSnapshot, SettingsReco
 import type { ApplyResult } from '@apackdev/sdk/utils';
 import type { PackContentPreview } from '@apackdev/sdk/content';
 import type { SecretMetadata, SecretsStatus } from '@apackdev/sdk/services';
-// The settings feature's contract: what its system receives, what it sends its plugin, and its context.
+// The settings feature's contract: what its system receives, what it sends its surface, and its context.
 // A leaf the system module doesn't import back, so codegen reads it without resolving the machine.
 
 export type IncomingSettingsEvents =
@@ -44,7 +44,7 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_RESET'; snapshot: SettingsSnapshot }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
   // The four content events are sent by the `packs` system, not this one: the work is pack-level and lives
-  // there, while the view that draws it is the settings plugin, whose inbox this type is.
+  // there, while the view that draws it is the settings surface, whose inbox this type is.
   /** `errors` lists the items that couldn't be written (`<key>: <error>`); the rest were imported */
   | { type: 'PACK_CONTENT_IMPORTED'; result: Record<string, ApplyResult>; errors: string[] }
   | { type: 'PACK_CONTENT_IMPORT_FAILED'; error: string }

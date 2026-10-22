@@ -65,7 +65,7 @@ A review of `5bd22a445..HEAD` (the typed facades, `@apackdev/host`, compiled hos
 - T2 (high). Own and dependency (or two dependency) shapes with the same type name generate duplicate `import type` lines (`TS2300 Duplicate identifier`).
 - T3 (high). `any` reaches packs from `@apackdev/sdk/ears` and `@apackdev/sdk/services`: `repository: any`; `tx()` has no return annotation, so its chain methods are `any` in `dist`; `getAttr` returns `any`; `createEntityWithDefaults`/`updateEntity` use `Record<string, any>`; `findWithFields`, `findByIdWithFields`, `findWithRole`, `findFirstWithRole` stay pack-facing with caller-chosen `T`; `services: HostServices & Record<string, any>`; `AttributeValue` includes `any`.
 - T4 (high). `packages/default-setup/tests/unit/sdk-type-safety.spec.ts`, `typed-event-channels.spec.ts` and `entity-shape-registry.spec.ts` use assertions that pass on `any`/`Record<string, unknown>` (`toHaveProperty`, `toMatchTypeOf`), so they don't catch a facade regression. Comments still describe augmentation.
-- T5 (medium). `PackEvents` maps a feature's plugin id to only that feature system's `Outgoing` events. Legitimate sends can't be typed (actions → flows, settings → host `application`, sends to dependency plugins), so default-setup falls back to raw `emit` in `actions/be/system.ts`, `settings/be/system.ts`, `code/be/features/terminal.ts`. Features with a plugin but no system get no entry.
+- T5 (medium). `PackEvents` maps a feature's surface id to only that feature system's `Outgoing` events. Legitimate sends can't be typed (actions → flows, settings → host `application`, sends to dependency surfaces), so default-setup falls back to raw `emit` in `actions/be/system.ts`, `settings/be/system.ts`, `code/be/features/terminal.ts`. Features with a surface but no system get no entry.
 - T6 (medium). Generated `Services` omits dependency services (`services.llm` is a compile error in a pack depending on default-setup, though present at runtime). At runtime the proxy merges every pack's services into one object: same-named services shadow each other, and a pack service named `logger` replaces the host logger.
 - T7 (medium). `packages/default-setup/dist/defs/monaco/database-defs.d.ts` re-exports `getAllEntities`, `queryEntitiesBy*` from `@apackdev/host/ears`, which Monaco can't resolve (`tsconfig.defs.json` has no host path).
 - T8 (medium). `docs/public-facing/services-and-data.md` says `pick`/`pickOne`/`linksPick` aren't narrowed (they are), that id-written builders can't know the entity (branded ids do), and that `@apackdev/sdk/ears` has no untyped helpers (see T3). The services section doesn't mention `#generated/services`.
@@ -110,11 +110,11 @@ Final.
     - `apack build` writes `dist/types/pack-types.d.ts`: a self-contained declaration bundle (rollup-plugin-dts, added to `@apackdev/cli` dependencies) exporting `PackEntityShapes`, `PackEvents`, `Services` and `Repositories` of that pack. `snapshot.json` carries it, and `fetch-deps` writes it to `.apack/deps/<id>/defs/pack-types.d.ts`.
     - Generated facades import each dependency's types under a pack-specific alias (`import type { PackEntityShapes as __dep_base_pack_Shapes } …`), so type names never collide.
     - Codegen fails when a declared own entity shape can't be found.
-15. **Events are keyed by the receiving plugin.**
-    - Manifest `features[].system.sendsTo?: string[]` lists plugin ids the system sends to besides its own: own feature ids, dependency plugin ids, or host plugins.
-    - `PackEvents[p]` = the union of `Outgoing` events of p's own system and of every system whose `sendsTo` includes p; dependency plugins' unions come from the dependency's `PackEvents`; host plugins come from an SDK `HostPluginEvents` type (starting with `application`).
-    - Features with a plugin but no system get an entry when something sends to them.
-    - default-setup declares its cross-plugin sends and uses only the generated `emit`/`broadcastToPlugin`. Raw `emit`/`broadcastToPlugin` stay public for host code (Decision 1 of `goal-sdk-types-architecture.md`), but default-setup, the fixture and example packs and the scaffold templates don't import them (`npm run check:specifiers` gains a check for raw event helper imports under pack sources).
+15. **Events are keyed by the receiving surface.**
+    - Manifest `features[].system.sendsTo?: string[]` lists surface ids the system sends to besides its own: own feature ids, dependency surface ids, or host surfaces.
+    - `PackEvents[p]` = the union of `Outgoing` events of p's own system and of every system whose `sendsTo` includes p; dependency surfaces' unions come from the dependency's `PackEvents`; host surfaces come from an SDK `HostSurfaceEvents` type (starting with `application`).
+    - Features with a surface but no system get an entry when something sends to them.
+    - default-setup declares its cross-surface sends and uses only the generated `emit`/`broadcastToSurface`. Raw `emit`/`broadcastToSurface` stay public for host code (Decision 1 of `goal-sdk-types-architecture.md`), but default-setup, the fixture and example packs and the scaffold templates don't import them (`npm run check:specifiers` gains a check for raw event helper imports under pack sources).
 16. **Repositories are declared like services.**
     - Manifest `features[].repositories?: Record<string, string>` maps a repository name to `path#exportName`.
     - Codegen generates `#generated/repository` exporting `repository` typed as this pack's repositories plus its dependencies' (`Repositories` from their `pack-types.d.ts`), and the generated pack entry registers them (replacing `registerRepository(...)` side effects in feature code).
@@ -157,7 +157,7 @@ Final.
 ### Phase 3 — `@apackdev/ui` contract (U1–U7, Decisions 10–13, F3)
 
 - Component contract reports; proxy host checks and es-module-lexer discovery; prefix-shared tiptap and Tailwind content for `fe.bundleUi`; publish-surface rule; entries check in build and typecheck; UI source maps.
-- Tests: changing a prop, emit or slot fails `api:check`; a pack FE loaded against a host without a module throws the Decision 11 message and warns on a missing named export (remove `?? {}` from `fe-bundler-shared-ui.spec.ts`); proxy export names equal es-module-lexer's exports for every UI entry; a `fe.bundleUi` pack's `fe.js` contains no `prosemirror-model` code and its `fe.css` contains a class only a UI component uses; the fixture pack gets a second plugin built with `fe.bundleUi` that renders `TiptapEditor` in E2E.
+- Tests: changing a prop, emit or slot fails `api:check`; a pack FE loaded against a host without a module throws the Decision 11 message and warns on a missing named export (remove `?? {}` from `fe-bundler-shared-ui.spec.ts`); proxy export names equal es-module-lexer's exports for every UI entry; a `fe.bundleUi` pack's `fe.js` contains no `prosemirror-model` code and its `fe.css` contains a class only a UI component uses; the fixture pack gets a second surface built with `fe.bundleUi` that renders `TiptapEditor` in E2E.
 - Record renderer startup before/after (Decision 20).
 
 **Done when:** those tests pass and are mutation-checked; startup numbers are recorded in this doc.
@@ -166,13 +166,13 @@ Final.
 
 ### Phase 4 — Type contract (T1–T10, Decisions 14–18)
 
-- `pack-types.d.ts` in the build and snapshot; aliased dependency imports; `sendsTo`, `HostPluginEvents` and receiver-keyed `PackEvents`; manifest `repositories` and `#generated/repository`; the `any` removals and typed factory additions; dependency `Services` and collision checks.
+- `pack-types.d.ts` in the build and snapshot; aliased dependency imports; `sendsTo`, `HostSurfaceEvents` and receiver-keyed `PackEvents`; manifest `repositories` and `#generated/repository`; the `any` removals and typed factory additions; dependency `Services` and collision checks.
 - Migrate default-setup (declare `sendsTo` and `repositories`; replace raw `emit`, `registerRepository` side effects and the moved helpers), the fixture pack, the example pack and the scaffold/`apack add` templates. Regenerate schemas and API reports.
 - `tsconfig.defs.json` host path (T7). Rewrite the `services-and-data.md` paragraphs (T8). Add `.js` to the side-effect imports and include every generated facade file in `facade-typing.spec.ts` under node16 and bundler (T9). Codegen fixes (T10).
 - Rewrite the default-setup type specs with `Equal`/`IsAny`/`@ts-expect-error` (T4).
-- Tests: a real `apack build` of a scratch dependency pack, `fetch-deps`, and a dependent pack whose `findAll('<DepEntity>')[0].<field>` is exactly typed and whose `services.<depService>` and `repository.<depRepo>` typecheck; own/dependency type-name collision compiles; `emit('flows', <action event>)` from a system with `sendsTo: ['flows']` typechecks and without it fails; `broadcastToPlugin('application', …)` is typed; the published-SDK `any` walk passes; `registerPack` rejects a duplicate service name; codegen fails on an unfindable own shape.
+- Tests: a real `apack build` of a scratch dependency pack, `fetch-deps`, and a dependent pack whose `findAll('<DepEntity>')[0].<field>` is exactly typed and whose `services.<depService>` and `repository.<depRepo>` typecheck; own/dependency type-name collision compiles; `emit('flows', <action event>)` from a system with `sendsTo: ['flows']` typechecks and without it fails; `broadcastToSurface('application', …)` is typed; the published-SDK `any` walk passes; `registerPack` rejects a duplicate service name; codegen fails on an unfindable own shape.
 
-**Done when:** those tests pass and are mutation-checked; default-setup, fixture and example packs contain no raw `emit`/`broadcastToPlugin` or `registerRepository` calls; `grep` of pack-facing declarations for `any` returns only allowlisted entries.
+**Done when:** those tests pass and are mutation-checked; default-setup, fixture and example packs contain no raw `emit`/`broadcastToSurface` or `registerRepository` calls; `grep` of pack-facing declarations for `any` returns only allowlisted entries.
 
 ### Phase 5 — Pack lifecycle (L1–L6, Decision 19)
 

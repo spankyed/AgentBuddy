@@ -283,7 +283,7 @@ export const terminalState = setup({
     assignTerminalError: assign(({ event, context }) => {
       const ev = event as { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
       // A replied error settles the ask it answers, so its intent goes with it: a create that failed would
-      // otherwise leave its target and command in the map for the life of the plugin. Only `pending` is
+      // otherwise leave its target and command in the map for the life of the surface. Only `pending` is
       // wanted here — there is nothing to do with what the failed ask meant
       return { terminalError: ev.data.message, pendingOpens: settleCall(context.pendingOpens, event).pending }
     }),
@@ -501,5 +501,5 @@ export const terminalState = setup({
   }
 });
 
-/** The terminal child's actor, as the code plugin's components reach it with `codeChild()` */
+/** The terminal child's actor, as the code surface's components reach it with `codeChild()` */
 export type TerminalActor = ActorRefFrom<typeof terminalState>;

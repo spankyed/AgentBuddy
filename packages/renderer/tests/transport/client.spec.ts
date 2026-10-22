@@ -73,11 +73,11 @@ it('announces a connected shell only after a fresh validated settings snapshot o
  *
  * This is the same call `5ab702222` made for a send that stays inside the window, in the one path that leaves
  * it. A command someone gave is worth a toast — they are still there, and they can act on it. An answer has
- * nobody behind it: a plugin asked, the answering side replied, and if the asking system no longer declares the
+ * nobody behind it: a surface asked, the answering side replied, and if the asking system no longer declares the
  * event the person gets a sentence about plumbing they did not cause. `Message.answering` is set by `reply` and
  * by nothing else, which is what makes it safe to branch on here.
  *
- * The log is unconditional in both: whoever can act on it is reading the Logs plugin, not a toast.
+ * The log is unconditional in both: whoever can act on it is reading the Logs surface, not a toast.
  */
 it('toasts a send that fails, because someone asked for it', async () => {
   mutate.mockRejectedValue(new Error('Unknown event "NOPE" for system "pack/feature"'));
@@ -169,10 +169,10 @@ it('feeds declaration data to the real window resource independently of settings
     catalogSubscribe.mock.calls[0][1].onData({ runId: 'catalog-run', snapshot: {
       revision: 1, appSettings: { schema: { type: 'object' }, defaults: {} },
       packs: [], problems: [], sourcePacks: [], appPackSources: [], appPackSourceProblems: [],
-      native: [{ id: 'cold-pack', features: { view: { description: 'Exercise cold metadata.', plugin: { label: 'Cold metadata', state: 'never-load.ts' } } } }],
+      native: [{ id: 'cold-pack', features: { view: { description: 'Exercise cold metadata.', surface: { label: 'Cold metadata', state: 'never-load.ts' } } } }],
     } });
     expect(windowCatalog.status()).toBe('ready');
-    expect(windowCatalog.getSnapshot()?.native[0].features?.view.plugin?.label).toBe('Cold metadata');
+    expect(windowCatalog.getSnapshot()?.native[0].features?.view.surface?.label).toBe('Cold metadata');
     expect(onConnected).not.toHaveBeenCalled();
   } finally { stop(); }
   expect(windowCatalog.status()).toBe('disconnected');

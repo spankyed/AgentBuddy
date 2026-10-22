@@ -11,7 +11,7 @@ export {
 } from './discovery.ts';
 export type { DiscoveredPack, InstalledPack, PackManifest } from './discovery.ts';
 export { createContributionCatalog, readInstalledContributionCatalog } from './catalog.ts';
-export type { PackCatalogEntry, PackCatalogSource, PackCatalogSnapshot, PackCatalogFrame, SourcePackDeclaration, PluginCatalogEntry } from './catalog.ts';
+export type { PackCatalogEntry, PackCatalogSource, PackCatalogSnapshot, PackCatalogFrame, SourcePackDeclaration, SurfaceCatalogEntry } from './catalog.ts';
 export { assertPackServiceRequirements, packServiceContracts, type PackServiceContract, type PackServiceOwner } from './service-requirements.ts';
 
 export { readAppPackSources } from './app-sources.ts';
@@ -28,7 +28,7 @@ export type { PackRecord } from './installed.ts';
  * The log lines a test harness reads to tell what became of a pack.
  *
  * A pack's backend leaves no other trace a test can see: an external pack with no frontend registers no
- * plugin, and the loaded-packs the renderer is served leave out packs with no frontend files. So the log
+ * surface, and the loaded-packs the renderer is served leave out packs with no frontend files. So the log
  * is the signal, and these are the sentences it is made of — imported by both the code that writes them
  * and `@apackdev/testing`, so that rewording one is a change to the other and not a suite that fails
  * somewhere else saying something untrue.

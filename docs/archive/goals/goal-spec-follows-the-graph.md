@@ -243,6 +243,6 @@ else's measurement* — including your own prose.
   until codegen runs.
 - **`vitest related` cannot walk a pack's own sources at all**, its config loading no Vue plugin and
   `vite-tsconfig-paths` not applying the pack's aliases inside a `.vue` file. That is why a pack source file
-  runs its pack's whole suite (18s) rather than the 1–3 specs that cover it (2.6s, measured with the plugin
+  runs its pack's whole suite (18s) rather than the 1–3 specs that cover it (2.6s, measured with the surface
   and `loose: true` added by hand). [`goal-pack-test-config.md`](goal-pack-test-config.md) closes
   it for every pack rather than only the built-in one.

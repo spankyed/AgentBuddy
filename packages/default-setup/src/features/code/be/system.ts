@@ -18,7 +18,7 @@ import { featureSettings } from '#generated/settings.ts';
 import type { Contract } from './contract.ts';
 import type { AppSettings } from '@apackdev/sdk/types';
 import { services } from '#generated/services.ts';
-import { broadcastToPlugin } from '#generated/events.ts';
+import { broadcastToSurface } from '#generated/events.ts';
 import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 
@@ -206,7 +206,7 @@ export const systemMachine = setup({
     testCliProvider: ({ event }) => {
       const { provider } = event as { type: 'TEST_CLI_PROVIDER'; provider: string };
       const answer = (result: { success: boolean; error?: string; resolvedPath?: string }) =>
-        broadcastToPlugin('host/settings', { type: 'CLI_TEST_RESULT', provider, ...result });
+        broadcastToSurface('host/settings', { type: 'CLI_TEST_RESULT', provider, ...result });
 
       if (!isCliName(provider)) return answer({ success: false, error: `Unknown CLI provider: ${provider}` });
 
@@ -263,7 +263,7 @@ export const systemMachine = setup({
         settings: codeSettings
       };
 
-      broadcastToPlugin('code', {
+      broadcastToSurface('code', {
         type: 'CODE_CONNECTED',
         data: connectedData
       })

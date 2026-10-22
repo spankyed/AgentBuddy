@@ -178,7 +178,7 @@ Then watch the backend console for this exact log trail. Missing lines are the d
 
 **If `permission handler invoked` fires but `permission response received` never does AND `can_use_tool decision resolved` never fires**: the closure is running but throwing before the try/catch can log. Wrap the top of the closure in its own try/catch with a `log.error('permission handler threw before dispatch', …)`.
 
-**If the full trail fires but the user still sees no approval block** (H4): the approval-block message IS being created in LMDB but isn't reaching the UI. `npm run db:cli` and query for recent messages in the thread with `blocks` containing an `approval` type. If the row exists, the `MESSAGE_ADDED` event isn't being emitted or routed correctly — check `services/chat.ts:sendApprovalBlock` and the threads plugin state handler for the event.
+**If the full trail fires but the user still sees no approval block** (H4): the approval-block message IS being created in LMDB but isn't reaching the UI. `npm run db:cli` and query for recent messages in the thread with `blocks` containing an `approval` type. If the row exists, the `MESSAGE_ADDED` event isn't being emitted or routed correctly — check `services/chat.ts:sendApprovalBlock` and the threads surface state handler for the event.
 
 ## 6. What NOT to do in the next pass
 
@@ -200,8 +200,8 @@ Then watch the backend console for this exact log trail. Missing lines are the d
 | action | `packages/default-setup/src/actions/claude-code/chat.ts` | `onPermissionRequest` closure has prior-task logs at every state boundary |
 | service facade | `packages/api/src/services/chat.ts` | `sendApprovalBlock` creates the message; not a suspect |
 | message routing | `packages/api/src/systems/threads/system.ts` | `MESSAGE_ADDED` emission path |
-| frontend state | `packages/renderer/src/plugins/threads/state.ts` | `MESSAGE_ADDED` handler merges into tab messages |
-| frontend render | `packages/renderer/src/plugins/threads/chat/interactions/InteractionContainer.vue` + `ApprovalButtons.vue` | dispatcher + button component |
+| frontend state | `packages/renderer/src/surfaces/threads/state.ts` | `MESSAGE_ADDED` handler merges into tab messages |
+| frontend render | `packages/renderer/src/surfaces/threads/chat/interactions/InteractionContainer.vue` + `ApprovalButtons.vue` | dispatcher + button component |
 
 ## 8. TL;DR
 

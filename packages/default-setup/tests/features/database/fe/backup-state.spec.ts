@@ -1,4 +1,4 @@
-// The database plugin's backup flow: an export or import is in progress from the request until the
+// The database surface's backup flow: an export or import is in progress from the request until the
 // system reports how it ended, and the outcome is kept for the Backup & Restore view to report.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
@@ -107,7 +107,7 @@ it("keeps the stores a newer apack's backup holds, so the view can ask, and impo
   expect(sendToSystem).toHaveBeenCalledWith('database', { type: 'IMPORT_DATABASE', path: '/backups/backup-1', skipUnknownDatabases: true });
 });
 
-// The Database settings' "Reset database" sends DATABASE.RESET to the plugin, whichever view it has open
+// The Database settings' "Reset database" sends DATABASE.RESET to the surface, whichever view it has open
 it.each([
   ['the explorer', () => createActor(databaseState).start()],
   ['the backup view', backupView],

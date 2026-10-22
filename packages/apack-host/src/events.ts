@@ -7,25 +7,25 @@
 //
 // Static endpoint membership lives in `features/event-contracts.ts`; this module supplies payload types
 // for the same native inboxes. Pack code gets its corresponding maps from codegen.
-import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf, type WithOwnNames } from '@apackdev/sdk/events';
+import { defineEvents, type HostSurfaceEvents, type HostSystemEvents, type IncomingEventsOf, type WithOwnNames } from '@apackdev/sdk/events';
 import type { Contract as HelpContract } from './features/help/be/system.ts';
 import type { HelpOutgoing } from './features/event-contracts.ts';
 import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import type { Contract as PacksContract } from './features/packs/be/contract.ts';
 import type { Contract as SettingsContract } from './features/settings/be/contract.ts';
-import type { SettingsPluginEvents } from './features/event-contracts.ts';
-import type { ApplicationPluginEvents } from './features/application/events.ts';
+import type { SettingsSurfaceEvents } from './features/event-contracts.ts';
+import type { ApplicationSurfaceEvents } from './features/application/events.ts';
 import type { OutgoingPacksEvents } from './features/event-contracts.ts';
 
 /**
- * What each of the host's plugins receives. `HostPluginEvents` is the host's *published* inbox — what a pack may
+ * What each of the host's surfaces receives. `HostSurfaceEvents` is the host's *published* inbox — what a pack may
  * send it — so it is one half of two of these: the rest is what the feature's own system sends its view, which no
  * pack may send. The Packs view takes only the latter.
  */
-type HostPlugins = WithOwnNames<typeof HOST_PACK_ID, {
-  'host/application': HostPluginEvents['host/application'] | ApplicationPluginEvents;
+type HostSurfaces = WithOwnNames<typeof HOST_PACK_ID, {
+  'host/application': HostSurfaceEvents['host/application'] | ApplicationSurfaceEvents;
   'host/packs': OutgoingPacksEvents;
-  'host/settings': HelpOutgoing | SettingsPluginEvents | HostPluginEvents['host/settings'];
+  'host/settings': HelpOutgoing | SettingsSurfaceEvents | HostSurfaceEvents['host/settings'];
 }>;
 
 /** What each of the host's systems receives, from the contracts those features declare */
@@ -36,4 +36,4 @@ type HostSystems = WithOwnNames<typeof HOST_PACK_ID, {
   'host/settings': IncomingEventsOf<SettingsContract>;
 }>;
 
-export const { broadcastToPlugin, sendToPlugin, sendToSystem } = defineEvents<HostPlugins, HostSystems>(HOST_PACK_ID);
+export const { broadcastToSurface, sendToSurface, sendToSystem } = defineEvents<HostSurfaces, HostSystems>(HOST_PACK_ID);
