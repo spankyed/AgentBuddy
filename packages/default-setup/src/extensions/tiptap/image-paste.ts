@@ -1,5 +1,4 @@
 import { Plugin } from '@tiptap/pm/state'
-import { extractImageSrcsFromClipboard } from '#features/threads/fe/chat/composables/useAttachments.ts'
 
 /**
  * Image-URL paste (e.g. from notes) inside ProseMirror's pipeline.
@@ -9,6 +8,27 @@ import { extractImageSrcsFromClipboard } from '#features/threads/fe/chat/composa
  * route for a plugin bound to a component's lifetime, so there is no extension for this one to be
  * private to — the module is the boundary instead.
  */
+/** Extract image URLs from clipboard — tries HTML `<img>` tags, then markdown `![](url)`. */
+export function extractImageSrcsFromClipboard(clipboardData: DataTransfer): string[] {
+  const html = clipboardData.getData('text/html')
+  if (html) {
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html')
+      const srcs = Array.from(doc.querySelectorAll('img[src]'), img => img.getAttribute('src')!).filter(Boolean)
+      if (srcs.length) return srcs
+    } catch { /* fall through */ }
+  }
+  const text = clipboardData.getData('text/plain')
+  if (text) {
+    const srcs: string[] = []
+    let m
+    const re = /!\[[^\]]*\]\(([^)]+)\)/g
+    while ((m = re.exec(text)) !== null) srcs.push(m[1])
+    if (srcs.length) return srcs
+  }
+  return []
+}
+
 export function imagePaste(addImageFromUrl: (src: string) => void): Plugin {
   return new Plugin({
     props: {
