@@ -1,6 +1,21 @@
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@apackdev/testing';
 
+/**
+ * What a replace or a restore costs before ownership settles, rather than `expect.poll`'s 5s default.
+ *
+ * Each follows an install and a frontend reload. Under the chain's concurrency the 5s default gave up
+ * 28.4s into the test while the app was still working correctly, so the run failed on the poll rather
+ * than on anything it was testing.
+ *
+ * **The spec's own 60s is the next constraint, and this does not fix that.** It passes at 43-50s warm,
+ * so a poll that actually spends its 20s can push the test past its budget and report as a test timeout
+ * instead of as the assertion that never settled. Raising one spec's Playwright budget has no precedent
+ * here and `suite-timeouts` holds the shared 60s literal, so the honest fix is to make this spec cheaper
+ * — it installs a pack four times — rather than to buy it more time.
+ */
+const SETTLES = { timeout: 20_000 };
+
 test('an app default can be disabled, removed and restored while host settings remain usable', async ({ app, appPage }) => {
   await app.navigate('host/packs');
   await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system
@@ -30,14 +45,14 @@ test('an app default can be disabled, removed and restored while host settings r
     await appPage.getByRole('button', { name: 'Replace', exact: true }).click();
     await app.waitForSurface('default-setup/threads');
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
-      .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.updatesWith)).toBe('user');
+      .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.updatesWith), SETTLES).toBe('user');
     await appPage.getByTestId('pack-restore').click();
     await appPage.getByTestId('pack-confirm-restore').click();
     await app.waitForSurface('default-setup/threads');
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
-      .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.updatesWith)).toBe('app');
+      .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.updatesWith), SETTLES).toBe('app');
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
-      .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.enabled)).toBe(true);
+      .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.enabled), SETTLES).toBe(true);
     needsRestore = false;
   } finally {
     if (needsRestore) {
