@@ -2,6 +2,8 @@
 // `**name**: placeholder` line per command, written with a `commands` format. A pack serving its own
 // commands plays the `commands` designation; a pack contributing them to whichever pack does — the usual
 // case — only ships the documents, which is all this writes.
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { renderTemplate } from '../../templates.ts';
 import { writeContentDocument } from './content-document.ts';
 import { readManifest } from './manifest';
@@ -19,6 +21,39 @@ Example:
   apack pack add command standup --placeholder "Topic" --folder internal
 `.trim();
 
+/** A field section's marker, which is what holds `**name**: placeholder` lines */
+const FIELD_MARKER = /<!-- section:field(?::\w+)? -->/;
+/** Any section's marker, so a field section's span is known to end where the next one starts */
+const ANY_MARKER = /<!-- section:\w+(?::\w+)? -->/g;
+
+/**
+ * Adds one `**name**: placeholder` line to a document's field section.
+ *
+ * The one place a scaffold here writes into a file that is already there, and it is a line appended to a
+ * list rather than a rewrite: a command *is* one such line, so creating a document per command would be
+ * the odd outcome. It refuses a document with no field section and a name the section already defines,
+ * because both mean the caller is describing a document other than the one on disk.
+ */
+function appendField(body: string, name: string, placeholder: string): string {
+  const marker = body.match(FIELD_MARKER);
+  if (marker?.index === undefined) {
+    throw new Error('That document has no `<!-- section:field -->` section, so it holds no commands. '
+      + 'Name another document with --document, or add the section to this one.');
+  }
+  const from = marker.index + marker[0].length;
+  const next = [...body.matchAll(ANY_MARKER)].find(m => m.index! >= from);
+  const until = next?.index ?? body.length;
+
+  const section = body.slice(from, until);
+  if (new RegExp(`^\\*\\*${name}\\*\\*:`, 'm').test(section)) {
+    throw new Error(`That document already defines "/${name}".`);
+  }
+
+  const line = `**${name}**: ${placeholder}\n`;
+  const kept = section.replace(/\s*$/, '\n');
+  return body.slice(0, from) + kept + line + body.slice(until);
+}
+
 export async function addCommand(args: string[], root: string) {
   if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
     console.log(HELP);
@@ -33,7 +68,7 @@ export async function addCommand(args: string[], root: string) {
   const documentName = parseFlag(args, '--document') || 'commands';
   validateName(documentName, 'Document');
 
-  const wrote = writeContentDocument(root, manifest, { format: 'commands', key: 'commands' }, {
+  const { wrote, filePath } = writeContentDocument(root, manifest, { format: 'commands', key: 'commands' }, {
     name: documentName,
     folder: parseFlag(args, '--folder'),
     body: renderTemplate('pack/src/content/commands/commands.md', {
@@ -41,12 +76,11 @@ export async function addCommand(args: string[], root: string) {
     }),
   });
 
-  // A command is a line in a document's field section, and a scaffold never splices a file that is there:
-  // the author adds the next one themselves, which is also how they are edited in the app
+  // The document was already there, so the command joins its field section rather than becoming a
+  // document of its own — which is what lets a caller add several without editing markdown in between
   if (!wrote) {
-    console.log(`\nThat document is already there. Add "/${name}" to its field section:`);
-    console.log(`    **${name}**: ${placeholder}`);
-    return;
+    fs.writeFileSync(filePath, appendField(fs.readFileSync(filePath, 'utf-8'), name, placeholder));
+    console.log(`  ~ ${path.relative(root, filePath)}`);
   }
   console.log(`\nCreated command "/${name}".`);
 }

@@ -41,6 +41,48 @@ it('writes a second document into the source already declared', async () => {
   expect(read(root, 'src/content/slash/team.md')).toContain('**retro**: Arguments');
 });
 
+// A command is one line of a document, so a second one joins the field section rather than becoming a
+// document of its own — which is what lets a caller add several without editing markdown in between
+it('appends a command to a document that is already there', async () => {
+  const root = pack({ dependencies: { 'default-setup': '*' } });
+  await addCommand(['standup', '--placeholder', 'Topic'], root);
+
+  await addCommand(['retro', '--placeholder', 'Sprint'], root);
+
+  expect(read(root, 'src/content/commands/commands.md')).toBe(
+    '---\nname: Commands\n---\n<!-- section:field -->\n**standup**: Topic\n**retro**: Sprint\n');
+});
+
+// The field section's span ends where the next marker starts, so the line lands inside it
+it('appends inside the field section of a document that has others', async () => {
+  const root = pack({ dependencies: { 'default-setup': '*' } });
+  const file = path.join(root, 'src/content/commands/commands.md');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, '---\nname: Commands\n---\n<!-- section:field -->\n**standup**: Topic\n\n<!-- section:text -->\nNotes.\n');
+
+  await addCommand(['retro'], root);
+
+  expect(read(root, 'src/content/commands/commands.md')).toBe(
+    '---\nname: Commands\n---\n<!-- section:field -->\n**standup**: Topic\n**retro**: Arguments\n<!-- section:text -->\nNotes.\n');
+});
+
+it('refuses a command the document already defines', async () => {
+  const root = pack({ dependencies: { 'default-setup': '*' } });
+  await addCommand(['standup'], root);
+
+  await expect(addCommand(['standup'], root)).rejects.toThrow('already defines "/standup"');
+});
+
+// A document with no field section holds no commands, so the caller means a different document
+it('refuses a document with no field section', async () => {
+  const root = pack({ dependencies: { 'default-setup': '*' } });
+  const file = path.join(root, 'src/content/commands/commands.md');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, '---\nname: Commands\n---\n<!-- section:text -->\nProse only.\n');
+
+  await expect(addCommand(['retro'], root)).rejects.toThrow(/no .*section:field.* section/);
+});
+
 // A pack's own format counts too — the pack that serves the commands declares one
 it("uses the pack's own commands format when it has one", async () => {
   const root = pack({ content: { formats: { commands: { compiler: 'src/content/_compilers/commands.ts', entity: ['Collection', 'Document'], identity: ['name'] } } } });

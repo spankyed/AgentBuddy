@@ -2,11 +2,12 @@
 // command and a library document. Both are the same act — markdown with `name` frontmatter, compiled by a
 // format into Collection and Document records — and differ only in which format writes them and what the
 // body holds.
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { PackManifest } from '@apackdev/sdk/build';
 import { writeManifest } from '../../manifest-writer.ts';
 import { addContentSource } from './manifest';
-import { logCreated, validateName, writeIfNotExists } from './write';
+import { logCreated, validateName } from './write';
 
 /** The pack that provides the formats a dependent writes this content with */
 const PROVIDER = 'default-setup';
@@ -40,15 +41,15 @@ function formatRef(manifest: PackManifest, format: string): string | undefined {
  * Writes `body` as a document of `target`'s format, declaring the source when the pack has none, and
  * reports what it did. `folder` nests it, which the format reads as a Collection holding the document.
  *
- * Returns whether the document was written: a scaffold here never splices a file that is already there,
- * so a caller whose unit is smaller than a document (a command is one line of one) says what to add.
+ * Returns the document's path and whether it was written. A caller whose unit is smaller than a document
+ * — a command is one line of one — acts on the file itself when it was already there.
  */
 export function writeContentDocument(
   root: string,
   manifest: PackManifest,
   target: DocumentTarget,
   options: { name: string; folder?: string; body: string },
-): boolean {
+): { wrote: boolean; filePath: string } {
   const existing = existingSource(manifest, target.format);
   const format = existing ? undefined : formatRef(manifest, target.format);
   if (!existing && !format) {
@@ -68,10 +69,13 @@ export function writeContentDocument(
     writeManifest(root, manifest);
   }
 
-  const wrote = writeIfNotExists(filePath, options.body);
-  if (wrote) {
-    logCreated(root, [filePath]);
-    if (declared) console.log(`  ~ apack.json (content.sources.${target.key})`);
-  }
-  return wrote;
+  // Silent about a document that is already there: what to do with one is the caller's — a library
+  // document is finished and a command is a line that joins its field section
+  if (fs.existsSync(filePath)) return { wrote: false, filePath };
+
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, options.body);
+  logCreated(root, [filePath]);
+  if (declared) console.log(`  ~ apack.json (content.sources.${target.key})`);
+  return { wrote: true, filePath };
 }

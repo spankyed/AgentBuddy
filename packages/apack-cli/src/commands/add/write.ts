@@ -1,7 +1,12 @@
 // Writing a scaffold's files: create-if-absent, the report of what was created, and the name casings a
 // template is rendered with. The templates themselves are files under `templates/`, read through
-// `src/templates.ts`. Nothing here edits a file that is already there — every scaffold declares what it
+// `src/templates.ts`. Nothing here rewrites a file that is already there — every scaffold declares what it
 // adds in `apack.json` (`add/manifest.ts`), which is a structured write rather than a splice.
+//
+// One scaffold appends rather than creates, and the line is what a scaffold's unit is: `add command` adds a
+// `**name**: placeholder` line to a document's field section (`add/command.ts`), because a command *is* one
+// such line and a document per command would be the odd outcome. It appends to a declared list and rewrites
+// nothing, which is the same structured write by a different name.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 

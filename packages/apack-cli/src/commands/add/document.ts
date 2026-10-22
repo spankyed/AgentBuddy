@@ -34,7 +34,7 @@ export async function addDocument(args: string[], root: string) {
   const manifest = readManifest(root);
   const section = parseFlag(args, '--section') || 'text';
   validateName(section, 'Section');
-  const wrote = writeContentDocument(root, manifest, { format: 'library', key: 'library' }, {
+  const { wrote } = writeContentDocument(root, manifest, { format: 'library', key: 'library' }, {
     name,
     folder: parseFlag(args, '--folder'),
     body: renderTemplate('pack/src/content/library/document.md', {
@@ -43,5 +43,9 @@ export async function addDocument(args: string[], root: string) {
     }),
   });
 
-  if (wrote) console.log(`\nCreated library document "${toLabel(name)}".`);
+  if (!wrote) {
+    console.log(`\nThat document is already there; nothing written.`);
+    return;
+  }
+  console.log(`\nCreated library document "${toLabel(name)}".`);
 }
