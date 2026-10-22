@@ -5,7 +5,8 @@ import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types.ts'
 // [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository' (dormant: ../search-index/README.md)
 import { libraryQueries } from './queries.ts'
 import { findParentCollection, getDisplayOrder, getNextDisplayOrder, getCollectionPath, formatFileSize, getContentLength } from './helpers.ts'
-import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
+import { collectionRepository, documentRepository } from '@apackdev/sdk/repositories';
+import type { ContentSection } from '#features/library/be/types.ts';
 
 
 type DocumentsListener = () => void;
@@ -51,46 +52,10 @@ const writers = {
     /** What the document is: `commands` makes it a slash-command list, as frontmatter does for content */
     documentType?: string,
   ): DocumentDTO {
-    const now = Date.now()
-
-    // Generate shortcode
-    const documentCount = qx(EARS.Entity.Document).count() + 1
-    const shortCode = `DOC-${documentCount}` as DocumentShortCode
-
-    // Get display order
-    const displayOrder = getNextDisplayOrder(collectionId || null)
-
-    // Create document entity
-    const builder = id ? tx(id as EARS.EntityId, true) : tx(EARS.Entity.Document)
-    const documentId = builder.id()
-
-    builder.updateBatch({
-      name,
-      content,
-      shortCode,
-      displayOrder,
-      tags, // Store tags directly as string array
-      ...(documentType !== undefined && { documentType }),
-      ...(contentHash && { contentHash }),
-      createdAt: now,
-      updatedAt: now,
+    const row = documentRepository.create({
+      name, content, tags, parentId: collectionId, id, contentHash, documentType,
     })
-
-    if (collectionId) {
-      tx(collectionId).link(EARS.RelKind.CONTAINS, documentId)
-    }
-
-    const document = libraryQueries.findDocument(documentId)
-
-    // [SEARCH_INDEX_FF] Auto-index in search indices (fire and forget)
-    // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
-    //   logger.error('Failed to auto-index new document', {
-    //     documentId,
-    //     error: errorMessage(error)
-    //   })
-    // })
-
-    return document!
+    return libraryQueries.findDocument(row.id as EARS.EntityId)!
   },
 
   updateDocument(
@@ -103,72 +68,16 @@ const writers = {
     /** What the document is: `commands` makes it a slash-command list */
     documentType?: string,
   ): DocumentDTO {
-    const documentId = id
-    const now = Date.now()
-
-    tx(documentId).updateBatch({
-      name,
-      content,
-      ...(contentHash && { contentHash }),
-      ...(documentType !== undefined && { documentType }),
-      updatedAt: now,
+    // `parentId` only when the caller named one: omitted leaves the document in its folder
+    documentRepository.update(id, {
+      name, content, tags, contentHash, documentType,
+      ...(collectionId !== undefined && { parentId: collectionId }),
     })
-      
-    tx(documentId).updateBatch({ tags })
-
-    // Find collections that contain this document
-    const allCollections = qx(EARS.Entity.Collection).pickAll()
-    const collections: typeof allCollections = []
-    for (const col of allCollections) {
-      const docs = qx(col.id as EARS.EntityId)
-        .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-        .ids()
-      if (docs.includes(documentId as EARS.EntityId)) {
-        collections.push(col)
-      }
-    }
-    const currentCollection = collections[0]
-
-    // Only handle collection changes if a collectionId is explicitly provided
-    if (collectionId !== undefined) {
-      if (currentCollection && currentCollection.id !== collectionId) {
-        tx(currentCollection.id as EARS.EntityId).unlinkIf(EARS.RelKind.CONTAINS, documentId)
-      }
-      
-      if (collectionId) {
-        tx(collectionId).safeLink(EARS.RelKind.CONTAINS, documentId)
-      }
-    }
-    // If collectionId is undefined, we keep the document in its current collection
-
-    const document = libraryQueries.findDocument(documentId)
-
-    // [SEARCH_INDEX_FF] Re-index in search indices (fire and forget)
-    // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
-    //   logger.error('Failed to re-index updated document', {
-    //     documentId,
-    //     error: errorMessage(error)
-    //   })
-    // })
-
-    return document!
+    return libraryQueries.findDocument(id)!
   },
 
   deleteDocument(id: EARS.EntityId): void {
-    const documentId = id
-
-    const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
-      qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
-    )
-
-    if (collection) {
-      tx(collection.id as EARS.EntityId).unlinkIf(EARS.RelKind.CONTAINS, documentId)
-    }
-
-    // [SEARCH_INDEX_FF] Remove from all search indices (fire and forget)
-    // searchIndexRepo.removeDocumentFromAllIndices(documentId)
-
-    tx(documentId).destroy()
+    documentRepository.remove(id)
   },
 
   createCollection(
@@ -278,37 +187,7 @@ const writers = {
   },
 
   deleteCollection(id: EARS.EntityId): void {
-    const collectionId = id
-
-    const documents = qx(collectionId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .pickAll()
-
-    for (const doc of documents) {
-      tx(collectionId).unlinkIf(EARS.RelKind.CONTAINS, doc.id as EARS.EntityId)
-    }
-
-    const parent = findParentCollection(collectionId) ? qx(findParentCollection(collectionId)!).pickAll()[0] : null
-
-    if (parent) {
-      tx(parent.id as EARS.EntityId).unlinkIf(EARS.RelKind.PARENT_OF, collectionId)
-    }
-
-    const children = qx(collectionId)
-      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-      .pickAll()
-
-    for (const child of children) {
-      tx(collectionId).unlinkIf(EARS.RelKind.PARENT_OF, child.id as EARS.EntityId)
-      if (parent) {
-        tx(parent.id as EARS.EntityId).link(EARS.RelKind.PARENT_OF, child.id as EARS.EntityId)
-      }
-    }
-
-    // [SEARCH_INDEX_FF] Delete all search indices associated with this folder (fire and forget)
-    // searchIndexRepo.deleteSearchIndicesForFolder(collectionId)
-
-    tx(collectionId).destroy()
+    collectionRepository.remove(id)
   },
 
   moveDocument(

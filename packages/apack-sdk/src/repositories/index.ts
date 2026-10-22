@@ -4,4 +4,8 @@ export { flowRepository, ROOT_FLOW, type FlowNode, type FlowNodeInput, type Flow
 export { tnodeRepository } from './tnode-repository.ts';
 export { actionRepository, type ActionInput } from './action-repository.ts';
 export { promptRepository, type PromptInput } from './prompt-repository.ts';
+export {
+  documentRepository, collectionRepository, collectionPath, nextDisplayOrder, displayOrderOf,
+  parentCollectionOf, collectionOfDocument, type DocumentInput, type CollectionInput,
+} from './document-repository.ts';
 export { trash, type TrashFields, type Trashed } from './trash.ts';

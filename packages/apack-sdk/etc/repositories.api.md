@@ -36,6 +36,65 @@ export const actionRepository: {
 };
 
 // @public
+export interface CollectionInput {
+    // (undocumented)
+    contentHash?: string;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    id?: string;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    parentId?: EARS.EntityId;
+}
+
+// @public
+export function collectionOfDocument(documentId: EARS.EntityId): EARS.EntityId | null;
+
+// @public
+export function collectionPath(collectionId: EARS.EntityId): string[];
+
+// @public
+export const collectionRepository: {
+    byId: (id: EARS.EntityId) => CollectionEntity | undefined;
+    all: () => CollectionEntity[];
+    children: (parentId: EARS.EntityId | null) => CollectionEntity[];
+    documents: (parentId: EARS.EntityId) => DocumentEntity[];
+    create: (data: CollectionInput) => CollectionEntity;
+    update: (id: EARS.EntityId, updates: Partial<Omit<CollectionInput, "parentId" | "id">>) => void;
+    remove: (id: EARS.EntityId) => void;
+};
+
+// @public
+export function displayOrderOf(row: unknown): number;
+
+// @public
+export interface DocumentInput {
+    // (undocumented)
+    content: ContentSection[];
+    // (undocumented)
+    contentHash?: string;
+    documentType?: string;
+    id?: string;
+    // (undocumented)
+    name: string;
+    parentId?: EARS.EntityId;
+    // (undocumented)
+    tags?: string[];
+}
+
+// @public
+export const documentRepository: {
+    byId: (id: EARS.EntityId) => DocumentEntity | undefined;
+    all: () => DocumentEntity[];
+    ofType: (documentType: string) => DocumentEntity[];
+    create: (data: DocumentInput) => DocumentEntity;
+    update: (id: EARS.EntityId, updates: Partial<DocumentInput>) => void;
+    remove: (id: EARS.EntityId) => void;
+};
+
+// @public
 export interface FlowEdge {
     // (undocumented)
     id: EARS.EntityId;
@@ -89,6 +148,12 @@ export const flowRepository: {
     } & Handles) => void;
     reindexHandles: (nodeId: EARS.EntityId, prefix: string, pivotIndex: number, direction: 1 | -1) => void;
 };
+
+// @public
+export function nextDisplayOrder(parentId: EARS.EntityId | null): number;
+
+// @public
+export function parentCollectionOf(childId: EARS.EntityId): EARS.EntityId | null;
 
 // @public
 export interface PromptInput {

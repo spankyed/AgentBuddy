@@ -1,5 +1,6 @@
 export type * from './export-types.ts';
-import type { EARS, BaseEntity } from '#generated/ears.ts'
+import type { EARS } from '#generated/ears.ts'
+import type { ContentSection, DocumentShortCode } from '@apackdev/sdk';
 
 /**
  * The `documentType` the chat's slash commands live under. Declared once because two bundles must agree
@@ -8,67 +9,16 @@ import type { EARS, BaseEntity } from '#generated/ears.ts'
  */
 export const COMMANDS_DOCUMENT_TYPE = 'commands';
 
-export type DocumentShortCode = `DOC-${number}`;
+/**
+ * The document model is the SDK's (`@apackdev/sdk`): the app reads documents, so the entities, their
+ * shapes and the sections a document holds are declared there. Re-exported here because this pack's
+ * code names them through its own types, and this feature is still their editor.
+ */
+export type {
+  ContentSection, ContentType, DocumentShortCode, DocumentEntity, CollectionEntity,
+  FieldContent, ListContent, MarkdownContent, TextContent, CodeContent,
+} from '@apackdev/sdk';
 
-export interface FieldContent {
-  type: 'field'
-  fields: Array<{ key: string; value: string }>
-}
-
-export interface ListContent {
-  type: 'list'
-  items: string[]
-}
-
-export interface MarkdownContent {
-  type: 'markdown'
-  text: string
-}
-
-export interface TextContent {
-  type: 'text'
-  text: string
-}
-
-export interface CodeContent {
-  type: 'code'
-  text: string
-  language: string
-}
-
-/** A section of a document's content, as the library compiler parses it from markdown */
-export type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent
-
-export type ContentType = ContentSection['type']
-
-export interface DocumentEntity extends BaseEntity {
-  _type: EARS.Entity.Document
-  name: string
-  content: ContentSection[]
-  shortCode: DocumentShortCode
-  displayOrder?: number
-  /** Free-form tags, stored directly on the document as a string array. */
-  tags?: string[]
-  /**
-   * What this document is: `commands` marks a slash-command list, which the `commands` designation's
-   * owner serves. A written document's own frontmatter `type` says so, and the format it was compiled
-   * with supplies a default where a whole source is one kind; a document created in the app carries
-   * whatever its creator passed. Absent, it is just a document.
-   */
-  documentType?: string
-  /** Hash of the content source at the last apply. Absent on user-created documents. */
-  contentHash?: string
-}
-
-export interface CollectionEntity extends BaseEntity {
-  _type: EARS.Entity.Collection
-  name: string
-  description?: string
-  displayOrder?: number
-  symlinkPath?: string
-  /** Hash of the content source at the last apply. Absent on user-created collections. */
-  contentHash?: string
-}
 
 export interface DocumentDTO {
   id: EARS.EntityId

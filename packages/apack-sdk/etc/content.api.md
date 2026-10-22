@@ -6,6 +6,17 @@
 
 import { EARS as EARS_2 } from '@apackdev/ears';
 
+// @public (undocumented)
+export const collectionContentWriter: ContentWriter<CollectionItem>;
+
+// @public (undocumented)
+export interface CollectionItem extends ContentItem {
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    name: string;
+}
+
 // @public
 export interface ContentEntity {
     // (undocumented)
@@ -83,6 +94,20 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 
 // @public
 export function describeContentKey(key: string): string;
+
+// @public (undocumented)
+export const documentContentWriter: ContentWriter<DocumentItem>;
+
+// @public (undocumented)
+export interface DocumentItem extends ContentItem {
+    // (undocumented)
+    content: ContentSection[];
+    documentType?: string;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    tags?: string[];
+}
 
 // @public (undocumented)
 export interface FlowApplierOptions {

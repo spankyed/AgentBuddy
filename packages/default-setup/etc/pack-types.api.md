@@ -5,7 +5,7 @@
 ```ts
 import * as _apackdev_ears from '@apackdev/ears';
 import * as _apackdev_sdk from '@apackdev/sdk';
-import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@apackdev/sdk';
+import { ActionEntity, ActionParameter, ContentSection, DocumentShortCode, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@apackdev/sdk';
 import { ArtifactItem } from '@apackdev/sdk/artifacts';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
 import { PackCommand } from '@apackdev/sdk/commands';
@@ -676,12 +676,6 @@ type CodeConnectedData = {
     settings?: CodeSettings;
 };
 
-interface CodeContent {
-    type: 'code';
-    text: string;
-    language: string;
-}
-
 type CodeContext = {
     baseDirectory: string;
     openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[];
@@ -820,16 +814,6 @@ interface CollectionDTO {
     symlinkPath?: string;
 }
 
-interface CollectionEntity extends BaseEntity {
-    _type: EARS.Entity.Collection;
-    name: string;
-    description?: string;
-    displayOrder?: number;
-    symlinkPath?: string;
-    /** Hash of the content source at the last apply. Absent on user-created collections. */
-    contentHash?: string;
-}
-
 interface CommitLogEntry {
     hash: string;
     shortHash: string;
@@ -869,9 +853,6 @@ interface ConsumerHandlers {
     /** Called when the app-server process exits unexpectedly. Consumer should clean up thread state. */
     onCrash?(error: string): void;
 }
-
-/** A section of a document's content, as the library compiler parses it from markdown */
-type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
 
 interface ContextReference {
     refType: ContextReferenceType;
@@ -1251,25 +1232,6 @@ interface DocumentDTO {
     updatedAt: string;
 }
 
-interface DocumentEntity extends BaseEntity {
-    _type: EARS.Entity.Document;
-    name: string;
-    content: ContentSection[];
-    shortCode: DocumentShortCode;
-    displayOrder?: number;
-    /** Free-form tags, stored directly on the document as a string array. */
-    tags?: string[];
-    /**
-     * What this document is: `commands` marks a slash-command list, which the `commands` designation's
-     * owner serves. A written document's own frontmatter `type` says so, and the format it was compiled
-     * with supplies a default where a whole source is one kind; a document created in the app carries
-     * whatever its creator passed. Absent, it is just a document.
-     */
-    documentType?: string;
-    /** Hash of the content source at the last apply. Absent on user-created documents. */
-    contentHash?: string;
-}
-
 interface DocumentItem {
     type: 'document';
     id: EARS.EntityId;
@@ -1286,8 +1248,6 @@ interface DocumentItem {
     isSymlinked?: boolean;
     filePath?: string;
 }
-
-type DocumentShortCode = `DOC-${number}`;
 
 type DocumentsListener = () => void;
 
@@ -1311,10 +1271,6 @@ declare namespace EARS {
         type SearchIndex = typeof SearchIndex;
         const IndexedDoc = "IndexedDoc";
         type IndexedDoc = typeof IndexedDoc;
-        const Document = "Document";
-        type Document = typeof Document;
-        const Collection = "Collection";
-        type Collection = typeof Collection;
         const Relation = "Relation";
         type Relation = typeof Relation;
         const Flow = "Flow";
@@ -1327,12 +1283,14 @@ declare namespace EARS {
         type Action = typeof Action;
         const Prompt = "Prompt";
         type Prompt = typeof Prompt;
+        const Document = "Document";
+        type Document = typeof Document;
+        const Collection = "Collection";
+        type Collection = typeof Collection;
     }
-    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Document | Entity.Collection | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt;
+    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt | Entity.Document | Entity.Collection;
     type EntityId<E extends string = string> = _apackdev_ears.EARS.EntityId<E>;
     namespace RelKind {
-        const PARENT_OF = "parent_of";
-        type PARENT_OF = typeof PARENT_OF;
         const HAS = "has";
         type HAS = typeof HAS;
         const RELATES_TO = "relates_to";
@@ -1347,9 +1305,11 @@ declare namespace EARS {
         type SPAWNED = typeof SPAWNED;
         const TRACKED = "tracked";
         type TRACKED = typeof TRACKED;
+        const PARENT_OF = "parent_of";
+        type PARENT_OF = typeof PARENT_OF;
         const Custom: <T extends string>(k: T) => T & RelKind;
     }
-    type RelKind = RelKind.PARENT_OF | RelKind.HAS | RelKind.RELATES_TO | RelKind.CONTAINS | RelKind.TRANSITIONS_TO | RelKind.INSTANCE_OF | RelKind.SPAWNED | RelKind.TRACKED | (string & {});
+    type RelKind = RelKind.HAS | RelKind.RELATES_TO | RelKind.CONTAINS | RelKind.TRANSITIONS_TO | RelKind.INSTANCE_OF | RelKind.SPAWNED | RelKind.TRACKED | RelKind.PARENT_OF | (string & {});
     namespace RoleKind {
         const Custom: <T extends string>(k: T) => T & RoleKind;
     }
@@ -1444,14 +1404,6 @@ interface ExecOnceResult {
     stdout: string;
     stderr: string;
     exitCode: number;
-}
-
-interface FieldContent {
-    type: 'field';
-    fields: Array<{
-        key: string;
-        value: string;
-    }>;
 }
 
 interface FileChangeInfo {
@@ -2850,11 +2802,6 @@ interface LibrarySystemContext {
     currentPath: string[];
 }
 
-interface ListContent {
-    type: 'list';
-    items: string[];
-}
-
 /** A page of the app server's MCP server statuses */
 type ListMcpServersParams = {
     cursor?: string | null;
@@ -2926,11 +2873,6 @@ type LogsInternalEvents = {
 };
 
 type LogsSettings = SettingsOf<'logs'>;
-
-interface MarkdownContent {
-    type: 'markdown';
-    text: string;
-}
 
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
@@ -4194,8 +4136,6 @@ type OwnEntityShapes = {
     'Note': NoteEntity;
     'BrowserTab': BrowserTabEntity;
     'BrowserBookmark': BrowserBookmarkEntity;
-    'Document': DocumentEntity;
-    'Collection': CollectionEntity;
 };
 
 /** The repositories this pack declares (apack.json features[].repositories) */
@@ -5101,11 +5041,6 @@ interface TerminalInfo {
 interface TerminalTab extends OpenFile {
     isTerminal: true;
     terminalInfo: TerminalInfo;
-}
-
-interface TextContent {
-    type: 'text';
-    text: string;
 }
 
 type Thinking = z.infer<typeof ThinkingSchema>;
