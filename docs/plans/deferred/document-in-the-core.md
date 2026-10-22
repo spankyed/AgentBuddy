@@ -1,14 +1,20 @@
 # `Document` moves to the core, and Library becomes its editor
 
-Status: deferred, with two triggers. **Revisit when something other than default-setup's Library wants
-documents** — a second pack storing them, or a second app-level derivation over them — **or when
-`extensions.commands` is wanted back** as a manifest shorthand, which this move is what makes buildable.
-The first is the condition for drawing the line the move turns on, which is where a document ends and the
-Library's view of one begins; the one consumer there is today cannot settle it.
+Status: **the move is done; the two things it was for are not.** `Document`, `Collection` and `parent_of`
+are the SDK's, with their shapes, repositories and content writers, and the Library is their editor. What
+remains deferred is what the move unlocks: `getCommands()` reading the SDK's rows instead of a pack
+contribution, and `extensions.commands` as a manifest shorthand. Both sections below stand as written.
+
+**The shape moved whole, and there is no line to draw.** This plan treated "which of these fields is a
+document and which is the Library's view of one" as the real work, to be settled by a second consumer.
+That question is closed: **default-setup's usage is the canonical `Document`.** A consumer conforms to it
+rather than negotiating with it — packs complement each other here, they do not compete over what a
+document is. So `ContentSection[]`, `shortCode` and `displayOrder` are the shape, not one pack's view of
+it, and nothing is waiting on a second consumer to decide.
 
 Compiled 2026-10-22 on `session/commands-to-the-editor`, after
 [the commands goal](../../archive/goals/goal-commands-are-host-level.md) made the chat's slash commands a
-derivation over library documents.
+derivation over library documents. The move landed on `session/document-in-the-core`.
 
 ## Why this rather than a `Command` entity
 
@@ -30,13 +36,23 @@ and its surface is the canvas. Nothing about a flow belongs to the pack that dra
 
 | | |
 |---|---|
-| **Moves** | the `Document` entity and its shape; a `documentRepository` in `@apackdev/sdk/repositories` with the base reads and writes; the Document content writer |
-| **Stays in default-setup** | the Library surface and everything that is a *view* of documents — folder navigation, the index, search, import/export, display order, and the symlink collections |
+| **Moved** | `Document`, `Collection` and the `parent_of` relation with their shapes; `documentRepository` and `collectionRepository` in `@apackdev/sdk/repositories`, with the tree mechanics — a child's parent, a folder's path, a new child's place among siblings; both content writers |
+| **Stayed in default-setup** | the Library surface and everything that is a *view* of documents — folder navigation, the index, search, import/export, the symlink collections, and every DTO |
 
-`Collection` is the harder half and may not move at all. Library's folders carry symlink paths and
-filesystem resolution, which are that feature's business rather than a core container's — so the
-container question is open, and a move that takes `Document` without `Collection` has to say what a
-document's parent is in the core.
+`Collection` was called the harder half here and was expected possibly not to move. It had to: a new
+child sorts after every sibling, and siblings are mixed — folders joined by `parent_of`, documents by
+`contains` — so `nextDisplayOrder` cannot be answered from either entity's rows alone. Taking `Document`
+without the folder and the relation would have left that one function unable to see half its input.
+
+The symlink paths that argued against moving `Collection` stayed behind: `symlinkPath` is a field on the
+shape, and resolving it is the Library's (`be/repository/symlink.ts`), untouched by the move.
+
+**The writers moved because ownership left no alternative, and they are named rather than registered.**
+A pack declares content writers only for entity types it owns — the declaration schema refuses the rest,
+for authored manifests and native ones alike — so once these entities were the SDK's, no pack could
+contribute their writers, the app included. `sdkContentWriters` (`apack-sdk/src/content/writers.ts`)
+names them, and the writer registry consults a pack's first and falls back to it. Static, so there is no
+import order in which they can be missing.
 
 ## What it buys
 
@@ -105,41 +121,54 @@ wanted for — the hand-written directory, format reference and field-section co
 change and no new semantics. What it does not give is commands *declared in the manifest*, which is what
 the section above is for.
 
-## What it costs, which is the reason to wait
+## The shape is default-setup's, deliberately
 
-**`DocumentEntity`'s shape becomes public, change-controlled API** (`packages/apack-sdk/TYPED-EARS.md`),
-and today that shape is frankly library-specific:
+`DocumentEntity` is public, change-controlled API (`packages/apack-sdk/TYPED-EARS.md`):
 
 ```ts
 interface DocumentEntity extends BaseEntity {
   name: string
-  content: ContentSection[]      // the Library's section model
-  shortCode: DocumentShortCode   // the Library's addressing
-  displayOrder?: number          // the Library's ordering
+  content: ContentSection[]      // sections, as the markdown compiler parses them
+  shortCode: DocumentShortCode   // DOC-n, how a document is addressed
+  displayOrder?: number          // its place among its siblings, folders included
   tags?: string[]
-  documentType?: string          // how commands are found
+  documentType?: string          // what the document is; `commands` marks a slash-command list
   contentHash?: string
 }
 ```
 
-So the move is not a relocation, it is a **split**: which of those is a document, and which is the
-Library's view of one? `content` as `ContentSection[]` is the sharpest case — a core document probably
-holds text or blocks, and sections are a UI model. `shortCode` and `displayOrder` read as the Library's
-outright. And `documentType` would have to be blessed as a core concept, since it is how the app finds
-commands.
+This plan originally called that a problem — the fields read as one feature's model being fixed as every
+pack's, and it wanted a split drawn from a second consumer before committing.
 
-That split needs a second consumer to answer, because the first one's shape is indistinguishable from
-the general one when there is only one. Doing it now would fix the Library's model as every pack's.
+**That is settled the other way, and it is the simpler answer.** These fields are what a document is. A
+pack storing documents gets the same sections, the same addressing and the same ordering as the app's own,
+which is what makes a written row indistinguishable from one a user created — the property the content
+goldens hold the move to. A core shape that omitted them would force every consumer to reinvent them and
+then disagree, which is the competition this avoids.
+
+`shortCode` and `displayOrder` are the load-bearing pair: they are assigned at write time, and they are
+why the writers had to move with the entities rather than staying behind as a pack contribution.
 
 ## The seam
 
-- `packages/apack-sdk/src/types/sdk-entities.ts` — `SDK_ENTITIES` and the shape.
-- `packages/apack-sdk/src/repositories/` — the new `documentRepository`, as `flowRepository` sits there.
-- `packages/default-setup/apack.json` — `features.library.entities` loses `Document`, `content.writers`
-  loses its entry, and `features.library.getCommands` goes with the designation.
-- `packages/default-setup/src/features/library/be/repository/` — becomes views over the SDK's, the way
-  `features/flows/be/repository/` already is.
-- `packages/apack-sdk/src/commands/index.ts` — `getCommands()` reads the repository directly.
+Done:
+
+- `packages/apack-sdk/src/types/sdk-entities.ts` — `SDK_ENTITIES.Document`/`.Collection`,
+  `SDK_REL_KINDS.PARENT_OF`, and both shapes.
+- `packages/apack-sdk/src/repositories/document-repository.ts` — `documentRepository`,
+  `collectionRepository` and the tree mechanics, as `flowRepository` sits beside them.
+- `packages/apack-sdk/src/content/document-writers.ts` — both writers, named by `sdkContentWriters`.
+- `packages/default-setup/apack.json` — `features.library.entities` keeps only its own two,
+  `data.relations` loses `parent_of`, and `content.writers` keeps only `Note`. The `library` and
+  `commands` formats still name `Collection` and `Document`, which a format may do for an SDK entity.
+- `packages/default-setup/src/features/library/be/repository/` — views over the SDK's, calling them by
+  the SDK's names.
+
+Still to do, and what the move was for:
+
+- `packages/apack-sdk/src/commands/index.ts` — `getCommands()` reads the repository directly, retiring
+  `features.<id>.getCommands`, the `commands` designation, `COMMANDS_CHANGED`, the library watcher,
+  `registry.commandProviders`, `checkCommandProviderClaims` and `commands/role.ts`.
 
 And for the shorthand, once the above is done:
 
@@ -150,5 +179,5 @@ And for the shorthand, once the above is done:
 - `packages/apack-sdk/src/build/generate-entries.ts` — the applier for the desugared key, which is the
   existing per-key emission and not a new mechanism.
 
-Do it when a trigger fires: the split drawn from two consumers, or the shorthand asked for. Not before —
-the shape of the first is what the second is built on.
+Do the remaining two when a trigger fires. The shorthand is now unblocked — the SDK owns the entity, so
+its build can synthesize the records itself for any pack, which was the whole argument for moving first.
