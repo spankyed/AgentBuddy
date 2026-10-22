@@ -116,6 +116,16 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
     // an entity type with the whole database rather than an error, so this is the one chance to say so
     if (db.schema.degraded !== undefined) io.err(`Warning: ${db.schema.degraded}`);
     for (const note of db.schema.notes) io.err(`Note: ${note}`);
+    // What the schema could not tell the user, now that the data is here: which types are in it that nothing
+    // declares. A read of one is fine — `consoleScope` names it — and a write is not, which is the half
+    // `degraded` cannot cover, since its condition is that no pack was read at all
+    const undeclared = undeclaredEntityTypes(db);
+    if (undeclared.length > 0) {
+      const listed = undeclared.map(({ type, rows }) => `${type} (${rows})`).join(', ');
+      io.err(`Note: no installed pack declares these entity types, which the data holds anyway: ${listed}.`);
+      io.err('  A query may name them here. A write that names one would create a row called after the type '
+        + 'instead of an entity, so name their pack with --schema-from before changing them.');
+    }
     return lock ? { ...db, close: () => { try { db.close(); } finally { lock.release(); } } } : db;
   } catch (error) {
     lock?.release();
@@ -149,7 +159,35 @@ export async function withDatabase<T>(db: AppDatabase, use: () => Promise<T> | T
   return result!;
 }
 
-/** `EARS` for console code: the SDK's, with the installed packs' entity types and relation kinds, as the app's console has it */
+/**
+ * The entity types the data holds that no installed pack declares, with how many rows each has, commonest first.
+ *
+ * Rows outlive the pack that declared their types — uninstalling deletes a pack's directory, not its rows — so a
+ * data dir can hold types its schema knows nothing about, which `InstalledSchema.degraded` says it cannot detect
+ * (its condition is "no pack was read", not "the rows are accounted for"). The types are only knowable after
+ * hydration, which is why this is asked of the open database rather than of the schema.
+ */
+export function undeclaredEntityTypes(db: AppDatabase): Array<{ type: string; rows: number }> {
+  const declared = db.schema.getRegisteredEntityTypes();
+  return db.query.getAllEntityTypes()
+    .filter((type) => !declared.has(type))
+    .map((type) => ({ type, rows: db.query.getEntitiesOfType(type).length }))
+    .sort((left, right) => right.rows - left.rows || left.type.localeCompare(right.type));
+}
+
+/**
+ * `EARS` for console code: the SDK's names, the installed packs' — and the entity types the data turned out to
+ * hold, so that a type whose pack is gone can still be named in a query.
+ *
+ * **Declared wins on a collision**, so a pack's name keeps the value it declared and an observed type only ever
+ * adds a name that stood for nothing. That ordering is the whole of what keeps this a widening of the console
+ * rather than of the schema: `db.schema` still means *declared*, which is what the engine's entity-type check
+ * and a write go on.
+ *
+ * **`relKinds` is deliberately not widened.** `EARS.RelKind.PARENT_OF` is `'parent_of'` and the data holds only
+ * the value, so no amount of observation produces the alias; a dir with no snapshots has to be given one.
+ */
 export function consoleScope(db: AppDatabase): ConsoleScope {
-  return { EARS: consoleEars({ entities: db.schema.entities, relKinds: db.schema.relKinds }) };
+  const observed = Object.fromEntries(db.query.getAllEntityTypes().map((type) => [type, type]));
+  return { EARS: consoleEars({ entities: { ...observed, ...db.schema.entities }, relKinds: db.schema.relKinds }) };
 }

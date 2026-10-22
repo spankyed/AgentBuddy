@@ -97,9 +97,17 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   if (!readOnly && schema.degraded !== undefined) {
     throw new Error(`${schema.degraded}\n\nThis command changes the database, and an incomplete schema would write the wrong rows.`);
   }
+  // **The engine knows the types in the data as well as the declared ones, and `schema` keeps meaning declared.**
+  // Rows outlive the pack that declared their types, and for a name it has never heard of the engine takes the
+  // name for an id — so `qx('Note')` finds nothing and `tx('Note')` writes a row literally called `Note`. The
+  // types present are only knowable after hydration, and `isEntityType` is a live closure consulted per call,
+  // so they are added to this set once their rows are in. It stays separate from `schema`, whose
+  // `getRegisteredEntityTypes` is a backup's yardstick for "no installed pack declares this"
+  // (`apack-cli/src/commands/db/destructive.ts:190`), which an observed set would answer wrongly.
+  const knownToEngine = new Set(schema.getRegisteredEntityTypes());
   const { store, engine } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
-    schema,
+    schema: { getRegisteredEntityTypes: () => knownToEngine },
     readOnly,
     log,
   });
@@ -111,6 +119,10 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
     store.close();
     throw error;
   }
+  // Hydration indexes an entity by its type, so this is the set of types the data turned out to hold. It runs
+  // after hydration and not during it: nothing hydration does consults the check (a bulk load doesn't), so the
+  // set it would be widening from is the data it is reading.
+  for (const type of engine.query.getAllEntityTypes()) knownToEngine.add(type);
   // Installed so `@apackdev/ears`'s free functions (qx, tx, the finders) read this database until `close()`, which
   // puts back whatever was installed before rather than leaving none. `apack db`, the one caller today, has no
   // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command

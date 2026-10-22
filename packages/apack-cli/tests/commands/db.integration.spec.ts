@@ -1111,3 +1111,62 @@ describe('apack db', () => {
     expect((await run(['nope'])).error?.message).toMatch(/^Unknown db command: nope/);
   });
 });
+
+// A data dir whose rows outlived the pack that declared their types: the rows are there and nothing accounts for
+// the names. This is the measured case — a query naming an entity type answered with the whole database.
+describe('a data dir whose packs are gone', () => {
+  /** An app's data dir with the pack uninstalled, which is what deleting a pack's directory leaves behind */
+  async function withoutItsPack(): Promise<{ dir: string; packDir: string }> {
+    const dir = await appDataDir();
+    const packDir = path.join(_appDirOf(dir), 'packs', 'default-setup');
+    const kept = tempDir('apack-pack-');
+    fs.cpSync(packDir, kept, { recursive: true });
+    fs.rmSync(packDir, { recursive: true });
+    return { dir, packDir: kept };
+  }
+
+  it('answers a query that names an undeclared type with that type, not with everything', async () => {
+    const { dir } = await withoutItsPack();
+    const everything = await ok(['query', 'return qx().ids().length', '--data-dir', dir]);
+    const notes = await ok(['query', 'return qx(EARS.Entity.Note).ids().sort()', '--data-dir', dir, '-o', 'json']);
+
+    expect(JSON.parse(notes.out)).toEqual(['Note-a', 'Note-b']);
+    // The assertion only means something while the two differ: the bug answered a query for Notes with this
+    expect(Number(everything.out)).toBeGreaterThan(2);
+  });
+
+  it('says which types nothing declares, and how many rows each has', async () => {
+    const { dir } = await withoutItsPack();
+    const { err } = await ok(['query', 'return 1', '--data-dir', dir]);
+
+    expect(err).toContain('Note (2)');
+    expect(err).toContain('no installed pack declares these entity types, which the data holds anyway');
+    expect(err).toContain('name their pack with --schema-from before changing them');
+  });
+
+  // An alias is not in the data, only its value, so this is the half observation cannot supply
+  it('does not invent a relation kind, whose alias no row holds', async () => {
+    const { dir, packDir } = await withoutItsPack();
+    const observed = await ok(['query', 'return typeof EARS.RelKind.PARENT_OF', '--data-dir', dir]);
+    expect(observed.out).toBe('undefined');
+
+    const named = await ok(['query', 'return EARS.RelKind.PARENT_OF', '--data-dir', dir, '--schema-from', packDir]);
+    expect(named.out).toBe('parent_of');
+  });
+
+  it('declares them again when --schema-from names the pack, and stops warning', async () => {
+    const { dir, packDir } = await withoutItsPack();
+    const { out, err } = await ok(['query', 'return qx(EARS.Entity.Note).ids().length', '--data-dir', dir, '--schema-from', packDir]);
+
+    expect(out).toBe('2');
+    expect(err).not.toContain('no installed pack declares');
+    expect(err).not.toContain('has no packs installed');
+  });
+
+  // Declared wins, so a pack's name keeps the value it declared rather than the type it happens to be stored as
+  it('lets a declared name keep its declared value', async () => {
+    const { dir, packDir } = await withoutItsPack();
+    const { out } = await ok(['query', 'return EARS.Entity.Note', '--data-dir', dir, '--schema-from', packDir]);
+    expect(out).toBe('Note');
+  });
+});
