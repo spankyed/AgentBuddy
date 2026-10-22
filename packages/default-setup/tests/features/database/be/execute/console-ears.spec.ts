@@ -25,10 +25,16 @@ describe("the console's EARS", () => {
     await expect(executeTransaction('return EARS.Entity.Memo')).resolves.toBe('Memo')
   })
 
-  it("stops naming a pack's types once it is unregistered", async () => {
+  // It read as `undefined` before, and `qx(undefined)` means every entity — so a query for the gone pack's
+  // type answered with the whole database instead of failing
+  it("refuses a pack's types once it is unregistered", async () => {
     registerPack(MEMO_PACK)
     unregisterPack(MEMO_PACK.id)
 
-    await expect(executeQuery('return EARS.Entity.Memo')).resolves.toBeUndefined()
+    await expect(executeQuery('return EARS.Entity.Memo'))
+      .rejects.toThrow('"Memo" is not an entity type this database can account for')
+    await expect(executeQuery('return qx(EARS.Entity.Memo).ids()'))
+      .rejects.toThrow('"Memo" is not an entity type this database can account for')
+    await expect(executeQuery('return EARS.Entity.Note')).resolves.toBe('Note')
   })
 })
