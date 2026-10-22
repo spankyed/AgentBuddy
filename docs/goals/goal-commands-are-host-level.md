@@ -481,4 +481,6 @@ or `extensions.commands` as a manifest key.
   governs where they arrive.
 - Commands stay `Document`s, and a `Command` entity is **dropped for good** — not deferred. The Library
   surface *is* their editing UI, so the entity would trade the provider getter for a whole new editor.
-  Don't raise it again as an alternative or as future work.
+  Don't raise it again as an alternative or as future work. The direction that does hold is the inverse:
+  `Document` into the core with Library as its editor, as flows already work
+  ([document-in-the-core.md](../plans/deferred/document-in-the-core.md)).
