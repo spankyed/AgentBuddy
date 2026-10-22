@@ -33,6 +33,7 @@ which is 92 `untypedQx` sites, 168 `untyped{Create,Upsert,Write}` and 133 `insta
 | the engine's pack-facing face | `engine.query`, `EarsQuery` | 374, with 37 naming the type |
 | the LMDB partition reader | `store.query(partition)`, `LmdbQuery` | 26 |
 | a data dir's open engine | `db.query` (`AppDatabase`) | 28 |
+| four lookups that are `find`s | `queryEntitiesByAttribute`, `…ByRole`, `…InRelationTo`, `…ByRelationTo` | 39 |
 
 Meanwhile the operation that *is* a query is `qx`: 476 sites in 68 files. The word is spent three times on
 things that are not queries and never on the thing that is.
@@ -107,9 +108,20 @@ next**, and any other order touches the same lines twice.
 | 1 | No ambient engine (that plan's change 4) | 92 + 168 + 133 | It **deletes** the names the later phases would otherwise rename. Anything before it renames functions into existence and then removes them |
 | 2 | Flatten the face: `engine.query.X` → `engine.X`; `EarsQuery` → `Ears` | 374 + 37 | Frees `query`. Before phase 1 it would touch every free function's body twice |
 | 3 | `qx` → `query`, with `qx` kept as the console's injected name | 476 in 68 files | Mechanical, and the typecheck names every site |
-| 4 | The other two "query"s: `store.query(partition)`, `db.query` | 26 + 28 | Last, so that when it lands the word means one thing |
+| 4 | Every other "query": `store.query(partition)` → `store.read(partition)` and `LmdbQuery` → `LmdbReader`; `AppDatabase.query` → `db.ears` (beside its `db.admin`); `queryEntities*` → `findEntities*` | 26 + 28 + 39 | Last, so that when it lands the word means one thing |
 
 Phase 1 is the leverage and it is already planned and owned. Phases 2–4 are worth nothing until it lands.
+
+**Phase 4's targets are the repo's own rules applied, not inventions.** `read` reads disk (root
+`CLAUDE.md`, Naming), and `LmdbQuery` is exactly that — the partition read straight from the files without
+hydrating — so it is `store.read(partition)` returning an `LmdbReader`. `AppDatabase` holds a field per thing
+it owns, and after phase 2 that field holds `Ears`, so it is `db.ears` beside the `db.admin` already there.
+And `find` is reserved for *"searches and domain queries"*, which is what the four `queryEntities*` lookups
+are: they become `findEntities*` and join the family they belonged to all along.
+
+**What the `untyped` prefix is attached to afterwards**, since it is the pack-facing surface and a pack's
+code names it: `untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`. Phase 3 renames
+`untypedQx` with `qx`; the other three keep their names throughout.
 
 ## Verification
 
@@ -126,8 +138,10 @@ Renames are proved by the typecheck, so the cases worth writing are the ones a r
    moves (`apack-cli/tests/_support/facade-packs.ts`) and `facade:update -w @app/default-setup` re-records.
    This is the one place [`ears-public-api.md`](ears-public-api.md#7-everything-that-teaches-the-api-moves-with-it)'s
    inventory does not already cover, because renaming `tx` left that line's other entries alone.
-4. **Phase 4:** nothing in `packages` names `query` for a thing that is not one. Derived from the
-   declarations rather than grepped, so it cannot look at nothing.
+4. **Phase 4:** `query` names one thing. Asserted over the exported declarations of `@apackdev/ears`,
+   `/sdk` and `@apackdev/host` rather than grepped, so it cannot look at nothing, and it fails today —
+   four populations answer to the word (the table in [Why](#why)), which is what makes the case worth
+   having rather than a gate that cannot fire.
 5. `npm run spec` while working, `npm run chain` per phase. Phase 3 moves a public export of
    `@apackdev/ears` and `@apackdev/sdk`, so it runs `api:update` and `facade:update -w @app/default-setup`
    and the diff is read. **`api:update` writes CRLF where the committed reports are LF** (measured
