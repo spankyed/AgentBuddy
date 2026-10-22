@@ -211,7 +211,7 @@ the move, default-setup's predicate asks only the reference key, and the editor 
 state directly — it owns that key now, so the manifest need not carry a predicate for it.
 
 Check how `declaration-binding` composes the predicate across packs before relying on this
-(`apack-host/tests/fe/declaration-binding.spec.ts`, `renderer/tests/runtime/native-editor.spec.ts`).
+(`apack-host/tests/fe/declaration-binding.spec.ts`, `renderer/tests/runtime/text-editor.spec.ts`).
 
 ## The change, file by file
 
@@ -453,7 +453,7 @@ exported. `useCommandItems` reads Phase 2's accessor instead of `useSurfaceState
 **Done when:** `npm run typecheck`; `npm run exports:update -w @apackdev/ui` and `api:update` with
 every line of the diff a path this phase moved; the editor suites pass —
 `default-setup/tests/extensions/tiptap/`, `apack-host/tests/fe/declaration-binding`,
-`renderer/tests/runtime/native-editor`, `apack-cli/tests/build/editor-declarations`.
+`renderer/tests/runtime/text-editor`, `apack-cli/tests/build/editor-declarations`.
 
 **Mutation:** the popup opened in a window where threads was never spawned still lists every command —
 the behaviour this goal exists for, and the one no current test covers.

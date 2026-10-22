@@ -86,7 +86,7 @@ describe('parseManifest', () => {
     expect(external.diagnostics[0].message).toContain('"first" and "second"');
     const native = _NativePackDeclarationSchema.safeParse({ id: 'editor', ...contributions });
     expect(native.success).toBe(false);
-    if (native.success) throw new Error('Duplicate native editor extension accepted');
+    if (native.success) throw new Error('Duplicate native text editor extension accepted');
     expect(native.error.issues[0].path).toEqual(['textEditor', 'second', 'extensions', 'mention']);
     expect(native.error.issues[0].message).toContain('"first" and "second"');
   });
