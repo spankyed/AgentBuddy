@@ -105,8 +105,12 @@ export interface PackRegistration {
   contentWriters?: Record<string, import('../content/writers.ts').ContentWriter>;
   /** The pack's appliers, one per content key (apack.json `content.sources`), which `importCompiledContent` runs for the pack's compiled content */
   appliers?: import('../utils/apply.ts').ContentApplier[];
-  /** Build-checked command identities from extensions.commands; discovery reads catalog declarations. */
-  commands?: import('./pack-commands.ts').PackCommand[];
+  /**
+   * The commands this pack serves, where it plays the `commands` designation — a function, because
+   * they are content rows that change as the user edits them, and the registry refuses the field
+   * from a pack that does not play the role.
+   */
+  commandProvider?: () => import('../commands/index.ts').PackCommand[];
   dependencies?: Record<string, string>;
   /** Pack-owned preference groups declared inline in extensions.settings. */
   settings?: Record<string, import('./settings-definition.ts').SettingsDefinition>;

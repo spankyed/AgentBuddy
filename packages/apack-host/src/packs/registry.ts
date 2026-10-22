@@ -6,7 +6,9 @@ import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
+import { COMMANDS_ROLE } from '@apackdev/sdk/commands';
+import { splitRef } from '@apackdev/sdk/ids';
+import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
 import { eventBindingProblem } from './event-binding.ts';
 import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
 /**
@@ -72,6 +74,11 @@ export function packSystemIds(reg: PackRegistration): FeatureRef[] {
 }
 
 /** Role → the ref of the feature playing it: its system and its surface share it */
+/** Whether one of this pack's features plays the commands role, read from what it registered */
+function playsCommandsRole(pack: { designations: Record<string, string> }): boolean {
+  return pack.designations[COMMANDS_ROLE] !== undefined;
+}
+
 function designationsOf(reg: PackRegistration): Record<string, FeatureRef> {
   return Object.fromEntries(featuresOf(reg).flatMap(({ ref, feature }) => (feature.designation ? [[feature.designation, ref]] : [])));
 }
@@ -324,14 +331,13 @@ function admitContributions(registration: PackRegistration, { steps: declaration
     blocks: (registration.blocks ?? []).map(value => [value.type, value] as const),
     contentWriters: Object.entries(registration.contentWriters ?? {}),
     appliers: [...(registration.appliers ?? [])],
-    commands: (registration.commands ?? []).map(value => ({ ...value })),
+    commandProvider: registration.commandProvider,
   };
 }
 type AdmittedPackContributions = ReturnType<typeof admitContributions>;
 
 /** Build candidate lookups without binding services or writing to the engine. */
 function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
-  const commandOwners = new Map<string, string>();
   const tables = {
     designations: createDesignationStore(),
     steps: createOwnedStepStore<StepBackendBinding>(),
@@ -348,10 +354,12 @@ function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
     for (const [type, value] of pack.blocks) tables.blocks.set(type, value);
     for (const [name, value] of pack.contentWriters) tables.contentWriters.register(name, value, pack.id);
     tables.appliers.register(pack.id, pack.appliers);
-    for (const { name } of pack.commands) {
-      const owner = commandOwners.get(name);
-      if (owner !== undefined && owner !== pack.id) throw new Error(`Command collision: "${name}" — pack "${pack.id}" vs "${owner}"`);
-      commandOwners.set(name, pack.id);
+    // Only the pack whose feature plays the role may serve the commands. There is no collision to
+    // refuse — the designation store already refused a second claimant — so what is left is a pack
+    // declaring a provider it has no standing to serve, which is a manifest error and says so.
+    if (pack.commandProvider !== undefined && !playsCommandsRole(pack)) {
+      throw new Error(`Pack "${pack.id}" declares a command provider without the "${COMMANDS_ROLE}" designation: `
+        + `give one of its features that designation, or drop \`features.<id>.commands\``);
     }
     for (const [name, value] of pack.repositories) tables.repositories.set(name, value);
   }
@@ -572,8 +580,6 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
         throw new Error(`Native pack "${registration.id}" runtime ears.relKinds does not match its admitted declarations`);
       }
-      const commands = commandBindingProblem(declaration.commands, registration.commands);
-      if (commands) throw new Error(`Native pack "${registration.id}" runtime ${commands} does not match its admitted declarations`);
       const migrationProblem = migrationBindingProblem(declaration.migrations, registration.migrations);
       if (migrationProblem) throw new Error(`Native pack "${registration.id}" runtime ${migrationProblem} does not match its admitted declarations`);
       const lifecycleProblem = lifecycleBindingProblem(declaration.lifecycle, registration.lifecycle);
@@ -867,16 +873,19 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     surfaceDefaults: () => Object.fromEntries(catalog.surfaces()
       .filter(surface => surface.origin !== 'source' && surface.enabled === true && surface.declaration.defaultVisible !== undefined)
       .map(surface => [surface.featureRef, surface.declaration.defaultVisible!])),
-    commands: () => catalog.commands().filter(command => {
-      if (command.enabled === false || !admitted.has(command.packId)) return false;
-      if (command.origin === 'native') {
-        const declaration = catalog.getSnapshot().native.find(pack => pack.id === command.packId);
-        return !commandBindingProblem(declaration?.commands, admitted.get(command.packId)!.commands);
-      }
-      const origin = origins.get(command.packId);
-      return origin !== undefined && origin.declarationRevision === command.declarationRevision
-        && origin.buildRevision === command.buildRevision;
-    }).map(({ name, placeholder }) => ({ name, placeholder })),
+    /**
+     * What the feature playing the `commands` designation serves.
+     *
+     * A role rather than a union over every pack: exactly one feature owns where editable commands
+     * live, and `tables.designations` has already refused a second claimant. The provider is called
+     * on every read because its rows are content the user edits, so there is nothing to cache.
+     */
+    commands: () => {
+      const ref = tables.designations.get(COMMANDS_ROLE);
+      const packId = ref === undefined ? undefined : splitRef(ref)?.packId;
+      const provider = packId === undefined ? undefined : admitted.get(packId)?.commandProvider;
+      return provider ? provider().map(({ name, placeholder }) => ({ name, placeholder })) : [];
+    },
     help: catalog.help,
   };
 }

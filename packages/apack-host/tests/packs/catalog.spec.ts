@@ -53,7 +53,7 @@ describe('contribution catalog data', () => {
       const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0', consumes: { services: ['host/onboarding'] },
         features: { notes: { description: 'Feature declaration fixture.', surface: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: {
           dsl: { cold: { entry: 'src/unavailable.ts', targets: ['monaco'], prefix: 'cold:' } },
-          commands: { cold: { placeholder: 'Cold command' } }, artifacts: { cold: { icon: 'FileText', fe: 'src/unavailable.vue' } },
+          artifacts: { cold: { icon: 'FileText', fe: 'src/unavailable.vue' } },
           blocks: { cold: { kind: 'input', fe: 'src/unavailable.vue', be: 'src/unavailable.ts#backend' } }, help: { path: 'help' }, ...frontend } };
       const snapshot = { declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
         manifest, eventContracts: eventContractsFixture(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: { Action: 'notes' }, facades: {},
@@ -84,7 +84,6 @@ describe('contribution catalog data', () => {
       expect(catalog.surfaces()).toMatchObject([{ featureRef: 'help-pack/notes', origin: 'installed', enabled: false, declaration: { label: 'Cold Notes', canvas: 'src/canvas.vue' } }]);
       expect(catalog.dsl()).toMatchObject([{ type: 'cold', packId: 'help-pack', enabled: false, buildRevision: accepted.revision,
         definitions: snapshot.dslDefinitions.cold, declaration: { prefix: 'cold:' } }]);
-      expect(catalog.commands()).toMatchObject([{ name: 'cold', placeholder: 'Cold command', packId: 'help-pack', enabled: false }]);
       expect(catalog.artifacts()).toMatchObject([{ type: 'cold', packId: 'help-pack', enabled: false, buildRevision: accepted.revision,
         declaration: { icon: 'FileText', fe: 'src/unavailable.vue' } }]);
       expect(catalog.blocks()).toMatchObject([{ type: 'cold', packId: 'help-pack', enabled: false, buildRevision: accepted.revision,

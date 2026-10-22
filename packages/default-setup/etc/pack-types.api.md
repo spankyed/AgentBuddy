@@ -8,9 +8,9 @@ import * as _apackdev_sdk from '@apackdev/sdk';
 import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@apackdev/sdk';
 import { ArtifactItem } from '@apackdev/sdk/artifacts';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
+import { PackCommand } from '@apackdev/sdk/commands';
 import { HostSurfaceEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PublicSurfaceInboxOf, Qualified, Reply, SurfaceInboxOf, TypedSendToSurface, TypedSendToSystem, TypedSendToWindow } from '@apackdev/sdk/events';
 import { HotkeysMap, NavHistory, SurfaceInbox, SurfaceStateOf, TabGroup } from '@apackdev/sdk/fe';
-import { PackCommand } from '@apackdev/sdk/framework';
 import { Simplify as Simplify$1 } from '@apackdev/sdk/helpers';
 import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@apackdev/sdk/models';
 import * as _apackdev_sdk_repositories from '@apackdev/sdk/repositories';
@@ -1238,6 +1238,8 @@ interface DocumentDTO {
     content: ContentSection[];
     shortCode: DocumentShortCode;
     tags: string[];
+    /** What this document is, from its frontmatter `type`: `commands` marks a slash-command list. */
+    documentType?: string;
     collectionId?: EARS.EntityId;
     collectionPath?: string[];
     displayOrder: number;
@@ -1253,6 +1255,8 @@ interface DocumentEntity extends BaseEntity {
     displayOrder?: number;
     /** Free-form tags, stored directly on the document as a string array. */
     tags?: string[];
+    /** What this document is, from its frontmatter `type`: `commands` marks a slash-command list. */
+    documentType?: string;
     /** Hash of the content source at the last apply. Absent on user-created documents. */
     contentHash?: string;
 }
@@ -2206,6 +2210,7 @@ type IncomingLibraryEvents = {
     content: ContentSection[];
     tags: string[];
     collectionId?: string;
+    documentType?: string;
 } | {
     type: 'UPDATE_DOCUMENT';
     id: string;
@@ -2794,9 +2799,12 @@ declare class LibraryService {
     findByName(name: string): Promise<DocumentDTO | undefined>;
     findByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined>;
     /**
-     * The chat's slash commands: eligible pack declarations in catalog order, then the field sections
-     * of every document in the commands folder, in document
-     * order (then name). A command defined twice keeps the first, so a document can't shadow a declared one.
+     * The chat's slash commands: the field sections of every command document, in document order then
+     * name, one `**name**: placeholder` field per command.
+     *
+     * **One source, so no precedence rule.** These used to be merged with declarations from
+     * `extensions.commands`, keyed so a document could not shadow one; commands are content now, and the
+     * two entries that were manifest keys are `src/content/commands/chat.md`.
      */
     commands(): PackCommand[];
     getText(id: EARS.EntityId): Promise<string | undefined>;
@@ -2806,6 +2814,8 @@ declare class LibraryService {
         content: string | ContentSection[];
         tags?: string[];
         parentId?: string;
+        /** What the document is: `commands` makes it a slash-command list */
+        documentType?: string;
     }): Promise<DocumentDTO>;
     update(params: {
         id: string;
@@ -6246,8 +6256,8 @@ declare const flowsQueries: {
 declare function getHandle(key: string): CodexTurnHandle | undefined;
 
 declare const libraryCommands: {
-    readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, id?: string, contentHash?: string) => DocumentDTO;
-    readonly updateDocument: (id: EARS.EntityId, name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, contentHash?: string) => DocumentDTO;
+    readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, id?: string, contentHash?: string, documentType?: string) => DocumentDTO;
+    readonly updateDocument: (id: EARS.EntityId, name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, contentHash?: string, documentType?: string) => DocumentDTO;
     readonly deleteDocument: (id: EARS.EntityId) => void;
     readonly createCollection: (name: string, description?: string, parentId?: EARS.EntityId, id?: string, contentHash?: string) => CollectionDTO;
     readonly updateCollection: (id: EARS.EntityId, name: string, description?: string, contentHash?: string) => CollectionDTO;

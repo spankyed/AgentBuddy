@@ -155,7 +155,6 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   steps: z.lazy(() => ExtensionsSchema.shape.steps),
   artifacts: z.lazy(() => ExtensionsSchema.shape.artifacts),
   blocks: z.lazy(() => ExtensionsSchema.shape.blocks),
-  commands: z.lazy(() => ExtensionsSchema.shape.commands),
   dsl: z.lazy(() => ExtensionsSchema.shape.dsl),
   dslDefinitions: declarationRecord(z.string()).optional(),
   entityDestinations: declarationRecord(z.string().min(1), z.string().min(1)).optional(),
@@ -164,6 +163,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
     description: true, entities: true, designation: true, settings: true, surface: true, references: true, services: true, repositories: true,
+    commands: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
   if (Object.keys(declaration.migrations?.pack ?? {}).length && declaration.version === undefined) {
@@ -610,18 +610,6 @@ export const LifecycleConfigSchema = z.object({
 const ServicesSchema = declarationRecord(z.string().regex(_SERVICE_NAME_PATTERN, 'Must be an identifier'), ExportTargetSchema);
 
 /**
- * A command's name, which is its key: what the user types after the `/`. Stricter than a contributed
- * type's, which admits an underscore — a command is typed, so it keeps to letters, digits and hyphens.
- */
-const COMMAND_NAME_SCHEMA = z.string()
-  .regex(/^[a-z][a-z0-9-]*$/, 'Must be a lowercase letter, then lowercase letters, digits and hyphens');
-
-/** A slash command a pack declares: the chat lists it, and a `user.command` event carries its name */
-export const CommandEntrySchema = z.object({
-  placeholder: z.string().min(1).describe('What the chat shows after the command: the argument it takes, or what it does.'),
-}).strict();
-
-/**
  * A feature id: the key its entry sits under. It becomes a name in generated code, so unlike a step or
  * block *type* it is an identifier — no hyphens, no underscores — and not a word generated code already
  * uses. Being a key is what makes a duplicate unrepresentable: two features with one id used to collapse
@@ -643,6 +631,8 @@ export const FeatureEntrySchema = z.object({
     .describe('Services. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
   repositories: declarationRecord(IdentifierSchema, ExportTargetSchema)
     .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
+  commands: ExportTargetSchema
+    .describe('"path#exportName" of this feature\'s command provider: a function returning the slash commands it serves. Only the feature playing the `commands` designation may declare one — the commands themselves are content, not manifest entries.').optional(),
   references: ReferencesSchema.describe('Reference identities and presentation, with reactive item-provider exports. Entity opening is declared separately by the destination surface contract.').optional(),
 }).strict();
 
@@ -701,16 +691,11 @@ const ExtensionsSchema = z.object({
   steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Inline node and editor data with explicit build, component, layout, type and runtime bindings.'),
   artifacts: extensionPoint(ArtifactEntrySchema, 'Artifact types this pack contributes. Each names its icon and viewer.'),
   blocks: extensionPoint(BlockEntrySchema, 'Message blocks this pack contributes. Each names where its code lives.'),
-  commands: extensionPoint(
-    CommandEntrySchema,
-    'Slash commands this pack adds to the chat, keyed by the name typed after the "/". Sending one fires a `user.command` event the pack\'s flows handle.',
-    COMMAND_NAME_SCHEMA,
-  ),
   services: ServicesSchema
     .describe('Pack-level services, belonging to no one feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file. A feature\'s own are its `services`.').optional(),
   dsl: declarationRecord(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
   ...FrontendConfigSchema.shape,
-}).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions.');
+}).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, services, DSL types, help articles and frontend extensions.');
 
 
 // ── Main manifest schema ────────────────────────────────────────────

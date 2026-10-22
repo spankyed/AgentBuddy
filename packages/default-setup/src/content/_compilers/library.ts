@@ -23,7 +23,11 @@ function toRecords(items: MarkdownItem[]): ContentItem[] {
     const content = parseMarkdownSections(item.body || item.text);
     const tags = Array.isArray(item.frontmatter.tags) ? item.frontmatter.tags.map(String) : [];
     const resolvedTags = tags.length ? tags : ['default'];
-    return { entity: 'Document', name, content, tags: resolvedTags, contentHash: contentHash({ name, content, tags: resolvedTags }) };
+    // What the document is, declared in its own frontmatter rather than inferred from where it sits. In
+    // the hash with everything else, so changing it is a content change the apply offers.
+    const documentType = text(item.frontmatter.type);
+    return { entity: 'Document', name, content, tags: resolvedTags, ...(documentType && { documentType }),
+      contentHash: contentHash({ name, content, tags: resolvedTags, documentType }) };
   });
 }
 

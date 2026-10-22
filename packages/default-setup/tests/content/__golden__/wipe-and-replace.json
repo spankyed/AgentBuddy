@@ -262,6 +262,11 @@
         "created": 5,
         "updated": 0,
         "skipped": 0
+      },
+      "commands": {
+        "created": 0,
+        "updated": 0,
+        "skipped": 0
       }
     }
   },
@@ -529,6 +534,11 @@
         "created": 5,
         "updated": 0,
         "skipped": 0
+      },
+      "commands": {
+        "created": 0,
+        "updated": 0,
+        "skipped": 0
       }
     }
   },
@@ -788,6 +798,11 @@
       },
       "library": {
         "created": 6,
+        "updated": 0,
+        "skipped": 0
+      },
+      "commands": {
+        "created": 0,
         "updated": 0,
         "skipped": 0
       }

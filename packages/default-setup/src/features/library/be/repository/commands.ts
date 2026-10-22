@@ -16,6 +16,8 @@ export const libraryCommands = {
     collectionId?: EARS.EntityId,
     id?: string,
     contentHash?: string,
+    /** What the document is: `commands` makes it a slash-command list, as frontmatter does for content */
+    documentType?: string,
   ): DocumentDTO {
     const now = Date.now()
 
@@ -36,6 +38,7 @@ export const libraryCommands = {
       shortCode,
       displayOrder,
       tags, // Store tags directly as string array
+      ...(documentType !== undefined && { documentType }),
       ...(contentHash && { contentHash }),
       createdAt: now,
       updatedAt: now,
@@ -65,6 +68,8 @@ export const libraryCommands = {
     tags: string[],
     collectionId?: EARS.EntityId,
     contentHash?: string,
+    /** What the document is: `commands` makes it a slash-command list */
+    documentType?: string,
   ): DocumentDTO {
     const documentId = id
     const now = Date.now()
@@ -73,6 +78,7 @@ export const libraryCommands = {
       name,
       content,
       ...(contentHash && { contentHash }),
+      ...(documentType !== undefined && { documentType }),
       updatedAt: now,
     })
       

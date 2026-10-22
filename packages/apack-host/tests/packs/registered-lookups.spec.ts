@@ -12,7 +12,8 @@ import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { blockRegistry } from '@apackdev/sdk/blocks';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
-import { getPackCommands, getSettingsCatalog, onPackCatalogChanged, type PackRegistration } from '@apackdev/sdk/framework';
+import { getSettingsCatalog, onPackCatalogChanged, type PackRegistration } from '@apackdev/sdk/framework';
+import { getCommands } from '@apackdev/sdk/commands';
 import { importCompiledContent, type ContentApplier } from '@apackdev/sdk/utils';
 import { SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 
@@ -89,9 +90,9 @@ describe('steps', () => {
   });
 
   it("aren't found when their pack's content declarations are refused", () => {
-    add({ id: 'first-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
-    expect(() => add({ id: 'second-pack', steps: [noteStep], commands: [{ name: 'standup', placeholder: 'Theirs' }] }))
-      .toThrow('Command collision');
+    add({ id: 'first-pack', features: { chat: { designation: 'standup' } } });
+    expect(() => add({ id: 'second-pack', steps: [noteStep], features: { chat: { designation: 'standup' } } }))
+      .toThrow('Designation collision');
     expect(stepRegistry.get('note')).toBeUndefined();
     expect(stepRegistry.all()).toEqual([]);
   });
@@ -204,8 +205,8 @@ describe('appliers', () => {
   });
 
   it("aren't run when their pack's registration is refused later on", () => {
-    add({ id: 'first-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
-    expect(() => add({ id: 'pack-a', appliers: [applier('notes', 1)], commands: [{ name: 'standup', placeholder: 'Theirs' }] })).toThrow('Command collision');
+    add({ id: 'first-pack', features: { chat: { designation: 'standup' } } });
+    expect(() => add({ id: 'pack-a', appliers: [applier('notes', 1)], features: { chat: { designation: 'standup' } } })).toThrow('Designation collision');
     expect(importCompiledContent({ compiledDir: compiledDir('pack-a') })).toEqual({});
   });
 });
@@ -214,14 +215,15 @@ describe('appliers', () => {
 describe('captured contribution addresses', () => {
   it('reads a definition address once, captures data and preserves executable identity across removal', async () => {
     const { createPackRegistry } = await import('../../src/packs/registry.ts');
-    const isolated = createPackRegistry({ nativeDeclarations: [{ id: 'captured-address', commands: { leaves: { placeholder: 'Cleanly' } },
+    const isolated = createPackRegistry({ nativeDeclarations: [{ id: 'captured-address', features: { lib: { description: 'Holder.', designation: 'commands' } },
       steps: { stuck: { node: { label: 'Stuck' } } } }] });
     const readType = vi.fn(() => {
       if (readType.mock.calls.length > 1) throw new Error('type cannot be read again');
       return 'stuck';
     });
     const step: StepDefinition = { get type() { return readType(); }, kind: 'step', node: { label: 'Stuck' } };
-    isolated.registerPack({ id: 'captured-address', steps: [step], commands: [{ name: 'leaves', placeholder: 'Cleanly' }] });
+    isolated.registerPack({ id: 'captured-address', steps: [step],
+      features: { lib: { designation: 'commands' } }, commandProvider: () => [{ name: 'leaves', placeholder: 'Cleanly' }] });
     const accepted = isolated.step('stuck');
     expect(accepted?.node?.label).toBe('Stuck');
     step.node!.label = 'Caller mutation';
@@ -308,11 +310,11 @@ describe('a pack whose registration is refused', () => {
       ears: { entities: { Note: 'Note' }, relKinds: {} },
       contentWriters: { Note: {} },
       appliers: [anApplier('notes')],
-      commands: [{ name: 'standup', placeholder: 'Topic' }],
-      features: { notes: { surface: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
+      commandProvider: () => [{ name: 'standup', placeholder: 'Topic' }],
+      features: { notes: { designation: 'commands', surface: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
     });
 
-    // Every kind of its own, and a command the incumbent already declares — the candidate is refused atomically
+    // Every kind of its own, and the role the incumbent already plays — the candidate is refused atomically
     expect(() => add({
       id: 'refused',
       steps: [tickTrigger],
@@ -321,9 +323,9 @@ describe('a pack whose registration is refused', () => {
       ears: { entities: { Card: 'Card' }, relKinds: {} },
       contentWriters: { Card: {} },
       appliers: [anApplier('cards')],
-      commands: [{ name: 'standup', placeholder: 'Theirs' }],
-      features: { cards: { surface: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },
-    })).toThrow('Command collision');
+      commandProvider: () => [{ name: 'standup', placeholder: 'Theirs' }],
+      features: { cards: { designation: 'commands', surface: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },
+    })).toThrow('Designation collision');
 
     // Nothing of the refused pack survives
     expect(stepRegistry.has('tick')).toBe(false);
@@ -338,18 +340,18 @@ describe('a pack whose registration is refused', () => {
     expect(artifactRegistry.has('note-view')).toBe(true);
     expect(blockRegistry.has('note-block')).toBe(true);
     expect(_contentWriterRegistry.get('Note')).toBeDefined();
-    expect(getPackCommands().map((c) => c.name)).toEqual(['standup']);
+    expect(getCommands().map((command) => command.name)).toEqual(['standup']);
     expect(getSettingsCatalog().features).toHaveProperty('incumbent/notes');
   });
 
   it('leaves no origin behind either', () => {
-    add({ id: 'holder-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
+    add({ id: 'holder-pack', features: { chat: { designation: 'standup' } } });
     const origin = { declarationRevision: 'fixture-revision', id: 'refused-pack', name: 'Refused', version: '1.0.0', dir: '/packs/refused-pack' };
 
     expect(() => registry.registerPack(
-      { id: 'refused-pack', commands: [{ name: 'standup', placeholder: 'Theirs' }] },
+      { id: 'refused-pack', features: { chat: { designation: 'standup' } } },
       origin,
-    )).toThrow('Command collision');
+    )).toThrow('Designation collision');
 
     expect(registry.packOrigin('refused-pack')).toBeNull();
     expect(registry.loadedPacks().map((o) => o.id)).not.toContain('refused-pack');
@@ -406,16 +408,22 @@ describe('feature settings defaults', () => {
 });
 
 describe('commands', () => {
-  it('appear in the order their packs first registered, and disappear with their pack', () => {
-    add({ id: 'first-pack', commands: [{ name: 'first', placeholder: 'A' }] });
-    add({ id: 'second-pack', commands: [{ name: 'second', placeholder: 'B' }] });
-    expect(getPackCommands().map((c) => c.name)).toEqual(['first', 'second']);
+  /**
+   * There is no order across packs to keep: one feature plays the role, so the list is whatever its
+   * provider returns. What a reload has to preserve is that the owner serves again after it returns —
+   * the case the old cross-pack ordering was really about.
+   */
+  it('are the designated owner\'s, and come back when it registers again', () => {
+    add({ id: 'owner-pack', features: { lib: { designation: 'commands' } },
+      commandProvider: () => [{ name: 'first', placeholder: 'A' }] });
+    add({ id: 'other-pack' });
+    expect(getCommands().map((command) => command.name)).toEqual(['first']);
 
-    // A reload registers the pack again where it was
-    remove('first-pack');
-    expect(getPackCommands().map((c) => c.name)).toEqual(['second']);
-    add({ id: 'first-pack', commands: [{ name: 'first', placeholder: 'A, rebuilt' }] });
-    expect(getPackCommands()).toEqual([{ name: 'first', placeholder: 'A, rebuilt' }, { name: 'second', placeholder: 'B' }]);
+    remove('owner-pack');
+    expect(getCommands()).toEqual([]);
+
+    add({ id: 'owner-pack', features: { lib: { designation: 'commands' } },
+      commandProvider: () => [{ name: 'first', placeholder: 'A, rebuilt' }] });
+    expect(getCommands()).toEqual([{ name: 'first', placeholder: 'A, rebuilt' }]);
   });
-
 });

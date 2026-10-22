@@ -26,8 +26,14 @@ export const applyAfter = (previous?: ApplyRecord): ApplyRecord => {
   return applyRecord(items);
 };
 
-/** The content keys the parity gate covers */
-export const PARITY_KEYS = ['actions', 'prompts', 'library', 'notes'] as const;
+/**
+ * The content keys the parity gate covers.
+ *
+ * Two sides declare different ones and that is not a defect: the `v1`/`v2` fixtures exercise library
+ * writing, which is a format any pack may name, while default-setup's own documents of that shape are
+ * its commands. A key neither side has is skipped rather than compiled from nothing.
+ */
+export const PARITY_KEYS = ['actions', 'prompts', 'library', 'notes', 'commands'] as const;
 const SNAPSHOT_TYPES = ['Action', 'Prompt', 'Document', 'Collection', 'Note'];
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'apack.json'), 'utf-8'));
@@ -45,10 +51,15 @@ function withPath(entry: ContentEntry, sourcePath: string): ContentEntry {
 export async function compileContent(sources: SourceSet): Promise<string> {
   const entries: Record<string, ContentEntry> = {};
   for (const key of PARITY_KEYS) {
-    const entry = manifest.content.sources[key] as ContentEntry;
-    const own = typeof entry === 'string' ? entry : entry.path!;
-    const sourcePath = sources === 'default-setup' ? own : path.relative(PACK_DIR, path.join(FIXTURES, sources, key));
-    entries[key] = withPath(entry, sourcePath);
+    const entry = manifest.content.sources[key] as ContentEntry | undefined;
+    if (sources === 'default-setup') {
+      if (entry === undefined) continue;
+      entries[key] = withPath(entry, typeof entry === 'string' ? entry : entry.path!);
+      continue;
+    }
+    const fixtureDir = path.join(FIXTURES, sources, key);
+    if (!fs.existsSync(fixtureDir)) continue;
+    entries[key] = withPath(entry ?? { format: key }, path.relative(PACK_DIR, fixtureDir));
   }
   const pack = { ...manifest, steps: undefined, artifacts: undefined, blocks: undefined, content: { ...manifest.content, artifacts: undefined, sources: entries } };
   const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-parity-'));

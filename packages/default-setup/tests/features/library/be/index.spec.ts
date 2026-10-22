@@ -14,7 +14,7 @@ const indexOf = (event: unknown) => (event as { data: { index: LibraryIndex } })
 const folderNamed = (name: string) => repository.libraryQueries.getCollections().find((collection) => collection.name === name)!.id
 
 async function appliedApp(): Promise<TestApp> {
-  importCompiledContent({ compiledDir: DIST, include: { library: new Set(['internal']) } })
+  importCompiledContent({ compiledDir: DIST, include: { commands: true } })
   const app = await startApp({ systems: ['library'] })
   await app.connect()
   return app
@@ -23,7 +23,7 @@ async function appliedApp(): Promise<TestApp> {
 describe('the library index', () => {
   it('names every document and folder when a client connects, with each document’s tags', async () => {
     const app = await appliedApp()
-    await app.send('library', { type: 'CREATE_DOCUMENT', name: 'Tagged', content: [], tags: ['note', 'draft'], collectionId: folderNamed('internal') })
+    await app.send('library', { type: 'CREATE_DOCUMENT', name: 'Tagged', content: [], tags: ['note', 'draft'] })
     await app.send('library', { type: 'GET_LIBRARY_INDEX' })
 
     const index = indexOf(await app.nextEmit('library', 'LIBRARY_INDEX_LOADED'))
@@ -33,7 +33,7 @@ describe('the library index', () => {
     expect(index.documents.map((document) => document.name)).toEqual(
       expect.arrayContaining(['Tagged', 'Codex commands']),
     )
-    expect(index.folders.map((folder) => folder.name)).toEqual(expect.arrayContaining(['internal', 'commands']))
+    expect(index.documents.map((document) => document.name)).toContain('Chat commands')
   })
 
   it('lists a document in the index however deep its folder is, not only the open one', async () => {

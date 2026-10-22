@@ -7,7 +7,6 @@ export type { ContentRuntime } from './content-runtime.ts';
 export { _surfaceTargets, _entityDestinationsProblem, type SurfaceDeclaration, type ComponentTarget } from './surface-declaration.ts';
 export { getPackHelp, type HelpDocument, type HelpArticle, type HelpProblem, type HelpCatalog, type HelpTarget } from './pack-help.ts';
 export { getSettingsCatalog, type SettingsCatalog } from './pack-settings.ts';
-export { getPackCommands, type PackCommand } from './pack-commands.ts';
 export type { SettingsDefinition, SettingsSchema, SettingsProblem, SettingsValidator } from './settings-definition.ts';
 export { _packDeclarationProblem, _nativePackDeclarationProblem, _parseEventContracts } from './declaration-binding.ts';
 export { _compileSettingsDefinition, _settingsJsonProblems } from './settings-validation.ts';

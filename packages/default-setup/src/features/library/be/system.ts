@@ -17,7 +17,7 @@ import * as symlink from './repository/symlink.ts'
 import { toMap, toIdentifierSet, mapArray } from '@apackdev/sdk/utils'
 import { exportLibrary } from './export-library.ts'
 import { importLibrary } from './import-library.ts'
-import type { PackCommand } from '@apackdev/sdk/framework';
+import type { PackCommand } from '@apackdev/sdk/commands';
 
 /**
  * Answers whoever asked for this, and tells every window when nobody did.
@@ -56,12 +56,13 @@ export const librarySystem = setup({
   actions: librarySpec.actions({
     createDocument: async ({ event }) => {
       const commandsBefore = libraryService.commands()
-      const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
+      const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string; documentType?: string }
       const document = await libraryService.create({
         name: ev.name,
         content: ev.content,
         tags: ev.tags,
         parentId: ev.collectionId,
+        documentType: ev.documentType,
       })
       if (ev.collectionId && symlink.resolveSymlinkPath(ev.collectionId)) {
         const folderContents = await repository.libraryQueries.getFolderContents(ev.collectionId as EARS.EntityId)

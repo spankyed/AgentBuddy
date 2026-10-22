@@ -1,5 +1,6 @@
 ---
 name: Claude Code commands
+type: commands
 ---
 <!-- section:field -->
 **cc-sessions**: Session ID (optional, lists all if omitted)

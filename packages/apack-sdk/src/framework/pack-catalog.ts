@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import type { PackConsumption } from './service-consumption.ts';
-import type { ArtifactEntrySchema, BlockEntrySchema, CommandEntrySchema, DslEntrySchema, StepEntrySchema, MigrationsSchema } from './declaration-schema.ts';
+import type { ArtifactEntrySchema, BlockEntrySchema, DslEntrySchema, StepEntrySchema, MigrationsSchema } from './declaration-schema.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 import type { PackDataDeclarations } from './data-declaration.ts';
 import { boundHost } from '../runtime/host-runtime.ts';
@@ -26,7 +26,6 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
   steps?: Record<string, z.infer<typeof StepEntrySchema>>;
   artifacts?: Record<string, z.infer<typeof ArtifactEntrySchema>>;
   blocks?: Record<string, z.infer<typeof BlockEntrySchema>>;
-  commands?: Record<string, z.infer<typeof CommandEntrySchema>>;
   dsl?: Record<string, DeclarationData<z.infer<typeof DslEntrySchema>>>;
   /** Compiled type data supplied by native composition, independently of frontend activation. */
   dslDefinitions?: Record<string, string>;

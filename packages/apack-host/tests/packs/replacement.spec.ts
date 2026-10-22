@@ -25,7 +25,7 @@ function fixture() {
   };
   const registry = createPackRegistry({
     nativeDeclarations: [{ id: 'incumbent', services: { value: 'fixtures/services.ts#value' },
-      repositories: { records: 'fixtures/repositories.ts#records' }, commands: { 'old-command': { placeholder: 'Old' } },
+      repositories: { records: 'fixtures/repositories.ts#records' },
       features: { widget: { description: 'Feature declaration fixture.', designation: 'before' } } }, { id: 'peer', features: {} }],
     settingsForPack: () => service,
   });
@@ -36,7 +36,6 @@ function fixture() {
     id: 'incumbent', bindServices: generated.bindServices,
     features: { widget: { designation: 'before' } },
     repositories: { records }, services: { value: 'old' },
-    commands: [{ name: 'old-command', placeholder: 'Old' }],
   };
   registry.registerPack(registration);
   const heard = vi.fn();
@@ -67,7 +66,6 @@ function assertIncumbent(f: ReturnType<typeof fixture>) {
   expect(f.registry.getPackRegistration('incumbent')).toBe(f.registration);
   expect(f.registry.designation('before')).toBe('incumbent/widget');
   expect(f.registry.designation('after')).toBeUndefined();
-  expect(f.registry.commands().map(command => command.name)).toEqual(['old-command']);
   expect(f.registry.getRegisteredServices().value).toBe('old');
   expect(engine.query.repository.records).toBe(f.records);
   expect(f.handle.get()).toEqual({ value: 1 });
@@ -167,7 +165,6 @@ describe('accepted pack replacement', () => {
     expect(f.registry.getPackRegistration('incumbent')).toBe(f.next);
     expect(f.registry.designation('before')).toBeUndefined();
     expect(f.registry.designation('after')).toBe('incumbent/widget');
-    expect(f.registry.commands().map(command => command.name)).toEqual(['old-command']);
     expect(f.registry.getRegisteredServices().value).toBe('new');
     expect(engine.query.repository.records).toBe(f.next.repositories!.records);
     expect(() => f.handle.get()).toThrow('revoked');
@@ -214,10 +211,8 @@ describe('accepted pack replacement', () => {
   it('retains admitted collection identities despite later authored registration mutation', () => {
     const f = fixture();
     f.registration.repositories = { foreign: {} };
-    f.registration.commands![0].name = 'mutated';
     f.registration.services = { unrelated: 'mutated' };
     f.registry.registerPack({ id: 'peer' });
-    expect(f.registry.commands().map(command => command.name)).toEqual(['old-command']);
     expect(f.registry.getRegisteredServices()).toEqual({ value: 'old' });
     expect(engine.query.repository.records).toBe(f.records);
     engine.query.registerRepository('foreign', 'unowned');

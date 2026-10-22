@@ -28,7 +28,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { commandSuggestionKey, COMMAND_TRIGGER_POS } from './command-suggestion.ts'
 import { useCommandItems } from './useCommandItems.ts'
-import type { PackCommand } from '@apackdev/sdk/framework'
+import type { PackCommand } from '@apackdev/sdk/commands'
 
 const props = defineProps<{
   editor: Editor

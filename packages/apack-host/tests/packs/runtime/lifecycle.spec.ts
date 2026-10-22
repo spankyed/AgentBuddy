@@ -225,21 +225,25 @@ describe('activating and tearing down a pack at runtime', () => {
       id: PACK_ID,
       name: 'Activate Pack',
       version: '1.0.0',
-      features: { main: { description: 'Feature declaration fixture.', system: { entry: 'src/features/main/be/system.ts' } } },
-      extensions: { commands: { 'activate-memo': { placeholder: 'Text' } } },
+      features: { main: { description: 'Feature declaration fixture.', designation: 'commands',
+        system: { entry: 'src/features/main/be/system.ts' } } },
       content: { sources: { memos: { applier: 'memos.ts' } } },
       migrations: { pack: { '1.0.0': { description: 'memos', up: 'migration.ts#up' } } },
     });
-    // The runtime carries what generate-entries writes from the manifest, commands and appliers included
+    // The runtime carries what generate-entries writes from the manifest: the command provider for the
+    // feature playing the role, and the appliers
     writeBuild(
       sourceDir,
       PACK_ID,
-      `{ main: { system: { machine: { id: 'activate-pack-system' }, receives: [] } } }, commands: [{ name: 'activate-memo', placeholder: 'Text' }], `
+      `{ main: { designation: 'commands', system: { machine: { id: 'activate-pack-system' }, receives: [] } } }, `
+        + "commandProvider: () => [{ name: 'activate-memo', placeholder: 'Text' }], "
         + "appliers: [{ key: 'memos', apply: () => { globalThis.activatePackRuns.push('apply'); return { created: 1, updated: 0, skipped: 0 }; } }], "
         + "migrations: { pack: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }] }",
       {
         'runtime/content/memos.content.json': '[]',
         'runtime/content/content.json': JSON.stringify({ version: 1, packId: PACK_ID, entries: [] }),
+        // A designation is a declared frontend binding, so the build must carry an FE entry
+        'runtime/fe.js': 'export default { id: "activate-pack", surfaces: {} };',
       },
     );
     await installPackFromLocal(sourceDir, packsDir());
@@ -278,11 +282,11 @@ describe('activating and tearing down a pack at runtime', () => {
   it('registers the commands its manifest declares, and tells the running systems before starting its own', async () => {
     await install();
     const { activatePack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    const { getPackCommands } = await import('@apackdev/sdk/framework');
+    const { getCommands } = await import('@apackdev/sdk/commands');
 
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
 
-    expect(getPackCommands()).toEqual([{ name: 'activate-memo', placeholder: 'Text' }]);
+    expect(getCommands()).toEqual([{ name: 'activate-memo', placeholder: 'Text' }]);
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['PACK_CHANGED', 'ACTIVATE_PACK']);
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });
@@ -305,7 +309,7 @@ describe('activating and tearing down a pack at runtime', () => {
   it('drops its commands and appliers when torn down, and tells the systems still running after stopping its own', async () => {
     await install();
     const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    const { getPackCommands } = await import('@apackdev/sdk/framework');
+    const { getCommands } = await import('@apackdev/sdk/commands');
     const { importCompiledContent } = await import('@apackdev/sdk/utils');
     activatePack(registry, PACK_ID, bus as never);
     const compiledDir = path.join(tmpDir, 'compiled-content');
@@ -317,7 +321,7 @@ describe('activating and tearing down a pack at runtime', () => {
 
     teardownPack(registry, PACK_ID, bus as never);
 
-    expect(getPackCommands()).toEqual([]);
+    expect(getCommands()).toEqual([]);
     expect(importCompiledContent({ compiledDir })).toEqual({});
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED']);
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });

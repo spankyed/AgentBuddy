@@ -42,6 +42,8 @@ export interface DocumentEntity extends BaseEntity {
   displayOrder?: number
   /** Free-form tags, stored directly on the document as a string array. */
   tags?: string[]
+  /** What this document is, from its frontmatter `type`: `commands` marks a slash-command list. */
+  documentType?: string
   /** Hash of the content source at the last apply. Absent on user-created documents. */
   contentHash?: string
 }
@@ -62,6 +64,8 @@ export interface DocumentDTO {
   content: ContentSection[]
   shortCode: DocumentShortCode
   tags: string[]
+  /** What this document is, from its frontmatter `type`: `commands` marks a slash-command list. */
+  documentType?: string
   collectionId?: EARS.EntityId
   collectionPath?: string[]
   displayOrder: number
@@ -171,7 +175,7 @@ export type {
 } from './search-index/types/search-index.ts'
 
 export type IncomingLibraryEvents =
-  | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
+  | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string; documentType?: string }
   | { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'DELETE_DOCUMENT'; id: string }
   | { type: 'GET_DOCUMENT'; id: string }

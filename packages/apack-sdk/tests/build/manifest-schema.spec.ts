@@ -409,32 +409,17 @@ describe('services', () => {
   });
 });
 
-describe('commands', () => {
+describe('a feature\'s command provider', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-  const withCommands = (commands: Record<string, unknown>) => ({ ...pack, extensions: { commands } });
+  const withProvider = (commands: unknown) =>
+    ({ ...pack, features: { library: { description: 'Serves them.', commands } } });
 
-  it('accepts lowercase names with hyphens as keys, each with its placeholder', () => {
-    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: 'Topic' }, 'team-digest': { placeholder: 'Week (optional)' } })))).toEqual([]);
+  it('accepts a path#export naming the function that serves them', () => {
+    expect(messagesOf(parseManifest(withProvider('src/features/library/be/commands.ts#commands')))).toEqual([]);
   });
 
-  it('rejects a key that is not a command: uppercase, a leading slash, digit or hyphen, a space, an underscore', () => {
-    for (const name of ['Standup', '/standup', '2do', '-standup', 'team digest', 'team_digest']) {
-      expect(messagesOf(parseManifest(withCommands({ [name]: { placeholder: 'x' } }))))
-        .toEqual([expect.stringMatching(/Must be a lowercase letter, then lowercase letters, digits and hyphens/)]);
-    }
-  });
-
-  it('rejects a command without a placeholder or with an empty one, and unknown keys on one', () => {
-    expect(messagesOf(parseManifest(withCommands({ standup: {} }))).length).toBeGreaterThan(0);
-    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: '' } })))[0]).toContain('placeholder');
-    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: 'x', action: 'Standup' } })))[0]).toContain('action');
-  });
-
-  // The name is the key, so declaring one twice is unrepresentable rather than refused: JSON cannot hold a
-  // key twice, which is why the check that used to say so is gone. What is still refused is a command on a
-  // feature — commands are the pack's.
-  it("refuses one on a feature: they're the pack's", () => {
-    expect(messagesOf(parseManifest({ ...pack, features: { memos: { description: 'Feature validation fixture.', commands: { standup: { placeholder: 'a' } } } } }))[0]).toContain('commands');
+  it('rejects a target that names no export', () => {
+    expect(messagesOf(parseManifest(withProvider('src/features/library/be/commands.ts'))).length).toBeGreaterThan(0);
   });
 });
 

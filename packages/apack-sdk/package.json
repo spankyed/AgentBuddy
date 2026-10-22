@@ -33,51 +33,61 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./package.json": "./package.json",
-    "./designations": {
-      "@apackdev/source": "./src/designations/index.ts",
-      "types": "./dist/designations/index.d.ts",
-      "default": "./dist/designations/index.js"
+    "./actions": {
+      "@apackdev/source": "./src/actions/index.ts",
+      "types": "./dist/actions/index.d.ts",
+      "default": "./dist/actions/index.js"
     },
-    "./events": {
-      "@apackdev/source": "./src/events/index.ts",
-      "types": "./dist/events/index.d.ts",
-      "default": "./dist/events/index.js"
+    "./apack.schema.json": "./apack.schema.json",
+    "./artifacts": {
+      "@apackdev/source": "./src/artifacts/index.ts",
+      "types": "./dist/artifacts/index.d.ts",
+      "default": "./dist/artifacts/index.js"
     },
-    "./env": {
-      "@apackdev/source": "./src/env/index.ts",
-      "types": "./dist/env/index.d.ts",
-      "default": "./dist/env/index.js"
+    "./blocks": {
+      "@apackdev/source": "./src/blocks/index.ts",
+      "types": "./dist/blocks/index.d.ts",
+      "default": "./dist/blocks/index.js"
     },
-    "./framework": {
-      "@apackdev/source": "./src/framework/index.ts",
-      "types": "./dist/framework/index.d.ts",
-      "default": "./dist/framework/index.js"
+    "./build": {
+      "@apackdev/source": "./src/build/index.ts",
+      "types": "./dist/build/index.d.ts",
+      "default": "./dist/build/index.js"
     },
-    "./helpers": {
-      "@apackdev/source": "./src/helpers/index.ts",
-      "types": "./dist/helpers/index.d.ts",
-      "default": "./dist/helpers/index.js"
+    "./commands": {
+      "@apackdev/source": "./src/commands/index.ts",
+      "types": "./dist/commands/index.d.ts",
+      "default": "./dist/commands/index.js"
     },
-    "./types": {
-      "@apackdev/source": "./src/types/index.ts",
-      "types": "./dist/types/index.d.ts",
-      "default": "./dist/types/index.js"
+    "./content": {
+      "@apackdev/source": "./src/content/index.ts",
+      "types": "./dist/content/index.d.ts",
+      "default": "./dist/content/index.js"
     },
-    "./ids": {
-      "@apackdev/source": "./src/ids/index.ts",
-      "types": "./dist/ids/index.d.ts",
-      "default": "./dist/ids/index.js"
+    "./cron": {
+      "@apackdev/source": "./src/utils/cron.ts",
+      "types": "./dist/utils/cron.d.ts",
+      "default": "./dist/utils/cron.js"
     },
     "./database-console": {
       "@apackdev/source": "./src/database-console/index.ts",
       "types": "./dist/database-console/index.d.ts",
       "default": "./dist/database-console/index.js"
     },
-    "./repositories": {
-      "@apackdev/source": "./src/repositories/index.ts",
-      "types": "./dist/repositories/index.d.ts",
-      "default": "./dist/repositories/index.js"
+    "./designations": {
+      "@apackdev/source": "./src/designations/index.ts",
+      "types": "./dist/designations/index.d.ts",
+      "default": "./dist/designations/index.js"
+    },
+    "./env": {
+      "@apackdev/source": "./src/env/index.ts",
+      "types": "./dist/env/index.d.ts",
+      "default": "./dist/env/index.js"
+    },
+    "./events": {
+      "@apackdev/source": "./src/events/index.ts",
+      "types": "./dist/events/index.d.ts",
+      "default": "./dist/events/index.js"
     },
     "./fe": {
       "@apackdev/source": "./src/fe/index.ts",
@@ -89,89 +99,64 @@
       "types": "./dist/fe/reference-types.d.ts",
       "default": "./dist/fe/reference-types.js"
     },
-    "./actions": {
-      "@apackdev/source": "./src/actions/index.ts",
-      "types": "./dist/actions/index.d.ts",
-      "default": "./dist/actions/index.js"
+    "./framework": {
+      "@apackdev/source": "./src/framework/index.ts",
+      "types": "./dist/framework/index.d.ts",
+      "default": "./dist/framework/index.js"
     },
-    "./artifacts": {
-      "@apackdev/source": "./src/artifacts/index.ts",
-      "types": "./dist/artifacts/index.d.ts",
-      "default": "./dist/artifacts/index.js"
+    "./helpers": {
+      "@apackdev/source": "./src/helpers/index.ts",
+      "types": "./dist/helpers/index.d.ts",
+      "default": "./dist/helpers/index.js"
     },
-    "./blocks": {
-      "@apackdev/source": "./src/blocks/index.ts",
-      "types": "./dist/blocks/index.d.ts",
-      "default": "./dist/blocks/index.js"
-    },
-    "./steps": {
-      "@apackdev/source": "./src/steps/index.ts",
-      "types": "./dist/steps/index.d.ts",
-      "default": "./dist/steps/index.js"
-    },
-    "./build": {
-      "@apackdev/source": "./src/build/index.ts",
-      "types": "./dist/build/index.d.ts",
-      "default": "./dist/build/index.js"
-    },
-    "./runtime": {
-      "@apackdev/source": "./src/runtime/index.ts",
-      "types": "./dist/runtime/index.d.ts",
-      "default": "./dist/runtime/index.js"
+    "./ids": {
+      "@apackdev/source": "./src/ids/index.ts",
+      "types": "./dist/ids/index.d.ts",
+      "default": "./dist/ids/index.js"
     },
     "./logger": {
       "@apackdev/source": "./src/logger/index.ts",
       "types": "./dist/logger/index.d.ts",
       "default": "./dist/logger/index.js"
     },
-    "./templates": {
-      "@apackdev/source": "./src/templates/index.ts",
-      "types": "./dist/templates/index.d.ts",
-      "default": "./dist/templates/index.js"
+    "./models": {
+      "@apackdev/source": "./src/services/models.ts",
+      "types": "./dist/services/models.d.ts",
+      "default": "./dist/services/models.js"
     },
-    "./utils": {
-      "@apackdev/source": "./src/utils/index.ts",
-      "types": "./dist/utils/index.d.ts",
-      "default": "./dist/utils/index.js"
+    "./package.json": "./package.json",
+    "./repositories": {
+      "@apackdev/source": "./src/repositories/index.ts",
+      "types": "./dist/repositories/index.d.ts",
+      "default": "./dist/repositories/index.js"
     },
-    "./utils/pure": {
-      "@apackdev/source": "./src/utils/pure.ts",
-      "types": "./dist/utils/pure.d.ts",
-      "default": "./dist/utils/pure.js"
+    "./runtime": {
+      "@apackdev/source": "./src/runtime/index.ts",
+      "types": "./dist/runtime/index.d.ts",
+      "default": "./dist/runtime/index.js"
     },
-    "./utils/compare-versions": {
-      "@apackdev/source": "./src/utils/compare-versions.ts",
-      "types": "./dist/utils/compare-versions.d.ts",
-      "default": "./dist/utils/compare-versions.js"
+    "./runtime/internals": {
+      "@apackdev/source": "./src/runtime/internals.ts"
     },
     "./services": {
       "@apackdev/source": "./src/services/index.ts",
       "types": "./dist/services/index.d.ts",
       "default": "./dist/services/index.js"
     },
-    "./models": {
-      "@apackdev/source": "./src/services/models.ts",
-      "types": "./dist/services/models.d.ts",
-      "default": "./dist/services/models.js"
+    "./steps": {
+      "@apackdev/source": "./src/steps/index.ts",
+      "types": "./dist/steps/index.d.ts",
+      "default": "./dist/steps/index.js"
     },
-    "./cron": {
-      "@apackdev/source": "./src/utils/cron.ts",
-      "types": "./dist/utils/cron.d.ts",
-      "default": "./dist/utils/cron.js"
-    },
-    "./content": {
-      "@apackdev/source": "./src/content/index.ts",
-      "types": "./dist/content/index.d.ts",
-      "default": "./dist/content/index.js"
+    "./templates": {
+      "@apackdev/source": "./src/templates/index.ts",
+      "types": "./dist/templates/index.d.ts",
+      "default": "./dist/templates/index.js"
     },
     "./testing": {
       "@apackdev/source": "./src/testing/index.ts",
       "types": "./dist/testing/index.d.ts",
       "default": "./dist/testing/index.js"
-    },
-    "./apack.schema.json": "./apack.schema.json",
-    "./runtime/internals": {
-      "@apackdev/source": "./src/runtime/internals.ts"
     },
     "./testing/pack-fixture": {
       "@apackdev/source": "./src/testing/pack-fixture.ts"
@@ -181,6 +166,26 @@
     },
     "./testing/waiting": {
       "@apackdev/source": "./src/testing/waiting.ts"
+    },
+    "./types": {
+      "@apackdev/source": "./src/types/index.ts",
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/types/index.js"
+    },
+    "./utils": {
+      "@apackdev/source": "./src/utils/index.ts",
+      "types": "./dist/utils/index.d.ts",
+      "default": "./dist/utils/index.js"
+    },
+    "./utils/compare-versions": {
+      "@apackdev/source": "./src/utils/compare-versions.ts",
+      "types": "./dist/utils/compare-versions.d.ts",
+      "default": "./dist/utils/compare-versions.js"
+    },
+    "./utils/pure": {
+      "@apackdev/source": "./src/utils/pure.ts",
+      "types": "./dist/utils/pure.d.ts",
+      "default": "./dist/utils/pure.js"
     }
   },
   "peerDependencies": {
