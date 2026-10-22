@@ -1,6 +1,5 @@
 ---
 name: Codex commands
-type: commands
 ---
 <!-- section:field -->
 **cdx-sessions**: Limit (optional, lists recent sessions)
