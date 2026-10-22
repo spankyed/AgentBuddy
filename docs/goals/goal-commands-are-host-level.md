@@ -5,7 +5,8 @@
 
 Implement docs/goals/goal-commands-are-host-level.md. Follow CLAUDE.md and docs/AGENTS.md.
 Read Scope, Decisions, Phases and Constraints before continuing.
-The survey was made at 672d70800 on master (2026-10-22); inspect current code before relying on it.
+Surveyed at 672d70800 and re-verified at 8cb7e7b20, after goal-editor-extensions merged and moved
+some of the paths this names; inspect current code before relying on it.
 
 Finished when:
 - The command suggestion is a built-in editor affordance that asks whichever feature plays the
@@ -30,7 +31,7 @@ with three-way merge and offers over it. `extensions.commands` is the anomaly: i
 *inline in the manifest*, bypassing that pipeline, while 35 more arrive as library content. The problem
 was never that there are two sources to merge — it is that one of them is not content.
 
-Three facts, each verified at `672d70800`:
+Three facts, each re-verified at `8cb7e7b20`:
 
 **1. The extension is already app-wide.** `TiptapEditor.vue` injects every registered pack's extensions
 into every editor it renders:
