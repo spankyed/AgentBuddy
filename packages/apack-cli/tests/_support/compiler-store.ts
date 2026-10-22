@@ -5,4 +5,4 @@ import os from 'node:os';
 import path from 'node:path';
 import { threadId } from 'node:worker_threads';
 
-process.env.APACK_COMPILER_STORE = path.join(process.env.APACK_TEST_COMPILER_STORES ?? os.tmpdir(), `${process.pid}-${threadId}`);
+process.env.APACK_COMPILER_STORE = path.join(process.env.APACK_TEST_RUN_DIRECTORY ?? os.tmpdir(), `${process.pid}-${threadId}`);

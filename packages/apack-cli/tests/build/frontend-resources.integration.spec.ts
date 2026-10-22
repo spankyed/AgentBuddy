@@ -12,8 +12,6 @@ import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts'
 const fixture = createFrontendResourceFixture();
 const { consumer } = fixture;
 let inputWorkspace: string | undefined;
-// Tailwind's Jiti instance retains this cache path across files in the same worker.
-process.once('exit', () => { if (inputWorkspace) fs.rmSync(inputWorkspace, { recursive: true, force: true }); });
 
 it.each(['unchanged', 'edited'] as const)('uses one input view across frontend compiler paths with %s originals', async mode => {
   const { pack, helper } = consumer();
@@ -48,7 +46,8 @@ it.each(['unchanged', 'edited'] as const)('uses one input view across frontend c
   for (const [file, body] of Object.entries(files)) write(file, body);
   fs.writeFileSync(helper, `export const marker = 'DEPENDENCY_CAPTURED';`);
   const outputDir = path.join(pack, 'dist/runtime');
-  const workspace = inputWorkspace ??= fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-inputs-')));
+  // Tailwind's Jiti instance retains this cache path across files in the same worker, so the run removes it
+  const workspace = inputWorkspace ??= fs.realpathSync(fs.mkdtempSync(path.join(process.env.APACK_TEST_RUN_DIRECTORY ?? os.tmpdir(), 'apack-frontend-inputs-')));
   fs.mkdirSync(outputDir, { recursive: true });
   fs.mkdirSync(path.join(workspace, 'tmp'), { recursive: true });
   vi.stubEnv('APACK_BUILD_INPUTS_DIRECTORY', workspace);
