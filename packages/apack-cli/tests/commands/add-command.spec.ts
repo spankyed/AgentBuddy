@@ -1,12 +1,13 @@
-// `apack pack add command` writes a slash command, which is content: a document whose field section holds
-// one `**name**: placeholder` line. The friction it removes is the directory, the format reference and that
-// convention — a pack with two commands to add should not have to know any of them.
+// `apack pack add command` and `add document` both write a markdown document into a content source — the
+// friction they remove is the directory, the format reference and the frontmatter convention, none of which
+// is the thing being added. They share `content-document.ts`; what differs is the format and the body.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, it } from 'vitest';
 import { ManifestSchema } from '@apackdev/sdk/build';
 import { addCommand } from '../../src/commands/add/command.ts';
+import { addDocument } from '../../src/commands/add/document.ts';
 
 function pack(manifest: Record<string, unknown>): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'add-command-'));
@@ -54,7 +55,42 @@ it("uses the pack's own commands format when it has one", async () => {
 it('refuses when no format writes command documents', async () => {
   const root = pack({});
 
-  await expect(addCommand(['orphan'], root)).rejects.toThrow(/No content format writes command documents/);
+  await expect(addCommand(['orphan'], root)).rejects.toThrow(/No content format writes "commands" documents/);
   expect(fs.existsSync(path.join(root, 'src/content/commands'))).toBe(false);
   expect(manifestOf(root).content).toBeUndefined();
+});
+
+// Default-setup's own command documents live a folder down, so the scaffold has to be able to put one there
+it('nests a document in the folder it is given, which the format reads as a collection', async () => {
+  const root = pack({ dependencies: { 'default-setup': '*' } });
+
+  await addCommand(['standup', '--folder', 'internal'], root);
+
+  expect(read(root, 'src/content/commands/internal/commands.md')).toContain('**standup**: Arguments');
+});
+
+it('refuses a folder that is not a name', async () => {
+  const root = pack({ dependencies: { 'default-setup': '*' } });
+
+  await expect(addCommand(['standup', '--folder', '../escaped'], root)).rejects.toThrow(/Folder name must be lowercase/);
+});
+
+it("writes a library document through the same source resolution, and declares a library entry", async () => {
+  const root = pack({ dependencies: { 'default-setup': '*' } });
+
+  await addDocument(['getting-started', '--folder', 'guides'], root);
+
+  expect(manifestOf(root).content.sources.library).toEqual({ path: 'src/content/library', format: 'default-setup:library' });
+  const body = read(root, 'src/content/library/guides/getting-started.md');
+  expect(body).toContain('name: Getting Started');
+  expect(body).toContain('<!-- section:text -->');
+});
+
+// The two formats are separate entries, so adding one kind never declares the other's source
+it('declares only the source for the kind being added', async () => {
+  const root = pack({ dependencies: { 'default-setup': '*' } });
+
+  await addDocument(['notes'], root);
+
+  expect(Object.keys(manifestOf(root).content.sources)).toEqual(['library']);
 });

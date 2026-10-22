@@ -2,11 +2,10 @@
 // `**name**: placeholder` line per command, written with a `commands` format. A pack serving its own
 // commands plays the `commands` designation; a pack contributing them to whichever pack does — the usual
 // case — only ships the documents, which is all this writes.
-import * as path from 'node:path';
-import { writeManifest } from '../../manifest-writer.ts';
 import { renderTemplate } from '../../templates.ts';
-import { addContentSource, readManifest } from './manifest';
-import { hasFlag, logCreated, parseFlag, toLabel, validateName, writeIfNotExists } from './write';
+import { writeContentDocument } from './content-document.ts';
+import { readManifest } from './manifest';
+import { hasFlag, parseFlag, toLabel, validateName } from './write';
 
 const HELP = `
 Usage: apack pack add command <name> [options]
@@ -14,26 +13,11 @@ Usage: apack pack add command <name> [options]
 Options:
   --placeholder <text>   What the chat shows after the command (default: "Arguments")
   --document <name>      The document to write it in (default: "commands")
+  --folder <name>        A folder under the source to nest it in
 
 Example:
-  apack pack add command standup --placeholder "Topic"
+  apack pack add command standup --placeholder "Topic" --folder internal
 `.trim();
-
-/** A format of this pack's own, or a dependency's, that writes command documents */
-function commandsFormat(manifest: ReturnType<typeof readManifest>): string | undefined {
-  if (manifest.content?.formats && Object.hasOwn(manifest.content.formats, 'commands')) return 'commands';
-  const dependency = Object.keys(manifest.dependencies ?? {}).find(id => id === 'default-setup');
-  return dependency ? `${dependency}:commands` : undefined;
-}
-
-/** The entry already writing command documents, so a second command joins it rather than a new source */
-function existingSource(manifest: ReturnType<typeof readManifest>): [string, string] | undefined {
-  for (const [key, entry] of Object.entries(manifest.content?.sources ?? {})) {
-    if (typeof entry === 'string' || !entry.format) continue;
-    if (entry.format === 'commands' || entry.format.endsWith(':commands')) return [key, entry.path ?? `src/content/${key}`];
-  }
-  return undefined;
-}
 
 export async function addCommand(args: string[], root: string) {
   if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
@@ -49,29 +33,13 @@ export async function addCommand(args: string[], root: string) {
   const documentName = parseFlag(args, '--document') || 'commands';
   validateName(documentName, 'Document');
 
-  const existing = existingSource(manifest);
-  const format = existing ? undefined : commandsFormat(manifest);
-  if (!existing && !format) {
-    throw new Error('No content format writes command documents. Declare one in `content.formats`, '
-      + 'or depend on a pack that does ("default-setup") and run this again.');
-  }
-
-  const sourcePath = existing ? existing[1] : 'src/content/commands';
-  const filePath = path.join(root, sourcePath, `${documentName}.md`);
-
-  // The source first, as every scaffold declares what it writes: a document no entry compiles is content
-  // the apply never reaches
-  const declared = existing === undefined;
-  if (declared) {
-    addContentSource(manifest, 'commands', { path: sourcePath, format: format! });
-    writeManifest(root, manifest);
-  }
-
-  const created: string[] = [];
-  const wrote = writeIfNotExists(filePath, renderTemplate('pack/src/content/commands/commands.md', {
-    DOCUMENT_LABEL: toLabel(documentName), NAME: name, PLACEHOLDER: placeholder,
-  }));
-  if (wrote) created.push(filePath);
+  const wrote = writeContentDocument(root, manifest, { format: 'commands', key: 'commands' }, {
+    name: documentName,
+    folder: parseFlag(args, '--folder'),
+    body: renderTemplate('pack/src/content/commands/commands.md', {
+      DOCUMENT_LABEL: toLabel(documentName), NAME: name, PLACEHOLDER: placeholder,
+    }),
+  });
 
   // A command is a line in a document's field section, and a scaffold never splices a file that is there:
   // the author adds the next one themselves, which is also how they are edited in the app
@@ -80,8 +48,5 @@ export async function addCommand(args: string[], root: string) {
     console.log(`    **${name}**: ${placeholder}`);
     return;
   }
-
-  console.log(`\nCreated command "/${name}":`);
-  logCreated(root, created);
-  if (declared) console.log('  ~ apack.json (content.sources.commands)');
+  console.log(`\nCreated command "/${name}".`);
 }
