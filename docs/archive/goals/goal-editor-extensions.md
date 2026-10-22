@@ -31,9 +31,9 @@ else's.
 |---|---|---|
 | 1 — the guard | `47785e4d0` | `text-editor-concept` with the ten spellings; `KEPT` shrunk to names a third party defines. Mutation: emptying the group fails the park case |
 | 2 — the extension files | `194fbc751`, `aaeeafeff` | Three merges, three moves. `api:update` deletes `components.tiptap.extensions.search-{extension,plugin}.api.md` and writes one `…search.api.md` — the collision, gone |
-| 3 — the manifest key | this commit | 44 files; `npm run typecheck` 17/17 |
-| 4 — recorded files | this commit | `schema:update`, `api:update`, `facade:update`; `facade:check` reported the facade already current |
-| 5 — docs, guard live | this commit | `PARKED` empty, scan green over code and guides |
+| 3 — the manifest key | `f7ae8e0d4` | 44 files; `npm run typecheck` 17/17 |
+| 4 — recorded files | `f7ae8e0d4` | `schema:update`, `api:update`, `facade:update`; `facade:check` reported the facade already current |
+| 5 — docs, guard live | `f7ae8e0d4` | `PARKED` empty, scan green over code and guides |
 
 **The park closed itself, which is the mechanism worth keeping.** `npm run test:unit` failed
 `parks nothing that has stopped needing it` the moment the last violation went — the guard asked to be
@@ -45,6 +45,13 @@ was discarded before it was committed: `editor` is a word this tree uses hundred
 by matching, and renaming *away* from it later would be unmatchable. The discarded pass kept one fix —
 `cross-feature-imports` caught `image-paste.ts` reaching into a feature, which `aaeeafeff` resolves by
 moving the clipboard parsing to the extension that pastes.
+
+**What a vocabulary rename cannot see, and the four commits that caught it.** The identifier pass left
+prose alone, which is where a reader learns the vocabulary: `e7a65735b` brought the archive to the new
+name, `e7e050a7b` the prose in eleven files plus two archived goals whose *filenames* called a surface
+a plugin, `13b1a5c61` five comments that justified code by narrating the change that produced it, and
+`ca9660ecc` a doc comment the reference merge had dropped — found by comparing every line of each
+merged file against its sources, which is the check worth repeating after a merge of this shape.
 
 **Carried forward.** `docs/goals/goal-commands-are-host-level.md` is unstarted and now reads in this
 vocabulary. Its Decision 4 — the generated `readSurfaceState`/`useSurfaceState` signatures dropping
