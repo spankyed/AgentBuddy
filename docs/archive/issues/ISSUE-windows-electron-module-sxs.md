@@ -30,7 +30,7 @@ the first failure). It is a Windows loader refusal of the fixture addon's or the
 activation context, not a deadline. The case captures through its own path, not the shared compiler
 installation.
 
-**It does not reproduce on the [Windows development VM](../references/guides/windows-development-vm.md)**
+**It does not reproduce on the [Windows development VM](../../references/guides/windows-development-vm.md)**
 (2026-10-21, `master` at `c2c4b5aef`, Windows Server 2025 Azure Edition, Build Tools 18.11):
 - the case passes alone;
 - it passes after the publisher-policy case;
