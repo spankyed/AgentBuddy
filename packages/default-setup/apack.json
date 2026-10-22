@@ -2385,7 +2385,7 @@
         }
       }
     },
-    "tiptapPlugins": {
+    "textEditor": {
       "suggestions": {
         "extensions": {
           "referenceSuggestion": "src/extensions/tiptap/reference-suggestion.ts#ReferenceSuggestion",

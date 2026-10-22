@@ -1372,7 +1372,7 @@
           },
           "description": "DSL type definitions for Monaco editor intellisense."
         },
-        "tiptapPlugins": {
+        "textEditor": {
           "type": "object",
           "additionalProperties": {
             "type": "object",

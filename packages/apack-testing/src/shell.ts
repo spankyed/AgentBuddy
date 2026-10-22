@@ -53,7 +53,7 @@ function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView)
   return {
     onChanged: listener => frontend.onChanged(listener),
     surfaces: () => frontend.surfaces(),
-    tiptapPlugins: () => frontend.tiptapPlugins(),
+    textEditor: () => frontend.textEditor(),
     stepBindings: () => frontend.stepBindings(),
     artifactBindings: () => frontend.artifactBindings(),
     blockBindings: () => frontend.blockBindings(),

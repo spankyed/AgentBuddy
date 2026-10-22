@@ -84,7 +84,7 @@ message and is a threads display concern.
 ### 1. It lands in `@apackdev/ui`, not `@apackdev/host`
 
 The editor is there, and `@apackdev/ui` may import `@apackdev/sdk` — which is where `getPackCommands()`
-lives. It already reads SDK registries the same way (`tiptapPluginRegistry` in `TiptapEditor.vue`,
+lives. It already reads SDK registries the same way (`textEditorExtensionsRegistry` in `TiptapEditor.vue`,
 `stepRegistry` in `node-styles.ts`), so this adds no layer edge.
 
 Putting it in `@apackdev/host/fe` would need the host to reach into the editor it does not own, and
@@ -93,13 +93,13 @@ packs could not use it without the app.
 ### 2. It stops being a pack contribution and becomes a built-in
 
 Once it reads `getPackCommands()` it needs nothing from any pack, so it does not go through
-`extensions.tiptapPlugins`/`extensions.editor` at all. It joins `createExtensions()` beside
+`extensions.textEditor`/`extensions.editor` at all. It joins `createExtensions()` beside
 `SearchAndFind`, and `TiptapEditor` renders its popup directly as it already renders `TiptapSearchBar`.
 
 That is the simplification worth having: the affordance stops being configuration and becomes part of
 the editor, so no pack can fail to declare it and every editor has it.
 
-default-setup's `extensions.tiptapPlugins.suggestions` group keeps `referenceSuggestion` and
+default-setup's `extensions.textEditor.suggestions` group keeps `referenceSuggestion` and
 `commandViewerDecoration`, and loses `commandSuggestion`.
 
 ### 3. One shape: `PackCommand`
@@ -175,7 +175,7 @@ reads the list the editor would show.
 
 ### Phase 4 — docs
 
-**Deliverable.** `docs/public-facing/extensions.md` and `manifest.md` where `tiptapPlugins` and
+**Deliverable.** `docs/public-facing/extensions.md` and `manifest.md` where `textEditor` and
 `extensions.commands` are described for a pack author; `packages/apack-ui/CLAUDE.md`'s tiptap section;
 `packages/default-setup/CLAUDE.md`'s extensions list.
 
@@ -187,7 +187,7 @@ reads the list the editor would show.
 - `extensions.commands` keeps its shape; this moves who reads it, not what a pack declares.
 - Reference suggestion is not touched. If a phase wants to, it has found a shared seam worth naming
   rather than a reason to widen scope.
-- Ordering against [`goal-editor-extensions.md`](goal-editor-extensions.md): that goal's Phase 2 merges
+- Ordering against [`goal-editor-extensions.md`](../archive/goals/goal-editor-extensions.md): that goal's Phase 2 merges
   `command-extension.ts` and `command-suggestion-plugin.ts` into one file. Landing it first makes this a
   one-file move; landing this first makes that goal's merge table one row shorter. Either order works;
   doing both at once does not.

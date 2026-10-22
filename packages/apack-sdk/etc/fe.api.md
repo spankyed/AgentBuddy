@@ -600,7 +600,7 @@ export interface PackFERegistration {
     // (undocumented)
     steps?: StepDefinition[];
     // (undocumented)
-    tiptapPlugins?: Record<string, TiptapPlugin>;
+    textEditor?: Record<string, TextEditorExtensions>;
 }
 
 // @public (undocumented)
@@ -907,7 +907,7 @@ export const targetIs: (input: {
 }) => boolean;
 
 // @public (undocumented)
-export interface TiptapPlugin {
+export interface TextEditorExtensions {
     // (undocumented)
     readonly extensions?: Readonly<Record<string, AnyExtension>>;
     // (undocumented)
@@ -917,9 +917,9 @@ export interface TiptapPlugin {
 }
 
 // @public
-export interface TiptapPluginBinding {
+export interface TextEditorExtensionsBinding {
     // (undocumented)
-    readonly binding: TiptapPlugin;
+    readonly binding: TextEditorExtensions;
     // (undocumented)
     readonly groupId: string;
     // (undocumented)
@@ -927,8 +927,8 @@ export interface TiptapPluginBinding {
 }
 
 // @public (undocumented)
-export const tiptapPluginRegistry: {
-    getAll(): TiptapPluginBinding[];
+export const textEditorExtensionsRegistry: {
+    getAll(): TextEditorExtensionsBinding[];
     onChanged(listener: () => void): () => void;
 };
 

@@ -652,15 +652,15 @@ The block answers with a `ButtonGroupResponse` — `{ buttonId, state }`. Respon
 
 ## Other frontend extension points
 
-### Tiptap plugins
+### Text editor extensions
 
-`extensions.tiptapPlugins` declares named editor groups. Each group names its extensions,
+`extensions.textEditor` declares named editor groups. Each group names its extensions,
 popups and optional suggestion predicate without importing executable code:
 
 ```json
 {
   "extensions": {
-    "tiptapPlugins": {
+    "textEditor": {
       "suggestions": {
         "extensions": {
           "mention": "src/editor/mention.ts#Mention"
@@ -677,12 +677,12 @@ popups and optional suggestion predicate without importing executable code:
 
 Extension keys must match the exported Tiptap objects' names. Popup IDs belong to their group.
 The predicate receives an editor state and returns `true` while suggestions should handle Escape.
-Codegen imports each target and assembles keyed `TiptapPlugin` bindings (`@apackdev/sdk/fe`);
+Codegen imports each target and assembles keyed `TextEditorExtensions` bindings (`@apackdev/sdk/fe`);
 there is no registration module or aggregate array export. Binding admission checks exact group/member
 names and executable shapes without calling components or predicates. Conflicting active extension
 names are refused with both owners. Catalog metadata remains available for disabled packs.
 
-`tiptapPluginRegistry.getAll()` returns accepted `{ packId, groupId, binding }` rows in pack/group
+`textEditorExtensionsRegistry.getAll()` returns accepted `{ packId, groupId, binding }` rows in pack/group
 registration order. Each row is immutable and its binding holds captured extension/popup membership.
 The returned list is detached. `onChanged(listener)` observes committed frontend changes and returns
 an unsubscribe function; reread the projection to distinguish relevant editor changes from unrelated
@@ -713,7 +713,7 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 |---|---|
 | `features` | Each feature with a `surface`: its generated binding from declared state/views/presentation, its `designation`, and `default: true` on the one whose `surface` sets `default`. Bindings must match the accepted declaration; startup selection follows the [declared default policy](manifest.md#features), independently of frontend delivery. Duplicate designation ownership refuses the pack |
 | `steps` / `artifacts` / `blocks` | each entry's `fe` facet, imported into the generated frontend entry (an artifact's `icon` with it) |
-| `tiptapPlugins` | `extensions.tiptapPlugins` |
+| `textEditor` | `extensions.textEditor` |
 | `appExtensions` | `extensions.appExtensions` |
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.

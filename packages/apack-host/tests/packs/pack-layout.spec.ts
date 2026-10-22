@@ -306,7 +306,7 @@ describe('installed build reader', () => {
     ['step', { extensions: { steps: { demo: { node: { label: 'Demo' } } } } }],
     ['block', { extensions: { blocks: { demo: {} } } }],
     ['artifact', { extensions: { artifacts: { demo: { icon: 'File' } } } }],
-    ['editor', { extensions: { tiptapPlugins: { demo: {} } } }],
+    ['editor', { extensions: { textEditor: { demo: {} } } }],
     ['app extension', { extensions: { appExtensions: { demo: 'src/Demo.vue' } } }],
   ])('requires the frontend entry for a declared %s without reading authored modules', (_label, declaration) => {
     const root = builtPack(declaration);
@@ -326,7 +326,7 @@ describe('installed build reader', () => {
   });
 
   it('accepts backend-only declarations without a frontend entry or authored modules', () => {
-    const root = builtPack({ extensions: { commands: { hello: { placeholder: 'Say hello' } }, settings: { extra: { schema: { type: 'object' }, defaults: {} } }, steps: {}, blocks: {}, artifacts: {}, tiptapPlugins: {}, appExtensions: {} } });
+    const root = builtPack({ extensions: { commands: { hello: { placeholder: 'Say hello' } }, settings: { extra: { schema: { type: 'object' }, defaults: {} } }, steps: {}, blocks: {}, artifacts: {}, textEditor: {}, appExtensions: {} } });
     fs.rmSync(path.join(root, 'dist/runtime/fe.js'));
     sealBuild(root);
     const stage = path.join(tmp, 'stage');

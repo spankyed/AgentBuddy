@@ -22,7 +22,7 @@ describe('keyed declaration preservation', () => {
       services: own('src/services.ts#service'), repositories: own('src/repositories.ts#repository'),
       surface: { label: 'Notes', state: 'src/state.ts', canvas: { routes: { toString: 'src/view.vue' } } },
     } }, extensions: { dsl: own({ entry: 'src/types.ts', targets: ['monaco'], globals: own('Item') }),
-      appExtensions: own('src/view.vue'), tiptapPlugins: own({ extensions: own('src/editor.ts#Extension'), popups: own('src/popup.vue') }),
+      appExtensions: own('src/view.vue'), textEditor: own({ extensions: own('src/editor.ts#Extension'), popups: own('src/popup.vue') }),
     }, content: { writers: own('src/writers.ts#writer') } };
     expect(ManifestSchema.parse({ ...pack, ...fields })).toEqual({ ...pack, ...fields });
   });

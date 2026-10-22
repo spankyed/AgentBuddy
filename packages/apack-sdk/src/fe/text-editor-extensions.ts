@@ -11,25 +11,25 @@ export interface BlockItem {
   command: (e: Editor) => void
 }
 
-export interface TiptapPlugin {
+export interface TextEditorExtensions {
   readonly extensions?: Readonly<Record<string, AnyExtension>>
   readonly popups?: Readonly<Record<string, Component>>
   readonly isSuggestionActive?: (state: EditorState) => boolean
 }
 
 /** One accepted editor group; declarations and unavailable groups belong to the catalog. */
-export interface TiptapPluginBinding {
+export interface TextEditorExtensionsBinding {
   readonly packId: string
   readonly groupId: string
-  readonly binding: TiptapPlugin
+  readonly binding: TextEditorExtensions
 }
 
 export const EXTRA_BLOCK_ITEMS_KEY: InjectionKey<BlockItem[]> = Symbol('extraBlockItems')
 
 // The tiptap plugins the renderer's registered pack frontends contribute
-export const tiptapPluginRegistry = {
-  getAll(): TiptapPluginBinding[] {
-    return boundFeHost().packs.tiptapPlugins();
+export const textEditorExtensionsRegistry = {
+  getAll(): TextEditorExtensionsBinding[] {
+    return boundFeHost().packs.textEditor();
   },
   /** Observe committed frontend changes; reread bindings and compare their identities. */
   onChanged(listener: () => void): () => void {

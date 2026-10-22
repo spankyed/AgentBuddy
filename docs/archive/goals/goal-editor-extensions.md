@@ -21,6 +21,35 @@ subprocess argv where a rename typechecks and calls a subcommand that does not e
 Commit usable checkpoints as you go. Do not expand or reduce scope without user authorization.
 ```
 
+## Outcome (2026-10-22)
+
+**Done.** The editor contribution is `extensions.textEditor`, every `tiptap/extensions/` file holds its
+ProseMirror Plugin private, and the guard holds the three vocabularies that are genuinely somebody
+else's.
+
+| Phase | Commit | Evidence |
+|---|---|---|
+| 1 — the guard | `47785e4d0` | `text-editor-concept` with the ten spellings; `KEPT` shrunk to names a third party defines. Mutation: emptying the group fails the park case |
+| 2 — the extension files | `194fbc751`, `aaeeafeff` | Three merges, three moves. `api:update` deletes `components.tiptap.extensions.search-{extension,plugin}.api.md` and writes one `…search.api.md` — the collision, gone |
+| 3 — the manifest key | this commit | 44 files; `npm run typecheck` 17/17 |
+| 4 — recorded files | this commit | `schema:update`, `api:update`, `facade:update`; `facade:check` reported the facade already current |
+| 5 — docs, guard live | this commit | `PARKED` empty, scan green over code and guides |
+
+**The park closed itself, which is the mechanism worth keeping.** `npm run test:unit` failed
+`parks nothing that has stopped needing it` the moment the last violation went — the guard asked to be
+unparked rather than waiting to be remembered.
+
+**`textEditor`, not `editor`, and the reason is the rename itself.** The first pass used `editor` and
+was discarded before it was committed: `editor` is a word this tree uses hundreds of times
+(`props.editor`, `editor.registerPlugin`, tiptap's own `Editor`), so renaming *to* it cannot be checked
+by matching, and renaming *away* from it later would be unmatchable. The discarded pass kept one fix —
+`cross-feature-imports` caught `image-paste.ts` reaching into a feature, which `aaeeafeff` resolves by
+moving the clipboard parsing to the extension that pastes.
+
+**Carried forward.** `docs/goals/goal-commands-are-host-level.md` is unstarted and now reads in this
+vocabulary. Its Decision 4 — the generated `readSurfaceState`/`useSurfaceState` signatures dropping
+`| undefined` — is still open and belongs to nothing yet.
+
 ## Scope
 
 `packages/repo-checks/tests/surface-vocabulary.spec.ts` currently allows `plugin` for three
@@ -110,22 +139,29 @@ reaches instead, and what the guard will encode: *every remaining first-party id
 acceptable, the alternative is a wrapper layer renaming ProseMirror's vocabulary at our boundary — new
 indirection over 150 call sites, for a word. Say so before Phase 1 rather than after.
 
-### 2. `extensions.editor`, and the inner field keeps `extensions`
+### 2. `extensions.textEditor`, and the inner field keeps `extensions`
 
 | Now | Then |
 |---|---|
-| `extensions.tiptapPlugins` | `extensions.editor` |
-| `TiptapPluginDeclaration` | `EditorExtensionsDeclaration` |
-| `TiptapPlugin` | `EditorExtensions` |
-| `TiptapPluginBinding` | `EditorExtensionsBinding` |
-| `TiptapPluginSchema` | `EditorExtensionsSchema` |
-| `tiptapPluginRegistry` | `editorExtensionsRegistry` |
+| `extensions.tiptapPlugins` | `extensions.textEditor` |
+| `TiptapPluginDeclaration` | `TextEditorExtensionsDeclaration` |
+| `TiptapPlugin` | `TextEditorExtensions` |
+| `TiptapPluginBinding` | `TextEditorExtensionsBinding` |
+| `TiptapPluginSchema` | `TextEditorExtensionsSchema` |
+| `tiptapPluginRegistry` | `textEditorExtensionsRegistry` |
 | `editorPlugin` / `editorPlugins` (locals) | `contribution` / `contributions` |
-| `fe/tiptap-plugins.ts` | `fe/editor-extensions.ts` |
-| `pluginPopups` | `editorPopups` |
+| `fe/tiptap-plugins.ts` | `fe/text-editor-extensions.ts` |
+| `pluginPopups` | `textEditorPopups` |
+
+**`textEditor`, not `editor`.** This app has several editors — Monaco for code, Vue Flow's canvas, the
+DSL editors — so `editor` alone names the wrong set and will collide. It is also the practical
+argument: `editor` is a word this tree already uses hundreds of times (`props.editor`,
+`editor.registerPlugin`, tiptap's own `Editor`), so a rename *to* it cannot be checked by matching, and
+a rename *away* from it later would be unmatchable. `textEditor` is unique in the tree today, which is
+what makes both this rename and any future one tractable.
 
 The entry's inner `extensions` field is **not** renamed: it holds tiptap Extensions, which is what
-tiptap calls them. `extensions.editor.suggestions.extensions` reads as the pack-contribution namespace,
+tiptap calls them. `extensions.textEditor.suggestions.extensions` reads as the pack-contribution namespace,
 the kind, the group, then tiptap's own word — two different scopes that happen to share a noun.
 
 The alternative is renaming the inner field to `tiptap`, which removes the repetition and names a
@@ -261,9 +297,9 @@ a path this phase moved, and the editor suites pass — `apack-cli/tests/build/e
 
 ### Phase 3 — the manifest key and its chain
 
-**Deliverable.** `extensions.editor` through the schema (`declaration-schema.ts`,
+**Deliverable.** `extensions.textEditor` through the schema (`declaration-schema.ts`,
 `frontend-declaration.ts`), codegen (`generate-entries.ts`, `module-targets.ts`), the host
-(`fe/pack-store.ts`, `fe/declaration-binding.ts`), the SDK (`fe/tiptap-plugins.ts` → `fe/editor-extensions.ts`
+(`fe/pack-store.ts`, `fe/declaration-binding.ts`), the SDK (`fe/tiptap-plugins.ts` → `fe/text-editor-extensions.ts`
 and `fe/index.ts`; the module is internal, so no exports map moves), `TiptapEditor.vue`, and the one
 in-repo manifest that declares the key: `packages/default-setup/apack.json`. No `tests/packs/*` fixture
 declares one, so the fixture suites exercise the rename only through the SDK and host.
@@ -304,7 +340,7 @@ what the guard now holds.
 
 - Nothing in `packages/apack-ui/src/components/tiptap/extensions/*-plugin.ts` changes. If a phase wants
   to, re-read Decision 1.
-- The pack contract moves: `extensions.editor` is a manifest key, so a pack's `apack.json` changes and
+- The pack contract moves: `extensions.textEditor` is a manifest key, so a pack's `apack.json` changes and
   the facade types change with it. There is no deprecation window.
 - `PACK_SNAPSHOT_FORMAT` and `PACK_LAYOUT_VERSION` are not touched. A stale snapshot is refused with an
   enum error at the renamed key, which is the behaviour already.

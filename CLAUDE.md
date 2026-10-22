@@ -53,8 +53,11 @@ See [worktree development](docs/references/worktree-development.md).
 - Review naming in context: the owner, operation and neighboring API family determine whether a name is clear. See [the naming goal](docs/archive/goals/goal-naming-conventions.md).
 
 **A feature's frontend half is a surface; its backend half is a system.** Reserve **plugin** for the three
-vocabularies where it really is one: an editor plugin (tiptap/ProseMirror), a bundler plugin (Vite, rollup,
-PostCSS, esbuild) and a plugin of a third-party CLI this app drives (`claude plugin`).
+vocabularies where it really is one: a **ProseMirror `Plugin`** this app constructs inside a tiptap
+extension, a bundler plugin (Vite, rollup, PostCSS, esbuild) and a plugin of a third-party CLI this app
+drives (`claude plugin`). **A pack's editor contribution is not one of them**: it is
+`extensions.textEditor`, and one file per extension under a `tiptap/extensions/` directory holds its
+Plugin private — see [the editor-extension convention](docs/archive/goals/goal-editor-extensions.md).
 `packages/repo-checks/tests/surface-vocabulary.spec.ts` holds that list and is the rule.
 
 **Never find-and-replace over `plugin`.** One of those three cannot be caught by a compiler: the CLI's

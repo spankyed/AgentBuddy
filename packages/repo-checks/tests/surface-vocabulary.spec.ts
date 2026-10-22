@@ -64,7 +64,7 @@ const RETIRED = {
    * Longest first, which the `\b` would handle by backtracking anyway — it is for whoever reads the
    * list, `TiptapPlugin` sitting inside four of its neighbours.
    */
-  'editor-concept': [
+  'text-editor-concept': [
     'TiptapPluginDeclaration', 'TiptapPluginBinding', 'TiptapPluginSchema', 'tiptapPluginRegistry',
     'tiptapPlugins', 'TiptapPlugin', 'editorPlugins', 'editorPlugin', 'tiptap-plugins', 'pluginPopups',
   ],
@@ -79,11 +79,11 @@ type Group = keyof typeof RETIRED;
  * than commenting the group out: its pattern is held to matching every name it retires and to leaving
  * every kept spelling alone from the moment it lands, and only the sweep over the tree waits.
  *
- * `editor-concept` unparks in `docs/goals/goal-editor-extensions.md`'s Phase 5. Emptying this set is
- * that phase's deliverable, so a group left here fails nothing and must not be forgotten — which is
- * what `parked groups are declared` below is for.
+ * Empty today. `text-editor-concept` was parked while `goal-editor-extensions.md` ran and came out in
+ * its Phase 5 — on the guard's own prompting, the case below having failed the moment the last
+ * violation went.
  */
-const PARKED: ReadonlySet<Group> = new Set<Group>(['editor-concept']);
+const PARKED: ReadonlySet<Group> = new Set<Group>([]);
 
 const patternFor = (group: Group): RegExp => new RegExp(`(?<![.\\w])(${RETIRED[group].join('|')})\\b`);
 
@@ -150,7 +150,7 @@ const KEPT = [
  */
 const ALLOWED: Record<string, { groups: readonly Group[]; why: string }> = {
   'packages/repo-checks/tests/surface-vocabulary.spec.ts': {
-    groups: ['concept-type', 'concept-call', 'concept-field', 'concept-event', 'editor-concept'],
+    groups: ['concept-type', 'concept-call', 'concept-field', 'concept-event', 'text-editor-concept'],
     why: 'this guard, which has to spell the names it retires',
   },
 };

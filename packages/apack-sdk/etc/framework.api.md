@@ -198,7 +198,7 @@ export interface FrontendDeclaration {
     // (undocumented)
     appExtensions?: Record<string, string>;
     // (undocumented)
-    tiptapPlugins?: Record<string, TiptapPluginDeclaration>;
+    textEditor?: Record<string, TextEditorExtensionsDeclaration>;
 }
 
 // @public
@@ -915,7 +915,7 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
 }
 
 // @public
-export interface TiptapPluginDeclaration {
+export interface TextEditorExtensionsDeclaration {
     // (undocumented)
     extensions?: Record<string, string>;
     // (undocumented)

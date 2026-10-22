@@ -67,7 +67,7 @@ describe('_mergeProvenance', () => {
     const manifest = {
       data: { entities: { Note: null }, relations: ['tagged'] },
 
-      extensions: { commands: { note: { placeholder: 'x' } },  tiptapPlugins: { suggestions: { extensions: { mention: 'src/editor.ts#Mention' } } } },
+      extensions: { commands: { note: { placeholder: 'x' } },  textEditor: { suggestions: { extensions: { mention: 'src/editor.ts#Mention' } } } },
       features: { memos: { surface: {}, references: {
         types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [] } },
         categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },

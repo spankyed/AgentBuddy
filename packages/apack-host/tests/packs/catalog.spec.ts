@@ -38,7 +38,7 @@ describe('contribution catalog data', () => {
     const catalog = createContributionCatalog(app);
     catalog.setNative([hostDeclaration]);
     expect(catalog.frontend()).toMatchObject([{ packId: 'host', origin: 'native', enabled: true,
-      declaration: { tiptapPlugins: { references: { extensions: {
+      declaration: { textEditor: { references: { extensions: {
         reference: '@apackdev/ui/components/tiptap/reference-node#ReferenceNode',
       } } } } }]);
     expect(catalog.getSnapshot().packs).toEqual([]);
@@ -48,7 +48,7 @@ describe('contribution catalog data', () => {
     const packsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-help-discovery-'));
     const dir = path.join(packsDir, 'help-pack');
     try {
-      const frontend = { tiptapPlugins: { suggestions: { extensions: { mention: 'src/unavailable.ts#Mention' },
+      const frontend = { textEditor: { suggestions: { extensions: { mention: 'src/unavailable.ts#Mention' },
         popups: { mention: 'src/unavailable.vue' }, isSuggestionActive: 'src/unavailable.ts#isActive' } } };
       const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0', consumes: { services: ['host/onboarding'] },
         features: { notes: { description: 'Feature declaration fixture.', surface: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: {

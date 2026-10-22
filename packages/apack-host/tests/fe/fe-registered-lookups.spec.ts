@@ -5,8 +5,8 @@ import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 // What a pack's frontend registration contributes, read the way the renderer and pack frontends read it: each
 // lookup sees the pack once it registers and loses it when it unregisters.
 import { afterEach, describe, expect, it } from 'vitest';
-import type { Surface, SurfaceDefinition, PackFERegistration, TiptapPlugin } from '@apackdev/sdk/fe';
-import { tiptapPluginRegistry, getStepFrontendBindings } from '@apackdev/sdk/fe';
+import type { Surface, SurfaceDefinition, PackFERegistration, TextEditorExtensions } from '@apackdev/sdk/fe';
+import { textEditorExtensionsRegistry, getStepFrontendBindings } from '@apackdev/sdk/fe';
 import { bindFeHost } from '@apackdev/sdk/runtime';
 import { type StepDefinition } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
@@ -50,7 +50,7 @@ const NoteNode = {}; const NoteForm = {}; const CardView = {}; const Choice = {}
 const noteStepFE = { type: 'note', node: { label: 'Note' }, fe: { nodeConfig: { icon: {}, category: 'data', connectionRules: { inputs: 1, outputs: 1 } }, components: { node: NoteNode, form: NoteForm } } } satisfies StepDefinition;
 const cardView = { type: 'card-view', fe: { icon: {}, component: CardView } };
 const choice = { type: 'choice', fe: { component: Choice } };
-const mentions: TiptapPlugin = { extensions: {} };
+const mentions: TextEditorExtensions = { extensions: {} };
 const Welcome = { name: 'Welcome' };
 
 describe("a pack's frontend", () => {
@@ -60,7 +60,7 @@ describe("a pack's frontend", () => {
       steps: [noteStepFE],
       artifacts: [cardView],
       blocks: [choice],
-      tiptapPlugins: { mentions },
+      textEditor: { mentions },
       appExtensions: { welcome: Welcome },
     });
 
@@ -77,7 +77,7 @@ describe("a pack's frontend", () => {
     expect(getStepFrontendBindings().get('note')?.binding.fe?.components?.form).toBe(NoteForm);
     expect(artifactRegistry.getComponent('card-view')).toBe(CardView);
     expect(blockRegistry.getComponent('choice')).toBe(Choice);
-    expect(tiptapPluginRegistry.getAll()).toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
+    expect(textEditorExtensionsRegistry.getAll()).toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
     expect(appExtension('welcome')).toBe(Welcome);
 
     expect(remove('notebook-pack')).toMatchObject([{ label: 'Notebook', id: 'notebook-pack/notebookMain' }]);
@@ -88,7 +88,7 @@ describe("a pack's frontend", () => {
     expect(artifactRegistry.has('card-view')).toBe(false);
     expect(artifactRegistry.all()).toEqual([]);
     expect(blockRegistry.has('choice')).toBe(false);
-    expect(tiptapPluginRegistry.getAll()).not.toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
+    expect(textEditorExtensionsRegistry.getAll()).not.toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
     expect(appExtension('welcome')).toBeUndefined();
   });
 
@@ -157,24 +157,24 @@ describe("a pack's frontend", () => {
 
 // Pack and group insertion order determines the order presented to the editor.
 describe('tiptap plugin groups', () => {
-  const mentions: TiptapPlugin = { extensions: {} };
-  const slashes: TiptapPlugin = { extensions: {} };
+  const mentions: TextEditorExtensions = { extensions: {} };
+  const slashes: TextEditorExtensions = { extensions: {} };
 
   it('are listed in registration order, which the editor resolves extensions by', () => {
-    add('first-pack', { tiptapPlugins: { mentions } });
-    add('second-pack', { tiptapPlugins: { slashes } });
+    add('first-pack', { textEditor: { mentions } });
+    add('second-pack', { textEditor: { slashes } });
 
-    expect(tiptapPluginRegistry.getAll()).toEqual([{ packId: 'first-pack', groupId: 'mentions', binding: mentions }, { packId: 'second-pack', groupId: 'slashes', binding: slashes }]);
+    expect(textEditorExtensionsRegistry.getAll()).toEqual([{ packId: 'first-pack', groupId: 'mentions', binding: mentions }, { packId: 'second-pack', groupId: 'slashes', binding: slashes }]);
   });
 
   it('exposes immutable ownership and observes only committed changes until unsubscribed', () => {
-    add('first-pack', { tiptapPlugins: { mentions } });
-    const incumbent = tiptapPluginRegistry.getAll()[0];
+    add('first-pack', { textEditor: { mentions } });
+    const incumbent = textEditorExtensionsRegistry.getAll()[0];
     expect(Object.isFrozen(incumbent)).toBe(true);
     let changes = 0;
-    const stop = tiptapPluginRegistry.onChanged(() => { changes++; });
+    const stop = textEditorExtensionsRegistry.onChanged(() => { changes++; });
     try {
-      const candidate = registry.prepareFixture({ id: 'first-pack', tiptapPlugins: { mentions } }, undefined, true);
+      const candidate = registry.prepareFixture({ id: 'first-pack', textEditor: { mentions } }, undefined, true);
       expect(changes).toBe(0);
       candidate.dispose();
       expect(changes).toBe(0);
@@ -182,10 +182,10 @@ describe('tiptap plugin groups', () => {
       expect(changes).toBe(0);
       add('unrelated-pack', {});
       expect(changes).toBe(1);
-      expect(tiptapPluginRegistry.getAll()[0].binding).toBe(incumbent.binding);
-      registry.replaceFixture({ id: 'first-pack', tiptapPlugins: { renamed: mentions } });
+      expect(textEditorExtensionsRegistry.getAll()[0].binding).toBe(incumbent.binding);
+      registry.replaceFixture({ id: 'first-pack', textEditor: { renamed: mentions } });
       expect(changes).toBe(2);
-      expect(tiptapPluginRegistry.getAll()[0]).toMatchObject({ packId: 'first-pack', groupId: 'renamed' });
+      expect(textEditorExtensionsRegistry.getAll()[0]).toMatchObject({ packId: 'first-pack', groupId: 'renamed' });
       stop();
       remove('unrelated-pack');
       expect(changes).toBe(2);
@@ -193,21 +193,21 @@ describe('tiptap plugin groups', () => {
   });
 
   it('loses every one of a pack when it unregisters, not just the first', () => {
-    add('many-pack', { tiptapPlugins: { mentions, slashes } });
+    add('many-pack', { textEditor: { mentions, slashes } });
 
     unregister('many-pack');
 
-    expect(tiptapPluginRegistry.getAll()).toEqual([]);
+    expect(textEditorExtensionsRegistry.getAll()).toEqual([]);
   });
 
   // The read hands out a copy, as the backend's command store does, so a reader cannot edit what every
   // other reader sees. It used to hand out the live array by reference.
   it('cannot be added to or emptied by a reader', () => {
-    add('first-pack', { tiptapPlugins: { mentions } });
+    add('first-pack', { textEditor: { mentions } });
 
-    tiptapPluginRegistry.getAll().push({ packId: 'reader', groupId: 'slashes', binding: slashes });
-    tiptapPluginRegistry.getAll().length = 0;
+    textEditorExtensionsRegistry.getAll().push({ packId: 'reader', groupId: 'slashes', binding: slashes });
+    textEditorExtensionsRegistry.getAll().length = 0;
 
-    expect(tiptapPluginRegistry.getAll()).toEqual([{ packId: 'first-pack', groupId: 'mentions', binding: mentions }]);
+    expect(textEditorExtensionsRegistry.getAll()).toEqual([{ packId: 'first-pack', groupId: 'mentions', binding: mentions }]);
   });
 });

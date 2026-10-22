@@ -2,7 +2,7 @@
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
 import type { DeclarationData, SurfaceDeclaration } from '@apackdev/sdk/framework';
 import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '@apackdev/sdk/fe/references';
-import type { Surface, PackFERegistration, TiptapPlugin, TiptapPluginBinding, SettingsPort, StepFrontendBinding, ArtifactFrontendBinding, BlockFrontendBinding } from '@apackdev/sdk/fe';
+import type { Surface, PackFERegistration, TextEditorExtensions, TextEditorExtensionsBinding, SettingsPort, StepFrontendBinding, ArtifactFrontendBinding, BlockFrontendBinding } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import { createDesignationStore, createOwnedStepStore } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
@@ -111,7 +111,7 @@ interface FrontendContributions {
   steps: Array<DefinitionEntry<StepFrontendBinding>>;
   artifacts: Array<DefinitionEntry<ArtifactFrontendBinding>>;
   blocks: Array<DefinitionEntry<BlockFrontendBinding>>;
-  tiptapPlugins: Array<[string, TiptapPlugin]>;
+  textEditor: Array<[string, TextEditorExtensions]>;
   appExtensions: Array<readonly [string, SettingsForm]>;
   references: OwnedReferenceBindings[];
   bindSettings: PackFERegistration['bindSettings'];
@@ -160,7 +160,7 @@ function capture(registration: PackFERegistration, identity: AcceptedFrontendAdm
       declaration: identity.declarations.extensions!.artifacts![value.type]!, binding: value })]),
     blocks: (reg.blocks ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
       declaration: identity.declarations.extensions!.blocks![value.type]!, binding: value })]),
-    tiptapPlugins: Object.entries(reg.tiptapPlugins ?? {}),
+    textEditor: Object.entries(reg.textEditor ?? {}),
     appExtensions: Object.entries(reg.appExtensions ?? {}),
   };
 }
@@ -174,7 +174,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   const blocks = new Map<string, BlockFrontendBinding>();
   const appExtensions = new Map<string, SettingsForm>();
   const forms = new Map<string, SettingsForm>();
-  const tiptapPlugins: TiptapPluginBinding[] = [];
+  const textEditor: TextEditorExtensionsBinding[] = [];
   const editorOwners = new Map<string, string>();
   const referenceTypes = new Map<string, ReferenceBinding<ReferenceTypeConfig>>();
   const referenceCategories = new Map<string, ReferenceBinding<ReferenceBindings['categories'][string]>>();
@@ -203,17 +203,17 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     for (const [key, value] of pack.artifacts) artifacts.set(key, value);
     for (const [key, value] of pack.blocks) blocks.set(key, value);
     for (const [key, value] of pack.appExtensions) appExtensions.set(key, value);
-    for (const [id, editorPlugin] of pack.tiptapPlugins) {
+    for (const [id, contribution] of pack.textEditor) {
       const owner = `${pack.id}/${id}`;
-      for (const name of Object.keys(editorPlugin.extensions ?? {})) {
+      for (const name of Object.keys(contribution.extensions ?? {})) {
         const previous = editorOwners.get(name);
         if (previous !== undefined) throw new Error(`Tiptap extension "${name}" declared by both "${previous}" and "${owner}"`);
         editorOwners.set(name, owner);
       }
-      tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: editorPlugin }));
+      textEditor.push(Object.freeze({ packId: pack.id, groupId: id, binding: contribution }));
     }
   }
-  return { surfaces, surfaceBindings, designations, steps, artifacts, blocks, appExtensions, forms, tiptapPlugins, referenceTypes, referenceCategories };
+  return { surfaces, surfaceBindings, designations, steps, artifacts, blocks, appExtensions, forms, textEditor, referenceTypes, referenceCategories };
 }
 
 /** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
@@ -339,7 +339,7 @@ export function createFePackRegistry(): FePackRegistry {
     surfaceBindings: () => new Map(tables.surfaceBindings),
     frontendIdentity: packId => accepted.get(packId)?.identity,
     surfaces: () => [...tables.surfaces],
-    tiptapPlugins: () => [...tables.tiptapPlugins],
+    textEditor: () => [...tables.textEditor],
     referenceTypes: () => new Map(tables.referenceTypes),
     referenceCategories: () => new Map(tables.referenceCategories),
     appExtension: key => tables.appExtensions.get(key),

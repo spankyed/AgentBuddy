@@ -2,7 +2,7 @@ import { Editor, type EditorOptions } from '@tiptap/vue-3'
 import type { JSONContent } from '@tiptap/core'
 import { Selection } from '@tiptap/pm/state'
 import { nextTick, onBeforeUnmount, onMounted, shallowRef } from 'vue'
-import { tiptapPluginRegistry, type TiptapPluginBinding } from '@apackdev/sdk/fe'
+import { textEditorExtensionsRegistry, type TextEditorExtensionsBinding } from '@apackdev/sdk/fe'
 import { createLogger } from '@apackdev/sdk/logger'
 
 interface SavedDocument {
@@ -17,15 +17,15 @@ function canonical(value: unknown): string {
     ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item)
 }
 
-function extensions(groups: TiptapPluginBinding[]) {
+function extensions(groups: TextEditorExtensionsBinding[]) {
   return groups.flatMap(group => Object.entries(group.binding.extensions ?? {})
     .map(([name, extension]) => [`${group.packId}/${group.groupId}/${name}`, extension] as const))
 }
 
 /** Accepted bindings own executable lifetime; only document data survives a replacement. */
-export function useContributedEditor(options: (groups: TiptapPluginBinding[]) => Partial<EditorOptions>) {
+export function useContributedEditor(options: (groups: TextEditorExtensionsBinding[]) => Partial<EditorOptions>) {
   const editor = shallowRef<Editor>()
-  const groups = shallowRef<TiptapPluginBinding[]>([])
+  const groups = shallowRef<TextEditorExtensionsBinding[]>([])
   const generation = shallowRef(0)
   const problem = shallowRef<string>()
   const logger = createLogger('editor-contributions')
@@ -46,7 +46,7 @@ export function useContributedEditor(options: (groups: TiptapPluginBinding[]) =>
 
   async function refresh(force = false) {
     if (!mounted) return
-    const next = tiptapPluginRegistry.getAll()
+    const next = textEditorExtensionsRegistry.getAll()
     const previous = editor.value
     const currentExtensions = extensions(groups.value)
     const nextExtensions = extensions(next)
@@ -116,7 +116,7 @@ export function useContributedEditor(options: (groups: TiptapPluginBinding[]) =>
 
   onMounted(() => {
     mounted = true
-    stop = tiptapPluginRegistry.onChanged(() => { void refresh() })
+    stop = textEditorExtensionsRegistry.onChanged(() => { void refresh() })
     void refresh()
   })
   onBeforeUnmount(() => {

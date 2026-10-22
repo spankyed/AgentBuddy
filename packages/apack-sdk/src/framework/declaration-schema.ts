@@ -19,7 +19,7 @@ import type { SettingsDefinition } from './settings-definition.ts';
 import type { PackMigrations } from './pack-registration.ts';
 import type { ReferenceDeclarations } from './reference-declaration.ts';
 import { _entityDestinationsProblem, type SurfaceDeclaration } from './surface-declaration.ts';
-import type { FrontendDeclaration, TiptapPluginDeclaration } from './frontend-declaration.ts';
+import type { FrontendDeclaration, TextEditorExtensionsDeclaration } from './frontend-declaration.ts';
 import type { StepFrontendDeclaration, StepLayoutDeclaration } from './step-frontend-declaration.ts';
 
 export { FEATURE_ID_PATTERN };
@@ -122,10 +122,10 @@ function checkDefaultSurfaceClaims(features: Record<string, { surface?: { defaul
 
 function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.RefinementCtx, prefix: string[]): void {
   const owners = new Map<string, string>();
-  for (const [id, editorPlugin] of Object.entries(frontend?.tiptapPlugins ?? {})) {
-    for (const name of Object.keys(editorPlugin.extensions ?? {})) {
+  for (const [id, contribution] of Object.entries(frontend?.textEditor ?? {})) {
+    for (const name of Object.keys(contribution.extensions ?? {})) {
       const previous = owners.get(name);
-      if (previous !== undefined) ctx.addIssue({ code: 'custom', path: [...prefix, 'tiptapPlugins', id, 'extensions', name],
+      if (previous !== undefined) ctx.addIssue({ code: 'custom', path: [...prefix, 'textEditor', id, 'extensions', name],
         message: `Tiptap extension "${name}" declared by both groups "${previous}" and "${id}"` });
       owners.set(name, id);
     }
@@ -160,7 +160,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   dslDefinitions: declarationRecord(z.string()).optional(),
   entityDestinations: declarationRecord(z.string().min(1), z.string().min(1)).optional(),
   eventContracts: _EventContractsSchema.optional(),
-  tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
+  textEditor: z.lazy(() => FrontendConfigSchema.shape.textEditor),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
     description: true, entities: true, designation: true, settings: true, surface: true, references: true, services: true, repositories: true,
@@ -658,14 +658,14 @@ const BuildConfigSchema = z.object({
   bundleUi: z.boolean().describe('Bundle a copy of @apackdev/ui into the pack instead of using the host app\'s. All of @apackdev/ui is bundled, so the pack never mixes the two.').optional(),
 }).strict().describe('Build-time configuration: settings that change what the build produces, never what the app loads.');
 
-const TiptapPluginSchema = z.object({
+const TextEditorExtensionsSchema = z.object({
   extensions: declarationRecord(IdentifierSchema, ExportTargetSchema).describe('Tiptap extension name to its exported extension object ("path#exportName"). Each key must match the exported object\'s Tiptap name.').optional(),
   popups: declarationRecord(IdentifierSchema, ModulePathSchema).describe('Popup IDs local to this group, mapped to pack-root-relative Vue component modules.').optional(),
   isSuggestionActive: ExportTargetSchema.describe('Exported predicate ("path#exportName") reporting whether this group has an active suggestion for the current editor state.').optional(),
-} satisfies Record<keyof TiptapPluginDeclaration, z.ZodTypeAny>).strict();
+} satisfies Record<keyof TextEditorExtensionsDeclaration, z.ZodTypeAny>).strict();
 
 const FrontendConfigSchema = z.object({
-  tiptapPlugins: declarationRecord(IdentifierSchema, TiptapPluginSchema).describe('Named rich-text editor contribution groups. Extensions, popup IDs and the optional suggestion predicate are declared without loading pack code.').optional(),
+  textEditor: declarationRecord(IdentifierSchema, TextEditorExtensionsSchema).describe('Named rich-text editor contribution groups. Extensions, popup IDs and the optional suggestion predicate are declared without loading pack code.').optional(),
   appExtensions: declarationRecord(IdentifierSchema, ModulePathSchema).describe('Named app extensions. Keys are extension names (identifiers), values are paths to Vue components.').optional(),
 } satisfies Record<keyof FrontendDeclaration, z.ZodTypeAny>).strict().describe('Frontend contributions: what the pack adds to the app\'s own UI.');
 

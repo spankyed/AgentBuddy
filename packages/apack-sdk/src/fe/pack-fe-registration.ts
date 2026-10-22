@@ -1,7 +1,7 @@
 import type { ReferenceBindings } from './reference-types.ts';
 import type { Component } from 'vue';
 import type { SurfaceDefinition } from './surface.ts';
-import type { TiptapPlugin } from './tiptap-plugins.ts';
+import type { TextEditorExtensions } from './text-editor-extensions.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
 import type { StepDefinition } from '../steps/types.ts';
@@ -35,7 +35,7 @@ export interface PackFERegistration {
   /** Pack settings group id → its declared custom form. */
   settingsForms?: Record<string, Component>;
   steps?: StepDefinition[];
-  tiptapPlugins?: Record<string, TiptapPlugin>;
+  textEditor?: Record<string, TextEditorExtensions>;
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];

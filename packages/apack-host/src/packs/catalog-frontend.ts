@@ -5,9 +5,9 @@ import type { FrontendCatalogEntry, DeclarationData, FrontendDeclaration } from 
 export function frontendCatalogEntries(snapshot: PackCatalogSnapshot): readonly FrontendCatalogEntry[] {
   const collect = (packId: string, declaration: DeclarationData<FrontendDeclaration> | undefined,
     origin: FrontendCatalogEntry['origin'], identity: Pick<FrontendCatalogEntry, 'enabled' | 'declarationRevision' | 'buildRevision'> = {}) =>
-    declaration?.tiptapPlugins || declaration?.appExtensions
+    declaration?.textEditor || declaration?.appExtensions
       ? [Object.freeze({ packId, origin, declaration: Object.freeze({
-        ...(declaration.tiptapPlugins ? { tiptapPlugins: declaration.tiptapPlugins } : {}),
+        ...(declaration.textEditor ? { textEditor: declaration.textEditor } : {}),
         ...(declaration.appExtensions ? { appExtensions: declaration.appExtensions } : {}),
       }), ...identity })] : [];
   return Object.freeze([
