@@ -15,7 +15,7 @@ export interface SurfaceStorage {
  * One surface's window storage.
  *
  * **The prefix is derived, which is the whole point.** A hand-typed key carries whatever vocabulary its
- * author had — `code-plugin-open-tabs` outlived the word `plugin` by a release — and two packs choosing
+ * author had — `code-feature-open-tabs` outlived the word `plugin` by a release — and two packs choosing
  * the same string collide silently, since window storage is one flat namespace per window. Keyed on the
  * ref, neither can happen: the name a surface passes is scoped to the surface that passed it.
  *

@@ -85,7 +85,7 @@ const DECLARES_PLUGIN = /^\s*(?:export\s+)?(?:declare\s+)?(?:interface|type|clas
  *
  * This is the case with teeth. Every entry is either published API (`TiptapPlugin`,
  * `tiptapPluginRegistry`, `searchPluginKey`) or a key in the user's window storage
- * (`code-plugin-open-tabs`), so a pattern that grew greedy enough to reach one of them would have the
+ * (`code-feature-open-tabs`), so a pattern that grew greedy enough to reach one of them would have the
  * rename break a pack author's editor extension or orphan a user's open tabs.
  */
 const KEPT = [
@@ -95,7 +95,7 @@ const KEPT = [
   'VitePlugin', 'esbuild.Plugin', "import('esbuild').Plugin", 'plugins: [vue()]', 'plugins.push(x)',
   'packExternalsPlugin', 'hostSharedModulesPlugin', 'postcssPlugins', 'pluginVue', 'pluginOxlint',
   "'@vitejs/plugin-vue'", "'eslint-plugin-vue'", "'rollup-plugin-dts'", "name: 'collect-bare-imports'",
-  "'code-plugin-open-tabs'", "'apack-last-active-plugin'",
+  "'code-feature-open-tabs'", "'apack-last-active-plugin'",
   // `claude plugin` — the CLI's own plugin system, which the code feature wraps, and the most dangerous
   // of the four: its names reach a **subprocess argv**, where a rename typechecks and then calls a
   // subcommand that does not exist. A pass over this repo did exactly that, turning

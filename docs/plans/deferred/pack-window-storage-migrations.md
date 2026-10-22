@@ -81,6 +81,6 @@ constraint to everyone and was wrong: the ordering requirement belongs to each k
 boot.
 
 The second was reaching for the mechanism before the namespace. Most of what a per-pack migration would
-have carried — `code-plugin-open-tabs` among it — stopped existing once the prefix was derived from the
+have carried — `code-feature-open-tabs` among it — stopped existing once the prefix was derived from the
 ref rather than typed by hand. A mechanism for managing bad keys is worth less than keys that cannot go
 bad.

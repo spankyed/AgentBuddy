@@ -4,7 +4,7 @@ import { splitRef } from '../ids/refs.ts'
 import { _runDelivery } from '../events/delivery.ts'
 import { boundFeHost } from '../runtime/fe-host.ts'
 
-const PLUGIN: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('surface')
+const SURFACE: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('surface')
 
 /**
  * The actor of the surface this component belongs to. The host provides it where it renders a surface's canvas,
@@ -18,7 +18,7 @@ const PLUGIN: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('surface')
  * machine dropped, and keep compiling.
  */
 export function useSurface<T>(): T {
-  const surface = inject(PLUGIN, undefined)
+  const surface = inject(SURFACE, undefined)
   if (!surface) throw new Error('useSurface() runs in a component a surface renders: its canvas, panel or chat, or one inside a <SurfaceScope>')
   return sendsAsItself(surface.value) as T
 }
@@ -108,7 +108,7 @@ export const SurfaceScope = defineComponent({
     watch(() => props.surface, follow, { flush: 'sync' })
     const subscription = boundFeHost().application.subscribe(follow)
     onScopeDispose(() => subscription.unsubscribe())
-    provide(PLUGIN, computed(() => actor.value ?? surfaceActor(props.surface)))
+    provide(SURFACE, computed(() => actor.value ?? surfaceActor(props.surface)))
     // A component may capture its actor during setup. Its subtree belongs to that actor's lifetime.
     return () => actor.value ? h(Fragment, { key: actor.value.sessionId }, slots.default?.()) : null
   },
