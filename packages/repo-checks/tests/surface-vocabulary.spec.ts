@@ -33,8 +33,9 @@ const RETIRED = {
     'HostPluginEvents', 'OwnPluginEvents', 'QualifiedPluginEvents', 'TypedSendToPlugin',
     'PluginFrontendBinding', 'PluginCatalogEntry', 'ShellPluginCatalog', 'SendablePluginEvents',
     'PluginName', 'OwnPluginName', 'DependencyPluginName',
-    // Found by enumerating every remaining occurrence rather than sampling greps: these eight survived
-    // four passes because no pattern here named them, and one — `setPluginVisible` — was published API.
+    // A list is completed by enumerating every occurrence, not by sampling greps. These four share no
+    // prefix with the names above them, so nothing but reading the whole population puts them here —
+    // and one of that kind, `setPluginVisible`, is published API, where a miss ships.
     'SettingsPluginEvents', 'ApplicationPluginEvents', 'DependencyPluginState', 'SendToPlugin',
   ],
   'concept-call': [
@@ -74,15 +75,14 @@ const RETIRED = {
 type Group = keyof typeof RETIRED;
 
 /**
- * Groups the tree is not yet held to, because their rename is in flight.
+ * Groups the tree is not yet held to, for a rename in flight. Empty when none is.
  *
  * **The two cases above the scan still run for a parked group**, which is the point of parking rather
  * than commenting the group out: its pattern is held to matching every name it retires and to leaving
  * every kept spelling alone from the moment it lands, and only the sweep over the tree waits.
  *
- * Empty today. `text-editor-concept` was parked while `goal-editor-extensions.md` ran and came out in
- * its Phase 5 — on the guard's own prompting, the case below having failed the moment the last
- * violation went.
+ * A park closes itself — `parks nothing that has stopped needing it` fails once a parked group has no
+ * violations left, so finishing a rename is what asks for the entry to come out.
  */
 const PARKED: ReadonlySet<Group> = new Set<Group>([]);
 
