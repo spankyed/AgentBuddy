@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createLogger } from '@apackdev/sdk/logger';
 // One host writer composes declarations beneath explicit choices for every preference owner.
-import type { EarsQuery } from '@apackdev/ears';
+import type { Ears } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 import { _settingsJsonProblems, type SettingsCatalog } from '@apackdev/sdk/framework';
 import { deepMerge, isPlainObject } from '@apackdev/sdk/utils/pure';
@@ -18,7 +18,7 @@ const SETTINGS_ID = `${SETTINGS_ENTITY}-app` as EARS.EntityId;
 const logger = createLogger('settings');
 export interface SettingsStoreOptions {
   /** The owning engine; test harnesses resolve the current engine after a reset. */
-  ears: () => Pick<EarsQuery, 'qx' | 'upsert'>;
+  ears: () => Pick<Ears, 'qx' | 'upsert'>;
   catalog: () => SettingsCatalog;
   /** Omit only for a fixed catalog, such as a one-shot validator. */
   onCatalogChanged?: (listener: () => void) => () => void;

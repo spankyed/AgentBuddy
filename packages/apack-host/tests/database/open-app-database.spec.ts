@@ -235,17 +235,17 @@ describe('openAppDatabase', () => {
     await writeData(dir, () => { untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept'); });
     // A process that already has an engine: the app, or a test file that started a runtime
     const outer = createEarsEngine({ isEntityType: (name) => name === 'Note' });
-    _bindEars(outer.query);
+    _bindEars(outer);
     try {
       const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
       expect(boundEars()).toBe(db.query);
       db.close();
-      expect(boundEars()).toBe(outer.query);
+      expect(boundEars()).toBe(outer);
 
       // And an open that fails installs nothing at all, rather than leaving this process without an engine
       const broken = dataDirWithPacks();
       await expect(openAppDatabase({ env: 'test', userDataDir: broken, ...quiet })).rejects.toThrow();
-      expect(boundEars()).toBe(outer.query);
+      expect(boundEars()).toBe(outer);
     } finally {
       _bindEars(undefined);
     }

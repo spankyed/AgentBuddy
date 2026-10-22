@@ -56,8 +56,8 @@ let engine: EarsEngine | undefined;
 /** A new in-memory engine checking entity types against the test runtime's, and installed */
 function installFreshEngine(repositories: Record<string, unknown> = {}): EarsEngine {
   engine = createEarsEngine({ isEntityType: (value: string) => entityTypes.has(value) });
-  for (const [name, repo] of Object.entries(repositories)) engine.query.registerRepository(name, repo);
-  _bindEars(engine.query);
+  for (const [name, repo] of Object.entries(repositories)) engine.registerRepository(name, repo);
+  _bindEars(engine);
   return engine;
 }
 
@@ -96,7 +96,7 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
 /** Registers a pack's content runtime: its entity types, its repositories (with the engine) and its content writers (in `testPacks`) */
 export function registerContentRuntime(runtime: ContentRuntime): void {
   startTestRuntime({ entityTypes: Object.values(runtime.entities) });
-  for (const [name, repo] of Object.entries(runtime.repositories)) testEngine().query.registerRepository(name, repo);
+  for (const [name, repo] of Object.entries(runtime.repositories)) testEngine().registerRepository(name, repo);
   for (const [entity, hooks] of Object.entries(runtime.contentWriters)) testPacks.contentWriters.set(entity, hooks);
 }
 
@@ -111,7 +111,7 @@ export function resetTestData(): void {
 
 /** Every entity id in the in-memory database, relation rows included */
 export function entityIds(): EARS.EntityId[] {
-  return testEngine().query.getAllEntities();
+  return testEngine().getAllEntities();
 }
 
 /** Removes an attribute from a row, as data written before the attribute existed would lack it */

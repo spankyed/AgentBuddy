@@ -67,7 +67,7 @@ export async function writeData(userDataDir: string, write: () => void): Promise
     schema: readInstalledSchema(context(userDataDir)),
     log: () => {},
   });
-  const previous = _bindEars(engine.query);
+  const previous = _bindEars(engine);
   try {
     await store.hydrate();
     write();

@@ -1,5 +1,5 @@
 // apack db inspect: an entity's relations, followed a few levels, or relation counts per entity type
-import type { EarsQuery, EARS } from '@apackdev/ears';
+import type { Ears, EARS } from '@apackdev/ears';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
 const OPTIONS = {
@@ -33,7 +33,7 @@ export interface InspectOptions {
 const entityType = (id: string) => id.split('-')[0];
 
 /** The ids an entity's relations in one direction reach, by relation kind */
-function relatedByKind(query: EarsQuery, entityId: EARS.EntityId, direction: Direction): Map<string, string[]> {
+function relatedByKind(query: Ears, entityId: EARS.EntityId, direction: Direction): Map<string, string[]> {
   const relations = direction === 'outgoing'
     ? query.findRelations({ sourceEntity: entityId })
     : query.findRelations({ targetEntity: entityId });
@@ -53,7 +53,7 @@ function relatedByKind(query: EarsQuery, entityId: EARS.EntityId, direction: Dir
  * The lines showing an entity and its relations in `options.directions`, followed `options.depth` levels (a
  * related entity at the last level is listed by id, and one already shown isn't shown again)
  */
-export function graphLines(query: EarsQuery, entityId: string, options: InspectOptions, depth = options.depth, indent = '', seen = new Set<string>()): string[] {
+export function graphLines(query: Ears, entityId: string, options: InspectOptions, depth = options.depth, indent = '', seen = new Set<string>()): string[] {
   if (seen.has(entityId)) return [`${indent}[${entityType(entityId)}] ${entityId} (shown above)`];
   seen.add(entityId);
   const attributes = query.getAll(entityId as EARS.EntityId);
@@ -82,7 +82,7 @@ export function graphLines(query: EarsQuery, entityId: string, options: InspectO
 }
 
 /** Entities and outgoing relations per entity type, for the types that have entities */
-export function relationStatsLines(query: EarsQuery, entityTypes: Iterable<string>): string[] {
+export function relationStatsLines(query: Ears, entityTypes: Iterable<string>): string[] {
   const rows = [...entityTypes].sort().flatMap((type) => {
     const ids = query.getEntitiesOfType(type as EARS.Entity);
     if (ids.length === 0) return [];

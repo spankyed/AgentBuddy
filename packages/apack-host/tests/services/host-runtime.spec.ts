@@ -92,7 +92,7 @@ describe('createHostRuntime', () => {
     });
     const first = runtime(firstEngine);
     const second = runtime(secondEngine);
-    const previous = _bindEars(secondEngine.query);
+    const previous = _bindEars(secondEngine);
     try {
       first.services.settings.set({ kind: 'app' }, ['personal', 'name'], 'First');
       second.services.settings.set({ kind: 'app' }, ['personal', 'name'], 'Second');
@@ -113,7 +113,7 @@ describe('createHostRuntime', () => {
     expect(runtime.redaction).toBe(secretRedaction);
     expect(runtime.transport.rootEvents).toBe(testRootEvents);
     expect(runtime.appVersion).toBe('1.2.3');
-    expect(runtime.ears).toBe(engine.query);
+    expect(runtime.ears).toBe(engine);
     expect(runtime.packs).toBe(packs);
     expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'filesystem', 'inference', 'onboarding', 'secrets', 'settings', 'traceStore']);
     expect(runtime.services.inference).toBe(inference);
@@ -135,7 +135,7 @@ describe('createHostRuntime', () => {
   it("stops the packs, empties the engine, stores and keys, then starts the packs as a boot does", async () => {
     const store = { reset: async () => { order.push('store reset'); } } as unknown as LmdbStore;
     const engine = newEngine();
-    const id = engine.query.create('Memo', { id: 'Memo-1' as EARS.EntityId }).set('title', 'kept?').id();
+    const id = engine.create('Memo', { id: 'Memo-1' as EARS.EntityId }).set('title', 'kept?').id();
     const clear = engine.admin.clear;
     engine.admin.clear = () => { order.push('engine cleared'); clear(); };
     const packs = createNativePackTestRegistry();
@@ -161,7 +161,7 @@ describe('createHostRuntime', () => {
       'onShutdown', 'engine cleared', 'store reset', 'onInit (0 keys)',
       'migrations', 'pack migrations (reset-pack)', 'pack content (reset-pack,written-pack)',
     ]);
-    expect(engine.query.getAttr(id, 'title')).toBeNull();
+    expect(engine.getAttr(id, 'title')).toBeNull();
   });
 });
 

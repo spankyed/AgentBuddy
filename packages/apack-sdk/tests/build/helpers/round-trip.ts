@@ -32,9 +32,9 @@ export function createRoundTrip(rootFlowRole: string, steps?: StepDefinition[]) 
       dsl: FlowDSL,
       opts?: { actions?: Map<string, string>; prompts?: Map<string, string> },
     ): FlowDSL {
-      const { create } = engine.query;
+      const { create } = engine;
       const compiled = compile(dsl, { ...opts, steps });
-      loadCompiledRows(engine.query, compiled);
+      loadCompiledRows(engine, compiled);
 
       if (opts?.actions) {
         for (const [label, id] of opts.actions) {
@@ -47,7 +47,7 @@ export function createRoundTrip(rootFlowRole: string, steps?: StepDefinition[]) 
         }
       }
 
-      const { filePath } = exportFlowsToDSL(tmpDir, { rootFlowRole, engine: engine.query, steps }, false);
+      const { filePath } = exportFlowsToDSL(tmpDir, { rootFlowRole, engine: engine, steps }, false);
       return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     },
   };

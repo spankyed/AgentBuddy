@@ -39,23 +39,23 @@ describe('_bindEars', () => {
   it('points the operations at an engine and returns the one it replaced', () => {
     const first = engineWith(new Set(['Note']));
     const second = engineWith(new Set(['Note', 'Memo']));
-    expect(_bindEars(first.query)).toBeUndefined();
+    expect(_bindEars(first)).toBeUndefined();
     const id = untypedCreate('Note').set('title', 'first').id();
     expect(isEntityType('Memo')).toBe(false);
 
-    expect(_bindEars(second.query)).toBe(first.query);
+    expect(_bindEars(second)).toBe(first);
     expect(untypedQx('Note').ids()).toEqual([]);
     expect(isEntityType('Memo')).toBe(true);
-    expect(boundEars()).toBe(second.query);
+    expect(boundEars()).toBe(second);
 
-    _bindEars(first.query);
+    _bindEars(first);
     expect(defineEars<{ Note: { title: string } }, 'Note'>(boundEars).findAll('Note').map((row) => row.title)).toEqual(['first']);
-    expect(first.query.findById(id)).toMatchObject({ title: 'first' });
+    expect(first.findById(id)).toMatchObject({ title: 'first' });
   });
 
   it('reads the bound engine\'s repositories through repository', () => {
     const engine = engineWith(new Set());
-    _bindEars(engine.query);
+    _bindEars(engine);
     const noteQueries = { name: 'notes' };
     registerRepository('noteQueries', noteQueries);
     expect(repository.noteQueries).toBe(noteQueries);

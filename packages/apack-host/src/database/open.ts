@@ -1,6 +1,6 @@
 // Opening an app's database: the one composition of the LMDB store and the engine, which the API's boot and tools
 // (apack db) share, so both hydrate a data dir the same way
-import { createEarsEngine, makePolicy, type EarsAdmin, type EarsEngine, type EarsQuery, type PartitionPolicy } from '@apackdev/ears';
+import { createEarsEngine, makePolicy, type EarsAdmin, type EarsEngine, type Ears, type PartitionPolicy } from '@apackdev/ears';
 import { _bindEars } from '@apackdev/sdk/ears';
 import { openLmdbStore, type LmdbPaths, type LmdbStore, type WriteFailure } from '@apackdev/ears/lmdb';
 import { resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
@@ -52,7 +52,7 @@ export interface AppDatabase {
   /** The installed packs' entity types and relation kinds */
   schema: InstalledSchema;
   store: LmdbStore;
-  query: EarsQuery;
+  query: Ears;
   admin: EarsAdmin;
   /**
    * Flushes the writes made through the engine and closes the store, putting back the engine that was installed
@@ -123,19 +123,19 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   // Hydration indexes an entity by its type, so this is the set of types the data turned out to hold. It runs
   // after hydration and not during it: nothing hydration does consults the check (a bulk load doesn't), so the
   // set it would be widening from is the data it is reading.
-  for (const type of engine.query.getAllEntityTypes()) knownToEngine.add(type);
+  for (const type of engine.getAllEntityTypes()) knownToEngine.add(type);
   // Installed so `@apackdev/ears`'s free functions (qx, tx, the finders) read this database until `close()`, which
   // puts back whatever was installed before rather than leaving none. `apack db`, the one caller today, has no
   // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command
   // holding one data dir open while it reads another, where uninstalling would leave the first unreachable.
-  const previousEngine = _bindEars(engine.query);
+  const previousEngine = _bindEars(engine);
 
   return {
     userDataDir,
     paths,
     schema,
     store,
-    query: engine.query,
+    query: engine,
     admin: engine.admin,
     close() {
       _bindEars(previousEngine);

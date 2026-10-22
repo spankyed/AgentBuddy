@@ -2,7 +2,7 @@
 // it; they learn whether the user onboarded through services.onboarding, and the renderer through the
 // application surface's CLIENT_CONNECTED. Resetting the user's settings doesn't touch it; resetting the
 // app (appData.reset()) empties it with everything else.
-import { type EarsQuery } from '@apackdev/ears';
+import { type Ears } from '@apackdev/ears';
 import { untypedUpsert, untypedQx } from '@apackdev/sdk/ears';
 import type { EARS } from '@apackdev/sdk';
 import { SETTINGS_ENTITY } from '../features/settings/be/store.ts';
@@ -76,7 +76,7 @@ type PerPackValue = string;
 type StoredAppState = Partial<AppState>;
 
 /** App state on a specific engine; the default instance follows the installed app engine. */
-export function createAppState(ears: Pick<EarsQuery, 'qx' | 'upsert'>) {
+export function createAppState(ears: Pick<Ears, 'qx' | 'upsert'>) {
   function stored(): StoredAppState | undefined {
     return ears.qx.ids(APP_STATE_ID).pickOne([...FIELDS]) as StoredAppState | undefined ?? undefined;
   }

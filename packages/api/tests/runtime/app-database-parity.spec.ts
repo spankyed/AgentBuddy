@@ -6,7 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { EarsQuery } from '@apackdev/ears';
+import type { Ears } from '@apackdev/ears';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 
@@ -26,7 +26,7 @@ const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
 /** Every entity with its attributes and roles, and every relation, in a stable order */
-function snapshot(query: EarsQuery) {
+function snapshot(query: Ears) {
   const ids = [...query.getAllEntities()].sort();
   return {
     entities: ids.map((id) => ({ id, attributes: query.getAll(id), roles: [...query.getRoles(id)].sort() })),
@@ -87,7 +87,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     closeApi(first);
 
     const api = await bootApi();
-    const fromApi = snapshot(api.engine.query);
+    const fromApi = snapshot(api.engine);
     const types = api.packs.getRegisteredEntityTypes();
     closeApi(api);
 
@@ -123,10 +123,10 @@ describe('what the tool writes', () => {
     const api = await bootApi();
     try {
       // The note is in the data the API hydrates, with its role
-      expect(api.engine.query.getAttr('Note-tool', 'title')).toBe('from the tool');
-      expect([...api.engine.query.getRoles('Note-tool')]).toEqual(['pinned']);
+      expect(api.engine.getAttr('Note-tool', 'title')).toBe('from the tool');
+      expect([...api.engine.getRoles('Note-tool')]).toEqual(['pinned']);
       // The run history isn't hydrated, and is in the partition the app keeps it in
-      expect(api.engine.query.getAttr('TNode-tool', 'status')).toBeNull();
+      expect(api.engine.getAttr('TNode-tool', 'status')).toBeNull();
       expect(api.store.query('volatileBackup').getFirstAttr('status', 'TNode-tool')).toBe('done');
     } finally {
       closeApi(api);

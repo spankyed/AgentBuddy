@@ -69,7 +69,7 @@ it('replaces deliberately, survives boot refresh, then restores a removed defaul
   const { store, engine } = openDatabaseStore({ paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
     schema: readInstalledSchema(context), log: () => {},
   });
-  const previousEngine = _bindEars(engine.query);
+  const previousEngine = _bindEars(engine);
   try {
     await store.hydrate();
     untypedUpsert('Settings', settingsId).set('data', choices);

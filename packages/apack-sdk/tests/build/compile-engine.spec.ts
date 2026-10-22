@@ -28,15 +28,15 @@ describe('a flow compile', () => {
 
   it("leaves the bound engine's data untouched, and compiles into its own", () => {
     const installed = createEarsEngine({ isEntityType: (name) => name === EARS.Entity.Flow });
-    _bindEars(installed.query);
-    const appFlow = untypedQx(EARS.Entity.Flow).count() === 0 && installed.query.create(EARS.Entity.Flow).set('label', 'Mine').id();
-    const before = installed.query.getAllEntities();
+    _bindEars(installed);
+    const appFlow = untypedQx(EARS.Entity.Flow).count() === 0 && installed.create(EARS.Entity.Flow).set('label', 'Mine').id();
+    const before = installed.getAllEntities();
 
     expect(rt.roundTrip(flows.simple)).toHaveProperty('Simple');
 
-    expect(boundEars()).toBe(installed.query);
-    expect(installed.query.getAllEntities()).toEqual(before);
+    expect(boundEars()).toBe(installed);
+    expect(installed.getAllEntities()).toEqual(before);
     expect(untypedQx(EARS.Entity.Flow).pick(['label'])).toEqual([{ id: appFlow, label: 'Mine' }]);
-    expect(rt.engine().query.qx(EARS.Entity.Flow).pick(['label'])).toEqual([{ id: expect.any(String), label: 'Simple' }]);
+    expect(rt.engine().qx(EARS.Entity.Flow).pick(['label'])).toEqual([{ id: expect.any(String), label: 'Simple' }]);
   });
 });

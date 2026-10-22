@@ -9,7 +9,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 
 - `packages/apack-ears/src/entities.ts`: the core `EARS` namespace (`EARS.EntityId`), `BaseEntity`, `ShapeOf`, `EntityNameArg`
 - `packages/apack-ears/src/runtime.ts`: `QueryBuilder`, `TransactionBuilder`, `FieldValue`, `FieldValues`
-- `packages/apack-ears/src/typed.ts`: `defineEars` and the `Typed*` helper signatures behind `#generated/ears` (the functions it returns act on the engine its getter returns, `boundEars` for a pack; `src/engine.ts`'s `EarsQuery` is untyped)
+- `packages/apack-ears/src/typed.ts`: `defineEars` and the `Typed*` helper signatures behind `#generated/ears` (the functions it returns act on the engine its getter returns, `boundEars` for a pack; `src/engine.ts`'s `Ears` is untyped)
 - `packages/apack-sdk/src/types/entities.ts`: the SDK's `EARS`, aliasing the engine's types and adding the SDK's entity types and relation kinds
 - `packages/apack-sdk/src/types/sdk-entities.ts`: `SdkEntityShapes` and the SDK-owned entity shapes (Relation and the flow model: Flow, Node, TNode, Action, Prompt). Preferences use the host settings contract, without a pack-owned `Settings` entity; the host's `AppState` isn't in any pack's `EntityName`
 - `packages/apack-sdk/src/build/generate-entries.ts` (`generateEars`): the generated `PackShapes`, `EntityName` and `Node` override
@@ -28,7 +28,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `linksPick`, `orderBy`, `distinct`, `groupBy`, `getAttr`, `getAttrs`, `findWithFields`, `findByIdWithFields` and `updateEntity`.
 - This form is what gives editors field-name completions and makes a typo's error list the valid fields.
 - For a union shape, such as `Node` rows, only the fields every member has are accepted.
-- A query whose fields vary by member, or are only known at runtime, uses `untypedQx` from `@apackdev/ears` on purpose. The brain trigger queries in default-setup are the example. (It's the same untyped `qx` an engine's query face has, `createEarsEngine(...).query.qx`.)
+- A query whose fields vary by member, or are only known at runtime, uses `untypedQx` from `@apackdev/ears` on purpose. The brain trigger queries in default-setup are the example. (It's the same untyped `qx` an engine has, `createEarsEngine(...).qx`.)
 
 **Entity names.**
 - A literal entity name must be one the pack, its dependencies or the SDK declares (`EntityName`). A name typed `string` passes unchecked (`EntityNameArg`).

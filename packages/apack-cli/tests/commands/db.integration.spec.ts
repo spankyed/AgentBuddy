@@ -62,7 +62,7 @@ async function write(userDataDir: string, change: () => void): Promise<void> {
     schema: readInstalledSchema(schemaContext(userDataDir)),
     log: () => {},
   });
-  _bindEars(engine.query);
+  _bindEars(engine);
   try {
     await store.hydrate();
     change();

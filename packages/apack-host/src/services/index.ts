@@ -32,19 +32,19 @@ export interface HostRuntimeOptions {
 /** The running app as the SDK reaches it, which the composition root binds with `bindHost` */
 export function createHostRuntime({ transport, appVersion, store, engine, packs }: HostRuntimeOptions): HostRuntime {
   const settings = createSettingsService(createSettingsStore({
-    ears: () => engine.query,
+    ears: () => engine,
     catalog: packs.settingsCatalog,
     onCatalogChanged: packs.onCatalogChanged,
   }));
   packs.catalog.setSettingsAdmission(candidate => compileSettingsCatalog(candidate).validate(settings.getOverrides()));
   return {
     transport,
-    ears: engine.query,
+    ears: engine,
     packs,
     appVersion,
     redaction: secretRedaction,
     services: {
-      onboarding: createOnboarding(engine.query),
+      onboarding: createOnboarding(engine),
       // The service replaces the data; naming what the app is told about it belongs here, with the wiring
       appData: createAppData({ store, engine: engine.admin, registry: packs, settings,
         onReplaced: () => transport.rootEvents.emitIncoming({ to: HOST.bus, event: { type: 'DATA_REPLACED' } }),

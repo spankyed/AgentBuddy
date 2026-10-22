@@ -10,8 +10,8 @@ import type { AnyStateMachine } from 'xstate';
 import type { BaseEntity } from '@apackdev/ears';
 import type { Component } from 'vue';
 import type { DeepPartial } from 'ai';
+import { Ears } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
-import { EarsQuery } from '@apackdev/ears';
 import type { EditorState } from '@tiptap/pm/state';
 import type { embed } from 'ai';
 import type { embedMany } from 'ai';
@@ -42,7 +42,7 @@ export function bindHost(runtime: HostRuntime): void;
 // @internal
 export function _boundPackExtensions(): PackExtensionsView;
 
-export { EarsQuery }
+export { Ears }
 
 // @public
 export interface FeClient {
@@ -79,7 +79,7 @@ export interface FePackRegistryView extends PackExtensionsView {
 // @public
 export interface HostRuntime {
     appVersion: string;
-    ears: EarsQuery;
+    ears: Ears;
     packs: PackRegistryView;
     redaction?: SecretRedaction;
     services: HostRuntimeServices;

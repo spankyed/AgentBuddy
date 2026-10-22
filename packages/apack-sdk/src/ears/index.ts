@@ -9,9 +9,9 @@
  *
  * @packageDocumentation
  */
-import type { Create, EarsQuery, Qx, Upsert, Write } from '@apackdev/ears';
+import type { Create, Ears, Qx, Upsert, Write } from '@apackdev/ears';
 
-let bound: EarsQuery | undefined;
+let bound: Ears | undefined;
 
 /** The error an engine use with none bound throws */
 export const NO_ENGINE_BOUND =
@@ -24,21 +24,21 @@ export const NO_ENGINE_BOUND =
  *
  * @internal
  */
-export function _bindEars(engine: EarsQuery | undefined): EarsQuery | undefined {
+export function _bindEars(engine: Ears | undefined): Ears | undefined {
   const previous = bound;
   bound = engine;
   return previous;
 }
 
 /** The engine this process bound; throws when none is */
-export function boundEars(): EarsQuery {
+export function boundEars(): Ears {
   if (!bound) throw new Error(NO_ENGINE_BOUND);
   return bound;
 }
 
 /** `name` on the bound engine, typed as the engine's member */
-const onBound = <K extends keyof EarsQuery>(name: K) =>
-  ((...args: unknown[]) => (boundEars()[name] as (...a: unknown[]) => unknown)(...args)) as unknown as EarsQuery[K];
+const onBound = <K extends keyof Ears>(name: K) =>
+  ((...args: unknown[]) => (boundEars()[name] as (...a: unknown[]) => unknown)(...args)) as unknown as Ears[K];
 
 /** The unchecked query entry points on the bound engine: `qx(type)`, `qx.ids(ids)`, `qx.all()` */
 export const untypedQx: Qx = Object.assign(

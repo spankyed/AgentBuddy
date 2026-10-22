@@ -493,13 +493,13 @@ Unit tests and tooling create their own with `createEarsEngine` from `@apackdev/
 import { createEarsEngine } from '@apackdev/ears';
 
 const engine = createEarsEngine({ isEntityType: (name) => ['Bookmark', 'Tag'].includes(name) });
-engine.query.create('Bookmark').set('url', 'https://example.com');   // the engine's own query face
-engine.query.qx('Bookmark').count();                             // 1
+engine.create('Bookmark').set('url', 'https://example.com');   // an operation on the engine you hold
+engine.qx('Bookmark').count();                             // 1
 
 ```
 
-- `engine.query` has `qx`, `create`, `upsert`, `write`, `transact`, the finders, relation reads, graph helpers and its repository registry, untyped.
-- `engine.admin` is for the code that created the engine: bulk loading, clearing (`admin.clear()`), direct attribute and relation writes. Pack code never gets it.
+- The engine's members are its operations: `qx`, `create`, `upsert`, `write`, `transact`, the finders, relation reads, graph helpers and its repository registry, untyped.
+- `engine.admin`, beside them, is for the code that created the engine: bulk loading, clearing (`admin.clear()`), direct attribute and relation writes. Pack code never gets it.
 - `isEntityType` says which names are entity types: `create('Bookmark')` and `qx('Bookmark')` refuse `'Bookmark'` unless it returns true for it.
 - An engine you create is the one you hold: nothing acts on it but what you call on it. The functions in `@apackdev/sdk/ears` act on the app's, and with none bound (a script, a test without the harness) they throw, naming how to bind one.
 

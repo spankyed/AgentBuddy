@@ -1,6 +1,6 @@
 // The one port between the SDK and the app it runs in: the resources a running app owns, bound once per
 // process. Behaviour over them (sends, logging, error reports, `services`) is SDK code.
-import { type EarsQuery } from '@apackdev/ears';
+import { type Ears } from '@apackdev/ears';
 import { _bindEars } from '../ears/index.ts';
 import { setSecretValueMatcher } from '../utils/redact.ts';
 import type { RootEvents } from './root-events.ts';
@@ -14,7 +14,7 @@ import type { SettingsAdmin } from '../services/settings.ts';
 import type { PackRegistryView } from './packs-view.ts';
 
 /** The app's EARS engine, as packs query it: its query face (`createEarsEngine` from `@apackdev/ears`) */
-export type { EarsQuery } from '@apackdev/ears';
+export type { Ears } from '@apackdev/ears';
 
 /** What the app implements and packs call through `services` */
 export interface HostRuntimeServices {
@@ -48,7 +48,7 @@ export interface HostRuntime {
   /** The app's event bus */
   transport: { rootEvents: RootEvents };
   /** The app's engine, its query face: binding installs it for `@apackdev/ears`'s free functions */
-  ears: EarsQuery;
+  ears: Ears;
   /** The registered packs, read-only: their services and everything else they registered */
   packs: PackRegistryView;
   /** The running app's version (`getAppVersion()`) */

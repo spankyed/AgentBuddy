@@ -7,7 +7,7 @@
 import { Blueprint } from '@apackdev/ears';
 import type { Create } from '@apackdev/ears';
 import { EARS } from '@apackdev/ears';
-import type { EarsQuery } from '@apackdev/ears';
+import type { Ears } from '@apackdev/ears';
 import type { Qx } from '@apackdev/ears';
 import { RelationMatch } from '@apackdev/ears';
 import { RelationRow } from '@apackdev/ears';
@@ -19,10 +19,10 @@ import type { Write } from '@apackdev/ears';
 export const ancestors: (start: EARS.EntityId, relKind: EARS.RelKind) => EARS.EntityId[];
 
 // @internal
-export function _bindEars(engine: EarsQuery | undefined): EarsQuery | undefined;
+export function _bindEars(engine: Ears | undefined): Ears | undefined;
 
 // @public
-export function boundEars(): EarsQuery;
+export function boundEars(): Ears;
 
 // @public (undocumented)
 export const countEntities: (entityType: EARS.Entity) => number;

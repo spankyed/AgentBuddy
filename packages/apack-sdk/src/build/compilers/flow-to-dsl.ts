@@ -1,4 +1,4 @@
-import { type EarsQuery } from '@apackdev/ears';
+import { type Ears } from '@apackdev/ears';
 import { boundEars } from '../../ears/index.ts';
 import { createExportDir, ensureDirectoryExists, writeExportJson } from '../../utils/index.ts';
 import type { StepDefinition } from '../../steps/index.ts';
@@ -23,12 +23,12 @@ export interface ExportFlowsOptions {
   rootFlowRole: string;
   flowIds?: string[];
   /** The engine to read the flows from; the installed one by default */
-  engine?: EarsQuery;
+  engine?: Ears;
   /** The step definitions to decompile with; the registered packs' by default */
   steps?: readonly StepDefinition[];
 }
 
-function getFlowNodes({ qx }: EarsQuery, steps: StepLookup, flowId: string): any[] {
+function getFlowNodes({ qx }: Ears, steps: StepLookup, flowId: string): any[] {
   const nodeIds = qx.ids(flowId as EARS.EntityId)
     .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
     .map(({ id }: any) => id);
@@ -45,7 +45,7 @@ function getFlowNodes({ qx }: EarsQuery, steps: StepLookup, flowId: string): any
   });
 }
 
-function getFlowEdges(engine: EarsQuery, steps: StepLookup, flowId: string): any[] {
+function getFlowEdges(engine: Ears, steps: StepLookup, flowId: string): any[] {
   const { qx } = engine;
   const nodes = getFlowNodes(engine, steps, flowId);
   const nodeIds = nodes.map((n: any) => n.id).filter(Boolean);
@@ -308,7 +308,7 @@ function buildTracksFromGraph(
  *─────────────────────────────────────────────────────────────────*/
 
 function decompileFlow(
-  engine: EarsQuery,
+  engine: Ears,
   steps: StepLookup,
   flow: any,
   actionMap: Map<string, string>,

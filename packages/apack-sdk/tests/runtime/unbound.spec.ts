@@ -33,7 +33,7 @@ const unused = () => { throw new Error('unused'); };
 const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });
 const runtime: HostRuntime = {
   transport: { rootEvents: _rootEvents },
-  ears: engine.query,
+  ears: engine,
   packs: testPacksView(),
   appVersion: '1.2.3',
   services: {
@@ -155,7 +155,7 @@ describe('bindHost', () => {
   it("binds the app's engine for the SDK's engine operations, until unbound", () => {
     bindHost(runtime);
     const id = untypedCreate('Memo').set('title', 'bound').id();
-    expect(engine.query.findById(id)).toMatchObject({ title: 'bound' });
+    expect(engine.findById(id)).toMatchObject({ title: 'bound' });
     expect(untypedQx('Memo').ids()).toEqual([id]);
     unbindHost();
     expect(() => untypedQx('Memo')).toThrow('No EARS engine is bound');
@@ -163,7 +163,7 @@ describe('bindHost', () => {
 
   it("reads the bound app's services on each call", () => {
     bindHost(runtime);
-    expect(boundHost().ears.repository).toBe(engine.query.repository);
+    expect(boundHost().ears.repository).toBe(engine.repository);
     expect(() => boundHost().services.secrets.list()).toThrow('unused');
   });
 });

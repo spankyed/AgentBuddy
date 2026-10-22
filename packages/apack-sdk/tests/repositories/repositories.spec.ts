@@ -141,7 +141,7 @@ describe('flowRepository', () => {
       onRemoveRelation(relId, destroyed) { if (!destroyed) unlinked.push(relId); },
     };
     const sdkTypes = new Set<string>(Object.values(EARS.Entity));
-    _bindEars(createEarsEngine({ persistence: sink, isEntityType: (name) => sdkTypes.has(name) }).query);
+    _bindEars(createEarsEngine({ persistence: sink, isEntityType: (name) => sdkTypes.has(name) }));
     const flow = flowRepository.createFlow();
     const a = flowRepository.createNode(flow.id, { nodeType: 'action' });
     const b = flowRepository.createNode(flow.id, { nodeType: 'action' });

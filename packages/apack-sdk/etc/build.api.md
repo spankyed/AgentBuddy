@@ -6,8 +6,8 @@
 
 import type { AnyActorRef } from 'xstate';
 import type { BaseEntity } from '@apackdev/ears';
+import { Ears } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
-import { EarsQuery } from '@apackdev/ears';
 import { z } from 'zod';
 
 // @public (undocumented)
@@ -476,7 +476,7 @@ export function entry(...branches: DSLStepNode[][]): Track;
 
 // @public (undocumented)
 export interface ExportFlowsOptions {
-    engine?: EarsQuery;
+    engine?: Ears;
     // (undocumented)
     flowIds?: string[];
     // (undocumented)
