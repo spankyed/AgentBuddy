@@ -2648,6 +2648,10 @@ interface ClaudeNativeTerminalState {
     /** Authenticated native executable beneath that launcher. */
     nativePid?: number;
     exitCode?: number;
+    preview?: {
+        turnId: string;
+        output: string;
+    };
     busy: boolean;
     /** Native pending-work counts, independent of prompt submission readiness. */
     activity?: {
