@@ -2,7 +2,7 @@
 // dependencies' snapshots, so each snapshot carries the whole tree's names — otherwise a dependent of
 // two packs sharing an ancestor reads the ancestor's names arriving from both as a collision.
 //
-// Entities, relation kinds, commands and surfaces used to travel as three differently-shaped fields with
+// Entities, relation kinds and surfaces used to travel as three differently-shaped fields with
 // three readers running this same algorithm. These tests are on the one that replaced them.
 import { describe, expect, it } from 'vitest';
 import { PROVENANCE_KINDS, _buildProvenance, _mergeProvenance, type ProvenanceSource } from '../../src/build/manifest.ts';
@@ -11,7 +11,7 @@ const dep = (id: string, source: ProvenanceSource) => [id, source] as const;
 
 describe('_mergeProvenance', () => {
   it('attributes a dependency\'s own names to that dependency', () => {
-    expect(_mergeProvenance('commands', [dep('base-pack', { manifest: { extensions: { commands: { note: { placeholder: 'x' } } } } })]))
+    expect(_mergeProvenance('entities', [dep('base-pack', { manifest: { data: { entities: { note: null } } } })]))
       .toEqual({ note: 'base-pack' });
   });
 
@@ -28,12 +28,12 @@ describe('_mergeProvenance', () => {
    * manifest: that is the pack a dependent could add to its own dependencies to reach the name.
    */
   it('lets a dependency that declares a name itself win over one that only inherited it', () => {
-    const inheritedOnly = dep('left-pack', { manifest: {}, provenance: { commands: { note: 'deep-pack' } } });
-    const declaresIt = dep('right-pack', { manifest: { extensions: { commands: { note: { placeholder: 'x' } } } } });
+    const inheritedOnly = dep('left-pack', { manifest: {}, provenance: { entities: { note: 'deep-pack' } } });
+    const declaresIt = dep('right-pack', { manifest: { data: { entities: { note: null } } } });
 
-    expect(_mergeProvenance('commands', [inheritedOnly, declaresIt])).toEqual({ note: 'right-pack' });
+    expect(_mergeProvenance('entities', [inheritedOnly, declaresIt])).toEqual({ note: 'right-pack' });
     // …and the reverse order still prefers the one that declares it, because its manifest pass is last
-    expect(_mergeProvenance('commands', [declaresIt, inheritedOnly])).toEqual({ note: 'deep-pack' });
+    expect(_mergeProvenance('entities', [declaresIt, inheritedOnly])).toEqual({ note: 'deep-pack' });
   });
 
   /**
@@ -42,8 +42,8 @@ describe('_mergeProvenance', () => {
    * the two passes apart: a dependency that only inherits, or only declares, reads the same either way.
    */
   it("credits a dependency for a name it redeclares over the one it inherited it from", () => {
-    const merged = _mergeProvenance('commands', [
-      dep('mid-pack', { manifest: { extensions: { commands: { note: { placeholder: 'x' } } } }, provenance: { commands: { note: 'deep-pack' } } }),
+    const merged = _mergeProvenance('entities', [
+      dep('mid-pack', { manifest: { data: { entities: { note: null } } }, provenance: { entities: { note: 'deep-pack' } } }),
     ]);
     expect(merged).toEqual({ note: 'mid-pack' });
   });
@@ -67,7 +67,7 @@ describe('_mergeProvenance', () => {
     const manifest = {
       data: { entities: { Note: null }, relations: ['tagged'] },
 
-      extensions: { commands: { note: { placeholder: 'x' } },  textEditor: { suggestions: { extensions: { mention: 'src/editor.ts#Mention' } } } },
+      extensions: { textEditor: { suggestions: { extensions: { mention: 'src/editor.ts#Mention' } } } },
       features: { memos: { surface: {}, references: {
         types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [] } },
         categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
@@ -76,7 +76,6 @@ describe('_mergeProvenance', () => {
     const cases: Array<[keyof typeof PROVENANCE_KINDS, Record<string, string>]> = [
       ['entities', { Note: 'base-pack' }],
       ['relKinds', { TAGGED: 'base-pack' }],
-      ['commands', { note: 'base-pack' }],
       ['tiptapExtensions', { mention: 'base-pack' }],
       ['referenceTypes', { memo: 'base-pack' }],
       ['referenceCategories', { memos: 'base-pack' }],
@@ -106,7 +105,7 @@ describe('a name that means something to an ordinary object', () => {
   });
 
   it('is recorded like any other name when a pack does declare it', () => {
-    const merged = _mergeProvenance('commands', [dep('base-pack', { manifest: { extensions: { commands: { constructor: { placeholder: 'x' } } } } })]);
+    const merged = _mergeProvenance('entities', [dep('base-pack', { manifest: { data: { entities: { constructor: null } } } })]);
     expect(merged['constructor']).toBe('base-pack');
   });
 
@@ -133,10 +132,10 @@ describe('a name that means something to an ordinary object', () => {
 describe('_buildProvenance', () => {
   it('records every kind that declared something', () => {
     const provenance = _buildProvenance(
-      [dep('base-pack', { manifest: { data: { entities: { Note: null } }, extensions: { commands: { note: { placeholder: 'x' } } } } })],
+      [dep('base-pack', { manifest: { data: { entities: { Note: null } } } })],
       { id: 'app-pack', manifest: { features: { app: { surface: {} } } } },
     );
-    expect(provenance).toEqual({ entities: { Note: 'base-pack' }, commands: { note: 'base-pack' }, surfaces: { 'app-pack/app': 'app-pack' } });
+    expect(provenance).toEqual({ entities: { Note: 'base-pack' }, surfaces: { 'app-pack/app': 'app-pack' } });
   });
 
   // An empty record and an absent kind would read the same; the absent one says what it means

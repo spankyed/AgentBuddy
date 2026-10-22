@@ -65,7 +65,7 @@ npm run dev                                       # one terminal: source watcher
 # Or: npm run dev:open                                # hold the built app; no builds or watchers
 npm run dev:state                               # another: 0.9s
 npm run dev:eval -- 'return document.title'     # {"value":"Agent X","state":"attached",…}
-npm run dev:query -- 'return qx(EARS.Entity.Note).count()'
+npm run dev:query -- 'return query(EARS.Entity.Note).count()'
 ```
 
 **It is a function body, not an expression** — so `return` is required, and a body without one answers no

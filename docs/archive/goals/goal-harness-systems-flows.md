@@ -82,7 +82,7 @@ The pack harness (`@apackdev/testing/harness`, on `@apackdev/sdk/testing`) unit-
   - Groups: 5 FE, 8 services, 7 content actions, 7 flows/brain/steps, 6 repositories/host data, 6 content, 8 type-level, 4 build/CLI.
   - The build/CLI files test CLI and host code: `pack-cli`, `pack-generate`, `pack-protocol`, `monaco-defs-config`.
   - `host-data-services` tests the host's LMDB-backed `appData` and `traceStore`.
-  - The content-parity harness uses `@apackdev/host/ears` (`clearMemory`, `getAllEntities`, `qx`, `dropAttr`).
+  - The content-parity harness uses `@apackdev/host/ears` (`clearMemory`, `getAllEntities`, `query`, `dropAttr`).
 - **A dependency's full backend runtime is published.**
   - `dist/runtime/index.cjs` is published by the app for built-ins and cached in `.apack/deps/<id>/`.
   - It's CommonJS, with `@apackdev/sdk/*` and `SHARED_DEPS` external and everything else inlined. default-setup's inlines `ai`, `@ai-sdk/*` and croner.
@@ -144,7 +144,7 @@ Final.
    - Tests of host or CLI code move to their package:
      - `host-data-services` → `apack-host/tests`;
      - `pack-cli`, `pack-generate`, `pack-protocol`, `monaco-defs-config` → the package whose code they test.
-   - The content-parity harness uses SDK test helpers: `resetTestData`, `untypedQx`, and new `@apackdev/sdk/testing` `entityIds()` and `dropAttribute()`.
+   - The content-parity harness uses SDK test helpers: `resetTestData`, `untypedQuery`, and new `@apackdev/sdk/testing` `entityIds()` and `dropAttribute()`.
    - Hand-built service fakes become `mockService`. `brain-switch-node` and the flow routing tests (`codex-flow-routing`, `mode-name-routing`) run their flows with `runFlow`.
    - `check:specifiers` rejects `@apackdev/host` and API `@/` imports in default-setup's tests, as it does in pack sources.
 10. **Scope.**
@@ -161,7 +161,7 @@ Final.
 Record the results in a "Spike results" section of this doc before Phase 1.
 
 **A. Dependency runtime in vitest.** In default-setup's vitest process, load `dist/runtime/index.cjs` through a bridge built from the SDK namespaces vitest imported. Record:
-1. Whether there's one SDK instance. A repository the runtime registers must be visible through test code's `repository`, and a row it writes must be visible to `qx`.
+1. Whether there's one SDK instance. A repository the runtime registers must be visible through test code's `repository`, and a row it writes must be visible to `query`.
 2. Whether there's one xstate. An actor from the runtime's machine must be spawnable under a test-code parent.
 3. What happens with an optional peer that isn't installed. Test code must import `@apackdev/sdk/inference` and the runtime must load; the failure must come only on use.
 
@@ -176,7 +176,7 @@ If A.1 or A.2 fails, stop and record why in this doc. If B needs more than the r
 Both spikes pass, run from the fixture pack's vitest process (in-memory harness setup, checkout packages resolved from source).
 
 **A. Dependency runtime in vitest.** default-setup's `dist/runtime/index.cjs` loaded with `require` under a `Module._resolveFilename` patch. The patch maps every `@apackdev/sdk` subpath, `xstate` and `zod` to the namespaces the test process imported, through `require.cache` entries.
-1. **One SDK instance: yes.** `repository.noteCommands.create` (registered by the runtime through host `registerPack`) wrote a Note that test code read back with `untypedQx`.
+1. **One SDK instance: yes.** `repository.noteCommands.create` (registered by the runtime through host `registerPack`) wrote a Note that test code read back with `untypedQuery`.
 2. **One xstate: yes.** The runtime's `settings` system machine spawned under a test-code parent registered as `bus`. `CLIENT_CONNECTED` made it send `SETTINGS_LOADED` to that parent.
 3. **Optional peers: all 24 SDK subpaths imported in the checkout** (`ai` is installed there). The runtime is built with `packages: 'external'` (`dev-build.mjs`), so every npm package it uses must resolve from the test process. Here only `bufferutil` didn't, and a stub that throws on use let the runtime load. In a pack without `ai`, `node-pty`, `playwright`, `croner` and the rest, those resolve to the same throwing stubs.
 

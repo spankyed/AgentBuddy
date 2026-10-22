@@ -27,11 +27,11 @@ and pagination over that data. SQLite WAL would still need deliberate batching a
 | Attributes and entity membership | [attribute-storage.ts](../../packages/apack-ears/src/attribute-storage.ts) | Attribute-kind maps contain entity value lists; entity-type sets provide candidate IDs. Writes update memory and call the persistence sink. |
 | Query evaluation | [query.ts](../../packages/apack-ears/src/query.ts) | `where()` filters candidate IDs in memory. Multiple predicates do not cause database reads. |
 | Relation lookup | [relation-index.ts](../../packages/apack-ears/src/relation-index.ts) | Relation-kind indexes map source and target IDs to relation IDs. Normal graph queries use these in-memory indexes. |
-| Mutation lifecycle | [transaction.ts](../../packages/apack-ears/src/transaction.ts) | Builder methods mutate immediately. `tx()` does not provide database commit acknowledgment or rollback. |
+| Mutation lifecycle | [write.ts](../../packages/apack-ears/src/write.ts), [journal.ts](../../packages/apack-ears/src/journal.ts) | Builder methods mutate immediately. `transact(fn)` undoes a unit in memory when it throws and hands persistence a committed unit whole, which the LMDB adapter stores in one transaction per environment; it gives no durable commit acknowledgment. |
 | Persistence scheduling | [adapter.ts](../../packages/apack-ears/src/lmdb/adapter.ts) | Keyed buffers coalesce final values and flush in a microtask through `transactionSync()`. Entity destruction takes a separate synchronous transaction. Failed batches retry individual steps, allowing partial persistence. |
 | Boot | [hydrate.ts](../../packages/apack-ears/src/lmdb/hydrate.ts) | Primary attributes and relations hydrate into memory. Hydration cost and heap usage grow with primary data. |
 | Partitions | [policy.ts](../../packages/apack-ears/src/persistence/policy.ts), [open.ts](../../packages/apack-host/src/database/open.ts) | `TNode` history and relations touching it go to `volatileBackup`, which normally stays outside hydration. Both partitions are persisted. |
-| Database-backed reads | [lmdb/query.ts](../../packages/apack-ears/src/lmdb/query.ts), [trace-store.ts](../../packages/apack-host/src/services/trace-store.ts) | Persisted relation queries scan the relation database. History attributes are read separately. |
+| Database-backed reads | [lmdb/reader.ts](../../packages/apack-ears/src/lmdb/reader.ts), [trace-store.ts](../../packages/apack-host/src/services/trace-store.ts) | Persisted relation queries scan the relation database. History attributes are read separately. |
 | History traversal | [trace-query.ts](../../packages/default-setup/src/features/database/be/repository/trace-query.ts) | Traversal repeats relation scans. Recursive tree construction uses all descendants as children, repeating subtree work and potentially duplicating descendants. |
 | Streaming writes | [stream-writer.ts](../../packages/default-setup/src/content/actions/claude-code/_helpers/stream-writer.ts) | Text updates are throttled to 80 ms by default and replace accumulated text. Microtask coalescing does not merge separate timer events. |
 | Process ownership | [ApiServer.ts](../../packages/main/src/modules/api-server/ApiServer.ts), [config.ts](../../packages/main/src/modules/api-server/config.ts) | Electron Main starts the API child process. The child owns EARS and persistence; packaged execution uses Electron as Node. |
@@ -74,7 +74,7 @@ and does not justify introducing persistent component indexes or archetypes here
 
 ## Persistence contract
 
-Keep `qx()` and the mutation builder synchronous. Add a host-owned persistence boundary for logical
+Keep `query()` and the write builder synchronous. Add a host-owned persistence boundary for logical
 repository commands that require atomic storage, with asynchronous commit acknowledgment at the
 service boundary where durable completion is promised.
 

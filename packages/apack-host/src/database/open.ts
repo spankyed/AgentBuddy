@@ -1,6 +1,7 @@
 // Opening an app's database: the one composition of the LMDB store and the engine, which the API's boot and tools
 // (apack db) share, so both hydrate a data dir the same way
-import { createEarsEngine, installEngine, makePolicy, type EarsAdmin, type EarsEngine, type EarsQuery, type PartitionPolicy } from '@apackdev/ears';
+import { createEarsEngine, makePolicy, type EarsAdmin, type EarsEngine, type Ears, type PartitionPolicy } from '@apackdev/ears';
+import { _bindEars } from '@apackdev/sdk/ears';
 import { openLmdbStore, type LmdbPaths, type LmdbStore, type WriteFailure } from '@apackdev/ears/lmdb';
 import { resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import type { _AppDataPaths } from '@apackdev/sdk/utils';
@@ -51,7 +52,7 @@ export interface AppDatabase {
   /** The installed packs' entity types and relation kinds */
   schema: InstalledSchema;
   store: LmdbStore;
-  query: EarsQuery;
+  ears: Ears;
   admin: EarsAdmin;
   /**
    * Flushes the writes made through the engine and closes the store, putting back the engine that was installed
@@ -74,7 +75,8 @@ export interface OpenAppDatabaseOptions {
   /** Where the store's progress lines go; `console.log` by default */
   log?: (message: string) => void;
   /**
-   * A pack snapshot to read the schema from when the data dir publishes none of its own (`--schema-from`).
+   * Packs to read the schema from when the data dir publishes none of its own (`--schema-from`): a snapshot
+   * file, a pack directory, or a directory of pack directories.
    * See `readInstalledSchema`: without it such a dir opens read-only, knowing only apack's own types.
    */
   schemaFrom?: string;
@@ -82,23 +84,31 @@ export interface OpenAppDatabaseOptions {
 
 /**
  * Opens the database in `userDataDir` as the app does: the installed packs' schema (their manifests; no pack code
- * runs), the store in the layout the data dir uses, and the primary partition hydrated. The engine's query face is
- * installed, so `@apackdev/ears`'s free functions act on it until `close()`. The volatile partition (the run history)
+ * runs), the store in the layout the data dir uses, and the primary partition hydrated. The engine is bound,
+ * so `@apackdev/sdk/ears`'s operations act on it until `close()`. The volatile partition (the run history)
  * is left out, as in the app, unless `includeVolatile` asks for it.
  */
 export async function openAppDatabase({ env, userDataDir, readOnly = false, includeVolatile = false, log, schemaFrom }: OpenAppDatabaseOptions): Promise<AppDatabase> {
   const context = resolveAppEnvironment({ env, userDataDir });
   const paths = findAppDataPaths(userDataDir);
   const schema = readInstalledSchema(context, { schemaFrom });
-  // A write needs a schema, not most of one. The engine asks it whether a name is an entity type, and for
-  // one it has never heard of `tx('Note')` takes the name for an id and writes a row called `Note` — a junk
-  // entity in the user's database, permanently. Reading is what an incomplete schema is good for.
+  // A write needs a schema, not most of one. The engine asks it whether a name is an entity type, and refuses
+  // one it has never heard of, so a write through an incomplete schema fails part way through on the first
+  // type it lacks. Reading is what an incomplete schema is good for.
   if (!readOnly && schema.degraded !== undefined) {
     throw new Error(`${schema.degraded}\n\nThis command changes the database, and an incomplete schema would write the wrong rows.`);
   }
+  // **The engine knows the types in the data as well as the declared ones, and `schema` keeps meaning declared.**
+  // Rows outlive the pack that declared their types, and the engine refuses a name it has never heard of — so
+  // `query('Note')` and `create('Note')` would throw over rows that are plainly there. The
+  // types present are only knowable after hydration, and `isEntityType` is a live closure consulted per call,
+  // so they are added to this set once their rows are in. It stays separate from `schema`, whose
+  // `getRegisteredEntityTypes` is a backup's yardstick for "no installed pack declares this"
+  // (`apack-cli/src/commands/db/destructive.ts:190`), which an observed set would answer wrongly.
+  const knownToEngine = new Set(schema.getRegisteredEntityTypes());
   const { store, engine } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
-    schema,
+    schema: { getRegisteredEntityTypes: () => knownToEngine },
     readOnly,
     log,
   });
@@ -110,21 +120,25 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
     store.close();
     throw error;
   }
-  // Installed so `@apackdev/ears`'s free functions (qx, tx, the finders) read this database until `close()`, which
-  // puts back whatever was installed before rather than leaving none. `apack db`, the one caller today, has no
+  // Hydration indexes an entity by its type, so this is the set of types the data turned out to hold. It runs
+  // after hydration and not during it: nothing hydration does consults the check (a bulk load doesn't), so the
+  // set it would be widening from is the data it is reading.
+  for (const type of engine.getAllEntityTypes()) knownToEngine.add(type);
+  // Bound so the SDK's engine operations (`@apackdev/sdk/ears`) read this database until `close()`, which
+  // puts back whatever was bound before rather than leaving none. `apack db`, the one caller today, has no
   // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command
-  // holding one data dir open while it reads another, where uninstalling would leave the first unreachable.
-  const previousEngine = installEngine(engine.query);
+  // holding one data dir open while it reads another, where unbinding would leave the first unreachable.
+  const previousEngine = _bindEars(engine);
 
   return {
     userDataDir,
     paths,
     schema,
     store,
-    query: engine.query,
+    ears: engine,
     admin: engine.admin,
     close() {
-      installEngine(previousEngine);
+      _bindEars(previousEngine);
       const { errorCount, lastError } = store.close();
       if (errorCount > 0) {
         const cause = (lastError as { error?: unknown } | null)?.error ?? lastError;

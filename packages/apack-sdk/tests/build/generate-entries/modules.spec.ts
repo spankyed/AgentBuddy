@@ -150,12 +150,12 @@ describe('generated imports', () => {
 });
 
 describe('generated EARS facade', () => {
-  it('names the declared entities and passes them to the typed helpers, with tx', async () => {
+  it('names the declared entities and passes them to the typed helpers, with the writes', async () => {
     write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
     const ears = (await generate({ data: { entities: { Memo: "src/memo.ts#MemoEntity", Tag: null } }, }))['src/__generated__/ears.ts'];
     expect(ears).toContain(`export type EntityName = ${['Memo', 'Tag', ...Object.values(SDK_ENTITIES)].map((name) => `'${name}'`).join(' | ')};`);
-    expect(ears).toContain('defineEars<PackShapes, EntityName>()');
-    expect(ears).toMatch(/export const \{\n  qx, tx, findById/);
+    expect(ears).toContain('defineEars<PackShapes, EntityName>(boundEars)');
+    expect(ears).toMatch(/export const \{\n  query, create, upsert, write, transact, findById/);
   });
 });
 
@@ -397,7 +397,7 @@ describe('the snapshot format', () => {
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
     declarationRevision: true,
     id: true, features: true, services: true, bindServices: true, ears: true, repositories: true, lifecycle: true, migrations: true, steps: true,
-    artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, settings: true, dependencies: true,
+    artifacts: true, blocks: true, contentWriters: true, appliers: true, settings: true, dependencies: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
     designation: true, system: true, surface: true, services: true, settings: true,
@@ -451,12 +451,12 @@ describe('the snapshot format', () => {
         contentField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['appliers', 'artifacts', 'bindServices', 'blocks', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'repositories', 'services', 'settings', 'steps'],
+        fields: ['appliers', 'artifacts', 'bindServices', 'blocks', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'repositories', 'services', 'settings', 'steps'],
         feature: ['designation', 'services', 'settings', 'surface', 'system'],
         system: ['machine', 'receives'],
         surface: ['receives'],
       },
-      provenanceKinds: ['commands', 'entities', 'referenceCategories', 'referenceTypes', 'relKinds', 'surfaces', 'tiptapExtensions'],
+      provenanceKinds: ['entities', 'referenceCategories', 'referenceTypes', 'relKinds', 'surfaces', 'tiptapExtensions'],
       facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackGroupSettings', 'PackStepNodes', 'PackSurfaceEvents', 'PackSurfaceState', 'PackSystemEvents', 'Repositories', 'Services'],
     });
   });

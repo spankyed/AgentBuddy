@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { tx } from '#generated/ears.ts';
+import { create, write } from '#generated/ears.ts';
 /**
  * Thread Import
  *
@@ -12,7 +12,7 @@ import { tx } from '#generated/ears.ts';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@apackdev/ears';
+import { hasIdCollision } from '@apackdev/sdk/ears';
 import { restoreJsonMediaRefs } from '@apackdev/sdk/utils'
 import { repository } from '#generated/repository.ts';
 import type { ExportedThreadsData } from './export-types.ts'
@@ -84,6 +84,7 @@ export function importThreads(importDir: string): ImportResult {
         instructions: thread.instructions,
         tags,
         id: thread.id,
+        createdAt: thread.createdAt,
       })
 
       // Restore media from instructions
@@ -107,7 +108,7 @@ export function importThreads(importDir: string): ImportResult {
         const updates: Record<string, any> = {}
         if (thread.sideTopics?.length) updates.sideTopics = thread.sideTopics
         if (thread.pinned) updates.pinned = thread.pinned
-        tx(newThreadId).updateBatch(updates)
+        write(newThreadId).setMany(updates)
       }
 
       // Build shortCode mapping (still needed for fork/linked thread relations)
@@ -118,26 +119,25 @@ export function importThreads(importDir: string): ImportResult {
       // Create messages with full fields
       let lastMessageTimestamp = 0
       for (const msg of thread.messages) {
-        const messageTx = tx(EARS.Entity.Message)
-          .put('text', msg.text)
-          .put('timestamp', msg.timestamp)
-          .put('sender', msg.sender)
-          .put('createdAt', msg.timestamp)
-          .put('updatedAt', msg.timestamp)
+        const messageTx = create(EARS.Entity.Message, { createdAt: msg.timestamp })
+          .set('text', msg.text)
+          .set('timestamp', msg.timestamp)
+          .set('sender', msg.sender)
+          .set('updatedAt', msg.timestamp)
 
-        if (msg.responseTimestamp) messageTx.put('responseTimestamp', msg.responseTimestamp)
-        if (msg.blocks) messageTx.put('blocks', msg.blocks)
-        if (msg.blockResponse !== undefined) messageTx.put('blockResponse', msg.blockResponse)
-        if (msg.forkable !== undefined) messageTx.put('forkable', msg.forkable)
-        if (msg.isCommand) messageTx.put('isCommand', msg.isCommand)
-        if (msg.command) messageTx.put('command', msg.command)
-        if (msg.references) messageTx.put('references', msg.references)
+        if (msg.responseTimestamp) messageTx.set('responseTimestamp', msg.responseTimestamp)
+        if (msg.blocks) messageTx.set('blocks', msg.blocks)
+        if (msg.blockResponse !== undefined) messageTx.set('blockResponse', msg.blockResponse)
+        if (msg.forkable !== undefined) messageTx.set('forkable', msg.forkable)
+        if (msg.isCommand) messageTx.set('isCommand', msg.isCommand)
+        if (msg.command) messageTx.set('command', msg.command)
+        if (msg.references) messageTx.set('references', msg.references)
 
         const messageId = messageTx
           .link(EARS.RelKind.CONTAINS, newThreadId)
           .id()
 
-        tx(newThreadId).link(EARS.RelKind.CONTAINS, messageId)
+        write(newThreadId).link(EARS.RelKind.CONTAINS, messageId)
 
         // Restore media in message text
         if (hasMedia) {
@@ -145,7 +145,7 @@ export function importThreads(importDir: string): ImportResult {
             msg.text, messageId, importDir,
           )
           if (mediaRestored > 0) {
-            tx(messageId).updateBatch({ text: restoredText })
+            write(messageId).setMany({ text: restoredText })
             result.mediaRestored += mediaRestored
           }
 
@@ -167,7 +167,7 @@ export function importThreads(importDir: string): ImportResult {
               }
             }
             if (refsChanged) {
-              tx(messageId).updateBatch({ references: msg.references })
+              write(messageId).setMany({ references: msg.references })
             }
           }
         }

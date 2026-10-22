@@ -7,12 +7,12 @@
  * Read packages/apack-sdk/TYPED-EARS.md (the contract and the pre-change checklist) first.
  */
 import type { EARS, EntityNameArg, EntityShapes, ShapeOf } from './entities.ts';
-import { installedEngine } from './installed.ts';
 
 // ─── PersistenceSink interface ─────────────────────────────────────────
 
 export interface PersistenceSink {
-  onCreateEntity(entityId: string, entityType?: string): void;
+  /** An entity was created, as `entityType`: the one call that gives it a row */
+  onCreateEntity(entityId: string, entityType: string): void;
   onDestroyEntity(entityId: string): void;
   onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]): void;
   /** An attribute's values after a write, whole: the sink stores them in place of what it had */
@@ -26,6 +26,12 @@ export interface PersistenceSink {
    * - `destroyed` is undefined when the link itself was removed (an unlink): the sink deletes it.
    */
   onRemoveRelation(relId: string, destroyed?: string): void;
+  /**
+   * A committed unit (`transact`) begins: the calls up to `onUnitEnd` are its writes, and the sink stores them
+   * together or not at all. Calls outside a unit are each their own.
+   */
+  onUnitStart(): void;
+  onUnitEnd(): void;
   close?(): void;
   getErrorStats?(): PersistenceErrorStats;
 }
@@ -45,18 +51,18 @@ export const noopSink: PersistenceSink = {
   onAddRelation() {},
   onUpdateRelation() {},
   onRemoveRelation() {},
+  onUnitStart() {},
+  onUnitEnd() {},
 };
 
 /** What an engine is created with (`createEarsEngine`) */
 export interface EARSRuntimeDeps {
   /** Receives every write; nothing by default */
   persistence?: PersistenceSink;
-  /** Whether a name is an entity type (`tx('Note')` creates one) rather than an id */
+  /** Whether a name is an entity type (`create('Note')` makes one) rather than an id */
   isEntityType: (v: string) => boolean;
 }
 
-/** Whether `name` is an entity type the running app has registered: the SDK's and every registered pack's */
-export function isEntityType(name: string): boolean { return installedEngine().isEntityType(name); }
 
 // ─── QueryBuilder fluent interface ─────────────────────────────────────
 
@@ -72,12 +78,20 @@ type NoInferType<T> = [T][T extends unknown ? 0 : never];
  * that form is what gives editors field completions and lists the valid fields in a typo's error.
  * Wrapping them in conditional or mapped types keeps everything compiling and passing type tests
  * while breaking completions (TYPED-EARS.md, Incidents). For a union shape (Node rows) only shared
- * fields are accepted; a query over member-specific or runtime fields uses the untyped host `qx`.
+ * fields are accepted; a query over member-specific or runtime fields uses the untyped host `query`.
  */
 export interface QueryBuilder<E extends string = string, S extends EntityShapes = {}, N extends string = string> {
   ofType<T extends string>(t: EntityNameArg<N, T>): QueryBuilder<T, S, N>;
   inIds(sub: readonly EARS.EntityId[]): QueryBuilder<E, S, N>;
-  where<K extends keyof ShapeOf<S, E> & string>(k: K, v?: ShapeOf<S, E>[K]): QueryBuilder<E, S, N>;
+  /**
+   * The entities with a value of `k` equal (`===`) to `v`, or for which `v`, a function, answers true; an
+   * attribute's values are tested one by one. `v` is required: `has` and `lacks` ask about presence.
+   */
+  where<K extends keyof ShapeOf<S, E> & string>(k: K, v: ShapeOf<S, E>[K] | ((value: ShapeOf<S, E>[K]) => boolean)): QueryBuilder<E, S, N>;
+  /** The entities with a value of `k` */
+  has<K extends keyof ShapeOf<S, E> & string>(k: K): QueryBuilder<E, S, N>;
+  /** The entities with no value of `k` */
+  lacks<K extends keyof ShapeOf<S, E> & string>(k: K): QueryBuilder<E, S, N>;
   withRole(r: string): QueryBuilder<E, S, N>;
   relatedTo(target: EARS.EntityId): QueryBuilder<E, S, N>;
   related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder<E, S, N>;
@@ -128,7 +142,6 @@ export interface QueryBuilder<E extends string = string, S extends EntityShapes 
   orderBy(field: keyof ShapeOf<S, E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E, S, N>;
   reverse(): QueryBuilder<E, S, N>;
   limit(n: number): QueryBuilder<E, S, N>;
-  page(size: number, cursor?: string | null): { items: EARS.EntityId<E>[]; nextCursor: string | null };
   distinct(field?: keyof ShapeOf<S, E> & string): QueryBuilder<E, S, N>;
   groupBy(field: keyof ShapeOf<S, E> & string): Map<unknown, QueryBuilder<E, S, N>>;
   ids(): EARS.EntityId<E>[];
@@ -142,12 +155,26 @@ export interface QueryBuilder<E extends string = string, S extends EntityShapes 
   reduce<T>(fn: (acc: T, id: EARS.EntityId<E>) => T, init: T): T;
 }
 
-// ─── TransactionBuilder fluent interface ───────────────────────────────
+// ─── WriteBuilder fluent interface ─────────────────────────────────────
 
-export interface SafeLinkOptions {
+/** How `link` makes an edge */
+export interface LinkOptions {
+  /** Stored on the edge, and part of what makes it the same edge as one already there */
   info?: unknown;
+  /** Removes this entity's edges of the kind to the target first, so the one linked is the only one */
+  replace?: boolean;
+  /** Refuses the edge when it would close a cycle through these kinds */
+  acyclicIn?: readonly EARS.RelKind[];
+  /** Links both ways */
   symmetric?: boolean;
-  acyclicGroup?: readonly EARS.RelKind[];
+}
+
+/** What `create` is given besides the type */
+export interface CreateOptions {
+  /** The new entity's id, in place of a generated one; one already in use is refused */
+  id?: EARS.EntityId;
+  /** When it was created, in place of now: an import keeping an original time */
+  createdAt?: number;
 }
 
 /**
@@ -162,31 +189,43 @@ export type FieldValues<S extends EntityShapes, E extends string> =
   [E] extends [keyof S] ? { [K in keyof ShapeOf<S, E>]?: ShapeOf<S, E>[K] } & Record<string, unknown> : Record<string, unknown>;
 
 /**
- * `E` and `S` type the writes: `tx` from a pack's `#generated/ears`, started from a declared entity
- * type or an id tagged with one, checks the values of declared fields. Started from a plain id (or
- * from `@apackdev/ears`) every write is unchecked.
+ * The writes to one entity, from `create`, `upsert` or `write`. `E` and `S` type them: started from a
+ * declared entity type or an id tagged with one, the values of declared fields are checked; from a plain
+ * id (or from `@apackdev/ears`) every write is unchecked. The attributes the engine owns (`id`,
+ * `entityType`, `createdAt`, `role`, `relationDetails`) are refused by every attribute write.
  */
-export interface TransactionBuilder<E extends string = string, S extends EntityShapes = {}> {
-  put<K extends string>(k: K, v: FieldValue<S, E, K>, allowMultiple?: boolean): TransactionBuilder<E, S>;
-  add<K extends string>(k: K, v: FieldValue<S, E, K>): TransactionBuilder<E, S>;
-  batchPut(attrs: FieldValues<S, E>): TransactionBuilder<E, S>;
-  merge(k: string, v: unknown, i?: number): TransactionBuilder<E, S>;
-  drop(k: string, i?: number): TransactionBuilder<E, S>;
-  dropIf(k: string, c: unknown): TransactionBuilder<E, S>;
-  update<K extends string>(k: K, v: FieldValue<S, E, K>): TransactionBuilder<E, S>;
-  updateBatch(attrs: FieldValues<S, E>): TransactionBuilder<E, S>;
-  grant(r: string): TransactionBuilder<E, S>;
-  revoke(r: string): TransactionBuilder<E, S>;
-  ensure(r: string, scope?: readonly EARS.EntityId[]): TransactionBuilder<E, S>;
-  link(k: string, t: EARS.EntityId, info?: unknown): TransactionBuilder<E, S>;
-  relPatch(rel: EARS.EntityId, u: { sourceEntity?: EARS.EntityId; targetEntity?: EARS.EntityId; info?: unknown }): TransactionBuilder<E, S>;
-  unlink(rel: EARS.EntityId): TransactionBuilder<E, S>;
-  linkOne(k: string, t: EARS.EntityId, info?: unknown): TransactionBuilder<E, S>;
-  safeLink(k: string, t: EARS.EntityId, options?: SafeLinkOptions): TransactionBuilder<E, S>;
-  patchLink(k: string, t: EARS.EntityId, u: { newTarget: EARS.EntityId; newInfo?: unknown }): TransactionBuilder<E, S>;
-  unlinkIf(k: string, t?: EARS.EntityId): TransactionBuilder<E, S>;
-  unlinkWhere(c?: { kind?: string; target?: EARS.EntityId }): TransactionBuilder<E, S>;
-  define(def: { attributes?: Record<string, unknown>; links?: [string, EARS.EntityId] | Array<[string, EARS.EntityId]>; roles?: string | string[] }): TransactionBuilder<E, S>;
-  destroy(skipPersistence?: boolean): never;
+export interface WriteBuilder<E extends string = string, S extends EntityShapes = {}> {
+  /** Replaces the attribute's values with `v` */
+  set<K extends string>(k: K, v: FieldValue<S, E, K>): WriteBuilder<E, S>;
+  /** `set` for each field; refuses them all, writing none, when one is the engine's */
+  setMany(attrs: FieldValues<S, E>): WriteBuilder<E, S>;
+  /** Appends `v` to the attribute's values */
+  add<K extends string>(k: K, v: FieldValue<S, E, K>): WriteBuilder<E, S>;
+  /** Merges `v` into the object at `index` (the first by default), or sets it there */
+  merge<K extends string>(k: K, v: Partial<FieldValue<S, E, K>>, index?: number): WriteBuilder<E, S>;
+  /** Removes the attribute, every value of it */
+  delete(k: string): WriteBuilder<E, S>;
+  /** Removes the value at `index` */
+  deleteAt(k: string, index: number): WriteBuilder<E, S>;
+  /** Removes the first value equal to `v` (for an object, the first holding each of `v`'s fields) */
+  deleteValue<K extends string>(k: K, v: FieldValue<S, E, K>): WriteBuilder<E, S>;
+  /**
+   * Links this entity to `target`. An edge of the kind to the target with the same `info` (or any, when
+   * none is given) is the same edge, and linking it again changes nothing.
+   */
+  link(kind: string, target: EARS.EntityId, options?: LinkOptions): WriteBuilder<E, S>;
+  /** Removes this entity's edges of the kind, to `target` only when given */
+  unlink(kind: string, target?: EARS.EntityId): WriteBuilder<E, S>;
+  /** Removes every edge from this entity */
+  unlinkAll(): WriteBuilder<E, S>;
+  grant(role: string): WriteBuilder<E, S>;
+  revoke(role: string): WriteBuilder<E, S>;
+  /** Grants the role here and revokes it from every other entity in `among` */
+  grantExclusive(role: string, among: readonly EARS.EntityId[]): WriteBuilder<E, S>;
+  /**
+   * Deletes the entity and every edge to or from it. `keepStored` takes it out of the engine and leaves what
+   * persistence stored of it, as clearing run records from memory does.
+   */
+  destroy(options?: { keepStored?: boolean }): void;
   id(): EARS.EntityId<E>;
 }

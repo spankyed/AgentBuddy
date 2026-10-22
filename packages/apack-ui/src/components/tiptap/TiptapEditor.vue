@@ -15,6 +15,7 @@
     <p v-if="problem" role="status">{{ problem }}</p>
     <editor-content v-else :editor="editor" :class="editorClass" />
     <template v-if="editor">
+      <CommandSuggestionPopup v-if="cfg.commandSuggestion" :editor="editor" :variant="variant" />
       <component
         v-for="popup in textEditorPopups"
         :key="`${generation}/${popup.id}`"
@@ -34,6 +35,8 @@ import { createExtensions, type TiptapMode, type TiptapVariant } from './extensi
 import { getEditorConfig } from './editor-config.ts'
 import { useContributedEditor } from './internal/use-contributed-editor.ts'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
+import CommandSuggestionPopup from './CommandSuggestionPopup.vue'
+import { commandSuggestionKey } from './extensions/command-suggestion.ts'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
 import { createImageHandlers } from './composables/createImageHandlers.ts'
@@ -159,7 +162,11 @@ const handleKeyDown = createKeyboardHandler({
   getEditor: () => editor.value,
   getInHistoryMode: () => props.inHistoryMode,
   getPauseAvailable: () => props.pauseAvailable,
-  isSuggestionActive: view => groups.value.some(group => group.binding.isSuggestionActive?.(view.state)),
+  // A suggestion holds Escape, whoever owns it: the editor's own built-ins answer for their keys, and each
+  // contributed group answers for its own through the predicate it declares. Without the first half Escape
+  // reaches the chat's handler while the command popup is open, and pauses the turn instead of closing it.
+  isSuggestionActive: view => commandSuggestionKey.getState(view.state)?.active === true
+    || groups.value.some(group => group.binding.isSuggestionActive?.(view.state)),
   emit: {
     submit: () => emit('submit'),
     focusTitle: () => emit('focusTitle'),

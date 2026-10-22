@@ -326,12 +326,12 @@ describe('installed build reader', () => {
   });
 
   it('accepts backend-only declarations without a frontend entry or authored modules', () => {
-    const root = builtPack({ extensions: { commands: { hello: { placeholder: 'Say hello' } }, settings: { extra: { schema: { type: 'object' }, defaults: {} } }, steps: {}, blocks: {}, artifacts: {}, textEditor: {}, appExtensions: {} } });
+    const root = builtPack({ extensions: { settings: { extra: { schema: { type: 'object' }, defaults: {} } }, steps: {}, blocks: {}, artifacts: {}, textEditor: {}, appExtensions: {} } });
     fs.rmSync(path.join(root, 'dist/runtime/fe.js'));
     sealBuild(root);
     const stage = path.join(tmp, 'stage');
     stagePack(root, stage);
-    expect(readPackBuild(stage).snapshot.manifest.extensions?.commands).toHaveProperty('hello');
+    expect(readPackBuild(stage).snapshot.manifest.extensions?.settings).toHaveProperty('extra');
   });
 
   it('reads declarations and a content identity without executing a runtime', () => {

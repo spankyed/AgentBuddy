@@ -1,6 +1,7 @@
 // A built pack's content runtime (dist/build/content-runtime.mjs) loaded into a bare SDK test runtime: no
 // host, no app. default-setup's is the example: a Note written through it gets default-setup's rows.
-import { installedEngine as ears, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { boundEars as ears } from '@apackdev/sdk/ears';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -10,7 +11,7 @@ import { registerContentRuntime, resetTestData, startTestRuntime } from '../../s
 import type { ContentRuntime } from '../../src/framework/content-runtime.ts';
 import { compileBuiltinFormat } from '../../src/build/content/items.ts';
 import { createFormatApplier } from '../../src/content/format-applier.ts';
-import { findRelations } from '@apackdev/ears';
+import { findRelations } from '@apackdev/sdk/ears';
 import type { PackManifest } from '../../src/build/manifest.ts';
 
 const DEFAULT_SETUP = path.resolve(import.meta.dirname, '../../../default-setup');
@@ -50,9 +51,8 @@ describe.skipIf(!built)("a built pack's content runtime", () => {
 
     const notes = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>('Note', 'title', 'Intro');
     expect(notes[0]).toMatchObject({ shortCode: expect.stringMatching(/^NOTE-\d+$/), lastSeen: 0 });
-    expect(findRelations({ sourceEntity: notes[0].id, relationType: 'references' })).toEqual([
-      expect.objectContaining({ targetEntity: 'Note-plan-target' }),
-    ]);
+    // A note's references index the notes its links name that exist; this one names a note there is none of
+    expect(findRelations({ sourceEntity: notes[0].id, relationType: 'references' })).toEqual([]);
     const [plan] = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>('Note', 'title', 'Plan');
     expect(findRelations({ sourceEntity: plan.id, relationType: 'contains' })).toHaveLength(1);
   });

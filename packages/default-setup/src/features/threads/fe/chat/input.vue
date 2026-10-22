@@ -223,7 +223,7 @@ import NativePanePanel from './NativePanePanel.vue'
 import StatusLine from './StatusLine.vue'
 import NativeComposerPlacements from './NativeComposerPlacements.vue'
 import NativeUiNotices from './NativeUiNotices.vue'
-import { setClaudeCompletionOffer } from '../../../../extensions/tiptap/claude-completions.ts'
+import { setEditorCompletionOffer } from '@apackdev/sdk/fe'
 import { referenceSuggestionKey } from '../../../../extensions/tiptap/reference-suggestion.ts'
 import { claudePromptThemeStyle } from './native-ui-paint.ts'
 import { useClaudeUiSelection, replyClaudeUiSelection } from './native-ui-selection.ts'
@@ -250,7 +250,7 @@ import Button from '@apackdev/ui/design/button'
 import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
 import StatusIndicator from './status-indicator.vue'
 import type { ClaudeUiMountState, AgentThreadData, AgentMode, MessageReferences, ContextReference, QuickPrompt } from '#generated/types.ts'
-import { commandSuggestionKey } from '../../../../extensions/tiptap/command-suggestion.ts'
+import { commandSuggestionKey } from '@apackdev/ui/components/tiptap/extensions/command-suggestion'
 import { matchesHotkey, useSurfaceStorage, type HotkeyEvent, type HotkeysMap } from '@apackdev/sdk/fe'
 import QuickPromptsPopup from './QuickPromptsPopup.vue'
 import RevertHistoryPopup from './RevertHistoryPopup.vue'
@@ -416,7 +416,7 @@ watch([() => tiptapRef.value?.editor, () => props.nativePrompt?.mountId, () => p
   if (editor && mountId) promptEditor = bindClaudePromptEditor(editor, edit => emit('native-prompt-edit', edit), message => { nativePromptProblem.value = message }, props.nativePrompt?.revision, { initialRevision: props.nativePrompt?.completionRevision, request: request => emit('native-prompt-autocomplete', request), update: (rows, offerId) => {
     nativeCompletions.value = offerId ? rows.map(row => ({ ...row, offerId })) : []
     const owner = promptEditor
-    setClaudeCompletionOffer(editor, offerId && rows.length ? { id: offerId, rows: rows.map((row, index) => ({ ...row, select: () => owner?.selectCompletion(index, offerId) ?? false })), dismiss: () => owner?.dismissCompletions() } : undefined)
+    setEditorCompletionOffer(editor, offerId && rows.length ? { id: offerId, rows: rows.map((row, index) => ({ ...row, select: () => owner?.selectCompletion(index, offerId) ?? false })), dismiss: () => owner?.dismissCompletions() } : undefined)
   } }, { viewport: editorAreaRef.value, canSuggest: () => !props.disabled && !props.isBusy && !submitting.value && !hasAttachments.value && !hostPopupActive.value && !nativeCompletions.value.length && document.hasFocus() && !document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]') })
 }, { flush: 'post' })
 watch(() => tiptapRef.value?.editor, (editor, _previous, onCleanup) => {

@@ -53,7 +53,7 @@ a plugin, `13b1a5c61` five comments that justified code by narrating the change 
 `ca9660ecc` a doc comment the reference merge had dropped — found by comparing every line of each
 merged file against its sources, which is the check worth repeating after a merge of this shape.
 
-**Carried forward.** `docs/goals/goal-commands-are-host-level.md` is unstarted and now reads in this
+**Carried forward.** [the commands goal](goal-commands-are-host-level.md) has since landed, read in this
 vocabulary. Its Decision 5 — the generated `readSurfaceState`/`useSurfaceState` signatures dropping
 `| undefined` — is still open and belongs to nothing yet.
 

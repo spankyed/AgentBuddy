@@ -5,7 +5,7 @@
 // so a backup has to carry it: restore a backup without it and every entity reads as either the user's own or
 // as one they deleted, which is how a merge would destroy exactly the data the restore was for. The primary
 // partition is what `exportDatabase` copies, and a new entity type lands there by default.
-import { untypedTx, untypedQx } from '@apackdev/ears';
+import { untypedUpsert, untypedWrite, untypedQuery } from '@apackdev/sdk/ears';
 import type { EARS } from '@apackdev/sdk';
 import type { AppliedItem, ContentOffer } from '@apackdev/sdk/utils';
 
@@ -40,7 +40,7 @@ const _everyFieldIsRead: [UnreadField] extends [never] ? true : UnreadField = tr
 void _everyFieldIsRead;
 
 function stored(packId: string): Partial<AppliedContent> | undefined {
-  return untypedQx(idOf(packId)).pickOne([...FIELDS]) as Partial<AppliedContent> | undefined ?? undefined;
+  return untypedQuery.ids(idOf(packId)).pickOne([...FIELDS]) as Partial<AppliedContent> | undefined ?? undefined;
 }
 
 /**
@@ -106,11 +106,9 @@ export const appliedContent = {
       if (item) items[key] = { ...item, offer };
     }
     for (const key of next.dropped ?? []) delete items[key];
-    const write = stored(packId) === undefined
-      ? untypedTx(idOf(packId), true).put('entityType', APPLIED_CONTENT_ENTITY)
-      : untypedTx(idOf(packId));
-    if (next.revision !== undefined) write.update('revision', next.revision);
-    write.update('items', items);
+    const write = untypedUpsert(APPLIED_CONTENT_ENTITY, idOf(packId));
+    if (next.revision !== undefined) write.set('revision', next.revision);
+    write.set('items', items);
   },
 
   /**
@@ -128,6 +126,6 @@ export const appliedContent = {
     if (resolution.choice === 'deleted') delete items[key];
     else if (resolution.choice === 'taken') items[key] = { ...item, offer: undefined };
     else items[key] = { ...item, offer: undefined, ...(resolution.contentHash !== undefined && { dismissed: resolution.contentHash }) };
-    untypedTx(idOf(packId)).update('items', items);
+    untypedWrite(idOf(packId)).set('items', items);
   },
 };

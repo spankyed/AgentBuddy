@@ -120,6 +120,7 @@ function checkDefaultSurfaceClaims(features: Record<string, { surface?: { defaul
   }
 }
 
+
 function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.RefinementCtx, prefix: string[]): void {
   const owners = new Map<string, string>();
   for (const [id, contribution] of Object.entries(frontend?.textEditor ?? {})) {
@@ -155,7 +156,6 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   steps: z.lazy(() => ExtensionsSchema.shape.steps),
   artifacts: z.lazy(() => ExtensionsSchema.shape.artifacts),
   blocks: z.lazy(() => ExtensionsSchema.shape.blocks),
-  commands: z.lazy(() => ExtensionsSchema.shape.commands),
   dsl: z.lazy(() => ExtensionsSchema.shape.dsl),
   dslDefinitions: declarationRecord(z.string()).optional(),
   entityDestinations: declarationRecord(z.string().min(1), z.string().min(1)).optional(),
@@ -301,6 +301,35 @@ export const DslEntrySchema = z.object({
 
 /** Content keys compiled by the SDK's own compilers; they take a path, as a string or `{ path }` */
 export const SPECIALTY_CONTENT_KEYS: readonly string[] = ['actions', 'prompts', 'flows'];
+
+/**
+ * The content key the commands a manifest declares are compiled under.
+ *
+ * It is reserved rather than named by the pack, because the pack never writes the entry: declaring
+ * `extensions.commands` is what creates it. A pack may not declare a source of this name — it would be
+ * two entries wanting one compiled file — and `commands` itself stays free, which matters because
+ * default-setup already uses it for its own content directory.
+ */
+export const DECLARED_COMMANDS_KEY = 'declared-commands';
+
+/**
+ * The content keys a manifest declares: its `content.sources`, plus the reserved one its
+ * `extensions.commands` creates.
+ *
+ * **Every check that asks what a pack declared has to ask this**, because the shorthand declares an entry
+ * the pack wrote no source for — the compiled index, the applier keys the runtime may carry, and the
+ * installed layout each derived the answer separately, and a reserved key is invisible to all three
+ * unless they share one.
+ */
+export function declaredContentKeys(manifest: { content?: { sources?: Record<string, unknown> }; extensions?: { commands?: unknown } }): string[] {
+  return [
+    ...Object.keys(manifest.content?.sources ?? {}),
+    ...(manifest.extensions?.commands ? [DECLARED_COMMANDS_KEY] : []),
+  ];
+}
+
+/** A slash command's name: what the user types after the `/` */
+const COMMAND_NAME = /^[a-z][a-z0-9-]*$/;
 
 const ContentFieldSpecSchema = z.object({
   from: z.string().regex(/^(body|filename|path|frontmatter\.[\w-]+)$/, 'Must be "body", "filename", "path" or "frontmatter.<name>"')
@@ -610,18 +639,6 @@ export const LifecycleConfigSchema = z.object({
 const ServicesSchema = declarationRecord(z.string().regex(_SERVICE_NAME_PATTERN, 'Must be an identifier'), ExportTargetSchema);
 
 /**
- * A command's name, which is its key: what the user types after the `/`. Stricter than a contributed
- * type's, which admits an underscore — a command is typed, so it keeps to letters, digits and hyphens.
- */
-const COMMAND_NAME_SCHEMA = z.string()
-  .regex(/^[a-z][a-z0-9-]*$/, 'Must be a lowercase letter, then lowercase letters, digits and hyphens');
-
-/** A slash command a pack declares: the chat lists it, and a `user.command` event carries its name */
-export const CommandEntrySchema = z.object({
-  placeholder: z.string().min(1).describe('What the chat shows after the command: the argument it takes, or what it does.'),
-}).strict();
-
-/**
  * A feature id: the key its entry sits under. It becomes a name in generated code, so unlike a step or
  * block *type* it is an identifier — no hyphens, no underscores — and not a word generated code already
  * uses. Being a key is what makes a duplicate unrepresentable: two features with one id used to collapse
@@ -693,7 +710,34 @@ function extensionPoint<T extends z.ZodTypeAny>(
  * (`content`). Every entry is a contribution the app registers and some other pack or the shell can
  * reach; a setting that only changes what `apack pack build` produces is `build`, not one of these.
  */
+/**
+ * Slash commands declared in the manifest, as a shorthand for a content directory.
+ *
+ * **It seeds documents; it does not provide commands.** The build desugars this into ordinary content
+ * under `DECLARED_COMMANDS_KEY`, so what a user gets is a document they own: they may edit a placeholder
+ * or delete the document, and a deleted one is not written again. That is weaker than the declaration
+ * this key replaced, which came and went with the pack, and it is the price of commands being content.
+ *
+ * **`list` is nested rather than the key itself** so that `onUserEdit` has somewhere to sit that is not
+ * also a command name. A flat record with a reserved sibling parses (no command name can be spelled
+ * `onUserEdit`), but its inferred type is a catchall that every consumer of `PackManifest` then carries.
+ */
+const CommandsExtensionSchema = z.object({
+  list: declarationRecord(
+    z.string().regex(COMMAND_NAME, 'A command name must be a lowercase letter, then lowercase letters, digits and hyphens'),
+    z.object({
+      placeholder: z.string().min(1).describe('What the chat shows after the command name, as a hint for what to type.'),
+    }).strict(),
+  ).describe('The commands, keyed by the name typed after the "/".'),
+  onUserEdit: ON_USER_EDIT.optional(),
+}).strict().superRefine((commands, ctx) => {
+  if (Object.keys(commands.list).length === 0) {
+    ctx.addIssue({ code: 'custom', path: ['list'], message: 'extensions.commands declares no command: give it at least one, or leave the key out' });
+  }
+}).describe('Slash commands this pack seeds. Desugared into ordinary content, so a user owns and may delete what it writes.');
+
 const ExtensionsSchema = z.object({
+  commands: CommandsExtensionSchema.optional(),
   settings: declarationRecord(z.string().regex(FEATURE_ID_PATTERN, 'A settings group must start with a lowercase letter and contain only letters and digits'), SettingsDefinitionSchema)
     .describe('Pack-owned preference groups keyed by local group ID; stored under this pack, independently of app and feature settings.').optional(),
   help: z.object({ path: z.string().min(1).describe('Pack-root-relative directory of Markdown help articles compiled during the pack build.') }).strict()
@@ -701,16 +745,11 @@ const ExtensionsSchema = z.object({
   steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Inline node and editor data with explicit build, component, layout, type and runtime bindings.'),
   artifacts: extensionPoint(ArtifactEntrySchema, 'Artifact types this pack contributes. Each names its icon and viewer.'),
   blocks: extensionPoint(BlockEntrySchema, 'Message blocks this pack contributes. Each names where its code lives.'),
-  commands: extensionPoint(
-    CommandEntrySchema,
-    'Slash commands this pack adds to the chat, keyed by the name typed after the "/". Sending one fires a `user.command` event the pack\'s flows handle.',
-    COMMAND_NAME_SCHEMA,
-  ),
   services: ServicesSchema
     .describe('Pack-level services, belonging to no one feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file. A feature\'s own are its `services`.').optional(),
   dsl: declarationRecord(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
   ...FrontendConfigSchema.shape,
-}).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions.');
+}).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, services, DSL types, help articles and frontend extensions.');
 
 
 // ── Main manifest schema ────────────────────────────────────────────

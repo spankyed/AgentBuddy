@@ -495,6 +495,7 @@ export interface HostShellSnapshot {
 // @public
 export interface HostShellState {
     activeSurface: Surface;
+    commands: readonly PackCommand[];
     // (undocumented)
     panelSizes: ShellPanelSizes;
     surfaces: readonly Surface[];
@@ -710,6 +711,7 @@ export interface Shell {
     // (undocumented)
     activeSurface: Readonly<Ref<Surface>>;
     closeDevLetter(): void;
+    commands: Readonly<Ref<readonly PackCommand[]>>;
     // (undocumented)
     endHotkeyRecording(): void;
     // (undocumented)

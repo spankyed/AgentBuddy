@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@apackdev/sdk/logger';
-import { closeEnv, openEnvAt, LmdbQuery, LMDB_FORMAT_VERSION, type LmdbStore } from '@apackdev/ears/lmdb';
+import { closeEnv, openEnvAt, LmdbReader, LMDB_FORMAT_VERSION, type LmdbStore } from '@apackdev/ears/lmdb';
 import { UnknownBackupDatabasesError } from '@apackdev/sdk/services';
 
 const logger = createLogger('database:backup');
@@ -92,7 +92,7 @@ export async function importDatabase(
   { skipUnknownDatabases = false, entityTypes = [], log = defaultLog, validate, accept, restored, withReplacement = replace => replace() }:
     {
       skipUnknownDatabases?: boolean; entityTypes?: Iterable<string>; log?: BackupLog;
-      validate?: (query: LmdbQuery) => void;
+      validate?: (query: LmdbReader) => void;
       /** Hydrate and accept the installed data before the rollback copy can be removed. */
       accept?: (result: DatabaseImportResult) => Promise<void>;
       /** Reload the previous data after a refused installation has been restored. */
@@ -239,7 +239,7 @@ export interface BackupContents {
  * wrong. `entityTypes` are the types to count, and any type the backup holds that isn't among them comes back as
  * `unknownEntityTypes`.
  */
-export function readBackup(dir: string, entityTypes: Iterable<string> = [], validate?: (query: LmdbQuery) => void): BackupContents {
+export function readBackup(dir: string, entityTypes: Iterable<string> = [], validate?: (query: LmdbReader) => void): BackupContents {
   const metadataFile = path.join(dir, 'metadata.json');
   if (!fs.existsSync(metadataFile)) throw new Error(`${dir} isn't a backup: it has no metadata.json`);
   let metadata: { timestamp?: unknown; databases?: unknown; appVersion?: unknown; storageFormat?: unknown };
@@ -273,7 +273,7 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = [], vali
   for (const name of databases.filter((name) => name !== 'lmdb')) closeEnv(open(name), () => {});
   const env = open('lmdb');
   try {
-    validate?.(new LmdbQuery(env));
+    validate?.(new LmdbReader(env));
     const perType = new Map<string, number>();
     for (const { value } of env.entities.getRange() as Iterable<{ value: { type?: string } }>) {
       if (value.type) perType.set(value.type, (perType.get(value.type) ?? 0) + 1);

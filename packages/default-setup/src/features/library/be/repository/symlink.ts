@@ -1,10 +1,11 @@
-import { qx } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
 import { EARS } from '#generated/ears.ts'
 import type { LibraryItem, FolderContents, BreadcrumbItem } from '../types.ts'
-import { formatFileSize, findParentCollection } from './helpers.ts'
+import { parentCollectionOf } from '@apackdev/sdk/repositories'
+import { formatFileSize } from './helpers.ts'
 import type { DocumentShortCode } from '#features/library/be/types.ts';
 
 const SYMLINK_PREFIX = 'symlink:'
@@ -31,7 +32,7 @@ export function parseSymlinkId(id: string): { collectionId: string; relativePath
 }
 
 export function getSymlinkCollectionPath(collectionId: string): string | null {
-  const collections = qx(collectionId as EARS.EntityId).pickAll()
+  const collections = query.ids(collectionId as EARS.EntityId).pickAll()
   const collection = collections[0]
   if (!collection) return null
   return (collection.symlinkPath as string) || null
@@ -182,15 +183,15 @@ function buildSymlinkBreadcrumbs(collectionId: string, relativePath: string): Br
   const breadcrumbs: BreadcrumbItem[] = []
 
   // Get the collection name for the root breadcrumb
-  const collections = qx(collectionId as EARS.EntityId).pickAll()
+  const collections = query.ids(collectionId as EARS.EntityId).pickAll()
   const collection = collections[0]
   if (!collection) return breadcrumbs
 
   // Add EARS parent breadcrumbs for the symlink collection
-  let parentId: EARS.EntityId | null = findParentCollection(collectionId as EARS.EntityId)
+  let parentId: EARS.EntityId | null = parentCollectionOf(collectionId as EARS.EntityId)
   const parentCrumbs: BreadcrumbItem[] = []
   while (parentId) {
-    const parents = qx(parentId).pickAll()
+    const parents = query.ids(parentId).pickAll()
     const parent = parents[0]
     if (parent) {
       parentCrumbs.unshift({
@@ -199,7 +200,7 @@ function buildSymlinkBreadcrumbs(collectionId: string, relativePath: string): Br
         path: [],
       })
     }
-    parentId = findParentCollection(parentId)
+    parentId = parentCollectionOf(parentId)
   }
   breadcrumbs.push(...parentCrumbs)
 

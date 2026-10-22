@@ -5,7 +5,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@apackdev/sdk/build';
 import { applyRecord, importCompiledContent, type ApplyRecord, type AppliedItem, type ImportMode, type ApplyResult, type ContentSelection } from '@apackdev/sdk/utils';
-import { untypedQx as qx } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedQuery as query } from '@apackdev/sdk/ears';
 import { entityIds } from '@apackdev/sdk/testing';
 import { resetTestData, testMediaPath } from '@apackdev/testing/harness';
 
@@ -26,8 +27,14 @@ export const applyAfter = (previous?: ApplyRecord): ApplyRecord => {
   return applyRecord(items);
 };
 
-/** The content keys the parity gate covers */
-export const PARITY_KEYS = ['actions', 'prompts', 'library', 'notes'] as const;
+/**
+ * The content keys the parity gate covers.
+ *
+ * Two sides declare different ones and that is not a defect: the `v1`/`v2` fixtures exercise library
+ * writing, which is a format any pack may name, while default-setup's own documents of that shape are
+ * its commands. A key neither side has is skipped rather than compiled from nothing.
+ */
+export const PARITY_KEYS = ['actions', 'prompts', 'library', 'notes', 'commands'] as const;
 const SNAPSHOT_TYPES = ['Action', 'Prompt', 'Document', 'Collection', 'Note'];
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'apack.json'), 'utf-8'));
@@ -45,10 +52,15 @@ function withPath(entry: ContentEntry, sourcePath: string): ContentEntry {
 export async function compileContent(sources: SourceSet): Promise<string> {
   const entries: Record<string, ContentEntry> = {};
   for (const key of PARITY_KEYS) {
-    const entry = manifest.content.sources[key] as ContentEntry;
-    const own = typeof entry === 'string' ? entry : entry.path!;
-    const sourcePath = sources === 'default-setup' ? own : path.relative(PACK_DIR, path.join(FIXTURES, sources, key));
-    entries[key] = withPath(entry, sourcePath);
+    const entry = manifest.content.sources[key] as ContentEntry | undefined;
+    if (sources === 'default-setup') {
+      if (entry === undefined) continue;
+      entries[key] = withPath(entry, typeof entry === 'string' ? entry : entry.path!);
+      continue;
+    }
+    const fixtureDir = path.join(FIXTURES, sources, key);
+    if (!fs.existsSync(fixtureDir)) continue;
+    entries[key] = withPath(entry ?? { format: key }, path.relative(PACK_DIR, fixtureDir));
   }
   const pack = { ...manifest, steps: undefined, artifacts: undefined, blocks: undefined, content: { ...manifest.content, artifacts: undefined, sources: entries } };
   const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-parity-'));
@@ -103,7 +115,7 @@ export function snapshot(): Snapshot {
   const rows = new Map<string, Record<string, unknown>>();
   const relations: Array<{ source: string; kind: string; target: string }> = [];
   for (const id of ids) {
-    const row = (qx(id).pickAll() as Array<Record<string, unknown>>)[0];
+    const row = (query.ids(id as EARS.EntityId).pickAll() as Array<Record<string, unknown>>)[0];
     if (!row) continue;
     if (typeOf(id) === 'Relation') {
       const details = row.relationDetails as { sourceEntity: string; targetEntity: string; relationType: string } | undefined;
@@ -155,9 +167,13 @@ export function snapshot(): Snapshot {
 
   return {
     rows: Object.fromEntries(Object.entries(normalized).sort(([a], [b]) => a.localeCompare(b))),
+    // Sorted, as rows and media are: a golden is read by diffing it, so nothing in it may depend on
+    // the order a run happened to produce. Insert a content key in the middle of `PARITY_KEYS` and an
+    // unsorted field moves every line, which is a diff nobody can confirm is the change they meant.
     relations: relations
       .filter((r) => rows.has(r.source) || rows.has(r.target))
-      .map((r) => `${alias.get(r.source) ?? r.source} --${r.kind}--> ${alias.get(r.target) ?? r.target}`),
+      .map((r) => `${alias.get(r.source) ?? r.source} --${r.kind}--> ${alias.get(r.target) ?? r.target}`)
+      .sort(),
     media: media.sort(),
   };
 }

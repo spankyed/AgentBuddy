@@ -172,7 +172,7 @@ Final.
 Independent of Phase 2; land it first because Phase 3 needs both.
 
 - `packages/apack-sdk/src/content/applier.ts`: the `contentKey` lookup (`:137`) sees soft-deleted rows. Use a
-  raw read rather than `findWhere` (`findByIdRaw`-shaped, or `qx` without the deleted filter), and return
+  raw read rather than `findWhere` (`findByIdRaw`-shaped, or `query` without the deleted filter), and return
   a match that says the row is deleted.
 - Add the fourth outcome in the outcome branch: a deleted match is skipped, counted as skipped, and its
   subtree is not descended (a deleted parent's children are the user's too).
@@ -332,13 +332,13 @@ sweep, and closing it means a manifest key for compiled artifacts nothing import
 — here, in `content.md` and in Phase 1's commit message — was an overclaim.** The applier's half is general:
 it finds its row whether or not the row is marked deleted. But there has to *be* a row, and only a feature
 that soft-deletes leaves one. Notes (`trash.move`), actions and prompts do. Flows do not
-(`flowRepository.deleteFlow` → `untypedTx(flowId).destroy()`), nor do library documents and collections
-(`features/library/be/repository/commands.ts` → `tx(id).destroy()`), so a user who deletes the written demo
+(`flowRepository.deleteFlow` → `untypedWrite(flowId).destroy()`), nor do library documents and collections
+(`features/library/be/repository/commands.ts` → `write(id).destroy()`), so a user who deletes the written demo
 flow or a library document still gets it back — exactly the complaint Phase 1 was written to fix, for two
 of the keys it did not reach.
 
 **Closed, by a third shape neither Decision 1 nor Deferred 1 had in view.** Trashing those two entities turned
-out not to be a contained change: library reads rows straight off relation walks with raw `qx(...).pickAll()`
+out not to be a contained change: library reads rows straight off relation walks with raw `query(...).pickAll()`
 — 19 sites in 4 files with no filtered read anywhere — and flows and the brain another 4, and neither
 `linksTo` nor `findRelations` filters `deleted`, so a trashed flow would stay listed and stay runnable. What
 landed instead is the same fact from the other side: the content keys a pack's content defined on its last run

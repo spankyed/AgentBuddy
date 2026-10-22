@@ -70,7 +70,7 @@ export let appStore: LmdbStore | undefined;
  * registers them), the LMDB store and the app's engine persisting to it (`openDatabaseStore`, `@apackdev/host/database`,
  * which `apack db` opens a data dir with too) with their partition policy and entity types, and
  * `bindHost(createHostRuntime(...))` with the root event bus, whose log events are printed, the app version, the
- * registry (the SDK's lookups read it), the engine (packs get its query face, installed by the bind) and the host
+ * registry (the SDK's lookups read it), the engine (packs get its operations, bound by the bind) and the host
  * services over the store and the engine's admin face. The caller hydrates the store once the packs are registered.
  */
 /**

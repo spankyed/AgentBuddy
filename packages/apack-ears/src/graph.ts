@@ -1,17 +1,16 @@
-import type { qx as Qx } from './query.ts';
+import type { Query } from './query.ts';
 import type { EdgeStore } from './edge-store.ts';
 import { EARS } from './entities.ts';
-import { installedEngine } from './installed.ts';
 
 /** An engine's graph walks, over its queries and edge store */
-export function createGraph({ qx, edgeStore }: { qx: typeof Qx; edgeStore: EdgeStore }) {
+export function createGraph({ query, edgeStore }: { query: Query; edgeStore: EdgeStore }) {
   const neighbours = (
     id: EARS.EntityId,
     kinds: readonly EARS.RelKind[],
     asSource = true,
   ): EARS.EntityId[] =>
     kinds.flatMap(k =>
-      qx(id).linksTo(k, undefined, asSource).ids(),
+      query.ids(id).linksTo(k, undefined, asSource).ids(),
     );
 
   function descendants(
@@ -23,7 +22,7 @@ export function createGraph({ qx, edgeStore }: { qx: typeof Qx; edgeStore: EdgeS
 
     while (stack.length) {
       const node = stack.pop()!;
-      for (const child of qx(node).linksTo(relKind).ids()) {
+      for (const child of query.ids(node).linksTo(relKind).ids()) {
         if (!seen.has(child)) {
           seen.add(child);
           stack.push(child);
@@ -43,7 +42,7 @@ export function createGraph({ qx, edgeStore }: { qx: typeof Qx; edgeStore: EdgeS
 
     while (stack.length) {
       const node = stack.pop()!;
-      for (const parent of qx(node)
+      for (const parent of query.ids(node)
         .linksTo(relKind, undefined, false)
         .ids()) {
         if (!seen.has(parent)) {
@@ -62,7 +61,7 @@ export function createGraph({ qx, edgeStore }: { qx: typeof Qx; edgeStore: EdgeS
   ): EARS.EntityId {
     let cur = start;
     while (true) {
-      const parent = qx(cur)
+      const parent = query.ids(cur)
         .linksTo(relKind, undefined, false)
         .first();
       if (!parent) break;
@@ -112,7 +111,7 @@ export function createGraph({ qx, edgeStore }: { qx: typeof Qx; edgeStore: EdgeS
 
     const all = new Set<EARS.EntityId>(roots);
     const collect = (id: EARS.EntityId) => {
-      const kids = new Set<EARS.EntityId>(qx(id).linksTo(kind, filterType).ids());
+      const kids = new Set<EARS.EntityId>(query.ids(id).linksTo(kind, filterType).ids());
       outgoing.set(id, kids);
       kids.forEach(k => {
         incoming.set(k, (incoming.get(k) ?? 0) + 1);
@@ -186,11 +185,11 @@ export function createGraph({ qx, edgeStore }: { qx: typeof Qx; edgeStore: EdgeS
     kind: EARS.RelKind,
     filterType?: EARS.Entity,
   ): EARS.EntityId[] {
-    const all = new Set<EARS.EntityId>(qx(filterType).ids());
+    const all = new Set<EARS.EntityId>((filterType ? query(filterType as never) : query.all()).ids());
     const hasOut = new Set<EARS.EntityId>();
 
     for (const id of all) {
-      if (qx(id).linksTo(kind, filterType).exists()) {
+      if (query.ids(id).linksTo(kind, filterType).exists()) {
         hasOut.add(id);
       }
     }
@@ -207,7 +206,7 @@ export function createGraph({ qx, edgeStore }: { qx: typeof Qx; edgeStore: EdgeS
       let cur: EARS.EntityId | null = id;
       while (cur) {
         path.push(cur);
-        cur = qx(cur)
+        cur = query.ids(cur)
           .linksTo(treeKind, undefined, false)
           .first();
       }
@@ -223,71 +222,4 @@ export function createGraph({ qx, edgeStore }: { qx: typeof Qx; edgeStore: EdgeS
     descendants, ancestors, rootParent, wouldCreateCycle, linkSymmetric,
     topoSort, shortestPath, leaves, lowestCommonAncestor,
   };
-}
-
-// The installed engine's graph walks (see installed.ts)
-
-export function descendants(
-  start: EARS.EntityId,
-  relKind: EARS.RelKind,
-): EARS.EntityId[] {
-  return installedEngine().descendants(start, relKind);
-}
-
-export function ancestors(
-  start: EARS.EntityId,
-  relKind: EARS.RelKind,
-): EARS.EntityId[] {
-  return installedEngine().ancestors(start, relKind);
-}
-
-export function rootParent(
-  start: EARS.EntityId,
-  relKind: EARS.RelKind,
-): EARS.EntityId {
-  return installedEngine().rootParent(start, relKind);
-}
-
-export function wouldCreateCycle(
-  src: EARS.EntityId,
-  tgt: EARS.EntityId,
-  kinds: readonly EARS.RelKind[],
-): boolean {
-  return installedEngine().wouldCreateCycle(src, tgt, kinds);
-}
-
-export function linkSymmetric(
-  a: EARS.EntityId,
-  b: EARS.EntityId,
-  kind: EARS.RelKind,
-  info?: unknown,
-) {
-  installedEngine().linkSymmetric(a, b, kind, info);
-}
-
-export function topoSort(
-  roots: EARS.EntityId[],
-  kind: EARS.RelKind,
-  filterType?: EARS.Entity,
-): EARS.EntityId[] {
-  return installedEngine().topoSort(roots, kind, filterType);
-}
-
-export function shortestPath(src: EARS.EntityId, tgt: EARS.EntityId, kinds: EARS.RelKind[]): EARS.EntityId[] | null {
-  return installedEngine().shortestPath(src, tgt, kinds);
-}
-
-export function leaves(
-  kind: EARS.RelKind,
-  filterType?: EARS.Entity,
-): EARS.EntityId[] {
-  return installedEngine().leaves(kind, filterType);
-}
-
-export function lowestCommonAncestor(
-  a: EARS.EntityId,
-  b: EARS.EntityId,
-  treeKind: EARS.RelKind,
-): EARS.EntityId | null {
-  return installedEngine().lowestCommonAncestor(a, b, treeKind);
 }

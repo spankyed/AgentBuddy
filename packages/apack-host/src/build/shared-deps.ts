@@ -204,6 +204,7 @@ export const SDK_FE_MODULES: Record<string, SdkFeModule> = {
   '@apackdev/sdk/artifacts':    { globalKey: 'sdkArtifacts' },
   '@apackdev/sdk/blocks':       { globalKey: 'sdkBlocks' },
   '@apackdev/sdk/designations': { globalKey: 'sdkDesignations' },
+  '@apackdev/sdk/commands':     { globalKey: 'sdkCommands' },
   '@apackdev/sdk/events':       { globalKey: 'sdkEvents' },
   '@apackdev/sdk/helpers':      { globalKey: 'sdkHelpers' },
 };

@@ -93,6 +93,19 @@ export type DeclarationData<T> = T extends object ? {
 } : T;
 
 // @public
+export const DECLARED_COMMANDS_KEY = "declared-commands";
+
+// @public
+export function declaredContentKeys(manifest: {
+    content?: {
+        sources?: Record<string, unknown>;
+    };
+    extensions?: {
+        commands?: unknown;
+    };
+}): string[];
+
+// @public
 export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
     type: string;
 } = {
@@ -201,9 +214,6 @@ export interface FrontendDeclaration {
     textEditor?: Record<string, TextEditorExtensionsDeclaration>;
 }
 
-// @public
-export function getPackCommands(): PackCommand[];
-
 // @public (undocumented)
 export function getPackHelp(): HelpCatalog;
 
@@ -296,8 +306,6 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     artifacts?: Record<string, z.infer<typeof ArtifactEntrySchema>>;
     // (undocumented)
     blocks?: Record<string, z.infer<typeof BlockEntrySchema>>;
-    // (undocumented)
-    commands?: Record<string, z.infer<typeof CommandEntrySchema>>;
     consumes?: PackConsumption;
     content?: {
         writers?: Record<string, string>;
@@ -365,14 +373,6 @@ export interface PackCatalogView {
     steps(): readonly StepCatalogEntry[];
     // (undocumented)
     subscribe(listener: () => void): () => void;
-}
-
-// @public
-export interface PackCommand {
-    // (undocumented)
-    name: string;
-    // (undocumented)
-    placeholder: string;
 }
 
 // @public
@@ -477,7 +477,6 @@ export interface PackRegistration {
     bindServices?: (access: PackServiceAccess) => () => void;
     // (undocumented)
     blocks?: BlockDefinition[];
-    commands?: PackCommand[];
     contentWriters?: Record<string, ContentWriter>;
     declarationRevision?: string;
     // (undocumented)

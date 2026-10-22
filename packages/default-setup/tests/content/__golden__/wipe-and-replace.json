@@ -234,15 +234,14 @@
       }
     },
     "relations": [
+      "Collection:Guides --contains--> Document:Getting Started",
       "Collection:Guides --parent_of--> Collection:advanced",
       "Collection:advanced --contains--> Document:deep dive",
-      "Collection:Guides --contains--> Document:Getting Started",
-      "Note:Projects --contains--> Note:Projects/Archive",
-      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task",
-      "Note:Projects --contains--> Note:Projects/task one",
-      "Note:Projects --contains--> Note:Projects/Task Two",
       "Note:Projects --contains--> Note:Projects/2024",
-      "Note:Welcome --references--> Note-external-plan"
+      "Note:Projects --contains--> Note:Projects/Archive",
+      "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task"
     ],
     "media": [
       "Document:Getting Started/pic.png=PNGDATA"
@@ -253,13 +252,18 @@
         "updated": 0,
         "skipped": 0
       },
-      "prompts": {
-        "created": 2,
+      "commands": {
+        "created": 0,
         "updated": 0,
         "skipped": 0
       },
       "library": {
         "created": 5,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 2,
         "updated": 0,
         "skipped": 0
       }
@@ -500,15 +504,14 @@
       }
     },
     "relations": [
-      "Note:Projects --contains--> Note:Projects/Archive",
-      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task",
-      "Note:Projects --contains--> Note:Projects/task one",
-      "Note:Projects --contains--> Note:Projects/Task Two",
-      "Note:Projects --contains--> Note:Projects/2024",
-      "Note:Welcome --references--> Note-external-plan",
+      "Collection:Guides --contains--> Document:Getting Started",
       "Collection:Guides --parent_of--> Collection:advanced",
       "Collection:advanced --contains--> Document:deep dive",
-      "Collection:Guides --contains--> Document:Getting Started"
+      "Note:Projects --contains--> Note:Projects/2024",
+      "Note:Projects --contains--> Note:Projects/Archive",
+      "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task"
     ],
     "media": [
       "Document:(deleted)/pic.png=PNGDATA",
@@ -520,13 +523,18 @@
         "updated": 0,
         "skipped": 0
       },
-      "prompts": {
-        "created": 2,
+      "commands": {
+        "created": 0,
         "updated": 0,
         "skipped": 0
       },
       "library": {
         "created": 5,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 2,
         "updated": 0,
         "skipped": 0
       }
@@ -759,16 +767,15 @@
       }
     },
     "relations": [
-      "Note:Projects --contains--> Note:Projects/Archive",
-      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task",
-      "Note:Projects --contains--> Note:Projects/task one",
-      "Note:Projects --contains--> Note:Projects/Task Two",
-      "Note:Projects --contains--> Note:Projects/2024",
-      "Note:Welcome --references--> Note-external-plan",
+      "Collection:Guides --contains--> Document:Getting Started",
+      "Collection:Guides --contains--> Document:New Doc",
       "Collection:Guides --parent_of--> Collection:advanced",
       "Collection:advanced --contains--> Document:deep dive",
-      "Collection:Guides --contains--> Document:Getting Started",
-      "Collection:Guides --contains--> Document:New Doc"
+      "Note:Projects --contains--> Note:Projects/2024",
+      "Note:Projects --contains--> Note:Projects/Archive",
+      "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task"
     ],
     "media": [
       "Document:(deleted)/pic.png=PNGDATA",
@@ -781,13 +788,18 @@
         "updated": 0,
         "skipped": 0
       },
-      "prompts": {
-        "created": 2,
+      "commands": {
+        "created": 0,
         "updated": 0,
         "skipped": 0
       },
       "library": {
         "created": 6,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 2,
         "updated": 0,
         "skipped": 0
       }

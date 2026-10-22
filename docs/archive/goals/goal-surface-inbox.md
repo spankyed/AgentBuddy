@@ -559,7 +559,7 @@ Final.
 
     `openSurface(ref, event?)` (`@apackdev/sdk/fe`) keeps `SurfaceEvent`: its target arrives as data — a link
     block's, a registered surface's `id` — so there is no name to type against. It is the escape hatch, the
-    way `untypedQx` is for a query whose entity isn't known at compile time.
+    way `untypedQuery` is for a query whose entity isn't known at compile time.
 
 18. **The renderer send is checked at runtime too, against the same declaration.** The backend path
     already is: `bus/machine.ts:150` looks the target up in `getSurfaceEventValidationMap()` and drops a

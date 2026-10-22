@@ -34,7 +34,7 @@ Finished when:
   `npm run packages:build` then `npm run packages:check`; `npm run chain` at the end of each phase.
 - `npm run api:update` for `@apackdev/sdk` once `replyTo` exists, with `etc/` committed. Report what moved
   in the public surface rather than rewriting a recorded artifact to make a check pass.
-- Phase 5 is driven, not only unit-tested: `apack drive --serve` with three concurrent `/qx` calls
+- Phase 5 is driven, not only unit-tested: `apack drive --serve` with three concurrent `/query` calls
   returning three correct answers.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 - The doc is in `docs/archive/goals/`, with its status blockquote and an Outcome section, committed.
@@ -228,14 +228,14 @@ rather than silently taking it over.
 
 ### Phase 5 — The drive engine stops reconstructing
 
-- `/qx` and `/tx` in `packages/apack-testing/src/engine/` become a `sendToSystem` plus a reply, over the
+- `/query` and `/transact` in `packages/apack-testing/src/engine/` become a `sendToSystem` plus a reply, over the
   `host/drive` claim from Phase 4.
 - Delete the request-id minting, the reply-id match in `nextReply`, `MAX_SEEN_EVENTS` and the seen-events
   buffer from `engine/session.ts`. Keep the round-trip timeout: a reply can still not arrive.
 - Update `packages/apack-testing/CLAUDE.md` and `docs/public-facing/cli.md` where they describe how the
   engine correlates answers.
 
-**Done when:** `apack drive --serve` with three concurrent `/qx` calls returns three correct answers;
+**Done when:** `apack drive --serve` with three concurrent `/query` calls returns three correct answers;
 `engine/session.ts` contains no id matching; the engine's own specs
 (`packages/apack-testing/tests/engine/`) pass.
 
@@ -288,7 +288,7 @@ ref grammar is checked in `bus.claim`; the registry stores a string.
 
 ### Why Phase 5 cannot be built as written
 
-Its "Done when" asks for both *"three concurrent `/qx` calls returning three correct answers"* and *"`session.ts`
+Its "Done when" asks for both *"three concurrent `/query` calls returning three correct answers"* and *"`session.ts`
 contains no request-id matching"*. Those exclude each other.
 
 **Addressing answers which connection, not which request.** Three concurrent queries from one driver produce three
@@ -303,7 +303,7 @@ also invalidates Phase 5's own criteria.
 
 **Two further obstacles, found by reading the engine rather than by reasoning about it:**
 
-- **The driver is not a bus client.** `/qx` runs `page.evaluateWith` → the *renderer's* `untypedSendToSystem`, so
+- **The driver is not a bus client.** `/query` runs `page.evaluateWith` → the *renderer's* `untypedSendToSystem`, so
   the send comes from the window. Making the driver a participant in its own right means giving `@apackdev/testing`
   a tRPC/ws client — new dependency surface in a package every pack's tests load.
 - **A surface's own sends are not stamped.** `deliverSurfaceEvents` wraps only what the *shell* routes. A UI-triggered

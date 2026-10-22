@@ -6,7 +6,7 @@ import { SYSTEM_EVENT_TYPES } from '@apackdev/sdk/framework';
 import type { PackFeature } from '@apackdev/sdk/framework';
 import { hostRegistration } from '../../src/features/registration.ts';
 import { PACKS_SURFACE_EVENT_TYPES } from '../../src/features/event-contracts.ts';
-import { SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
+import { HOST_SYSTEM_EVENT_TYPES, SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 
 /** The events a pack's surface receives: what its pack declares, and what the app sends every surface */
 const receives = (...types: string[]) => new Set([...types, ...SURFACE_EVENT_TYPES]);
@@ -36,11 +36,16 @@ describe('getEventValidationMap', () => {
       .toThrow(/Invalid native declarations:.*features.other-pack\/logs/);
   });
 
-  // The host is a pack like any other: its features' systems are checked the same way
+  // The host is a pack like any other: its features' systems are checked the same way — and one of them is also
+  // named in `HOST_SYSTEM_EVENT_TYPES`, so its entry is the union of the two. `HELLO` here is what the system itself
+  // declares, which the map set over rather than merged into: the sends packs may make reached it and nothing else did.
   it("lists the host's systems once it registers", () => {
     expect(getEventValidationMap().has('host/application')).toBe(false);
     registerPack(hostRegistration({ application: { machine, receives: ['HELLO'] } }));
-    expect(getEventValidationMap().get('host/application')).toEqual(new Set(['HELLO', ...SYSTEM_EVENT_TYPES]));
+    expect(getEventValidationMap().get('host/application'))
+      .toEqual(new Set(['HELLO', ...SYSTEM_EVENT_TYPES, ...HOST_SYSTEM_EVENT_TYPES['host/application']]));
+    // The bus is no feature's system, so its entry is only what packs may send it
+    expect(getEventValidationMap().get('host/bus')).toEqual(new Set(HOST_SYSTEM_EVENT_TYPES['host/bus']));
     unregisterPack('host');
   });
 });
@@ -132,7 +137,7 @@ describe('a host surface', () => {
     const registry = createNativePackTestRegistry();
     registry.registerPack(hostRegistration());
     expect(registry.getSurfaceEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_SURFACE_EVENT_TYPES));
-    expect(registry.getSurfaceEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'SURFACE_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_SURFACE', 'PACK_RUNTIMES_UPDATED'));
+    expect(registry.getSurfaceEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'SURFACE_VISIBILITY_UPDATED', 'COMMANDS_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_SURFACE', 'PACK_RUNTIMES_UPDATED'));
   });
 
   // The host is the pack `host`, so a pack with a `packs` feature of its own is not a contest

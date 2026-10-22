@@ -6,7 +6,7 @@ import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
+import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
 import { eventBindingProblem } from './event-binding.ts';
 import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
 /**
@@ -33,7 +33,7 @@ import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apackdev/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
-import { installedEngine } from '@apackdev/ears';
+import { boundEars } from '@apackdev/sdk/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { readInstalledPackBuilds, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
@@ -324,14 +324,12 @@ function admitContributions(registration: PackRegistration, { steps: declaration
     blocks: (registration.blocks ?? []).map(value => [value.type, value] as const),
     contentWriters: Object.entries(registration.contentWriters ?? {}),
     appliers: [...(registration.appliers ?? [])],
-    commands: (registration.commands ?? []).map(value => ({ ...value })),
   };
 }
 type AdmittedPackContributions = ReturnType<typeof admitContributions>;
 
 /** Build candidate lookups without binding services or writing to the engine. */
 function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
-  const commandOwners = new Map<string, string>();
   const tables = {
     designations: createDesignationStore(),
     steps: createOwnedStepStore<StepBackendBinding>(),
@@ -348,11 +346,6 @@ function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
     for (const [type, value] of pack.blocks) tables.blocks.set(type, value);
     for (const [name, value] of pack.contentWriters) tables.contentWriters.register(name, value, pack.id);
     tables.appliers.register(pack.id, pack.appliers);
-    for (const { name } of pack.commands) {
-      const owner = commandOwners.get(name);
-      if (owner !== undefined && owner !== pack.id) throw new Error(`Command collision: "${name}" — pack "${pack.id}" vs "${owner}"`);
-      commandOwners.set(name, pack.id);
-    }
     for (const [name, value] of pack.repositories) tables.repositories.set(name, value);
   }
   return tables;
@@ -363,7 +356,7 @@ function publishRepositories(before: ReadonlyMap<string, unknown>, next: Readonl
   const names = [...new Set([...before.keys(), ...next.keys()])]
     .filter(name => before.has(name) !== next.has(name) || before.get(name) !== next.get(name));
   if (!names.length) return;
-  const engine = installedEngine();
+  const engine = boundEars();
   const write = (values: ReadonlyMap<string, unknown>, name: string) => values.has(name)
     ? engine.registerRepository(name, values.get(name)) : engine.unregisterRepository(name);
   const attempted: string[] = [];
@@ -563,7 +556,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (!declaration) throw new Error(`Native pack "${registration.id}" must declare its data before binding`);
       const eventsProblem = eventBindingProblem(declaration.eventContracts, registration.features ?? {}, true);
       if (eventsProblem) throw new Error(`Native pack "${registration.id}" runtime ${eventsProblem} does not match its admitted declarations`);
-      const contentProblem = backendContentBindingProblem(declaration.content, registration);
+      const contentProblem = backendContentBindingProblem(declaration, registration);
       if (contentProblem) throw new Error(`Native pack "${registration.id}" runtime ${contentProblem} does not match its admitted declarations`);
       const viewerProblem = backendViewerBindingProblem(declaration, registration);
       if (viewerProblem) throw new Error(`Native pack "${registration.id}" runtime ${viewerProblem} does not match its admitted declarations`);
@@ -572,8 +565,6 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
         throw new Error(`Native pack "${registration.id}" runtime ears.relKinds does not match its admitted declarations`);
       }
-      const commands = commandBindingProblem(declaration.commands, registration.commands);
-      if (commands) throw new Error(`Native pack "${registration.id}" runtime ${commands} does not match its admitted declarations`);
       const migrationProblem = migrationBindingProblem(declaration.migrations, registration.migrations);
       if (migrationProblem) throw new Error(`Native pack "${registration.id}" runtime ${migrationProblem} does not match its admitted declarations`);
       const lifecycleProblem = lifecycleBindingProblem(declaration.lifecycle, registration.lifecycle);
@@ -736,10 +727,19 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     for (const pack of admitted.values()) {
       for (const [ref, system] of pack.systems) map.set(ref, new Set(system.receives));
     }
-    // The bus isn't a feature's system, but pack code sends it events (HostSystemEvents): from a frontend too, so the
-    // client path checks them as the backend's does. It runs where the host is registered.
+    // What pack code may send the host's own systems (`HostSystemEvents`): from a frontend too, so the client path
+    // checks them as the backend's does. It runs where the host is registered.
+    //
+    // **Merged into whatever is already there, never set over it.** One of these refs is the bus, which is no
+    // feature's system and so has no entry of its own; the rest name a host feature whose system declared its
+    // incoming events a few lines above, and overwriting that entry would drop every event the system itself
+    // accepts — leaving a system reachable only by the events packs may send it.
     if (registrations.has(HOST_PACK_ID)) {
-      for (const [ref, types] of Object.entries(HOST_SYSTEM_EVENT_TYPES)) map.set(ref, new Set(types));
+      for (const [ref, types] of Object.entries(HOST_SYSTEM_EVENT_TYPES)) {
+        const existing = map.get(ref);
+        if (existing) for (const type of types) existing.add(type);
+        else map.set(ref, new Set(types));
+      }
     }
     return map;
   }
@@ -867,16 +867,6 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     surfaceDefaults: () => Object.fromEntries(catalog.surfaces()
       .filter(surface => surface.origin !== 'source' && surface.enabled === true && surface.declaration.defaultVisible !== undefined)
       .map(surface => [surface.featureRef, surface.declaration.defaultVisible!])),
-    commands: () => catalog.commands().filter(command => {
-      if (command.enabled === false || !admitted.has(command.packId)) return false;
-      if (command.origin === 'native') {
-        const declaration = catalog.getSnapshot().native.find(pack => pack.id === command.packId);
-        return !commandBindingProblem(declaration?.commands, admitted.get(command.packId)!.commands);
-      }
-      const origin = origins.get(command.packId);
-      return origin !== undefined && origin.declarationRevision === command.declarationRevision
-        && origin.buildRevision === command.buildRevision;
-    }).map(({ name, placeholder }) => ({ name, placeholder })),
     help: catalog.help,
   };
 }

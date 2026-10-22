@@ -21,7 +21,6 @@ import { createModuleExports, type ModuleExport, type ModuleExports } from './mo
 import { hasOwn } from '../utils/shared.ts';
 import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
-import type { PackCommand } from '../framework/pack-commands.ts';
 import type { ComponentTarget } from '../framework/surface-declaration.ts';
 import type { PackEventContracts } from '../framework/event-contracts.ts';
 
@@ -425,23 +424,6 @@ export async function generatePackFiles(
   /** The dependencies whose facade publishes `PackSurfaceState`, by the same rule applied to their manifests */
   const depsWithSurfaces = depIds.filter((depId) => publishesSurfaceState(depSnapshots.get(depId)!.manifest, depId));
 
-  /**
-   * The slash commands the pack declares, as the registration carries them: the name is the manifest key,
-   * so it is read from there rather than restated in the entry. A name a dependency declares too fails the
-   * build — the app would refuse to register the pack — and that check is the one the key cannot make
-   * unrepresentable, since the two names are in two manifests.
-   */
-  function declaredCommands(): PackCommand[] {
-    const taken = _mergeProvenance('commands', [...depSnapshots]);
-    return Object.entries(manifest.extensions?.commands ?? {}).map(([name, entry]) => {
-      const owner = taken[name];
-      if (owner) {
-        throw new Error(`Command "${name}" is declared by "${owner}", which this pack depends on: the app refuses a pack whose command another pack declares, so rename it in apack.json \`commands\``);
-      }
-      return { name, ...entry };
-    });
-  }
-  const commands = declaredCommands();
 
   /**
    * The repository names the pack's direct dependencies declare, with the pack declaring each. A name
@@ -988,6 +970,16 @@ ${items.join('\n')}
       return `packSystem(${systemBinding(f.id)}, { incoming: ${dataLiteral(eventContracts()[f.id].system!.incoming)} })`;
     };
 
+    const hookEntries = Object.entries(manifest.lifecycle ?? {}).map(([name, target]) => {
+      const { source, exportName, value } = valueExport(`Boot hook "${name}"`, target);
+      if (value !== 'function') throw new Error(`Boot hook "${name}": "${exportName}" in ${source} must export a function`);
+      return { name, binding: `__lifecycle_${name}`, source, exportName };
+    });
+    const hooksImport = hookEntries.map(({ source, exportName, binding }) =>
+      `import { ${exportName} as ${binding} } from '${toImportPath(root, source)}';`).join('\n');
+
+    const writerEntries = contentWriterEntries();
+
     const featuresLiteral = features.map(f => {
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
@@ -998,16 +990,6 @@ ${items.join('\n')}
       if (f.settings) parts.push(`      settings: JSON.parse(${dataLiteral(JSON.stringify(f.settings))})`);
       return `    '${f.id}': {\n${parts.join(',\n')},\n    }`;
     }).join(',\n');
-
-    const hookEntries = Object.entries(manifest.lifecycle ?? {}).map(([name, target]) => {
-      const { source, exportName, value } = valueExport(`Boot hook "${name}"`, target);
-      if (value !== 'function') throw new Error(`Boot hook "${name}": "${exportName}" in ${source} must export a function`);
-      return { name, binding: `__lifecycle_${name}`, source, exportName };
-    });
-    const hooksImport = hookEntries.map(({ source, exportName, binding }) =>
-      `import { ${exportName} as ${binding} } from '${toImportPath(root, source)}';`).join('\n');
-
-    const writerEntries = contentWriterEntries();
     const blocks = blockDefinitions();
     const artifacts = artifactDefinitions();
     const steps = stepDefinitionsFor('backend');
@@ -1057,7 +1039,6 @@ ${artifacts ? `  artifacts: ${artifacts},` : ''}
 ${blocks.literal ? `  blocks: ${blocks.literal},` : ''}
 ${writerEntries.length > 0 ? `  contentWriters: { ${writerEntries.map(([entity], i) => `${propertyKey(entity)}: __contentWriter_${i}`).join(', ')} },` : ''}
   appliers,
-${commands.length ? `  commands: ${dataLiteral(commands)},` : ''}
 ${manifest.extensions?.settings ? `  settings: ${dataLiteral(manifest.extensions.settings)},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
@@ -1205,10 +1186,11 @@ ${regProps.join('\n')}
     return `${emitEARS(manifest.id, registry)}
 // ── Typed EARS helpers ──────────────────────────────────────────
 // The query helpers typed against this pack's entity shapes (its own and its
-// dependencies'). The call is pure, so bundles that only use the EARS constants above
-// drop it.
+// dependencies'), bound to the app's engine (\`boundEars\`). The call is pure, so bundles that only use the
+// EARS constants above drop it.
 
 import { defineEars, type ShapeOf } from '@apackdev/ears';
+import { boundEars } from '@apackdev/sdk/ears';
 import type { SdkEntityShapes } from '@apackdev/sdk';
 ${ownNodes ? "import type { NodeEntity } from './types.ts';\n" : ''}${shapeImports.join('\n')}
 
@@ -1240,10 +1222,10 @@ export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
 export type EntityName = ${entityNames.join(' | ')};
 
 export const {
-  qx, tx, findById, findByIdRaw, findAll, findWhere, findFirst,
+  query, create, upsert, write, transact, findById, findByIdRaw, findAll, findWhere, findFirst,
   findWithFields, findByIdWithFields, findWithRole, findFirstWithRole,
   createEntity, createEntityWithDefaults, updateEntity, getAttr, getAttrs,
-} = /*#__PURE__*/ defineEars<PackShapes, EntityName>();
+} = /*#__PURE__*/ defineEars<PackShapes, EntityName>(boundEars);
 `;
   }
 
@@ -1752,7 +1734,7 @@ export type EntityId = EARS.EntityId;
     const entries = repositoryEntries();
     const deps = depTypeImports('Repositories');
     return `${HEADER}
-import { repository as earsRepository } from '@apackdev/ears';
+import { repository as earsRepository } from '@apackdev/sdk/ears';
 ${entries.map(([name, path, exportName]) => `import type { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
 ${deps.imports.join('\n')}
 
@@ -1922,6 +1904,17 @@ ${featureBindings.join('\n')}
     for (const [key, source] of Object.entries(resolvedContentSources())) {
       if (source.kind === 'applier') {
         packApplier(key, source.applier);
+        continue;
+      }
+
+      /**
+       * The declared commands apply as ordinary Document content, so removal, offers and the three-way
+       * merge are the machinery every other entry uses — there is no second path for a command.
+       */
+      if (source.kind === 'declared') {
+        applierImports.add('createFormatApplier');
+        const options = { key, entities: [SDK_ENTITIES.Document], identity: ['name'], ...(source.onUserEdit && { onUserEdit: source.onUserEdit }) };
+        registrations.push(`createFormatApplier(${dataLiteral(options)})`);
         continue;
       }
 

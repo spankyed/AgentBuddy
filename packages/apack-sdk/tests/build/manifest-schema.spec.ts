@@ -86,7 +86,7 @@ describe('parseManifest', () => {
     expect(external.diagnostics[0].message).toContain('"first" and "second"');
     const native = _NativePackDeclarationSchema.safeParse({ id: 'editor', ...contributions });
     expect(native.success).toBe(false);
-    if (native.success) throw new Error('Duplicate native editor extension accepted');
+    if (native.success) throw new Error('Duplicate native text editor extension accepted');
     expect(native.error.issues[0].path).toEqual(['textEditor', 'second', 'extensions', 'mention']);
     expect(native.error.issues[0].message).toContain('"first" and "second"');
   });
@@ -292,6 +292,29 @@ describe('content.formats, content.sources and content.datasets', () => {
     expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
   });
 
+  // The shorthand: names and placeholders in the manifest, desugared into ordinary content at build time.
+  // `list` is nested so `onUserEdit` has somewhere to sit that is not also a command name.
+  it('takes slash commands declared in the manifest, with an optional edit policy beside them', () => {
+    const commands = (value: unknown) => ({ ...pack, extensions: { commands: value } });
+
+    expect(messagesOf(parseManifest(commands({ list: { 'pr2md': { placeholder: 'PR number' } } })))).toEqual([]);
+    expect(messagesOf(parseManifest(commands({ onUserEdit: 'theirs', list: { 'pr2md': { placeholder: 'PR number' } } })))).toEqual([]);
+
+    expect(messagesOf(parseManifest(commands({ list: { 'PR2MD': { placeholder: 'x' } } }))))
+      .toEqual([expect.stringMatching(/A command name must be a lowercase letter/)]);
+    expect(messagesOf(parseManifest(commands({ list: { 'pr2md': { placeholder: '' } } }))).length).toBeGreaterThan(0);
+    expect(messagesOf(parseManifest(commands({ list: { 'pr2md': { placeholder: 'x', extra: 1 } } }))).length).toBeGreaterThan(0);
+    expect(messagesOf(parseManifest(commands({ list: {} })))).toEqual([expect.stringMatching(/declares no command/)]);
+    expect(messagesOf(parseManifest(commands({ onUserEdit: 'theirs' }))).length).toBeGreaterThan(0);
+  });
+
+  // A pack used to name a function that served its slash commands. The app reads the stored documents
+  // itself now, so there is nothing to declare and the key is refused rather than quietly ignored.
+  it('refuses features[].getCommands as the unknown key it now is, in any pack', () => {
+    const features = { library: { description: 'Serves them.', getCommands: 'src/library/be/commands.ts#commands' } };
+    expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.library.*[Uu]nrecognized key/)]);
+  });
+
   // Which surface opens first is an annotation on the surface, not a feature id at the root: an id there
   // could name a feature the pack doesn't have, and codegen then emitted no default at all. A pack
   // claiming none has no default surface, which the shell handles.
@@ -406,35 +429,6 @@ describe('services', () => {
 
   it('rejects a service name that is not an identifier', () => {
     expect(messagesOf(parseManifest({ ...pack, extensions: { services: { 'my-cache': 'src/cache.ts#cacheService' } } }))).toEqual([expect.stringMatching(/Must be an identifier/)]);
-  });
-});
-
-describe('commands', () => {
-  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-  const withCommands = (commands: Record<string, unknown>) => ({ ...pack, extensions: { commands } });
-
-  it('accepts lowercase names with hyphens as keys, each with its placeholder', () => {
-    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: 'Topic' }, 'team-digest': { placeholder: 'Week (optional)' } })))).toEqual([]);
-  });
-
-  it('rejects a key that is not a command: uppercase, a leading slash, digit or hyphen, a space, an underscore', () => {
-    for (const name of ['Standup', '/standup', '2do', '-standup', 'team digest', 'team_digest']) {
-      expect(messagesOf(parseManifest(withCommands({ [name]: { placeholder: 'x' } }))))
-        .toEqual([expect.stringMatching(/Must be a lowercase letter, then lowercase letters, digits and hyphens/)]);
-    }
-  });
-
-  it('rejects a command without a placeholder or with an empty one, and unknown keys on one', () => {
-    expect(messagesOf(parseManifest(withCommands({ standup: {} }))).length).toBeGreaterThan(0);
-    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: '' } })))[0]).toContain('placeholder');
-    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: 'x', action: 'Standup' } })))[0]).toContain('action');
-  });
-
-  // The name is the key, so declaring one twice is unrepresentable rather than refused: JSON cannot hold a
-  // key twice, which is why the check that used to say so is gone. What is still refused is a command on a
-  // feature — commands are the pack's.
-  it("refuses one on a feature: they're the pack's", () => {
-    expect(messagesOf(parseManifest({ ...pack, features: { memos: { description: 'Feature validation fixture.', commands: { standup: { placeholder: 'a' } } } } }))[0]).toContain('commands');
   });
 });
 

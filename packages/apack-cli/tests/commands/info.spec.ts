@@ -169,7 +169,6 @@ describe('read-only pack inspection', () => {
       } },
       extensions: { services: { shared: 'src/unavailable.ts#shared' },
         artifacts: { memo: { icon: 'File' } }, blocks: { memo: { kind: 'display', fe: 'src/unavailable.vue' } },
-        commands: { memo: { placeholder: 'Write a memo' } },
       },
     };
     fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declaration));
@@ -183,7 +182,7 @@ describe('read-only pack inspection', () => {
     await info([]);
     const text = output.mock.calls.flat().join('\n');
     for (const expected of ['Services: memos', 'Repositories: memoQueries', 'Declared services: shared',
-      'Declared artifacts: memo', 'Declared blocks: memo', 'Declared commands: memo', 'Declared lifecycle: onInit']) {
+      'Declared artifacts: memo', 'Declared blocks: memo', 'Declared lifecycle: onInit']) {
       expect(text).toContain(expected);
     }
     expect(fs.existsSync(path.join(root, 'src'))).toBe(false);

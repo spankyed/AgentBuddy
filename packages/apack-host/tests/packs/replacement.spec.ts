@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEarsEngine, installEngine } from '@apackdev/ears';
+import { createEarsEngine } from '@apackdev/ears';
+import { _bindEars } from '@apackdev/sdk/ears';
 import { _createPackServices, type SettingsService } from '@apackdev/sdk/services';
 import { startTestRuntime } from '@apackdev/sdk/testing';
 import type { PackRegistration } from '@apackdev/sdk/framework';
@@ -8,13 +9,13 @@ import { createPackRegistry } from '../../src/packs/registry.ts';
 startTestRuntime();
 
 const target = { kind: 'app' } as const;
-let previousEngine: ReturnType<typeof installEngine>;
+let previousEngine: ReturnType<typeof _bindEars>;
 let engine: ReturnType<typeof createEarsEngine>;
 beforeEach(() => {
   engine = createEarsEngine({ isEntityType: () => false });
-  previousEngine = installEngine(engine.query);
+  previousEngine = _bindEars(engine);
 });
-afterEach(() => { installEngine(previousEngine); vi.restoreAllMocks(); });
+afterEach(() => { _bindEars(previousEngine); vi.restoreAllMocks(); });
 
 function fixture() {
   const listeners = new Set<() => void>();
@@ -25,7 +26,7 @@ function fixture() {
   };
   const registry = createPackRegistry({
     nativeDeclarations: [{ id: 'incumbent', services: { value: 'fixtures/services.ts#value' },
-      repositories: { records: 'fixtures/repositories.ts#records' }, commands: { 'old-command': { placeholder: 'Old' } },
+      repositories: { records: 'fixtures/repositories.ts#records' },
       features: { widget: { description: 'Feature declaration fixture.', designation: 'before' } } }, { id: 'peer', features: {} }],
     settingsForPack: () => service,
   });
@@ -36,7 +37,6 @@ function fixture() {
     id: 'incumbent', bindServices: generated.bindServices,
     features: { widget: { designation: 'before' } },
     repositories: { records }, services: { value: 'old' },
-    commands: [{ name: 'old-command', placeholder: 'Old' }],
   };
   registry.registerPack(registration);
   const heard = vi.fn();
@@ -67,9 +67,8 @@ function assertIncumbent(f: ReturnType<typeof fixture>) {
   expect(f.registry.getPackRegistration('incumbent')).toBe(f.registration);
   expect(f.registry.designation('before')).toBe('incumbent/widget');
   expect(f.registry.designation('after')).toBeUndefined();
-  expect(f.registry.commands().map(command => command.name)).toEqual(['old-command']);
   expect(f.registry.getRegisteredServices().value).toBe('old');
-  expect(engine.query.repository.records).toBe(f.records);
+  expect(engine.repository.records).toBe(f.records);
   expect(f.handle.get()).toEqual({ value: 1 });
   for (const notify of f.listeners) notify();
   expect(f.heard).toHaveBeenCalled();
@@ -98,13 +97,13 @@ describe('accepted pack replacement', () => {
     declareRepositories(f.registry, [name]);
     declareCandidateRole(f.registry);
     f.registry.replacePack(f.next);
-    expect(engine.query.repository[name]).toBe(f.next.repositories[name]);
+    expect(engine.repository[name]).toBe(f.next.repositories[name]);
     expect(Object.hasOwn(engine.admin.repositories(), name)).toBe(true);
-    expect(() => engine.query.repository.owner).toThrow('is not registered');
+    expect(() => engine.repository.owner).toThrow('is not registered');
     f.registry.unregisterPack('incumbent');
     expect(engine.admin.repositories()).toEqual({});
-    expect(() => engine.query.repository[name]).toThrow('is not registered');
-    expect(() => engine.query.repository.owner).toThrow('is not registered');
+    expect(() => engine.repository[name]).toThrow('is not registered');
+    expect(() => engine.repository.owner).toThrow('is not registered');
   });
 
   it('retains the same incumbent handle and subscription when candidate binding refuses', () => {
@@ -146,8 +145,8 @@ describe('accepted pack replacement', () => {
     const provisional = f.fresh.settingsHandle(target);
     f.next.repositories = { ...f.next.repositories, added: {} };
     declareRepositories(f.registry, ['records', 'added']);
-    const publish = engine.query.registerRepository;
-    const register = vi.spyOn(engine.query, 'registerRepository').mockImplementation((name, value) => {
+    const publish = engine.registerRepository;
+    const register = vi.spyOn(engine, 'registerRepository').mockImplementation((name, value) => {
       if (name === 'added') throw new Error('publication refused');
       publish(name, value);
     });
@@ -167,9 +166,8 @@ describe('accepted pack replacement', () => {
     expect(f.registry.getPackRegistration('incumbent')).toBe(f.next);
     expect(f.registry.designation('before')).toBeUndefined();
     expect(f.registry.designation('after')).toBe('incumbent/widget');
-    expect(f.registry.commands().map(command => command.name)).toEqual(['old-command']);
     expect(f.registry.getRegisteredServices().value).toBe('new');
-    expect(engine.query.repository.records).toBe(f.next.repositories!.records);
+    expect(engine.repository.records).toBe(f.next.repositories!.records);
     expect(() => f.handle.get()).toThrow('revoked');
     expect(f.listeners.size).toBe(0);
     expect(f.fresh.settingsHandle(target).get()).toEqual({ value: 1 });
@@ -214,13 +212,11 @@ describe('accepted pack replacement', () => {
   it('retains admitted collection identities despite later authored registration mutation', () => {
     const f = fixture();
     f.registration.repositories = { foreign: {} };
-    f.registration.commands![0].name = 'mutated';
     f.registration.services = { unrelated: 'mutated' };
     f.registry.registerPack({ id: 'peer' });
-    expect(f.registry.commands().map(command => command.name)).toEqual(['old-command']);
     expect(f.registry.getRegisteredServices()).toEqual({ value: 'old' });
-    expect(engine.query.repository.records).toBe(f.records);
-    engine.query.registerRepository('foreign', 'unowned');
+    expect(engine.repository.records).toBe(f.records);
+    engine.registerRepository('foreign', 'unowned');
     f.registry.unregisterPack('incumbent');
     expect(engine.admin.repositories()).toEqual({ foreign: 'unowned' });
   });
@@ -237,7 +233,6 @@ describe('accepted pack replacement', () => {
     const current = f.fresh.settingsHandle(target);
     expect(() => f.registry.unregisterPack('incumbent')).toThrow('unload cleanup refused');
     expect(f.registry.getPackRegistration('incumbent')).toBeNull();
-    expect(f.registry.commands()).toEqual([]);
     expect(f.registry.designation('after')).toBeUndefined();
     expect(engine.admin.repositories()).toEqual({});
     expect(() => current.get()).toThrow('revoked');

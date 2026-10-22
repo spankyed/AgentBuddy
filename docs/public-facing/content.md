@@ -129,7 +129,7 @@ Ordinary pack source imports its own `services` and `Services` from `#generated/
 | `services.chat` | Chat messages and blocks (`sendBlockMessage`, `sendSystemMessage`, `sendChoiceBlock`, `sendQuestionBlock`, `createThreadAndNotify`, …) |
 | `services.threads` | Thread chat state (`updateChatState`) |
 | `services.artifact` | Artifact creation and updates (`createAndNotify`, `updateAndNotify`, `findOrCreateByType`) |
-| `services.library` | Library documents and folders (`find`, `findByCode`, `findByName`, `findByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`), and the chat's slash commands (`commands`; see [Slash commands](#slash-commands)) |
+| `services.library` | Library documents and folders (`find`, `findByCode`, `findByName`, `findByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`). The chat's slash commands are not here: they are a derivation over stored documents, read with `getCommands()` (see [Slash commands](#slash-commands)) |
 | `services.prompt` | Prompt templates (`usePrompt`, `findByLabel`) |
 | `services.action` | Look up and run actions (`findByLabel`, `executeAction`, `executeIfFound`) |
 | `services.brain` | Ad-hoc brain event listeners (`listen`, `unlisten`) |
@@ -662,11 +662,11 @@ export const memoContentWriter: ContentWriter<ContentItem & { title: string; tex
 | `update?(id, record, context)` | For a changed record whose row isn't edited | — |
 | `remove?(id)` | By `wipe-and-replace`, and to undo a create whose media copy or stamping failed | — |
 
-`container` is how two packs share a folder. An entity another item's apply claimed (another pack's, or another entry's of your pack) is normally not yours, whatever its name, so your item writes an entity of its own beside it. When the entity's hooks set `container: true`, your record's `find` match is reused as the parent instead: its children are written under it in every mode (`keep-existing` skips only the children that exist), and the row itself is never updated, stamped or re-keyed — it stays the item that wrote it. The run counts it as skipped. Whichever item creates the entity first owns it: the fields another item sets on it (a folder's description) are dropped. The entity is found by `find` on every apply, so if the user renames or moves it, the next apply creates the folder again where your records expect it. default-setup sets it on `Collection`, so a pack writing `internal/commands/mine.md` with its `library` format puts its document in default-setup's folders rather than forking them. Its `find` hooks match a name within `parentId`, so a folder of the same name elsewhere is a different entity.
+`container` is how two packs share a folder. An entity another item's apply claimed (another pack's, or another entry's of your pack) is normally not yours, whatever its name, so your item writes an entity of its own beside it. When the entity's hooks set `container: true`, your record's `find` match is reused as the parent instead: its children are written under it in every mode (`keep-existing` skips only the children that exist), and the row itself is never updated, stamped or re-keyed — it stays the item that wrote it. The run counts it as skipped. Whichever item creates the entity first owns it: the fields another item sets on it (a folder's description) are dropped. The entity is found by `find` on every apply, so if the user renames or moves it, the next apply creates the folder again where your records expect it. The SDK sets it on `Collection`, so a pack writing `internal/commands/mine.md` with default-setup's `library` format puts its document in the existing folders rather than forking them. Its `find` hooks match a name within `parentId`, so a folder of the same name elsewhere is a different entity.
 
 `ContentWriteContext`: `parentId?` (the tree parent's entity), `index` (the record's position among its siblings), `clearedFields: string[]` (on `update`, the fields the last apply set that the item no longer sets; empty for `find` and `create`). A missing hook falls back to the format applier's behavior. A hook that throws fails that record (reported in the run's errors) and writing moves on.
 
-`create` and `update` store the record's fields under their names, as the record gives them, and `update` writes every field the record sets: change tracking records those fields' stored values. `update` also resets the fields in `clearedFields` to what `create` gives a record that doesn't set them (see [Change tracking](#change-tracking)). Hooks are keyed by entity type, not by format, so every pack that writes `Memo` — with your format, its own, or one depending on yours — goes through them. A `find` hook replaces the format's `identity`. default-setup registers hooks for `Note`, `Document` and `Collection`, so entities written with its formats get the same shortCodes, display order and links as default-setup's own.
+`create` and `update` store the record's fields under their names, as the record gives them, and `update` writes every field the record sets: change tracking records those fields' stored values. `update` also resets the fields in `clearedFields` to what `create` gives a record that doesn't set them (see [Change tracking](#change-tracking)). Hooks are keyed by entity type, not by format, so every pack that writes `Memo` — with your format, its own, or one depending on yours — goes through them. A `find` hook replaces the format's `identity`. default-setup registers hooks for `Note`. `Document` and `Collection` are the SDK's entities, and so are their hooks — a pack declares hooks only for entity types it owns, so these need no registration and are always present. Either way, entities written with those formats get the same shortCodes, display order and links as rows created in the app.
 
 ### Change tracking
 
@@ -747,20 +747,92 @@ An edited item you stopped shipping is kept, and under an `offer` entry it is na
 
 ## Slash commands
 
-A slash command is a `/name` the chat composer recognizes. The composer's list is two sources merged:
+A slash command is a `/name` an editor's command popup offers. **A command is content**, like an action, a
+prompt or a flow: a pack ships them in a content source, the apply writes them into the user's data, and the
+user edits them afterwards — with the three-way merge and the offers every other content entry gets. There is
+no manifest key that lists commands, and nothing to merge: one source, so a name cannot shadow another.
 
-1. **The manifest**: `"commands": { "standup": { "placeholder": "Topic" } }` under `extensions` in `apack.json`, keyed by the name. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `apack pack build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
-2. **The library**: every document in the `internal/commands` folder, each with a field section of `**name**: placeholder` lines. Users edit those from the Library, so a pack content there what it wants them to change; default-setup content `Claude Code commands` and `Codex commands` from `src/content/library/internal/commands/`, and declares its own `pr2md` and `instructions` in the manifest.
+A command lives in a document whose field section is `**name**: placeholder` lines, and what makes it one is
+the document's own `documentType`. **A command is only a document with a type**, so any library document that
+says it is a command list is served as one, and a document that says nothing is just a document.
 
-Declared commands come first, in stable catalog admission order (a pack rebuilt or updated keeps its place). Inspection lists commands without activating their packs; the composer offers only enabled declarations matching accepted active runtimes. In the composer, a document repeating a declared name is ignored, and a name two documents define keeps the first. The threads system refreshes on catalog changes and when it is asked to publish, sending only changed lists. A pack changing while the app runs (installed, updated, enabled, disabled, uninstalled or rebuilt, or its content imported from Settings; the bus's `PACK_CHANGED`) or a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted).
+A file declares it in frontmatter (`type: commands`), and the **format** supplies a default where a whole
+source is one kind — so a file in the `commands` format's source cannot fail to be a command list by saying
+nothing, while a file that declares something else is what it says:
 
-Uninstalling a pack removes its declared commands but not the documents it wrote: they're the user's library now, so their commands stay listed, with no flow handling them, until the user deletes them.
+| source's format | the file's `type:` | `documentType` |
+|---|---|---|
+| `commands` | absent | `commands` |
+| `commands` | `type: notes` | `notes` |
+| `library` | absent | none — just a document |
+| `library` | `type: commands` | `commands`, served with the rest | default-setup's are
+`src/content/commands/internal/*.md`, written with its `commands` format; a pack depending on it names that format
+(`{ "path": "src/content/commands", "format": "default-setup:commands" }`) and gets the same rows. A name two
+documents define keeps the first.
+
+**No feature owns them: the app reads its own rows.** `Document` is an SDK entity, so the commands are a
+derivation over the stored documents whose `documentType` is `commands` — there is no role to claim, no provider
+to declare and nothing for a pack to serve. A pack *ships* commands by writing content, and a pack *edits* them
+by editing documents. In default-setup the editor is `library`, so the documents are the user's library and they
+edit them there; a second editor would need no wiring at all.
+
+**Every window holds the list, whatever surface is open.** The app publishes it to the shell — beside which
+tabs show and which surface was last open — so an editor's popup reads it from there and never from a feature's
+surface. Frontend code that needs it reads `useShell().commands` (`@apackdev/sdk/fe`), or `getCommands()`
+(`@apackdev/sdk/commands`) where there is no scope to follow it in. The app republishes whenever it is asked to
+publish: on each connection, and after a pack is installed, updated, enabled, disabled, uninstalled or rebuilt
+(the bus's `PACK_CHANGED`), or the data is replaced. Beyond that it follows the documents themselves: the SDK's
+document repository announces every write and the app compares the derived list, so storing or editing a command
+publishes it. One apply is one publication however many documents it wrote.
+
+`/` is the chat input's affordance: the popup is in the `input:chat` editor and nowhere else, so a slash in a
+note or a document is ordinary text.
+
+Uninstalling a pack does not remove the commands it wrote: those documents are the user's now, so their
+commands stay listed, with no flow handling them, until the user deletes them.
+
+### Declaring commands in the manifest
+
+```json
+"extensions": {
+  "commands": {
+    "list": { "pr2md": { "placeholder": "PR number or GitHub URL (optional)" } },
+    "onUserEdit": "offer"
+  }
+}
+```
+
+A command name is lowercase letters, digits and hyphens. The names are nested under `list` so that
+`onUserEdit` has somewhere to sit that is not also a command name; it is optional and means here what it
+means for every other entry, so leave it out for the default.
+
+**The build desugars this into ordinary content**, compiled under the reserved key `declared-commands` as one
+document holding one field per command, named after your pack id. So everything the rest of this page
+describes applies unchanged: the three-way merge, removal when you stop shipping a command, offers, and the
+import dialog. There is no second path for a command, and no second way the app serves one.
+
+Your own `content.sources` keys are untouched — including a key named `commands`, which is why the reserved
+one is spelled differently. A pack may use both: a directory for the commands it wants to lay out as
+documents, and the manifest for one or two more.
+
+**Two things to know, because this key is weaker than it looks:**
+
+- **It seeds commands; it does not provide them.** What a user gets is a document they own. They may edit a
+  placeholder, move the document, or delete it — and a deleted one is not written back on the next boot. This
+  is unlike a step type or an artifact, which exist because your pack is installed and vanish when it is not.
+  If you need a command that cannot be edited away, you need a flow that handles an event, not a listed command.
+- **A name another pack already uses is not refused.** Documents dedupe first-wins and silently: whichever
+  document defines the name first keeps it, and yours is simply not listed. The build *does* refuse a name one
+  of your **dependencies** declares, because that one is knowable while you build — across packs that know
+  nothing of each other, nothing can see both, so first-wins stands.
 
 Sending `/name args` fires a `user.command` event (`$.event.data.payload.command` is the name); there's no routing from a name to an action. To add a command:
 
 1. Write the action that does the work (its `category` only groups it in the Actions UI).
 2. Handle it in a flow: an `on("user.command", ...)` branch whose switch compares `payload.command` (`command-listener-flow.ts` for standalone commands; the Claude Code and Codex flows route `cc-*` and `cdx-*`).
-3. List it: add it to `extensions.commands` in `apack.json`, or add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/content/library/internal/commands/`).
+3. List it, either way:
+   - **a command document** — `**name**: placeholder` in one of your pack's `commands` content files, or, in the running app, one in the Library; or
+   - **`extensions.commands` in your manifest** — [the shorthand](#declaring-commands-in-the-manifest), for a pack that wants a command or two without a content directory.
 
 A command listed without a handler does nothing, and a handled command that isn't listed is sent as a plain message.
 

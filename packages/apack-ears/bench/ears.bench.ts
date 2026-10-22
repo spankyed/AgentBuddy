@@ -14,10 +14,10 @@ const types = new Set(['Task', 'Project', 'Person', 'Note', 'Relation']);
 // A sink that does nothing, as the LMDB store's does between flushes
 const sink: PersistenceSink = {
   onCreateEntity() {}, onDestroyEntity() {}, onDropAttr() {}, onPutAttrArray() {},
-  onAddRelation() {}, onUpdateRelation() {}, onRemoveRelation() {},
+  onAddRelation() {}, onUpdateRelation() {}, onRemoveRelation() {}, onUnitStart() {}, onUnitEnd() {},
 };
 const engine = freshEngine({ isEntityType: (name) => types.has(name), persistence: sink });
-const { query, admin } = engine;
+const { admin } = engine;
 
 const task = (i: number) => `Task-${i}` as Id;
 const project = (i: number) => `Project-${i}` as Id;
@@ -56,25 +56,32 @@ describe('hydrate', () => {
 });
 
 describe('queries', () => {
-  bench('qx by type with where and pickAll', () => {
-    query.qx('Task').where('status', 'blocked').pickAll();
+  bench('query by type with where and pickAll', () => {
+    engine.query('Task').where('status', 'blocked').pickAll();
   }, { iterations: 20, time: 0 });
 
-  bench('1,000 qx(id) lookups', () => {
-    for (let i = 0; i < 1000; i++) query.qx(task(i)).count();
+  bench('1,000 query.ids(id) lookups', () => {
+    for (let i = 0; i < 1000; i++) engine.query.ids(task(i)).count();
   }, { iterations: 20, time: 0 });
 
-  bench('qx by type with 3 chained steps', () => {
-    query.qx('Task').ofType('Task').orderBy('rank').limit(10).ids();
+  bench('query by type with 3 chained steps', () => {
+    engine.query('Task').ofType('Task').orderBy('rank').limit(10).ids();
   }, { iterations: 20, time: 0 });
 
   bench('relation traversal (a project: its tasks, then their assignees)', () => {
-    query.qx(project(1)).linksTo('contains', 'Task').linksTo('assigned').count();
+    engine.query.ids(project(1)).linksTo('contains', 'Task').linksTo('assigned').count();
   }, { iterations: 30, time: 0 });
 });
 
 describe('writes', () => {
-  bench('tx batch of 1,000 creates', () => {
-    for (let i = 0; i < 1000; i++) query.tx('Note').put('title', `Note ${i}`).put('status', 'open');
+  bench('1,000 creates', () => {
+    for (let i = 0; i < 1000; i++) engine.create('Note').set('title', `Note ${i}`).set('status', 'open');
+  }, { iterations: 50, time: 0 });
+
+  // The same writes as one unit: what the journal costs
+  bench('transact: 1,000 creates as one unit', () => {
+    engine.transact(() => {
+      for (let i = 0; i < 1000; i++) engine.create('Note').set('title', `Note ${i}`).set('status', 'open');
+    });
   }, { iterations: 50, time: 0 });
 });

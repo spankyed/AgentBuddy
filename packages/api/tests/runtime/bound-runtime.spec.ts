@@ -15,7 +15,7 @@ const { getAppVersion } = await import('@apackdev/sdk/env');
 const { createActionEmitter } = await import('@apackdev/sdk/services');
 const { services } = boundHost();
 const { untypedSendToSystem } = await import('@apackdev/sdk/events');
-const { installedEngine, repository } = await import('@apackdev/ears');
+const { boundEars, repository } = await import('@apackdev/sdk/ears');
 const { registerPack, unregisterPack } = packs;
 const { rootEvents } = await import('../../src/transport/emitter.ts');
 /** The app version the composition binds: the root package.json's */
@@ -27,15 +27,15 @@ afterAll(() => {
 });
 
 describe('the bound app', () => {
-  it("is the API's bus and version, and the engine it created, installed", () => {
+  it("is the API's bus and version, and the engine it created, bound", () => {
     expect(boundHost().transport.rootEvents).toBe(rootEvents);
     expect(getAppVersion()).toBe(APP_VERSION);
-    expect(boundHost().ears).toBe(engine.query);
+    expect(boundHost().ears).toBe(engine);
     expect(boundHost().packs).toBe(packs);
-    expect(installedEngine()).toBe(engine.query);
-    expect(boundHost().ears.repository).toBe(engine.query.repository);
-    engine.query.registerRepository('boundQueries', { all: () => [] });
-    expect(repository.boundQueries).toBe(engine.query.repository.boundQueries);
+    expect(boundEars()).toBe(engine);
+    expect(boundHost().ears.repository).toBe(engine.repository);
+    engine.registerRepository('boundQueries', { all: () => [] });
+    expect(repository.boundQueries).toBe(engine.repository.boundQueries);
   });
 
   it('has the host services over the opened store', async () => {

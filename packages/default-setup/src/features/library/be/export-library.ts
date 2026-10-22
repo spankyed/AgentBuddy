@@ -5,9 +5,10 @@
  * Supports JSON (full-fidelity) and Markdown (flat, human-readable) formats.
  */
 
-import { qx } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts'
-import { isRootCollection, findDocumentCollection } from './repository/helpers.ts'
+import { collectionOfDocument } from '@apackdev/sdk/repositories'
+import { isRootCollection } from './repository/helpers.ts'
 import { extractMediaRefs, copyMediaByRef } from '@apackdev/sdk/utils'
 import { createExportDir } from '@apackdev/sdk/utils'
 import type { ExportFormat } from './export-types.ts'
@@ -18,7 +19,7 @@ import type { ContentSection } from '#features/library/be/types.ts';
 import type { ExportedItem } from '#features/library/be/export-types.ts';
 
 function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
-  const entity = qx(collectionId).pickAll()[0]
+  const entity = query.ids(collectionId).pickAll()[0]
   if (!entity) {
     return { type: 'collection', name: 'Unknown', children: [] }
   }
@@ -36,7 +37,7 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   const children: ExportedItem[] = []
 
   // Add child collections
-  const childCollections = qx(collectionId)
+  const childCollections = query.ids(collectionId)
     .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
     .pickAll()
 
@@ -45,7 +46,7 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   }
 
   // Add documents in this collection
-  const documents = qx(collectionId)
+  const documents = query.ids(collectionId)
     .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
     .pickAll()
 
@@ -74,7 +75,7 @@ export function buildExportTree(): { items: ExportedItem[]; itemCount: number } 
   let itemCount = 0
 
   // Get all root collections
-  const allCollections = qx(EARS.Entity.Collection).pickAll()
+  const allCollections = query(EARS.Entity.Collection).pickAll()
   for (const col of allCollections) {
     if (isRootCollection(col.id as EARS.EntityId)) {
       const item = buildCollectionTree(col.id as EARS.EntityId)
@@ -84,9 +85,9 @@ export function buildExportTree(): { items: ExportedItem[]; itemCount: number } 
   }
 
   // Get root-level documents (not in any collection)
-  const allDocuments = qx(EARS.Entity.Document).pickAll()
+  const allDocuments = query(EARS.Entity.Document).pickAll()
   for (const doc of allDocuments) {
-    const collectionId = findDocumentCollection(doc.id as EARS.EntityId)
+    const collectionId = collectionOfDocument(doc.id as EARS.EntityId)
     if (!collectionId) {
       items.push({
         id: doc.id as string,

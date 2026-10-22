@@ -18,7 +18,7 @@ getDslDeclaration() → Monaco TypeScript worker  (4) Owned live libraries, inde
 |-------|------|-------------|---------|
 | 1 | `src/defs/action.ts` | Hand-authored | The types and values in scope in the action DSL (services, params, z, entity types) |
 | 1 | `src/defs/prompt.ts` | Hand-authored | Prompt DSL types (`usePrompt`, params, `PromptEntity`) |
-| 1 | `src/defs/database.ts` | Hand-authored | EARS DSL types (`qx`, `tx`, `bp`, `spawn`, entity helpers) |
+| 1 | `src/defs/database.ts` | Hand-authored | the Database console's names (`query`, `create`, `upsert`, `write`, the finders and relation helpers) |
 | 2 | `dist/defs/monaco/*-defs.d.ts` | `apack pack build` | Each entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"` |
 | 3 | `dist/types/snapshot.json` | `apack pack build` | Records each Monaco target's compiled text, including targets without globals; snapshot/native validation requires exact declared coverage |
 | 4 | Common catalog / `dsl-reader.ts` | Host/window projections | Returns metadata and compiled text without loading modules; source previews may have metadata only |

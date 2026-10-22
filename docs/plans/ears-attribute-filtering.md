@@ -1,7 +1,7 @@
 # Optimize EARS attribute filtering without changing the API
 
 **Status:** proposed; source inspected, no implementation or performance measurements yet.
-**Scope:** in-memory `qx(...).where(X).where(Y)` execution, preserving the public API and current
+**Scope:** in-memory `query(...).where(X).where(Y)` execution, preserving the public API and current
 evaluation behavior. Database persistence and trace-history indexing are outside this plan.
 
 ## Decision
@@ -11,7 +11,7 @@ attribute store's existing maps before introducing any separately maintained ind
 only if representative measurements show a repeatable benefit without unacceptable regressions.
 
 ```ts
-qx('Note').where('archived', false).where('title').ids()
+query('Note').where('archived', false).where('title').ids()
 ```
 
 Call sites, signatures, typed facades and terminal methods remain unchanged. This is an internal
@@ -56,8 +56,8 @@ There is no measured filtering bottleneck yet. A chained functional API is not e
 Illustrative mutation boundary:
 
 ```ts
-const filtered = qx('Note').where('archived', false); // membership evaluated here
-tx(noteId).put('archived', true);
+const filtered = query('Note').where('archived', false); // membership evaluated here
+write(noteId).set('archived', true);
 const titled = filtered.where('title'); // checks title now; does not recheck archived
 ```
 
@@ -72,7 +72,7 @@ Have `.where()` delegate to it and continue to use the existing `setIds()` path.
 
 The operation belongs beside attribute storage because it knows how lists represent membership.
 Do not expose bucket maps or mutable lists to the query builder, and do not add a public export.
-Use the same operation for `queryEntitiesByAttribute()` if it removes duplicate matching logic without
+Use the same operation for `findEntitiesByAttribute()` if it removes duplicate matching logic without
 changing that function's ordering or behavior. Do not sweep unrelated query helpers into the change.
 
 This first candidate still scans incoming IDs and retains one result array per eager filter. Its

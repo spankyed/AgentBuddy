@@ -48,7 +48,7 @@ export const migration = {
   up: () => {
     // Migration logic here
     // Use settingsQueries/settingsCommands for settings
-    // Use qx()/tx() for EARS entities
+    // Use query()/write() for EARS entities
   },
 };
 ```

@@ -75,7 +75,7 @@ Final. Breaking changes are acceptable: nothing is published yet, so choose the 
    - They are typed against a generated `PackShapes` (the pack's entities plus its dependencies' entities from the resolved dependency snapshots) and the pack's own event channels and services.
    - No untyped path for pack code:
      - `@apackdev/sdk/ears` exports a typed factory, `defineEars<S extends EntityShapes>()`, instead of the raw query helpers.
-     - Codegen emits `export const { qx, findById, … } = /*#__PURE__*/ defineEars<PackShapes>();`. The factory returns the SDK's singleton functions (no runtime cost, no SDK bridge change), and the `__PURE__` annotation lets FE bundles that only use the `EARS` constants drop it.
+     - Codegen emits `export const { query, findById, … } = /*#__PURE__*/ defineEars<PackShapes>();`. The factory returns the SDK's singleton functions (no runtime cost, no SDK bridge change), and the `__PURE__` annotation lets FE bundles that only use the `EARS` constants drop it.
      - The raw helpers move to host-internal `@apackdev/sdk/ears/internals` (later `@apackdev/host`), with `unknown` generic defaults instead of `Record<string, any>`.
    - No `any` fallback: an entity type the shape map doesn't declare reads as `BaseEntity & Record<string, unknown>` (id, entityType and createdAt are typed; other fields need narrowing).
    - Events use the same pattern: `defineEvents<PackEvents>()` returns typed `emit` and `broadcastToSurface`. The raw `emit` / `broadcastToSurface` stay available for host code but are strict (`P extends string`, `E extends { type: string }`), never `any`.
@@ -95,7 +95,7 @@ Final. Breaking changes are acceptable: nothing is published yet, so choose the 
 
 ### Phase 1 — Generated typed facades
 - **Codegen** (`packages/apack-sdk/src/build/generate-entries.ts`, run by `apack generate-entries`):
-  - `#generated/ears` exports `PackShapes` (including the SDK-owned `SdkEntityShapes`, e.g. `TNode`), `EntityShape<E>`, and `qx`, `findById`, `findByIdRaw`, `findAll`, `findWhere`, `findFirst`, `createEntity` from `/*#__PURE__*/ defineEars<PackShapes>()`.
+  - `#generated/ears` exports `PackShapes` (including the SDK-owned `SdkEntityShapes`, e.g. `TNode`), `EntityShape<E>`, and `query`, `findById`, `findByIdRaw`, `findAll`, `findWhere`, `findFirst`, `createEntity` from `/*#__PURE__*/ defineEars<PackShapes>()`.
   - `PackShapes` = this pack's entity shapes plus each dependency's entity shapes. The dependency snapshot (`.apack/deps/<id>/snapshot.json`, the `defs` / `.apack/generated/types.ts`) must carry what's needed to reference the dependency's entity types. Extend the snapshot if it doesn't.
   - `#generated/events` exports `PackEvents` and typed `emit` and `broadcastToSurface` from `/*#__PURE__*/ defineEvents<PackEvents>()` (replacing `SurfaceEventRegistry`).
   - `#generated/services` exports `services` typed with the pack's feature services (replacing `ServiceRegistry`). A pack's own service modules can't import it (it imports them), so they use the SDK's `services`, which is typed as the host services only.

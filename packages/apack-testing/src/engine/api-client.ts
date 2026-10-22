@@ -1,5 +1,5 @@
 // The drive session's own connection to the running app's API, so a bus verb reaches the API directly instead
-// of through the window. A broken window is then just a broken window: `/qx` keeps working while the
+// of through the window. A broken window is then just a broken window: `/query` keeps working while the
 // renderer's own subscription is dead.
 //
 // No dependencies, Node having had a global `WebSocket` since 22 and this repo requiring 23 — what is left to

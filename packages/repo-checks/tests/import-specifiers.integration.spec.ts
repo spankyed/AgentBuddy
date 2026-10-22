@@ -7,6 +7,7 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { population } from '@apackdev/sdk/testing';
 import { RUNTIME_ONLY_DEPS, workspaceDeps } from '../../../scripts/lib/workspace-deps.ts';
+import { filesUnder } from '../../../scripts/lib/import-populations.ts';
 
 
 /** scripts/check-import-specifiers.ts, over a temp tree holding the modules the checks resolve against */
@@ -166,8 +167,8 @@ describe('findRawPackHelpers', () => {
     ["import { untypedBroadcastToSurface as toSurface } from '@apackdev/sdk/events';", 'untypedBroadcastToSurface from @apackdev/sdk/events'],
     ["import onConnected, { untypedSendToSystem } from '@apackdev/sdk/events';", 'untypedSendToSystem from @apackdev/sdk/events'],
     ["import { untypedBroadcastToSurface, createActionEmitter } from '@apackdev/sdk/services';", 'untypedBroadcastToSurface from @apackdev/sdk/services'],
-    ["import { registerRepository, untypedTx } from '@apackdev/ears';", 'registerRepository from @apackdev/ears'],
-    ["import { unregisterRepository } from '@apackdev/ears';", 'unregisterRepository from @apackdev/ears'],
+    ["import { registerRepository, untypedWrite } from '@apackdev/sdk/ears';", 'registerRepository from @apackdev/sdk/ears'],
+    ["import { unregisterRepository } from '@apackdev/sdk/ears';", 'unregisterRepository from @apackdev/sdk/ears'],
     ["export type { untypedBroadcastToSurface } from '@apackdev/sdk/events';", 'untypedBroadcastToSurface from @apackdev/sdk/events'],
     ["import * as events from '@apackdev/sdk/events';", '* from @apackdev/sdk/events (import the names)'],
     ["export * from '@apackdev/sdk/events';", '* from @apackdev/sdk/events (import the names)'],
@@ -178,7 +179,7 @@ describe('findRawPackHelpers', () => {
 
   it('allows comments, strings and the generated facades, and exempts generated files', () => {
     write('pack/feature.ts', ALLOWED);
-    write('pack/__generated__/repositories.ts', "import { registerRepository } from '@apackdev/ears';\n");
+    write('pack/__generated__/repositories.ts', "import { registerRepository } from '@apackdev/sdk/ears';\n");
     expect(findRawPackHelpers(['src/pack'], root)).toEqual([]);
   });
 
@@ -260,8 +261,8 @@ describe('findHostImports', () => {
   });
 
   it('checks generated files and allows the SDK', () => {
-    write('pack/feature.ts', `import { findRelations, untypedQx } from '@apackdev/ears';\nimport { services } from '#generated/services';\n${ALLOWED}`);
-    write('pack/__generated__/ears.ts', "import { qx } from '@apackdev/host/ears';\n");
+    write('pack/feature.ts', `import { findRelations, untypedQuery } from '@apackdev/sdk/ears';\nimport { services } from '#generated/services';\n${ALLOWED}`);
+    write('pack/__generated__/ears.ts', "import { query } from '@apackdev/host/ears';\n");
     expect(findHostImports(['src/pack'], root)).toEqual(['src/pack/__generated__/ears.ts:1: @apackdev/host/ears']);
   });
 });
@@ -280,7 +281,7 @@ describe('findAppImportsInPackTests', () => {
   // derived tests-half sweep, which asserts *exactly one* claimant across every rule that reads a pack's tests.
   it('allows the SDK, the harness and the pack itself', () => {
     write('pack-tests/unit/feature.spec.ts', [
-      "import { untypedQx } from '@apackdev/ears';",
+      "import { untypedQuery } from '@apackdev/sdk/ears';",
       "import { startApp } from '@apackdev/testing/harness';",
       "import { repository } from '#generated/repository.ts';",
       "import { handler } from '../../src/extensions/steps/llm/runtime';",
@@ -306,10 +307,10 @@ describe('findUpwardImports', () => {
   const allowed = () => {
     layer('layers/ears', {}, { 'src/index.ts': "import { x } from './x.ts';\nimport ts from 'typescript';\n" });
     layer('layers/sdk', { dependencies: { '@apackdev/ears': '^0.1.0', yaml: '*' } }, {
-      'src/index.ts': "import { untypedTx } from '@apackdev/ears';\nexport type { Q } from '@apackdev/ears/lmdb';\nexport * from '@apackdev/sdk/events';\n",
+      'src/index.ts': "import { untypedWrite } from '@apackdev/sdk/ears';\nexport type { Q } from '@apackdev/ears/lmdb';\nexport * from '@apackdev/sdk/events';\n",
     });
     layer('layers/host', { dependencies: { '@apackdev/ears': '*', '@apackdev/sdk': '*' } }, {
-      'src/index.ts': "import { createActionEmitter } from '@apackdev/sdk/services';\nimport { untypedQx } from '@apackdev/ears';\nimport { x } from '../x.ts';\n",
+      'src/index.ts': "import { createActionEmitter } from '@apackdev/sdk/services';\nimport { untypedQuery } from '@apackdev/sdk/ears';\nimport { x } from '../x.ts';\n",
       'tests/a.spec.ts': "vi.mock('@apackdev/ears');\n",
     });
     layer('layers/api', { devDependencies: { '@apackdev/ears': '*', '@apackdev/host': '*', '@apackdev/sdk': '*' } }, {
@@ -328,7 +329,7 @@ describe('findUpwardImports', () => {
 
   it.each([
     ['ears', 'src/query.ts', "import { EARS } from '@apackdev/sdk';", 'layers/ears/src/query.ts:1: @apackdev/sdk'],
-    ['ears', 'tests/query.spec.ts', "const { tx } = await import('@apackdev/sdk/testing');", 'layers/ears/tests/query.spec.ts:1: @apackdev/sdk/testing'],
+    ['ears', 'tests/query.spec.ts', "const { startTestRuntime } = await import('@apackdev/sdk/testing');", 'layers/ears/tests/query.spec.ts:1: @apackdev/sdk/testing'],
     ['sdk', 'src/services/app.ts', "import { createHostRuntime } from '@apackdev/host/services';", 'layers/sdk/src/services/app.ts:1: @apackdev/host/services'],
     ['sdk', 'src/fe/ui.ts', "export type { Button } from '@apackdev/ui/design/button';", 'layers/sdk/src/fe/ui.ts:1: @apackdev/ui/design/button'],
     ['host', 'src/bus/app.ts', "import { rootEvents } from '@app/api/core/router/bus-emitter';", 'layers/host/src/bus/app.ts:1: @app/api/core/router/bus-emitter'],
@@ -461,6 +462,23 @@ describe('findUnimportedDependencies', () => {
   });
 });
 
+describe('filesUnder', () => {
+  // A build stages its output under the pack's `.apack/`, and a test run writes `results/`, while other steps read
+  // the tree: neither is source, and walking them reads files that can vanish between the listing and the read
+  it('lists a package\'s source and not what tools write beside it', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'files-under-'));
+    try {
+      for (const file of ['pkg/src/a.ts', 'pkg/.apack/staged/b.ts', 'pkg/results/c.ts', 'pkg/dist/d.js']) {
+        fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+        fs.writeFileSync(path.join(root, file), 'export {};\n');
+      }
+      expect(filesUnder(['pkg'], root).map((file) => path.relative(root, file))).toEqual([path.join('pkg', 'src', 'a.ts')]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('findLmdbImports', () => {
   // The rules with their directories under the temp root's src/
   const rules = LMDB_RULES.map((rule) => ({
@@ -470,10 +488,10 @@ describe('findLmdbImports', () => {
   }));
   const allowed = () => {
     write('packages/apack-ears/src/lmdb/envs.ts', "import { open } from 'lmdb';\nimport type { Partition } from '../persistence/policy.ts';\n");
-    write('packages/apack-ears/src/index.ts', "export { tx } from './transaction.ts';\n");
+    write('packages/apack-ears/src/index.ts', "export { untypedWrite } from './write.ts';\n");
     write('packages/apack-host/src/services/app-data.ts', "import type { LmdbStore } from '@apackdev/ears/lmdb';\n");
     write('packages/api/src/setup/backend.ts', "import { openLmdbStore } from '@apackdev/ears/lmdb';\n");
-    write('packages/default-setup/src/features/notes/be/system.ts', "import { untypedTx } from '@apackdev/ears';\n");
+    write('packages/default-setup/src/features/notes/be/system.ts', "import { untypedWrite } from '@apackdev/sdk/ears';\n");
   };
 
   it('allows the LMDB store to load lmdb, and the host and the API to open it', () => {
@@ -530,7 +548,7 @@ describe('findSharedPackageLists', () => {
 
   it('allows imports of the packages and their specific modules', () => {
     write('consumer.ts', [
-      "import { untypedTx } from '@apackdev/ears';",
+      "import { untypedWrite } from '@apackdev/sdk/ears';",
       "export * from '@apackdev/sdk';",
       "const sdk = await import('@apackdev/sdk');",
       "const runtime = resolve('@apackdev/sdk/runtime');",
@@ -1856,7 +1874,7 @@ describe('findCrossFeatureImports', () => {
 
 describe('findRepositoryCasts', () => {
   it.each([
-    ['packages/apack-sdk/src/content/format-applier.ts', "import { repository } from '@apackdev/ears';\nexport const flows = repository as unknown as { flowsCommands: object };"],
+    ['packages/apack-sdk/src/content/format-applier.ts', "import { repository } from '@apackdev/sdk/ears';\nexport const flows = repository as unknown as { flowsCommands: object };"],
     ['packages/apack-host/src/settings/index.ts', 'export const settings = (repository as unknown) as Settings;'],
     ['packages/default-setup/src/features/notes/be/system.ts', 'const notes = (services.repository as unknown as Record<string, unknown>).noteQueries;'],
     ['packages/renderer/src/view.vue', '<script setup lang="ts">\nconst r = repository as unknown as Repos;\n</script>'],

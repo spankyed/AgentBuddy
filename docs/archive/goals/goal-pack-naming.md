@@ -447,9 +447,9 @@ and check what the code does with "empty" versus "absent" before assuming they a
   two small senses (Phases 1 and 4) takes `source` from five senses to three, which is where the cost curve
   turns.
 - **Renaming `PackSnapshot`** (Decision 4). Revisit only with a replacement word checked against the tree.
-- **The `qx`/`tx` name-or-id overload.** `qx('Memo')` for a name no pack declares silently returns `[]`,
+- **The `query`/`create`/`write` name-or-id overload.** `query('Memo')` for a name no pack declares silently returns `[]`,
   because the dash is the only thing separating a name from an id. Recorded, with two failed fix attempts and
-  the design that would work (`qx(name)` checked plus a separate `qx.byId(id)`), in
+  the design that would work (`query(name)` checked plus a separate `query.ids(id)`), in
   `packages/apack-sdk/TYPED-EARS.md`. It is an API change across every call site, not a naming fix.
 
 ## Constraints

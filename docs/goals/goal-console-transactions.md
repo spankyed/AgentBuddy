@@ -54,7 +54,7 @@ all through one runner:
 `runTransactionCode` (`packages/apack-sdk/src/database-console/index.ts:123`) builds a function from the
 user's code and calls it with the read and write helpers. Each helper writes as the code runs:
 
-- **In memory:** a helper reaches the installed engine (`@apackdev/ears`), which updates the attribute
+- **In memory:** a helper reaches the bound engine (`@apackdev/sdk/ears`), which updates the attribute
   store, entity index and relation index immediately. `EarsAdmin` (`packages/apack-ears/src/engine.ts:83`)
   has no commit boundary and no undo: `putAttr`, `addAttr`, `mergeAttr`, `dropAttr`, `dropIf`,
   `updateAttr`, `addRelation`, `updateRelation` and the removals take effect as they are called.
@@ -95,7 +95,7 @@ than a refused one, because nothing records which statements ran.
    system code keep writing as they do now. The three call sites above are the scope.
 2. **A commit is one LMDB transaction.** Every write the code made reaches the files together or not at
    all, which means `onDestroyEntity` is buffered like the rest (Phase 2).
-3. **The boundary is host-side.** It's an `EarsAdmin` member, not part of the pack-facing `qx`/`tx`
+3. **The boundary is host-side.** It's an `EarsAdmin` member, not part of the pack-facing `query`/`create`/`write`
    surface: packs can't open, hold or nest one, and the published SDK reports don't gain a way to.
    `@apackdev/sdk/database-console` reaches it through the engine the host binds.
 4. **A rollback that fails is fatal.** Memory and files out of step is a state nothing can repair
@@ -181,7 +181,7 @@ passes.
 
 ## Deferred
 
-- **Transactions for pack code.** Packs write through `tx` and repositories, with no boundary; giving
+- **Transactions for pack code.** Packs write through `create`/`write` and repositories, with no boundary; giving
   them one is a pack-facing API change with its own design (Decision 3 keeps this goal host-side).
 - **Transactions across the bus.** A system's handler writing in several steps is not one transaction
   either. Out of scope.
@@ -196,7 +196,7 @@ passes.
 - No publishing, releases or triggered workflows. No broad pkill/killall on Electron or node. No bare
   `tsc` on `packages/preload`. No edits to version or release metadata.
 - The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`): the boundary is an
-  `EarsAdmin` member, and `qx`/`tx` behave as they do today.
+  `EarsAdmin` member, and `query`/`create`/`write` behave as they do today.
 - Published packages expose no `any`, keep the TypeScript floor, and need `api:update` after an export
   change.
 - Build order: `packages:build` before the CLI suite, default-setup's runtime before the api suites and

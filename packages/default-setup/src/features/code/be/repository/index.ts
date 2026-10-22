@@ -1,8 +1,8 @@
-import { tx, findById, findAll } from '#generated/ears.ts';
+import { write, findById, findAll } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts'
 
-import { exists } from '@apackdev/ears';
+import { exists } from '@apackdev/sdk/ears';
 import { trash } from '@apackdev/sdk/repositories';
 import type { TerminalInfo } from '../types.ts'
 import { createLogger } from '@apackdev/sdk/logger'
@@ -46,8 +46,8 @@ export const terminalCommands = {
   create: (terminalInfo: Partial<TerminalInfo> & { id: EARS.EntityId }): EARS.EntityId => {
     const now = Date.now()
     
-    // Create terminal entity with all required attributes using the provided ID
-    tx(terminalInfo.id).updateBatch({
+    // The terminal service created the entity when it took its id; this records what it started
+    write(terminalInfo.id).setMany({
       title: terminalInfo.title,
       pid: terminalInfo.pid,
       shell: terminalInfo.shell || '/bin/bash',
@@ -55,7 +55,6 @@ export const terminalCommands = {
       active: true,
       cols: terminalInfo.cols,
       rows: terminalInfo.rows,
-      createdAt: now,
       updatedAt: now
     })
     
@@ -69,7 +68,7 @@ export const terminalCommands = {
       return
     }
 
-    tx(id).updateBatch({
+    write(id).setMany({
       cols,
       rows,
       updatedAt: Date.now()
@@ -82,7 +81,7 @@ export const terminalCommands = {
       return
     }
 
-    tx(id).updateBatch({
+    write(id).setMany({
       customTitle,
       updatedAt: Date.now()
     })
@@ -104,7 +103,7 @@ export const terminalCommands = {
       updates.title = title
     }
 
-    tx(id).updateBatch(updates)
+    write(id).setMany(updates)
   },
   
   updatePid: (id: EARS.EntityId, pid: number): void => {
@@ -113,7 +112,7 @@ export const terminalCommands = {
       return
     }
     
-    tx(id).updateBatch({
+    write(id).setMany({
       pid,
       updatedAt: Date.now()
     })
@@ -126,7 +125,7 @@ export const terminalCommands = {
     }
     
     const now = Date.now()
-    tx(id).updateBatch({
+    write(id).setMany({
       active: false,
       closedAt: now,
       updatedAt: now
@@ -140,7 +139,7 @@ export const terminalCommands = {
     }
 
     // To the trash, inactive, rather than deleted (trash.move stamps updatedAt)
-    tx(id).put('active', false)
+    write(id).set('active', false)
     trash.move([id])
   }
 }

@@ -10,9 +10,10 @@
  * correctly on the harness's in-memory engine.
  */
 import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
-import { untypedTx, type QueryBuilder, type TransactionBuilder } from '@apackdev/ears';
+import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  qx, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
+  query, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
   type EntityShape,
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
@@ -43,8 +44,8 @@ import { EARS } from '#generated/ears.ts';
 // weak — `unknown`, a wrong shape or an over-wide union all pass them.
 
 describe('Type inference — EARS runtime', () => {
-  it('tx() returns TransactionBuilder', () => {
-    expectTypeOf(untypedTx).returns.toEqualTypeOf<TransactionBuilder>();
+  it('create() returns a WriteBuilder of the type it was given', () => {
+    expectTypeOf(untypedCreate<'Action'>).returns.toEqualTypeOf<WriteBuilder<'Action'>>();
   });
 
   it('createEntity() brands the id with a declared entity type', () => {
@@ -56,11 +57,11 @@ describe('Type inference — EARS runtime', () => {
     expectTypeOf(() => builder.map((id) => String(id))).returns.toEqualTypeOf<string[]>();
   });
 
-  it('TransactionBuilder fluent methods return TransactionBuilder', () => {
-    const builder = {} as TransactionBuilder;
-    expectTypeOf(builder.put).returns.toEqualTypeOf<TransactionBuilder>();
-    expectTypeOf(builder.batchPut).returns.toEqualTypeOf<TransactionBuilder>();
-    expectTypeOf(builder.link).returns.toEqualTypeOf<TransactionBuilder>();
+  it('WriteBuilder fluent methods return WriteBuilder', () => {
+    const builder = {} as WriteBuilder;
+    expectTypeOf(builder.set).returns.toEqualTypeOf<WriteBuilder>();
+    expectTypeOf(builder.setMany).returns.toEqualTypeOf<WriteBuilder>();
+    expectTypeOf(builder.link).returns.toEqualTypeOf<WriteBuilder>();
   });
 });
 
@@ -87,9 +88,13 @@ describe('Type inference — typed EARS helpers', () => {
   });
 
   it('updateEntity accepts only declared fields', () => {
-    updateEntity(actionId, { label: 'renamed', description: null });
-    // @ts-expect-error wrong type for a declared field
-    updateEntity(actionId, { label: 42 });
+    // Type-level only: never called, since no entity has this id
+    const check = () => {
+      updateEntity(actionId, { label: 'renamed', description: null });
+      // @ts-expect-error wrong type for a declared field
+      updateEntity(actionId, { label: 42 });
+    };
+    expectTypeOf(check).toBeFunction();
   });
 
   it('getAttr reads a declared field of a branded id, unknown otherwise', () => {
@@ -257,27 +262,27 @@ describe('Generic flow — runtime verification', () => {
     expect(results[0].category).toBe('alpha');
   });
 
-  it('qx() fluent chain produces typed results', () => {
+  it('query() fluent chain produces typed results', () => {
     createEntityWithDefaults(
       EARS.Entity.Action as any,
       { label: 'Chain', actionFn: 'fn()' } as any,
       'ACT',
     );
 
-    const ids = qx(EARS.Entity.Action as any).ids();
+    const ids = query(EARS.Entity.Action as any).ids();
     expect(Array.isArray(ids)).toBe(true);
     expect(ids.length).toBe(1);
 
-    const count = qx(EARS.Entity.Action as any).count();
+    const count = query(EARS.Entity.Action as any).count();
     expect(typeof count).toBe('number');
     expect(count).toBe(1);
 
-    const exists = qx(EARS.Entity.Action as any).exists();
+    const exists = query(EARS.Entity.Action as any).exists();
     expect(typeof exists).toBe('boolean');
     expect(exists).toBe(true);
   });
 
-  it('qx().map() returns correctly typed array', () => {
+  it('query().map() returns correctly typed array', () => {
     // The row map() then walks
     createEntityWithDefaults(
       EARS.Entity.Action as any,
@@ -285,22 +290,22 @@ describe('Generic flow — runtime verification', () => {
       'ACT',
     );
 
-    const labels = qx(EARS.Entity.Action as any).map(
+    const labels = query(EARS.Entity.Action as any).map(
       (entityId) => `prefix-${entityId}`
     );
     expect(labels).toHaveLength(1);
     expect(labels[0]).toContain('prefix-Action-');
   });
 
-  it('tx() fluent chain returns TransactionBuilder', () => {
-    const id = untypedTx(EARS.Entity.Action as any)
-      .put('label', 'TxChain')
-      .put('status', 'active')
+  it('create() fluent chain writes the entity it created', () => {
+    const id = untypedCreate(EARS.Entity.Action)
+      .set('label', 'TxChain')
+      .set('status', 'active')
       .id();
 
     expect(id).toMatch(/^Action-/);
-    const label = qx(id).pickOne(['label'] as const);
-    expect(label).toBeDefined();
+    const label = query.ids(id).pickOne(['label'] as const);
+    expect(label).toMatchObject({ label: 'TxChain' });
   });
 
   it('loadJSON<T> preserves generic type', () => {

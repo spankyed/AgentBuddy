@@ -6,7 +6,8 @@
 // recorded. Destroying the entity there is wrong twice over — a flow's nodes and wiring are separate
 // entities that would be orphaned, and an entity type whose pack registered a `remove` writer has a delete
 // of its own, which for a soft-deleting type is what keeps the user's undo.
-import { destroyEntity, type EARS as EARSTypes } from '@apackdev/ears';
+import { type EARS as EARSTypes } from '@apackdev/ears';
+import { destroyEntity } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { _contentWriterRegistry } from './writers.ts';

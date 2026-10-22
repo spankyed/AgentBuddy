@@ -21,6 +21,11 @@ const IMAGE = `apack-linux-test:${short(fs.readFileSync(DOCKERFILE))}`;
 /** One working copy per checkout, so two worktrees never share a container `node_modules` */
 const WORK_VOLUME = `apack-linux-work-${short(REPO_ROOT)}`;
 const NPM_CACHE_VOLUME = 'apack-linux-npm-cache';
+/**
+ * The run lock, at the volume's root. Named once because two places must agree on it: the `flock` below and
+ * the rsync filter that keeps `--delete` from removing it while this run holds it.
+ */
+const RUN_LOCK = '.apack-run.lock';
 
 /**
  * What the copy carries and leaves out, as rsync filters in order. Every `node_modules` stays out (the container
@@ -31,6 +36,11 @@ const NPM_CACHE_VOLUME = 'apack-linux-npm-cache';
  * published packages `packages:ensure` builds, and the built-in pack, whose build record names what its
  * compilers read (`@esbuild/darwin-arm64` on a Mac) and so replays only on the platform that built it.
  * Excluded paths in the volume survive each copy, so the container's own installs and builds are kept.
+ *
+ * **That exemption is why `CONTAINER_CACHES` exists.** `--delete` never touches an excluded path, so everything
+ * under `node_modules` is immortal — which is what the container's install needs, and what makes the volume a
+ * place anything can be left for ever. One volume reached 40 GB that way, 38.7 GB of it a cache tree nothing in
+ * this repo writes, and the disk it filled surfaced as failures that named anything but the disk.
  */
 const FILTERS = [
   '--include=/node_modules/', '--include=/node_modules/.cache/', '--include=/node_modules/.cache/tsbuildinfo/***',
@@ -42,6 +52,33 @@ const FILTERS = [
     [`--exclude=/packages/${pkg}/dist`, `--exclude=/packages/${pkg}/publish`]),
   '--exclude=/packages/default-setup/dist', '--exclude=/packages/default-setup/.apack',
 ];
+
+/**
+ * The caches this repo's own tooling keeps under `node_modules/.cache`, which the sync leaves alone. Anything
+ * else there is deleted on every run, because the rsync exemption above means nothing else ever would.
+ *
+ * **A name missing from this list costs a rebuild or a reading, never a wrong answer**, which is what makes the
+ * list safe to be a little out of date: these are caches, so whatever wanted one makes it again. The durations
+ * are the ones worth having right — they are a window of recent runs on this machine, and a deleted window
+ * starts empty rather than wrong. Add a name when a new cache is worth keeping between runs, not to fix a bug.
+ *
+ * Re-derive it from the code that writes them, which is two spellings: a `'.cache', '<name>'` path join, and a
+ * `node_modules/.cache/<name>` literal. Deriving from one alone misses the other — the first pass here did.
+ */
+const CONTAINER_CACHES = [
+  'apack-chain', 'apack-fixtures', 'apack-packages-build',
+  'apack-spec-durations', 'apack-step-durations', 'apack-unit-pool', 'tsbuildinfo',
+];
+
+/**
+ * The file at a work volume's root naming the checkout it serves, written by every sync.
+ *
+ * **A file rather than a volume label**, because `docker volume create` adds no label to a volume that already
+ * exists and there is no way to label one afterwards — so a label would only ever describe volumes created after
+ * this code, leaving every existing one permanently unidentifiable and the prune below permanently idle.
+ * A file is written by the run, so one sync makes any volume identifiable, however old.
+ */
+const CHECKOUT_FILE = '.apack-checkout';
 
 const docker = (args: string[], stdio: 'inherit' | 'pipe' = 'pipe') => spawnSync('docker', args, { stdio, encoding: 'utf8' });
 
@@ -65,6 +102,35 @@ if (docker(['image', 'inspect', IMAGE]).status !== 0) {
 }
 
 /**
+ * Work volumes whose checkout is gone.
+ *
+ * A volume is keyed by a hash of the checkout's path, so nothing could tell an abandoned volume from a live one
+ * — a deleted worktree's `node_modules` and platform builds simply stayed for ever, and one of them reached
+ * 40 GB. `CHECKOUT_FILE` carries the path, so "that directory no longer exists" is a fact this can check rather
+ * than a guess about age or size.
+ *
+ * A volume with no such file yet is left alone: it has not synced since this was added, so nothing says whose it
+ * is. One run of its own checkout names it, and it becomes prunable like the rest.
+ *
+ * **Removal is left to Docker to refuse.** A volume a container still has mounted cannot be removed and the
+ * error is ignored, so a run in another checkout is never disturbed by this one tidying up.
+ */
+function pruneAbandonedVolumes(): void {
+  const listed = docker(['volume', 'ls', '--format', '{{.Name}}']);
+  if (listed.status !== 0) return;
+  const mine = WORK_VOLUME;
+  for (const name of listed.stdout.split('\n').map((line) => line.trim())) {
+    if (!name.startsWith('apack-linux-work-') || name === mine) continue;
+    const read = docker(['run', '--rm', '-v', `${name}:/work:ro`, IMAGE, 'cat', `/work/${CHECKOUT_FILE}`]);
+    const checkout = read.status === 0 ? read.stdout.trim() : '';
+    if (!checkout || fs.existsSync(checkout)) continue;
+    if (docker(['volume', 'rm', name]).status === 0) {
+      process.stderr.write(`Removed the container work volume of ${checkout}, which no longer exists.\n`);
+    }
+  }
+}
+
+/**
  * A linked worktree's `.git` is a file naming the repository's git dir by absolute path. Mounting that dir at the
  * same path lets git resolve it inside the container, so specs that ask git about this checkout still can.
  */
@@ -76,6 +142,8 @@ function gitDirMount(): string[] {
   const common = path.resolve(gitDir, fs.readFileSync(path.join(gitDir, 'commondir'), 'utf8').trim());
   return ['-v', `${common}:${common}:ro`];
 }
+
+pruneAbandonedVolumes();
 
 /**
  * What the chain and its pools tell a step about the run it is part of.
@@ -98,7 +166,11 @@ const quote = (arg: string): string => `'${arg.replace(/'/g, `'\\''`)}'`;
  * The containers share the Linux VM's kernel, so `flock` on a file in the volume holds across them.
  */
 const sync = [
-  `rsync -a --delete --exclude=/.apack-sync.lock ${FILTERS.map(quote).join(' ')} /src/ /work/`,
+  `rsync -a --delete --exclude=/${RUN_LOCK} --exclude=/${CHECKOUT_FILE} ${FILTERS.map(quote).join(' ')} /src/ /work/`,
+  // Whose volume this is, for the prune that cannot otherwise tell: see CHECKOUT_FILE
+  `printf '%s' ${quote(REPO_ROOT)} > /work/${CHECKOUT_FILE}`,
+  // What the rsync exemption would otherwise keep for ever: see CONTAINER_CACHES
+  `for entry in node_modules/.cache/*; do [ -e "$entry" ] || continue; case "\${entry##*/}" in ${CONTAINER_CACHES.join('|')}) ;; *) rm -rf "$entry" ;; esac; done`,
   'lock=$(sha256sum package-lock.json | cut -d" " -f1)',
   'if [ "$(cat node_modules/.apack-installed-lock 2>/dev/null)" != "$lock" ]; then',
   '  npm ci --no-audit --no-fund',
@@ -108,11 +180,36 @@ const sync = [
   'npm run -s packages:ensure',
   'npm run -s build:default-setup >/dev/null',
 ].join('\n');
-const script = [
-  'set -e',
-  `flock /work/.apack-sync.lock bash -ec ${quote(sync)}`,
+/**
+ * One container at a time per volume, for the whole run rather than the sync alone.
+ *
+ * **It is `flock` because the kernel releases it when the holder dies**, which is the one way a lock in here
+ * can be resolved: a container cannot tell a dead sibling's record from a live one — its hostname is the
+ * instance's and `boot_id` is the host kernel's, so there is nothing to compare a pid against. A lock file
+ * naming a pid and a hostname, which is what the pools write, is therefore held for ever once its container
+ * is gone (`exclusive-lock.ts`'s foreign-machine branch, correctly, cannot resolve it).
+ *
+ * So the orphans are cleared here, under this lock, where they are provably orphans: holding it means no
+ * other container is working in this volume, so no live pool run owns one. Killing a native run used to wedge
+ * every later one until the file was deleted by hand inside the container.
+ *
+ * Two runs sharing a volume was never safe anyway — they share `node_modules` and the platform builds the
+ * sync phase makes — so a second refuses rather than waiting, naming what holds it.
+ */
+const run = [
+  `exec 9>/work/${RUN_LOCK}`,
+  'if ! flock -n 9; then',
+  '  echo "another test:linux run holds this checkout\'s container volume (apack-linux-work)." >&2',
+  `  echo "Wait for it to finish, or stop it: docker ps --filter ancestor=${IMAGE}" >&2`,
+  '  exit 1',
+  'fi',
+  // Orphans of a container that was killed: this run holds the only slot, so none of them is live
+  'rm -f /work/node_modules/.cache/apack-unit-pool/*.lock',
+  `bash -ec ${quote(sync)}`,
+  // `exec` keeps fd 9, so the lock is held for as long as the command runs
   `exec ${command.map(quote).join(' ')}`,
 ].join('\n');
+const script = ['set -e', run].join('\n');
 
 const child = spawn('docker', [
   // IPv4 loopback only, as on CI's Linux runners: with IPv6 up, `localhost` resolves to ::1 first here, so a

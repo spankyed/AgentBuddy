@@ -64,8 +64,8 @@ Written entities keep their item's `contentHash` and `contentKey`, and the app r
 
 ## Commands
 
-Slash commands (`/name` in chat) come from two places, merged by `services.library.commands()`: `apack.json` `extensions.commands` (this pack declares `pr2md` and `instructions`; eligible declarations are listed first, in stable catalog admission order) and the documents in `library/internal/commands/` (`claude-code.md`, `codex.md`: a `<!-- section:field -->` block of `**name**: placeholder` lines), which users can edit from the Library. A document repeating a declared name is ignored. To add one:
+Slash commands (`/name` in chat) are content, in `commands/internal/` (`chat.md`, `claude-code.md`, `codex.md`, which the directory nests in an `internal` Library folder), compiled with the `commands` format, which defaults each one to `documentType: 'commands'` — so a file here need not declare it, a file that declares another type is what it says, and a `library` document declaring `type: commands` is served as one too. A `<!-- section:field -->` block of `**name**: placeholder` lines is the whole of one. One source, so there is nothing to merge; a name two documents define keeps the first. The `library` feature plays the `commands` designation and serves the list from whatever documents are in the database, so a user can edit any of them from the Library, and the app publishes the list to every window. To add one:
 
 1. Create the action (its `category` only groups it in the Actions UI)
 2. Add an `on("user.command", ...)` branch in a flow (`command-listener-flow.ts` for standalone, the Claude Code and Codex flows for `cc-*`/`cdx-*`)
-3. List it in `apack.json` `commands`, or in the matching document under `library/internal/commands/` when users should be able to change it
+3. Add `**name**: placeholder` to the matching file under `commands/internal/` — `chat.md` for the app's own, `claude-code.md` or `codex.md` for a CLI's

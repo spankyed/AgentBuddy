@@ -119,7 +119,9 @@
                 "Node",
                 "TNode",
                 "Action",
-                "Prompt"
+                "Prompt",
+                "Document",
+                "Collection"
               ]
             }
           },
@@ -136,7 +138,8 @@
                 "transitions_to",
                 "instance_of",
                 "spawned",
-                "tracked"
+                "tracked",
+                "parent_of"
               ]
             }
           },
@@ -179,7 +182,9 @@
                   "Node",
                   "TNode",
                   "Action",
-                  "Prompt"
+                  "Prompt",
+                  "Document",
+                  "Collection"
                 ]
               }
             },
@@ -754,6 +759,45 @@
     "extensions": {
       "type": "object",
       "properties": {
+        "commands": {
+          "type": "object",
+          "properties": {
+            "list": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "placeholder": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "What the chat shows after the command name, as a hint for what to type."
+                  }
+                },
+                "required": [
+                  "placeholder"
+                ],
+                "additionalProperties": false
+              },
+              "propertyNames": {
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "description": "The commands, keyed by the name typed after the \"/\"."
+            },
+            "onUserEdit": {
+              "type": "string",
+              "enum": [
+                "theirs",
+                "offer"
+              ],
+              "description": "What an apply does about an item the user has edited: \"theirs\" leaves it theirs for good (the default), \"offer\" records the newer version so they can take it. Neither overwrites their edit."
+            }
+          },
+          "required": [
+            "list"
+          ],
+          "additionalProperties": false,
+          "description": "Slash commands this pack seeds. Desugared into ordinary content, so a user owns and may delete what it writes."
+        },
         "settings": {
           "type": "object",
           "additionalProperties": {
@@ -1293,27 +1337,6 @@
           },
           "description": "Message blocks this pack contributes. Each names where its code lives. The type is the key, so a pack cannot declare one twice."
         },
-        "commands": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "placeholder": {
-                "type": "string",
-                "minLength": 1,
-                "description": "What the chat shows after the command: the argument it takes, or what it does."
-              }
-            },
-            "required": [
-              "placeholder"
-            ],
-            "additionalProperties": false
-          },
-          "propertyNames": {
-            "pattern": "^[a-z][a-z0-9-]*$"
-          },
-          "description": "Slash commands this pack adds to the chat, keyed by the name typed after the \"/\". Sending one fires a `user.command` event the pack's flows handle. The type is the key, so a pack cannot declare one twice."
-        },
         "services": {
           "type": "object",
           "additionalProperties": {
@@ -1425,7 +1448,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions."
+      "description": "What the pack contributes to the app: steps, artifacts, blocks, services, DSL types, help articles and frontend extensions."
     },
     "lifecycle": {
       "type": "object",

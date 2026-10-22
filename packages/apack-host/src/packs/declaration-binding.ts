@@ -1,5 +1,5 @@
 import { type DeclarationData, type NativePackDeclaration, _stepBackendParts } from '@apackdev/sdk/framework';
-import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes, declaredContentKeys } from '@apackdev/sdk/framework';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import type { PackManifest, StepEntry } from '@apackdev/sdk/build';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
@@ -30,14 +30,6 @@ export function apiBindingProblem(features: Readonly<Record<string, ApiOwnerDecl
   }
 }
 
-export function commandBindingProblem(declarations: Readonly<Record<string, { readonly placeholder: string }>> | undefined, bindings: unknown): string | undefined {
-  const commands = namedBindings(bindings, 'name', Object.keys(declarations ?? {}));
-  if (!commands) return 'commands';
-  for (const [name, declaration] of Object.entries(declarations ?? {})) {
-    if (commands.get(name)!.placeholder !== declaration.placeholder) return `commands.${name}.placeholder`;
-  }
-}
-
 /** Content bindings provide data operations, independently of backend activation. */
 export function contentBindingProblem(manifest: PackManifest, runtime: unknown, appliers?: unknown): string | undefined {
   const problem = (path: string) => `Pack "${manifest.id}" content runtime ${path} does not match its accepted declarations`;
@@ -48,7 +40,7 @@ export function contentBindingProblem(manifest: PackManifest, runtime: unknown, 
   if (!sameKeys(runtime.repositories, repositories)) return problem('repositories');
   if (!sameKeys(runtime.contentWriters, Object.keys(manifest.content?.writers ?? {}))) return problem('contentWriters');
   if (appliers !== undefined) {
-    const declared = Object.keys(manifest.content?.sources ?? {});
+    const declared = declaredContentKeys(manifest);
     if (!Array.isArray(appliers) || appliers.some(applier => !applier || typeof applier !== 'object' || Array.isArray(applier)
       || typeof applier.key !== 'string' || !declared.includes(applier.key))) return problem('appliers');
     if (new Set(appliers.map(applier => applier.key)).size !== appliers.length) return problem('appliers');
@@ -81,11 +73,8 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
   if (!isPlainObject(ears)) return problem('ears');
   if (!isDeepStrictEqual(ears.entities === undefined ? {} : ears.entities, _packEntityTypes(manifest))) return problem('ears.entities');
   if (!isDeepStrictEqual(ears.relKinds === undefined ? {} : ears.relKinds, _packRelationTypes(manifest))) return problem('ears.relKinds');
-  const contentProblem = backendContentBindingProblem(manifest.content, registration);
+  const contentProblem = backendContentBindingProblem(manifest, registration);
   if (contentProblem) return problem(contentProblem);
-
-  const commands = commandBindingProblem(manifest.extensions?.commands, registration.commands);
-  if (commands) return problem(commands);
 
   const viewerProblem = backendViewerBindingProblem(manifest.extensions ?? {}, registration);
   if (viewerProblem) return problem(viewerProblem);
@@ -159,12 +148,15 @@ export function backendViewerBindingProblem(declarations: DeclarationData<Pick<N
 }
 
 /** Match executable content operations to their declared names without applying content. */
-export function backendContentBindingProblem(content: Pick<NonNullable<PackManifest['content']>, 'sources' | 'writers'> | undefined,
-  registration: unknown): string | undefined {
+export function backendContentBindingProblem(
+  /** The declaration, not just its content: a declared content key can come from `extensions.commands` */
+  declaration: { content?: Pick<NonNullable<PackManifest['content']>, 'sources' | 'writers'>; extensions?: { commands?: unknown } } | undefined,
+  registration: unknown,
+): string | undefined {
   if (!isPlainObject(registration)) return 'registration';
   if (!sameKeys(registration.contentWriters === undefined ? {} : registration.contentWriters,
-    Object.keys(content?.writers ?? {}))) return 'contentWriters';
-  if (!namedBindings(registration.appliers, 'key', Object.keys(content?.sources ?? {}))) return 'appliers';
+    Object.keys(declaration?.content?.writers ?? {}))) return 'contentWriters';
+  if (!namedBindings(registration.appliers, 'key', declaredContentKeys(declaration ?? {}))) return 'appliers';
 }
 
 /** Match version-line targets, descriptions and callable bindings without executing migrations. */

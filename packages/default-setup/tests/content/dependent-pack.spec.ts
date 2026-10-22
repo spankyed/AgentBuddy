@@ -13,6 +13,8 @@ import {
   type PackManifest, type PackSnapshot, type ContentDependency,
 } from '@apackdev/sdk/build';
 import { createFormatApplier } from '@apackdev/sdk/content';
+import { untypedCreate } from '@apackdev/sdk/ears';
+import type { EARS } from '#generated/ears.ts';
 import { PACK_DIR, resetDatabase, snapshot } from './harness.ts';
 
 const FIXTURE = path.join(PACK_DIR, 'tests/_support/fixtures/dependent-pack');
@@ -58,6 +60,9 @@ describe('a pack depending on default-setup content with its formats', () => {
 
   it("gets NOTE and DOC shortCodes, order, nesting, sections, media and REFERENCES from default-setup's format and hooks", async () => {
     resetDatabase();
+    // The note the handbook links to: a content note's id is made when it is written, so a link by id reaches a note
+    // that is already there, and a reference is indexed only to a note that exists
+    untypedCreate('Note', { id: 'Note-roadmap-plan' as EARS.EntityId }).set('title', 'Plan');
     const counts = importAll(await compile(FIXTURE, manifest, dependencies), manifest, FIXTURE, dependencies);
     expect(counts).toEqual({
       'team-notes': { created: 4, updated: 0, skipped: 0 },
@@ -82,7 +87,7 @@ describe('a pack depending on default-setup content with its formats', () => {
     expect(relations).toEqual(expect.arrayContaining([
       'Note:Roadmap --contains--> Note:Roadmap/ship it',
       'Note:Roadmap --contains--> Note:Roadmap/write docs',
-      'Note:Team Handbook --references--> Note-roadmap-plan',
+      'Note:Team Handbook --references--> Note:Plan',
       'Collection:Team Playbooks --contains--> Document:On-call',
     ]));
   });

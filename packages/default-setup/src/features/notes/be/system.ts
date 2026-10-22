@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { qx } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { broadcastToSurface } from '#generated/events.ts';
 import { setup } from 'xstate';
 import type { Reply } from '@apackdev/sdk/events';
@@ -33,7 +33,7 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 const logger = createLogger('notes');
 
 function isDescendantOf(noteId: EARS.EntityId, ancestorId: EARS.EntityId): boolean {
-  const childIds = qx(ancestorId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+  const childIds = query.ids(ancestorId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
   for (const childId of childIds) {
     if (childId === noteId) return true;
     if (isDescendantOf(noteId, childId)) return true;
@@ -121,7 +121,7 @@ export const notesSystem = setup({
 
       // When uncompleting: restore saved position
       if (ev.completed === false && noteBeforeUpdate.savedDisplayOrder !== undefined) {
-        const parentIds = qx(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const parentIds = query.ids(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
         const parentId = parentIds.length > 0 ? parentIds[0] : null;
         const { affectedIds } = repository.noteCommands.reorder(
           noteId,
@@ -201,7 +201,7 @@ export const notesSystem = setup({
       const noteEntity = repository.noteQueries.byId(ev.id as EARS.EntityId);
       if (!noteEntity) {
         // Note is soft-deleted, look up parent via relations
-        const parentIds = qx(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const parentIds = query.ids(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
         if (parentIds.length > 0) {
           const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
           if (parentDTO) {
@@ -229,7 +229,7 @@ export const notesSystem = setup({
       }
 
       // Update parent's childCount
-      const parentIds = qx(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+      const parentIds = query.ids(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
       if (parentIds.length > 0) {
         const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
         if (parentDTO) {
@@ -269,7 +269,7 @@ export const notesSystem = setup({
         if (newParentId && isDescendantOf(newParentId, id)) continue;
 
         // Find current parent to skip same-parent no-op
-        const currentParentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const currentParentIds = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
         const currentParentId = currentParentIds.length > 0 ? currentParentIds[0] : null;
         if (currentParentId === newParentId) continue;
 
@@ -626,6 +626,10 @@ export const notesSystem = setup({
       on: {
         SEND_STATE: {
           actions: 'sendNotesConnectedData',
+        },
+        // References are an index derived from note text, so data restored or reset is indexed again from its text
+        DATA_REPLACED: {
+          actions: 'bootstrapReferences',
         },
       },
     },

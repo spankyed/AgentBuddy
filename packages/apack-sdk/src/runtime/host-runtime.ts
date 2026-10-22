@@ -1,6 +1,7 @@
 // The one port between the SDK and the app it runs in: the resources a running app owns, bound once per
 // process. Behaviour over them (sends, logging, error reports, `services`) is SDK code.
-import { installEngine, type EarsQuery } from '@apackdev/ears';
+import { type Ears } from '@apackdev/ears';
+import { _bindEars } from '../ears/index.ts';
 import { setSecretValueMatcher } from '../utils/redact.ts';
 import type { RootEvents } from './root-events.ts';
 import type { AppDataService } from '../services/app-data.ts';
@@ -12,8 +13,8 @@ import type { FilesystemService } from '../services/filesystem.ts';
 import type { SettingsAdmin } from '../services/settings.ts';
 import type { PackRegistryView } from './packs-view.ts';
 
-/** The app's EARS engine, as packs query it: its query face (`createEarsEngine` from `@apackdev/ears`) */
-export type { EarsQuery } from '@apackdev/ears';
+/** The app's EARS engine as a program is handed it: its operations, without `admin` (`createEarsEngine` from `@apackdev/ears`) */
+export type { Ears } from '@apackdev/ears';
 
 /** What the app implements and packs call through `services` */
 export interface HostRuntimeServices {
@@ -46,8 +47,8 @@ export interface SecretRedaction {
 export interface HostRuntime {
   /** The app's event bus */
   transport: { rootEvents: RootEvents };
-  /** The app's engine, its query face: binding installs it for `@apackdev/ears`'s free functions */
-  ears: EarsQuery;
+  /** The app's engine, without `admin`: binding makes it the one `@apackdev/sdk/ears`'s operations act on */
+  ears: Ears;
   /** The registered packs, read-only: their services and everything else they registered */
   packs: PackRegistryView;
   /** The running app's version (`getAppVersion()`) */
@@ -64,12 +65,12 @@ let generation = 0;
 /** @internal A successful bind or unbind starts a distinct host lifetime, even with the same object. */
 export const _boundHostGeneration = (): number => generation;
 
-/** Binds the running app, and installs its engine (`installEngine(runtime.ears)`); once per process */
+/** Binds the running app, and its engine as the one engine operations act on (`_bindEars`); once per process */
 export function bindHost(runtime: HostRuntime): void {
   if (bound) throw new Error('A host is already bound in this process: bindHost runs once, at boot');
   bound = runtime;
   generation++;
-  installEngine(runtime.ears);
+  _bindEars(runtime.ears);
   setSecretValueMatcher(runtime.redaction && ((text, from, to) => runtime.redaction!.matchesSecret(text, from, to)));
 }
 
@@ -77,7 +78,7 @@ export function bindHost(runtime: HostRuntime): void {
 export function unbindHost(): void {
   bound = undefined;
   generation++;
-  installEngine(undefined);
+  _bindEars(undefined);
   setSecretValueMatcher(undefined);
 }
 

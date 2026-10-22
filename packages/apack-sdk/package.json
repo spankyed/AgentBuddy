@@ -39,6 +39,11 @@
       "types": "./dist/designations/index.d.ts",
       "default": "./dist/designations/index.js"
     },
+    "./commands": {
+      "@apackdev/source": "./src/commands/index.ts",
+      "types": "./dist/commands/index.d.ts",
+      "default": "./dist/commands/index.js"
+    },
     "./events": {
       "@apackdev/source": "./src/events/index.ts",
       "types": "./dist/events/index.d.ts",
@@ -68,6 +73,11 @@
       "@apackdev/source": "./src/ids/index.ts",
       "types": "./dist/ids/index.d.ts",
       "default": "./dist/ids/index.js"
+    },
+    "./ears": {
+      "@apackdev/source": "./src/ears/index.ts",
+      "types": "./dist/ears/index.d.ts",
+      "default": "./dist/ears/index.js"
     },
     "./database-console": {
       "@apackdev/source": "./src/database-console/index.ts",

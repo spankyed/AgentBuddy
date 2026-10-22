@@ -307,7 +307,7 @@ async function answerAttached(
     const answer = await askAttached(live, root, screenshotDir, async (session) => {
       if (ask === 'state') return session.state();
       if (argument === undefined) throw new Error(`--${ask} needs something to run`);
-      return ask === 'eval' ? session.evaluate(argument) : session.qx(argument);
+      return ask === 'eval' ? session.evaluate(argument) : session.query(argument);
     });
     const result = answer.value as { ok?: boolean; value?: unknown; error?: string };
     if (result?.ok === false) {

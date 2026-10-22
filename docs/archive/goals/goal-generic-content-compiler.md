@@ -304,7 +304,7 @@ Not recorded: the Constraints' parity-gate mutation for manifest-key routing, an
 - Never use broad pkill/killall on Electron or node. E2E runs alongside the user's dev and prod apps in the `apack-test` namespace.
 - Don't launch the app outside the test environment without isolating `APACK_USER_DATA_DIR`.
 - Never run bare tsc on `packages/preload`. Don't run `npm install` in the example pack. Don't edit monorepo version/release metadata.
-- The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`). Applier code that needs runtime field names uses the untyped host `qx` or a hook, not a type change.
+- The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`). Applier code that needs runtime field names uses the untyped host `query` or a hook, not a type change.
 - Investigate failing tests before changing assertions; mutation-check every new guard or test, the parity gate included (break a field mapping, the notes hash skip, the manifest-key routing and the content-writer lookup, and confirm each fails).
 - No backward compatibility: no shims, deprecated fields or fallbacks for the old content format, and no data migrations, adoption rules or hash compatibility for existing rows (Decision 10's accepted upgrade effects). Migrate every in-repo manifest, fixture and template and fix forward.
 - Prefer libraries over hand-rolled code (an established YAML/frontmatter parser, since the repo has none; zod for the schema). No polling or hacky workarounds.

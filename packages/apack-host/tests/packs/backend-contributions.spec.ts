@@ -9,7 +9,6 @@ const manifest = ManifestSchema.parse({
     steps: { execute: { node: { label: 'Execute' }, build: { compile: 'build.ts#compile', validate: 'build.ts#validate', getLabel: 'build.ts#getLabel' }, runtime: { handler: 'runtime.ts#handler', waits: true } } },
     blocks: { answer: { kind: 'input', be: 'block.ts#block' } },
     artifacts: { item: { icon: 'File' } },
-    commands: { collect: { placeholder: 'Collect items' } },
   },
   content: { writers: { Item: 'writer.ts#writer' }, sources: { items: { applier: 'items.ts' } } },
   migrations: { app: { '1.0.0': { description: 'Initialize', up: 'migration.ts#up' } } },
@@ -21,7 +20,6 @@ function binding(): Record<string, unknown> {
     ears: { entities: { Item: 'Item' }, relKinds: { ITEM_LINK: 'item_link' } },
     steps: [{ type: 'execute', node: { label: 'Execute' }, build: { compile() {}, validate() {}, getLabel() {} }, runtime: { handler() {}, waits: true } }],
     blocks: [{ type: 'answer', kind: 'input', be: {} }], artifacts: [{ type: 'item' }],
-    commands: [{ name: 'collect', placeholder: 'Collect items' }],
     contentWriters: { Item: {} }, appliers: [{ key: 'items', apply() {} }],
     migrations: { app: [{ target: '1.0.0', description: 'Initialize', up() {} }] },
     lifecycle: { onInit() {} },
@@ -32,8 +30,8 @@ it('accepts the declared backend contributions', () => {
   expect(backendBindingProblem(manifest, binding())).toBeUndefined();
 });
 
-it.each(['steps', 'blocks', 'artifacts', 'commands', 'appliers'])('refuses missing, extra and duplicate %s', field => {
-  const key = field === 'commands' ? 'name' : field === 'appliers' ? 'key' : 'type';
+it.each(['steps', 'blocks', 'artifacts', 'appliers'])('refuses missing, extra and duplicate %s', field => {
+  const key = field === 'appliers' ? 'key' : 'type';
   const original = binding()[field] as Record<string, unknown>[];
   for (const entries of [[], [...original, { [key]: 'ghost' }], [...original, original[0]], null]) {
     expect(backendBindingProblem(manifest, { ...binding(), [field]: entries }))
@@ -45,7 +43,6 @@ it.each([
   ['ears.entities', { ears: { entities: { Item: 'Other' }, relKinds: { ITEM_LINK: 'item_link' } } }],
   ['ears.relKinds', { ears: { entities: { Item: 'Item' }, relKinds: {} } }],
   ['contentWriters', { contentWriters: { Other: {} } }],
-  ['commands.collect.placeholder', { commands: [{ name: 'collect', placeholder: 'Different' }] }],
   ['artifacts.item.fe', { artifacts: [{ type: 'item', fe: {} }] }],
   ['blocks.answer.kind', { blocks: [{ type: 'answer', kind: 'display', be: {} }] }],
   ['blocks.answer.be', { blocks: [{ type: 'answer', kind: 'input' }] }],

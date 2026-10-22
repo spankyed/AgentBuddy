@@ -52,13 +52,16 @@ it.each([
 });
 
 it('retains admitted metadata when a runtime contribution fails registration', () => {
+  // A designation is the contribution two packs can collide on: one feature plays a role, so the
+  // second registration is refused whole and must leave the first pack's admitted data untouched.
   const registry = createPackRegistry({ nativeDeclarations: [
-    { ...declaration, commands: { shared: { placeholder: 'Conflicting' } } },
-    { id: 'other', commands: { shared: { placeholder: 'Existing' } } },
+    { ...declaration, features: { ...declaration.features, notes: { ...declaration.features!.notes, designation: 'shared' } } },
+    { id: 'other', features: { notes: { description: 'Holder.', designation: 'shared' } } },
   ] });
-  registry.registerPack({ id: 'other', commands: [{ name: 'shared', placeholder: 'Existing' }] });
+  registry.registerPack({ id: 'other', features: { notes: { designation: 'shared' } } });
   const previous = registry.catalog.getSnapshot();
-  expect(() => registry.registerPack({ ...runtime(), commands: [{ name: 'shared', placeholder: 'Conflicting' }] })).toThrow('Command collision');
+  expect(() => registry.registerPack({ ...runtime(), features: { notes: { ...runtime().features!.notes, designation: 'shared' } } }))
+    .toThrow('Designation collision');
   expect(registry.getPackRegistration('native')).toBeNull();
   expect(registry.catalog.getSnapshot()).toBe(previous);
   expect(registry.settingsCatalog().packs.native.assistant).toEqual(definition);

@@ -319,7 +319,6 @@ export type AgentConnectedData = {
   recentThreads: Partial<ThreadEntity>[];
   tabs: Tab[];
   settings?: AgentSettings;
-  commands?: CommandItem[];
 };
 
 
@@ -444,11 +443,6 @@ export interface QuickPrompt {
   text: string;
 }
 
-export interface CommandItem {
-  name: string;
-  placeholder: string;
-}
-
 // ── Settings types ────────────────────────────────────────────────────────
 
 export interface ThreadStatusOption {
@@ -527,8 +521,6 @@ export type IncomingThreadsEvents =
 
   | { type: 'CLIENT_CONNECTED' }
   | { type: 'THREAD_DELETED'; threadId: string }
-  /** The library's commands folder changed (sent by the library system) */
-  | { type: 'COMMANDS_CHANGED' }
 
 export type OutgoingThreadsEvents =
   | { type: 'CLAUDE_UI_KEY_RESULT'; threadId: string; mountId: string; sequence: number; handled: boolean; actionKeys?: ClaudeUiMountState['actionKeys'] }
@@ -565,11 +557,7 @@ export type OutgoingThreadsEvents =
   | { type: 'SET_PHASE'; phase: string; threadId?: string; source?: 'native' }
   | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
   | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
-  | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
   | { type: 'OLDER_MESSAGES_LOADED'; threadId: string; messages: Partial<MessageEntity>[]; hasMore: boolean; nextCursor: string | null }
 
-export interface ThreadsContext {
-  /** The slash commands the chat was last sent, serialized, so an unchanged list isn't sent again */
-  sentCommands?: string
-}
+export interface ThreadsContext {}

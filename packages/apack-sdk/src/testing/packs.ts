@@ -10,7 +10,6 @@ import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
 import type { ContentWriter } from '../content/writers.ts';
 import type { ContentApplier } from '../utils/apply.ts';
-import type { PackCommand } from '../framework/pack-commands.ts';
 import type { HelpArticle } from '../framework/pack-help.ts';
 import type { SettingsCatalog } from '../framework/pack-settings.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
@@ -37,8 +36,6 @@ export interface TestPacks {
   readonly contentWriters: Map<string, ContentWriter>;
   /** Appliers by pack id */
   readonly appliers: Map<string, ContentApplier[]>;
-  /** Declared commands by pack id, after the registered packs' */
-  readonly commands: Map<string, PackCommand[]>;
   readonly help: Map<string, HelpArticle[]>;
   /** Entity types by the name they're declared under, over the registered packs' */
   readonly earsEntities: Map<string, string>;
@@ -60,7 +57,6 @@ function createTestPacks(): TestPacks {
     services: new Map<string, unknown>(),
     contentWriters: new Map<string, ContentWriter>(),
     appliers: new Map<string, ContentApplier[]>(),
-    commands: new Map<string, PackCommand[]>(),
     help: new Map<string, HelpArticle[]>(),
     earsEntities: new Map<string, string>(),
     earsRelKinds: new Map<string, string>(),
@@ -140,7 +136,6 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     settingsCatalog: () => registered?.settingsCatalog() ?? noSettings,
     onCatalogChanged: (listener) => registered?.onCatalogChanged(listener) ?? (() => {}),
     surfaceDefaults: () => registered?.surfaceDefaults() ?? {},
-    commands: () => [...(registered?.commands() ?? []), ...[...testPacks.commands.values()].flat()],
     help: () => ({ articles: [...(registered?.help().articles ?? []), ...[...testPacks.help.values()].flat()], problems: registered?.help().problems ?? [] }),
     earsNames: () => {
       const base = registered?.earsNames() ?? { entities: { ...SDK_ENTITIES }, relKinds: { ...SDK_REL_KINDS } };

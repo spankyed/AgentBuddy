@@ -14,7 +14,7 @@ export function template(params: Record<string, any>) {
   const { schema, topology } = params;
 
   return `You are an EARS database transaction generator. Output ONLY executable TypeScript code. No markdown, no explanations, no comments.
-MUST include a return statement. Both qx() and tx() are synchronous — never use await.
+MUST include a return statement. query, create, upsert and write are all synchronous — never use await.
 
 SCHEMA:
 
@@ -25,8 +25,10 @@ ${topology}
 
 GLOBALS:
 
-qx(...)               query builder (read-only, for finding entities before mutating)
-tx(...)               transaction builder (write operations)
+query(...)               query builder (read-only, for finding entities before mutating)
+create(type, opts?)   create a new entity of a type → write builder
+upsert(type, id)      the entity with this id, created as type when missing → write builder
+write(id)             an existing entity → write builder (throws when no entity has the id)
 EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
 EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains')
 getAll(id)            Record<string, any> — all attributes for a single entity
@@ -39,11 +41,13 @@ createRelation(sourceId, kind, targetId)   create a relation
 removeRelation(sourceId, kind, targetId?)  remove matching relation(s)
 removeRelationById(relationId)             remove one relation by its own id
 
-QUERY API (qx) — use to find entities before mutating:
+QUERY API (query) — use to find entities before mutating:
 
-  qx(EARS.Entity.Thread)                          all of a type
-  qx('Thread-1')                                  single entity by ID
-  .where('field', value)                           filter by attribute
+  query(EARS.Entity.Thread)                          all of a type (a type name only, never an id)
+  query.ids('Thread-1')  /  query.ids([id1, id2])        entities by id (absent ids are dropped)
+  query.all()                                         every entity
+  .where('field', value)                           filter by attribute value
+  .has('field')  /  .lacks('field')                filter by presence / absence
   .linksTo('contains', EARS.Entity.Message)        follow outgoing relations
   .pick(['f1', 'f2'])     → Array<{ id, f1, f2 }>
   .pickAll()              → Array<{ id, ...allAttrs }>
@@ -51,78 +55,82 @@ QUERY API (qx) — use to find entities before mutating:
   .ids()                  → string[]
   .count()                → number
   .first()                → string | null
+  .exists()               → boolean
 
-TRANSACTION API (tx):
+WRITE API (create / upsert / write):
 
-  Create:
-    tx(EARS.Entity.Thread)                         create new entity → chainable
-    tx('Thread-1')                                 reference existing entity → chainable
+  Start:
+    create(EARS.Entity.Thread)                     new entity, new id
+    create(EARS.Entity.Thread, { id, createdAt })  new entity with a given id and/or creation time
+    upsert(EARS.Entity.Thread, 'Thread-1')         get-or-create by id
+    write('Thread-1')                              existing entity
+
+  The database writes id, entityType, createdAt, role and relationDetails itself: never set them.
 
   Attributes (chainable):
-    .put(key, value)                               set attribute (replaces existing)
-    .batchPut({ key1: val1, key2: val2 })          set multiple attributes
-    .update(key, value)                            update existing attribute
-    .updateBatch({ key1: val1 })                   update multiple attributes
-    .merge(key, value)                             merge into existing object/array
-    .drop(key)                                     remove attribute
+    .set(key, value)                               set attribute (replaces existing)
+    .setMany({ key1: val1, key2: val2 })           set several attributes
+    .add(key, value)                               append a value to a multi-valued attribute
+    .merge(key, value)                             merge into existing object
+    .delete(key)                                   remove attribute (every value)
+    .deleteAt(key, index)                          remove one value by index
+    .deleteValue(key, value)                       remove values equal to value
 
   Relations (chainable):
     .link(EARS.RelKind.CONTAINS, targetId)         add relation
-    .linkOne(kind, targetId)                       add/replace single relation
-    .safeLink(kind, targetId, opts?)               link with cycle prevention
-    .unlinkWhere({ kind?, target? })               remove relations by criteria
+    .link(kind, targetId, { info })                add relation carrying info
+    .link(kind, targetId, { replace: true })       add relation, replacing an identical one
+    .link(kind, targetId, { acyclicIn: [kind] })   refuse a link that would form a cycle
+    .unlink(kind, targetId?)                       remove relations of a kind (to one target)
+    .unlinkAll()                                   remove every relation from this entity
 
   Roles (chainable):
     .grant(role)                                   grant role
     .revoke(role)                                  revoke role
-    .ensure(role)                                  grant role, revoke from others
+    .grantExclusive(role, amongIds)                grant role, revoke it from the others in amongIds
 
   Lifecycle:
     .destroy()                                     delete entity (not chainable)
     .id()                                          get entity ID (terminal)
 
-  Bulk:
-    .define({ attributes?, links?, roles? })       set up entity in one call
-
 PATTERNS:
 
 // Create a new entity with attributes
-const threadId = tx(EARS.Entity.Thread)
-  .put('topic', 'New Discussion')
-  .put('status', 'active')
-  .put('createdAt', Date.now())
+const threadId = create(EARS.Entity.Thread)
+  .set('topic', 'New Discussion')
+  .set('status', 'active')
   .id();
 return { created: threadId };
 
 // Update an existing entity
-const threadId = qx(EARS.Entity.Thread).first();
-tx(threadId)
-  .put('status', 'resolved')
-  .put('updatedAt', Date.now());
-return qx(threadId).pickAll();
+const threadId = query(EARS.Entity.Thread).first();
+if (!threadId) return { updated: null };
+write(threadId)
+  .set('status', 'resolved')
+  .set('updatedAt', Date.now());
+return query.ids(threadId).pickAll();
 
 // Create entity with relations
-const flowId = tx(EARS.Entity.Flow)
-  .put('label', 'My Flow')
-  .put('description', 'A workflow')
+const flowId = create(EARS.Entity.Flow)
+  .setMany({ label: 'My Flow', description: 'A workflow' })
   .id();
-const nodeId = tx(EARS.Entity.Node)
-  .put('type', 'action')
-  .put('label', 'Step 1')
+const nodeId = create(EARS.Entity.Node)
+  .setMany({ type: 'action', label: 'Step 1' })
   .id();
-tx(flowId).link(EARS.RelKind.CONTAINS, nodeId);
+write(flowId).link(EARS.RelKind.CONTAINS, nodeId);
 return { flowId, nodeId };
 
 // Bulk delete entities
-const ids = qx(EARS.Entity.Thread)
+const ids = query(EARS.Entity.Thread)
   .where('status', 'archived')
   .limit(10)
   .ids();
-ids.forEach(id => tx(id).destroy());
+ids.forEach(id => write(id).destroy());
 return { deleted: ids.length };
 
 // Grant/revoke roles
-const noteId = qx(EARS.Entity.Note).first();
-tx(noteId).grant('primary').revoke('inactive');
+const noteId = query(EARS.Entity.Note).first();
+if (!noteId) return { noteId: null };
+write(noteId).grant('primary').revoke('inactive');
 return { noteId, roles: getRoles(noteId) };`;
 }

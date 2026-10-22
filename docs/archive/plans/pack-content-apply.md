@@ -521,7 +521,7 @@ chain (~170s) rather than a warm one. Phase 3 rewrites the manifest of every pac
   a key the content drops leaves it. That is the lesson of `appliedContent`, which records what the content
   defines rather than everything it ever defined.
 - **Not a trash for flows and library documents.** Making those entities soft-delete would give recovery,
-  and it is a separate change: library reads entities straight off relation walks with raw `qx(...).pickAll()` —
+  and it is a separate change: library reads entities straight off relation walks with raw `query(...).pickAll()` —
   19 sites in 4 files with no filtered read anywhere — flows and the brain another 4, and neither `linksTo`
   nor `findRelations` filters `deleted`.
 - **Not a manifest redesign.** `content.datasets` is added here because `faqs` needs it and it is two lines

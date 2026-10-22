@@ -1,26 +1,19 @@
-import { qx } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import * as fs from 'fs/promises'
 
 import { EARS } from '#generated/ears.ts'
 import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderItem, FolderContents, BreadcrumbItem } from '../types.ts'
-import {
-  findParentCollection,
-  isRootCollection,
-  findDocumentCollection,
-  getDisplayOrder,
-  getCollectionPath,
-  formatFileSize,
-  getContentLength
-} from './helpers.ts'
+import { parentCollectionOf, collectionOfDocument, displayOrderOf, collectionPath } from '@apackdev/sdk/repositories'
+import { isRootCollection, formatFileSize, getContentLength } from './helpers.ts'
 import { isSymlinkId, isSymlinkCollection, getSymlinkFolderContents, resolveSymlinkPath } from './symlink.ts'
 import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
 
 export const libraryQueries = {
   getDocuments(collectionId?: string): DocumentDTO[] {
-    let query = qx(EARS.Entity.Document)
+    const allDocuments = query(EARS.Entity.Document)
 
     if (collectionId) {
-      const documentsInCollection = qx(collectionId as EARS.EntityId)
+      const documentsInCollection = query.ids(collectionId as EARS.EntityId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
 
@@ -31,17 +24,17 @@ export const libraryQueries = {
       return documents.filter((doc): doc is DocumentDTO => doc !== null)
     }
 
-    const documents = query.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
+    const documents = allDocuments.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder', 'documentType'])
 
     const documentsWithDetails = documents.map((doc) => {
       const tags = doc.tags || []
 
       // Find collection that contains this document
-      const collectionId = findDocumentCollection(doc.id as EARS.EntityId)
-      const collection = collectionId ? qx(collectionId).pickAll()[0] : null
+      const collectionId = collectionOfDocument(doc.id as EARS.EntityId)
+      const collection = collectionId ? query.ids(collectionId).pickAll()[0] : null
 
-      const collectionPath = collection
-        ? getCollectionPath(collection.id as EARS.EntityId)
+      const path = collection
+        ? collectionPath(collection.id as EARS.EntityId)
         : []
 
       return {
@@ -50,9 +43,10 @@ export const libraryQueries = {
         content: doc.content as ContentSection[],
         shortCode: doc.shortCode as DocumentShortCode,
         tags: tags as string[],
+        documentType: doc.documentType as string | undefined,
         collectionId: collection?.id,
-        collectionPath,
-        displayOrder: getDisplayOrder(doc),
+        collectionPath: path,
+        displayOrder: displayOrderOf(doc),
         createdAt: new Date(doc.createdAt as number).toISOString(),
         updatedAt: new Date(doc.updatedAt as number || doc.createdAt as number).toISOString(),
       }
@@ -63,19 +57,19 @@ export const libraryQueries = {
 
   findDocument(id: EARS.EntityId): DocumentDTO | null {
     const documentId = id
-    const documents = qx(documentId).pickAll()
+    const documents = query.ids(documentId).pickAll()
     const document = documents[0]
 
     if (!document) return null
 
     const tags = document.tags || []
 
-    const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
-      qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
+    const collection = query(EARS.Entity.Collection).pickAll().find(col => 
+      query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
     )
 
-    const collectionPath = collection
-      ? getCollectionPath(collection.id as EARS.EntityId)
+    const path = collection
+      ? collectionPath(collection.id as EARS.EntityId)
       : []
 
     return {
@@ -85,15 +79,15 @@ export const libraryQueries = {
       shortCode: document.shortCode as DocumentShortCode,
       tags: tags as string[],
       collectionId: collection?.id,
-      collectionPath,
-      displayOrder: getDisplayOrder(document),
+      collectionPath: path,
+      displayOrder: displayOrderOf(document),
       createdAt: new Date(document.createdAt as number).toISOString(),
       updatedAt: new Date(document.updatedAt as number || document.createdAt as number).toISOString(),
     }
   },
 
   findDocumentByShortCode(shortCode: DocumentShortCode): DocumentDTO | null {
-    const documents = qx(EARS.Entity.Document)
+    const documents = query(EARS.Entity.Document)
       .where('shortCode', shortCode)
       .pickAll()
     
@@ -107,13 +101,13 @@ export const libraryQueries = {
   /** Every document and folder by name, for the reference picker and the panel's stats */
   getIndex(): LibraryIndex {
     return {
-      documents: qx(EARS.Entity.Document).pick(['name', 'shortCode', 'tags']).map((doc) => ({
+      documents: query(EARS.Entity.Document).pick(['name', 'shortCode', 'tags']).map((doc) => ({
         id: doc.id,
         name: doc.name as string,
         shortCode: doc.shortCode as DocumentShortCode,
         tags: (doc.tags as string[] | undefined) ?? [],
       })),
-      folders: qx(EARS.Entity.Collection).pick(['name']).map((col) => ({
+      folders: query(EARS.Entity.Collection).pick(['name']).map((col) => ({
         id: col.id,
         name: col.name as string,
       })),
@@ -121,7 +115,7 @@ export const libraryQueries = {
   },
 
   getCollections(): CollectionDTO[] {
-    const rootCollections = qx(EARS.Entity.Collection)
+    const rootCollections = query(EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])
       .filter(col => isRootCollection(col.id as EARS.EntityId))
 
@@ -130,10 +124,10 @@ export const libraryQueries = {
         id: col.id,
         name: col.name as string,
         description: col.description as string | undefined,
-        path: getCollectionPath(col.id as EARS.EntityId),
-        documentCount: qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().length,
-        childCollections: buildTree(qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])),
-        displayOrder: getDisplayOrder(col),
+        path: collectionPath(col.id as EARS.EntityId),
+        documentCount: query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().length,
+        childCollections: buildTree(query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])),
+        displayOrder: displayOrderOf(col),
         createdAt: new Date(col.createdAt as number).toISOString(),
         updatedAt: new Date(col.updatedAt as number || col.createdAt as number).toISOString(),
         ...(col.symlinkPath ? { symlinkPath: col.symlinkPath as string } : {}),
@@ -158,7 +152,7 @@ export const libraryQueries = {
 
     if (folderId === null) {
       // Root directory - get collections without parents
-      const allCollections = qx(EARS.Entity.Collection).pickAll()
+      const allCollections = query(EARS.Entity.Collection).pickAll()
       for (const col of allCollections) {
         if (isRootCollection(col.id as EARS.EntityId)) {
           folders.push(col)
@@ -166,7 +160,7 @@ export const libraryQueries = {
       }
     } else {
       // Get child collections of this folder
-      folders = qx(folderId)
+      folders = query.ids(folderId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .pickAll()
     }
@@ -174,10 +168,10 @@ export const libraryQueries = {
     // Convert collections to folder items
     for (const folder of folders) {
       const itemId = folder.id
-      const childCollections = qx(itemId as EARS.EntityId)
+      const childCollections = query.ids(itemId as EARS.EntityId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .pickAll()
-      const documents = qx(itemId as EARS.EntityId)
+      const documents = query.ids(itemId as EARS.EntityId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
       const childCount = childCollections.length + documents.length
@@ -191,7 +185,7 @@ export const libraryQueries = {
         childCount,
         size: '--',
         kind: 'Folder',
-        displayOrder: getDisplayOrder(folder),
+        displayOrder: displayOrderOf(folder),
         createdAt: new Date(folder.createdAt as number).toISOString(),
         updatedAt: new Date(folder.updatedAt as number || folder.createdAt as number).toISOString(),
       }
@@ -215,10 +209,10 @@ export const libraryQueries = {
     
     if (folderId === null) {
       // Root directory - get documents not in any collection
-      documents = qx(EARS.Entity.Document).pickAll().filter(doc => !findDocumentCollection(doc.id))
+      documents = query(EARS.Entity.Document).pickAll().filter(doc => !collectionOfDocument(doc.id))
     } else {
       // Get documents in this collection
-      documents = qx(folderId)
+      documents = query.ids(folderId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
     }
@@ -245,14 +239,14 @@ export const libraryQueries = {
         tags: tags as string[],
         size,
         kind: 'Document',
-        displayOrder: getDisplayOrder(doc),
+        displayOrder: displayOrderOf(doc),
         createdAt: new Date(doc.createdAt as number).toISOString(),
         updatedAt: new Date(doc.updatedAt as number || doc.createdAt as number).toISOString(),
       })
     }
     
     // Get current path and breadcrumbs
-    const currentPath = folderId ? getCollectionPath(folderId) : []
+    const currentPath = folderId ? collectionPath(folderId) : []
     const breadcrumbs = this.getFolderPath(folderId)
     
     return {
@@ -283,7 +277,7 @@ export const libraryQueries = {
     
     // Walk up the parent chain to build breadcrumbs
     while (currentId) {
-      const collections = qx(currentId).pickAll()
+      const collections = query.ids(currentId).pickAll()
       const collection = collections[0]
       if (collection) {
         breadcrumbs.unshift({
@@ -294,19 +288,19 @@ export const libraryQueries = {
       }
       
       // Find parent
-      currentId = findParentCollection(currentId)
+      currentId = parentCollectionOf(currentId)
     }
     
     return breadcrumbs
   },
 
   getParentFolderId(folderId: EARS.EntityId): EARS.EntityId | null {
-    return findParentCollection(folderId)
+    return parentCollectionOf(folderId)
   },
 
 
   getDocumentsInCollection(collectionId: EARS.EntityId): DocumentDTO[] {
-    const documentIds = qx(collectionId)
+    const documentIds = query.ids(collectionId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .ids()
     
@@ -333,18 +327,18 @@ export const libraryQueries = {
   },
 
   getAllDocuments(): DocumentDTO[] {
-    const documents = qx(EARS.Entity.Document)
+    const documents = query(EARS.Entity.Document)
       .pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
 
     const documentsWithDetails = documents.map((doc) => {
       const tags = doc.tags || []
 
       // Find collection that contains this document
-      const collectionLinks = qx(doc.id as EARS.EntityId)
+      const collectionLinks = query.ids(doc.id as EARS.EntityId)
         .links(EARS.RelKind.CONTAINS, EARS.Entity.Collection, false)
-      const collection = collectionLinks.length > 0 ? qx(collectionLinks[0].id).pickAll()[0] : null
+      const collection = collectionLinks.length > 0 ? query.ids(collectionLinks[0].id).pickAll()[0] : null
 
-      const collectionPath = collection ? getCollectionPath(collection.id as EARS.EntityId) : []
+      const path = collection ? collectionPath(collection.id as EARS.EntityId) : []
 
       return {
         id: doc.id,
@@ -353,7 +347,7 @@ export const libraryQueries = {
         shortCode: doc.shortCode as DocumentShortCode,
         tags: tags as string[],
         collectionId: collection?.id,
-        collectionPath,
+        collectionPath: path,
         displayOrder: doc.displayOrder as number || 0,
         createdAt: new Date(doc.createdAt).toISOString(),
         updatedAt: new Date(doc.updatedAt ?? doc.createdAt).toISOString(),

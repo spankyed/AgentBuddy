@@ -164,11 +164,17 @@ export function packRootOf(from: string, root: string): string {
   return path.dirname(fs.statSync(from).isFile() ? path.dirname(from) : from);
 }
 
-/** The source files under each of `dirs`, each of which may be a directory or a single file */
+/**
+ * The source files under each of `dirs`, each of which may be a directory or a single file.
+ *
+ * It skips `SKIPPED_DIRS`, as `packDirs` does. `sourceFiles` alone skips only `node_modules` and `dist`, so a walk
+ * over a whole package descended into `.apack/` — where a concurrent `apack pack build` writes and removes its
+ * staged output — and failed a chain run with ENOENT on a file that existed when it was listed.
+ */
 export function filesUnder(dirs: readonly string[], root: string): string[] {
   return dirs.flatMap((dir) => {
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) return [];
-    return fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
+    return fs.statSync(full).isFile() ? [full] : [...sourceFiles(full, (name) => SKIPPED_DIRS.test(name))];
   });
 }

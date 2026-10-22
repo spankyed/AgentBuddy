@@ -29,7 +29,7 @@ describe('native declaration admission', () => {
     }
   });
 
-  it('requires compiled native editor data and rejects definitions without a declared target', () => {
+  it('requires compiled native text editor data and rejects definitions without a declared target', () => {
     const { dslDefinitions, ...missing } = declaration;
     expect(_nativePackDeclarationProblem(missing)).toContain('Missing compiled Monaco');
     expect(_nativePackDeclarationProblem({ ...declaration, dslDefinitions: { ...dslDefinitions, foreign: '' } })).toContain('undeclared DSL "foreign"');

@@ -92,10 +92,12 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 | Action | `apack pack add action <name> [--category <cat>]` | `src/content/actions/<category>/<name>.ts` (category defaults to the pack id) |
 | Prompt | `apack pack add prompt <name>` | `src/content/prompts/<name>.ts` |
 | Flow | `apack pack add flow <name>` | `src/content/flows/<name>.ts`. Needs a dependency that provides flow steps (e.g. `default-setup`) |
+| Command | `apack pack add command <name> [--placeholder <text>] [--document <name>] [--folder <name>]` | A chat slash command: one `**<name>**: <placeholder>` line in a document under the `commands`-format source. A command is a line rather than a document, so one named with `--document` that already exists gains the line in its field section — several commands take no markdown editing in between. Refuses a name that document already defines, and a document with no field section |
+| Document | `apack pack add document <name> [--content <text>] [--section <type>] [--folder <name>] [--tag <tag>]` | A library document under the `library`-format source. `--content` is the body, written as given — so a caller that already has the text needs no second step, and content holding its own `<!-- section:… -->` markers writes several sections. Without it the body explains the convention instead |
 | Service | `apack pack add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `extensions.services`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
 | Migration | `apack pack add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting `up()`, with a declarative description and function reference under `migrations.pack` (or `migrations.app` with `--app`). Version defaults to the manifest's |
 
-`add feature`, `add service`, `add step`, `add artifact` and `add block` each declare what they add in `apack.json` and then run `generate-entries`, because the manifest entry is the whole declaration and codegen is what carries it into the pack's entries — there is no barrel to edit. `add migration` declares its own entry too. `add action`, `add prompt` and `add flow` only write files, their content being found by the directory `content.sources` already names. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@apackdev/sdk`: the files and `apack.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
+`add feature`, `add service`, `add step`, `add artifact` and `add block` each declare what they add in `apack.json` and then run `generate-entries`, because the manifest entry is the whole declaration and codegen is what carries it into the pack's entries — there is no barrel to edit. `add migration` declares its own entry too. `add action`, `add prompt` and `add flow` only write files, their content being found by the directory `content.sources` already names. `add command` and `add document` are between the two: each writes a markdown document and declares the source for it when the pack has none, naming the pack's own format (`commands`, `library`) or a dependency's (`default-setup:commands`, `default-setup:library`) — one or the other has to exist, or nothing would compile the document. `--folder` nests it, which the format reads as the collection holding it. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@apackdev/sdk`: the files and `apack.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
 
 **`add feature`.** The name is the feature id: a lowercase letter, then letters and digits (`notes`, `calendarEvents`), because it becomes an identifier in generated code. `--designation`, if given, names the role it plays and may differ from the feature id. It creates:
 
@@ -276,7 +278,7 @@ that app published — one process per question, no session to stand up and noth
 apack pack dev                                   # one terminal: holds the app
 apack pack drive --state                         # another: 0.9s
 apack pack drive --eval 'return window.appVersion'
-apack pack drive --query 'return qx(EARS.Entity.Note).count()'
+apack pack drive --query 'return query(EARS.Entity.Note).count()'
 ```
 
 With no app running it exits 3 and says so. `--spawn` starts one and keeps it, so a cold checkout costs
@@ -695,7 +697,7 @@ app afterwards.
 `apack db` reads and changes the app's database (EARS on LMDB) from the command line: to look at data, repair it when the app can't start, or move it between machines.
 
 ```bash
-apack db query "return qx(EARS.Entity.Note).count()"
+apack db query "return query(EARS.Entity.Note).count()"
 apack db inspect Flow-123 --depth 2
 apack db export --out ./export
 apack db import ./apack-backup-2026-09-17 --profile production --force
@@ -721,19 +723,19 @@ While a command changes the database it holds a lock on the data dir (`db-write.
 
 #### `apack db query <code> | --file <path> [-o pretty|json|csv] [--out <file>]`
 
-Run query code with the Database console's read helpers: `qx`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `queryEntitiesByAttribute`, `queryEntitiesByRelationTo`, `queryEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`apack db script`) can.
+Run query code with the Database console's read helpers: `query`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `findEntitiesByAttribute`, `findEntitiesByRelationTo`, `findEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`apack db script`) can.
 
 ```bash
-apack db query "return qx(EARS.Entity.Settings).pickAll()" -o json --out settings.json
+apack db query "return query(EARS.Entity.Settings).pickAll()" -o json --out settings.json
 apack db query --file ./report.js -o csv
 ```
 
 #### `apack db exec <code> | --file <path> [-o pretty|json|csv] [--out <file>]` (names its data dir)
 
-Run transaction code with the console's read and write helpers (`tx`, `destroyEntity`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `createRelation`, `removeRelation`, `removeRelationById`, `grantRole`, `revokeRole`). Despite the name, the code is not one transaction: each helper writes as the code runs, so code that throws part way leaves the writes it already made — the failure says so, and there is nothing to roll back. A write that fails to reach the files fails the command.
+Run transaction code with the console's read and write helpers (`create`, `upsert`, `write`, `destroyEntity`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `createRelation`, `removeRelation`, `removeRelationById`, `grantRole`, `revokeRole`). The code runs as one transaction: if it throws part way, none of its writes are kept, and the failure says so. It is synchronous — `await` doesn't parse, and code returning a promise is refused — since an await would split the transaction. A write that fails to reach the files fails the command.
 
 ```bash
-apack db exec "tx('Note-123').put('title', 'Renamed')"
+apack db exec "write('Note-123').set('title', 'Renamed')"
 ```
 
 #### `apack db repl [--write]` (`--write` names its data dir)
@@ -747,9 +749,9 @@ Run a script file against the database, for work a one-liner can't do: it import
 ```ts
 // notes-report.ts
 export default async ({ db, EARS, args, log }) => {
-  const notes = db.query.getEntitiesOfType(EARS.Entity.Note);
+  const notes = db.ears.getEntitiesOfType(EARS.Entity.Note);
   log(`${notes.length} notes`);
-  return notes.map((id) => db.query.getAll(id));
+  return notes.map((id) => db.ears.getAll(id));
 };
 ```
 
@@ -760,7 +762,7 @@ apack db script ./cleanup.ts --profile development -- --older-than 30
 
 | It receives | |
 |---|---|
-| `db` | the open database: `query` (`qx`, `tx`, the finders), `admin`, `store`, `schema`, `paths`, `userDataDir` |
+| `db` | the open database: `query` (`query`, `create`, `upsert`, `write`, the finders), `admin`, `store`, `schema`, `paths`, `userDataDir` |
 | `EARS` | the entity types and relation kinds of the packs installed in that data dir |
 | `args` | whatever follows `--` |
 | `log` | prints a line, like the script's own output |
@@ -789,7 +791,7 @@ No backup holds the secrets — `export` and the Database settings' backups copy
 
 Destroy every Settings row (the user's changes to the default settings); the app recreates the defaults on its next start. Without `--force` it lists each row and the settings it stores.
 
-In the apack repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return qx().count()"`.
+In the apack repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return query.all().count()"`.
 
 ### Cleanup
 

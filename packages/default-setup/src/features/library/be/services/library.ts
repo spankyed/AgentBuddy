@@ -2,10 +2,8 @@ import * as path from 'path'
 import { repository } from '#generated/repository.ts';
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '#features/library/be/types.ts';
 import { EARS } from '#generated/ears.ts';
-import { getPackCommands } from '@apackdev/sdk/framework';
 import * as symlink from '#features/library/be/repository/symlink.ts';
 import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
-import type { CommandItem } from '#generated/types.ts';
 
 
 // ---------------------------------------------------------------------------
@@ -59,12 +57,6 @@ function makeSymlinkCollectionDTO(id: string, name: string): CollectionDTO {
   } as CollectionDTO
 }
 
-/** The library folder whose documents list the chat's slash commands, one `**name**: placeholder` field per command */
-const COMMANDS_FOLDER = ['internal', 'commands'] as const
-
-const inCommandsFolder = (doc: DocumentDTO): boolean =>
-  (doc.collectionPath ?? []).join('/') === COMMANDS_FOLDER.join('/')
-
 // ---------------------------------------------------------------------------
 // LibraryService
 // ---------------------------------------------------------------------------
@@ -108,30 +100,6 @@ export class LibraryService {
     });
   }
 
-  /**
-   * The chat's slash commands: eligible pack declarations in catalog order, then the field sections
-   * of every document in the commands folder, in document
-   * order (then name). A command defined twice keeps the first, so a document can't shadow a declared one.
-   */
-  commands(): CommandItem[] {
-    const documents = repository.libraryQueries.getDocuments()
-      .filter(inCommandsFolder)
-      .sort((a: DocumentDTO, b: DocumentDTO) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name))
-    const commands = new Map<string, CommandItem>()
-    for (const command of getPackCommands()) {
-      if (!commands.has(command.name)) commands.set(command.name, { name: command.name, placeholder: command.placeholder })
-    }
-    for (const document of documents) {
-      for (const section of document.content) {
-        if (section.type !== 'field') continue
-        for (const field of section.fields) {
-          if (!commands.has(field.key)) commands.set(field.key, { name: field.key, placeholder: field.value })
-        }
-      }
-    }
-    return [...commands.values()]
-  }
-
   async getText(id: EARS.EntityId): Promise<string | undefined> {
     const doc = await this.find(id)
     if (!doc) return undefined
@@ -153,6 +121,8 @@ export class LibraryService {
     content: string | ContentSection[];
     tags?: string[];
     parentId?: string;
+    /** What the document is: `commands` makes it a slash-command list */
+    documentType?: string;
   }): Promise<DocumentDTO> {
     const { name, parentId } = params
     const content = normalizeContent(params.content)
@@ -182,7 +152,10 @@ export class LibraryService {
       name,
       content,
       tags,
-      parentId ? parentId as EARS.EntityId : undefined
+      parentId ? parentId as EARS.EntityId : undefined,
+      undefined,
+      undefined,
+      params.documentType,
     )
   }
 
@@ -332,3 +305,10 @@ export class LibraryService {
 }
 
 export const libraryService = new LibraryService();
+
+/**
+ * What this pack serves under the `commands` designation.
+ *
+ * A function rather than a list, because the rows are content the user edits: the registry calls it on
+ * every read, so there is nothing to invalidate when a command document changes.
+ */

@@ -11,9 +11,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createEarsEngine, installEngine, makePolicy, untypedTx, getEntitiesOfType, type EARS, type EarsEngine } from '../../src/index.ts';
+import { createEarsEngine, makePolicy, type EARS, type EarsEngine } from '../../src/index.ts';
 import { open as openEnv } from 'lmdb';
-import { LMDB_FORMAT_VERSION, openLmdbStore, type LmdbStore, type LmdbStoreOptions } from '../../src/lmdb/index.ts';
+import { LMDB_FORMAT_VERSION, convertToFormat2, openLmdbStore, type LmdbStore, type LmdbStoreOptions } from '../../src/lmdb/index.ts';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ears-lmdb-store-'));
 const policy = makePolicy({ excludedEntityTypes: new Set(['Trace']) });
@@ -24,12 +24,11 @@ let engine: EarsEngine;
 /** A store and a new engine persisting to it, installed, as an app's composition opens them */
 function openStore(options: Pick<LmdbStoreOptions, 'readOnly' | 'log'> = {}): LmdbStore {
   const store = openLmdbStore({ paths, policy, engine: () => engine.admin, ...options });
-  engine = createEarsEngine({ persistence: store.sink, isEntityType: () => false });
-  installEngine(engine.query);
+  engine = createEarsEngine({ persistence: store.sink, isEntityType: (name) => name === 'Note' || name === 'Trace' });
   open.push(store);
   return store;
 }
-const getAttr = (entity: EARS.EntityId, kind: string) => engine.query.getAttr(entity, kind);
+const getAttr = (entity: EARS.EntityId, kind: string) => engine.getAttr(entity, kind);
 
 /** The adapter flushes in a microtask */
 const flushed = () => new Promise<void>((resolve) => setImmediate(resolve));
@@ -41,28 +40,49 @@ beforeEach(() => {
 });
 afterEach(() => {
   for (const store of open.splice(0)) store.close();
-  installEngine(undefined);
 });
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
 describe('openLmdbStore', () => {
+  it('stores nothing of a unit that throws, a destroy included, and all of one that returns', async () => {
+    const first = openStore();
+    engine.create('Note', { id: id('Note-1') }).set('title', 'kept');
+    await flushed();
+
+    expect(() => engine.transact(() => {
+      engine.write(id('Note-1')).destroy();
+      engine.create('Note', { id: id('Note-2') }).set('title', 'never');
+      throw new Error('stop');
+    })).toThrow('stop');
+    engine.transact(() => { engine.create('Note', { id: id('Note-3') }).set('title', 'committed'); });
+    await flushed();
+    first.close();
+
+    const second = openStore();
+    await second.hydrate();
+    expect(getAttr(id('Note-1'), 'title')).toBe('kept');
+    expect(getAttr(id('Note-2'), 'title')).toBeNull();
+    expect(getAttr(id('Note-3'), 'title')).toBe('committed');
+  });
+
   it('persists writes across a close and a new store on the same paths', async () => {
     const first = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'kept');
-    untypedTx(id('Trace-1'), true).put('step', 'volatile');
-    untypedTx(id('Note-1')).link('mentions', id('Note-2'));
+    engine.create('Note', { id: id('Note-1') }).set('title', 'kept');
+    engine.create('Note', { id: id('Note-2') }).set('title', 'mentioned');
+    engine.create('Trace', { id: id('Trace-1') }).set('step', 'volatile');
+    engine.write(id('Note-1')).link('mentions', id('Note-2'));
     await flushed();
     first.close();
 
     // A new engine: nothing in memory
     const second = openStore();
-    expect(getEntitiesOfType('Relation')).toEqual([]);
+    expect(engine.getEntitiesOfType('Relation')).toEqual([]);
     await second.hydrate();
     expect(getAttr(id('Note-1'), 'title')).toBe('kept');
-    expect(getEntitiesOfType('Relation')).toHaveLength(1);
+    expect(engine.getEntitiesOfType('Relation')).toHaveLength(1);
     // Only the primary partition is hydrated; the volatile one is read directly
     expect(getAttr(id('Trace-1'), 'step')).toBeNull();
-    expect(second.query('volatileBackup').getFirstAttr('step', 'Trace-1')).toBe('volatile');
+    expect(second.read('volatileBackup').getFirstAttr('step', 'Trace-1')).toBe('volatile');
 
     await second.hydrate({ includeVolatile: true });
     expect(getAttr(id('Trace-1'), 'step')).toBe('volatile');
@@ -74,57 +94,57 @@ describe('openLmdbStore', () => {
     store.close();
     expect(store.isOpen()).toBe(false);
     expect(() => store.envs).toThrow('The LMDB store is closed');
-    untypedTx(id('Note-dropped'), true).put('title', 'lost');
+    engine.create('Note', { id: id('Note-dropped') }).set('title', 'lost');
 
     store.reopen();
     expect(store.isOpen()).toBe(true);
     expect(store.sink).toBe(sink);
-    untypedTx(id('Note-after'), true).put('title', 'saved');
+    engine.create('Note', { id: id('Note-after') }).set('title', 'saved');
     await flushed();
-    expect(store.query('primary').getFirstAttr('title', 'Note-after')).toBe('saved');
-    expect(store.query('primary').getEntityMeta('Note-dropped')).toBeNull();
+    expect(store.read('primary').getFirstAttr('title', 'Note-after')).toBe('saved');
+    expect(store.read('primary').getEntityMeta('Note-dropped')).toBeNull();
   });
 
   it('reset deletes the files and opens the store empty', async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'gone');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'gone');
     await flushed();
     await store.reset();
     expect(store.isOpen()).toBe(true);
-    expect(store.query('primary').getEntityMeta('Note-1')).toBeNull();
+    expect(store.read('primary').getEntityMeta('Note-1')).toBeNull();
     // The engine's memory is the caller's
     expect(getAttr(id('Note-1'), 'title')).toBe('gone');
   });
 
   it('writes what the engine wrote while a reset had the store closed to the new files', async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'gone');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'gone');
     await flushed();
 
     const resetting = store.reset();
     // A system still running writes while the files are being replaced
     expect(store.isOpen()).toBe(false);
-    untypedTx(id('Note-2'), true).put('title', 'written during the reset');
+    engine.create('Note', { id: id('Note-2') }).set('title', 'written during the reset');
     await resetting;
     await flushed();
 
-    expect(store.query('primary').getEntityMeta('Note-1')).toBeNull();
-    expect(store.query('primary').getFirstAttr('title', 'Note-2')).toBe('written during the reset');
+    expect(store.read('primary').getEntityMeta('Note-1')).toBeNull();
+    expect(store.read('primary').getFirstAttr('title', 'Note-2')).toBe('written during the reset');
     // A store closed any other way still drops writes
     store.close();
-    untypedTx(id('Note-3'), true).put('title', 'dropped');
+    engine.create('Note', { id: id('Note-3') }).set('title', 'dropped');
     store.reopen();
     await flushed();
-    expect(store.query('primary').getEntityMeta('Note-3')).toBeNull();
+    expect(store.read('primary').getEntityMeta('Note-3')).toBeNull();
   });
 
   it("keeps a run's history link when the entity it ran is destroyed, and removes it with the run or an unlink", async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'ran');
-    untypedTx(id('Note-2'), true).put('title', 'ran too');
-    untypedTx(id('Trace-1'), true).put('step', 'run');
-    untypedTx(id('Trace-2'), true).put('step', 'run');
-    untypedTx(id('Trace-3'), true).put('step', 'run');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'ran');
+    engine.create('Note', { id: id('Note-2') }).set('title', 'ran too');
+    engine.create('Trace', { id: id('Trace-1') }).set('step', 'run');
+    engine.create('Trace', { id: id('Trace-2') }).set('step', 'run');
+    engine.create('Trace', { id: id('Trace-3') }).set('step', 'run');
     const kept = engine.admin.addRelation(id('Trace-1'), 'instance_of', id('Note-1'));
     const withRun = engine.admin.addRelation(id('Trace-2'), 'instance_of', id('Note-2'));
     const unlinked = engine.admin.addRelation(id('Trace-3'), 'instance_of', id('Note-2'));
@@ -132,50 +152,50 @@ describe('openLmdbStore', () => {
     await flushed();
     const stored = (rel: EARS.EntityId) => store.envs.volatileBackup.relations.get(rel) ?? store.envs.primary.relations.get(rel);
 
-    untypedTx(id('Note-1')).destroy();
-    untypedTx(id('Trace-2')).destroy();
-    engine.query.removeRelationById(unlinked);
+    engine.write(id('Note-1')).destroy();
+    engine.write(id('Trace-2')).destroy();
+    engine.removeRelationById(unlinked);
     await flushed();
 
     // The run's record still says which node it ran; the node and its own relations are gone
     expect(stored(kept)).toMatchObject({ kind: 'instance_of', src: 'Trace-1', tgt: 'Note-1' });
     expect(stored(between)).toBeUndefined();
-    expect(store.query('primary').getEntityMeta('Note-1')).toBeNull();
+    expect(store.read('primary').getEntityMeta('Note-1')).toBeNull();
     expect(stored(withRun)).toBeUndefined();
     expect(stored(unlinked)).toBeUndefined();
     // Memory drops it with the node
-    expect(engine.query.findRelations({ sourceEntity: id('Trace-1') })).toEqual([]);
+    expect(engine.findRelations({ sourceEntity: id('Trace-1') })).toEqual([]);
   });
 
   it("keeps a history link it didn't see written when the other end is destroyed", async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'ran');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'ran');
     const rel = engine.admin.addRelation(id('Trace-1'), 'instance_of', id('Note-1'));
     await flushed();
     store.reopen();
-    untypedTx(id('Note-1')).destroy();
+    engine.write(id('Note-1')).destroy();
     await flushed();
     expect(store.envs.volatileBackup.relations.get(rel)).toMatchObject({ src: 'Trace-1', tgt: 'Note-1' });
   });
 
   it("removes a relation it didn't see written, wherever it is", async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'a');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'a');
     const rel = engine.admin.addRelation(id('Note-1'), 'mentions', id('Trace-1'));
     await flushed();
     expect(store.envs.volatileBackup.relations.get(rel)).toMatchObject({ kind: 'mentions', src: 'Note-1', tgt: 'Trace-1' });
     // A reopened store's sink has no relation cache
     store.reopen();
-    engine.query.removeRelationById(rel);
+    engine.removeRelationById(rel);
     await flushed();
     expect(store.envs.volatileBackup.relations.get(rel)).toBeUndefined();
   });
 
   it("moves a relation it didn't see written to its new ends' partition, by the engine's details", async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'a');
-    untypedTx(id('Note-2'), true).put('title', 'b');
-    untypedTx(id('Trace-1'), true).put('step', 's');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'a');
+    engine.create('Note', { id: id('Note-2') }).set('title', 'b');
+    engine.create('Trace', { id: id('Trace-1') }).set('step', 's');
     const rel = engine.admin.addRelation(id('Note-1'), 'mentions', id('Note-2'), { why: 'x' });
     await flushed();
     expect(store.envs.primary.relations.get(rel)).toMatchObject({ src: 'Note-1', tgt: 'Note-2' });
@@ -189,9 +209,9 @@ describe('openLmdbStore', () => {
 
   it("updates a relation it didn't see written in place when its partition doesn't change", async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'a');
-    untypedTx(id('Note-2'), true).put('title', 'b');
-    untypedTx(id('Note-3'), true).put('title', 'c');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'a');
+    engine.create('Note', { id: id('Note-2') }).set('title', 'b');
+    engine.create('Note', { id: id('Note-3') }).set('title', 'c');
     const rel = engine.admin.addRelation(id('Note-1'), 'mentions', id('Note-2'));
     await flushed();
     const { createdAt } = store.envs.primary.relations.get(rel);
@@ -206,31 +226,34 @@ describe('openLmdbStore', () => {
 
   it('keeps an entity destroyed right after its writes, and a removed relation, out of the files', async () => {
     const first = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'kept');
-    untypedTx(id('Note-2'), true).put('title', 'ghost');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'kept');
+    engine.create('Note', { id: id('Note-2') }).set('title', 'ghost');
     const rel = engine.admin.addRelation(id('Note-1'), 'mentions', id('Note-1'));
     await flushed();
-    expect(first.query('primary').getEntityMeta(rel)).not.toBeNull();
+    // A relation is its row in the relations table, and no entity row
+    expect(first.envs.primary.relations.get(rel)).toBeTruthy();
+    expect(first.read('primary').getEntityMeta(rel)).toBeNull();
     // In the same synchronous block as its writes, before they're flushed
-    untypedTx(id('Note-2')).put('title', 'ghost again');
-    untypedTx(id('Note-2')).destroy();
-    engine.query.removeRelationById(rel);
+    engine.write(id('Note-2')).set('title', 'ghost again');
+    engine.write(id('Note-2')).destroy();
+    engine.removeRelationById(rel);
     await flushed();
-    expect(first.query('primary').getEntityMeta('Note-2')).toBeNull();
-    expect(first.query('primary').getEntityMeta(rel)).toBeNull();
+    expect(first.read('primary').getEntityMeta('Note-2')).toBeNull();
+    expect(first.envs.primary.relations.get(rel)).toBeUndefined();
     first.close();
 
     const second = openStore();
     await second.hydrate();
     expect(getAttr(id('Note-1'), 'title')).toBe('kept');
-    expect(engine.query.getAll(id('Note-2'))).toEqual({});
-    expect(getEntitiesOfType('Note')).toEqual(['Note-1']);
-    expect(getEntitiesOfType('Relation')).toEqual([]);
+    expect(engine.getAll(id('Note-2'))).toEqual({});
+    expect(engine.getEntitiesOfType('Note')).toEqual(['Note-1']);
+    expect(engine.getEntitiesOfType('Relation')).toEqual([]);
   });
 
   it('opens existing files read-only: it hydrates them, and refuses writes and a reset', async () => {
     const first = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'kept').link('mentions', id('Note-2'));
+    engine.create('Note', { id: id('Note-2') }).set('title', 'mentioned');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'kept').link('mentions', id('Note-2'));
     await flushed();
     first.close();
 
@@ -240,30 +263,30 @@ describe('openLmdbStore', () => {
     expect(readOnly.paths).toEqual(paths);
     await readOnly.hydrate();
     expect(getAttr(id('Note-1'), 'title')).toBe('kept');
-    expect(getEntitiesOfType('Relation')).toHaveLength(1);
+    expect(engine.getEntitiesOfType('Relation')).toHaveLength(1);
     expect(lines).toContain('[LMDB] Hydrating partitions: primary');
-    expect(() => untypedTx(id('Note-1')).put('title', 'changed')).toThrow('is open read-only');
+    expect(() => engine.write(id('Note-1')).set('title', 'changed')).toThrow('is open read-only');
     await expect(readOnly.reset()).rejects.toThrow('is open read-only');
     expect(readOnly.close()).toEqual({ errorCount: 0, lastError: null });
     expect(lines).toContain('[LMDB] Environment closed successfully');
 
     const reopened = openStore();
-    expect(reopened.query('primary').getFirstAttr('title', 'Note-1')).toBe('kept');
+    expect(reopened.read('primary').getFirstAttr('title', 'Note-1')).toBe('kept');
   });
 
   it('reports writes lost while it was closed for a reopen or a reset, not only this close\'s', async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'kept');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'kept');
     await flushed();
     // JSON can't encode a BigInt: the write fails when the store closes to reopen
-    untypedTx(id('Note-1')).put('count', 1n);
+    engine.write(id('Note-1')).set('count', 1n);
     store.reopen();
     expect(store.close()).toMatchObject({ errorCount: 1, lastError: { op: 'final flush' } });
     // Reported once
     expect(store.close()).toEqual({ errorCount: 0, lastError: null });
 
     const resetting = openStore();
-    untypedTx(id('Note-2'), true).put('count', 2n);
+    engine.create('Note', { id: id('Note-2') }).set('count', 2n);
     await resetting.reset();
     expect(resetting.close()).toMatchObject({ errorCount: 1 });
   });
@@ -275,17 +298,17 @@ describe('openLmdbStore', () => {
 
   it('reports a failed final flush from close, and nothing for a clean or repeated close', async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'fine');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'fine');
     await flushed();
     // JSON can't encode a BigInt: the write fails when close flushes it
-    untypedTx(id('Note-1')).put('count', 1n);
+    engine.write(id('Note-1')).set('count', 1n);
     const stats = store.close();
     expect(stats.errorCount).toBe(1);
     expect(stats.lastError).toMatchObject({ op: 'final flush' });
     expect(store.close()).toEqual({ errorCount: 0, lastError: null });
 
     const clean = openStore();
-    untypedTx(id('Note-2'), true).put('title', 'fine');
+    engine.create('Note', { id: id('Note-2') }).set('title', 'fine');
     expect(clean.close()).toEqual({ errorCount: 0, lastError: null });
   });
 });
@@ -321,18 +344,18 @@ describe('the storage format', () => {
   // app running and losing everything the user does
   it('fails a write after opening the files again failed, and takes them once it works', async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'kept');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'kept');
     await flushed();
 
     // The files the reopen finds are in a format this version doesn't read
     writeFormat(paths.volatileBackup, LMDB_FORMAT_VERSION + 1);
     expect(() => store.reopen()).toThrow(String(LMDB_FORMAT_VERSION + 1));
 
-    expect(() => untypedTx(id('Note-2'), true).put('title', 'lost')).toThrow(/opening it again failed/);
+    expect(() => engine.create('Note', { id: id('Note-2') }).set('title', 'lost')).toThrow(/opening it again failed/);
 
     writeFormat(paths.volatileBackup, LMDB_FORMAT_VERSION);
     store.reopen();
-    untypedTx(id('Note-3'), true).put('title', 'taken');
+    engine.create('Note', { id: id('Note-3') }).set('title', 'taken');
     await flushed();
     store.close();
 
@@ -344,50 +367,40 @@ describe('the storage format', () => {
 
   it('is recorded in a database this version writes', async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'kept');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'kept');
     await flushed();
     store.close();
     expect(storedFormat(paths.primary)).toBe(LMDB_FORMAT_VERSION);
     expect(storedFormat(paths.volatileBackup)).toBe(LMDB_FORMAT_VERSION);
   });
 
-  it('is recorded in files that predate it, once a version that records it writes them', async () => {
+  it('refuses files that predate it, which are format 1, until they are converted', async () => {
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'kept');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'kept');
     await flushed();
     store.close();
-    // Files from before the format was recorded
+    // Files from before the format was recorded, holding data
     writeFormat(paths.primary);
+
+    const format1 = /storage format 1, but this version reads format 2: convert a copy of it with scripts\/ears-format-2\.ts/;
+    expect(() => openStore({ readOnly: true, log: () => {} })).toThrow(format1);
+    expect(() => openStore()).toThrow(format1);
     expect(storedFormat(paths.primary)).toBeUndefined();
 
-    // Reading them records nothing
-    openStore({ readOnly: true, log: () => {} }).close();
-    expect(storedFormat(paths.primary)).toBeUndefined();
-
-    openStore().close();
+    convertToFormat2(paths.primary);
     expect(storedFormat(paths.primary)).toBe(LMDB_FORMAT_VERSION);
+    const converted = openStore({ log: () => {} });
+    await converted.hydrate();
+    expect(getAttr(id('Note-1'), 'title')).toBe('kept');
   });
 
-  it('reads a database written before formats were recorded, which has no meta database at all', async () => {
-    // An older version's files: the three databases it wrote, and nothing else
-    const root = openEnv({ path: paths.primary, maxDbs: 8, compression: true });
-    root.openDB({ name: 'entities', encoding: 'json' }).putSync('Note-1', { type: 'Note', createdAt: 1 });
-    root.openDB({ name: 'attrs', encoding: 'json' });
-    root.openDB({ name: 'relations', encoding: 'json' });
-    root.close();
-    const volatile = openEnv({ path: paths.volatileBackup, maxDbs: 8, compression: true });
-    volatile.openDB({ name: 'entities', encoding: 'json' });
-    volatile.openDB({ name: 'attrs', encoding: 'json' });
-    volatile.openDB({ name: 'relations', encoding: 'json' });
-    volatile.close();
-
-    // Reading them records nothing, and they read as this format
-    const readOnly = openStore({ readOnly: true, log: () => {} });
-    await readOnly.hydrate();
-    expect(readOnly.query('primary').getEntityMeta('Note-1')).toMatchObject({ type: 'Note' });
-    readOnly.close();
-    expect(storedFormat(paths.primary)).toBeUndefined();
-
+  it('records the format in new, empty files, which hold nothing to misread', () => {
+    // A version that recorded no format, and wrote nothing
+    for (const dir of [paths.primary, paths.volatileBackup]) {
+      const root = openEnv({ path: dir, maxDbs: 8, compression: true });
+      for (const name of ['entities', 'attrs', 'relations']) root.openDB({ name, encoding: 'json' });
+      root.close();
+    }
     openStore().close();
     expect(storedFormat(paths.primary)).toBe(LMDB_FORMAT_VERSION);
   });
@@ -420,14 +433,14 @@ describe('the storage format', () => {
     expect(() => openStore({ readOnly: true })).toThrow(newer);
 
     writeFormat(paths.primary, 'nonsense');
-    expect(() => openStore()).toThrow(/storage format "nonsense", but this version reads format 1$/);
+    expect(() => openStore()).toThrow(new RegExp(`storage format "nonsense", but this version reads format ${LMDB_FORMAT_VERSION}$`));
 
     // The environment it opened is closed, so the files can be replaced and opened again
     fs.rmSync(paths.primary, { recursive: true, force: true });
     const store = openStore();
-    untypedTx(id('Note-1'), true).put('title', 'after');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'after');
     await flushed();
-    expect(store.query('primary').getFirstAttr('title', 'Note-1')).toBe('after');
+    expect(store.read('primary').getFirstAttr('title', 'Note-1')).toBe('after');
     expect(storedFormat(paths.primary)).toBe(LMDB_FORMAT_VERSION);
   });
 });
@@ -445,7 +458,7 @@ describe('snapshot', () => {
 
   it('copies a partition into a directory of its own, readable on its own', async () => {
     const store = openStore({ log: () => {} });
-    untypedTx(id('Note-1'), true).put('title', 'kept');
+    engine.create('Note', { id: id('Note-1') }).set('title', 'kept');
     await flushed();
 
     const target = path.join(fs.mkdtempSync(path.join(root, 'snap-')), 'lmdb');
@@ -458,13 +471,13 @@ describe('snapshot', () => {
 
   it('holds one moment of the database, though writes land while it runs', async () => {
     const store = openStore({ log: () => {} });
-    for (let n = 0; n < 400; n++) untypedTx(id(`Note-${n}`), true).put('title', `before ${n}`);
+    for (let n = 0; n < 400; n++) engine.create('Note', { id: id(`Note-${n}`) }).set('title', `before ${n}`);
     await flushed();
 
     // Writes carry on across the copy, as they would while the app runs
     const target = path.join(fs.mkdtempSync(path.join(root, 'snap-')), 'lmdb');
     const copying = store.copyTo('primary', target);
-    for (let n = 400; n < 800; n++) untypedTx(id(`Note-${n}`), true).put('title', `during ${n}`);
+    for (let n = 400; n < 800; n++) engine.create('Note', { id: id(`Note-${n}`) }).set('title', `during ${n}`);
     await copying;
     await flushed();
 

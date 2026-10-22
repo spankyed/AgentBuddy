@@ -64,6 +64,25 @@ order. `init`, `add` and the release version editor share this writer.
 
 ## Extensions
 
+### `extensions.commands`
+
+Slash commands this pack seeds, keyed by the name typed after the `/`:
+
+```json
+"extensions": { "commands": { "list": { "pr2md": { "placeholder": "PR number (optional)" } } } }
+```
+
+| field | type | required | notes |
+|---|---|---|---|
+| `list` | `{ <name>: { placeholder } }` | yes | Keyed by the name typed after the `/`: lowercase letters, digits and hyphens. `placeholder` is the hint the chat shows after the name, and may not be empty. At least one |
+| `onUserEdit` | `"offer" \| "theirs"` | no | As for any content entry. Nested beside `list` rather than among the names, so it can never collide with a command |
+
+Desugared at build time into ordinary content under the reserved key `declared-commands`, so it is merged,
+removed and offered like every other entry — and what the user gets is a document they own and may delete.
+A name a dependency declares is refused while you build; across unrelated packs it is first-wins and silent.
+See [Slash commands](content.md#slash-commands).
+
+
 `extensions` is what the pack gives the host, as against what it is made of (`features`) or what data it
 ships (`content`). Every entry is a contribution the app registers and other packs or the shell can reach.
 
@@ -72,7 +91,6 @@ ships (`content`). Every entry is a contribution the app registers and other pac
 | `steps` | `Record<string, StepEntry>` | Flow step types, keyed by type. Each names its facets: `build` (or `trigger`), `fe`, `runtime` and `dsl`. The build facets are shipped as `build/steps.build.mjs`, so packs depending on yours validate flows with your step code; see [Steps](extensions.md#steps) |
 | `artifacts` | `Record<string, { icon, fe? }>` | Artifact types, keyed by type; see [Artifacts](extensions.md#artifacts) |
 | `blocks` | `Record<string, { kind?, fe?, be? }>` | Message blocks, keyed by type; see [Blocks](extensions.md#blocks) |
-| `commands` | `{ <name>: { placeholder } }` | Slash commands the pack adds to the chat, keyed by the name typed after the `/` (`^[a-z][a-z0-9-]*$`). A pack cannot declare one twice, the name being the key; across packs it must still be unique, and `apack pack build` fails when a dependency, or anything it depends on, declares it. `placeholder` is what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](content.md#slash-commands) |
 | `services` | `Record<string, string>` | Pack-level services, belonging to no one feature, in the same form as [a feature's `services`](#packfeatureentry-fields) |
 | `settings` | `Record<string, SettingsDefinition>` | Inline pack-owned preference definitions; see [Pack settings declarations](#pack-settings-declarations) |
 | `dsl` | `Record<string, DslEntry>` | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
@@ -173,7 +191,9 @@ loading frontends: native claims precede installed claims, then fully qualified 
 lexically using the English locale. Authoring-source previews do not participate. Frontend delivery
 order cannot change the winner; opening waits for its matching accepted binding and actor. A saved
 selection, popout target or explicit navigation takes precedence over this startup default.
-A designation is a separately owned role, so duplicate roles across packs are errors.
+A designation is a separately owned role, so duplicate roles across packs are errors. One role means something
+to the app itself: `brain`, which `sendToSystem({ role: 'brain' }, event)` reaches. The chat's slash commands
+need no role — the app derives them from stored documents (see [Slash commands](content.md#slash-commands)).
 
 ### Feature settings
 

@@ -178,7 +178,6 @@ export interface TestPacks {
     readonly artifacts: Map<string, ArtifactDefinition>;
     readonly blocks: Map<string, BlockDefinition>;
     clear(): void;
-    readonly commands: Map<string, PackCommand[]>;
     readonly contentWriters: Map<string, ContentWriter>;
     readonly designations: Map<string, string>;
     readonly earsEntities: Map<string, string>;

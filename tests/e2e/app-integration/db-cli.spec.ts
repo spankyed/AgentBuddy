@@ -21,20 +21,20 @@ test("reads the running app's data and refuses to change it", async ({ electronA
   await expect(appPage.getByText('Settings saved', { exact: true })).toBeVisible();
   const dataDir = await electronApp.evaluate(({ app: electron }) => electron.getPath('userData'));
 
-  const read = apackDb(['query', 'return [getEntitiesOfType(EARS.Entity.Settings).length > 0, qx(EARS.Entity.Flow).count() > 0]', '--data-dir', dataDir, '-o', 'json']);
+  const read = apackDb(['query', 'return [getEntitiesOfType(EARS.Entity.Settings).length > 0, query(EARS.Entity.Flow).count() > 0]', '--data-dir', dataDir, '-o', 'json']);
   expect(read.stderr).toContain(`Database: ${dataDir} (offline)`);
   expect(read.stderr).toMatch(/Warning: apack is running on it \(its process is running \(pid \d+\)\)/);
   expect(read.status, read.stderr).toBe(0);
   // The app's settings and written flows
   expect(JSON.parse(read.stdout)).toEqual([true, true]);
 
-  const write = apackDb(['exec', "tx(EARS.Entity.Note).put('title', 'written while the app runs')", '--data-dir', dataDir]);
+  const write = apackDb(['exec', "create(EARS.Entity.Note).set('title', 'written while the app runs')", '--data-dir', dataDir]);
   expect(write.status).toBe(1);
   expect(write.stderr).toMatch(/apack is running on .*: quit it first, this command changes its database/);
   const reset = apackDb(['reset', '--force', '--data-dir', dataDir]);
   expect(reset.status).toBe(1);
   expect(reset.stderr).toMatch(/quit it first/);
 
-  const notes = apackDb(['query', "return qx(EARS.Entity.Note).pickAll().filter((note) => note.title === 'written while the app runs').length", '--data-dir', dataDir]);
+  const notes = apackDb(['query', "return query(EARS.Entity.Note).pickAll().filter((note) => note.title === 'written while the app runs').length", '--data-dir', dataDir]);
   expect(notes.stdout).toBe('0');
 });

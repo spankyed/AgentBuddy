@@ -6,7 +6,7 @@ describe('manifest formatting', () => {
   it('canonicalizes structural fields without changing contribution or data order', () => {
     const manifest: PackManifest = {
       checks: { allow: ['backend-console', 'untyped-sends'] },
-      extensions: { services: { zeta: 'z.ts#service', alpha: 'a.ts#service' }, commands: { zeta: { placeholder: 'Z' }, alpha: { placeholder: 'A' } } },
+      extensions: { services: { zeta: 'z.ts#service', alpha: 'a.ts#service' } },
       features: {
         zeta: { types: 'z.ts', settings: { defaults: { zeta: 1, alpha: 2 }, schema: { properties: { zeta: {}, alpha: {} } } }, description: 'Zeta purpose.' },
         alpha: { description: 'Alpha purpose.' },
@@ -20,9 +20,8 @@ describe('manifest formatting', () => {
     const formatted = JSON.parse(text);
     expect(Object.keys(formatted)).toEqual(['id', 'name', 'version', 'dependencies', 'data', 'features', 'extensions', 'checks']);
     expect(Object.keys(formatted.features.zeta)).toEqual(['description', 'settings', 'types']);
-    expect(Object.keys(formatted.extensions)).toEqual(['commands', 'services']);
+    expect(Object.keys(formatted.extensions)).toEqual(['services']);
     expect(Object.keys(formatted.features)).toEqual(['zeta', 'alpha']);
-    expect(Object.keys(formatted.extensions.commands)).toEqual(['zeta', 'alpha']);
     expect(Object.keys(formatted.extensions.services)).toEqual(['zeta', 'alpha']);
     expect(Object.keys(formatted.features.zeta.settings.defaults)).toEqual(['zeta', 'alpha']);
     expect(Object.keys(formatted.features.zeta.settings.schema.properties)).toEqual(['zeta', 'alpha']);

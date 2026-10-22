@@ -365,6 +365,9 @@ export type HostSurfaceEvents = {
     | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
     // The app's own send when a surface's tab is shown or hidden, or a pack's defaults change
     | { type: 'SURFACE_VISIBILITY_UPDATED'; surfaceVisibility: Record<string, boolean> }
+    // The app's own send when the chat's slash commands change: the feature playing the `commands` designation came,
+    // went or wrote, so the shell holds the list every editor in this window reads
+    | { type: 'COMMANDS_UPDATED'; commands: import('../commands/index.ts').PackCommand[] }
     // The user finished onboarding: the shell leaves its onboarding layout
     | { type: 'ONBOARDING_COMPLETE' }
     // Opens a surface, by its ref, in the app's main windows (a popout keeps the surface it shows) and hands its actor
@@ -383,6 +386,9 @@ export type HostSurfaceEvents = {
 export type HostSystemEvents = {
   // A pack whose data changed outside a pack change (its content imported) has the running systems read it again
   'host/bus': { type: 'PACK_CHANGED'; packId: string };
+  // The feature playing the `commands` designation wrote: it says so rather than sending the list, since the app
+  // reads the list from the designation and every window needs it, not whoever happened to be told
+  'host/application': { type: 'COMMANDS_CHANGED' };
 };
 
 /**
@@ -391,6 +397,7 @@ export type HostSystemEvents = {
  */
 export const HOST_SYSTEM_EVENT_TYPES = {
   'host/bus': eventTypes<HostSystemEvents['host/bus']>()('PACK_CHANGED'),
+  'host/application': eventTypes<HostSystemEvents['host/application']>()('COMMANDS_CHANGED'),
 } satisfies Record<keyof HostSystemEvents, readonly string[]>;
 
 /**
@@ -398,7 +405,7 @@ export const HOST_SYSTEM_EVENT_TYPES = {
  * read the host's surfaces from. A pack's own surfaces get this generated from their systems' specs.
  */
 export const HOST_SURFACE_EVENT_TYPES = {
-  'host/application': eventTypes<HostSurfaceEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'SURFACE_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_SURFACE'),
+  'host/application': eventTypes<HostSurfaceEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'SURFACE_VISIBILITY_UPDATED', 'COMMANDS_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_SURFACE'),
   'host/settings': eventTypes<HostSurfaceEvents['host/settings']>()('CLI_TEST_RESULT', 'HELP.OPEN'),
 } satisfies Record<keyof HostSurfaceEvents, readonly string[]>;
 

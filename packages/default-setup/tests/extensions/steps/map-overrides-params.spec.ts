@@ -6,9 +6,9 @@
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@apackdev/testing/harness'
 import { entry, fire, keepAlive, on } from '#generated/flow-helpers.ts'
-import { untypedQx } from '@apackdev/ears'
+import { untypedQuery } from '@apackdev/sdk/ears'
 
-const notes = () => untypedQx('Note').pickAll() as Array<Record<string, unknown>>
+const notes = () => untypedQuery('Note').pickAll() as Array<Record<string, unknown>>
 
 /** A create step that sets `content` literally *and* maps it, so the two overlap on one field */
 async function runWithBoth(map: Record<string, unknown>) {
