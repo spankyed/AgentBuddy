@@ -11,11 +11,17 @@ function dropTheWindowsOwnLastActive(storage: WindowStorage): void {
 /**
  * The code surface's open tabs, under a key that named the surface a plugin.
  *
- * **This is a pack's key, moved by the host, and that is a seam rather than a decision.** A pack has no
- * frontend-migration hook of its own — `runFrontendMigrations` is the only thing that runs before a window's
- * storage is read — and the alternatives were worse: a fallback read in the code surface is the dual-read
- * `CLAUDE.md` forbids, and leaving the key on its old name leaves the vocabulary split across the one place a
- * user would never see it. Give packs their own window migrations and this moves there unchanged.
+ * **This is a pack's key, moved by the host, and today that is the only thing that works.** The two
+ * alternatives are both refused: a fallback read in the code surface is the dual-read `CLAUDE.md` forbids,
+ * and leaving the key on its old name splits the vocabulary at the one place a user would never see it.
+ *
+ * **A pack cannot own this yet, and the obstacle is ordering rather than a missing hook.** This runs at
+ * `renderer/src/main.ts:50`, before the shell, because the shell reads these keys as it starts — and at
+ * that point a pack has contributed nothing: its frontend module has not loaded, and its declaration has
+ * not arrived either, the catalog coming from the backend after the shell connects. So neither a
+ * registered function nor declared data is reachable here. Moving this to a pack means first deciding
+ * when a window's storage is migrated relative to the shell that reads it, which is a change to boot
+ * order, not a new manifest key.
  */
 function moveTheCodeSurfacesOpenTabs(storage: WindowStorage): void {
   const stored = storage.getItem('code-plugin-open-tabs');
