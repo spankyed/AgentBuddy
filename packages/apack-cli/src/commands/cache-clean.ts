@@ -3,8 +3,7 @@ import * as path from 'node:path';
 import { cliDirs, type CliDirs } from '../app/pack-host';
 import { dirBytes, size } from '../app/profiles';
 import { betaDownloadLeftovers, cachedBetaBuilds } from '../app/beta-app';
-import { findLockHolder } from '@apackdev/host/exclusive-lock';
-import { compilerStoreRoot, removeCompilerStoreDirectory } from '../build/compiler-installation';
+import { compilerStoreEntries, compilerStoreRoot, removeCompilerStoreEntry } from '../build/compiler-installation';
 
 /**
  * The downloaded Beta builds, which nothing has ever reclaimed — each one an unpacked app of a few hundred
@@ -57,25 +56,24 @@ export function cleanApps(all: boolean, dirs: CliDirs = cliDirs()): void {
 
 /**
  * The captured compiler installations, one per compiler and runtime version a build has run — each a copy of the
- * runtime, so they accumulate. All go: the next build captures what it needs again. One being captured right now
- * (its lock held) is left alone, and one Windows still holds open is reported rather than failing the clean.
+ * runtime. All go: the next build captures what it needs again. One being captured or used by a live process is
+ * left alone, and one Windows still holds open is reported rather than failing the clean.
  */
 export async function cleanCompilers(store: string = compilerStoreRoot()): Promise<void> {
-  const entries = fs.existsSync(store) ? fs.readdirSync(store).filter((name) => !name.endsWith('.lock')) : [];
+  const entries = compilerStoreEntries(store);
   if (entries.length === 0) {
     console.log('  no captured compiler installations');
     return;
   }
   let reclaimed = 0;
-  for (const name of entries) {
-    const entry = path.join(store, name);
-    if (findLockHolder(`${entry}.lock`) !== null) {
-      console.log(`    keeping  ${name.padEnd(24)}         being captured`);
-      continue;
-    }
+  for (const entry of entries) {
+    const name = path.basename(entry);
     const bytes = dirBytes(entry);
     try {
-      await removeCompilerStoreDirectory(entry);
+      if (!await removeCompilerStoreEntry(entry)) {
+        console.log(`    keeping  ${name.padEnd(24)}         being captured or used`);
+        continue;
+      }
       reclaimed += bytes;
       console.log(`  removing  ${name.padEnd(24)} ${size(bytes).padStart(6)}`);
     } catch (error) {

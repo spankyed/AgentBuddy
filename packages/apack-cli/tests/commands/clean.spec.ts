@@ -7,6 +7,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanApps, cleanCompilers } from '../../src/commands/cache-clean';
 import { betaCacheDir, packagedExecutable } from '../../src/app/beta-app';
@@ -109,6 +110,23 @@ describe('cleanCompilers', () => {
     expect(fs.existsSync(capturing)).toBe(true);
     fs.chmodSync(capturing, 0o700);
     fs.chmodSync(path.join(capturing, 'tree'), 0o700);
+  });
+
+  it('keeps an entry a live process is using and removes one whose user has exited', async () => {
+    const store = path.join(tmp, 'compilers');
+    const used = entry(store, 'cccccccccccccccc');
+    const abandoned = entry(store, 'dddddddddddddddd');
+    fs.mkdirSync(`${used}.users`);
+    fs.writeFileSync(path.join(`${used}.users`, `${process.pid}-live`), '');
+    const exited = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' });
+    fs.mkdirSync(`${abandoned}.users`);
+    fs.writeFileSync(path.join(`${abandoned}.users`, `${exited.stdout}-gone`), '');
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await cleanCompilers(store);
+    expect(fs.existsSync(used)).toBe(true);
+    expect(fs.existsSync(abandoned)).toBe(false);
+    fs.chmodSync(used, 0o700);
+    fs.chmodSync(path.join(used, 'tree'), 0o700);
   });
 
   it('says so when there is nothing to remove', async () => {

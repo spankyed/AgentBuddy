@@ -129,8 +129,11 @@ read-only. **The copy lives in a machine-wide store, one entry per input** (`com
 `<cliDirs cache>/compilers`, `APACK_COMPILER_STORE` overrides it), keyed by the source graph, the runtime's
 contents and the esbuild selection. Every build and process with the same inputs reuses that entry, verified
 exactly as a fresh capture is, so the runtime and compiler executables keep one path and macOS assesses them
-once rather than per build. A damaged entry is captured again under a cross-process lock; releasing an
-installation leaves the entry, and `apack cache clean` reclaims the store. Specs capture into a per-run,
+once rather than per build. A damaged entry is captured again under a cross-process lock. Each holder marks its
+entry in use (`<entry>.users/<pid>-…`) until it disposes the installation, and a capture that adds an entry prunes
+the store to the `COMPILER_STORE_ENTRIES` most recently used, never removing one a live process holds; a checkout
+makes a new entry on every compiler rebuild, so an unbounded store grew by a runtime copy per edit.
+`apack cache clean` removes every entry not in use. Specs capture into a per-run,
 per-worker store (`tests/_support/compiler-store*.ts`). Its private metadata records the compiler fingerprint, captured package directories and
 source-path mappings. Workers require this metadata to belong to their actual CLI; they keep the
 selected compiler rather than hand off to the project again. Module identity, diagnostic reads and

@@ -1,8 +1,9 @@
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import envPaths from 'env-paths';
-import { holdExclusiveLockWaiting } from '@apackdev/host/exclusive-lock';
+import { holdExclusiveLock, holdExclusiveLockWaiting } from '@apackdev/host/exclusive-lock';
+import { lockIsHeld } from '@apackdev/host/process-liveness';
 import { readPackageInputs, readPackageInputsAsync } from '@apackdev/host/build/package-inputs';
 import { cliPackageDirectory } from './tool-identity.ts';
 import { compilerRuntimeFileSystem as fs, readCompilerRuntimeInputs } from './compiler-runtime.ts';
@@ -71,6 +72,73 @@ export function compilerPackageDirectory(root = cliPackageDirectory()): string {
 export const compilerStoreRoot = (env: NodeJS.ProcessEnv = process.env): string =>
   env.APACK_COMPILER_STORE ?? path.join(envPaths('apack-cli', { suffix: '' }).cache, 'compilers');
 
+/**
+ * How many entries the store keeps. A checkout makes a new one on every compiler rebuild, so an unbounded store
+ * grows by a runtime copy per edit; three covers the current compiler, the previous one and another runtime.
+ * An entry a live process is using is never removed, whatever the count.
+ */
+export const COMPILER_STORE_ENTRIES = 3;
+
+const isStoreEntry = (name: string) => /^[0-9a-f]{16}$/.test(name);
+const usersDirectory = (entry: string) => `${entry}.users`;
+const usedFile = (entry: string) => `${entry}.used`;
+
+/**
+ * Marks `entry` as used by this process until the returned release runs, and records the use's time. A marker
+ * names its pid, so one left by a process that died is ignored rather than holding the entry forever.
+ */
+function useCompilerStoreEntry(entry: string): () => void {
+  fs.mkdirSync(usersDirectory(entry), { recursive: true });
+  const marker = path.join(usersDirectory(entry), `${process.pid}-${randomUUID()}`);
+  fs.writeFileSync(marker, '');
+  fs.writeFileSync(usedFile(entry), '');
+  return () => fs.rmSync(marker, { force: true });
+}
+
+/** Whether a live process holds a use of `entry`; dead processes' markers are removed on the way */
+export function compilerStoreEntryInUse(entry: string): boolean {
+  let names: string[];
+  try { names = fs.readdirSync(usersDirectory(entry)); }
+  catch { return false; }
+  let inUse = false;
+  for (const name of names) {
+    if (lockIsHeld(Number(name.split('-')[0]))) inUse = true;
+    else fs.rmSync(path.join(usersDirectory(entry), name), { force: true });
+  }
+  return inUse;
+}
+
+/** Removes an entry and its bookkeeping, unless it is being captured or used; returns whether it went */
+export async function removeCompilerStoreEntry(entry: string): Promise<boolean> {
+  if (compilerStoreEntryInUse(entry)) return false;
+  let lock;
+  try { lock = holdExclusiveLock({ file: `${entry}.lock`, what: 'compiler installation removal', refuse: holder => new Error(holder) }); }
+  catch { return false; }
+  try {
+    // A use that began before the lock was taken is still visible here; one that begins after fails its verification
+    if (compilerStoreEntryInUse(entry)) return false;
+    await removeCompilerStoreDirectory(entry);
+    fs.rmSync(usedFile(entry), { force: true });
+    // A marker written since the check keeps the directory; the recapture its owner then runs reuses it
+    try { fs.rmdirSync(usersDirectory(entry)); } catch { /* not empty or absent */ }
+    return true;
+  } finally { lock.release(); }
+}
+
+const lastUsed = (entry: string) => (fs.statSync(usedFile(entry), { throwIfNoEntry: false }) ?? fs.statSync(entry, { throwIfNoEntry: false }))?.mtimeMs ?? 0;
+
+/** Keeps the most recently used entries besides `kept`, up to `COMPILER_STORE_ENTRIES` in all */
+async function pruneCompilerStore(store: string, kept: string): Promise<void> {
+  const entries = fs.readdirSync(store).filter(isStoreEntry).map(name => path.join(store, name)).filter(entry => entry !== kept)
+    .sort((a, b) => lastUsed(b) - lastUsed(a));
+  for (const entry of entries.slice(COMPILER_STORE_ENTRIES - 1)) await removeCompilerStoreEntry(entry);
+}
+
+/** Every entry directory in a store, for `apack cache clean` */
+export function compilerStoreEntries(store: string): string[] {
+  return fs.existsSync(store) ? fs.readdirSync(store).filter(isStoreEntry).map(name => path.join(store, name)) : [];
+}
+
 /** What a capture is of, read from the originals before anything is copied */
 interface CompilerSources {
   readonly directory: string;
@@ -123,7 +191,7 @@ async function installationAt(entry: string, sources: CompilerSources, signal?: 
     && readCompilerRuntimeInputs(capturedExecutable).hash === capturedRuntime.hash;
   return { bin: path.join(root, 'bin/apack.mjs'), executable: capturedExecutable, runtimeDirectory: capturedPath(runtime.directory),
     hash, inputsFile, environment,
-    // The entry is shared and immutable; `apack cache clean` reclaims the store
+    // The entry is shared and immutable; the caller's use of it ends at dispose
     dispose: async () => {},
     isCurrent(source, options = {}) {
       return fs.realpathSync.native(source) === directory
@@ -269,17 +337,20 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
   fs.mkdirSync(compilerStoreRoot(options.env), { recursive: true });
   const store = fs.realpathSync.native(compilerStoreRoot(options.env));
   const entry = path.join(store, key);
+  // Marked before verifying, so a prune that runs meanwhile either sees this use or removes an entry this then recaptures
+  const release = useCompilerStoreEntry(entry);
   const previous = capturing.get(key) ?? Promise.resolve();
   const current = previous.catch(() => undefined).then(async () => {
     const existing = await installationAt(entry, sources, options.signal);
     if (existing) return existing;
+    let captured = false;
     const lock = await holdExclusiveLockWaiting({
       file: `${entry}.lock`, what: 'compiler installation capture', waitMs: 10 * 60_000,
       refuse: (holder) => new Error(`Another process is capturing this compiler installation (${holder})`),
     });
     try {
-      const captured = await installationAt(entry, sources, options.signal);
-      if (captured) return captured;
+      const reused = await installationAt(entry, sources, options.signal);
+      if (reused) return reused;
       if (fs.existsSync(entry)) await removeCompilerStoreDirectory(entry);
       await captureInto(entry, sources, options);
       const installation = await installationAt(entry, sources, options.signal);
@@ -287,10 +358,19 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
         await removeCompilerStoreDirectory(entry);
         throw new Error('Captured compiler installation differs from its inputs');
       }
+      captured = true;
       return installation;
-    } finally { lock.release(); }
+    } finally {
+      lock.release();
+      // Only a new entry grows the store, so only a capture prunes it
+      if (captured) await pruneCompilerStore(store, entry);
+    }
   });
   capturing.set(key, current);
-  try { return await current; }
+  try {
+    const installation = await current;
+    let released = false;
+    return { ...installation, dispose: async () => { if (!released) { released = true; release(); } } };
+  } catch (error) { release(); throw error; }
   finally { if (capturing.get(key) === current) capturing.delete(key); }
 }

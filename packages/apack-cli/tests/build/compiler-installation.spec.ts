@@ -4,17 +4,19 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { execFileSync, fork } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
-import { captureCompilerInstallation, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import { COMPILER_STORE_ENTRIES, captureCompilerInstallation, compilerStoreEntries, removeCompilerStoreDirectory, removeCompilerStoreEntry, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { isCompilerLocationPath } from '../../src/build/compiler-installation-inputs.ts';
 import { cliBin } from '../../src/utils.ts';
 import { _byDeadline } from '@apackdev/sdk/testing/waiting';
 
 const roots: string[] = [];
 const installations: CompilerInstallation[] = [];
+const stores: string[] = [];
 afterEach(async () => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   await Promise.all(installations.splice(0).map(installation => installation.dispose()));
+  await Promise.all(stores.splice(0).map(store => removeCompilerStoreDirectory(store)));
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
 });
 
@@ -267,7 +269,46 @@ it('removes an incomplete installation when capture fails', async () => {
   vi.stubEnv('APACK_COMPILER_STORE', store);
   vi.spyOn(fs, 'writeFileSync').mockImplementation(() => { throw new Error('capture write failed'); });
   await expect(compiler.capture()).rejects.toThrow('capture write failed');
-  expect(fs.readdirSync(store).filter(name => !name.endsWith('.lock'))).toEqual([]);
+  expect(compilerStoreEntries(store)).toEqual([]);
+});
+
+/** A store of this case's own, resolved as the store resolves its root, and removed with its read-only entries */
+function temporaryStore(): string {
+  const store = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-compiler-store-')));
+  stores.push(store);
+  vi.stubEnv('APACK_COMPILER_STORE', store);
+  return store;
+}
+
+/** A checkout makes a new entry per compiler rebuild; the store keeps the most recently used ones */
+it('keeps the most recently used entries when a capture grows the store past its size', async () => {
+  const store = temporaryStore();
+  const captured: string[] = [];
+  for (let version = 0; version <= COMPILER_STORE_ENTRIES; version++) {
+    const compiler = fixture();
+    compiler.write('version.txt', String(version));
+    const installation = await compiler.capture();
+    captured.push(path.dirname(installation.inputsFile));
+    await installation.dispose();
+  }
+  expect(compilerStoreEntries(store).sort()).toEqual(captured.slice(1).sort());
+});
+
+/** An entry a live process holds survives pruning however old it is, and goes once released */
+it('never removes an entry a live process is using', async () => {
+  const store = temporaryStore();
+  const held = await fixture().capture();
+  const heldEntry = path.dirname(held.inputsFile);
+  for (let version = 1; version <= COMPILER_STORE_ENTRIES; version++) {
+    const compiler = fixture();
+    compiler.write('version.txt', String(version));
+    await (await compiler.capture()).dispose();
+  }
+  expect(compilerStoreEntries(store)).toContain(heldEntry);
+  expect(execFileSync(process.execPath, [held.bin], { encoding: 'utf8' }).trim()).toBe('captured');
+  await held.dispose();
+  expect(await removeCompilerStoreEntry(heldEntry)).toBe(true);
+  expect(compilerStoreEntries(store)).not.toContain(heldEntry);
 });
 
 /** A damaged entry is never reused: the next capture finds it differs and captures it again */
