@@ -1,6 +1,9 @@
 # An undeclared name must not answer with the database
 
-Status: planned, not started. Parts are ordered because part 1 is what makes part 2 safe. The numbers in
+Status: implemented, in the order Part 3 (`5c178411a`), Part 2 (`ef68c3f3f`), Part 1 (`644471264`). Parts 3
+and 2 make the console answer correctly; Part 1 is the message naming the known types and `--schema-from`,
+which the engine cannot write once [`ears-public-api.md`](ears-public-api.md) makes it refuse `undefined`
+itself. The numbers in
 here were measured on a real production data dir on 2026-10-01, not estimated.
 
 Session: `a2585c25-7f98-46bf-ad7f-4120dc9a6f60` — where the measurements were taken and the rejected

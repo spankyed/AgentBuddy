@@ -1,11 +1,13 @@
 # EARS's API says what it does
 
-**Status:** proposed, not started. Source read at `ff45e4ff7` (2026-10-22); call-site counts are text
-searches on that tree, outside `packages/apack-ears`, and the typecheck is the exact count once a signature
-moves.
+**Status:** proposed, not started; Phase 0 (the stored-data check) is done and recorded below. Source read
+at `ff45e4ff7` (2026-10-22). Call-site figures come from a TypeScript AST pass over every `.ts`/`.vue` file
+outside `dist/`, `__generated__/` and `node_modules`, on that tree; the typecheck is the exact count once a
+signature moves.
 **Scope:** the public API of `@apackdev/ears`: the engine, the write builder, the query builder's entry
-points and semantics, and the typed facade. Persistence durability, query performance and a disk-resident
-engine are outside it (see [What this is not](#what-this-is-not)).
+points and semantics, the typed facade, and what the LMDB store records to back them. Persistence
+durability, query performance and a disk-resident engine are outside it (see
+[What this is not](#what-this-is-not)).
 
 ## Why
 
@@ -25,8 +27,54 @@ Four rules decide every change below:
    is a concept one layer up.
 4. **A name the engine cannot account for is an error.** Not an empty result, and never a write.
 
+A fifth falls out of the data check: **one fact, one record.** Every inconsistency the stored data showed
+(below) is a fact kept in two places that drifted apart.
+
 No backward compatibility: every caller, test, fixture, template and doc moves in the same change, per the
 root CLAUDE.md.
+
+## What the stored data says
+
+Measured 2026-10-22 on copies of two data dirs, read-only, with a probe outside the tree:
+
+| | prod primary | prod trace | dev primary | dev trace |
+|---|---|---|---|---|
+| entity rows | 98,935 | 19,687 | 616 | 53 |
+| attribute rows | 256,788 | 188,009 | 2,636 | 383 |
+| relations | 45,798 | 31,332 | 320 | 66 |
+
+"Prod" is the long-lived `abuddy` data dir (`ears-db` 306 MB, `ears-trace` 72 MB); "dev" is `apack-dev`. The
+prod files were copied while the app may have been running, so a torn page was possible; nothing read
+inconsistently.
+
+**The type is safe to store, and already is.** Every id with an attribute has an `entities` row, every row's
+`type` equals its id's prefix, no id lacks a dash, and no type name contains one, in all four environments.
+Moving the type off the id needs no conversion of the type itself.
+
+**But four facts are kept twice, and each pair has drifted:**
+
+1. **`entityType` is missing as an attribute on 20,284 prod primary entities** (Terminal, Message, …) **and
+   on every one of 19,615 trace TNodes.** The attribute was stamped by only some creation paths over time, so
+   a row read today has no `entityType` for those entities while the index knows their type.
+2. **`createdAt` disagrees between the attribute and the row on 22,679 prod entities.** The row's value is
+   the time of the flush that wrote it (milliseconds later); the attribute's is the time of `create`, or an
+   original timestamp an importer preserved (`threads/be/import-threads.ts:125`). The attribute is the
+   authoritative one, and the only one any code reads.
+3. **Relation details are stored twice, and 29,814 of the copies are in the wrong environment.** Each
+   relation is a row in the `relations` table *and* a `relationDetails` attribute. The row is routed by its
+   endpoints (a relation touching a TNode goes to the trace environment) and the attribute by the relation's
+   own id (`Relation` → primary), so every `instance_of`, `spawned` and `tracked` edge of a run (11,266,
+   11,231 and 7,317) leaves its attribute copy in primary. Trace isn't hydrated at boot, so those load as
+   29,814 `Relation` entities whose endpoints don't exist and which no relation index holds.
+4. **Entity rows exist for things that were never created.** `onAddRelation` ensures a row for both
+   endpoints (`lmdb/adapter.ts`), so trace holds 71 `Flow`/`Node` rows for entities that live in primary,
+   and prod primary holds 506 `Relation` rows whose relation is gone.
+
+**Duplicate edges:** prod primary has none. Trace has one pair, `TNode-Root instance_of Flow-root-…`, 36
+times: the root TNode is recreated on every boot because trace isn't hydrated
+(`brain/be/repository/index.ts:479-507`, where `findById` misses), and each boot's edge persists to a
+partition nothing reads back. That is not what `link`'s default decides, and it is
+[`ears-persistence-and-history.md`](ears-persistence-and-history.md)'s subject, not this plan's.
 
 ## The changes
 
@@ -40,16 +88,30 @@ Ordered by how much damage the current behaviour can do, not by implementation o
 (`safeLink`'s cycle check, `link`'s self-loop check, a caller's own throw between two builders) leaves
 everything before the throw in memory and, a microtask later, on disk.
 
+The LMDB adapter has two more paths that a unit would have to survive and today can't:
+
+- **A destroy writes immediately**, in its own `transactionSync` (`onDestroyEntity`), not through the
+  buffered flush. A unit that destroys an entity and then throws has already deleted it from disk.
+- **A failed flush is retried row by row** (`runSteps`), which is right for unrelated writes buffered in one
+  microtask and wrong for a unit: it turns one refused row into a partly applied unit.
+
 **Change.**
 
 - `engine.transact(fn)` runs `fn` as one unit. Inside it, memory still mutates immediately, so `fn` reads
   its own writes synchronously, and every mutation also appends its inverse to a journal. If `fn` returns,
   the journal is dropped and the sink receives the unit's calls together; if it throws, the journal is
   replayed in reverse, the sink receives nothing, and the error is rethrown.
-- The sink gets the unit as a unit: `PersistenceSink` gains `onCommit()` (or the engine forwards the
-  buffered calls inside one flush). The LMDB adapter already coalesces into one `transactionSync()` per
-  flush (`lmdb/adapter.ts`); a unit must reach one flush whole rather than relying on the microtask lining
-  up.
+- Every storage write needs an inverse, including the compound ones: `destroyEntity` (its attributes and
+  every relation it removes), `merge` at an index, `updateRelation`, and a role grant that revokes elsewhere.
+  The contract suite gets one rollback case per write.
+- The sink receives the unit as a unit: the engine holds the unit's sink calls and forwards them on commit,
+  ending with `onCommit()`, a new `PersistenceSink` member. The LMDB adapter applies a committed unit in one
+  `transactionSync` per environment, with a destroy buffered like every other write and **no per-row
+  fallback**: a unit that fails to write is reported whole through `onWriteFailure`. Writes outside a unit
+  keep today's isolation.
+- **Atomicity stops at an environment.** A unit touching a TNode and a Node writes to two LMDB environments,
+  which cannot commit together. `transact` promises an atomic unit in memory and per environment, and says
+  so; what happens when one environment commits and the other fails is the persistence plan's to define.
 - Nested `transact` joins the outer unit. `transact` is synchronous; an `async fn` is refused (a returned
   promise throws), because an `await` would split the unit silently.
 - Outside `transact`, each builder call is its own unit, which is what happens today, now stated rather
@@ -69,22 +131,46 @@ The builder stops being called `tx` (see 2). The word "transaction" belongs to `
 - `qx('Memo')` returns nothing instead of failing.
 - `qx(['Note', 'Task'])` is a list of types only if *every* item is a registered type; one unregistered
   name turns the whole list into ids.
-- `tx(id, true)` is a boolean meaning "this id is new" (44 call sites).
-- `qx()` with no argument means every entity, relations included (24 call sites).
+- `tx(id, true)` is a boolean meaning "this id is new": 95 call sites, of which 9 are production code (plus
+  one through `createEntityWithDefaults(…, providedId)`), 47 are tests and 39 are ears' own tests.
+- `qx()` with no argument means every entity, relations included: 17 real calls.
 
 **Change.** Each meaning gets its own entry point, and each refuses what it can't account for:
 
 | Today | After | An unaccountable argument |
 |---|---|---|
 | `tx(type)` | `create(type)` | an unregistered type throws `UNKNOWN_ENTITY_TYPE` |
-| `tx(id, true)` | `create(type, { id })` | as above; an id already in use throws |
+| `tx(id, true)` | `create(type, { id, createdAt? })` | as above; an id already in use throws |
+| `exists ? tx(id) : tx(id, true)` | `upsert(type, id)` | as `create` when absent; an existing id of another type throws |
 | `tx(id)` | `write(id)` | an id not in the engine throws `NO_SUCH_ENTITY` |
-| `qx(type)`, `qx([types])` | `qx(type)`, `qx([types])` | any unregistered type throws |
+| `qx(type)`, `qx([types])` | `qx(type)`, `qx([types])` | any unregistered type throws, `undefined` included |
 | `qx(id)`, `qx([ids])` | `qx.ids(idOrIds)` | absent ids are dropped (a query over ids is a filter) |
 | `qx()` | `qx.all()` | — excludes `Relation`, which `findRelations` serves |
 
-`write` throwing for an absent id is the one that will find bugs: today `tx(staleId).put(...)` resurrects
-a deleted entity as an attribute-only orphan with no type in the index.
+**`upsert` exists because five production sites already hand-write it**: the host's `AppState-app`
+(`app-state/index.ts:103`), `Settings-app` (`features/settings/be/store.ts:104`) and
+`AppliedContent-<packId>` (`app-state/applied-content.ts:110`), the browser's tab sync
+(`browser/be/repository/commands.ts:33`, a frontend-supplied id), and the root TNode
+(`brain/be/repository/index.ts:498`, which today creates it with a bare `tx(rootId)` and relies on implicit
+creation). Each is a singleton or a caller-keyed row, which is the case `create` and `write` each refuse
+half of.
+
+**`write` throwing for an absent id finds bugs, and the audit found two.**
+`brainCommands.updateTNodeStatus` and `updateTNodeAttributes` (`brain/be/repository/index.ts:532-560`)
+write to TNodes from asynchronous step completions with no existence check, so after `clearVolatileData` or
+`DATA_REPLACED` they resurrect orphans: attribute-only entities with no row and no `entityType`.
+`tnodeRepository.updateTNodeResult` already checks. Both get the same guard, and that fix needn't wait for
+this plan. Every other write by id (the format applier, trash, the update step, the actions, prompts,
+threads, notes and code repositories, the library/notes/threads importers through `hasIdCollision`) checks
+first or writes an id it just created. Backup import and restore use admin bulk loads, not `tx`, and no
+migration or seed calls it. `write(id).destroy()` on an absent id throws like any other `write`; every
+current destroy checks first (threads `system.ts:809`, the search index, the CLI's `destructive.ts:156`).
+
+**One flow path changes from silent to loud**: the Flows surface's DSL import (`flows/be/system.ts:326` →
+`flowRepository.importFromDSL`) has no collision check, and compiled ids depend only on the flow's name, so
+re-importing a flow of the same name overwrites it in place today. Under `create` it would throw partway. It
+runs inside `transact`, destroys the existing flow first as `flow-applier.ts` already does, and so replaces
+the flow whole or not at all.
 
 The typed facade already gives ids and names different types (`TypedTx`'s two overloads in `typed.ts`), so
 splitting the functions makes the compiler list every typed call site. Only `untyped*` calls with a
@@ -100,14 +186,21 @@ is what makes refusing correct rather than merely stricter — `qx(type)` is a c
 `qx.ids(…)` a claim about ids, and each can be held to its own claim. So that paragraph and those cases move
 in this change, with their rationale replaced rather than deleted.
 
+**`qx.all()` excluding relations breaks no caller.** Every production `qx()` narrows by a role or a
+relation (`withRole` at `flow-repository.ts:132,221`, `flow-to-dsl.ts:354`, threads `repository/index.ts:55`,
+`apack-testing/src/app.ts:269`; `relatedTo(id).ofType(Artifact)` at threads `:315,416`), and none wants a
+`Relation` row. What moves: `apack-ears/tests/engine/queries.spec.ts:27,37`, which count 5 entities plus 3
+relations as 8, and the comment at `apack-host/src/database/schema.ts:35`, which describes `qx(undefined)`
+answering with the whole database.
+
 This makes [Part 1 of `undeclared-entity-names.md`](undeclared-entity-names.md#part-1--ears-refuses-a-name-it-cannot-account-for)
 the engine's default behaviour; that plan's Parts 2–3 (the console's schema) are unaffected.
 
-**That plan lands first, and this does not wait for it.** Retiring `qx()` costs a migration of every
-`qx`/`tx` call site (Phase 3, 59 files); the console's wrong answer ships today and costs two files. The two
-are complementary rather than redundant: the engine's refusal is the backstop, and the console's `Proxy` is
-where a message naming the known types and `--schema-from` can be written, which an engine that sees only
-`undefined` cannot produce. It also closes that plan's first recorded adjacent bug — `TypedQx` accepting
+**That plan lands first, and this does not wait for it**, because the two fix different things: its Parts 3
+and 2 make the console *answer correctly* on a data dir with no snapshots, and nothing here can — the
+engine's refusal only stops a wrong answer. Its Part 1 is then a diagnostic: the engine catches
+`qx(undefined)` once `qx.all()` exists, and what the console's `Proxy` adds is a message naming the known
+types and `--schema-from`, which an engine that sees only `undefined` cannot produce. It also closes that plan's first recorded adjacent bug — `TypedQx` accepting
 `undefined` as a start — for free, since the no-argument overload is what the typed facade widens.
 
 Nothing in `qx` stands in the way: `setIds` re-enters with `start === undefined` on every chained step
@@ -120,18 +213,20 @@ alone, and the chaining is untouched.
 **Today.** An entity's type is the substring of its id before the first `-`, computed in two places:
 `entityTypeOf` (`attribute-storage.ts`), which keys the entity index, and `entTypeOf` in
 `lmdb/adapter.ts`. A type name containing `-` corrupts both and nothing refuses one; an id that doesn't
-start with `<Type>-` can't exist. The LMDB `entities` row already records `type` (written on create, and
-overwritten when it differs from the prefix), but hydration (`lmdb/hydrate.ts`) never reads that table: it
-rebuilds the index from attribute keys, so in memory an entity exists exactly when it has an attribute.
+start with `<Type>-` can't exist, and the adapter drops a relation whose endpoint id has no dash
+(`onAddRelation`, `onUpdateRelation`). The LMDB `entities` row already records `type`, but hydration
+(`lmdb/hydrate.ts`) never reads that table: it rebuilds the index from attribute keys, so in memory an entity
+exists exactly when it has an attribute.
 
-There are also two copies of the type in memory: the index and the `entityType` attribute that `create`
-stamps from the id (`transaction.ts`), whose comment records the bug that the two disagreeing caused.
-`createdAt` is the same pattern, an attribute stamped beside a `createdAt` the entities row also holds.
+Around that sit the four doubled facts from [What the stored data says](#what-the-stored-data-says): the
+`entityType` attribute beside the index, two `createdAt`s, relation details in an attribute and a table,
+and entity rows written for endpoints rather than for creations.
 
 **Change.**
 
-- Storage holds `typeOf: Map<EntityId, Entity>`, set by `create` and by hydration, and the index is keyed
-  from it. `entityTypeOf` and `entTypeOf` are deleted; nothing parses an id.
+- Storage holds `typeOf: Map<EntityId, Entity>`, set by `create`/`upsert` and by hydration, and the index is
+  keyed from it. `entityTypeOf` and `entTypeOf` are deleted, and with them the adapter's dash checks on
+  relation endpoints; nothing parses an id.
 - **`getAllEntityTypes()` changes meaning, for the better**: it is `entityIndex.keys()`
   (`attribute-storage.ts:310`), so today it answers "every prefix seen on an attribute key" and afterwards
   "every type something was created as". That retires one of the three objections in
@@ -141,25 +236,44 @@ stamps from the id (`transaction.ts`), whose comment records the bug that the tw
   list into the console's namespace, so that part's cases assert on created types rather than on id
   prefixes, whichever plan lands first.
 - Hydration reads the `entities` table first, so an entity exists because it was created, not because it
-  has a value.
-- `entityType` and `createdAt` become engine-owned metadata: present on every row a query returns
-  (`BaseEntity` still declares both, so the typed contract doesn't move) and refused as attribute names by
-  `set`/`add`/`delete` (see 5). They stop being stored as attributes. Text search finds ~50 readers of
-  `'entityType'` and ~29 of `'createdAt'` outside the engine; most read rows and need no change, and
-  `orderBy('createdAt')` keeps working because the query builder reads metadata the same way.
+  has a value. The adapter writes a row on create only, never for a relation's endpoints.
+- **`entityType` is metadata, read from `typeOf`**: present on every row a query returns, never stored as
+  an attribute. This fixes the 39,899 rows that lack it today without touching them. `BaseEntity` still
+  declares it, so the typed contract doesn't move. `getEntityMeta` in `apack-sdk/src/testing/host.ts:130`
+  reads `typeOf` instead of the attribute.
+- **`createdAt` stays a stored attribute, written by the engine and nobody else.** The attribute is the
+  authoritative copy (see the data), so it is the row's `createdAt` that goes: the adapter stops writing it.
+  `create` stamps the attribute with now, or with `createdAt` when the caller passes one, which is how an
+  importer preserves an original time (`import-threads.ts:125`, the flow compiler's rows). `orderBy` and
+  `pick` read it unchanged.
+- **`updatedAt` is unaffected**: an ordinary attribute that the helpers stamp (`prepareEntity`,
+  `createEntityWithDefaults`, `updateEntity` in `transaction-helpers.ts`) and that callers legitimately
+  rewrite.
+- **The `relations` table is the one record of a relation.** The sink stops persisting the
+  `relationDetails` attribute; hydration already rebuilds it from the table (`hydrate.ts`), so memory is
+  unchanged and the 29,814 misrouted copies stop being written.
 - Generated ids keep the readable `<Type>-<suffix>` shape, because it helps a human reading a dump; no code
-  reads it. A caller-chosen id (`create(type, { id })`) can be any non-empty string.
+  reads it. A caller-chosen id (`create(type, { id })`) can be any non-empty string. All ten production
+  sites that choose an id today choose one whose prefix matches its type.
 - `EARS.EntityId` is a `${string}-${string}` template today (`entities.ts`). Loosening it is a change to
   the change-controlled typed contract: follow `packages/apack-sdk/TYPED-EARS.md`'s checklist, completions
   included, before touching it. If the checklist argues for keeping the template, caller-chosen ids keep a
   dash and nothing else here changes.
 
-**Stored data.** Before writing any code, check a copy of a real data dir (`npm run db:inspect` on a copy):
-does every entity that has attributes have an `entities` row whose `type` matches its prefix? If yes, the
-LMDB format doesn't change and hydration simply starts reading a table it already has. If not, the gap is
-closed by an explicit conversion run on a copy, as the root CLAUDE.md requires for stored developer data,
-and `LMDB_FORMAT_VERSION` (`lmdb/envs.ts`) goes to 2 so that unconverted files are refused rather than
-misread. Runtime code never falls back to the prefix.
+**Stored data.** Hydration reading `entities` would turn the endpoint-only and orphaned rows into entities,
+and leaving the stored `entityType` attributes and misrouted `relationDetails` attributes in place would keep
+two records of each. The root CLAUDE.md rules out a runtime fallback that tolerates either, so the store
+moves to `LMDB_FORMAT_VERSION` 2 (`lmdb/envs.ts`), which makes an unconverted file refused rather than
+misread, and the existing data is converted once, explicitly, on a copy:
+
+- delete every `entityType` attribute (2,533 rows in prod primary, 1 in trace);
+- delete every `relationDetails` attribute (75,612 in prod primary; the table holds every relation);
+- delete every `entities` row that no attribute names and that is not a relation row (the 71 endpoint rows
+  in trace, the 506 orphaned `Relation` rows in primary);
+- stamp format 2.
+
+The conversion is a script under `scripts/`, never part of the app's boot, and is verified by re-running the
+Phase 0 probe on the converted copy: every count above that should be zero is zero.
 
 ### 4. The package holds no ambient engine
 
@@ -216,25 +330,70 @@ publish-checks).
 | `delete(k)` | `drop(k)` | the whole attribute |
 | `deleteAt(k, index)` | `drop(k, i)` | field-typed |
 | `deleteValue(k, v)` | `dropIf` | field-typed |
-| `link(kind, target, { info?, acyclicIn?, symmetric?, duplicate? })` | `link`, `linkOne`, `safeLink` | idempotent by default: replaces the edge of that kind to that target, as `linkOne` does. `duplicate: true` appends instead |
+| `link(kind, target, { info?, replace?, acyclicIn?, symmetric? })` | `link`, `linkOne`, `safeLink` | see below |
 | `unlink(kind, target?)` | `unlinkIf`, `unlinkWhere` with a kind | |
 | `unlinkAll()` | `unlinkWhere()` | |
-| `retarget(kind, from, to, info?)` | `patchLink` | |
+| `retarget(kind, from, to, { info? })` | `patchLink` | matches `info` when given, so it can pick one of two edges to the same target |
 | `grant(role)`, `revoke(role)` | same | |
 | `grantExclusive(role, among)` | `ensure` | `among` is required |
 | `destroy()` | `destroy` | returns `void`; `skipPersistence` moves to `admin` |
 | `id()` | same | |
 
+**`link` is idempotent on the whole edge: kind, target and `info`.** Linking an edge identical to one that
+exists does nothing, keeping its relation id and its position. A different `info` is a different edge.
+`replace: true` gives `linkOne`'s behaviour: remove that kind's edges to that target, then add this one.
+The audit of every caller decided each part of that:
+
+- **`info` is part of the identity because flow edges need it.** `transitions_to` is a multigraph keyed on
+  handle: `flowRepository.createEdge` (`flow-repository.ts:358`) refuses only an edge with the same target
+  *and* handles (`assertEdgeAllowed`, `:58-80`), and the compiler emits `exit-<n>` handles from one listener
+  that can reach the same step twice (`flow-compiler.ts:406-411`), written by `importFromDSL` (`:239`).
+  Keyed on the pair alone, linking A→B on `case-1` would delete A→B on `case-0` without an error.
+- **No-op rather than replace, because order is data.** A thread's `contains` edges are its message order
+  (`relinkMessageToEnd`, threads `repository/index.ts:585-590`, which depends on a re-link moving the edge to
+  the end). Replacing an identical edge would mint a new id and move it.
+- **No `duplicate` option**: no caller wants two identical edges, and prod data holds none. The counts that
+  read relations (`forkCount`, threads `:246`; `documentCount`/`childCount`, library `queries.ts:135`,
+  `commands.ts:260`; notes `queries.ts:15`) count distinct pairs, so duplicates could only have inflated them.
+- **`replace: true`** is what the two `linkOne` callers mean (library `commands.ts:139`, `link-utils.ts:36`).
+  The "unlink, then link" moves (library `:329,417`, threads `:273`, notes `:43`) keep working and can use it.
+- `createRelation` (`transaction-helpers.ts`) delegates to `link` and inherits all of this.
+
+**Check during Phase 3:** `flowRepository.deleteNode` (`flow-repository.ts:318-334`) takes
+`findRelations({ src, kind, tgt })[0]` once per link entry, so if `.links()` yields one entry per edge, two
+handle edges to the same node collect the same relation id twice and the second edge survives the delete.
+Confirm it with a case before the reshape, which would otherwise hide it.
+
 The relation-id operations (`unlink(relId)`, `relPatch`) become `engine.query.removeRelation(relId)` and
 `updateRelation(relId, patch)`, since they don't act on the builder's entity. `define` is deleted; its
 callers write `setMany`, `link` and `grant`.
 
-`set`, `add`, `merge` and the `delete*` family refuse the engine's own kinds (`role`, `relationDetails`)
-and its metadata (`entityType`, `createdAt`), throwing `RESERVED_ATTRIBUTE`. Refusing costs no storage
-format change; namespacing the keys would.
+`ensure` has no production caller: the console's examples (`database/fe/components/query-editor/transaction-examples.ts:59`),
+the transaction prompt (`content/prompts/db-transaction-system.ts:78`), `docs/public-facing/services-and-data.md:334`
+and ears' own specs. `flowRepository.grantRootFlowRole` (`flow-repository.ts:220-224`) hand-writes the same
+exclusivity over `qx().withRole(ROOT_FLOW)`, and becomes `grantExclusive(ROOT_FLOW, qx('Flow').ids())`.
+`BlueprintBuilder.ensure` is a different builder (`bp`, `spawn`) and keeps its name.
 
-Whether duplicate edges are wanted anywhere decides `link`'s default: read the 11 `safeLink`, 7 `linkOne`
-and every plain `link` caller before Phase 3, and record which (if any) rely on duplicates.
+**Reserved names.** `set`, `setMany`, `add`, `merge` and the `delete*` family refuse the engine's own kinds
+(`role`, `relationDetails`), the metadata (`entityType`, `createdAt`) and `id`, throwing `RESERVED_ATTRIBUTE`.
+Refusing costs no storage format change; namespacing the keys would. Nothing writes `role` or
+`relationDetails` as an attribute today. What does write the others, and what each becomes:
+
+- **Redundant restatements** of the type or the creation time, removed: threads `repository/index.ts:164-169,
+  638,807,920,924`, `flow-repository.ts:176-181,269-271`, code `repository/index.ts:58`, library
+  `commands.ts:75,193,443`, the host's three singletons and the root TNode's `batchPut` (`brain` `:499-506`).
+- **A preserved timestamp** becomes `create(type, { createdAt })`: `import-threads.ts:125` (the thread
+  itself is created through `threadCommands.create({ id })`, which stamps now, so an exported thread's
+  `createdAt` is already lost on import; this fixes that too) and the flow compiler's rows
+  (`flow-compiler.ts:281,285`, every trigger's `compile`, the CLI's trigger template), which
+  `importFromDSL` (`flow-repository.ts:235-236`) passes to `create` instead of `setMany`.
+- **A read row written back**: the library search index spreads a `pickAll()` row into `updateBatch`
+  (`search-index/repository.ts:331,426,467,493`), which carries `id`, `entityType`, `createdAt` and roles.
+  Those sites write the fields they mean to change.
+- **User-configured step fields**: the create and update steps pass a user's fields to
+  `createEntityWithDefaults`/`updateEntity` (`extensions/steps/create/runtime.ts:33`, `update/runtime.ts:29`).
+  Their build facets' `validate` refuses a reserved field, so a flow says so when it is saved rather than
+  when it runs.
 
 ### 6. Query semantics that read as written
 
@@ -244,13 +403,40 @@ offset (`query.ts`), so a write between pages skips or repeats rows.
 
 **Change.**
 
-- `has(k)` and `lacks(k)` for presence; `where(k, v)` requires `v` and refuses `undefined`.
+- `has(k)` and `lacks(k)` for presence; `where(k, v)` requires `v` and refuses `undefined`. No caller passes
+  a possibly-undefined value. The single-argument callers are the Database surface's generated queries
+  (`database/fe/constants.ts:7,23`, `graph/constants.ts:9,16`, which become `qx.all().has('…')`), the query
+  prompt (`db-query-system.ts:46`), ears' own spec and the completion fixtures (`facade-packs.ts:370,383`).
 - `where(k, predicate)` for anything `===` can't express, so object values have an answer.
-- `page()` is deleted: text search finds no caller outside the engine. A cursor that survives writes needs
-  a stable order key, and nobody has asked for one.
+- `page()` is deleted: its only caller is `apack-ears/tests/engine/queries.spec.ts:104-107`. A cursor that
+  survives writes needs a stable order key, and nobody has asked for one.
 - The builder stays eager and synchronous. How filtering performs is
   [`ears-attribute-filtering.md`](ears-attribute-filtering.md)'s subject; its "no API change" premise holds
   for its own work, which can land before or after this.
+
+### 7. Everything that teaches the API moves with it
+
+Users type this API, and an LLM is taught it. The console (`apack-sdk/src/database-console/index.ts:44-72`)
+exposes `qx: untypedQx` and `tx: untypedTx` to code run by `apack db exec`/`script`/`repl` and the in-app
+Database console, so renaming `tx` changes what a user writes there. Every one of these moves in Phase 3,
+in the same commit as the code:
+
+- **The console**: its globals; `WRITE_HELPER_NAMES`, which the query step refuses
+  (`extensions/steps/query/runtime.ts:21,67`); `default-setup/tests/defs/database-console-globals.spec.ts`;
+  `apack-sdk/tests/database-console/database-console.spec.ts`; the CLI's help text
+  (`commands/db/code.ts:18`, `db/script.ts:32`, `db/repl.ts:15`) and `db.integration.spec.ts`.
+- **In-app teaching**: the transaction prompt (`content/prompts/db-transaction-system.ts`, which lists
+  `put`/`batchPut`/`updateBatch`/`drop`/`link`/`linkOne`/`safeLink`/`unlinkWhere`/`ensure`), the query
+  prompt (`db-query-system.ts`), the console's examples (`transaction-examples.ts`) and generated queries
+  (`database/fe/constants.ts`). Changing a prompt moves its compiled row's hash, so
+  `content-parity:update` re-records there.
+- **Docs**: `docs/public-facing/cli.md`, `services-and-data.md` and `getting-started.md`;
+  `packages/apack-sdk/TYPED-EARS.md`; `packages/apack-ears/CLAUDE.md`, `packages/default-setup/CLAUDE.md`
+  and the root CLAUDE.md's `tx`/`untypedTx` twin.
+- **Type fixtures**: `apack-cli/tests/_support/facade-packs.ts`.
+
+The CLI's pack templates need nothing (their repository template is empty), nor does `generate-entries`.
+`CHANGELOG.md` is the release process's.
 
 ## Phases
 
@@ -258,33 +444,50 @@ Each phase leaves the chain green and is one commit.
 
 | Phase | What | Depends on | Done when |
 |---|---|---|---|
-| 0. Check the data | The stored-data check in 3, on a copy | — | The answer is recorded here, with its date and the data dir's shape |
-| 1. Stored type | 3, without the attribute-name refusals | 0 | Nothing parses an id; hydration reads `entities`; `entityType`/`createdAt` are metadata; contract suite and bench pass |
-| 2. `transact` | 1 | — | A throwing unit leaves memory and the LMDB files as they were (contract and `lmdb/` specs, each mutation-checked); a returning unit reaches one LMDB transaction; bench within tolerance with and without a unit open |
-| 3. The reshape | 2, 5 and 6 in one migration of every call site | 1 | No `tx`, `put`, `update`, `batchPut`, `updateBatch`, `linkOne`, `safeLink`, `unlinkIf`, `unlinkWhere`, `relPatch`, `patchLink`, `ensure`, `define`, `page` in the tree; the reserved-name and unknown-name refusals each have a firing case |
+| 0. Check the data | The stored-data probe | — | **Done 2026-10-22**: [What the stored data says](#what-the-stored-data-says) |
+| 1. Stored type | 3: `typeOf`, hydration from `entities`, `entityType` as metadata, one record per relation, no endpoint rows, format 2 and its conversion script | 0 | Nothing parses an id; the probe reads zero for every doubled fact on a converted copy of the prod data, and the app boots on it; contract suite and bench pass |
+| 2. `transact` | 1, with the adapter's unit flush and buffered destroy | 1 | A throwing unit leaves memory and the LMDB files as they were (one case per write, each mutation-checked); a returning unit reaches one LMDB transaction per environment; bench within tolerance with and without a unit open |
+| 3. The reshape | 2, 5, 6 and 7 in one migration of every call site | 2 | No `tx`, `put`, `update`, `batchPut`, `updateBatch`, `linkOne`, `safeLink`, `unlinkIf`, `unlinkWhere`, `relPatch`, `patchLink`, `ensure`, `define`, `page` in the tree; the reserved-name and unknown-name refusals each have a firing case; DSL re-import replaces a flow whole |
 | 4. No ambient engine | 4 | 3 | `@apackdev/ears` has no module-level state, and `tests/no-module-state.spec.ts` drops its one exception |
 
-Phase 3 is one pass on purpose: entry points (2) and builder members (5) appear on the same lines (59 files
-call `tx` today), and moving them in two passes touches every line twice. Phase 4 changes imports, not call
-shapes, so it stays separate and reviewable.
+The TNode updaters' existence guard (see 2) is a bug fix that needs none of this and can land first.
+
+Phase 3 is one pass on purpose: entry points (2) and builder members (5) appear on the same lines, and
+moving them in two passes touches every line twice. Its size, as tx-family calls outside the engine's own
+source:
+
+| Package | Source | Tests |
+|---|---|---|
+| default-setup | 130 | 30 |
+| apack-sdk | 35 | 44 |
+| apack-host | 7 | 25 |
+| apack-cli | 1 | 11 |
+| api | 0 | 16 |
+| apack-ears | — | 165 |
+| apack-testing, `tests/` | 0 | 6 |
+
+Phase 4 changes imports, not call shapes, so it stays separate and reviewable.
 
 Every phase that moves a public export runs `npm run api:update` (ears and SDK) and
-`npm run facade:update -w @app/default-setup`, and reads the diff. Phase 1 changes written rows (the
-`entityType`/`createdAt` attributes stop being stored), so `content-parity:update -w @app/default-setup`
-re-records deliberately there and nowhere else.
+`npm run facade:update -w @app/default-setup`, and reads the diff. Phases 1 and 3 change written rows (the
+`entityType` attribute stops being stored; the prompts change), so `content-parity:update -w
+@app/default-setup` re-records deliberately in those two and nowhere else.
 
-## Decisions to settle before Phase 3
+## Decisions to settle before Phase 1
 
-- **The builder names.** `create(type)` and `write(id)` are proposed. `write` reads well in a chain
-  (`write(id).set('title', t)`) and doesn't collide with `updateEntity`; `edit` is the alternative.
-- **`link`'s default** (see 5), settled by reading its callers.
+- **The storage format goes to 2**, with the one-off conversion above run on a copy of the prod data. This
+  is the one change here that touches data on disk.
+- **The builder names.** `create(type)`, `upsert(type, id)` and `write(id)` are proposed. `write` reads well
+  in a chain (`write(id).set('title', t)`) and doesn't collide with `updateEntity`; `edit` is the
+  alternative. `upsert` is the conventional name for what five sites hand-write.
 - **`EntityId`'s shape** (see 3), settled by TYPED-EARS.md's checklist.
 
 ## What this is not
 
 - **Durable persistence.** [`ears-persistence-and-history.md`](ears-persistence-and-history.md) owns flush
-  barriers, failed-save state and cross-environment behaviour. `transact` gives it the logical unit it asks
-  for; it doesn't make writes durable.
+  barriers, failed-save state and cross-environment behaviour, including what a unit spanning two
+  environments promises when one fails, and the trace partition's per-boot root edge. `transact` gives it the
+  logical unit it asks for; it doesn't make writes durable.
 - **The console's transactions.** [`goal-console-transactions.md`](../goals/goal-console-transactions.md)
   becomes a caller: console code runs inside `transact`, and its Phase 1 is this plan's Phase 2.
 - **A disk-resident engine** ([`goal-lmdb-only.md`](../goals/goal-lmdb-only.md)). Everything here is
