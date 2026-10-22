@@ -769,7 +769,7 @@ Each grouped row accounts for its named fields; new fields must extend the event
 | FE surface `state`, `canvas`, `panel`, `chat`, `settings` | Actor/component/route presence and stable references in data; concrete implementations execute. Form ownership follows the settings plan |
 | FE surface `fallbackPanel.label`, `toggle`, `isShown` | Label/event contract discoverable; state predicate executes and is not a discovery eligibility check |
 | FE `appExtensions` | Named slot/component references, retaining actual slot composition/ownership policy |
-| FE `tiptapPlugins.extensions`, `popups`, `isSuggestionActive` | Give anonymous contributions stable declared identities; availability in data, extension/component/predicate objects executable |
+| FE `textEditor.extensions`, `popups`, `isSuggestionActive` | Give anonymous contributions stable declared identities; availability in data, extension/component/predicate objects executable |
 | FE `dslTypes.prefix`, `schema`, `globals`, `language` | Static editor declarations/assets; read without executing generated frontend imports |
 | Feature `references`; reference `category`, `icon`, `svgElements`, `navigate` | Type/category/static icon data discoverable; navigation binding remains until entity-opening callers migrate |
 | Reference categories `id`, `label`, `primaryIcon`; provider `category`, `useItems` | Category/provider identity and icon data discoverable; live reactive items require that provider's execution and disposal |
@@ -1857,7 +1857,7 @@ freshness and no unnecessary content reapplication through manifest-only changes
 
 The facade checkpoint must use `facades`, `PACK_TYPES_FACADE` and cache `facades/`, with named
 missing/incapable dependency refusal and unchanged capability-based acceptance. DSL defs remain defs.
-Editor and app contributions are declared directly as `extensions.tiptapPlugins` and
+Editor and app contributions are declared directly as `extensions.textEditor` and
 `extensions.appExtensions`, alongside other contributions; there is no frontend container;
 `hostVersion` remains the single-host compatibility range. All native/source/install readers, fixtures,
 templates, schema/reports and public docs migrate together. Intrinsic editor-schema ownership, every
@@ -2263,7 +2263,7 @@ Replace the opaque frontend registration-module target with explicit surface gro
 ```json
 {
   "extensions": {
-    "tiptapPlugins": {
+    "textEditor": {
       "suggestions": {
         "extensions": {
           "reference": "src/editor/reference.ts#ReferenceNode"
@@ -2302,7 +2302,7 @@ All other discovery/source-freshness, navigation, boundaries and Phase 6 work st
 
 ### Explicit editor contribution checkpoint (2026-10-15)
 
-Source `e40d157f9` declares editor groups and app slots directly under `extensions.tiptapPlugins`
+Source `e40d157f9` declares editor groups and app slots directly under `extensions.textEditor`
 and `extensions.appExtensions`. This replaces the earlier proposed frontend wrapper at the user's
 request: a contribution kind's placement does not claim exclusive ownership of frontend behavior.
 Native declarations carry the same fields directly. Each editor group names extension objects,
@@ -2343,7 +2343,7 @@ Split those responsibilities at the existing composition boundary:
 - Move `ReferenceNode` into `@apackdev/ui` with the other document primitives. Preserve its wire node
   name, attributes, URI parser, HTML/Markdown behavior, node-view refresh/disposal and eligible click
   behavior. Navigation callbacks remain until the entity-navigation phase migrates them.
-- The host's native declaration claims `tiptapPlugins.references.extensions.reference`, with its
+- The host's native declaration claims `textEditor.references.extensions.reference`, with its
   module/export reference. The renderer supplies that UI object in its existing `host` registration.
   Native declarations remain data-only; host/backend code does not import UI or the Tiptap node.
   Existing checked binding and cross-pack ownership rules cover the intrinsic name too.
@@ -2365,7 +2365,7 @@ boundaries, dependency/API/replacement work and the aggregate strict gate remain
 ### Native reference schema ownership checkpoint (2026-10-15)
 
 Source `f8c6b2262` moves `ReferenceNode` and its behavior tests into `@apackdev/ui`. The native host
-catalog declares `tiptapPlugins.references.extensions.reference`; the renderer supplies its binding
+catalog declares `textEditor.references.extensions.reference`; the renderer supplies its binding
 before loading external frontends. Backend discovery imports no UI implementation. Default-setup
 now contributes `referenceSuggestion`, which installs its existing suggestion surface alongside the
 host-owned node. The URI/node/attribute identities, Markdown/HTML behavior, metadata-driven icon
@@ -2397,7 +2397,7 @@ excluded or archived.
 
 ### Accepted editor binding identity and lifetime
 
-The current editor takes `tiptapPluginRegistry.getAll()` once during setup. Popup membership and
+The current editor takes `textEditorExtensionsRegistry.getAll()` once during setup. Popup membership and
 Escape predicates therefore retain an unloaded pack, and an editor created before a pack arrives
 never adopts it. The registry also discards pack/group identity when projecting its accepted bindings.
 The catalog supplies declared membership, but cannot stand in for accepted executable bindings.
@@ -2436,7 +2436,7 @@ all other discovery/freshness and downstream goal requirements; it is not an exc
 ### Accepted editor binding identity checkpoint (2026-10-15)
 
 Source `45e8465ad` preserves `{ packId, groupId, binding }` in the accepted editor registry, including
-native groups, and exposes committed-change subscription through `tiptapPluginRegistry.onChanged`.
+native groups, and exposes committed-change subscription through `textEditorExtensionsRegistry.onChanged`.
 Rows are immutable, returned lists are detached, and unrelated registrations retain incumbent
 binding objects. Consumers use `.binding`; declarations/unavailable groups remain in the catalog.
 No alias or second registry. This implements step 1 of the editor lifetime design above; the editor

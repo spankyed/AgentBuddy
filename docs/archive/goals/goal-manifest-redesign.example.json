@@ -571,7 +571,7 @@
       }
     },
     "fe": {
-      "tiptapPlugins": "src/extensions/tiptap/index.ts",
+      "textEditor": "src/extensions/tiptap/index.ts",
       "appExtensions": {
         "welcome": "src/extensions/app/Welcome.vue"
       }

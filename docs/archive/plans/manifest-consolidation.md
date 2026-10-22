@@ -43,7 +43,7 @@ A landed result still needs its applicable regression checks in the final requir
 
 ## Resolve the two naming questions
 
-- **Direct editor/app contributions: selected.** Declare `extensions.tiptapPlugins` and
+- **Direct editor/app contributions: selected.** Declare `extensions.textEditor` and
   `extensions.appExtensions` alongside the other contribution kinds. The user replaced the proposed
   `extensions.frontend` wrapper: artifacts/help and other extensions also serve the frontend, so that
   grouping adds nesting without an ownership or capability boundary. Keep `fe`/`be` directories,
@@ -210,7 +210,7 @@ other unverified checks remain explicitly incomplete. The module inventory disti
 component, type-export and type-module purposes. `9b674ece3` makes whole-module paths, required named
 exports and optional default-export bindings explicit in schemas and source/codegen readers. Codegen
 checks grammar before emission even without named bindings. `fb9d212fc` checks the runtime exports
-of whole-module readers from the same target metadata (`default`, `apply`, `tiptapPlugins`), includes
+of whole-module readers from the same target metadata (`default`, `apply`, `textEditor`), includes
 JavaScript in static inspection and recognizes CommonJS default imports. Type-only barrels remain
 independent; Vue component exports belong to the frontend build. Real CLI cases prove system default
 checks do not activate modules. M4 remains open for scaffold/layout agreement and cross-pack default
@@ -306,7 +306,7 @@ mutations. Generated EARS and compiled content remain byte-identical to the pres
 | 15: naming/release discipline | Completed naming baseline retained; current version/range parser and build documentation distinguish contract/version concepts. Implemented maintenance. | Frontend container/facade naming remains explicitly assigned below. |
 | 16: no compatibility | Current source search finds no entityShapes/settingsSections/typesEntry/boot-key/sidecar readers or moved-key hint inventory; strict current validation and migrated fixtures remain. Implemented rule, continuously enforced. | Every later contract move migrates all callers/readers outright. |
 | 17: checks/build | `checks.allow` shares SDK policy with CLI rules; sidecar removed; real CLI allowance/refusal coverage and existing build options preserved. Implemented. | Maintain scaffold/schema/guidance agreement. |
-| Naming: extensions.fe | Direct extensions.tiptapPlugins and extensions.appExtensions landed in `e40d157f9`, including schema, codegen, native declarations, catalog/CLI readers, fixtures and docs; no frontend wrapper or alias. | Preserve checked member identities and module-free discovery through remaining editor/provider work. |
+| Naming: extensions.fe | Direct extensions.textEditor and extensions.appExtensions landed in `e40d157f9`, including schema, codegen, native declarations, catalog/CLI readers, fixtures and docs; no frontend wrapper or alias. | Preserve checked member identities and module-free discovery through remaining editor/provider work. |
 | Naming: hostVersion | Resolved and retained as one nonempty npm host range; separate from SDK/build tool dependencies and build stamps. Implemented. | Keep one field, with no engines wrapper. |
 
 Original phases 1/3/4/5/6/7 now have their M1–M6 source checkpoints and validation evidence. Phase 2's
@@ -330,7 +330,7 @@ current implementations; it is a source review, not final runtime or strict-gate
 | 6, 8, 9, 12: roles, explicit contributions, extensions and defaults | Registry designation stores and catalog claims use explicit identities. Backend bindings compare declared/runtime names before registration. Source endpoint frames validate compiled contract coverage before catalog projection. `dcf2493e5` fixes the discovered inherited-property exception in content validation/resolution. | Retain inactive-owner, collision, exact binding, source-offer and default-selection tests; no new inventory or naming restriction. |
 | 10: content and lifecycle | `ContentConfigSchema` groups content. `LifecycleConfigSchema` declares named hooks, and `lifecycle-binding.ts` verifies exact callable membership. | Preserve hook ordering, content identity and native/installed admission through the gate. |
 | 11, 14, 17: schema assistance, format key and checks | Current generated JSON has no undocumented declared property, no authored format-version key, and the expected lifecycle/checks fields. `PackChecksSchema` shares the allowable-check vocabulary. `dcf2493e5` changes behavior without changing generated schema or API shape. | Keep editor completion/diagnostics, exact build stamps, API reports, public docs and actual allowance/refusal cases in strict acceptance. |
-| 15 and both naming questions | Completed naming baseline remains unchanged. Current schema retains `hostVersion` and places `tiptapPlugins`/`appExtensions` directly under extensions. Release metadata is untouched. | Preserve the settled contract; no new naming or release work. |
+| 15 and both naming questions | Completed naming baseline remains unchanged. Current schema retains `hostVersion` and places `textEditor`/`appExtensions` directly under extensions. Release metadata is untouched. | Preserve the settled contract; no new naming or release work. |
 
 The own-property repair passes 72 focused schema/declaration/resolution cases, the existing dependency
 format codegen consumer, SDK types, schema check and lint. See its
