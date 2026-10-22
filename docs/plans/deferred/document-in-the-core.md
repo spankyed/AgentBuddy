@@ -99,10 +99,11 @@ most of the cost and all of the risk.
 `getCommands`, and after the move a read of the SDK's own rows. A manifest key that the app read directly
 would be the second source the commands goal collapsed, and is not what this proposes.
 
-**Worth having in the meantime**: `apack pack add command <name> --placeholder "…"`, a tenth entity beside
-the nine `apack pack add` already scaffolds. It removes the friction the shorthand was wanted for — the
-hand-written directory, format reference and field-section convention — with no schema change and no new
-semantics, and it is useful whether or not this plan ever runs.
+**Already done, and worth having either way**: `apack pack add command <name> --placeholder "…"`, a tenth
+entity beside the nine `apack pack add` scaffolded before it. It removes the friction the shorthand was
+wanted for — the hand-written directory, format reference and field-section convention — with no schema
+change and no new semantics. What it does not give is commands *declared in the manifest*, which is what
+the section above is for.
 
 ## What it costs, which is the reason to wait
 

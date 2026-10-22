@@ -6,6 +6,7 @@ const ENTITIES: Record<string, () => Promise<(args: string[], root: string) => P
   'action':     async () => (await import('./add/action')).addAction,
   'prompt':     async () => (await import('./add/prompt')).addPrompt,
   'flow':       async () => (await import('./add/flow')).addFlow,
+  'command':    async () => (await import('./add/command')).addCommand,
   'service':    async () => (await import('./add/service')).addService,
   'migration':  async () => (await import('./add/migration')).addMigration,
 };
@@ -21,6 +22,7 @@ Entities:
   action <name>      An action
   prompt <name>      A prompt
   flow <name>        A flow
+  command <name>     A chat slash command
   service <name>     Service module
   migration          Version-targeted migration
 
