@@ -236,7 +236,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - `steps.build`;
   - how the backend creates artifacts (`services.artifact.createAndNotify`) and blocks (`services.chat.sendBlockMessage`);
   - `BlockDefinition.be.generateAsideText`;
-  - tiptap plugins, app extensions (`welcome` slot) and `PackFERegistration` fields;
+  - text editor extensions, app extensions (`welcome` slot) and `PackFERegistration` fields;
   - a reference list of default-setup's 16 artifact and 18 block types.
 - **`services-and-data.md`:**
   - roles: `grantRole`/`revokeRole`/`getRoles`/`findWithRole`/`EARS.RoleKind`;

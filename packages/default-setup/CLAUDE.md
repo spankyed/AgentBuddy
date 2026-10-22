@@ -33,7 +33,7 @@ src/
     artifacts/             # Artifact viewer definitions + Vue components
     blocks/                # Message block definitions (display + input)
     steps/                 # Flow step definitions (action, llm, switch, fire, etc.)
-    tiptap/                # Tiptap plugins (reference node, command suggestion, viewer decoration)
+    tiptap/                # Text editor extensions (reference node, command suggestion, viewer decoration)
     app/                   # Welcome screen app extension
     help/                  # Bundled Markdown help articles
   content/                   # Content sources: actions, prompts, flows, library, notes
@@ -363,7 +363,7 @@ them — but `kind` is the manifest's and not the folder's: `actions` and `toggl
 
 ## Extensions
 
-- **Tiptap plugins** (`apack.json` `extensions.tiptapPlugins`) — reference suggestions, slash commands and command viewer decoration. The stored reference node belongs to the native UI pack; default-setup contributes providers and popups. Carried by `pack-entry-fe.ts`'s registration.
+- **Text editor extensions** (`apack.json` `extensions.textEditor`) — reference suggestions, slash commands and command viewer decoration. The stored reference node belongs to the native UI pack; default-setup contributes providers and popups. Carried by `pack-entry-fe.ts`'s registration.
 - **Help articles** (`src/extensions/help/`) — Markdown contributed through `apack.json` `extensions.help.path` and shown in Settings → Help.
 - **App extensions** — Welcome screen component (`src/extensions/app/Welcome.vue`). Registered via `pack-entry-fe.ts`. The root of `src/extensions/` holds kind-folders only (`app/`, `artifacts/`, `blocks/`, `help/`, `steps/`, `tiptap/`), never a component: a loose file there reads as a kind that isn't one.
 - **References** (`__generated__/references.ts`) — aggregates reference types, categories and item providers from the threads, library and notes features, for the tiptap reference system: which of each feature's things can be linked to from an editor, and how to render and open a link.

@@ -634,7 +634,7 @@ file is not at the conventional path.
 > **Updated 2026-09-22.** This decision named two more annotations when it was written, and neither
 > survives. `outgoingEventsType` no longer exists in `manifest-schema.ts` — it was removed after this
 > doc was written, and no pack in the repo carries one. `sendsTo` is deleted by
-> [`goal-plugin-inbox.md`](goal-plugin-inbox.md) (its Decision 2), which has **landed**:
+> [`goal-surface-inbox.md`](goal-surface-inbox.md) (its Decision 2), which has **landed**:
 > a surface declares the events it accepts, so the inverse index `sendsTo` supplied is gone from every
 > manifest, from `SystemSchema` and from `apack.schema.json`. Nothing here has to remove it.
 
@@ -653,13 +653,13 @@ names none of them. Measured again on 2026-09-22, the annotations are rarer stil
 24 `system` and `surface` declarations, **three carry anything beyond the entry**: `threads.surface`
 (`default: true`), `actions.system` (`sendsTo: ["flows"]`) and `settings.system`
 (`sendsTo: ["host/application"]`) — and **none** overrode the path. Re-measured on 2026-09-23, after
-[`goal-plugin-inbox.md`](goal-plugin-inbox.md) deleted `sendsTo`,
+[`goal-surface-inbox.md`](goal-surface-inbox.md) deleted `sendsTo`,
 **`threads.surface.default` is the only annotation left in the pack**; `events` and the `entry` override
 exist for external packs rather than for anything here. The `entry` override exists for an external pack with a different layout, not because
 anything here needs it.
 
 **9. Every extension point moves under `extensions`**: `steps`, `artifacts`, `blocks`, `commands`,
-`dsl`, `fe` (tiptap plugins, app extensions) and `packServices`, which becomes `extensions.services`.
+`dsl`, `fe` (text editor extensions, app extensions) and `packServices`, which becomes `extensions.services`.
 This is VS Code's `contributes`. **`bundleUi` is not one of them** and goes to `build` (Decision 17):
 `extensions` is what the pack gives the app, and a packaging choice gives it nothing.
 
@@ -1058,7 +1058,7 @@ byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` pas
 - Keep `system`/`surface` as optional sibling annotations carrying `events`, the surface's `default`
   claim, its `contract` and an `entry` override, and make `validate` reject one whose name is absent
   from `provides` (Decision 8). `sendsTo` is not among them:
-  [`goal-plugin-inbox.md`](goal-plugin-inbox.md) already deleted it.
+  [`goal-surface-inbox.md`](goal-surface-inbox.md) already deleted it.
 - ~~Move `defaultSurface` onto the feature's surface as `{ "default": true }` (Decision 12).~~ **Done ahead of this goal**, on its own: the root field is gone, `SurfaceSchema` takes `default`, `validate` rejects two features of one pack claiming it, and codegen reads the claim. Nothing else in the redesign was touched.
 - Widen `validateFeatures` (`validate.ts:47`, moved by Decision 6) to check **every** name in
   `provides`, not the three

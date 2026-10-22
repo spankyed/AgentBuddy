@@ -215,7 +215,7 @@ Final.
      - `secretsClient` reads the frontend port's `secrets` (today the `secrets-client` host module).
      - `navigateToSurface` reads the frontend port's `application`.
      - `services` reads `packs` for pack services and `services` for the app-implemented four. The SDK builds `logger`, `emitter` and `repository` itself (Decision 6).
-     - From Phase 7, the SDK's lookups of what packs registered (designations, steps, artifacts, blocks, content hooks and appliers, feature settings defaults, pack commands, and in the frontend surfaces, tiptap plugins, app extensions and DSL types) read `packs`.
+     - From Phase 7, the SDK's lookups of what packs registered (designations, steps, artifacts, blocks, content hooks and appliers, feature settings defaults, pack commands, and in the frontend surfaces, text editor extensions, app extensions and DSL types) read `packs`.
    - **Bindings:**
      - the api's composition root binds `createHostRuntime(...)` from `@apackdev/host`;
      - `@apackdev/sdk/testing`'s `startTestRuntime` binds an in-memory `HostRuntime`;

@@ -37,7 +37,7 @@ injectedExtensions: bindings.flatMap(group => Object.values(group.binding.extens
 `TiptapEditor` renders in nine directories — notes, library content sections, code canvas, the PR view,
 artifact viewers, display blocks and threads. `CommandSuggestion` is live in all of them.
 
-**2. It sources its data from threads.** `command-extension.ts` passes
+**2. It sources its data from threads.** `command-suggestion.ts` passes
 `() => readSurfaceState('threads', s => s.commands)`, and `useCommandItems.ts` reads the same surface.
 So an app-wide affordance over a host-level registry is routed through two default-setup features:
 library merges the declared commands with its editable ones, threads publishes the result.
@@ -54,7 +54,7 @@ export function readSurfaceState(name: SurfaceName, selector: …): unknown {
 
 A surface is spawned on demand per window, so in a window where threads was never opened,
 `getCommands()` is `undefined` and `getCommands().find(…)`
-(`command-suggestion-plugin.ts:136`) throws. **This goal removes the instance, not the defect** — see
+(`command-suggestion.ts`) throws. **This goal removes the instance, not the defect** — see
 Decision 4.
 
 **And `CommandItem` is declared twice**, beside the SDK's `PackCommand`, all three structurally
@@ -68,7 +68,7 @@ identical (`{ name: string; placeholder: string }`):
 
 ### What moves
 
-`command-extension.ts`, `command-suggestion-plugin.ts`, `CommandSuggestionPopup.vue`,
+`command-suggestion.ts`, `CommandSuggestionPopup.vue`,
 `useCommandItems.ts`, `command-config.ts`.
 
 ### What stays in default-setup
@@ -141,8 +141,8 @@ nothing.
 
 **Deliverable.** The five files in Scope moved to
 `packages/apack-ui/src/components/tiptap/extensions/command-suggestion.ts` plus its popup, following
-`goal-editor-extensions.md`'s convention if that has landed — one file, the ProseMirror Plugin private,
-`commandSuggestionKey` exported. `useCommandItems` reads `getPackCommands()` instead of
+the editor-extension convention — one file, the ProseMirror Plugin private, `commandSuggestionKey`
+exported. `useCommandItems` reads `getPackCommands()` instead of
 `useSurfaceState('threads', …)`.
 
 `createExtensions()` gains it; `TiptapEditor.vue` renders the popup; default-setup's manifest group
@@ -187,7 +187,6 @@ reads the list the editor would show.
 - `extensions.commands` keeps its shape; this moves who reads it, not what a pack declares.
 - Reference suggestion is not touched. If a phase wants to, it has found a shared seam worth naming
   rather than a reason to widen scope.
-- Ordering against [`goal-editor-extensions.md`](../archive/goals/goal-editor-extensions.md): that goal's Phase 2 merges
-  `command-extension.ts` and `command-suggestion-plugin.ts` into one file. Landing it first makes this a
-  one-file move; landing this first makes that goal's merge table one row shorter. Either order works;
-  doing both at once does not.
+- [`goal-editor-extensions.md`](../archive/goals/goal-editor-extensions.md) has landed, so the move is a
+  one-file move: `command-suggestion.ts` holds the extension and its Plugin, and the convention there
+  governs where it arrives.

@@ -156,7 +156,7 @@ describe("a pack's frontend", () => {
 });
 
 // Pack and group insertion order determines the order presented to the editor.
-describe('tiptap plugin groups', () => {
+describe('text editor extension groups', () => {
   const mentions: TextEditorExtensions = { extensions: {} };
   const slashes: TextEditorExtensions = { extensions: {} };
 

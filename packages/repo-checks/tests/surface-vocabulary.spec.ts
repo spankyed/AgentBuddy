@@ -7,8 +7,9 @@ import { repoFiles } from './_support/repo-files.ts';
 
 /**
  * A feature's frontend half is a **surface** and its backend half a **system**. `plugin` names an
- * editor plugin (tiptap/ProseMirror), a bundler plugin (Vite, rollup, PostCSS, esbuild) or a plugin of
- * a third-party CLI this app drives, and nothing else. This guard keeps those vocabularies apart from
+ * ProseMirror `Plugin` this app constructs inside a tiptap extension, a bundler plugin (Vite, rollup,
+ * PostCSS, esbuild) or a plugin of a third-party CLI this app drives, and nothing else. A pack's editor
+ * contribution was a fourth until it was named for what it is (`extensions.textEditor`). This guard keeps those vocabularies apart from
  * the concept now that they live side by side.
  *
  * Here and not in `@apackdev/host`, because its subject is every tracked file and not one package. A
@@ -171,7 +172,7 @@ const trackedCodeFiles = (): string[] => repoFiles().filter((file) =>
  * The guides, held to the same identifier lists.
  *
  * **Every group above is a list of identifiers, never the bare word**, which is what makes this safe: a
- * guide says "tiptap plugins" and "a Vite plugin" legitimately, and no pattern here matches either. It
+ * guide says "a ProseMirror plugin" and "a Vite plugin" legitimately, and no pattern here matches either. It
  * exists because the code-only population let `SELECT_PLUGIN_BY_SHELL` sit in `@apackdev/host`'s guide
  * through five phases of a rename — the one place a reader would have gone to find the event's name.
  *
@@ -216,7 +217,7 @@ describe('the patterns themselves', () => {
     const caught = population('kept spellings', KEPT).flatMap((sample) => groups
       .filter((group) => patternFor(group).test(sample))
       .map((group) => `${group} matches ${sample}`));
-    expect(caught, "narrow the pattern; these are editor plugins, bundler plugins or another program's names").toEqual([]);
+    expect(caught, "narrow the pattern; these are ProseMirror's, a bundler's, or another program's names").toEqual([]);
   });
 
   it('matches a name only on its own word, not inside a longer one', () => {

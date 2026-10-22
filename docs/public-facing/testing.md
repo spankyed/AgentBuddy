@@ -268,7 +268,7 @@ it('summarizes a note', async () => {
 
 `@apackdev/sdk/testing`, for the two cases the harness doesn't cover:
 
-- **`startFeTestRuntime(options?)` / `stopFeTestRuntime()`** — a frontend host for a test file that exercises surface code, a tiptap plugin or a DSL type, which read the bound frontend the way a pack's backend reads the bound app. Bind it once per file and unbind at the end; nothing is registered unless the test passes it, so an extension that registers itself on import is one this returns. It has no app shell: code that reaches the shell fails naming `startShell`, which binds a frontend host with the real one.
+- **`startFeTestRuntime(options?)` / `stopFeTestRuntime()`** — a frontend host for a test file that exercises surface code, a text editor extension or a DSL type, which read the bound frontend the way a pack's backend reads the bound app. Bind it once per file and unbind at the end; nothing is registered unless the test passes it, so an extension that registers itself on import is one this returns. It has no app shell: code that reaches the shell fails naming `startShell`, which binds a frontend host with the real one.
 
   ```typescript
   import { startFeTestRuntime } from '@apackdev/sdk/testing';

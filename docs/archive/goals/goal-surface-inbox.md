@@ -1,5 +1,5 @@
 > **Done in part** (`3b793b5a4`..`f8f0c4708` on `AS/plugin-inbox`), **superseded in part** by
-> [`goal-plugin-contract.md`](goal-plugin-contract.md), which carries what is left and the
+> [`goal-surface-contract.md`](goal-surface-contract.md), which carries what is left and the
 > finding that came out of the work. The text below is the plan as written, with the trims it took while
 > open; see the Outcome for what landed, what changed shape and what moved on.
 
@@ -8,7 +8,7 @@
 ```
 # Goal: a surface declares what it accepts, so `sendsTo` and the hand-written cross-feature plumbing go away
 
-Implement docs/goals/goal-plugin-inbox.md, at or after bec339ea7 — the base its Background was
+Implement docs/goals/goal-surface-inbox.md, at or after bec339ea7 — the base its Background was
 re-surveyed at, which is the merge of goal-settings-to-host.md.
 Before Phase 1, confirm the base: packages/apack-sdk/src/build/generate-entries.ts,
 packages/apack-sdk/src/build/manifest-schema.ts, packages/apack-sdk/src/events/index.ts,
@@ -805,7 +805,7 @@ seven handles, seven binds and six sender wrappers is deleted. The full chain is
 
 Two of the goal's decisions were trimmed while it was open (18 and 19, below), and one shipped in a shape
 the doc didn't anticipate and is better than what it asked for. The work also produced a finding that
-`goal-plugin-contract.md` exists to act on.
+`goal-surface-contract.md` exists to act on.
 
 ### Per phase
 
@@ -840,7 +840,7 @@ target's inbox surfaced 17 cross-feature UI commands that nothing declared — `
 `TAB.CREATE`, `NODE.DOUBLE_CLICK` and the rest. Each had to be declared, and since the only declared tier is
 the published one, **all 17 now reach every dependent pack's facade**
 (`deps/default-setup.d.ts:3812`, `:3829`). That is the finding: the model needs a *pack* audience between
-"my own system" and "anyone", and `goal-plugin-contract.md` adds it.
+"my own system" and "anyone", and `goal-surface-contract.md` adds it.
 
 ### Open items
 

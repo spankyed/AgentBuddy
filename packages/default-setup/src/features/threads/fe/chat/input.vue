@@ -657,7 +657,7 @@ const handleSubmit = async () => {
       const bodyText = md.startsWith(prefix) ? md.slice(prefix.length) : md.slice(`/${commandName}`.length)
       emit('send-command', commandName, bodyText.trim(), references)
 
-      // Deactivate command plugin
+      // Deactivate the command suggestion
       const { tr } = editor.state
       tr.setMeta(commandSuggestionKey, { deactivate: true })
       editor.view.dispatch(tr)

@@ -528,7 +528,7 @@ declarations reject stored values is admitted at boot without a diagnostic, and 
 
 **S.3. A pack disabled during its first frontend load stays in the window (plausible).**
 `features/packs/fe/frontends.ts:184` commits a frontend to the window's registry (surfaces, forms, steps,
-tiptap plugins, stylesheet, settings binding) inside `load()`. Then `mergePackPlugins`
+text editor extensions, stylesheet, settings binding) inside `load()`. Then `mergePackPlugins`
 (`features/application/fe/machine.ts:212-216`) finds the pack no longer eligible and returns without
 recording it in `acceptedPackRuntimes`. The loader unloads only owners listed there
 (`pack-frontends.ts:27-29`), so the frontend, its global stylesheet and its tiptap extensions stay with no

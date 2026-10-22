@@ -28,7 +28,7 @@ function typecheck(dir: string, tsc: TscVersion, moduleResolution: 'node16' | 'b
       "import { textEditorExtensionsRegistry } from '@apackdev/sdk/fe';",
       "export const editor = h(TiptapEditor, { mode: 'editor', modelValue: 'text' });",
       "export const code = h(SimpleMonacoEditor, { modelValue: 'const x = 1' });",
-      "export const plugins = textEditorExtensionsRegistry.getAll();",
+      "export const contributions = textEditorExtensionsRegistry.getAll();",
       "export const debounce = useDebounceFn(100);",
       'debounce(() => {});',
       '// @ts-expect-error modelValue is a string',
