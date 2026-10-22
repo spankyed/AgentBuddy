@@ -237,6 +237,58 @@ async function findMainWindow(electronApp: ElectronApplication): Promise<Page> {
   throw describeFailure('Main window with applicationState did not appear within timeout', electronApp);
 }
 
+/** What `awaitShell` waits for. A descriptor rather than a predicate, because a function cannot cross into the page. */
+type ShellCondition = { kind: 'surface'; ref: string } | { kind: 'state'; path: string };
+
+/**
+ * Waits for the app shell to reach a condition by **subscribing** to its actor.
+ *
+ * A sampled wait fails in two ways a subscription cannot: it can pass over a state the app held between
+ * two samples, and its interval is a second deadline nobody declared — `expect.poll`'s 5s default gave up
+ * 28.4s into a pack-restore test while the app was working correctly. Here the actor says when it changed,
+ * the condition is read on that transition, and the `timeout` only names what never arrived.
+ *
+ * **The actor's own arrival is still sampled, and cannot be otherwise today.** `window.applicationState`
+ * is a plain assignment in `renderer/src/main.ts`, so there is no event to subscribe to; this polls for the
+ * global and nothing else. Give the renderer a readiness event and that half goes too.
+ */
+async function awaitShell(page: Page, condition: ShellCondition, timeout: number): Promise<void> {
+  await page.waitForFunction(() => (window as any).applicationState !== undefined, null, { timeout });
+  await page.evaluate(([what, ms]) => new Promise<void>((resolve, reject) => {
+    const actor = (window as any).applicationState;
+    /** The dot-path match `waitForState` has always used: a nested value, or a leaf equal to the segment. */
+    const atPath = (value: unknown, path: string): boolean => {
+      if (typeof value !== 'object' || value === null) return value === path;
+      let current: any = value;
+      for (const part of path.split('.')) {
+        if (typeof current === 'object' && current !== null && part in current) current = current[part];
+        else return current === part;
+      }
+      return true;
+    };
+    const holds = (): boolean => {
+      const snapshot = actor.getSnapshot();
+      return what.kind === 'surface'
+        ? (snapshot?.context?.surfaces ?? []).some((surface: { id: string }) => surface.id === what.ref)
+        : atPath(snapshot?.value, what.path);
+    };
+    const describe = (): string => what.kind === 'surface'
+      ? `no surface at ${what.ref}; the app has ${JSON.stringify((actor.getSnapshot()?.context?.surfaces ?? []).map((s: { id: string }) => s.id))}`
+      : `the shell is ${JSON.stringify(actor.getSnapshot()?.value)}, waiting for ${what.path}`;
+    if (holds()) return resolve();
+    const timer = setTimeout(() => {
+      subscription.unsubscribe();
+      reject(new Error(`after ${ms}ms: ${describe()}`));
+    }, ms);
+    const subscription = actor.subscribe(() => {
+      if (!holds()) return;
+      clearTimeout(timer);
+      subscription.unsubscribe();
+      resolve();
+    });
+  }), [condition, timeout] as [ShellCondition, number]);
+}
+
 /** The state a ready app is in, as the dot-path `waitForState` takes. */
 export const APP_READY_STATE = 'running.connected';
 
@@ -343,35 +395,11 @@ export function createAppDriver(page: Page, screenshotDir: string): AppDriver {
       }, id0, { timeout: 10_000 });
     },
   
-    waitForSurface: async (surfaceId, timeout = 30_000) => {
-      // A host surface is known once the app has any; a pack's registers later, at its ref
-      await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.surfaces ?? []).length > 0, null, { timeout });
-      const id = resolveSurface(surfaceId);
-      await page.waitForFunction((target) =>
-        ((window as any).applicationState?.getSnapshot()?.context?.surfaces ?? []).some((p: { id: string }) => p.id === target), id, { timeout });
-    },
-  
-    waitForState: async (check, timeout = 10_000) => {
-      await page.waitForFunction((c) => {
-        const snap = (window as any).applicationState?.getSnapshot();
-        const val = snap?.value;
-        if (typeof val === 'object' && val !== null) {
-          const parts = c.split('.');
-          let current: any = val;
-          for (const part of parts) {
-            if (typeof current === 'object' && current !== null && part in current) {
-              current = current[part];
-            } else if (current === part) {
-              return true;
-            } else {
-              return false;
-            }
-          }
-          return true;
-        }
-        return val === c;
-      }, check, { timeout });
-    },
+    waitForSurface: async (surfaceId, timeout = 30_000) =>
+      awaitShell(page, { kind: 'surface', ref: resolveSurface(surfaceId) }, timeout),
+
+    waitForState: async (check, timeout = 10_000) =>
+      awaitShell(page, { kind: 'state', path: check }, timeout),
   };
   return app;
 }
