@@ -56,7 +56,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { referenceSuggestionPluginKey, type ReferenceSuggestionState } from './reference-suggestion-plugin.ts'
+import { referenceSuggestionKey, type ReferenceSuggestionState } from './reference-suggestion.ts'
 import { useReferenceItems, type ReferenceCategory, type ReferenceItem } from './useReferenceItems.ts'
 import { getReferenceCategoryBinding, getReferenceTypeBinding } from '@apackdev/sdk/fe/references'
 
@@ -75,7 +75,7 @@ function getCategoryIcon(id: ReferenceCategory) {
 
 const pluginState = shallowRef<ReferenceSuggestionState>()
 watch(() => props.editor, (editor, _previous, onCleanup) => {
-  const update = () => { pluginState.value = referenceSuggestionPluginKey.getState(editor.state) }
+  const update = () => { pluginState.value = referenceSuggestionKey.getState(editor.state) }
   update()
   editor.on('transaction', update)
   onCleanup(() => { editor.off('transaction', update) })
@@ -107,7 +107,7 @@ watch([query, level], ([q, lvl]) => {
   const state = pluginState.value
   if (!state) return
   const { tr } = props.editor.state
-  tr.setMeta(referenceSuggestionPluginKey, {
+  tr.setMeta(referenceSuggestionKey, {
     active: true,
     triggerPos: state.triggerPos,
     query: '',
@@ -269,7 +269,7 @@ function selectCategory(id: ReferenceCategory) {
   const categoryPrefix = cat.declaration.label.toLowerCase().replace(/\s+/g, '') + ':'
 
   tr.replaceWith(from, to, props.editor.state.schema.text(categoryPrefix))
-  tr.setMeta(referenceSuggestionPluginKey, {
+  tr.setMeta(referenceSuggestionKey, {
     active: true,
     triggerPos: state.triggerPos,
     query: '',
@@ -290,7 +290,7 @@ function goBackToCategories() {
   const from = state.triggerPos + 1
   const to = props.editor.state.selection.head
   tr.delete(from, to)
-  tr.setMeta(referenceSuggestionPluginKey, {
+  tr.setMeta(referenceSuggestionKey, {
     active: true,
     triggerPos: state.triggerPos,
     query: '',
@@ -329,7 +329,7 @@ function insertReference(item: ReferenceItem) {
     .run()
 
   const { tr } = props.editor.state
-  tr.setMeta(referenceSuggestionPluginKey, { deactivate: true })
+  tr.setMeta(referenceSuggestionKey, { deactivate: true })
   props.editor.view.dispatch(tr)
 }
 
@@ -342,7 +342,7 @@ function deactivateAndClean() {
 
   const { tr } = props.editor.state
   tr.delete(from, to)
-  tr.setMeta(referenceSuggestionPluginKey, { deactivate: true })
+  tr.setMeta(referenceSuggestionKey, { deactivate: true })
   props.editor.view.dispatch(tr)
 }
 </script>

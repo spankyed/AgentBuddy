@@ -7,7 +7,7 @@ import { startFeTestRuntime, stopFeTestRuntime } from '@apackdev/sdk/testing';
 import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';
 import { Extension, Mark, Node } from '@tiptap/core';
 import { undoDepth } from '@tiptap/pm/history';
-import { ReferenceNode } from '@apackdev/ui/components/tiptap/reference-node';
+import { ReferenceNode } from '@apackdev/ui/components/tiptap/extensions/reference-node';
 
 // Exercise the real host registration and editor; these canvases are outside the editor contract.
 vi.mock('@/views/packs/canvas.vue', () => ({ default: { render: () => null } }));

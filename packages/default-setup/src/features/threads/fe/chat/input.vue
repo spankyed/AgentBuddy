@@ -194,10 +194,10 @@ import { Mic, MicOff, PaperclipIcon, Sparkle, Hash, CornerDownLeft, EllipsisVert
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
 import StatusLine from './StatusLine.vue'
-import { Plugin } from '@tiptap/pm/state'
 import { useSpeechRecognition } from './composables/useSpeechRecognition.ts'
 import { DOUBLE_ESC_MS } from '@apackdev/ui/components/tiptap/composables/createEditorKeyboard'
-import { useAttachments, extractImageSrcsFromClipboard } from './composables/useAttachments.ts'
+import { useAttachments } from './composables/useAttachments.ts'
+import { imagePaste } from '#extensions/tiptap/image-paste.ts'
 import { useExternalFileDrag } from '@apackdev/ui/composables/useExternalFileDrag'
 import {
   DropdownMenuRoot,
@@ -214,7 +214,7 @@ import Button from '@apackdev/ui/design/button'
 import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, AgentMode, MessageReferences, QuickPrompt } from '#generated/types.ts'
-import { commandSuggestionPluginKey } from '../../../../extensions/tiptap/command-suggestion-plugin.ts'
+import { commandSuggestionKey } from '../../../../extensions/tiptap/command-suggestion.ts'
 import { matchesHotkey, useSurfaceStorage, type HotkeyEvent, type HotkeysMap } from '@apackdev/sdk/fe'
 import QuickPromptsPopup from './QuickPromptsPopup.vue'
 import RevertHistoryPopup from './RevertHistoryPopup.vue'
@@ -354,7 +354,7 @@ const lastClearedContent = ref<string | null>(null)
 const commandHighlight = computed(() => {
   const editor = tiptapRef.value?.editor
   if (!editor) return false
-  const state = commandSuggestionPluginKey.getState(editor.state)
+  const state = commandSuggestionKey.getState(editor.state)
   return state?.active === true
 })
 
@@ -368,25 +368,8 @@ const { isDragging: isDraggingFile, onDragEnter, onDragLeave, onDrop } = useExte
   onDrop: handleFileDrop,
 })
 
-// Handle image-URL paste (e.g. from notes) inside ProseMirror's pipeline
-const imagePastePlugin = new Plugin({
-  props: {
-    handlePaste(_view, event) {
-      if (!event.clipboardData) return false
-      // Skip raw image blobs — handled by the outer @paste handler
-      for (const item of event.clipboardData.items) {
-        if (item.type.startsWith('image/')) return false
-      }
-      const srcs = extractImageSrcsFromClipboard(event.clipboardData)
-      if (!srcs.length) return false
-      for (const src of srcs) addImageFromUrl(src)
-      return true
-    },
-  },
-})
-
 watch(tiptapRef, (ref) => {
-  if (ref?.editor) ref.editor.registerPlugin(imagePastePlugin)
+  if (ref?.editor) ref.editor.registerPlugin(imagePaste(addImageFromUrl))
 }, { immediate: true })
 
 const onContentUpdate = (md: string) => {
@@ -667,7 +650,7 @@ const handleSubmit = async () => {
     }
 
     // Check if this is a command submission
-    const cmdState = commandSuggestionPluginKey.getState(editor.state)
+    const cmdState = commandSuggestionKey.getState(editor.state)
     if (cmdState?.active && cmdState.selectedCommand) {
       const commandName = cmdState.selectedCommand.name
       const prefix = `/${commandName} `
@@ -676,7 +659,7 @@ const handleSubmit = async () => {
 
       // Deactivate command plugin
       const { tr } = editor.state
-      tr.setMeta(commandSuggestionPluginKey, { deactivate: true })
+      tr.setMeta(commandSuggestionKey, { deactivate: true })
       editor.view.dispatch(tr)
     } else {
       emit('send-message', md, references)

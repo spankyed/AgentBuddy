@@ -1,9 +1,18 @@
-import { Plugin } from '@tiptap/pm/state'
+import { Extension } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { Editor } from '@tiptap/core'
-import { referenceSuggestionPluginKey, type ReferenceSuggestionState } from './reference-plugin-key.ts'
 import { getReferenceCategoryDeclarations } from '@apackdev/sdk/fe/references'
 
-export { referenceSuggestionPluginKey, type ReferenceSuggestionState }
+export interface ReferenceSuggestionState {
+  active: boolean
+  triggerPos: number
+  query: string
+  level: 'category' | 'items'
+  selectedCategory: string | null
+  categoryQuery: string
+}
+
+export const referenceSuggestionKey = new PluginKey<ReferenceSuggestionState>('referenceSuggestion')
 
 const defaultState: ReferenceSuggestionState = {
   active: false,
@@ -14,9 +23,9 @@ const defaultState: ReferenceSuggestionState = {
   categoryQuery: '',
 }
 
-export function referenceSuggestionPlugin(editor: Editor): Plugin<ReferenceSuggestionState> {
+function plugin(editor: Editor): Plugin<ReferenceSuggestionState> {
   return new Plugin<ReferenceSuggestionState>({
-    key: referenceSuggestionPluginKey,
+    key: referenceSuggestionKey,
 
     state: {
       init() {
@@ -24,7 +33,7 @@ export function referenceSuggestionPlugin(editor: Editor): Plugin<ReferenceSugge
       },
 
       apply(tr, prev) {
-        const meta = tr.getMeta(referenceSuggestionPluginKey)
+        const meta = tr.getMeta(referenceSuggestionKey)
         if (meta) {
           if (meta.deactivate) return { ...defaultState }
           return { ...prev, ...meta }
@@ -94,3 +103,11 @@ export function referenceSuggestionPlugin(editor: Editor): Plugin<ReferenceSugge
 
   })
 }
+
+export const ReferenceSuggestion = Extension.create({
+  name: 'referenceSuggestion',
+
+  addProseMirrorPlugins() {
+    return [plugin(this.editor)]
+  },
+})

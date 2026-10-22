@@ -1,4 +1,6 @@
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
+import { Extension } from '@tiptap/core'
+import { readSurfaceState } from '#generated/fe.ts'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Editor } from '@tiptap/core'
 import type { CommandItem } from './command-config.ts'
@@ -20,7 +22,7 @@ const defaultState: CommandSuggestionState = {
   previousCommand: null,
 }
 
-export const commandSuggestionPluginKey = new PluginKey<CommandSuggestionState>('commandSuggestion')
+export const commandSuggestionKey = new PluginKey<CommandSuggestionState>('commandSuggestion')
 
 /**
  * Command Suggestion Plugin — Behavioral Specs
@@ -50,12 +52,12 @@ export const commandSuggestionPluginKey = new PluginKey<CommandSuggestionState>(
  *   - `/commandName` (or `/query`) gets `command-segment` inline decoration
  *   - Placeholder shown on the paragraph node when command is selected and body is empty
  */
-export function commandSuggestionPlugin(
+function plugin(
   editor: Editor,
   getCommands: () => CommandItem[],
 ): Plugin<CommandSuggestionState> {
   return new Plugin<CommandSuggestionState>({
-    key: commandSuggestionPluginKey,
+    key: commandSuggestionKey,
 
     state: {
       init() {
@@ -66,7 +68,7 @@ export function commandSuggestionPlugin(
         const deactivateIf = (active: boolean) => active ? { ...defaultState } : prev
 
         // Handle explicit meta updates (from popup interactions)
-        const meta = tr.getMeta(commandSuggestionPluginKey)
+        const meta = tr.getMeta(commandSuggestionKey)
         if (meta) {
           if (meta.deactivate) return { ...defaultState }
           return { ...prev, ...meta }
@@ -158,11 +160,11 @@ export function commandSuggestionPlugin(
       const firstText = newState.doc.firstChild?.textContent ?? ''
       if (!firstText.trimStart().startsWith('/')) return null
 
-      const pluginState = commandSuggestionPluginKey.getState(newState)
-      if (!pluginState?.active) return null
+      const suggestionState = commandSuggestionKey.getState(newState)
+      if (!suggestionState?.active) return null
       // Only strip trailing whitespace in query phase — in selected phase the
       // body after the command prefix is free-form and whitespace is intentional.
-      const inQueryPhase = pluginState?.active && !pluginState.selectedCommand
+      const inQueryPhase = suggestionState?.active && !suggestionState.selectedCommand
 
       // Determine desired text: strip leading whitespace always, trailing in query phase
       const targetText = inQueryPhase ? firstText.trim() : firstText.trimStart()
@@ -197,23 +199,23 @@ export function commandSuggestionPlugin(
       handleKeyDown(view, event) {
         if (event.key !== 'Escape') return false
 
-        const pluginState = commandSuggestionPluginKey.getState(view.state)
-        if (!pluginState?.active) return false
+        const suggestionState = commandSuggestionKey.getState(view.state)
+        if (!suggestionState?.active) return false
 
         const { tr } = view.state
-        tr.setMeta(commandSuggestionPluginKey, { deactivate: true })
+        tr.setMeta(commandSuggestionKey, { deactivate: true })
         view.dispatch(tr)
         return true
       },
 
       decorations(state) {
-        const pluginState = commandSuggestionPluginKey.getState(state)
-        if (!pluginState?.active) return DecorationSet.empty
+        const suggestionState = commandSuggestionKey.getState(state)
+        if (!suggestionState?.active) return DecorationSet.empty
 
         const docText = state.doc.textContent
-        const commandPrefix = pluginState.selectedCommand
-          ? `/${pluginState.selectedCommand.name}`
-          : `/${pluginState.query}`
+        const commandPrefix = suggestionState.selectedCommand
+          ? `/${suggestionState.selectedCommand.name}`
+          : `/${suggestionState.query}`
 
         const decos: Decoration[] = []
 
@@ -226,11 +228,11 @@ export function commandSuggestionPlugin(
 
         // Only show placeholder if a command is selected and there's no body text after it
         const afterCommand = docText.slice(commandPrefix.length).replace(/^\s/, '')
-        if (pluginState.selectedCommand && !afterCommand) {
+        if (suggestionState.selectedCommand && !afterCommand) {
           const firstChild = state.doc.firstChild
           if (firstChild) {
             decos.push(Decoration.node(0, firstChild.nodeSize, {
-              'data-command-placeholder': pluginState.selectedCommand.placeholder,
+              'data-command-placeholder': suggestionState.selectedCommand.placeholder,
               'class': 'has-command-placeholder',
             }))
           }
@@ -241,3 +243,11 @@ export function commandSuggestionPlugin(
     },
   })
 }
+
+export const CommandSuggestion = Extension.create({
+  name: 'commandSuggestion',
+
+  addProseMirrorPlugins() {
+    return [plugin(this.editor, () => readSurfaceState('threads', (s) => s.commands))]
+  },
+})

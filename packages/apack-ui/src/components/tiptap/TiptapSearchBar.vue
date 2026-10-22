@@ -42,7 +42,7 @@
 import { ref, nextTick, onBeforeUnmount } from 'vue'
 import { ChevronUp, ChevronDown, X } from 'lucide-vue-next'
 import type { Editor } from '@tiptap/core'
-import { searchPluginKey } from './extensions/search-plugin.ts'
+import { searchKey } from './extensions/search.ts'
 
 const props = defineProps<{
   editor: Editor
@@ -55,7 +55,7 @@ const currentIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
 
 function readSearchState() {
-  const state = searchPluginKey.getState(props.editor.state)
+  const state = searchKey.getState(props.editor.state)
   if (state) {
     matchCount.value = state.matches.length
     currentIndex.value = state.currentIndex
@@ -64,7 +64,7 @@ function readSearchState() {
 
 function dispatchMeta(meta: Record<string, unknown>) {
   const { view } = props.editor
-  view.dispatch(view.state.tr.setMeta(searchPluginKey, meta))
+  view.dispatch(view.state.tr.setMeta(searchKey, meta))
   readSearchState()
 }
 
@@ -131,7 +131,7 @@ function onKeydown(e: KeyboardEvent) {
 
 // Listen for the "open" meta dispatched by the ProseMirror plugin (Ctrl+F inside editor)
 function onTransaction({ transaction }: { transaction: import('@tiptap/pm/state').Transaction }) {
-  const meta = transaction.getMeta(searchPluginKey)
+  const meta = transaction.getMeta(searchKey)
   if (meta?.open && !isOpen.value) {
     open()
   }

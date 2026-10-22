@@ -1,7 +1,7 @@
 import type { PackFERegistration, SurfaceDefinition } from '@apackdev/sdk/fe';
 import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import { packsMachine, hostSurfaceDeclarations } from '@apackdev/host/fe';
-import { ReferenceNode } from '@apackdev/ui/components/tiptap/reference-node';
+import { ReferenceNode } from '@apackdev/ui/components/tiptap/extensions/reference-node';
 import { Package } from 'lucide-vue-next';
 import canvas from './canvas.vue';
 import { settingsSurface } from '@/views/settings/surface';

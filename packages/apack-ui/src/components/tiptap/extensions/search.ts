@@ -1,3 +1,4 @@
+import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node } from '@tiptap/pm/model'
@@ -7,7 +8,7 @@ export interface SearchMatch {
   to: number
 }
 
-export interface SearchPluginState {
+export interface SearchState {
   isOpen: boolean
   query: string
   matches: SearchMatch[]
@@ -21,14 +22,14 @@ type SearchMeta =
   | { nextMatch: true }
   | { prevMatch: true }
 
-const defaultState: SearchPluginState = {
+const defaultState: SearchState = {
   isOpen: false,
   query: '',
   matches: [],
   currentIndex: 0,
 }
 
-export const searchPluginKey = new PluginKey<SearchPluginState>('search')
+export const searchKey = new PluginKey<SearchState>('search')
 
 function findMatches(doc: Node, query: string): SearchMatch[] {
   if (!query) return []
@@ -52,17 +53,17 @@ function clampIndex(index: number, length: number): number {
   return ((index % length) + length) % length
 }
 
-export function searchPlugin(): Plugin<SearchPluginState> {
-  return new Plugin<SearchPluginState>({
-    key: searchPluginKey,
+function plugin(): Plugin<SearchState> {
+  return new Plugin<SearchState>({
+    key: searchKey,
 
     state: {
-      init(): SearchPluginState {
+      init(): SearchState {
         return { ...defaultState }
       },
 
-      apply(tr, prev): SearchPluginState {
-        const meta = tr.getMeta(searchPluginKey) as SearchMeta | undefined
+      apply(tr, prev): SearchState {
+        const meta = tr.getMeta(searchKey) as SearchMeta | undefined
 
         if (meta) {
           if ('close' in meta) return { ...defaultState }
@@ -121,21 +122,21 @@ export function searchPlugin(): Plugin<SearchPluginState> {
       handleKeyDown(view, event) {
         if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key === 'f') {
           event.preventDefault()
-          view.dispatch(view.state.tr.setMeta(searchPluginKey, { open: true } as SearchMeta))
+          view.dispatch(view.state.tr.setMeta(searchKey, { open: true } as SearchMeta))
           return true
         }
         return false
       },
 
       decorations(state) {
-        const pluginState = searchPluginKey.getState(state)
-        if (!pluginState || !pluginState.isOpen || pluginState.matches.length === 0) {
+        const searchState = searchKey.getState(state)
+        if (!searchState || !searchState.isOpen || searchState.matches.length === 0) {
           return DecorationSet.empty
         }
 
-        const decorations = pluginState.matches.map((match, i) =>
+        const decorations = searchState.matches.map((match, i) =>
           Decoration.inline(match.from, match.to, {
-            class: i === pluginState.currentIndex
+            class: i === searchState.currentIndex
               ? 'search-highlight search-highlight-current'
               : 'search-highlight',
           }),
@@ -146,3 +147,11 @@ export function searchPlugin(): Plugin<SearchPluginState> {
     },
   })
 }
+
+export const SearchAndFind = Extension.create({
+  name: 'searchAndFind',
+
+  addProseMirrorPlugins() {
+    return [plugin()]
+  },
+})
