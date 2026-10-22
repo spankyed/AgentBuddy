@@ -153,6 +153,9 @@ function importedFrom(node: ts.Node): { module: string; names: string[] } | unde
   return undefined;
 }
 
+/** What a pack can reach the window's storage off, so `window.localStorage` is not a way around the rule */
+const WINDOW_GLOBALS: ReadonlySet<string> = new Set(['window', 'globalThis', 'self']);
+
 /** The engine's repository registry, `repository` or `….repository`, through parentheses */
 const isRepository = (node: ts.Expression): boolean => {
   const inner = ts.isParenthesizedExpression(node) ? node.expression : node;
@@ -358,11 +361,19 @@ const RULE_LIST = [
       // through the handle would make the test assert through the thing it is testing.
       if (place.packRelative.startsWith('tests/')) return [];
       return view.visit((node) => {
-        if (ts.isIdentifier(node) && (node.text === 'localStorage' || node.text === 'sessionStorage')
-          && !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)) {
-          return [node.text];
+        if (!ts.isIdentifier(node) || (node.text !== 'localStorage' && node.text !== 'sessionStorage')) return undefined;
+        const parent = node.parent;
+        // The name as a **property** is two different things, and one exclusion for both is how a rule
+        // keeps a hole: `io.localStorage` and `{ localStorage: fake }` name somebody's own field, while
+        // `window.localStorage` and `globalThis.localStorage` are the window's store spelled the long
+        // way — the first shape a pack reaches for once the bare name is refused.
+        if (ts.isPropertyAccessExpression(parent) && parent.name === node) {
+          return ts.isIdentifier(parent.expression) && WINDOW_GLOBALS.has(parent.expression.text)
+            ? [node.text]
+            : undefined;
         }
-        return undefined;
+        if (ts.isPropertyAssignment(parent) && parent.name === node) return undefined;
+        return [node.text];
       });
     },
   },

@@ -66,7 +66,14 @@ const patternFor = (group: Group): RegExp => new RegExp(`(?<![.\\w])(${RETIRED[g
 /** The manifest key, which is not an identifier and so needs its own pattern. */
 const MANIFEST_KEY = /"plugin":/;
 
-/** Codegen's binding prefix, which is a fragment rather than a word and so no `\b` reaches it. */
+/**
+ * Codegen's binding prefix, which is a fragment rather than a word and so no `\b` reaches it.
+ *
+ * Scanned with `concept-event`'s excuse, that group holding the other generated spelling
+ * (`__PLUGIN_ID__`, the scaffold placeholder). Its subject is the one line that emits it,
+ * `surfaceBinding` in `apack-sdk/src/build/generate-entries.ts` — the generated output itself is
+ * outside the population, so without the scan this pattern would guard nothing.
+ */
 const GENERATED_PREFIX = /__plugin_/;
 
 /**
@@ -84,9 +91,14 @@ const DECLARES_PLUGIN = /^\s*(?:export\s+)?(?:declare\s+)?(?:interface|type|clas
  * One spelling from each vocabulary that keeps the word, which no pattern above may match.
  *
  * This is the case with teeth. Every entry is either published API (`TiptapPlugin`,
- * `tiptapPluginRegistry`, `searchPluginKey`) or a key in the user's window storage
- * (`code-feature-open-tabs`), so a pattern that grew greedy enough to reach one of them would have the
- * rename break a pack author's editor extension or orphan a user's open tabs.
+ * `tiptapPluginRegistry`, `searchPluginKey`) or a name this app hands to another program, so a pattern
+ * that grew greedy enough to reach one of them would have the rename break a pack author's editor
+ * extension or call a `claude` subcommand that does not exist.
+ *
+ * **There is no stored-key entry, and that is the point of the storage work rather than an omission.**
+ * A window key used to be a fourth vocabulary — hand-written, so a rename orphaned the user's data.
+ * They are derived from the surface's ref now (`surfaceStorage`, `@apackdev/sdk/fe`), so no key in this
+ * tree spells the word at all.
  */
 const KEPT = [
   'tiptapPlugins', 'TiptapPlugin', 'TiptapPluginBinding', 'TiptapPluginDeclaration', 'tiptapPluginRegistry',
@@ -95,7 +107,6 @@ const KEPT = [
   'VitePlugin', 'esbuild.Plugin', "import('esbuild').Plugin", 'plugins: [vue()]', 'plugins.push(x)',
   'packExternalsPlugin', 'hostSharedModulesPlugin', 'postcssPlugins', 'pluginVue', 'pluginOxlint',
   "'@vitejs/plugin-vue'", "'eslint-plugin-vue'", "'rollup-plugin-dts'", "name: 'collect-bare-imports'",
-  "'code-feature-open-tabs'", "'apack-last-active-plugin'",
   // `claude plugin` — the CLI's own plugin system, which the code feature wraps, and the most dangerous
   // of the four: its names reach a **subprocess argv**, where a rename typechecks and then calls a
   // subcommand that does not exist. A pass over this repo did exactly that, turning
@@ -163,7 +174,7 @@ describe('the patterns themselves', () => {
     const caught = population('kept spellings', KEPT).flatMap((sample) => groups
       .filter((group) => patternFor(group).test(sample))
       .map((group) => `${group} matches ${sample}`));
-    expect(caught, 'narrow the pattern; these are editor plugins, bundler plugins or stored keys').toEqual([]);
+    expect(caught, "narrow the pattern; these are editor plugins, bundler plugins or another program's names").toEqual([]);
   });
 
   it('matches a name only on its own word, not inside a longer one', () => {
@@ -189,8 +200,11 @@ describe('the surface vocabulary', () => {
           if (excused.includes(group)) continue;
           if (patternFor(group).test(line)) violations.push(`${file}:${i + 1} ${line.trim()}  ← ${group}`);
         }
-        if (!excused.includes("concept-type") && DECLARES_PLUGIN.test(line)) {
+        if (!excused.includes('concept-type') && DECLARES_PLUGIN.test(line)) {
           violations.push(`${file}:${i + 1} ${line.trim()}  ← a surface's type is Surface`);
+        }
+        if (!excused.includes('concept-event') && GENERATED_PREFIX.test(line)) {
+          violations.push(`${file}:${i + 1} ${line.trim()}  ← codegen's binding prefix is __surface_`);
         }
         if (file.endsWith('apack.json') && MANIFEST_KEY.test(line)) {
           violations.push(`${file}:${i + 1} ${line.trim()}  ← the manifest key is features[].surface`);

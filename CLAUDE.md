@@ -52,15 +52,16 @@ See [worktree development](docs/references/worktree-development.md).
 - Name ambiguous inputs by what they hold: dispatch kind, input path and provenance are different contracts. Keep graph `source`/`target` and native/library APIs.
 - Review naming in context: the owner, operation and neighboring API family determine whether a name is clear. See [the naming goal](docs/archive/goals/goal-naming-conventions.md).
 
-**A feature's frontend half is a surface; its backend half is a system.** Reserve **plugin** for the four
+**A feature's frontend half is a surface; its backend half is a system.** Reserve **plugin** for the three
 vocabularies where it really is one: an editor plugin (tiptap/ProseMirror), a bundler plugin (Vite, rollup,
-PostCSS, esbuild), a plugin of a third-party CLI this app drives (`claude plugin`), and the two keys a
-window already stored under the old name. `packages/repo-checks/tests/surface-vocabulary.spec.ts` holds
-that list and is the rule.
+PostCSS, esbuild) and a plugin of a third-party CLI this app drives (`claude plugin`).
+`packages/repo-checks/tests/surface-vocabulary.spec.ts` holds that list and is the rule.
 
-**Never find-and-replace over `plugin`.** Two of those four cannot be caught by a compiler: the CLI's
-names reach a subprocess argv, where a rename typechecks and then calls a subcommand that does not exist,
-and a window-storage key renamed without a migration orphans the user's data.
+**Never find-and-replace over `plugin`.** One of those three cannot be caught by a compiler: the CLI's
+names reach a subprocess argv, where a rename typechecks and then calls a subcommand that does not exist.
+A window-storage key was a fourth such vocabulary until keys stopped being hand-written — a surface's are
+derived from its ref (`surfaceStorage`, `@apackdev/sdk/fe`), and the `window-storage` pack rule refuses
+a pack reaching `localStorage` itself.
 
 Reserve **artifact** for app artifact contributions and viewers. Use **build** for compiled pack/app output,
 **release file** for downloads, and **recorded file** or **report** for checked-in generated files. Preserve

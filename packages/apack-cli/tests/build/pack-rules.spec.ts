@@ -96,6 +96,9 @@ const FIRES: Record<PackRuleKey, { onFile?: [code: string, problem: string][]; e
     onFile: [
       ["const raw = localStorage.getItem('open-tabs');\n", 'src/f.ts:1: localStorage'],
       ["sessionStorage.setItem('draft', text);\n", 'src/f.ts:1: sessionStorage'],
+      // The long spelling, which is the first thing reached for once the bare name is refused
+      ["window.localStorage.setItem('draft', text);\n", 'src/f.ts:1: localStorage'],
+      ["globalThis.sessionStorage.removeItem('draft');\n", 'src/f.ts:1: sessionStorage'],
     ],
   },
   'backend-console': { elsewhere: 'backend-console fires under a backend path and not under a frontend one' },

@@ -34,7 +34,7 @@ Surveyed 2026-10-21 at `507b3b747`.
 
 ## Outcome
 
-**Done**, on `session/plugins-to-surfaces`. `npm run chain -- --all --strict` passes at `13bc6fe03`:
+**Done**, on `session/plugins-to-surfaces`. `npm run chain -- --all --strict` passes at `eef326f99`:
 **1377.4s, 32 steps executed, none cached, none failing** (`…/runs/2026-10-21T22-40-22Z-76927`). `--all`
 runs every step regardless of its stamp and `--strict` fails the run if a step's inputs move while it
 reads them, so nothing here rests on a cache.
@@ -67,10 +67,10 @@ poll a deadline matched to what a restore costs is the fix; raising it to obtain
 
 | Phase | Commit | Evidence for its "Done when" |
 |---|---|---|
-| 1 — the guard | `99540ead9` | Live in `@app/repo-checks`. Each of the five names its condition lists was planted on its own and fails the scan alone: `pluginId`, `usePlugin`, `sendToPlugin`, `getRegisteredPlugins` as a one-line module, `features[].plugin` as an `apack.json`. Also: unparked it reported 2128 violations; adding `TiptapPlugin` to a group failed the kept-spellings case; a stale `ALLOWED` entry was named |
-| 2 — the concept | `7f495e0ff` | `typecheck` 17/17, `api:check`, `schema:check`, `test:unit` 5689, `build:default-setup`, and `npm run test:external-pack` run directly, exit 0 — `:contract` 38 tests over 11 files, `:fork`, `:app` 27 + 5 specs |
-| 3 — the wire | `260a96801` | `npm test -w @apackdev/host` 1746 passed / 135 files, including `tests/bus/outgoing-events.spec.ts` and `tests/packs/event-validation-map.spec.ts`; `test:smoke` 16.1s in the chain. Mutation, at the site the condition names — a `pluginId` left in the **renderer's** routing (`features/application/fe/connection.ts`, looking the surface up by the field the transport used to stamp): **5 of 110** renderer routing specs fail, in `plugin-reply` and `send-scope`. Smoke still passes, so of the condition's two candidates only the event specs catch it. The bus's own lookup was mutated too and failed **23** specs across `outgoing-events` and `event-validation-map` |
-| 4 — stored state | `824df0b92`, and the migration removed after | Renamed outright. `npm test -w @apackdev/host`; `tests/fe/window-storage.spec.ts` holds the runner's cases around an empty list |
+| 1 — the guard | `8addf2299` | Live in `@app/repo-checks`. Each of the five names its condition lists was planted on its own and fails the scan alone: `pluginId`, `usePlugin`, `sendToPlugin`, `getRegisteredPlugins` as a one-line module, `features[].plugin` as an `apack.json`. Also: unparked it reported 2128 violations; adding `TiptapPlugin` to a group failed the kept-spellings case; a stale `ALLOWED` entry was named |
+| 2 — the concept | `8fe89f39a` | `typecheck` 17/17, `api:check`, `schema:check`, `test:unit` 5689, `build:default-setup`, and `npm run test:external-pack` run directly, exit 0 — `:contract` 38 tests over 11 files, `:fork`, `:app` 27 + 5 specs |
+| 3 — the wire | `17504b901` | `npm test -w @apackdev/host` 1746 passed / 135 files, including `tests/bus/outgoing-events.spec.ts` and `tests/packs/event-validation-map.spec.ts`; `test:smoke` 16.1s in the chain. Mutation, at the site the condition names — a `pluginId` left in the **renderer's** routing (`features/application/fe/connection.ts`, looking the surface up by the field the transport used to stamp): **5 of 110** renderer routing specs fail, in `plugin-reply` and `send-scope`. Smoke still passes, so of the condition's two candidates only the event specs catch it. The bus's own lookup was mutated too and failed **23** specs across `outgoing-events` and `event-validation-map` |
+| 4 — stored state | `c7f16a507`, and the migration removed after | Renamed outright. `npm test -w @apackdev/host`; `tests/fe/window-storage.spec.ts` holds the runner's cases around an empty list |
 **What landed after that run, and what proves it.** Window storage was namespaced by the surface's ref
 (`surfaceStorage`/`useSurfaceStorage`, the `window-storage` pack rule), and the two 0.4.0 migrations this
 goal had written — one app-line, one window-storage — were **deleted**: the app has been renamed and
@@ -78,8 +78,8 @@ re-namespaced and has never shipped, so they migrate nobody, and a developer's o
 hand. Proven by `npm run typecheck` (20 legs ok), `npm test -w @apackdev/host` (1738 over 134 files) and
 `npm test -w @app/repo-checks` (894 over 50 files), the three suites those edits reach.
 
-| 5 — docs, guard live | `afedfa064` | Scan unparked and green; `welcome.md` re-recorded; `doc-links` passing |
-| 6 — the prose read | `dc57c0504`, `32f1b07cf`, `313a2092c` | 19 inversions. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader. Its "no comment or guide sentence" condition rests on a **complete enumeration** — all 241 remaining occurrences classified, not a sampled grep — which found eight concept names that four passes had missed, `setPluginVisible` among them, published. All four memory files now name only things that exist |
+| 5 — docs, guard live | `b37bf3c08` | Scan unparked and green; `welcome.md` re-recorded; `doc-links` passing |
+| 6 — the prose read | `2cdfe0056`, `694106871`, `f64a22c9f` | 19 inversions. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader. Its "no comment or guide sentence" condition rests on a **complete enumeration** — all 241 remaining occurrences classified, not a sampled grep — which found eight concept names that four passes had missed, `setPluginVisible` among them, published. All four memory files now name only things that exist |
 
 `npm run test:e2e -- smoke` (5 passed), `npm test -w @apackdev/host` (1746 over 135 files) and
 `npm run test:external-pack` (exit 0, all three halves) are each run directly, as their phases name
@@ -95,7 +95,7 @@ composable" and is released history, and the guard's own retired list, which has
 retires. A future goal writing an exit grep should anchor it, or name the kept compound it will hit.
 
 **Phase 1 took the first of the two options its condition offered**: the guard landed parked as
-`it.fails` in `99540ead9` and was flipped in `afedfa064`, rather than being ordered last in the phase's
+`it.fails` in `8addf2299` and was flipped in `b37bf3c08`, rather than being ordered last in the phase's
 commits. Nothing further was owed.
 
 **The guard did not read a guide until the end, and that is where the last residue was.** Its population
