@@ -13,9 +13,60 @@ export interface RelationIndexEntry {
 /** The relation index of an engine, by relation kind */
 export type RelationIndex = Record<string, RelationIndexEntry>;
 
+const NONE: readonly EARS.EntityId[] = Object.freeze([]);
+
+/**
+ * Reads of a relation index, whatever holds it (memory or disk). query.ts, edge-store.ts and relations.ts read
+ * relations only through this, so an engine can swap where its index lives.
+ */
+export interface RelationIndexReader {
+  /** The relation kinds with at least one relation, in the order they were first indexed */
+  kinds(): string[];
+  has(kind: string): boolean;
+  /** The ids of the kind's relations from `id`, in the order they were indexed. Don't mutate */
+  bySource(kind: string, id: EARS.EntityId): readonly EARS.EntityId[];
+  /** The ids of the kind's relations to `id`, in the order they were indexed. Don't mutate */
+  byTarget(kind: string, id: EARS.EntityId): readonly EARS.EntityId[];
+  /** Every relation id of the kind (by source), possibly repeated */
+  all(kind: string): EARS.EntityId[];
+  /** Distinct relation ids, sources and targets of the kind */
+  stats(kind: string): { total: number; uniqueSources: number; uniqueTargets: number };
+}
+
+/** An engine's relation index: its reads, its writes, and (for admin and tests) the index as an object */
+export interface RelationIndexStore {
+  readonly index: RelationIndex;
+  readonly reader: RelationIndexReader;
+  clear(): void;
+  addToIndex(kind: string, source: EARS.EntityId, target: EARS.EntityId, relId: EARS.EntityId): void;
+  removeFromIndex(kind: string, source: EARS.EntityId, target: EARS.EntityId, relId: EARS.EntityId): void;
+  updateIndex(kind: string, relId: EARS.EntityId, oldSource: EARS.EntityId, oldTarget: EARS.EntityId, newSource?: EARS.EntityId, newTarget?: EARS.EntityId): void;
+}
+
 /** An engine's relation index and its writes */
-export function createRelationIndex() {
+export function createRelationIndex(): RelationIndexStore {
   const index: RelationIndex = {};
+
+  const reader: RelationIndexReader = {
+    kinds: () => Object.keys(index),
+    has: (kind) => index[kind] !== undefined,
+    bySource: (kind, id) => index[kind]?.bySource[id] ?? NONE,
+    byTarget: (kind, id) => index[kind]?.byTarget[id] ?? NONE,
+    all: (kind) => {
+      const entry = index[kind];
+      if (!entry) return [];
+      const out: EARS.EntityId[] = [];
+      for (const ids of Object.values(entry.bySource)) for (const id of ids) out.push(id);
+      return out;
+    },
+    stats: (kind) => {
+      const entry = index[kind];
+      if (!entry) return { total: 0, uniqueSources: 0, uniqueTargets: 0 };
+      const ids = new Set<string>();
+      for (const relIds of Object.values(entry.bySource)) relIds.forEach((id) => ids.add(id));
+      return { total: ids.size, uniqueSources: Object.keys(entry.bySource).length, uniqueTargets: Object.keys(entry.byTarget).length };
+    },
+  };
 
   function clear() {
     Object.keys(index).forEach(key => delete index[key]);
@@ -71,7 +122,5 @@ export function createRelationIndex() {
     addToIndex(kind, finalSource, finalTarget, relId);
   }
 
-  return { index, clear, addToIndex, removeFromIndex, updateIndex };
+  return { index, reader, clear, addToIndex, removeFromIndex, updateIndex };
 }
-
-export type RelationIndexStore = ReturnType<typeof createRelationIndex>;

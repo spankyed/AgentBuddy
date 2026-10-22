@@ -1,0 +1,37 @@
+memory run 1 done
+memory run 2 done
+memory run 3 done
+disk run 1 done
+disk run 2 done
+disk run 3 done
+disk-cache run 1 done
+disk-cache run 2 done
+disk-cache run 3 done
+disk-nosync run 1 done
+disk-nosync run 2 done
+disk-nosync run 3 done
+disk-nosync-cache run 1 done
+disk-nosync-cache run 2 done
+disk-nosync-cache run 3 done
+disk-nosync-noindex run 1 done
+disk-nosync-noindex run 2 done
+disk-nosync-noindex run 3 done
+| case | memory | disk | disk-cache | disk-nosync | disk-nosync-cache | disk-nosync-noindex |
+|---|---|---|---|---|---|---|
+| bulk load 50k entities, 200k attributes, 100k relations | 215 ms | 1291 ms (6.0x) | 1326 ms (6.2x) | 1271 ms (5.9x) | 1286 ms (6.0x) | 1117 ms (5.2x) |
+| qx by type with where and pickAll | 19.52 ms | 48.25 ms (2.5x) | 49.96 ms (2.6x) | 47.39 ms (2.4x) | 47.40 ms (2.4x) | 53.48 ms (2.7x) |
+| 1,000 qx(id) lookups | 0.2110 ms | 0.4514 ms (2.1x) | 0.4822 ms (2.3x) | 0.4905 ms (2.3x) | 0.4792 ms (2.3x) | 0.4416 ms (2.1x) |
+| qx by type with 3 chained steps | 7.70 ms | 31.75 ms (4.1x) | 35.66 ms (4.6x) | 31.83 ms (4.1x) | 32.50 ms (4.2x) | 30.23 ms (3.9x) |
+| relation traversal (a project: its tasks, then their assignees) | 0.0027 ms | 0.0177 ms (6.6x) | 0.0172 ms (6.4x) | 0.0174 ms (6.5x) | 0.0300 ms (11.2x) | 0.0264 ms (9.9x) |
+| findById x1,000 | 1.33 ms | 2.82 ms (2.1x) | 2.73 ms (2.1x) | 2.75 ms (2.1x) | 2.99 ms (2.2x) | 2.44 ms (1.8x) |
+| qx().withRole over all entities (none) | 5.61 ms | 50.88 ms (9.1x) | 51.51 ms (9.2x) | 48.67 ms (8.7x) | 49.66 ms (8.9x) | 95.97 ms (17.1x) |
+| tx batch of 1,000 creates (a commit per write) | 3.39 ms | 13550 ms (3996.1x) | 12840 ms (3786.9x) | 115 ms (33.8x) | 113 ms (33.4x) | 75.51 ms (22.3x) |
+| tx batch of 1,000 creates (a commit per tx chain) | 3.47 ms | 4772 ms (1373.6x) | 4989 ms (1436.0x) | 79.58 ms (22.9x) | 77.95 ms (22.4x) | 49.08 ms (14.1x) |
+| tx batch of 1,000 creates (one commit) | 3.76 ms | 24.48 ms (6.5x) | 27.36 ms (7.3x) | 14.98 ms (4.0x) | 15.04 ms (4.0x) | 9.71 ms (2.6x) |
+| updateEntity x1,000 on existing tasks (one commit) | 0.3735 ms | 15.43 ms (41.3x) | 17.53 ms (46.9x) | 3.75 ms (10.0x) | 3.69 ms (9.9x) | 3.81 ms (10.2x) |
+memory [bench memory] heapUsed 358 MB, rss 692 MB
+disk [bench disk] heapUsed 13 MB, rss 294 MB, data.mdb 253 MB
+disk-cache [bench disk] heapUsed 14 MB, rss 295 MB, data.mdb 253 MB
+disk-nosync [bench disk] heapUsed 25 MB, rss 410 MB, data.mdb 253 MB
+disk-nosync-cache [bench disk] heapUsed 25 MB, rss 424 MB, data.mdb 253 MB
+disk-nosync-noindex [bench disk] heapUsed 20 MB, rss 417 MB, data.mdb 225 MB

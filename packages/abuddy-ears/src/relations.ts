@@ -35,11 +35,7 @@ export function createRelationReads({ edgeStore, relations, storage }: { edgeSto
   }
 
   function getRelationStats(kind: EARS.RelKind): RelationStats {
-    const entry = relations.index[kind];
-    if (!entry) return { total: 0, uniqueSources: 0, uniqueTargets: 0 };
-    const ids = new Set<string>();
-    for (const relIds of Object.values(entry.bySource)) relIds.forEach((id) => ids.add(id));
-    return { total: ids.size, uniqueSources: Object.keys(entry.bySource).length, uniqueTargets: Object.keys(entry.byTarget).length };
+    return relations.reader.stats(kind);
   }
 
   return { findRelations, getRelationStats };

@@ -29,13 +29,30 @@ export type QxSeed =
   | readonly EARS.Entity[]
   | readonly EARS.EntityId[];
 
+/**
+ * What a query reads. `idsWithValue` is an optional secondary index: the entities with `value` among their `kind`
+ * values, or undefined when the storage doesn't index that value (then the query checks each id)
+ */
+export type QueryStorage = AttributeStorage & {
+  idsWithValue?: (kind: EARS.AttrKind, value: unknown) => ReadonlySet<EARS.EntityId> | undefined;
+  /** How many ids a filter needs before it asks `idsWithValue` (default INDEX_THRESHOLD) */
+  indexThreshold?: number;
+};
+
+/** Below this many ids a filter reads each id; above it, it asks the storage's value index when there is one */
+const INDEX_THRESHOLD = 64;
+
 /** An engine's untyped query entry point, over its storage and relation index */
-export function createQx({ storage, relations, isEntityType }: { storage: AttributeStorage; relations: RelationIndexStore; isEntityType: (name: string) => boolean }): typeof qx {
+export function createQx({ storage, relations, isEntityType }: { storage: QueryStorage; relations: Pick<RelationIndexStore, 'reader'>; isEntityType: (name: string) => boolean }): typeof qx {
   const {
     getAllEntities, getEntitiesOfType, hasEntity, removals, getAttr, getAttrs, getRoles,
     queryEntitiesInRelationTo, queryEntitiesByRelationTo, getAll,
   } = storage;
-  const relationIndex = relations.index;
+  const idsWithValue = storage.idsWithValue;
+  const threshold = storage.indexThreshold ?? INDEX_THRESHOLD;
+  const indexed = (ids: readonly EARS.EntityId[], kind: EARS.AttrKind, v: unknown) =>
+    idsWithValue && ids.length > threshold ? idsWithValue(kind, v) : undefined;
+  const relationIndex = relations.reader;
 
   const isEntity = (v: unknown): v is EARS.Entity =>
     typeof v === 'string' && isEntityType(v);
@@ -84,13 +101,18 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
 
       where: (k: EARS.AttrKind | string, v?: unknown) => {
         const kind = typeof k === "string" ? EARS.AttrKind.Custom(k) : k;
+        const hit = v === undefined ? undefined : indexed(ids, kind, v);
+        if (hit) return setIds(ids.filter(i => hit.has(i)));
         const matches = v === undefined
           ? (i: EARS.EntityId) => getAttrs(i, kind).length > 0
           : (i: EARS.EntityId) => getAttrs(i, kind).some(attr => attr === v);
         return setIds(ids.filter(matches));
       },
 
-      withRole: (r: string) => setIds(ids.filter(i => getRoles(i).includes(r))),
+      withRole: (r: string) => {
+        const hit = indexed(ids, EARS.AttrKind.Role, r);
+        return setIds(hit ? ids.filter(i => hit.has(i)) : ids.filter(i => getRoles(i).includes(r)));
+      },
 
       relatedTo: (target: EARS.EntityId) => {
         const related = new Set(queryEntitiesInRelationTo(target));
@@ -145,12 +167,11 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
         kinds?: string | readonly string[],
         asSrc = true,
       ): EARS.EntityId[] => {
-        const ksInput = kinds ? asArr(kinds) : (Object.keys(relationIndex) as readonly string[]);
-        const ks = ksInput.filter(k => relationIndex[k] !== undefined);
+        const ksInput = kinds ? asArr(kinds) : (relationIndex.kinds() as readonly string[]);
+        const ks = ksInput.filter(k => relationIndex.has(k));
         const out = new Set<EARS.EntityId>();
         for (const i of ids) for (const k of ks) {
-          const dir = relationIndex[k]!;
-          (asSrc ? dir.bySource[i] : dir.byTarget[i])?.forEach(r => out.add(r));
+          (asSrc ? relationIndex.bySource(k, i) : relationIndex.byTarget(k, i)).forEach(r => out.add(r));
         }
         return [...out];
       },
@@ -206,11 +227,13 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
           if (typeof a === "number" && typeof b === "number") return a - b;
           return String(a).localeCompare(String(b));
         };
-        const next = [...ids].sort((aId, bId) => {
-          const res = cmp(getAttr(aId, kind), getAttr(bId, kind));
+        // Each id's value is read once, not per comparison
+        const keyed = ids.map(id => ({ id, v: getAttr(id, kind) }));
+        keyed.sort((a, b) => {
+          const res = cmp(a.v, b.v);
           return dir === "asc" ? res : -res;
         });
-        return setIds(next);
+        return setIds(keyed.map(e => e.id));
       },
 
       reverse: () => setIds([...ids].reverse()),

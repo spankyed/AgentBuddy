@@ -1,0 +1,46 @@
+Benchmarking is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ RUN  v3.2.4 /Users/spankyed/Develop/Projects/AgentBuddy/.claude/worktrees/agent-a95981166c164d641/packages/abuddy-ears
+
+
+ ✓ bench/engines.bench.ts > hydrate 12806ms
+     name                                                         hz       min       max      mean       p75       p99      p995      p999     rme  samples
+   · bulk load 50k entities, 200k attributes, 100k relations  0.7850  1,267.15  1,280.33  1,273.86  1,280.33  1,280.33  1,280.33  1,280.33  ±1.29%        3
+
+ ✓ bench/engines.bench.ts > queries 3500ms
+     name                                                                    hz      min      max     mean      p75      p99     p995     p999     rme  samples
+   · qx by type with where and pickAll                                  20.8638  45.6965  52.1270  47.9299  48.4912  52.1270  52.1270  52.1270  ±1.92%       20
+   · 1,000 qx(id) lookups                                                789.72   1.0928   1.5732   1.2663   1.3010   1.5732   1.5732   1.5732  ±4.52%       20
+   · qx by type with 3 chained steps                                    30.9464  30.5301  35.6232  32.3140  32.8493  35.6232  35.6232  35.6232  ±1.78%       20
+   · relation traversal (a project: its tasks, then their assignees)  53,775.78   0.0163   0.0355   0.0186   0.0182   0.0355   0.0355   0.0355  ±7.48%       30
+   · findById x1,000                                                     324.59   2.3333   4.0544   3.0808   3.5456   4.0544   4.0544   4.0544  ±8.88%       20
+   · qx().withRole over all entities (none)                             20.0276  45.8647  53.8778  49.9310  53.8440  53.8778  53.8778  53.8778  ±4.68%       10
+stdout | bench/engines.bench.ts:44:11
+[bench disk] heapUsed 14 MB, rss 416 MB, data.mdb 253 MB
+
+
+ ✓ bench/engines.bench.ts > writes 2796ms
+     name                                                     hz      min      max     mean      p75      p99     p995     p999     rme  samples
+   · tx batch of 1,000 creates (a commit per write)       8.5347   114.59   119.87   117.17   118.78   119.87   119.87   119.87  ±2.25%        5
+   · tx batch of 1,000 creates (a commit per tx chain)   12.5025  77.7274  82.1816  79.9837  81.1858  82.1816  82.1816  82.1816  ±3.16%        5
+   · tx batch of 1,000 creates (one commit)              66.4381  14.4359  15.7391  15.0516  15.2920  15.7391  15.7391  15.7391  ±2.06%       10
+   · updateEntity x1,000 on existing tasks (one commit)   263.96   3.1777   4.3708   3.7885   4.2524   4.3708   4.3708   4.3708  ±8.37%       10
+
+ BENCH  Summary
+
+  bulk load 50k entities, 200k attributes, 100k relations - bench/engines.bench.ts > hydrate
+
+  relation traversal (a project: its tasks, then their assignees) - bench/engines.bench.ts > queries
+    68.10x faster than 1,000 qx(id) lookups
+    165.67x faster than findById x1,000
+    1737.71x faster than qx by type with 3 chained steps
+    2577.47x faster than qx by type with where and pickAll
+    2685.08x faster than qx().withRole over all entities (none)
+
+  updateEntity x1,000 on existing tasks (one commit) - bench/engines.bench.ts > writes
+    3.97x faster than tx batch of 1,000 creates (one commit)
+    21.11x faster than tx batch of 1,000 creates (a commit per tx chain)
+    30.93x faster than tx batch of 1,000 creates (a commit per write)
+
+Benchmark report written to /Users/spankyed/Develop/Projects/AgentBuddy/.claude/worktrees/agent-a95981166c164d641/packages/abuddy-ears/spike/results/disk-nosync-2.json

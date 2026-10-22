@@ -2,8 +2,9 @@
 // capability: `query` is what packs reach (through the installed engine), `admin` stays with whoever created it.
 import type { EARS } from './entities.ts';
 import { noopSink, type EARSRuntimeDeps } from './runtime.ts';
-import { createRelationIndex, type RelationIndex } from './relation-index.ts';
+import { createRelationIndex, type RelationIndex, type RelationIndexStore } from './relation-index.ts';
 import { createAttributeStorage } from './attribute-storage.ts';
+import type { QueryStorage } from './query.ts';
 import { createEdgeStore, type EdgeStore } from './edge-store.ts';
 import { createQx, type qx } from './query.ts';
 import { createGraph } from './graph.ts';
@@ -123,6 +124,18 @@ export interface EarsEngine {
 export function createEarsEngine({ persistence = noopSink, isEntityType }: EARSRuntimeDeps): EarsEngine {
   const relations = createRelationIndex();
   const storage = createAttributeStorage({ relations, persistence });
+  return composeEngine({ storage, relations, isEntityType });
+}
+
+/**
+ * An engine over the given storage and relation index: the memory ones (createEarsEngine) or others with the
+ * same surface (the disk-backed spike, lmdb/disk-engine.ts)
+ */
+export function composeEngine({ storage, relations, isEntityType }: {
+  storage: QueryStorage;
+  relations: RelationIndexStore;
+  isEntityType: (name: string) => boolean;
+}): EarsEngine {
   const edgeStore = createEdgeStore({ relations, storage });
   const qx = createQx({ storage, relations, isEntityType });
   const graph = createGraph({ qx, edgeStore });
@@ -178,7 +191,7 @@ export function createEarsEngine({ persistence = noopSink, isEntityType }: EARSR
     updateRelation: storage.updateRelation,
     queryEntitiesByRole: storage.queryEntitiesByRole,
     edgeStore,
-    relationIndex: relations.index,
+    get relationIndex() { return relations.index; },
     addToIndex: relations.addToIndex,
     removeFromIndex: relations.removeFromIndex,
     updateIndex: relations.updateIndex,

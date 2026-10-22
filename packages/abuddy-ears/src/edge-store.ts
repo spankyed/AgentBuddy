@@ -20,35 +20,30 @@ export interface EdgeStore {
 }
 
 export function createEdgeStore({ relations, storage }: { relations: RelationIndexStore; storage: AttributeStorage }): EdgeStore {
-  const relationIndex = relations.index;
+  const index = relations.reader;
 
   const matchIds = (w: EdgeMatch): EARS.EntityId[] => {
-    const kinds = w.relationType ? [w.relationType] : Object.keys(relationIndex);
+    const kinds = w.relationType ? [w.relationType] : index.kinds();
     const out   = new Set<EARS.EntityId>();
 
     for (const k of kinds) {
-      const { bySource, byTarget } = relationIndex[k] ?? {};
-      if (!bySource) continue;
+      if (!index.has(k)) continue;
 
       if (w.sourceEntity !== undefined && w.targetEntity !== undefined) {
-        const fromSource = new Set(bySource[w.sourceEntity] ?? []);
-        const fromTarget = new Set(byTarget[w.targetEntity] ?? []);
+        const fromSource = new Set(index.bySource(k, w.sourceEntity));
+        const fromTarget = new Set(index.byTarget(k, w.targetEntity));
         fromSource.forEach(id => {
           if (fromTarget.has(id)) out.add(id);
         });
       }
       else if (w.sourceEntity !== undefined) {
-        (bySource[w.sourceEntity] ?? []).forEach(id => out.add(id));
+        index.bySource(k, w.sourceEntity).forEach(id => out.add(id));
       }
       else if (w.targetEntity !== undefined) {
-        (byTarget[w.targetEntity] ?? []).forEach(id => out.add(id));
+        index.byTarget(k, w.targetEntity).forEach(id => out.add(id));
       }
       else {
-        for (const ids of Object.values(bySource)) {
-          for (const id of ids) {
-            out.add(id);
-          }
-        }
+        for (const id of index.all(k)) out.add(id);
       }
     }
     return [...out];

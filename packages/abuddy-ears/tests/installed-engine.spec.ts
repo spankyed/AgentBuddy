@@ -1,4 +1,5 @@
 // The free functions act on the installed engine; with none installed they throw, naming the fix. Engines share nothing.
+import { freshEngine } from './contract/engine-under-test.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   createEarsEngine, defineEars, findRelations, getAllEntities, installEngine, installedEngine, isEntityType,
@@ -7,7 +8,7 @@ import {
 import { recordingSink } from './contract/helpers.ts';
 
 const types = new Set(['Note']);
-const newEngine = (persistence?: PersistenceSink) => createEarsEngine({ isEntityType: (name) => types.has(name), persistence });
+const newEngine = (persistence?: PersistenceSink) => freshEngine({ isEntityType: (name) => types.has(name), persistence });
 
 afterEach(() => { installEngine(undefined); });
 
