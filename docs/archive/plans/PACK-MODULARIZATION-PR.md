@@ -11,7 +11,7 @@ Three architectural layers emerge:
 
 1. **Host packages** (`api/`, `renderer/`, `main/`) — thin runtime shells providing the framework: event bus, persistence engine, pack loading, window management
 2. **SDK** (`apack-sdk/`) — the public API contract for pack development: CLI toolchain, build system, reusable UI components, EARS database helpers, system definition framework
-3. **Default-setup** (the built-in pack) — all 13 domain features with colocated frontend + backend code, extension points (steps, blocks, artifacts, tiptap plugins, services), content, and migrations
+3. **Default-setup** (the built-in pack) — all 13 domain features with colocated frontend + backend code, extension points (steps, blocks, artifacts, text editor extensions, services), content, and migrations
 
 ## Major Workstreams
 
@@ -24,7 +24,7 @@ Three architectural layers emerge:
 **Destinations:**
 - Feature code (systems + surfaces) → `default-setup/src/features/<name>/` with colocated `be/` + `fe/` directories
 - Reusable framework APIs → `apack-sdk/src/` (design components, composables, EARS engine, step/block/artifact registries)
-- Cross-cutting extensions → `default-setup/src/extensions/` (steps, blocks, artifacts, tiptap plugins, services)
+- Cross-cutting extensions → `default-setup/src/extensions/` (steps, blocks, artifacts, text editor extensions, services)
 - Content (DSL source) → `default-setup/src/content/`
 - Migrations → `default-setup/src/migrations/`
 
@@ -56,7 +56,7 @@ src/
   migrations/          # Pack-owned migrations
 ```
 
-The `apack.json` manifest is each feature's only configuration: it declares all features (with their settings, entries and designations), entities, services, steps, artifacts, blocks, tiptap plugins, boot hooks, and DSL definitions.
+The `apack.json` manifest is each feature's only configuration: it declares all features (with their settings, entries and designations), entities, services, steps, artifacts, blocks, text editor extensions, boot hooks, and DSL definitions.
 
 ### 4. Pack Build & Loading System (~55 commits)
 

@@ -143,7 +143,7 @@ Final.
    does not need an address outliving its socket.
 2. **`Message` gains `client?: string`**, meaning *deliver only to this connection; absent means every
    connection*. `to` stays a plain string ref. This is deliberately **not** the object-shaped target
-   (`{ everyWindow: ref }`) that `docs/archive/goals/goal-plugin-inbox.md:443-446` rejected — not because
+   (`{ everyWindow: ref }`) that `docs/archive/goals/goal-surface-inbox.md:443-446` rejected — not because
    an object target is wrong (it notes the house precedent in `sendToSystem({ role })`) but because
    *"the backend can only fan out, so its every call would carry the object form as noise"*. That shape
    stays rejected; only its premise changes. **Leave that archived doc alone** — the goals README says an

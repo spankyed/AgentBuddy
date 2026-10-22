@@ -18,7 +18,7 @@ export { surfaceIsRunning, readUntypedSurfaceState, useUntypedSurfaceState } fro
 export { useShell, type Shell, type HostShell, type HostShellEvent, type HostShellSnapshot, type HostShellState, type ShellPanelSizes } from './shell.ts'
 export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './menu-state.ts'
 export { getDslDeclaration, getDslDeclarations, onDslDeclarationsChanged, useDslDeclarations } from './dsl-reader.ts'
-export { EXTRA_BLOCK_ITEMS_KEY, tiptapPluginRegistry, type BlockItem, type TiptapPlugin, type TiptapPluginBinding } from './tiptap-plugins.ts'
+export { EXTRA_BLOCK_ITEMS_KEY, textEditorExtensionsRegistry, type BlockItem, type TextEditorExtensions, type TextEditorExtensionsBinding } from './text-editor-extensions.ts'
 
 export { default, default as breadcrumb, breadcrumbWithParams, breadcrumbList, staticBreadcrumbList } from './breadcrumb.ts'
 export { safeEvents, safeEvents as feSafeEvents, type ExtractEvent } from './safe-events.ts'

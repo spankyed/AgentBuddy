@@ -76,7 +76,7 @@ ships (`content`). Every entry is a contribution the app registers and other pac
 | `services` | `Record<string, string>` | Pack-level services, belonging to no one feature, in the same form as [a feature's `services`](#packfeatureentry-fields) |
 | `settings` | `Record<string, SettingsDefinition>` | Inline pack-owned preference definitions; see [Pack settings declarations](#pack-settings-declarations) |
 | `dsl` | `Record<string, DslEntry>` | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
-| `tiptapPlugins` | `Record<string, TiptapPluginDeclaration>` | Named editor extension and popup groups; see [Editor and app extensions](#editor-and-app-extensions) |
+| `textEditor` | `Record<string, TextEditorExtensionsDeclaration>` | Named editor extension and popup groups; see [Editor and app extensions](#editor-and-app-extensions) |
 | `appExtensions` | `Record<string, string>` | Named app extension components; see [Editor and app extensions](#editor-and-app-extensions) |
 
 **A setting that only changes what `apack pack build` produces is not one of these**: it goes in `build`, which
@@ -557,7 +557,7 @@ Declare these contributions directly under `extensions`, alongside artifacts, he
 ```json
 {
   "extensions": {
-    "tiptapPlugins": {
+    "textEditor": {
       "suggestions": {
         "extensions": { "mention": "src/editor/mention.ts#Mention" },
         "popups": { "mentions": "src/editor/MentionPopup.vue" },
@@ -571,7 +571,7 @@ Declare these contributions directly under `extensions`, alongside artifacts, he
 
 | Field | Type | Description |
 |---|---|---|
-| `tiptapPlugins` | `Record<string, TiptapPluginDeclaration>` | Named groups of editor extensions, popups and optional suggestion predicates |
+| `textEditor` | `Record<string, TextEditorExtensionsDeclaration>` | Named groups of editor extensions, popups and optional suggestion predicates |
 | `appExtensions` | `Record<string, string>` | Named app extensions: slot name (an identifier) → Vue component path |
 
 Within each Tiptap group, `extensions` maps the actual Tiptap name to its exported extension object
@@ -579,7 +579,7 @@ Within each Tiptap group, `extensions` maps the actual Tiptap name to its export
 export. All paths are pack-root-relative. Discovery reads these declarations without importing their
 modules. Build checks exports and runtime admission checks exact member identities and executable
 shapes. Conflicting active extension names are refused with both owners.
-See [Tiptap plugins](extensions.md#tiptap-plugins) for the binding contract.
+See [Text editor extensions](extensions.md#text-editor-extensions) for the binding contract.
 
 Carrying your own copy of `@apackdev/ui` is `build.bundleUi`, not one of these: it changes what the build
 produces rather than giving the app anything.

@@ -22,7 +22,7 @@ runtime as well. It is recorded as won't-do, with what it would take if that cha
 
 ## What already landed
 
-Half of `goal-plugin-contract.md`'s Deferred item 2 shipped, because it stands on its own:
+Half of `goal-surface-contract.md`'s Deferred item 2 shipped, because it stands on its own:
 
 - `Message.from?: string` — the id of the pack that sent it, stamped in `defineEvents(packId)` for all three
   sends. Optional, and at the time absent on the host's own sends and on an action's through `services.emitter`.
@@ -60,7 +60,7 @@ What did **not** land: any change to `PackFeatureSurface.receives` or `PackFEFea
 
 ### The correction that reopened the question
 
-`goal-plugin-contract.md`'s Deferred item 2 gives a reason that is no longer true: *"The renderer's in-window
+`goal-surface-contract.md`'s Deferred item 2 gives a reason that is no longer true: *"The renderer's in-window
 `sendToSurface` is not [cheap]: it has no scope that names who is sending."* It does. `defineEvents(packId)`
 (`events/index.ts:249`) closes over the pack id and builds all three sends from it — `broadcastToSurface`,
 `sendToSystem` **and** `sendToSurface`. The sender is in scope on both transports, at exactly the granularity a

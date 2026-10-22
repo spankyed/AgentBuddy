@@ -18,7 +18,7 @@ export const hostSurfaceDeclarations = {
 export const hostDeclaration: NativePackDeclaration = {
   id: HOST_PACK_ID,
   eventContracts: hostEventContracts,
-  tiptapPlugins: { references: { extensions: {
+  textEditor: { references: { extensions: {
     reference: '@apackdev/ui/components/tiptap/reference-node#ReferenceNode',
   } } },
   features: {

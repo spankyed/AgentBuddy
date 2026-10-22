@@ -748,7 +748,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         repositories?: Record<string, string> | undefined;
     }>>>;
     extensions: z.ZodOptional<z.ZodObject<{
-        tiptapPlugins: z.ZodOptional<z.ZodType<Record<string, {
+        textEditor: z.ZodOptional<z.ZodType<Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -971,7 +971,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1046,7 +1046,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1374,7 +1374,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1536,7 +1536,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1712,7 +1712,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -1874,7 +1874,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -2050,7 +2050,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-        tiptapPlugins?: Record<string, {
+        textEditor?: Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
@@ -2427,7 +2427,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             outgoing: string[];
         } | undefined;
     }>>>;
-    tiptapPlugins: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
+    textEditor: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -2562,7 +2562,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     commands?: Record<string, {
         placeholder: string;
     }> | undefined;
-    tiptapPlugins?: Record<string, {
+    textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -2684,7 +2684,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     commands?: Record<string, {
         placeholder: string;
     }> | undefined;
-    tiptapPlugins?: Record<string, {
+    textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -2820,7 +2820,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     commands?: Record<string, {
         placeholder: string;
     }> | undefined;
-    tiptapPlugins?: Record<string, {
+    textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -2942,7 +2942,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     commands?: Record<string, {
         placeholder: string;
     }> | undefined;
-    tiptapPlugins?: Record<string, {
+    textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -3078,7 +3078,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     commands?: Record<string, {
         placeholder: string;
     }> | undefined;
-    tiptapPlugins?: Record<string, {
+    textEditor?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
@@ -3389,7 +3389,7 @@ export interface ProvenanceManifest extends PackDataDeclarations {
     // (undocumented)
     extensions?: {
         commands?: Readonly<Record<string, unknown>>;
-        tiptapPlugins?: FrontendDeclaration['tiptapPlugins'];
+        textEditor?: FrontendDeclaration['textEditor'];
     };
     // (undocumented)
     features?: Record<string, {

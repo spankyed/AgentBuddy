@@ -22,26 +22,6 @@ const EXT_TO_MIME: Record<string, string> = {
   gif: 'image/gif', webp: 'image/webp',
 }
 
-/** Extract image URLs from clipboard — tries HTML `<img>` tags, then markdown `![](url)`. */
-export function extractImageSrcsFromClipboard(clipboardData: DataTransfer): string[] {
-  const html = clipboardData.getData('text/html')
-  if (html) {
-    try {
-      const doc = new DOMParser().parseFromString(html, 'text/html')
-      const srcs = Array.from(doc.querySelectorAll('img[src]'), img => img.getAttribute('src')!).filter(Boolean)
-      if (srcs.length) return srcs
-    } catch { /* fall through */ }
-  }
-  const text = clipboardData.getData('text/plain')
-  if (text) {
-    const srcs: string[] = []
-    let m
-    const re = /!\[[^\]]*\]\(([^)]+)\)/g
-    while ((m = re.exec(text)) !== null) srcs.push(m[1])
-    if (srcs.length) return srcs
-  }
-  return []
-}
 
 function getFileTypeLabel(fileName: string): string {
   const ext = fileName.split('.').pop()?.toLowerCase()

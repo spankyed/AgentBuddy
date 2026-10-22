@@ -15,8 +15,8 @@ import { common, createLowlight } from 'lowlight'
 import { CodeBlockCopy } from './extensions/code-block-copy.ts'
 import Color from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
-import { ResizableImage } from './resizable-image.ts'
-import { SubDocumentLink } from './sub-document-link.ts'
+import { ResizableImage } from './extensions/resizable-image.ts'
+import { SubDocumentLink } from './extensions/sub-document-link.ts'
 import { getEditorConfig } from './editor-config.ts'
 import { ListShiftEnter } from './extensions/list-shift-enter.ts'
 import { MarkdownParseFixes } from './extensions/markdown-parse-fixes.ts'
@@ -26,7 +26,7 @@ import { DetailsBlock, DetailsBlockSummary, DetailsBlockContent } from './extens
 import { ImageUploadPlaceholder } from './extensions/image-upload-placeholder.ts'
 import { ImageSelectionDecoration } from './extensions/image-selection-decoration.ts'
 import { CustomHorizontalRule } from './extensions/custom-horizontal-rule.ts'
-import { SearchAndFind } from './extensions/search-extension.ts'
+import { SearchAndFind } from './extensions/search.ts'
 
 const lowlight = createLowlight(common)
 

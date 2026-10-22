@@ -5,12 +5,12 @@
 ```
 # Goal: a surface declares one contract — what may be read of it, and what may be sent to it
 
-Implement docs/goals/goal-plugin-contract.md on the current branch. Background's figures were re-verified on
+Implement docs/goals/goal-surface-contract.md on the current branch. Background's figures were re-verified on
 2026-09-23; the checks below are the authority, not a commit.
 Before Phase 1, confirm: packages/apack-sdk/src/fe/surface.ts exports `surfaceAccepts`,
 packages/apack-sdk/src/build/module-exports.ts exports `acceptedEventTypesOf`, and the seven
 packages/default-setup/src/features/*/fe/public.ts exist. If any is wrong, stop and say so.
-Read docs/archive/goals/goal-plugin-inbox.md's Outcome first, then this doc's Background, Spike results,
+Read docs/archive/goals/goal-surface-inbox.md's Outcome first, then this doc's Background, Spike results,
 Decisions, Phases and Constraints. Decisions are final: implement them, don't reopen or ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and continue.
 No backward compatibility: change signatures, move modules, migrate every in-repo caller, test, fixture,
@@ -57,7 +57,7 @@ Never:
 
 ## Background (2026-09-23, at 8126ae364 on AS/plugin-inbox)
 
-`goal-plugin-inbox.md` (archived) landed the model: a surface declares what others may send it, `sendsTo` is
+`goal-surface-inbox.md` (archived) landed the model: a surface declares what others may send it, `sendsTo` is
 gone, `surface-handle.ts` is deleted. Two things it left are what this goal is for.
 
 **One declared audience, and it is the widest.** A surface's inbox is its own system's outgoing union

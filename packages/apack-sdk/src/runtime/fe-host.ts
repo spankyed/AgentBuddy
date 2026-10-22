@@ -9,7 +9,7 @@ import type { SettingsPort } from '../fe/settings.ts';
 import type { Component } from 'vue';
 import type { Surface } from '../fe/surface.ts';
 import type { HostShell } from '../fe/shell.ts';
-import type { TiptapPluginBinding } from '../fe/tiptap-plugins.ts';
+import type { TextEditorExtensionsBinding } from '../fe/text-editor-extensions.ts';
 import type { PackExtensionsView } from './packs-view.ts';
 
 /**
@@ -27,7 +27,7 @@ export interface FePackRegistryView extends PackExtensionsView {
   onChanged(listener: (packId: string) => void): () => void;
   /** Every registered surface, in registration order */
   surfaces(): Surface[];
-  tiptapPlugins(): TiptapPluginBinding[];
+  textEditor(): TextEditorExtensionsBinding[];
   /** Accepted step bindings; catalog declarations can outlive their implementations. */
   stepBindings(): ReadonlyMap<string, StepFrontendBinding>;
   artifactBindings(): ReadonlyMap<string, ArtifactFrontendBinding>;

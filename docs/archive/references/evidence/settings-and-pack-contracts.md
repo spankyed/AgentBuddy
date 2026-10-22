@@ -3379,7 +3379,7 @@ identity/no syntax-only reapplication, all loosely typed/native/source/install r
 agreement, schema descriptions/assistance and complete public docs. Flow/action relationships, actual
 CLI inventory and capability-based facade acceptance remain explicit completion obligations.
 
-Editor and app contributions use direct `extensions.tiptapPlugins` and `extensions.appExtensions`;
+Editor and app contributions use direct `extensions.textEditor` and `extensions.appExtensions`;
 the frontend wrapper is removed because other contribution kinds also serve the frontend;
 `hostVersion` stays the one-host compatibility range. Explicit keyed existence, richer binding data,
 settings/help redesign and host-established provenance remain; obsolete `provides`, inferred existence,
@@ -3722,7 +3722,7 @@ mandatory. Nothing is archived; the entire goal remains active.
 
 Source `fb9d212fc` records whole-module readers' conventional export names in the shared target
 metadata and checks their runtime-value exports without activation. Systems, non-Vue forms/views
-and compilers require `default`; appliers require `apply`; tiptap modules require `tiptapPlugins`.
+and compilers require `default`; appliers require `apply`; tiptap modules require `textEditor`.
 Removed the duplicate tiptap guard. Type-only barrels retain their own purpose and Vue component
 exports remain checked by the SFC frontend build. Export inspection explicitly includes JavaScript;
 CommonJS default imports inspect the module value rather than demanding an ESM default declaration.
@@ -5048,7 +5048,7 @@ manual-build/drive freshness, the aggregate strict gate and all other goal scope
 
 ### Explicit editor contribution checkpoint (2026-10-15)
 
-Source `e40d157f9` declares editor groups and app slots directly under `extensions.tiptapPlugins`
+Source `e40d157f9` declares editor groups and app slots directly under `extensions.textEditor`
 and `extensions.appExtensions`. This replaces the earlier proposed frontend wrapper at the user's
 request: a contribution kind's placement does not claim exclusive ownership of frontend behavior.
 Native declarations carry the same fields directly. Each editor group names extension objects,
@@ -5081,7 +5081,7 @@ No scope is excluded or archived.
 ### Native reference schema ownership checkpoint (2026-10-15)
 
 Source `f8c6b2262` moves `ReferenceNode` and its behavior tests into `@apackdev/ui`. The native host
-catalog declares `tiptapPlugins.references.extensions.reference`; the renderer supplies its binding
+catalog declares `textEditor.references.extensions.reference`; the renderer supplies its binding
 before loading external frontends. Backend discovery imports no UI implementation. Default-setup
 now contributes `referenceSuggestion`, which installs its existing suggestion surface alongside the
 host-owned node. The URI/node/attribute identities, Markdown/HTML behavior, metadata-driven icon
@@ -5115,7 +5115,7 @@ excluded or archived.
 ### Accepted editor binding identity checkpoint (2026-10-15)
 
 Source `45e8465ad` preserves `{ packId, groupId, binding }` in the accepted editor registry, including
-native groups, and exposes committed-change subscription through `tiptapPluginRegistry.onChanged`.
+native groups, and exposes committed-change subscription through `textEditorExtensionsRegistry.onChanged`.
 Rows are immutable, returned lists are detached, and unrelated registrations retain incumbent
 binding objects. Consumers use `.binding`; declarations/unavailable groups remain in the catalog.
 No alias or second registry. This implements step 1 of the editor lifetime design above; the editor
@@ -8056,7 +8056,7 @@ is removed here.
 | 5 — removed pack storage policy | No policy is restored. Found a deleted partition-policy API's prose attached to `getLifecycleHooks`; corrected it to describe the actual registered lifecycle hook list. This changes no storage behavior. |
 | 6, 8, 9, 10, 12, 13 — declarations and bindings | Current schema uses required feature descriptions, explicit contribution targets, extensions and lifecycle. Host `declaration-binding.ts` checks entity/relation identities, feature/designation membership, APIs, content, commands, events, migrations and lifecycle against accepted declarations. `lifecycle-binding.ts` checks exact names/callability without invoking hooks. Existing registration tests include nonmatching designation/id and attributed cross-pack collisions. Runtime order/readiness and real external paths still require their final acceptance. |
 | 11, 14, 15, 17 — assistance, format, naming and checks | `declaration-schema.ts` declares purpose-specific descriptions, `hostVersion`, direct editor/app extension fields and inline checks; `pack-checks.ts` owns the allowable check vocabulary. Current code search across packages/scripts/tests finds no old settings section APIs, entity-shape map, manifest format key or check sidecar references. Build-format stamps/release metadata are untouched. Schema/API/editor derivation and external authoring remain required gates, not consequences of this search. |
-| Both naming questions | Current authored schema uses `extensions.tiptapPlugins`, `extensions.appExtensions` and `hostVersion`. No frontend wrapper or alternative range key is introduced. |
+| Both naming questions | Current authored schema uses `extensions.textEditor`, `extensions.appExtensions` and `hostVersion`. No frontend wrapper or alternative range key is introduced. |
 
 Settings source review confirms fixed app/pack/feature ownership in `document.ts`, host-owned app
 definitions, pack-scoped service callers and declaration-aware authorization in the store. Transport

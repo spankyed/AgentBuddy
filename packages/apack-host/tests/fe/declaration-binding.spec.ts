@@ -20,7 +20,7 @@ function fixture() {
     extensions: { settings: { preferences: { schema: { type: 'object' }, defaults: {}, form: 'src/preferences.vue' } },
       steps: { note: { node: { label: 'Note' }, fe: { colorKey: 'blue', nodeConfig: { icon: 'File', category: 'data', connectionRules: { inputs: 1, outputs: 1 } }, components: { form: 'src/form.vue' }, layout: { hasInput: true, getHeight: 'src/layout.ts#getHeight' } } }, trigger: { kind: 'trigger', node: { label: 'Trigger' } } },
       artifacts: { text: { icon: 'File', fe: 'src/text.vue' } }, blocks: { note: { kind: 'input', fe: 'src/block.vue' } },
-      appExtensions: { toolbar: 'src/toolbar.vue' }, tiptapPlugins: { tools: {
+      appExtensions: { toolbar: 'src/toolbar.vue' }, textEditor: { tools: {
         extensions: { example: 'src/editor.ts#Example' }, popups: { suggestions: 'src/editor.vue' },
         isSuggestionActive: 'src/editor.ts#isSuggestionActive' } } ,
       dsl: { notes: { prefix: 'n', entry: 'src/schema.ts', targets: ['monaco'], globals: { foo: 'Foo' } } } } };
@@ -29,7 +29,7 @@ function fixture() {
     features: { notes: { surface: { label: 'Notes', state: createMachine({}) }, designation: 'notes', default: true }, form: { settingsForm: component } },
     settingsForms: { preferences: component }, steps: [{ type: 'note', node: { label: 'Note' }, fe: { colorKey: 'blue', nodeConfig: { icon: component, category: 'data', connectionRules: { inputs: 1, outputs: 1 } }, components: { form: component }, layout: { hasInput: true, getHeight } } }, { type: 'trigger', kind: 'trigger', node: { label: 'Trigger' } }],
     artifacts: [{ type: 'text', fe: { icon: component, component } }], blocks: [{ type: 'note', kind: 'input', fe: { component } }],
-    appExtensions: { toolbar: component }, tiptapPlugins: { tools: { extensions: { example: editorExtension },
+    appExtensions: { toolbar: component }, textEditor: { tools: { extensions: { example: editorExtension },
       popups: { suggestions: component }, isSuggestionActive } },
   } satisfies PackFERegistration;
   return { manifest, registration, component, getHeight, bindSettings, configure, isSuggestionActive };
@@ -70,13 +70,13 @@ describe('frontend declaration binding', () => {
     ['changed block kind', (r: Record<string, unknown>) => { r.blocks = [{ type: 'note', kind: 'display' }]; }, 'blocks.note.kind'],
     ['missing block component', (r: Record<string, unknown>) => { r.blocks = [{ type: 'note', kind: 'input', fe: {} }]; }, 'blocks.note.fe'],
     ['foreign slot', (r: Record<string, unknown>) => { r.appExtensions = { other: {} }; }, 'appExtensions'],
-    ['missing editor binding', (r: Record<string, unknown>) => { r.tiptapPlugins = undefined; }, 'tiptapPlugins'],
-    ['foreign editor group', (r: Record<string, unknown>) => { r.tiptapPlugins = { other: {} }; }, 'tiptapPlugins'],
-    ['missing editor extension', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.extensions = {}; }, 'tiptapPlugins.tools.extensions'],
-    ['wrong editor name', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.extensions = { example: Extension.create({ name: 'wrong' }) }; }, 'tiptapPlugins.tools.extensions.example'],
-    ['invalid editor value', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.extensions = { example: { name: 'example' } }; }, 'tiptapPlugins.tools.extensions.example'],
-    ['missing popup', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.popups = {}; }, 'tiptapPlugins.tools.popups'],
-    ['invalid suggestion predicate', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.isSuggestionActive = {}; }, 'tiptapPlugins.tools.isSuggestionActive'],
+    ['missing editor binding', (r: Record<string, unknown>) => { r.textEditor = undefined; }, 'textEditor'],
+    ['foreign editor group', (r: Record<string, unknown>) => { r.textEditor = { other: {} }; }, 'textEditor'],
+    ['missing editor extension', (r: Record<string, unknown>) => { (r.textEditor as Record<string, Record<string, unknown>>).tools.extensions = {}; }, 'textEditor.tools.extensions'],
+    ['wrong editor name', (r: Record<string, unknown>) => { (r.textEditor as Record<string, Record<string, unknown>>).tools.extensions = { example: Extension.create({ name: 'wrong' }) }; }, 'textEditor.tools.extensions.example'],
+    ['invalid editor value', (r: Record<string, unknown>) => { (r.textEditor as Record<string, Record<string, unknown>>).tools.extensions = { example: { name: 'example' } }; }, 'textEditor.tools.extensions.example'],
+    ['missing popup', (r: Record<string, unknown>) => { (r.textEditor as Record<string, Record<string, unknown>>).tools.popups = {}; }, 'textEditor.tools.popups'],
+    ['invalid suggestion predicate', (r: Record<string, unknown>) => { (r.textEditor as Record<string, Record<string, unknown>>).tools.isSuggestionActive = {}; }, 'textEditor.tools.isSuggestionActive'],
     ['invalid settings factory', (r: Record<string, unknown>) => { r.bindSettings = {}; }, 'bindSettings'],
     ['unsupported registration field', (r: Record<string, unknown>) => { r.commands = []; }, 'registration fields'],
   ] as const)('refuses %s', (_name, mutate, expected) => {
@@ -92,7 +92,7 @@ describe('frontend declaration binding', () => {
   });
 
   it('refuses editor bindings a manifest never declared', () => {
-    expect(frontendBindingProblem({ id: 'empty' }, { tiptapPlugins: { undeclared: {} } })).toContain('tiptapPlugins');
+    expect(frontendBindingProblem({ id: 'empty' }, { textEditor: { undeclared: {} } })).toContain('textEditor');
   });
 });
 
@@ -143,33 +143,33 @@ it('refuses a native replacement before granting resources and retains the accep
 });
 
 it('owns editor names transactionally across native packs and retains accepted bindings on refusal', () => {
-  const frontend = { tiptapPlugins: { tools: { extensions: { example: 'native/editor.ts#Example' } } } };
+  const frontend = { textEditor: { tools: { extensions: { example: 'native/editor.ts#Example' } } } };
   const registry = createNativeFrontendTestRegistry([{ id: 'first', ...frontend }, { id: 'second', ...frontend }]);
   const first = Extension.create({ name: 'example' });
   const second = Extension.create({ name: 'example' });
-  registry.registerFixture({ id: 'first', tiptapPlugins: { tools: { extensions: { example: first } } } });
-  expect(() => registry.registerFixture({ id: 'second', tiptapPlugins: { tools: { extensions: { example: second } } } }))
+  registry.registerFixture({ id: 'first', textEditor: { tools: { extensions: { example: first } } } });
+  expect(() => registry.registerFixture({ id: 'second', textEditor: { tools: { extensions: { example: second } } } }))
     .toThrow(/first\/tools.*second\/tools/);
-  expect(registry.tiptapPlugins()).toHaveLength(1);
-  expect(registry.tiptapPlugins()[0].binding.extensions!.example).toBe(first);
+  expect(registry.textEditor()).toHaveLength(1);
+  expect(registry.textEditor()[0].binding.extensions!.example).toBe(first);
   const replacement = Extension.create({ name: 'wrong' });
-  expect(() => registry.prepareFixture({ id: 'first', tiptapPlugins: { tools: { extensions: { example: replacement } } } }, undefined, true))
-    .toThrow('tiptapPlugins.tools.extensions.example');
-  expect(registry.tiptapPlugins()[0].binding.extensions!.example).toBe(first);
+  expect(() => registry.prepareFixture({ id: 'first', textEditor: { tools: { extensions: { example: replacement } } } }, undefined, true))
+    .toThrow('textEditor.tools.extensions.example');
+  expect(registry.textEditor()[0].binding.extensions!.example).toBe(first);
 });
 
 it('captures editor membership while preserving executable extension objects', () => {
-  const registry = createNativeFrontendTestRegistry([{ id: 'editor', tiptapPlugins: {
+  const registry = createNativeFrontendTestRegistry([{ id: 'editor', textEditor: {
     tools: { extensions: { example: 'native/editor.ts#Example' } },
   } }]);
   const extension = Extension.create({ name: 'example' });
   const extensions = { example: extension };
   const tools = { extensions };
-  registry.registerFixture({ id: 'editor', tiptapPlugins: { tools } });
+  registry.registerFixture({ id: 'editor', textEditor: { tools } });
   extensions.example = Extension.create({ name: 'replacement' });
   tools.extensions = { example: Extension.create({ name: 'another' }) };
-  expect(registry.tiptapPlugins()[0].binding.extensions!.example).toBe(extension);
-  expect(Object.isFrozen(registry.tiptapPlugins()[0].binding.extensions)).toBe(true);
+  expect(registry.textEditor()[0].binding.extensions!.example).toBe(extension);
+  expect(Object.isFrozen(registry.textEditor()[0].binding.extensions)).toBe(true);
   expect(Object.isFrozen(extension)).toBe(false);
 });
 

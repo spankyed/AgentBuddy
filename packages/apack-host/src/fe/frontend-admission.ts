@@ -25,9 +25,9 @@ export function captureFrontendAdmission(admission: FrontendAdmission): Accepted
   if (admission.kind === 'native') {
     const problem = _nativePackDeclarationProblem(admission.declaration);
     if (problem) throw new Error(`Invalid native declarations: ${problem}`);
-    const { id, features, settings, steps, artifacts, blocks, dsl, tiptapPlugins, appExtensions } = admission.declaration;
+    const { id, features, settings, steps, artifacts, blocks, dsl, textEditor, appExtensions } = admission.declaration;
     return { entityDestinations: ownData(admission.declaration.entityDestinations ?? {}),
-      declarations: ownData({ id, features, extensions: { settings, steps, artifacts, blocks, dsl, tiptapPlugins, appExtensions } }) };
+      declarations: ownData({ id, features, extensions: { settings, steps, artifacts, blocks, dsl, textEditor, appExtensions } }) };
   }
   if (admission.kind !== 'loaded') throw new Error('Frontend registration requires accepted native or loaded declarations');
   const pack = admission.pack;

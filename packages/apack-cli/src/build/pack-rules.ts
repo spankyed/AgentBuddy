@@ -354,8 +354,8 @@ const RULE_LIST = [
     key: 'window-storage',
     rule: 'A surface reaches its own window storage through surfaceStorage or useSurfaceStorage from '
       + '@apackdev/sdk/fe, whose prefix is the surface\'s ref. `localStorage` and `sessionStorage` are one flat '
-      + 'namespace per window, so a hand-written key is a name two packs can pick and a vocabulary that outlives '
-      + 'its author — `code-feature-open-tabs` outlived the word plugin by a release',
+      + 'namespace per window, so a hand-written key is a name two packs can pick, and one a rename cannot '
+      + 'reach: the key outlives whatever vocabulary its author typed, because changing it orphans the data',
     check(view, place) {
       // Source only. A pack's test asserting what its surface stored has to read storage, and routing that
       // through the handle would make the test assert through the thing it is testing.

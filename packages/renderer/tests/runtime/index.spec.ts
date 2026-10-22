@@ -17,7 +17,7 @@ const logWrite = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const { bindRendererHost } = await import('@/runtime');
 const { fePacks } = await import('@/runtime/packs');
 const { resolveName } = await import('@apackdev/sdk/ids');
-const { secretsClient, untypedOpenSurface, getStepFrontendBindings, getDesignated, tiptapPluginRegistry } = await import('@apackdev/sdk/fe');
+const { secretsClient, untypedOpenSurface, getStepFrontendBindings, getDesignated, textEditorExtensionsRegistry } = await import('@apackdev/sdk/fe');
 const { untypedSendToSystem } = await import('@apackdev/sdk/events');
 const { unbindFeHost } = await import('@apackdev/sdk/runtime/internals');
 
@@ -46,12 +46,12 @@ it("gives the SDK's frontend lookups the window's registered pack frontends", ()
     id: 'fe-host-pack',
     features: { notebookMain: { surface: { label: 'Notebook', state: createMachine({}) }, designation: 'notebook' } },
     steps: [note],
-    tiptapPlugins: { mentions },
+    textEditor: { mentions },
   };
   fePacks.registerPackFE({ kind: 'native', declaration: nativeFrontendDeclarationFixture(registration) }, registration);
   try {
     bindRendererHost(() => application as never);
-    expect(tiptapPluginRegistry.getAll()).toEqual([{ packId: 'fe-host-pack', groupId: 'mentions', binding: mentions }]);
+    expect(textEditorExtensionsRegistry.getAll()).toEqual([{ packId: 'fe-host-pack', groupId: 'mentions', binding: mentions }]);
     expect(getStepFrontendBindings().get('note')?.binding).toEqual(note);
     expect(getStepFrontendBindings().get('note')?.binding.fe?.nodeConfig.icon).toBe(icon);
     expect(getStepFrontendBindings().get('note')).toMatchObject({ packId: 'fe-host-pack', declaration: { node: { label: 'Note' } } });

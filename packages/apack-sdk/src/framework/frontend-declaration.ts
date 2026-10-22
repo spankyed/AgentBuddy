@@ -1,5 +1,5 @@
 /** Editor contribution identities and targets; implementations remain frontend bindings. */
-export interface TiptapPluginDeclaration {
+export interface TextEditorExtensionsDeclaration {
   extensions?: Record<string, string>;
   popups?: Record<string, string>;
   isSuggestionActive?: string;
@@ -7,6 +7,6 @@ export interface TiptapPluginDeclaration {
 
 /** Frontend data shared by authored manifests, installed builds and native composition. */
 export interface FrontendDeclaration {
-  tiptapPlugins?: Record<string, TiptapPluginDeclaration>;
+  textEditor?: Record<string, TextEditorExtensionsDeclaration>;
   appExtensions?: Record<string, string>;
 }

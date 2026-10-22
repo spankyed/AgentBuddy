@@ -2385,11 +2385,11 @@
         }
       }
     },
-    "tiptapPlugins": {
+    "textEditor": {
       "suggestions": {
         "extensions": {
-          "referenceSuggestion": "src/extensions/tiptap/reference-extension.ts#ReferenceSuggestion",
-          "commandSuggestion": "src/extensions/tiptap/command-extension.ts#CommandSuggestion",
+          "referenceSuggestion": "src/extensions/tiptap/reference-suggestion.ts#ReferenceSuggestion",
+          "commandSuggestion": "src/extensions/tiptap/command-suggestion.ts#CommandSuggestion",
           "commandViewerDecoration": "src/extensions/tiptap/command-viewer-decoration.ts#CommandViewerDecoration"
         },
         "popups": {

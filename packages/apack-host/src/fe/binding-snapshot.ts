@@ -13,7 +13,7 @@ export function captureFrontendBindings(registration: PackFERegistration, declar
   if (Array.isArray(captured.artifacts)) captured.artifacts = captured.artifacts.map(captureFacet);
   if (Array.isArray(captured.blocks)) captured.blocks = captured.blocks.map(captureFacet);
   if (Array.isArray(captured.steps)) captured.steps = captured.steps.map(captureStepBinding);
-  if (isPlainObject(captured.tiptapPlugins)) captured.tiptapPlugins = Object.fromEntries(Object.entries(captured.tiptapPlugins).map(([id, surface]) => {
+  if (isPlainObject(captured.textEditor)) captured.textEditor = Object.fromEntries(Object.entries(captured.textEditor).map(([id, surface]) => {
     if (!isPlainObject(surface)) return [id, surface];
     const value = { ...surface };
     if (isPlainObject(value.extensions)) value.extensions = Object.freeze({ ...value.extensions });

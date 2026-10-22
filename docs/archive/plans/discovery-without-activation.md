@@ -146,7 +146,7 @@ compiler input/lifetime requirements or final all-kind acceptance.
 | `features.*.references` | Declared type/category metadata and checked provider/icon bindings | Implemented; no navigation callbacks. Provider results remain executable. |
 | `features.*.settingsForm`, `settingsForms` | Declared custom-form targets and owner settings | Implemented checked components and scoped failure boundaries. |
 | `features.*.designation`, `features.*.default` (frontend) | Feature designation and surface default annotation | Implemented shared native/authored comparison; do not restore runtime discovery tables. |
-| `tiptapPlugins` | Named group/member targets and catalog metadata | Implemented checked extension names, popup membership and predicate presence; running editor extensions remains execution. |
+| `textEditor` | Named group/member targets and catalog metadata | Implemented checked extension names, popup membership and predicate presence; running editor extensions remains execution. |
 | `appExtensions` | Named targets and checked components | Implemented metadata; shared slot selection retains existing composition policy. |
 
 Other authored/static surfaces remain part of the same audit: help's built documents, DSL's compiled

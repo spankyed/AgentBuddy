@@ -22,7 +22,7 @@ import { _contentWriterRegistry } from '../../src/content/writers.ts';
 import { getPackCommands, getSettingsCatalog, onPackCatalogChanged } from '../../src/framework/index.ts';
 import { importCompiledContent, registeredContentKeys } from '../../src/utils/apply.ts';
 import { getDslDeclarations } from '../../src/fe/dsl-reader.ts';
-import { tiptapPluginRegistry } from '../../src/fe/tiptap-plugins.ts';
+import { textEditorExtensionsRegistry } from '../../src/fe/text-editor-extensions.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
 
 const serviceAccess = (settings: SettingsService): PackServiceAccess => ({ services: { settings }, servicesForAction: () => ({ settings }) });
@@ -111,7 +111,7 @@ describe('with no app bound', () => {
       ['getPackCommands', () => getPackCommands()],
     ];
     for (const [name, use] of backendLookups) expect(use, name).toThrow('bindHost(runtime)');
-    for (const [name, use] of [['getDslDeclarations', () => getDslDeclarations()], ['tiptapPluginRegistry.getAll', () => tiptapPluginRegistry.getAll()]] as const) {
+    for (const [name, use] of [['getDslDeclarations', () => getDslDeclarations()], ['textEditorExtensionsRegistry.getAll', () => textEditorExtensionsRegistry.getAll()]] as const) {
       expect(use, name).toThrow('bindFeHost(runtime)');
     }
   });

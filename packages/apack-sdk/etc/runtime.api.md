@@ -73,7 +73,7 @@ export interface FePackRegistryView extends PackExtensionsView {
     stepBindings(): ReadonlyMap<string, StepFrontendBinding>;
     surfaces(): Surface[];
     // (undocumented)
-    tiptapPlugins(): TiptapPluginBinding[];
+    textEditor(): TextEditorExtensionsBinding[];
 }
 
 // @public

@@ -100,7 +100,7 @@ describe('read-only pack inspection', () => {
   });
   it('lists frontend member identities without requiring authored modules or activating the build', async () => {
     const declaration: PackManifest = { ...manifest, extensions: {
-      appExtensions: { welcome: 'src/unavailable.vue' }, tiptapPlugins: { suggestions: {
+      appExtensions: { welcome: 'src/unavailable.vue' }, textEditor: { suggestions: {
         extensions: { mention: 'src/unavailable.ts#Mention' }, popups: { mention: 'src/unavailable.vue' },
         isSuggestionActive: 'src/unavailable.ts#isSuggestionActive',
       } },

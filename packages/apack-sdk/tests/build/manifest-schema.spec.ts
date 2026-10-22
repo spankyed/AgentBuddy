@@ -57,7 +57,7 @@ describe('parseManifest', () => {
       { extensions: { settings: { extra: { ...settings, form: 'src/module#value' } } } },
       { extensions: { blocks: { extra: { fe: 'src/module#value' } } } },
       { extensions: { artifacts: { extra: { icon: 'File', fe: 'src/module#value' } } } },
-      { extensions: { tiptapPlugins: { editor: { popups: { extra: 'src/module#value' } } }, appExtensions: { extra: 'src/module#value' } } },
+      { extensions: { textEditor: { editor: { popups: { extra: 'src/module#value' } } }, appExtensions: { extra: 'src/module#value' } } },
       { extensions: { dsl: { extra: { entry: 'src/module#value', targets: ['monaco'] } } } },
       { content: { formats: { extra: { compiler: 'src/module#value' } } } },
       { content: { sources: { extra: { applier: 'src/module#value' } } } },
@@ -79,15 +79,15 @@ describe('parseManifest', () => {
 
   it('names both editor groups claiming one Tiptap extension for native and external packs', () => {
     const surface = { extensions: { mention: 'src/editor.ts#Mention' } };
-    const contributions = { tiptapPlugins: { first: surface, second: surface } };
+    const contributions = { textEditor: { first: surface, second: surface } };
     const external = parseManifest({ id: 'editor', name: 'Editor', version: '1.0.0', extensions: contributions });
     expect(external.status).toBe('invalid');
-    expect(external.diagnostics[0].path).toEqual(['extensions', 'tiptapPlugins', 'second', 'extensions', 'mention']);
+    expect(external.diagnostics[0].path).toEqual(['extensions', 'textEditor', 'second', 'extensions', 'mention']);
     expect(external.diagnostics[0].message).toContain('"first" and "second"');
     const native = _NativePackDeclarationSchema.safeParse({ id: 'editor', ...contributions });
     expect(native.success).toBe(false);
     if (native.success) throw new Error('Duplicate native editor extension accepted');
-    expect(native.error.issues[0].path).toEqual(['tiptapPlugins', 'second', 'extensions', 'mention']);
+    expect(native.error.issues[0].path).toEqual(['textEditor', 'second', 'extensions', 'mention']);
     expect(native.error.issues[0].message).toContain('"first" and "second"');
   });
 

@@ -1132,17 +1132,17 @@ ${contractCheck}`;
       extraImports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
       return local;
     };
-    const editorPlugins = Object.entries(frontend.tiptapPlugins ?? {}).map(([id, editorPlugin]) => {
-      const label = `extensions.tiptapPlugins.${id}`;
+    const contributions = Object.entries(frontend.textEditor ?? {}).map(([id, contribution]) => {
+      const label = `extensions.textEditor.${id}`;
       const parts: string[] = [];
-      if (editorPlugin.extensions) parts.push(`extensions: { ${Object.entries(editorPlugin.extensions).map(([name, target]) =>
+      if (contribution.extensions) parts.push(`extensions: { ${Object.entries(contribution.extensions).map(([name, target]) =>
         `${propertyKey(name)}: ${editorBinding(`${label}.extensions.${name}`, target)}`).join(', ')} }`);
-      if (editorPlugin.popups) parts.push(`popups: { ${Object.entries(editorPlugin.popups).map(([name, target]) => {
+      if (contribution.popups) parts.push(`popups: { ${Object.entries(contribution.popups).map(([name, target]) => {
         const local = `__editor_${nextEditorBinding++}`;
         extraImports.push(`import ${local} from '${toImportPath(root, componentFile(`${label}.popups.${name}`, target))}';`);
         return `${propertyKey(name)}: ${local}`;
       }).join(', ')} }`);
-      if (editorPlugin.isSuggestionActive) parts.push(`isSuggestionActive: ${editorBinding(`${label}.isSuggestionActive`, editorPlugin.isSuggestionActive, true)}`);
+      if (contribution.isSuggestionActive) parts.push(`isSuggestionActive: ${editorBinding(`${label}.isSuggestionActive`, contribution.isSuggestionActive, true)}`);
       return `${propertyKey(id)}: { ${parts.join(', ')} }`;
     });
     extraImports.push(...steps.imports, ...artifacts.imports, ...blocks.imports);
@@ -1154,7 +1154,7 @@ ${contractCheck}`;
     const regProps: string[] = [];
     if (groupForms.length) regProps.push(`  settingsForms: { ${groupForms.map(([id]) => `'${id}': __settingsGroup_${id}`).join(', ')} },`);
     if (steps.literal) regProps.push(`  steps: ${steps.literal},`);
-    if (editorPlugins.length) regProps.push(`  tiptapPlugins: { ${editorPlugins.join(', ')} },`);
+    if (contributions.length) regProps.push(`  textEditor: { ${contributions.join(', ')} },`);
     if (appExt.length) {
       const extObj = appExt.map(([key]) => `${propertyKey(key, key)}: __appExtension_${key}`).join(', ');
       regProps.push(`  appExtensions: { ${extObj} },`);

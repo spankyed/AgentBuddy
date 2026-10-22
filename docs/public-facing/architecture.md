@@ -154,7 +154,7 @@ export default {
   }>;
   settingsForms?: Record<string, Component>;
   steps?: StepDefinition[];
-  tiptapPlugins?: Record<string, TiptapPlugin>;
+  textEditor?: Record<string, TextEditorExtensions>;
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];

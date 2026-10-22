@@ -133,7 +133,7 @@ describe('generated frontend entry', () => {
 
   it('names the missing Tiptap member export without executing its module', async () => {
     write('src/tiptap/index.ts', 'throw new Error("Do not execute"); export const other = {};\n');
-    const editor = (target: string) => ({ tiptapPlugins: { suggestions: { extensions: { mention: target } } } });
+    const editor = (target: string) => ({ textEditor: { suggestions: { extensions: { mention: target } } } });
     await expect(generate(editor('src/tiptap/index.ts#Mention'))).rejects.toThrow('doesn\'t export "Mention"');
     await expect(generate(editor('src/tiptap/missing.ts#Mention'))).rejects.toThrow('no file found at src/tiptap/missing.ts');
   });
@@ -141,25 +141,25 @@ describe('generated frontend entry', () => {
   it('checks editor predicates and popup modules before generating bindings', async () => {
     write('src/editor.ts', 'export const notCallable = {}; export type OnlyType = { active: boolean };');
     for (const name of ['notCallable', 'OnlyType']) {
-      await expect(generate({ tiptapPlugins: { suggestions: { isSuggestionActive: `src/editor.ts#${name}` } } }))
+      await expect(generate({ textEditor: { suggestions: { isSuggestionActive: `src/editor.ts#${name}` } } }))
         .rejects.toThrow();
     }
     write('src/factory.ts', 'export function factory() { return {}; }');
-    await expect(generate({ tiptapPlugins: { suggestions: { extensions: { example: 'src/factory.ts#factory' } } } }))
+    await expect(generate({ textEditor: { suggestions: { extensions: { example: 'src/factory.ts#factory' } } } }))
       .rejects.toThrow('expected an exported extension object');
-    await expect(generate({ tiptapPlugins: { suggestions: { popups: { missing: 'src/Missing.vue' } } } }))
+    await expect(generate({ textEditor: { suggestions: { popups: { missing: 'src/Missing.vue' } } } }))
       .rejects.toThrow('Missing.vue');
   });
 
   it('registers the tiptap surfaces a pack declares', async () => {
     write('src/tiptap/ok.ts', 'throw new Error("Do not execute"); export const Mention = {}; export function isActive() { return false; }\n');
     write('src/tiptap/Popup.vue', '<template><div /></template>');
-    const fe = (await generate({ tiptapPlugins: { suggestions: {
+    const fe = (await generate({ textEditor: { suggestions: {
       extensions: { mention: 'src/tiptap/ok.ts#Mention' }, popups: { mention: 'src/tiptap/Popup.vue' },
       isSuggestionActive: 'src/tiptap/ok.ts#isActive',
     } } }))['src/__generated__/pack-entry-fe.ts'];
     expect(fe).toContain("import { Mention as __editor_0 } from '../tiptap/ok.ts';");
-    expect(fe).toContain('tiptapPlugins: { "suggestions": { extensions: { "mention": __editor_0 }');
+    expect(fe).toContain('textEditor: { "suggestions": { extensions: { "mention": __editor_0 }');
     expect(fe).toContain('popups: { "mention": __editor_1 }');
     expect(fe).toContain('isSuggestionActive: __editor_2');
   });

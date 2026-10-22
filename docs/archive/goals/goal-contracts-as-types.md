@@ -6,7 +6,7 @@
 # Goal: a pack declares its contracts as types, not as phantom-carrying values
 
 Implement docs/goals/goal-contracts-as-types.md, at or after ad1bc3894 on AS/plugin-inbox — the base its
-Background was surveyed at — and after docs/goals/goal-plugin-contract.md lands, which is where
+Background was surveyed at — and after docs/goals/goal-surface-contract.md lands, which is where
 `declaredTypeOf` comes from. This goal does the same thing for systems that that one did for surfaces.
 Before Phase 1, confirm the base: `declaredTypeOf` exists in packages/apack-sdk/src/build/module-exports.ts,
 `SystemSpec` in packages/apack-sdk/src/framework/define-system.ts still carries `_incoming` and `_outgoing`,
@@ -61,7 +61,7 @@ Never:
 
 ## Background (2026-09-23, at ad1bc3894 on AS/plugin-inbox)
 
-`goal-plugin-contract.md` found that codegen's inability to read a declared type was **ours**, not
+`goal-surface-contract.md` found that codegen's inability to read a declared type was **ours**, not
 TypeScript's, and that lifting it turns a surface's contract from a phantom-carrying value into a type
 alias. That goal applies the finding to one reader. This goal applies it to the other, which is the larger
 one, and then closes the pattern.
@@ -74,7 +74,7 @@ one, and then closes the pattern.
 |---|---|---|
 | `exportOf(file, name)` | whether a name exists, and whether it is a value, a type or both | legitimately a value question |
 | `outgoingEventTypesOf(file)` | a system's outgoing events | **a value: the default export's `spec._outgoing`** |
-| `acceptedEventTypesOf(file)` | a surface's inbox | **a value: the `accepts` export's `_accepts`** — `goal-plugin-contract.md` |
+| `acceptedEventTypesOf(file)` | a surface's inbox | **a value: the `accepts` export's `_accepts`** — `goal-surface-contract.md` |
 
 So after that goal, one value-reading path remains, and it is the one with 14 call sites.
 
@@ -125,14 +125,14 @@ text it produces.
 them in their own source — `logs/be/system.ts:20` declares `IncomingLogEvents` and `:24`
 `LogsInternalEvents` — and then union them at the call, because the signature has one slot. The
 consequence is that `ADD_LOG`, sent by a `fromCallback` child to its own parent, is published API for every
-dependent pack. `goal-plugin-contract.md` defers this as its item 1 for exactly one reason: splitting it
+dependent pack. `goal-surface-contract.md` defers this as its item 1 for exactly one reason: splitting it
 means a fourth positional type parameter on all fourteen calls.
 
 ### The leaf already exists on the backend
 
 Every one of the eleven default-setup features with a `be/` has `be/types.ts`, and nine of those leaves
 import from `@/__generated__/*` — but only ever `ears` and `types`, which is **exactly the rule
-`goal-plugin-contract.md` writes for `fe/types.ts`**: the two generated modules that don't reach
+`goal-surface-contract.md` writes for `fe/types.ts`**: the two generated modules that don't reach
 `#generated/events`. So the leaf rule is one rule for both sides, not two that happen to rhyme, and the
 `check:specifiers` guard that goal adds for `fe/types.ts` extends to `be/types.ts` unchanged.
 
@@ -143,7 +143,7 @@ Two features have no leaf at all and need one: the host's `settings` and `packs`
 (`packages/apack-host/src/features/*/be/` holds `system.ts` and, for settings, `document.ts`, `index.ts`,
 `store.ts`).
 
-**This is the difference from the frontend.** `goal-plugin-contract.md` had to *invent* `fe/types.ts` to
+**This is the difference from the frontend.** `goal-surface-contract.md` had to *invent* `fe/types.ts` to
 break a cycle. Here the leaf is already there, already clean, and the contract simply has not moved into
 it.
 
@@ -151,7 +151,7 @@ it.
 
 All eleven default-setup `be/system.ts` files import `@/__generated__/events` — codegen reads a value out
 of a module that imports codegen's own output. The frontend arrangement of the same shape failed with
-`_TYPES_UNRESOLVED` (`goal-plugin-contract.md`, Spike results). The backend's does not, and the plausible
+`_TYPES_UNRESOLVED` (`goal-surface-contract.md`, Spike results). The backend's does not, and the plausible
 reason is that `default → spec` resolves one property whose type comes from a separate `defineSystem` call
 and never requires checking the machine, where typing `defineSurface<E>({ state: machine })` requires
 checking the argument.
@@ -178,7 +178,7 @@ Final.
    Named fields, not positions: `internal` is a field a feature adds, not a fourth type parameter fourteen
    calls have to skip past. `incoming` and `internal` may be omitted; `context` defaults to `{}`.
 
-   It mirrors `goal-plugin-contract.md`'s `fe/types.ts` deliberately — the same file name, the same export
+   It mirrors `goal-surface-contract.md`'s `fe/types.ts` deliberately — the same file name, the same export
    name, the same rule that codegen reads it and nothing else. A pack author learns one thing.
 
    **And it is named the same way**: `features[].system.contract` in `apack.json`, in the `"path#export"`
@@ -220,7 +220,7 @@ Final.
 
 4. **`internal` does not reach the facade.** `OwnSystemEvents` is `incoming`; the facade's
    `PackSystemEvents` is `incoming` too; `internal` reaches the machine's own event union and nothing else.
-   This is `goal-plugin-contract.md`'s Deferred item 1, taken here because Decision 1 makes it a field
+   This is `goal-surface-contract.md`'s Deferred item 1, taken here because Decision 1 makes it a field
    rather than a signature change.
 
    **Nothing changes at runtime.** A surface's inbox is emitted as a value the app can check against
@@ -230,7 +230,7 @@ Final.
    loses its send to its own parent.
 
 5. **`exportOf` and `ExportInfo` do not change.** `ExportInfo.type` being a `boolean` was named as a
-   self-imposed constraint in `goal-plugin-contract.md` because it was misread as an answer to "what is this
+   self-imposed constraint in `goal-surface-contract.md` because it was misread as an answer to "what is this
    type". It is not: `exportOf` asks whether a name exists and what kind it is, and a boolean answers that
    correctly. The fix was always a second reader, and `declaredTypeOf` is it. Widening `ExportInfo` here
    would be fixing the wrong thing.
@@ -259,13 +259,13 @@ reader gives the same answer as the old one did, which is the only version of th
   then `propertyType` for `outgoing` — the same walk, one module earlier.
 - Delete the `_TYPES_UNRESOLVED` branch, the `satisfies`/annotation error text, and `eventTypeLiterals`'
   `annotated` parameter. Its other caller, `acceptedEventTypesOf`, is deleted in
-  `goal-plugin-contract.md`'s Phase 1 — confirm that before starting, since this goal assumes it.
+  `goal-surface-contract.md`'s Phase 1 — confirm that before starting, since this goal assumes it.
 - Delete `_incoming` and `_outgoing` from `SystemSpec`; `SystemEntry.spec` stops being a `Pick<>`
   (Decision 3). Remove every `satisfies SystemEntry` outside `docs/archive/`: the 13 `be/system.ts` files,
   the `apack add feature` scaffold, the `docs/public-facing` pages, the root `CLAUDE.md` sentence, and the
   specs in `apack-cli/tests/build` and `apack-sdk/tests/build` that assert the annotation error text —
   those specs lose their subject, so delete them rather than rewording them.
-- Extend `goal-plugin-contract.md`'s leaf guard to `be/types.ts`: one rule, both leaves, since the backend
+- Extend `goal-surface-contract.md`'s leaf guard to `be/types.ts`: one rule, both leaves, since the backend
   leaves already obey it (Background).
 - The guard from Decision 6.
 
@@ -305,7 +305,7 @@ with no hand edits; no doc outside `docs/archive/` mentions `satisfies SystemEnt
 
 ## Outcome (2026-09-23)
 
-Landed on `AS/plugin-contract`, after `goal-plugin-contract.md` as planned. All three phases are implemented.
+Landed on `AS/plugin-contract`, after `goal-surface-contract.md` as planned. All three phases are implemented.
 The contract moved to `be/contract.ts` rather than the `be/types.ts` the plan named — see Corrections.
 
 ### Per phase
@@ -356,7 +356,7 @@ The contract moved to `be/contract.ts` rather than the `be/types.ts` the plan na
 
 - **`safeEvents` and `spec.typeOf`.** They are real runtime behaviour, not a reading workaround, and stay
   as they are. **Reopen** only if XState gives a typed alternative.
-- **A sender on `Message`.** `goal-plugin-contract.md`'s Deferred item 2, unchanged and untouched here.
+- **A sender on `Message`.** `goal-surface-contract.md`'s Deferred item 2, unchanged and untouched here.
 
 ## Constraints
 

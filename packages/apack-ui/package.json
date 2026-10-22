@@ -194,30 +194,25 @@
       "types": "./dist/components/tiptap/extensions/markdown-parse-fixes.d.ts",
       "default": "./dist/components/tiptap/extensions/markdown-parse-fixes.js"
     },
-    "./components/tiptap/extensions/search-extension": {
-      "@apackdev/source": "./src/components/tiptap/extensions/search-extension.ts",
-      "types": "./dist/components/tiptap/extensions/search-extension.d.ts",
-      "default": "./dist/components/tiptap/extensions/search-extension.js"
+    "./components/tiptap/extensions/reference-node": {
+      "@apackdev/source": "./src/components/tiptap/extensions/reference-node.ts",
+      "types": "./dist/components/tiptap/extensions/reference-node.d.ts",
+      "default": "./dist/components/tiptap/extensions/reference-node.js"
     },
-    "./components/tiptap/extensions/search-plugin": {
-      "@apackdev/source": "./src/components/tiptap/extensions/search-plugin.ts",
-      "types": "./dist/components/tiptap/extensions/search-plugin.d.ts",
-      "default": "./dist/components/tiptap/extensions/search-plugin.js"
+    "./components/tiptap/extensions/resizable-image": {
+      "@apackdev/source": "./src/components/tiptap/extensions/resizable-image.ts",
+      "types": "./dist/components/tiptap/extensions/resizable-image.d.ts",
+      "default": "./dist/components/tiptap/extensions/resizable-image.js"
     },
-    "./components/tiptap/reference-node": {
-      "@apackdev/source": "./src/components/tiptap/reference-node.ts",
-      "types": "./dist/components/tiptap/reference-node.d.ts",
-      "default": "./dist/components/tiptap/reference-node.js"
+    "./components/tiptap/extensions/search": {
+      "@apackdev/source": "./src/components/tiptap/extensions/search.ts",
+      "types": "./dist/components/tiptap/extensions/search.d.ts",
+      "default": "./dist/components/tiptap/extensions/search.js"
     },
-    "./components/tiptap/resizable-image": {
-      "@apackdev/source": "./src/components/tiptap/resizable-image.ts",
-      "types": "./dist/components/tiptap/resizable-image.d.ts",
-      "default": "./dist/components/tiptap/resizable-image.js"
-    },
-    "./components/tiptap/sub-document-link": {
-      "@apackdev/source": "./src/components/tiptap/sub-document-link.ts",
-      "types": "./dist/components/tiptap/sub-document-link.d.ts",
-      "default": "./dist/components/tiptap/sub-document-link.js"
+    "./components/tiptap/extensions/sub-document-link": {
+      "@apackdev/source": "./src/components/tiptap/extensions/sub-document-link.ts",
+      "types": "./dist/components/tiptap/extensions/sub-document-link.d.ts",
+      "default": "./dist/components/tiptap/extensions/sub-document-link.js"
     },
     "./composables/useClickOutside": {
       "@apackdev/source": "./src/composables/useClickOutside.ts",

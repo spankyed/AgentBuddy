@@ -23,7 +23,7 @@ export { formatReferenceHref, parseReferenceHref, type ReferenceTarget } from '.
 export { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations, type _PackEntityDeclaration } from './data-declaration.ts';
 
 export { LIFECYCLE_HOOK_NAMES, type PackLifecycleDeclaration } from './lifecycle-declaration.ts';
-export type { FrontendDeclaration, TiptapPluginDeclaration } from './frontend-declaration.ts';
+export type { FrontendDeclaration, TextEditorExtensionsDeclaration } from './frontend-declaration.ts';
 export { _stepFrontendTargets, type StepFrontendDeclaration, type StepLayoutDeclaration } from './step-frontend-declaration.ts';
 
 export { _HOST_SERVICE_NAMES, _BASELINE_HOST_SERVICE_NAMES, _packServiceDeclarations, _packServiceSelection, _parseServiceReference, _serviceProviderProblem, type PackConsumption, type _PackServiceDeclarations, type _PackServiceDeclaration } from './service-consumption.ts';
