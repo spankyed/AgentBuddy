@@ -527,6 +527,9 @@ export const brainCommands = {
     tNodeId: EARS.EntityId, 
     status: TNodeEntity['status']
   ): void => {
+    // A step can finish after its run was cleared (`clearVolatileData`, the data replaced); writing then
+    // would leave an attribute-only orphan with no TNode behind it
+    if (!qx(tNodeId).exists()) return;
     if (status === 'completed') {
       // Set both status and completedAt timestamp
       tx(tNodeId)
@@ -544,6 +547,7 @@ export const brainCommands = {
     tNodeId: EARS.EntityId,
     attributes: any
   ): void => {
+    if (!qx(tNodeId).exists()) return;
     // Truncate the attributes to prevent memory overflow
     const truncatedAttributes = truncateResult(attributes);
     
