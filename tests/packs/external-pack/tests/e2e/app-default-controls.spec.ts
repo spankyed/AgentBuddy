@@ -1,20 +1,42 @@
 import { fileURLToPath } from 'node:url';
+import type { Page } from '@playwright/test';
 import { test, expect } from '@apackdev/testing';
 
 /**
- * What a replace or a restore costs before ownership settles, rather than `expect.poll`'s 5s default.
+ * Waits for the Packs surface to report a pack's ownership, by **subscribing** to its actor.
  *
- * Each follows an install and a frontend reload. Under the chain's concurrency the 5s default gave up
- * 28.4s into the test while the app was still working correctly, so the run failed on the poll rather
- * than on anything it was testing.
+ * A replace or a restore finishes when the backend broadcasts the new pack list, and the surface records
+ * it in context — the machine has one `idle` state and tracks progress in `installing`, so there is no
+ * transition to await. That left the test sampling, and sampling is where it went wrong: `expect.poll`'s
+ * 5s default gave up 28.4s into a run while the app was still working correctly, so the failure was the
+ * interval's and not the app's.
  *
- * **The spec's own 60s is the next constraint, and this does not fix that.** It passes at 43-50s warm,
- * so a poll that actually spends its 20s can push the test past its budget and report as a test timeout
- * instead of as the assertion that never settled. Raising one spec's Playwright budget has no precedent
- * here and `suite-timeouts` holds the shared 60s literal, so the honest fix is to make this spec cheaper
- * — it installs a pack four times — rather than to buy it more time.
+ * Subscribing removes the interval rather than tuning it. The actor says when it changed, the predicate
+ * is checked on that transition, and the deadline here exists only to name what never arrived — it is
+ * not the thing being waited on. Playwright cannot pass a function into the page, so the predicate is
+ * written in the evaluated body and parameterised by the value it expects.
  */
-const SETTLES = { timeout: 20_000 };
+async function ownershipBecomes(appPage: Page, expected: string): Promise<void> {
+  await appPage.evaluate(([want, ms]) => new Promise<void>((resolve, reject) => {
+    const actor = (window as unknown as { applicationState: { system: { get(ref: string): {
+      getSnapshot(): { context: { packs: { id: string; updatesWith?: string }[] } };
+      subscribe(listener: () => void): { unsubscribe(): void };
+    } } } }).applicationState.system.get('host/packs');
+    const reading = (): string | undefined =>
+      actor.getSnapshot().context.packs.find((pack) => pack.id === 'default-setup')?.updatesWith;
+    if (reading() === want) return resolve();
+    const timer = setTimeout(() => {
+      subscription.unsubscribe();
+      reject(new Error(`default-setup's updatesWith stayed ${String(reading())} after ${ms}ms, wanted ${want}`));
+    }, ms as number);
+    const subscription = actor.subscribe(() => {
+      if (reading() !== want) return;
+      clearTimeout(timer);
+      subscription.unsubscribe();
+      resolve();
+    });
+  }), [expected, 20_000] as [string, number]);
+}
 
 test('an app default can be disabled, removed and restored while host settings remain usable', async ({ app, appPage }) => {
   await app.navigate('host/packs');
@@ -44,15 +66,13 @@ test('an app default can be disabled, removed and restored while host settings r
       .fill(fileURLToPath(new URL('../../../../../packages/default-setup/', import.meta.url)));
     await appPage.getByRole('button', { name: 'Replace', exact: true }).click();
     await app.waitForSurface('default-setup/threads');
-    await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
-      .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.updatesWith), SETTLES).toBe('user');
+    await ownershipBecomes(appPage, 'user');
     await appPage.getByTestId('pack-restore').click();
     await appPage.getByTestId('pack-confirm-restore').click();
     await app.waitForSurface('default-setup/threads');
-    await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
-      .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.updatesWith), SETTLES).toBe('app');
-    await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
-      .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.enabled), SETTLES).toBe(true);
+    await ownershipBecomes(appPage, 'app');
+    expect(await appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
+      .getSnapshot().context.packs.find((pack: any) => pack.id === 'default-setup')?.enabled)).toBe(true);
     needsRestore = false;
   } finally {
     if (needsRestore) {
