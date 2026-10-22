@@ -1,15 +1,7 @@
 // The library view's own helpers. The tree's mechanics — a child's parent, a new child's place among
-// mixed siblings, a folder's path — are the SDK's now, beside the entities (`@apackdev/sdk/repositories`),
-// and re-exported here because this feature's queries name them.
+// mixed siblings, a folder's path — are the SDK's, beside the entities, and this feature's code calls
+// them there by their own names (`@apackdev/sdk/repositories`).
 import type { ContentSection } from '#features/library/be/types.ts';
-
-export {
-  collectionPath as getCollectionPath,
-  displayOrderOf as getDisplayOrder,
-  nextDisplayOrder as getNextDisplayOrder,
-  parentCollectionOf as findParentCollection,
-  collectionOfDocument as findDocumentCollection,
-} from '@apackdev/sdk/repositories';
 import { parentCollectionOf } from '@apackdev/sdk/repositories';
 import type { EARS } from '#generated/ears.ts';
 

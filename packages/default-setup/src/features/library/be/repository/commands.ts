@@ -4,8 +4,10 @@ import { EARS } from '#generated/ears.ts'
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types.ts'
 // [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository' (dormant: ../search-index/README.md)
 import { libraryQueries } from './queries.ts'
-import { findParentCollection, getDisplayOrder, getNextDisplayOrder, getCollectionPath, formatFileSize, getContentLength } from './helpers.ts'
-import { collectionRepository, documentRepository } from '@apackdev/sdk/repositories';
+import {
+  collectionPath, collectionRepository, displayOrderOf, documentRepository, nextDisplayOrder, parentCollectionOf,
+} from '@apackdev/sdk/repositories'
+import { formatFileSize, getContentLength } from './helpers.ts'
 import type { ContentSection } from '#features/library/be/types.ts';
 
 
@@ -93,7 +95,7 @@ const writers = {
     const now = Date.now()
     
     // Get display order
-    const displayOrder = getNextDisplayOrder(parentId || null)
+    const displayOrder = nextDisplayOrder(parentId || null)
 
     const attrs: Record<string, any> = {
       name,
@@ -112,7 +114,7 @@ const writers = {
       tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }
 
-    const path = getCollectionPath(collectionId)
+    const path = collectionPath(collectionId)
 
     return {
       id: collectionId,
@@ -158,17 +160,17 @@ const writers = {
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
-    const path = getCollectionPath(collectionId)
+    const path = collectionPath(collectionId)
 
     const buildChildren = (children: any[]): CollectionDTO[] =>
       children.map(child => ({
         id: child.id,
         name: child.name as string,
         description: child.description as string | undefined,
-        path: getCollectionPath(child.id as EARS.EntityId),
+        path: collectionPath(child.id as EARS.EntityId),
         documentCount: qx(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
         childCollections: buildChildren(qx(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
-        displayOrder: getDisplayOrder(child),
+        displayOrder: displayOrderOf(child),
         createdAt: new Date(child.createdAt as number).toISOString(),
         updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),
       }))
@@ -180,7 +182,7 @@ const writers = {
       path,
       documentCount,
       childCollections: buildChildren(childCollections),
-      displayOrder: getDisplayOrder(collection!),
+      displayOrder: displayOrderOf(collection!),
       createdAt: new Date(collection!.createdAt as number).toISOString(),
       updatedAt: new Date(collection!.updatedAt as number || collection!.createdAt as number).toISOString(),
     }
@@ -238,7 +240,7 @@ const writers = {
         tags: doc.tags,
         size: formatFileSize(getContentLength(content)),
         kind: 'Document',
-        displayOrder: getDisplayOrder(doc),
+        displayOrder: displayOrderOf(doc),
         createdAt: doc.createdAt,
         updatedAt: new Date(now).toISOString(),
       }
@@ -248,7 +250,7 @@ const writers = {
       const childCount = 0 // Simplified for now
       
       // Find parent folder
-      const parentId = findParentCollection(entityId)
+      const parentId = parentCollectionOf(entityId)
       
       return {
         type: 'folder',
@@ -258,7 +260,7 @@ const writers = {
         childCount,
         size: `${childCount} items`,
         kind: 'Folder',
-        displayOrder: getDisplayOrder(collection),
+        displayOrder: displayOrderOf(collection),
         createdAt: new Date(collection.createdAt as number).toISOString(),
         updatedAt: new Date(now).toISOString(),
       }
@@ -284,7 +286,7 @@ const writers = {
         // Move collection to new parent
         const collectionId = id
         
-        const currentParent = findParentCollection(collectionId)
+        const currentParent = parentCollectionOf(collectionId)
         
         // Remove from current parent if exists
         if (currentParent) {
@@ -297,7 +299,7 @@ const writers = {
         }
         
         // Update display order
-        const displayOrder = getNextDisplayOrder(targetFolderId)
+        const displayOrder = nextDisplayOrder(targetFolderId)
         tx(collectionId).update('displayOrder', displayOrder)
       }
     }
@@ -313,7 +315,7 @@ const writers = {
     const collectionId = builder.id()
     const now = Date.now()
 
-    const displayOrder = getNextDisplayOrder(parentId || null)
+    const displayOrder = nextDisplayOrder(parentId || null)
 
     builder.updateBatch({
       name,
@@ -327,7 +329,7 @@ const writers = {
       tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }
 
-    const path = getCollectionPath(collectionId)
+    const path = collectionPath(collectionId)
 
     return {
       id: collectionId,
@@ -351,8 +353,8 @@ const writers = {
     tx(collectionId).update('updatedAt', now)
 
     const col = qx(collectionId).pickAll()[0]
-    const colPath = getCollectionPath(collectionId)
-    const parentId = findParentCollection(collectionId) || undefined
+    const colPath = collectionPath(collectionId)
+    const parentId = parentCollectionOf(collectionId) || undefined
 
     return {
       id: collectionId,

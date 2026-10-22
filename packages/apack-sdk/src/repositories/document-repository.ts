@@ -127,8 +127,9 @@ export const documentRepository = {
   },
 
   /**
-   * Writes the fields given. `parentId` moves the document, and omitting it leaves it where it is —
-   * which is not the same as passing it as the root, so the two cases are told apart by `undefined`.
+   * Writes the fields given. A `parentId` moves the document into that folder; omitting it leaves the
+   * document in whichever folder it is already in. Moving one back out to the root is not expressible
+   * here — the library's own move does that, by unlinking.
    */
   update: (id: EARS.EntityId, updates: Partial<DocumentInput>): void => {
     const { parentId, id: _id, tags, documentType, contentHash, ...fields } = updates;
