@@ -34,36 +34,51 @@ Surveyed 2026-10-21 at `507b3b747`.
 
 ## Outcome
 
-**Done**, on `session/plugins-to-surfaces`. `npm run chain -- --all --strict` passes at `eef326f99`:
-**1377.4s, 32 steps executed, none cached, none failing** (`…/runs/2026-10-21T22-40-22Z-76927`). `--all`
-runs every step regardless of its stamp and `--strict` fails the run if a step's inputs move while it
-reads them, so nothing here rests on a cache.
+**Done**, on `session/plugins-to-surfaces`, which was rebased onto master and finished in the main
+checkout. Two runs stand behind it, and it takes both, because the branch kept moving after the forced
+one:
 
-**Why no later commit needs its own run, which is otherwise a regress.** Recording a chain result is a
-commit the run predates, so a rule of "a fresh run at the final commit" can never terminate. What ends
-it is the chain's own stamps: they are keyed on each step's declared inputs, so `npm run chain` at
-`HEAD` returning **0.8s, 31 of 32 cached** is not a weaker run — it is the chain stating that nothing
-any step reads has moved since the forced one. `docs/` is in no step's inputs at all
-(`EVERY_SOURCE`, `scripts/lib/chain-steps.ts:458`), which is why a prose commit cannot change the
-answer, and why `CLAUDE.md` names running anything after a documentation edit as the repository's
-largest waste of time. Anyone doubting it can rerun the chain here in under a second. The cold run over the whole tree was 1468.8s with all 32 ok
-(`…T20-52-54Z-10193`), and `…T21-50-18Z-20165` is the 1017.6s run that re-executed the seven steps a
-mid-rename commit invalidated.
+- `npm run chain -- --all --strict`: **1378.3s, 32 steps executed, none cached, none failing**
+  (`…/runs/2026-10-22T05-51-34Z-30468`), critical path 1019s
+  (`packages:ensure -> build:default-setup -> test:native`). `--all` runs every step regardless of its
+  stamp and `--strict` fails the run if a step's inputs move while it reads them.
+- `npm run chain` at the final commit: **18.4s, 26 of 32 cached** (`…/runs/2026-10-22T06-15-10Z-80688`).
+  The six it re-executed are exactly the steps the forced run had read before the last edits landed —
+  `packages:ensure`, `check:specifiers`, `check:tiers`, `lint:check`, `typecheck:scripts`,
+  `test:integration`. `npm run chain -- --dry` then reports 32 of 32 cached.
 
-**Why a commit after that run does not invalidate it.** `docs/` is in no step's declared inputs
-(`EVERY_SOURCE`, `scripts/lib/chain-steps.ts:458`), so recording this result moves no fingerprint and
-the chain stays green and cached at the commit that records it. The cost of that is real and worth
-knowing: `doc-links` reads the guides without declaring them, so the chain will not re-run it for a
-documentation change — every docs edit here was checked by running it by hand.
+Between them every one of the 32 steps has a passing execution against the current content of its
+declared inputs, which is the claim worth making — and the reason the second run is not a formality.
 
-**One load-sensitive spec, reported rather than patched.** A chain run in between failed
-`tests/packs/external-pack/tests/e2e/app-default-controls.spec.ts:37`, whose `expect.poll` for
-`updatesWith === 'app'` after a pack restore gets Playwright's **5s** default while the test's own
-budget is 60s — it died at 28.4s, so the poll gave up, not the test. The case passes in isolation
-(43.5s) and its whole step passes (`test:external-pack:app`, 32 specs); this work changed only three
-`waitForPlugin` → `waitForSurface` call sites in that file and nothing the assertion reads. Giving that
-poll a deadline matched to what a restore costs is the fix; raising it to obtain a pass is what
-`CLAUDE.md` refuses, and load inflates a duration without ever deflating it.
+**A rebase invalidates a chain result, and the first version of this section did not say so.** It cited
+a forced run at a commit whose SHA the rebase had rewritten, together with an argument that the chain's
+stamps make any later cached run equivalent. The stamps do mean that — but only while the *content* a
+step reads is unchanged, and replaying onto a master eight commits ahead changes trees, not just
+commit ids. Remapping the SHA would have pointed a real measurement at a tree nobody measured. The pair
+above replaces it; the argument it replaces is kept here because the mistake is easy to repeat.
+
+**What a step's reading is not.** Several `apack-cli` integration specs in the forced run read 3-8x
+their recorded medians (`build-output-swap` 397.0s against 49.9s over 10 runs, `dependency-graph`
+169.3s against 43.0s). That is the run loading the machine it is measuring, and load inflates a
+duration without ever deflating it, so nothing gates on it and none of these timings is citable as a
+measurement. The `@slow:` marker gate fires only on *measured faster than declared*, which is why a run
+like this one cannot fail it.
+
+**The load-sensitive spec that prompted it is fixed rather than reported.**
+`tests/packs/external-pack/tests/e2e/app-default-controls.spec.ts` had an `expect.poll` taking
+Playwright's 5s default while the test's own budget was 60s; it gave up 28.4s into a pack restore while
+the app was working correctly. It subscribes to the packs actor now (`5efaea35d`), so the deadline names
+what never arrived instead of being the thing waited on, and `waitForSurface`/`waitForState` were
+changed the same way (`cb639cb32`). Both halves pass in the forced run: `test:smoke` 8.1s,
+`test:external-pack:app` 119.2s.
+
+**What landed after the phases below.** Window storage was namespaced by the surface's ref
+(`surfaceStorage`/`useSurfaceStorage`, the `window-storage` pack rule); the two 0.4.0 migrations this
+goal had written — one app-line, one window-storage — were **deleted**, the app having been renamed and
+re-namespaced without ever shipping, so they migrate nobody and a developer's own instance is moved by
+hand; and a review before landing found two gates that did not gate and three claims that had stopped
+being true (`c6b59447b`). The archived guides were renamed to the current vocabulary too
+(`606930c85`), which is a readability change and not this guard's subject (`fe72a6a00`).
 
 | Phase | Commit | Evidence for its "Done when" |
 |---|---|---|
@@ -71,13 +86,6 @@ poll a deadline matched to what a restore costs is the fix; raising it to obtain
 | 2 — the concept | `8fe89f39a` | `typecheck` 17/17, `api:check`, `schema:check`, `test:unit` 5689, `build:default-setup`, and `npm run test:external-pack` run directly, exit 0 — `:contract` 38 tests over 11 files, `:fork`, `:app` 27 + 5 specs |
 | 3 — the wire | `17504b901` | `npm test -w @apackdev/host` 1746 passed / 135 files, including `tests/bus/outgoing-events.spec.ts` and `tests/packs/event-validation-map.spec.ts`; `test:smoke` 16.1s in the chain. Mutation, at the site the condition names — a `pluginId` left in the **renderer's** routing (`features/application/fe/connection.ts`, looking the surface up by the field the transport used to stamp): **5 of 110** renderer routing specs fail, in `plugin-reply` and `send-scope`. Smoke still passes, so of the condition's two candidates only the event specs catch it. The bus's own lookup was mutated too and failed **23** specs across `outgoing-events` and `event-validation-map` |
 | 4 — stored state | `c7f16a507`, and the migration removed after | Renamed outright. `npm test -w @apackdev/host`; `tests/fe/window-storage.spec.ts` holds the runner's cases around an empty list |
-**What landed after that run, and what proves it.** Window storage was namespaced by the surface's ref
-(`surfaceStorage`/`useSurfaceStorage`, the `window-storage` pack rule), and the two 0.4.0 migrations this
-goal had written — one app-line, one window-storage — were **deleted**: the app has been renamed and
-re-namespaced and has never shipped, so they migrate nobody, and a developer's own instance is moved by
-hand. Proven by `npm run typecheck` (20 legs ok), `npm test -w @apackdev/host` (1738 over 134 files) and
-`npm test -w @app/repo-checks` (894 over 50 files), the three suites those edits reach.
-
 | 5 — docs, guard live | `b37bf3c08` | Scan unparked and green; `welcome.md` re-recorded; `doc-links` passing |
 | 6 — the prose read | `2cdfe0056`, `694106871`, `f64a22c9f` | 19 inversions. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader. Its "no comment or guide sentence" condition rests on a **complete enumeration** — all 241 remaining occurrences classified, not a sampled grep — which found eight concept names that four passes had missed, `setPluginVisible` among them, published. All four memory files now name only things that exist |
 
