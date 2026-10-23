@@ -6,6 +6,7 @@ import { dbBackup, BACKUP_USAGE } from './backup';
 import { dbExport, EXPORT_USAGE } from './export';
 import { dbInspect, INSPECT_USAGE } from './inspect';
 import { dbRepl, REPL_USAGE } from './repl';
+import { dbRuns, RUNS_USAGE } from './runs';
 import { dbScript, SCRIPT_USAGE } from './script';
 import { processIo, TARGET_USAGE, type DbIo } from './target';
 
@@ -15,6 +16,7 @@ const COMMANDS: Record<string, { run: (args: string[], io: DbIo) => Promise<void
   repl: { run: dbRepl, usage: REPL_USAGE },
   script: { run: dbScript, usage: SCRIPT_USAGE },
   inspect: { run: dbInspect, usage: INSPECT_USAGE },
+  runs: { run: dbRuns, usage: RUNS_USAGE },
   backup: { run: dbBackup, usage: BACKUP_USAGE },
   export: { run: dbExport, usage: EXPORT_USAGE },
   import: { run: dbImport, usage: IMPORT_USAGE },
@@ -34,6 +36,7 @@ Commands:
   repl [--write]        Run console code line by line
   script <file>         Run a script file against the database (it imports what it likes)
   inspect [<id>]        An entity's relations, or relation counts per entity type
+  runs [--run <id>]     The flow runs in the run history, or one run's whole tree
   backup --out <dir>    Full database and media backup to a new directory
   backup verify <dir>   Check backup readability and completeness
   export --out <dir>    Each entity type's entities to a file

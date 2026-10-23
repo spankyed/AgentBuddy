@@ -13,6 +13,7 @@ import { exportDatabase } from '@apackdev/host/backup';
 import { closeEnv, openEnvAt, LMDB_FORMAT_VERSION } from '@apackdev/ears/lmdb';
 import { createSecretsStore, memoryKeyVault } from '@apackdev/host/secrets';
 import { _appDataPaths } from '@apackdev/sdk/utils';
+import { _createRunHistory } from '@apackdev/sdk/services';
 import { _appDirOf, appDataDirFor, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { db } from '../../src/commands/db';
 import { parseDbArgs } from '../../src/commands/db/target';
@@ -86,10 +87,12 @@ async function appDataDir(): Promise<string> {
     untypedCreate('Note', { id: id('Note-b') }).set('title', 'Beta, "quoted"');
     alpha.link('parent_of', id('Note-b'));
   });
-  // A run the app recorded, in the run history's own store
-  const history = openRunHistoryStore(_appDataPaths(dir).runHistory);
-  history.put({ id: 'TNode-1', tNodeType: 'flow', status: 'completed' });
-  history.close();
+  // A run the app recorded, in the run history's own store: a session's root and the event it heard
+  const store = openRunHistoryStore(_appDataPaths(dir).runHistory);
+  const history = _createRunHistory(store);
+  history.add({ id: 'TNode-1', tNodeType: 'flow', label: 'Root', status: 'completed', startedAt: Date.UTC(2026, 9, 1), flowId: 'Flow-root' });
+  history.add({ id: 'TNode-2', tNodeType: 'event', label: 'go', status: 'completed', startedAt: Date.UTC(2026, 9, 1, 0, 1), parentId: 'TNode-1' });
+  store.close();
   return dir;
 }
 
@@ -391,6 +394,28 @@ describe('the lock a change holds', () => {
     holdLock(dir);
     expect((await run(['exec', 'return 1', '--data-dir', dir])).error?.message).toMatch(/quit it first/);
     expect(findDatabaseWriter(dir)).toBeNull();
+  });
+});
+
+describe('apack db runs', () => {
+  it('lists the runs, newest first, and prints one run\'s tree', async () => {
+    const dir = await appDataDir();
+    const { out, err } = await ok(['runs', '--data-dir', dir]);
+    expect(err).toContain(`Run history: ${_appDataPaths(dir).runHistory}`);
+    expect(out).toBe('TNode-1  completed  2026-10-01T00:00:00.000Z  Root  (Flow-root)');
+    expect(JSON.parse((await ok(['runs', '--data-dir', dir, '--json'])).out)).toEqual([expect.objectContaining({ id: 'TNode-1', label: 'Root' })]);
+    expect((await ok(['runs', '--flow', 'Flow-other', '--data-dir', dir])).out).toBe('No runs');
+
+    const tree = JSON.parse((await ok(['runs', '--run', 'TNode-1', '--data-dir', dir])).out);
+    expect(tree).toMatchObject({ id: 'TNode-1', children: [{ id: 'TNode-2', label: 'go', children: [] }] });
+    expect((await run(['runs', '--run', 'TNode-missing', '--data-dir', dir])).error?.message).toBe('No run node TNode-missing in the run history');
+  });
+
+  it('says when a data dir has no run history, and leaves it without one', async () => {
+    const dir = await appDataDir();
+    fs.rmSync(_appDataPaths(dir).runHistory, { recursive: true });
+    expect((await run(['runs', '--data-dir', dir])).error?.message).toMatch(/No run history in .*: apack hasn't run a flow on it/);
+    expect(fs.existsSync(_appDataPaths(dir).runHistory)).toBe(false);
   });
 });
 

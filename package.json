@@ -98,6 +98,7 @@
     "db:repl": "node scripts/db-dev.mjs repl",
     "db:script": "node scripts/db-dev.mjs script",
     "db:inspect": "node scripts/db-dev.mjs inspect",
+    "db:runs": "node scripts/db-dev.mjs runs",
     "db:export": "node scripts/db-dev.mjs export",
     "db:import": "node scripts/db-dev.mjs import",
     "db:reset": "node scripts/db-dev.mjs reset",
