@@ -28,6 +28,7 @@ import { PublicProps } from 'vue';
 import { Ref } from 'vue';
 import { RendererElement } from 'vue';
 import { RendererNode } from 'vue';
+import { ShallowRef } from 'vue';
 import type { SnapshotFrom } from 'xstate';
 import { VNode } from 'vue';
 import { z } from 'zod';
@@ -171,6 +172,28 @@ export function defineHandlers<TContext extends MachineContext, TEvent extends E
     [key: string]: unknown;
 }>(): Handlers<TContext, TEvent, TOut>;
 
+// @public (undocumented)
+export interface EditorCompletionOffer {
+    // (undocumented)
+    dismiss(): void;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    rows: EditorCompletionRow[];
+}
+
+// @public (undocumented)
+export interface EditorCompletionRow {
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    label?: string;
+    // (undocumented)
+    select(): boolean;
+    // (undocumented)
+    text: string;
+}
+
 // @public
 export function entityIs<E extends string>(input: {
     event: {
@@ -229,6 +252,12 @@ export function getDslDeclaration(type: string): DslCatalogEntry | undefined;
 export function getDslDeclarations(): readonly DslCatalogEntry[];
 
 // @public (undocumented)
+export function getEditorCommandSuggestionsEnabled(editor: object): boolean;
+
+// @public
+export function getEditorCompletionOffer(editor: object): Readonly<ShallowRef<EditorCompletionOffer | undefined>>;
+
+// @public (undocumented)
 export function getNextAvailableColor(tabGroups: TabGroup[], isPinned?: boolean): TabGroupColor;
 
 // @public
@@ -278,6 +307,9 @@ export interface Handlers<TContext extends MachineContext, TEvent extends EventO
 
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;
+
+// @public
+export function holdEditorCommandSuggestions(editor: object): () => void;
 
 // @internal
 export interface _HostBridge {
@@ -663,6 +695,9 @@ export interface SecretsSnapshot {
     status: SecretsStatus;
 }
 
+// @public (undocumented)
+export function setEditorCompletionOffer(editor: object, offer: EditorCompletionOffer | undefined): void;
+
 // @public
 export interface SettingsPort {
     // (undocumented)
@@ -860,6 +895,9 @@ type: StringConstructor;
 required: true;
 };
 }>> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
+
+// @public
+export function surfaceSessionStorage(ref: FeatureRef): SurfaceStorage;
 
 // @public
 export type SurfaceStateOf<C> = C extends {

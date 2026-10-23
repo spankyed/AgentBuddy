@@ -1,3 +1,4 @@
+import { importClaudeSessionMessages } from '../claude-session-import.ts';
 import { broadcastToSurface } from '#generated/events.ts';
 import type { Reply } from '@apackdev/sdk/events';
 import { answer } from '../answer.ts';
@@ -255,7 +256,7 @@ export function updateMessageBlockResponse(
  */
 export function updateMessageState(
   messageId: EARS.EntityId,
-  updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted'>>
+  updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted' | 'references'>>
 ): void {
   let result;
   try {
@@ -679,6 +680,7 @@ export const chatService = {
   updateMessageState,
   createMarkerMessage,
   addMessagesToThread,
+  importClaudeSessionMessages,
   createThreadAndNotify,
   openThreadChatAndRefreshRecent,
   openThreadTabAndRefresh,

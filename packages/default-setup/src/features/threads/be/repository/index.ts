@@ -453,10 +453,23 @@ function getThreadFields(threadId: EARS.EntityId): AgentThreadData | null {
   return thread[0] as AgentThreadData | null;
 }
 
+/** Claude relation order is not a chronology after restoration. Queue placement stays separate. */
+function orderClaudeSessionMessages(threadId: EARS.EntityId, messages: Partial<MessageEntity>[]) {
+  const thread = threadQueries.byId(threadId);
+  if (!thread?.context?.claudeCode || !thread.tags?.includes('imported') && !thread.context.claudeCode.nativeLaunch) return messages;
+  const native = (message: Partial<MessageEntity>) => message.context?.claudeTerminalMessage as { sessionId?: string; timestamp?: number; order?: number } | undefined;
+  return messages.sort((a, b) => {
+    const left = native(a), right = native(b);
+    const time = (left?.timestamp ?? a.timestamp ?? 0) - (right?.timestamp ?? b.timestamp ?? 0);
+    if (time || !left?.sessionId || left.sessionId !== right?.sessionId) return time;
+    return (left.order ?? 0) - (right.order ?? 0);
+  });
+}
+
 function getAllThreadMessages(threadId: EARS.EntityId): Partial<MessageEntity>[] {
-  return (query.ids(threadId)
+  return orderClaudeSessionMessages(threadId, (query.ids(threadId)
     .linksPick(EARS.RelKind.CONTAINS, messagePickFields, EARS.Entity.Message) ?? [])
-    .filter(m => !m.deleted)
+    .filter(m => !m.deleted))
     .sort((a, b) => {
       if (a.status === 'queued' && b.status !== 'queued') return 1;
       if (b.status === 'queued' && a.status !== 'queued') return -1;
@@ -474,7 +487,7 @@ function paginatedMessages(threadId: EARS.EntityId, cursor?: string | null): {
     .filter(m => !m.deleted);
 
   const queued = allMessages.filter(m => m.status === 'queued');
-  const regular = allMessages.filter(m => m.status !== 'queued');
+  const regular = orderClaudeSessionMessages(threadId, allMessages.filter(m => m.status !== 'queued'));
 
   // Reverse to get newest-first for paging, then slice
   const reversed = [...regular].reverse();
@@ -576,6 +589,9 @@ export const chatQueries = {
     };
   },
 
+  hasMessageInThread: (messageId: EARS.EntityId, threadId: EARS.EntityId): boolean =>
+    query.ids(messageId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Thread).ids().includes(threadId),
+
   messageById: (messageId: EARS.EntityId): MessageEntity | null => {
     const message = query.ids(messageId).pickOne([
       'id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse',
@@ -619,6 +635,7 @@ export const chatCommands = {
     compacted?: boolean;
     context?: Record<string, unknown>;
     skipRelink?: boolean;
+    timestamp?: number;
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -641,7 +658,7 @@ export const chatCommands = {
       );
     }
 
-    const timestamp = Date.now();
+    const timestamp = params.timestamp ?? Date.now();
     const messageTx = create(EARS.Entity.Message, { createdAt: timestamp })
       .set('text', text.trim())
       .set('timestamp', timestamp)
@@ -756,7 +773,7 @@ export const chatCommands = {
 
   updateMessageState: (params: {
     messageId: EARS.EntityId;
-    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'forkable' | 'status' | 'context' | 'compacted'>>;
+    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'forkable' | 'status' | 'context' | 'compacted' | 'references'>>;
   }): {
     messageId: EARS.EntityId;
     updatedAt: number;
