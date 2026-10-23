@@ -35,7 +35,7 @@ describe('services.traceStore', () => {
   afterAll(() => {
     const dbs = store.envs.volatileBackup;
     for (const id of Object.values(ids)) dbs.entities.removeSync(id);
-    dbs.attrs.removeSync(`label${US}${ids.flow}${US}0`);
+    dbs.attrs.removeSync(`label${US}${ids.flow}`);
     dbs.relations.removeSync('Relation-trace-1');
     dbs.relations.removeSync('Relation-trace-2');
   });
@@ -45,7 +45,7 @@ describe('services.traceStore', () => {
     dbs.entities.putSync(ids.flow, { type: 'TNode', createdAt: 1 });
     dbs.entities.putSync(ids.event, { type: 'TNode', createdAt: 2 });
     dbs.entities.putSync(ids.later, { type: 'TNode', createdAt: 3 });
-    dbs.attrs.putSync(`label${US}${ids.flow}${US}0`, { t: 'string', v: 'Run' });
+    dbs.attrs.putSync(`label${US}${ids.flow}`, { t: 'string', v: 'Run' });
     dbs.relations.putSync('Relation-trace-1', { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 });
     dbs.relations.putSync('Relation-trace-2', { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 });
 

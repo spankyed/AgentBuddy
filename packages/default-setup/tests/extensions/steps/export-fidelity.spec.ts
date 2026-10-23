@@ -56,7 +56,7 @@ describe('a flow exported and imported back', () => {
     expect(drift(before, after)).toEqual([
       // The entry role belongs to the first listener track, and a re-import has no first track to give it to.
       // `flow-round-trip.spec.ts` pins this from the other side.
-      'listener.role: "entry_event" -> undefined',
+      'listener.role: ["entry_event"] -> undefined',
       // A switch's else branch is labelled from the step type on the way in and from its title on the way back.
       // Cosmetic, and inside the condition list rather than on any node's own label, so no id moves.
       'switch.conditions: [{"predicate":{"key":"ok","operator":"equals","value":true},"label":"Kill Flow"},{"label":"keep_alive"}]'

@@ -48,7 +48,7 @@ async function fixture(settings: unknown = {}) {
   stores.push(store);
   store.envs.primary.entities.putSync('Note-current', { type: 'Note' });
   // Hydration loads attribute rows, so the incumbent needs one to be visible in memory after a restore.
-  store.envs.primary.attrs.putSync('entityType\x1FNote-current\x1F0', { t: 'string', v: 'Note' });
+  store.envs.primary.attrs.putSync('entityType\x1FNote-current', { t: 'string', v: 'Note' });
   return { backup, store, engine, current, media: paths.media };
 }
 

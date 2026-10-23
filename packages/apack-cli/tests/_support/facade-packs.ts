@@ -364,7 +364,7 @@ async function buildPacks(published: boolean, dependencyStamp?: { format?: numbe
  * Incidents), so these positions are checked directly. `|name|` marks a position in the source.
  */
 const COMPLETIONS = `
-import { EARS, query, getAttr, getAttrs, findAll, findWithFields, findByIdWithFields, createEntity } from '#generated/ears.ts';
+import { EARS, query, getAttr, findAll, findWithFields, findByIdWithFields, createEntity } from '#generated/ears.ts';
 import { sendToSystem } from '#generated/events.ts';
 declare const memoId: EARS.EntityId<'Memo'>;
 sendToSystem('|systemId|', { type: 'CLEAR_MEMOS' });
@@ -379,7 +379,6 @@ query('Memo').orderBy('|orderBy|');
 query('Memo').distinct('|distinct|');
 query('Memo').groupBy('|groupBy|');
 getAttr(memoId, '|getAttr|');
-getAttrs(memoId, '|getAttrs|');
 findWithFields('Memo', ['|findWithFields|']);
 findByIdWithFields(memoId, ['|findByIdWithFields|']);
 findAll('|findAll|');
@@ -389,7 +388,7 @@ query.all().ofType('|ofType|');
 query('|query|');
 query('Memo').has('txet');
 `;
-const FIELD_POSITIONS = ['pick', 'pickOne', 'linksPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr', 'getAttrs', 'findWithFields', 'findByIdWithFields'];
+const FIELD_POSITIONS = ['pick', 'pickOne', 'linksPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr', 'findWithFields', 'findByIdWithFields'];
 const NAME_POSITIONS = ['findAll', 'createEntity', 'linksTo', 'ofType'];
 
 /** String completions at each marked position of COMPLETIONS, and the file's diagnostics */

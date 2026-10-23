@@ -21,7 +21,7 @@ describe('the helpers console code sees', () => {
   it('gives a query these, and nothing that writes', async () => {
     expect([...READ_HELPER_NAMES].sort()).toEqual([
       'findEntitiesByAttribute', 'findEntitiesByRelationTo', 'findEntitiesInRelationTo', 'findRelations', 'getAll',
-      'getAllEntities', 'getAttr', 'getAttrs', 'getEntitiesOfType', 'getRelationStats', 'getRoles', 'getSchemaStats',
+      'getAllEntities', 'getAttr', 'getEntitiesOfType', 'getRelationStats', 'getRoles', 'getSchemaStats',
       'query',
     ]);
     for (const name of READ_HELPER_NAMES) {
