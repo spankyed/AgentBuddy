@@ -91,33 +91,11 @@ export interface StepBuildFacet {
  *─────────────────────────────────────────────────────────────────*/
 
 import type { AnyActorRef } from 'xstate';
-import type { BaseEntity } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
 import type { TNode } from '../services/run-history.ts';
 
 export type TimestampMs = number;
-export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
 export type TNodeKind = 'flow' | 'event' | 'step';
-
-export interface TNodeEntity extends BaseEntity {
-  entityType: EARS.Entity;
-  tNodeType: TNodeKind;
-  label: string;
-  status: EntityStatus;
-  startedAt: TimestampMs;
-  completedAt?: TimestampMs;
-  eventType?: string;
-  triggerType?: string;
-  cronExpression?: string;
-  stepNodeType?: string;
-  final?: boolean;
-  nodeAttributes?: Record<string, unknown>;
-  resolvedParams?: Record<string, unknown>;
-  blueprint?: {
-    nodeId: EARS.EntityId;
-    flowId: EARS.EntityId;
-  };
-}
 
 // Kept here for packs whose built types import it from @apackdev/sdk/steps
 export type { SdkEntityShapes } from '../types/sdk-entities.ts';

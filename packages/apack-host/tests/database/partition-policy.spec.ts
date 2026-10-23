@@ -1,6 +1,6 @@
 // The partition policy every store is opened with. It takes no arguments and nothing contributes to it, so
-// what is left to check is the routing itself: which types are kept out of the database, and which
-// partitions are hydrated at boot.
+// what is left to check is the routing itself: every type and relation is persisted, and the primary
+// partition is hydrated at boot.
 import { describe, expect, it } from 'vitest';
 import { appPartitionPolicy } from '../../src/database/open.ts';
 import { SDK_ENTITIES } from '@apackdev/sdk/types';
@@ -9,8 +9,7 @@ import { APPLIED_CONTENT_ENTITY } from '../../src/app-state/index.ts';
 const policy = appPartitionPolicy();
 
 describe('the app partition policy', () => {
-  it('keeps the SDK\'s volatile types out of the database, and persists everything else', () => {
-    expect(policy.routeEntity(SDK_ENTITIES.TNode)).toBe('volatileBackup');
+  it('persists every entity type', () => {
     expect(policy.routeEntity('Note')).toBe('primary');
     expect(policy.routeEntity(SDK_ENTITIES.Flow)).toBe('primary');
     // What a restore rests on: without the applied content a backup brings back, every entity would read
@@ -18,9 +17,7 @@ describe('the app partition policy', () => {
     expect(policy.routeEntity(APPLIED_CONTENT_ENTITY)).toBe('primary');
   });
 
-  it('follows a relation to the volatile partition when either end is volatile', () => {
-    expect(policy.routeRelation({ srcType: 'Note', tgtType: SDK_ENTITIES.TNode })).toBe('volatileBackup');
-    expect(policy.routeRelation({ srcType: SDK_ENTITIES.TNode, tgtType: 'Note' })).toBe('volatileBackup');
+  it('persists every relation', () => {
     expect(policy.routeRelation({ srcType: 'Note', tgtType: SDK_ENTITIES.Flow })).toBe('primary');
   });
 

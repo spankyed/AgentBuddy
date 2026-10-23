@@ -1,6 +1,6 @@
-// What a step records on its TNode, and the two conditions that used to cost it the whole row.
+// What a step records on its run node, and the two conditions that used to cost it the whole row.
 //
-// `truncateResult`'s output is written to the TNode (`tnodeRepository`), which is the only record of what a
+// `truncateResult`'s output is written to the run history (`services.runHistory`), which is the only record of what a
 // step returned — so a value JSON cannot hold must be described rather than allowed to fail the result. A
 // bare `JSON.stringify` used to measure the object's size, and its throw discarded everything: a row holding
 // a BigInt became `{ value: '[Object with circular reference]', _error: 'serialization_failed' }`, which is

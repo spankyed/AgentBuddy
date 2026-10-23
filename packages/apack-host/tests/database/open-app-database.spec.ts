@@ -177,7 +177,6 @@ describe('openAppDatabase', () => {
     await writeData(dir, () => {
       untypedCreate('Note', { id: id('Note-2') }).set('title', 'other');
       untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept').grant('pinned').link('mentions', id('Note-2'));
-      untypedCreate('TNode', { id: id('TNode-1'), tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0, step: 'volatile' });
     });
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
@@ -187,17 +186,10 @@ describe('openAppDatabase', () => {
     expect(untypedQuery('Note').ids()).toHaveLength(2);
     expect(db.ears.getRoles(id('Note-1'))).toEqual(['pinned']);
     expect(db.ears.findRelations({ source: id('Note-1') })).toHaveLength(1);
-    // The volatile partition isn't hydrated, as in the app
-    expect(db.ears.getRow(id('TNode-1'))?.step).toBeUndefined();
     db.close();
 
-    const withHistory = await openAppDatabase({ env: 'test', userDataDir: dir, includeVolatile: true, ...quiet });
-    expect(withHistory.ears.getRow(id('TNode-1'))?.step).toBe('volatile');
-    expect(withHistory.ears.getRow(id('Note-1'))?.title).toBe('kept');
-    withHistory.close();
-
     const db2 = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(db2.ears.getRow(id('TNode-1'))?.step).toBeUndefined();
+    expect(db2.ears.getRow(id('Note-1'))?.title).toBe('kept');
     // An entity type creates an entity
     const created = db2.ears.create('Note').set('title', 'new').id();
     expect(created.startsWith('Note-')).toBe(true);

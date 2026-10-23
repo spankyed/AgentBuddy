@@ -14,9 +14,6 @@ import { z } from 'zod';
 export function collapseRecord(entries: FieldMapping[] | undefined): Record<string, MapEntry> | undefined;
 
 // @public (undocumented)
-export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
-
-// @public (undocumented)
 export interface ExecutionContext {
     // (undocumented)
     event: ExecutionEvent;
@@ -104,7 +101,6 @@ export type SdkEntityShapes = {
     Relation: RelationEntity;
     Flow: FlowEntity;
     Node: NodeBase;
-    TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
     Document: DocumentEntity;
@@ -384,41 +380,6 @@ export interface TNode {
     startedAt: number;
     // (undocumented)
     status: RunStatus;
-    // (undocumented)
-    stepNodeType?: string;
-    // (undocumented)
-    tNodeType: TNodeKind;
-    // (undocumented)
-    triggerType?: string;
-}
-
-// @public (undocumented)
-export interface TNodeEntity extends BaseEntity {
-    // (undocumented)
-    blueprint?: {
-        nodeId: EARS.EntityId;
-        flowId: EARS.EntityId;
-    };
-    // (undocumented)
-    completedAt?: TimestampMs;
-    // (undocumented)
-    cronExpression?: string;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    eventType?: string;
-    // (undocumented)
-    final?: boolean;
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    nodeAttributes?: Record<string, unknown>;
-    // (undocumented)
-    resolvedParams?: Record<string, unknown>;
-    // (undocumented)
-    startedAt: TimestampMs;
-    // (undocumented)
-    status: EntityStatus;
     // (undocumented)
     stepNodeType?: string;
     // (undocumented)

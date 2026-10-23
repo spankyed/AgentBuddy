@@ -4,7 +4,6 @@ import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
 import type { OnboardingService } from './onboarding.ts';
-import type { TraceStore } from './trace-store.ts';
 import type { RunHistory } from './run-history.ts';
 import type { InferenceService } from './inference.ts';
 import type { SecretsService } from './secrets.ts';
@@ -17,7 +16,6 @@ import { _settingsHandle } from './settings-handle.ts';
 export type { AppDataService, BackupDatabase, BackupSummary } from './app-data.ts';
 export type { OnboardingService } from './onboarding.ts';
 export { UnknownBackupDatabasesError } from './app-data.ts';
-export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
 export {
   _createRunHistory, _RUN_HISTORY_INDEXES, type _RunHistoryRecords, type RunHistory, type RunPage, type RunStatus, type RunTree,
   type TNode, type TNodeId, type TNodeInput, type TNodePatch,
@@ -80,8 +78,6 @@ export interface HostServices {
   onboarding: OnboardingService;
   /** Reset, back up and restore the app's stored data */
   appData: AppDataService;
-  /** Read the volatile trace store (flow execution records) */
-  traceStore: TraceStore;
   /** Flow runs: each run's tree of nodes, recorded while it runs and kept after it ends */
   runHistory: RunHistory;
   /** Model calls (text, agents, embeddings, images, speech, transcription, reranking) with the user's provider keys */

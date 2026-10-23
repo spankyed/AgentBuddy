@@ -144,7 +144,6 @@ export interface HostServices {
     runHistory: RunHistory;
     secrets: SecretsService;
     settings: SettingsService;
-    traceStore: TraceStore;
 }
 
 // @internal
@@ -437,47 +436,6 @@ export type TNodePatch = Partial<Pick<TNode, 'label' | 'status' | 'completedAt' 
 
 // @internal
 export const _toSecretMetadata: (input: SecretMetadata) => SecretMetadata;
-
-// @public
-export interface TraceEntityMeta {
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    type: string;
-}
-
-// @public
-export interface TraceRelation {
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    id: EARS.EntityId;
-    // (undocumented)
-    info?: unknown;
-    // (undocumented)
-    kind: string;
-    // (undocumented)
-    source: EARS.EntityId;
-    // (undocumented)
-    target: EARS.EntityId;
-}
-
-// @public
-export interface TraceStore {
-    entities(): Array<{
-        id: EARS.EntityId;
-        meta: TraceEntityMeta;
-    }>;
-    getAttr(id: EARS.EntityId, kind: string): unknown;
-    // (undocumented)
-    getEntityMeta(id: EARS.EntityId): TraceEntityMeta | null;
-    relations(filter?: {
-        kind?: string;
-        source?: EARS.EntityId;
-        target?: EARS.EntityId;
-        limit?: number;
-    }): TraceRelation[];
-}
 
 // @public
 export class UnknownBackupDatabasesError extends Error {

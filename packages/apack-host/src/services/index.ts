@@ -16,11 +16,10 @@ import { createSettingsStore } from '../features/settings/be/store.ts';
 
 import { inference } from './inference.ts';
 import { secrets } from './secrets.ts';
-import { createTraceStore } from './trace-store.ts';
 import { createRunHistory } from './run-history.ts';
 
 export interface HostRuntimeOptions {
-  /** The app's LMDB store, which appData and traceStore work on */
+  /** The app's LMDB store, which appData works on */
   store: LmdbStore;
   /** The run history's store (`openRunHistoryStore`; a test's `_memoryRecords()`), which runHistory works on */
   runHistory: _RunHistoryRecords;
@@ -53,7 +52,6 @@ export function createHostRuntime({ transport, appVersion, store, runHistory, en
       appData: createAppData({ store, engine: engine.admin, registry: packs, settings,
         onReplaced: () => transport.rootEvents.emitIncoming({ to: HOST.bus, event: { type: 'DATA_REPLACED' } }),
       }),
-      traceStore: createTraceStore(store),
       runHistory: createRunHistory(runHistory),
       inference,
       secrets,

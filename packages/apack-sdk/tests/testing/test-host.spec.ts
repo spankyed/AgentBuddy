@@ -55,12 +55,12 @@ describe('the test host', () => {
     vi.restoreAllMocks();
   });
 
-  it('has a test version, the engine, an appData that resets the database, and a trace store over it', async () => {
+  it('has a test version, the engine, and an appData that resets the database', async () => {
     expect(getAppVersion()).toBe('0.0.0-test');
     const memoQueries = { all: () => [] };
     testPacks.repositories.set('memoQueries', memoQueries);
     const id = untypedCreate('Memo').set('text', 'hello').id();
-    expect(boundHost().services.traceStore.getAttr(id, 'text')).toBe('hello');
+    expect(ears().getRow(id)?.text).toBe('hello');
     expect(entityIds()).toContain(id);
     dropAttribute(id, 'text');
     expect(ears().getRow(id)?.text).toBeUndefined();

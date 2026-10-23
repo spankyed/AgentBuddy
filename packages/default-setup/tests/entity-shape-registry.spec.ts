@@ -14,7 +14,6 @@ describe('PackShapes', () => {
   });
 
   it("includes the SDK's shapes", () => {
-    expectTypeOf<PackShapes['TNode']>().toEqualTypeOf<SdkEntityShapes['TNode']>();
     expectTypeOf<PackShapes['Action']>().toEqualTypeOf<ActionEntity>();
     expectTypeOf<PackShapes['Flow']>().toEqualTypeOf<FlowEntity>();
     expectTypeOf<PackShapes['Relation']>().toEqualTypeOf<SdkEntityShapes['Relation']>();

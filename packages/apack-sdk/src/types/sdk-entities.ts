@@ -1,14 +1,14 @@
 /**
  * The entity types and relation kinds the SDK owns: the EARS engine's own (Relation) and the data
  * model the SDK's compilers, appliers and repositories are written against (flows and their nodes,
- * step executions, actions and prompts). Every pack has them, and no pack declares them. The
+ * actions, prompts and documents). A flow run is not one: it is a record in the run history
+ * (`services.runHistory`). Every pack has them, and no pack declares them. The
  * generator, the manifest schema and the host all read this module.
  *
  * The shapes here are part of the typed EARS contract (packages/apack-sdk/TYPED-EARS.md).
  */
 import type { BaseEntity, RequiredField, RowRules, ShortCode } from '@apackdev/ears';
 import type { EARS } from './entities.ts';
-import type { TNodeEntity } from '../steps/types.ts';
 
 export const SDK_ENTITIES = {
   /** Every link between two entities */
@@ -16,8 +16,6 @@ export const SDK_ENTITIES = {
   Flow: 'Flow',
   /** A flow's step or trigger */
   Node: 'Node',
-  /** A step's execution record: runtime only, never persisted */
-  TNode: 'TNode',
   Action: 'Action',
   Prompt: 'Prompt',
   /** Text a pack ships and the user edits; a feature's surface is the editor over these rows */
@@ -30,10 +28,6 @@ export const SDK_REL_KINDS = {
   CONTAINS: 'contains',
   TRANSITIONS_TO: 'transitions_to',
   INSTANCE_OF: 'instance_of',
-  /** A TNode's child executions */
-  SPAWNED: 'spawned',
-  /** The event TNodes a flow's TNode tracks */
-  TRACKED: 'tracked',
   /** A folder's child folders; its documents are `contains` */
   PARENT_OF: 'parent_of',
 } as const;
@@ -45,9 +39,6 @@ export const SDK_ROLES = {
   /** A flow's entry listener: the node a flow's entry track starts from */
   ENTRY_EVENT: 'entry_event',
 } as const;
-
-/** Entity types kept out of persistence */
-export const SDK_EXCLUDED_ENTITY_TYPES: readonly string[] = [SDK_ENTITIES.TNode];
 
 export interface ActionParameter {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
@@ -192,7 +183,6 @@ export type SdkEntityShapes = {
   Relation: RelationEntity;
   Flow: FlowEntity;
   Node: NodeBase;
-  TNode: TNodeEntity;
   Action: ActionEntity;
   Prompt: PromptEntity;
   Document: DocumentEntity;
@@ -201,7 +191,7 @@ export type SdkEntityShapes = {
 
 /** The keys of SdkEntityShapes, at runtime */
 export const SDK_SHAPED_ENTITIES = [
-  SDK_ENTITIES.Relation, SDK_ENTITIES.Flow, SDK_ENTITIES.Node, SDK_ENTITIES.TNode, SDK_ENTITIES.Action, SDK_ENTITIES.Prompt,
+  SDK_ENTITIES.Relation, SDK_ENTITIES.Flow, SDK_ENTITIES.Node, SDK_ENTITIES.Action, SDK_ENTITIES.Prompt,
   SDK_ENTITIES.Document, SDK_ENTITIES.Collection,
 ] as const;
 
@@ -224,7 +214,6 @@ export const SDK_ROW_RULES = {
   Relation: { required: [] },
   Flow: { required: ['shortCode', 'label', 'flowType'], shortCode: 'F' },
   Node: { required: ['nodeType', 'label'] },
-  TNode: { required: ['tNodeType', 'label', 'status', 'startedAt'] },
   Action: { required: ['label', 'input', 'actionFn', 'shortCode'], shortCode: 'ACT' },
   Prompt: { required: ['label', 'inputs', 'templateFn', 'shortCode'], shortCode: 'PROMPT' },
   Document: { required: ['name', 'content', 'shortCode'], shortCode: 'DOC' },
