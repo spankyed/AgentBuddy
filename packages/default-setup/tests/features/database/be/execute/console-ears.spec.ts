@@ -5,7 +5,7 @@ import { registerPack, unregisterPack } from '@apackdev/testing/harness'
 import { executeQuery } from '#features/database/be/execute/query.ts'
 import { executeTransaction } from '#features/database/be/execute/transaction.ts'
 
-const MEMO_PACK = { id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: { MENTIONS: 'mentions' } } }
+const MEMO_PACK = { id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: { MENTIONS: 'mentions' }, roles: {} } }
 
 afterEach(() => {
   try { unregisterPack(MEMO_PACK.id) } catch { /* the test didn't register it */ }

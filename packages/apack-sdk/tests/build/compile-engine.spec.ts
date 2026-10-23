@@ -3,14 +3,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createEarsEngine } from '@apackdev/ears';
 import { _bindEars, boundEars, untypedQuery } from '@apackdev/sdk/ears';
-import { ROOT_FLOW_ROLE } from '../../src/types/sdk-entities.ts';
+import { SDK_ROLES } from '../../src/types/sdk-entities.ts';
 import { EARS } from '../../src/types/entities.ts';
 import { _isHostBound } from '../../src/runtime/host-runtime.ts';
 import { createRoundTrip } from './helpers/round-trip.ts';
 import { flows } from './helpers/fixtures.ts';
 import { ALL_TEST_STEPS } from './helpers/test-steps.ts';
 
-const rt = createRoundTrip(ROOT_FLOW_ROLE, ALL_TEST_STEPS);
+const rt = createRoundTrip(SDK_ROLES.ROOT_FLOW, ALL_TEST_STEPS);
 
 beforeEach(() => rt.beforeEach());
 afterEach(() => {
@@ -27,7 +27,7 @@ describe('a flow compile', () => {
   });
 
   it("leaves the bound engine's data untouched, and compiles into its own", () => {
-    const installed = createEarsEngine({ isRelationKind: () => true, isEntityType: (name) => name === EARS.Entity.Flow });
+    const installed = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => name === EARS.Entity.Flow });
     _bindEars(installed);
     const appFlow = untypedQuery(EARS.Entity.Flow).count() === 0 && installed.create(EARS.Entity.Flow).set('label', 'Mine').id();
     const before = installed.admin.getAllEntities();

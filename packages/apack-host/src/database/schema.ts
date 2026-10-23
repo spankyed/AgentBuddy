@@ -1,4 +1,4 @@
-import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes, _packRoles } from '@apackdev/sdk/framework';
 // The EARS names and partition policy of the packs installed in a data dir, read from validated builds without
 // running pack code: what a tool opening the data dir's database needs to hydrate and query it as the app does
 import * as fs from 'node:fs';
@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import type { AppEnvironment } from '@apackdev/sdk/env';
 import { parseManifest, parseSnapshot, type PackManifest } from '@apackdev/sdk/build';
 import { readInstalledPacks } from '../packs/installed.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS } from '@apackdev/sdk/types';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from '@apackdev/sdk/types';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { PACK_LAYOUT } from '../packs/layout.ts';
 import { readInstalledPackBuilds } from '../packs/discovery.ts';
@@ -17,6 +17,8 @@ export interface DatabaseSchema {
   getRegisteredEntityTypes(): ReadonlySet<string>;
   /** The SDK's relation kinds and the packs' */
   getRegisteredRelationKinds(): ReadonlySet<string>;
+  /** The SDK's roles and the packs' */
+  getRegisteredRoles(): ReadonlySet<string>;
 }
 
 /** The installed packs' schema, with the names a tool shows and the packs it was read from */
@@ -25,6 +27,8 @@ export interface InstalledSchema extends DatabaseSchema {
   entities: Record<string, string>;
   /** Relation kinds by name, the SDK's and the packs' */
   relKinds: Record<string, string>;
+  /** Roles by name, the SDK's and the packs' */
+  roles: Record<string, string>;
   /** The packs read: every enabled pack installed in the data dir */
   packs: Array<{ id: string }>;
   /**
@@ -197,21 +201,27 @@ export function readInstalledSchema(context: SchemaContext, options: { schemaFro
     ...Object.fromEntries(HOST_ENTITY_TYPES.map((type) => [type, type])),
   };
   const relKinds: Record<string, string> = { ...SDK_REL_KINDS };
+  const roles: Record<string, string> = { ...SDK_ROLES };
   const entityOwners = new Map<string, string>(Object.keys(entities).map((name) => [name, 'apack']));
   const relKindOwners = new Map<string, string>(Object.entries(relKinds).flatMap(([name, value]) => [[name, 'apack'], [value, 'apack']] as Array<[string, string]>));
+  const roleOwners = new Map<string, string>(Object.entries(roles).flatMap(([name, value]) => [[name, 'apack'], [value, 'apack']] as Array<[string, string]>));
   for (const manifest of packs) {
     addNames(entities, entityOwners, manifest.id, _packEntityTypes(manifest), 'entity type');
     addNames(relKinds, relKindOwners, manifest.id, _packRelationTypes(manifest), 'relation kind');
+    addNames(roles, roleOwners, manifest.id, _packRoles(manifest), 'role');
   }
   const entityTypes = new Set(Object.values(entities));
   const relationKinds = new Set(Object.values(relKinds));
+  const roleNames = new Set(Object.values(roles));
 
   return {
     entities,
     relKinds,
+    roles,
     packs: packs.map(({ id }) => ({ id })),
     getRegisteredEntityTypes: () => entityTypes,
     getRegisteredRelationKinds: () => relationKinds,
+    getRegisteredRoles: () => roleNames,
     ...(degraded !== undefined && { degraded }),
     notes,
   };

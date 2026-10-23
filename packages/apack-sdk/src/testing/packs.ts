@@ -12,7 +12,7 @@ import type { ContentWriter } from '../content/writers.ts';
 import type { ContentApplier } from '../utils/apply.ts';
 import type { HelpArticle } from '../framework/pack-help.ts';
 import type { SettingsCatalog } from '../framework/pack-settings.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from '../types/sdk-entities.ts';
 
 /** What tests register without an app, each lookup keyed as the SDK looks it up */
 export interface TestPacks {
@@ -41,6 +41,8 @@ export interface TestPacks {
   readonly earsEntities: Map<string, string>;
   /** Relation kinds by the name they're declared under, over the registered packs' */
   readonly earsRelKinds: Map<string, string>;
+  /** Roles by the name they're declared under, over the registered packs' */
+  readonly earsRoles: Map<string, string>;
   /** Empties every lookup */
   clear(): void;
 }
@@ -60,6 +62,7 @@ function createTestPacks(): TestPacks {
     help: new Map<string, HelpArticle[]>(),
     earsEntities: new Map<string, string>(),
     earsRelKinds: new Map<string, string>(),
+    earsRoles: new Map<string, string>(),
   };
   return {
     ...lookups,
@@ -138,10 +141,11 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     surfaceDefaults: () => registered?.surfaceDefaults() ?? {},
     help: () => ({ articles: [...(registered?.help().articles ?? []), ...[...testPacks.help.values()].flat()], problems: registered?.help().problems ?? [] }),
     earsNames: () => {
-      const base = registered?.earsNames() ?? { entities: { ...SDK_ENTITIES }, relKinds: { ...SDK_REL_KINDS } };
+      const base = registered?.earsNames() ?? { entities: { ...SDK_ENTITIES }, relKinds: { ...SDK_REL_KINDS }, roles: { ...SDK_ROLES } };
       return {
         entities: { ...base.entities, ...Object.fromEntries(testPacks.earsEntities) },
         relKinds: { ...base.relKinds, ...Object.fromEntries(testPacks.earsRelKinds) },
+        roles: { ...base.roles, ...Object.fromEntries(testPacks.earsRoles) },
       };
     },
   };

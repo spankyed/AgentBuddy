@@ -39,7 +39,7 @@ afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
 // The host's own rows (settings, onboarding) and a pack's `Memo`
 const entityTypes = new Set([...HOST_ENTITY_TYPES, 'Memo']);
-const newEngine = () => createEarsEngine({ isRelationKind: () => true, isEntityType: (name) => entityTypes.has(name) });
+const newEngine = () => createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => entityTypes.has(name) });
 
 /** An external pack the app loaded: where it came from, as the loader records it */
 const externalOrigin = (id: string, name: string) => ({ declarationRevision: 'fixture-revision',

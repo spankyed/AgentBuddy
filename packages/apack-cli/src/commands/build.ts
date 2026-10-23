@@ -1,6 +1,6 @@
 import { createBuildOutputs } from '../build/build-outputs.ts';
 import { writePackBuildInputs, PACK_BUILD_INPUTS_FILE } from '@apackdev/host/build/pack-build-inputs';
-import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes, _packRoles } from '@apackdev/sdk/framework';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
@@ -209,6 +209,7 @@ async function buildIntoStaging(args: string[], root: string) {
     const types: PackTypeManifest = {
       entities: Object.fromEntries([...depTypeManifests.flatMap(t => Object.entries(t.entities ?? {})), ...Object.entries(_packEntityTypes(manifest))]),
       relKinds: Object.fromEntries([...depTypeManifests.flatMap(t => Object.entries(t.relKinds ?? {})), ...Object.entries(_packRelationTypes(manifest))]),
+      roles: Object.fromEntries([...depTypeManifests.flatMap(t => Object.entries(t.roles)), ...Object.entries(_packRoles(manifest))]),
     };
     // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
     const facades: Record<string, string> = {};

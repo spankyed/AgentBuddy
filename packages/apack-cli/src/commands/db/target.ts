@@ -185,13 +185,13 @@ export function undeclaredEntityTypes(db: AppDatabase): Array<{ type: string; ro
  * `openAppDatabase` adds the types hydration found, so a write naming an observed type goes through, unchecked
  * by any pack.
  *
- * **`relKinds` is deliberately not widened.** `EARS.RelKind.RELATES_TO` is `'relates_to'` and the data holds only
- * the value, so no amount of observation produces the alias; a dir with no snapshots has to be given one.
+ * **`relKinds` and `roles` are deliberately not widened.** `EARS.RelKind.RELATES_TO` is `'relates_to'` and the data
+ * holds only the value, so no amount of observation produces the alias; a dir with no snapshots has to be given one.
  */
 export function consoleScope(db: AppDatabase): ConsoleScope {
   const observed = Object.fromEntries(db.ears.getAllEntityTypes().map((type) => [type, type]));
   return {
-    EARS: consoleEars({ entities: { ...observed, ...db.schema.entities }, relKinds: db.schema.relKinds }, {
+    EARS: consoleEars({ entities: { ...observed, ...db.schema.entities }, relKinds: db.schema.relKinds, roles: db.schema.roles }, {
       hint: 'Name the pack that declares it with --schema-from, which takes a snapshot, a pack, or a directory of packs.',
     }),
   };

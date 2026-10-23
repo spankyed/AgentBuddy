@@ -1325,9 +1325,20 @@ declare namespace EARS {
     /** Whether a kind that arrived as data (an event's field, a stored row) is one of them */
     const isRelKind: (value: unknown) => value is RelKind;
     namespace RoleKind {
-        const Custom: <T extends string>(k: T) => T & RoleKind;
+        const ROOT_TRACE_NODE = "root_trace_node";
+        type ROOT_TRACE_NODE = typeof ROOT_TRACE_NODE;
+        const ASSISTANT_BIRTH = "assistant_birth";
+        type ASSISTANT_BIRTH = typeof ASSISTANT_BIRTH;
+        const ROOT_FLOW = "root_flow";
+        type ROOT_FLOW = typeof ROOT_FLOW;
+        const ENTRY_EVENT = "entry_event";
+        type ENTRY_EVENT = typeof ENTRY_EVENT;
     }
-    type RoleKind = _apackdev_ears.EARS.RoleKind;
+    /** Every role this pack may grant: its own, its dependencies' and the SDK's */
+    const ROLES: readonly ["root_trace_node", "assistant_birth", "root_flow", "entry_event"];
+    type RoleKind = (typeof ROLES)[number];
+    /** Whether a role that arrived as data is one of them */
+    const isRole: (value: unknown) => value is RoleKind;
     const AttrKindValues: {
         readonly Role: "role";
         readonly RelationDetails: "relationDetails";
@@ -6017,7 +6028,7 @@ declare function createMarkerMessage(params: {
  * const { id: threadId, shortCode, timestamp, status } = createThreadAndNotify({
  *   topic: 'Assistant Birth',
  *   instructions: 'Welcome!',
- *   role: EARS.RoleKind.Custom('assistant_birth'),
+ *   role: EARS.RoleKind.ASSISTANT_BIRTH,
  *   forcedMode: 'birth'
  * });
  */

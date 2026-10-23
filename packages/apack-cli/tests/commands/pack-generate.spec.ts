@@ -166,7 +166,7 @@ describe('apack pack generate-entries', () => {
       format: PACK_SNAPSHOT_FORMAT,
       types: {
         entities: { DepWidget: 'DepWidget' },
-        relKinds: { DEP_REL: 'dep_rel' },
+        relKinds: { DEP_REL: 'dep_rel' }, roles: {},
       },
       entityDestinations: {}, facades: {},
       manifest: depManifest,

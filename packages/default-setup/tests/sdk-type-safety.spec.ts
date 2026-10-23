@@ -113,6 +113,24 @@ describe('Type inference — typed EARS helpers', () => {
     expectTypeOf(check).toBeFunction();
   });
 
+  it('names only declared roles, in a role write and a query by role', () => {
+    // Type-level only: never called
+    const check = (flowId: EARS.EntityId<'Flow'>, fromData: string) => {
+      write(flowId).grant(EARS.RoleKind.ROOT_FLOW).revoke('entry_event');
+      query.all().withRole(EARS.RoleKind.ASSISTANT_BIRTH);
+      // @ts-expect-error not a declared role
+      write(flowId).grant('root_flw');
+      // @ts-expect-error in a query by role too
+      query.all().withRole('pinned');
+      // @ts-expect-error a role that arrives as data is narrowed first
+      write(flowId).grantExclusive(fromData, []);
+      if (EARS.isRole(fromData)) write(flowId).grantExclusive(fromData, []);
+      // @ts-expect-error no escape from the pack's facade: an undeclared role is declared in apack.json
+      EARS.RoleKind.Custom('anything');
+    };
+    expectTypeOf(check).toBeFunction();
+  });
+
   it('write names only declared fields, checks their values, and takes an options argument', () => {
     // Type-level only: never called, since no entity has this id
     const check = () => {

@@ -22,7 +22,7 @@ const origin = { id: manifest.id, name: manifest.name, version: manifest.version
 const queries = { count: () => 42 };
 const writer = { find: () => undefined };
 const runtime: ContentRuntime = { id: manifest.id, declarationRevision,
-  entities: _packEntityTypes(manifest)!, relKinds: {}, repositories: { contentQueries: queries },
+  entities: _packEntityTypes(manifest)!, relKinds: {}, roles: {}, repositories: { contentQueries: queries },
   contentWriters: { ContentThing: writer } };
 
 let registry: ReturnType<typeof createNativePackTestRegistry>;
@@ -59,7 +59,7 @@ it('refuses a stale content identity before contributing repositories', () => {
 
 it.each([
   ['entities', { entities: { Other: 'Other' } }],
-  ['relKinds', { relKinds: { Extra: 'extra' } }],
+  ['relKinds', { relKinds: { Extra: 'extra' }, roles: {} }],
   ['repositories', { repositories: { ghost: {} } }],
   ['contentWriters', { contentWriters: {} }],
 ] as const)('refuses content %s that disagrees with its declaration', (path, change) => {

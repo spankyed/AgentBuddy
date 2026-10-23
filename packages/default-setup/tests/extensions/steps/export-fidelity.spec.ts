@@ -6,7 +6,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { compileFlowDSL, exportFlowsToDSL } from '@apackdev/sdk/build'
-import { EARS, ROOT_FLOW_ROLE } from '@apackdev/sdk'
+import { EARS } from '@apackdev/sdk'
 import { untypedQuery } from '@apackdev/sdk/ears'
 import { importFlows } from '@apackdev/testing/harness'
 import { repository } from '#generated/repository.ts'
@@ -47,7 +47,7 @@ describe('a flow exported and imported back', () => {
     importFlows(EVERY_STEP_FLOW)
     const before = nodesByLabel(untypedQuery(EARS.Entity.Node).pickAll() as Record<string, unknown>[])
 
-    const { filePath, flowCount } = exportFlowsToDSL(tmp(), { rootFlowRole: ROOT_FLOW_ROLE }, false)
+    const { filePath, flowCount } = exportFlowsToDSL(tmp(), { rootFlowRole: EARS.RoleKind.ROOT_FLOW }, false)
     const reimported = compileFlowDSL(JSON.parse(fs.readFileSync(filePath, 'utf-8')))
     const after = nodesByLabel(reimported.entity as Record<string, unknown>[])
 
@@ -74,7 +74,7 @@ describe('a flow the export cannot write', () => {
   it('is named rather than missing, when it has no trigger to build a track from', () => {
     repository.flowsCommands.createFlow({ label: 'Not started yet' })
 
-    const { skipped, flowCount } = exportFlowsToDSL(tmp(), { rootFlowRole: ROOT_FLOW_ROLE }, false)
+    const { skipped, flowCount } = exportFlowsToDSL(tmp(), { rootFlowRole: EARS.RoleKind.ROOT_FLOW }, false)
 
     expect(skipped).toContain('Not started yet')
     expect(flowCount, 'the skipped flow must not be counted as exported').toBe(0)

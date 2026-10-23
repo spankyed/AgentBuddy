@@ -164,7 +164,7 @@ describe('accepted service bindings', () => {
     const declarationRevision = _declarationRevision(manifest);
     const entry: PackCatalogEntry = { dir: '/unavailable/provider', enabled: true, snapshot: {
       format: PACK_SNAPSHOT_FORMAT, declarationRevision, manifest,
-      types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+      types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
     } };
     packs.catalog.replace([entry]);
     const own = _createPackServices();

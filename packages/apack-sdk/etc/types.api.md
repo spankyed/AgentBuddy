@@ -200,7 +200,8 @@ export namespace EARS {
     export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
     RoleKind: {
-        readonly Custom: <T extends string>(k: T) => T & EARS_2.RoleKind;
+        readonly ROOT_FLOW: "root_flow";
+        readonly ENTRY_EVENT: "entry_event";
     };
     // (undocumented)
     export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
@@ -340,9 +341,6 @@ export interface RelationEntity extends BaseEntity {
 // @internal
 export function _reservedEntries(declared: Record<string, string>, reserved: Record<string, string>): string[];
 
-// @public
-export const ROOT_FLOW_ROLE = "root_flow";
-
 // @public (undocumented)
 export const SDK_ENTITIES: {
     readonly Relation: "Relation";
@@ -366,6 +364,12 @@ export const SDK_REL_KINDS: {
     readonly SPAWNED: "spawned";
     readonly TRACKED: "tracked";
     readonly PARENT_OF: "parent_of";
+};
+
+// @public
+export const SDK_ROLES: {
+    readonly ROOT_FLOW: "root_flow";
+    readonly ENTRY_EVENT: "entry_event";
 };
 
 // @public

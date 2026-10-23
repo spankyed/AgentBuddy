@@ -26,7 +26,7 @@ const { createHostRuntime } = await import('@apackdev/host/services');
 const { createEarsEngine } = await import('@apackdev/ears');
 const { untypedBroadcastToSurface } = await import('@apackdev/sdk/events');
 type LmdbStore = import('@apackdev/ears/lmdb').LmdbStore;
-bindHost(createHostRuntime({ store: {} as LmdbStore, engine: createEarsEngine({ isRelationKind: () => true, isEntityType: () => false }), transport: { rootEvents }, appVersion: '1.0.0', packs: registry }));
+bindHost(createHostRuntime({ store: {} as LmdbStore, engine: createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: () => false }), transport: { rootEvents }, appVersion: '1.0.0', packs: registry }));
 const backendSystem = createAppBus(registry);
 
 const received: string[] = [];

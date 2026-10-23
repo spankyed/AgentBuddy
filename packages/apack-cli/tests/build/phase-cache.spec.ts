@@ -54,7 +54,7 @@ function tmp(files: Record<string, string> = {}): string {
 function dependency(version: string) {
   const manifest = { id: 'dep', name: 'Dep', version };
   const dir = tmp({ [PACK_LAYOUT.snapshot]: JSON.stringify({ manifest, declarationRevision: _declarationRevision(manifest),
-    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }) });
+    types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {} }) });
   return new Map([['dep', readDependencyBuild(dir)]]);
 }
 

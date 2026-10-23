@@ -13,7 +13,7 @@ function inspectBuild(root: string, manifest: ReturnType<typeof readValidManifes
   problem?: string;
   revision?: string;
   metadata?: { packId: string; declarationRevision: string; format: number; sdkVersion?: string;
-    entities: ReturnType<typeof _packEntities>; relations: PackBuild['snapshot']['types']['relKinds'];
+    entities: ReturnType<typeof _packEntities>; relations: PackBuild['snapshot']['types']['relKinds']; roles: PackBuild['snapshot']['types']['roles'];
     entityDestinations: PackBuild['snapshot']['entityDestinations']; eventContracts: PackBuild['snapshot']['eventContracts']; facades: string[] };
   content?: ContentIndex;
 } {
@@ -26,7 +26,7 @@ function inspectBuild(root: string, manifest: ReturnType<typeof readValidManifes
     return { status: stale ? 'stale' : 'verified', directory, revision: build.revision,
       metadata: { packId: build.snapshot.manifest.id, declarationRevision: build.snapshot.declarationRevision, format: build.snapshot.format,
         sdkVersion: build.snapshot.sdkVersion, entities: _packEntities(build.snapshot.manifest),
-        relations: build.snapshot.types.relKinds, entityDestinations: build.snapshot.entityDestinations,
+        relations: build.snapshot.types.relKinds, roles: build.snapshot.types.roles, entityDestinations: build.snapshot.entityDestinations,
         eventContracts: build.snapshot.eventContracts, facades: Object.keys(build.snapshot.facades) },
       ...(content && { content }), ...(stale && { problem: 'Built declarations differ from the current manifest; rebuild the pack.' }),
     };

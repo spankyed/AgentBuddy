@@ -35,7 +35,7 @@ function writeSource() {
     features: { widget: { system: { machine: { id: 'widget' }, receives: [] } } } } };`);
   fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({
     declarationRevision: revision, format: PACK_SNAPSHOT_FORMAT, manifest, eventContracts: eventContractsFixture(manifest),
-    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+    types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
   }));
   sealBuild(source);
 }

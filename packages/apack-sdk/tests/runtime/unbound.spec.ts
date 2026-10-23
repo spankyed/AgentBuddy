@@ -30,7 +30,7 @@ import { testPacksView } from '../../src/testing/packs.ts';
 const serviceAccess = (settings: SettingsService): PackServiceAccess => ({ services: { settings }, servicesForAction: () => ({ settings }) });
 
 const unused = () => { throw new Error('unused'); };
-const engine = createEarsEngine({ isRelationKind: () => true, isEntityType: (name) => name === 'Memo' });
+const engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => name === 'Memo' });
 const runtime: HostRuntime = {
   transport: { rootEvents: _rootEvents },
   ears: engine,

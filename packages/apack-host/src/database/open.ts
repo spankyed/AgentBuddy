@@ -44,6 +44,7 @@ export function openDatabaseStore({ paths, schema, readOnly, log, onWriteFailure
     persistence: store.sink,
     isEntityType: (name) => schema.getRegisteredEntityTypes().has(name),
     isRelationKind: (name) => schema.getRegisteredRelationKinds().has(name),
+    isRole: (name) => schema.getRegisteredRoles().has(name),
   });
   return { store, engine };
 }
@@ -111,9 +112,10 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   // (`apack-cli/src/commands/db/destructive.ts:190`), which an observed set would answer wrongly.
   const knownToEngine = new Set(schema.getRegisteredEntityTypes());
   const kindsKnownToEngine = new Set(schema.getRegisteredRelationKinds());
+  const rolesKnownToEngine = new Set(schema.getRegisteredRoles());
   const { store, engine } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
-    schema: { getRegisteredEntityTypes: () => knownToEngine, getRegisteredRelationKinds: () => kindsKnownToEngine },
+    schema: { getRegisteredEntityTypes: () => knownToEngine, getRegisteredRelationKinds: () => kindsKnownToEngine, getRegisteredRoles: () => rolesKnownToEngine },
     readOnly,
     log,
   });
@@ -129,8 +131,9 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   // after hydration and not during it: nothing hydration does consults the check (a bulk load doesn't), so the
   // set it would be widening from is the data it is reading.
   for (const type of engine.getAllEntityTypes()) knownToEngine.add(type);
-  // Relation kinds the same way: links a removed pack made are still there to read
+  // Relation kinds and roles the same way: links and roles a removed pack left are still there to read
   for (const kind of engine.getAllRelationKinds()) kindsKnownToEngine.add(kind);
+  for (const role of engine.getAllRoles()) rolesKnownToEngine.add(role);
   // Bound so the SDK's engine operations (`@apackdev/sdk/ears`) read this database until `close()`, which
   // puts back whatever was bound before rather than leaving none. `apack db`, the one caller today, has no
   // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command

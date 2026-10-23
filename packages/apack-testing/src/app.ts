@@ -8,7 +8,7 @@ import { testRootEvents } from '@apackdev/sdk/testing';
 import { type EARS } from '@apackdev/ears';
 import { untypedQuery } from '@apackdev/sdk/ears';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
-import { ROOT_FLOW_ROLE } from '@apackdev/sdk/types';
+import { SDK_ROLES } from '@apackdev/sdk/types';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { bindSettingsRequest } from '@apackdev/host/settings';
@@ -267,7 +267,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
   const tNodeRows = new Map<string, Record<string, unknown>>();
   /** The label of the flow each reported trace node ran in, kept after the brain clears its trace */
   const flowLabels = new Map<string, string>();
-  const rootFlowLabel = () => (untypedQuery.all().withRole(ROOT_FLOW_ROLE).pickAll() as Array<{ label?: string }>)[0]?.label;
+  const rootFlowLabel = () => (untypedQuery.all().withRole(SDK_ROLES.ROOT_FLOW).pickAll() as Array<{ label?: string }>)[0]?.label;
   const record = (event: SurfaceEvent) => {
     if (!isSpawn(event) && !isUpdate(event)) return;
     reports.push(event);

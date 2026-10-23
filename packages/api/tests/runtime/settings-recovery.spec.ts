@@ -17,7 +17,7 @@ const fixture = vi.hoisted(() => ({ data: { app: { projects: 'invalid' }, featur
 vi.mock('@apackdev/host/database', async importOriginal => ({
   ...await importOriginal<typeof import('@apackdev/host/database')>(),
   openDatabaseStore: ({ schema }: import('@apackdev/host/database').DatabaseStoreOptions) => {
-    const engine = createEarsEngine({ isRelationKind: () => true, isEntityType: name => schema.getRegisteredEntityTypes().has(name) });
+    const engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: name => schema.getRegisteredEntityTypes().has(name) });
     return { engine, store: {
       read: () => ({ getAttr: () => fixture.data, getEntityMeta: () => ({ type: 'Settings' }) }),
       hydrate: async () => {
@@ -46,7 +46,7 @@ const manifest: PackManifest = { id: 'memo', name: 'Memo', version: '1.0.0', fea
 } };
 fs.writeFileSync(path.join(packDir, PACK_LAYOUT.manifest), JSON.stringify(manifest));
 fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
-  manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+  manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
 }));
 fs.writeFileSync(path.join(packDir, PACK_LAYOUT.runtimeEntry), 'throw new Error("must not activate during recovery");');
 sealPackBuild(packDir, manifest);

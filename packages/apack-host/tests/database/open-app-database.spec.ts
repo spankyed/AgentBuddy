@@ -15,7 +15,7 @@ import { _appDirOf } from '@apackdev/sdk/env';
 
 function writeSnapshot(file: string, manifest: PackManifest): void {
   fs.writeFileSync(file, JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
-    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {} }));
 }
 
 afterEach(removeTempDirs);
@@ -234,7 +234,7 @@ describe('openAppDatabase', () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => { untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept'); });
     // A process that already has an engine: the app, or a test file that started a runtime
-    const outer = createEarsEngine({ isRelationKind: () => true, isEntityType: (name) => name === 'Note' });
+    const outer = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => name === 'Note' });
     _bindEars(outer);
     try {
       const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });

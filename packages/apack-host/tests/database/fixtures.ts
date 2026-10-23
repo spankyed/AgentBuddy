@@ -29,7 +29,7 @@ function writeJSON(file: string, value: unknown): void {
 }
 
 /**
- * A data dir with packs installed: `core`, which the app ships (Note, Trace, `mentions`), and any others
+ * A data dir with packs installed: `core`, which the app ships (Note, Trace, `mentions`, `pinned`), and any others
  * given. Every pack is installed, so they are all written the same way: one manifest per pack under
  * `packs/<id>/`, which is the data dir's one account of itself.
  */
@@ -37,7 +37,7 @@ export function dataDirWithPacks({ external = [] as Array<{ id: string; entities
   const dir = tempDir('host-database-');
   writeInstalledPackFixture(path.join(_appDirOf(dir), 'packs', 'core'), {
     id: 'core', name: 'Core', version: '1.0.0',
-    data: { entities: { Note: null, Trace: null }, relations: ['mentions'] },
+    data: { entities: { Note: null, Trace: null }, relations: ['mentions'], roles: ['pinned'] },
   });
   for (const pack of external) {
     writeInstalledPackFixture(path.join(_appDirOf(dir), 'packs', pack.id), {

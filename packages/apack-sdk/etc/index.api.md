@@ -136,7 +136,8 @@ export namespace EARS {
     export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
     RoleKind: {
-        readonly Custom: <T extends string>(k: T) => T & EARS_2.RoleKind;
+        readonly ROOT_FLOW: "root_flow";
+        readonly ENTRY_EVENT: "entry_event";
     };
     // (undocumented)
     export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
@@ -261,9 +262,6 @@ export interface RelationEntity extends BaseEntity {
     // (undocumented)
     relationDetails: EARS.RelationDetail;
 }
-
-// @public
-export const ROOT_FLOW_ROLE = "root_flow";
 
 // @public
 export function safeEvents<TEvent extends {

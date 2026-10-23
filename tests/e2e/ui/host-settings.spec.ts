@@ -184,7 +184,7 @@ test('cold Monaco documents follow source-free declarations and share worker lib
         `require('node:fs').writeFileSync(${JSON.stringify(activationMarker)}, 'activated'); throw new Error("Disabled DSL discovery activated runtime");`);
       fs.writeFileSync(path.join(directory, PACK_LAYOUT.snapshot), JSON.stringify({ manifest,
         declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
-        types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts: {}, facades: {},
+        types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, eventContracts: {}, facades: {},
         dslDefinitions: { cold: `declare module "@app/defs/cold" { export interface Item { ${field} } }` },
       }));
       sealPackBuild(directory, manifest);

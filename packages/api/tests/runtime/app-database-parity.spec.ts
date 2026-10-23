@@ -62,11 +62,11 @@ function closeApi(app: Awaited<ReturnType<typeof bootApi>>) {
  */
 async function installExternalPack(id: string, entityType: string): Promise<void> {
   const source = fs.mkdtempSync(path.join(os.tmpdir(), `${id}-`));
-  const ears = { entities: { [entityType]: entityType }, relKinds: {} };
+  const ears = { entities: { [entityType]: entityType }, relKinds: {}, roles: {} };
   fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', data: { entities: { [entityType]: null }, relations: [] }, }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {} }));
   fs.writeFileSync(
     path.join(source, 'dist', 'runtime', 'index.cjs'),
     (`module.exports = { registration: { id: ${JSON.stringify(id)}, ears: ${JSON.stringify(ears)} } };`) + `
@@ -84,7 +84,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     const first = await bootApi();
     startPacks(first.packs);
     untypedCreate('Note', { id: 'Note-child' }).set('title', 'child');
-    untypedCreate('Note', { id: 'Note-parity' }).set('title', 'mine').grant('pinned').link('parent_of', 'Note-child');
+    untypedCreate('Note', { id: 'Note-parity' }).set('title', 'mine').grant('assistant_birth').link('parent_of', 'Note-child');
     untypedCreate('TNode', { id: 'TNode-parity' }).set('status', 'done');
     closeApi(first);
 
@@ -100,7 +100,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     expect(fromApi.entities.length).toBeGreaterThan(10);
     expect(fromApi.relations.length).toBeGreaterThan(0);
     expect(fromApi.entities.some(({ roles }) => roles.length > 0)).toBe(true);
-    expect(fromApi.entities.find(({ id }) => id === 'Note-parity')).toMatchObject({ roles: ['pinned'] });
+    expect(fromApi.entities.find(({ id }) => id === 'Note-parity')).toMatchObject({ roles: ['assistant_birth'] });
     expect(fromApi.entities.find(({ id }) => id === 'TNode-parity')).toBeUndefined();
     expect(fromTool).toEqual(fromApi);
     // The tool knows the built-in pack's entity types. Which partition each lands in is not compared here:
@@ -118,7 +118,7 @@ describe('what the tool writes', () => {
     closeApi(booted);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, log: () => {} });
-    untypedCreate('Note', { id: 'Note-tool' }).set('title', 'from the tool').grant('pinned');
+    untypedCreate('Note', { id: 'Note-tool' }).set('title', 'from the tool').grant('assistant_birth');
     untypedCreate('TNode', { id: 'TNode-tool' }).set('status', 'done');
     db.close();
 
@@ -126,7 +126,7 @@ describe('what the tool writes', () => {
     try {
       // The note is in the data the API hydrates, with its role
       expect(api.engine.getAttr('Note-tool', 'title')).toBe('from the tool');
-      expect([...api.engine.getRoles('Note-tool')]).toEqual(['pinned']);
+      expect([...api.engine.getRoles('Note-tool')]).toEqual(['assistant_birth']);
       // The run history isn't hydrated, and is in the partition the app keeps it in
       expect(api.engine.getAttr('TNode-tool', 'status')).toBeNull();
       expect(api.store.read('volatileBackup').getAttr('status', 'TNode-tool')).toBe('done');

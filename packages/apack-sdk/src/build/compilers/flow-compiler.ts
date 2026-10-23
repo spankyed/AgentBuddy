@@ -8,7 +8,7 @@
 
 import { EARS } from '../../types/entities.ts';
 import { isFlowConfig, resolveTracks, type DSLStepNode, type FlowDSL, type Track } from './flow-types.ts';
-import { ROOT_FLOW_ROLE } from '../../types/sdk-entities.ts';
+import { SDK_ROLES } from '../../types/sdk-entities.ts';
 import type { CompilerContext } from './flow-entities.ts';
 import type { StepDefinition } from '../../steps/index.ts';
 import { stepLookup, type StepLookup } from './step-lookup.ts';
@@ -254,7 +254,7 @@ export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRow
     roles.push(...flowRoles);
 
     if (isFlowConfig(entry) && entry.root) {
-      roles.push({ entityId: flowId, role: ROOT_FLOW_ROLE });
+      roles.push({ entityId: flowId, role: SDK_ROLES.ROOT_FLOW });
     }
   }
 
@@ -385,7 +385,7 @@ function compileTrack(
   });
 
   if (isFirstTrack && triggerDef?.type === 'listener') {
-    trackRoles.push({ entityId: listenerId, role: 'entry_event' });
+    trackRoles.push({ entityId: listenerId, role: SDK_ROLES.ENTRY_EVENT });
   }
 
   const out = { entities: nodeEntities, relations: trackRelations };

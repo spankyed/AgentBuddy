@@ -30,7 +30,8 @@ create(type, opts?)   create a new entity of a type → write builder
 upsert(type, id)      the entity with this id, created as type when missing → write builder
 write(id)             an existing entity → write builder (throws when no entity has the id)
 EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
-EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains')
+EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains'); a kind not declared here is refused
+EARS.RoleKind.*       role constants (e.g. EARS.RoleKind.ROOT_FLOW = 'root_flow'); a role not declared here is refused
 getRow(id)            { id, entityType, ...attributes } for a single entity, or undefined
 getRoles(id)          string[] — roles on an entity
 createEntityWithDefaults(type, attrs)   create with auto-generated fields
@@ -127,9 +128,10 @@ const ids = query(EARS.Entity.Thread)
 ids.forEach(id => write(id).destroy());
 return { deleted: ids.length };
 
-// Grant/revoke roles
-const noteId = query(EARS.Entity.Note).first();
-if (!noteId) return { noteId: null };
-write(noteId).grant('primary').revoke('inactive');
-return { noteId, roles: getRoles(noteId) };`;
+// Move a role: make another flow the root flow, taking the role from the one holding it
+const current = query.all().withRole(EARS.RoleKind.ROOT_FLOW).first();
+const next = query(EARS.Entity.Flow).ids().find((id) => id !== current);
+if (!next) return { moved: false };
+write(next).grantExclusive(EARS.RoleKind.ROOT_FLOW, query.all().withRole(EARS.RoleKind.ROOT_FLOW).ids());
+return { previous: current, current: next };`;
 }

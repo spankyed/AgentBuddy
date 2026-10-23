@@ -12,7 +12,6 @@ export {
   type DocumentEntity, type CollectionEntity, type DocumentShortCode, type ContentSection, type ContentType,
   type FieldContent, type ListContent, type MarkdownContent, type TextContent, type CodeContent,
 } from './types/index.ts';
-export { ROOT_FLOW_ROLE } from './types/index.ts';
 
 // Designations
 export { getDesignated, hasDesignation } from './designations/index.ts';

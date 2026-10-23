@@ -55,6 +55,7 @@ order. `init`, `add` and the release version editor share this writer.
 | `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |
 | `data.entities` | `Record<string, string \| null>` | no | Entities without a feature owner; see [Entities and relations](#entities-and-relations) |
 | `data.relations` | `string[]` | no | Pack-level snake_case relation wire names; see [Entities and relations](#entities-and-relations) |
+| `data.roles` | `string[]` | no | Pack-level snake_case role names; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack IDs mapped to a nonempty npm semver range, `github:owner/repo [range]`, or `file:path` |
 | `checks` | `{ allow?: string[] }` | no | Development conventions this pack allows; schema completion lists supported rule names. See [source checks](cli.md#apack-pack-validate---json). |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
@@ -687,12 +688,13 @@ Keys become TypeScript constants in generated `ears.ts`. Entity constants equal 
 wire is declared once in `data.relations`, shared across the pack's features. Its constant name is
 uppercase (`tagged_with` → `TAGGED_WITH`). Duplicate and SDK-owned relation wires are refused. Every kind
 the pack links with is declared: the generated `EARS.RelKind` is closed over the pack's, its dependencies' and
-the SDK's, and the engine refuses any other at runtime.
+the SDK's, and the engine refuses any other at runtime. Roles work the same way: `data.roles` lists every role the
+pack grants (`entry_event` → `ENTRY_EVENT`), `EARS.RoleKind` is closed over them, and an undeclared role is refused.
 Shapes type attributes without changing stored identities.
 
 No two packs may use the same name: a key or a value another installed pack declares fails `apack pack build` (for a dependency) and the app's registration of the pack.
 
-The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action`, `Prompt`, `Document` and `Collection`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`), `SPAWNED` (`spawned`), `TRACKED` (`tracked`) and `PARENT_OF` (`parent_of`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `apack.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
+The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action`, `Prompt`, `Document` and `Collection`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`), `SPAWNED` (`spawned`), `TRACKED` (`tracked`) and `PARENT_OF` (`parent_of`), and the roles `ROOT_FLOW` (`root_flow`) and `ENTRY_EVENT` (`entry_event`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `apack.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
 
 ## DSL definitions
 

@@ -26,6 +26,10 @@
       "blocks",
       "blocked_by",
       "duplicates"
+    ],
+    "roles": [
+      "root_trace_node",
+      "assistant_birth"
     ]
   },
   "features": {

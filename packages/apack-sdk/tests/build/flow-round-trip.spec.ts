@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { compile } from '../../src/build/compilers/flow-compiler.ts';
 import { resolveTracks, type DSLStepNode } from '../../src/build/compilers/flow-types.ts';
-import { ROOT_FLOW_ROLE } from '../../src/types/sdk-entities.ts';
+import { SDK_ROLES } from '../../src/types/sdk-entities.ts';
 import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { createRoundTrip } from './helpers/round-trip.ts';
 import { wrapInFlow } from './helpers/dsl-factories.ts';
@@ -18,7 +18,7 @@ interface SwitchNode extends DSLStepNode {
 }
 const asSwitch = (node: DSLStepNode) => node as SwitchNode;
 
-const rt = createRoundTrip(ROOT_FLOW_ROLE);
+const rt = createRoundTrip(SDK_ROLES.ROOT_FLOW);
 
 beforeEach(() => {
   for (const step of ALL_TEST_STEPS) testPacks.steps.set(step.type, step);
