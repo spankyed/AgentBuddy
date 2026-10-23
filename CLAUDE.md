@@ -344,7 +344,7 @@ npm run test:packaged-authoring:author  # The half that needs no app
 npm run test:packaged-authoring:app     # The half against the built app
 npm run bench -w @apackdev/ears  # EARS engine benchmark (packages/apack-ears/CLAUDE.md)
 
-npm run db:query -- "<code>"     # apack db query on the dev app's data (also db:exec, db:repl, db:inspect,
+npm run db:query -- "<code>"     # apack db query on the dev app's data (also db:exec, db:repl, db:inspect, db:runs,
                                  # db:export, db:import, db:reset, db:clear-settings; app closed for changes)
 
 npm run api:check                # Fails if a public entry's API changed without updating etc/ reports

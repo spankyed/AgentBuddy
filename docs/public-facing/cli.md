@@ -699,6 +699,7 @@ app afterwards.
 ```bash
 apack db query "return query(EARS.Entity.Note).count()"
 apack db inspect Flow-123 --depth 2
+apack db runs                               # the latest flow runs
 apack db export --out ./export
 apack db import ./apack-backup-2026-09-17 --profile production --force
 apack db reset --profile production        # lists what it would delete
@@ -715,7 +716,7 @@ pack runtimes.
 
 While a command changes the database it holds a lock on the data dir (`db-write.lock`), so a second `apack db` is refused and an apack started meanwhile refuses to open that database instead of overwriting the change. A lock left behind by a command that was killed is ignored once its process is gone.
 
-**The run history.** The database has two partitions: the app's data, and the run history (`TNode` rows, what each flow step did). Commands read the data only, as the app does, so a query for `TNode` comes back empty until you pass `--volatile`, which reads both. `reset` deletes both either way; its listing counts the run history only with `--volatile`.
+**The run history.** What each flow run did is not in the database: it is the run history, a store of its own beside it (`run-history`), which `apack db runs` reads. Backups, `import` and `reset` cover it with the database, and the app keeps 30 days of it.
 
 **Writing.** There is no apply command: apack content each pack's data when it starts (and `apack pack dev` re-applies a pack it rebuilds), so start the app rather than content a data dir by hand.
 
@@ -773,17 +774,21 @@ The database is handed to the script rather than left for it to open: the publis
 
 Print an entity, its roles and its relations grouped by kind, following them `--depth` levels (default 1); `--incoming` or `--outgoing` shows one direction. `--type` prints the first five entities of a type. With neither, it prints entities and relations per entity type.
 
+#### `apack db runs [--run <id>] [--flow <id>] [--limit <n>] [--json]`
+
+List the flow runs in the run history, newest first (20 unless `--limit` says otherwise): each session's root and every flow it ran, one line each with its id, status, start time, label and the flow it ran. `--flow` lists one flow's runs, and `--json` prints the list as JSON. `--run <id>` prints that run node and everything under it — the events it heard, the steps they ran, each with what it was given and what it returned — as one JSON tree. It opens the run history read-only, so it works while apack runs (with the usual warning) and changes nothing.
+
 #### `apack db export --out <dir> [--type <Entity>...] [--format json|csv]`
 
 Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json` (or `.csv`), and a summary (when it ran, the data dir, the format and the counts) to `<dir>/export.json`. Without `--type`, every type with entities. Roles are in each entity's `role` attribute, and relations are the `Relation` entities (their `relationDetails`).
 
 #### `apack db import <backup-dir> [--force] [--skip-unknown]` (names its data dir)
 
-Replace the database, and the media folder when the backup has one, with a backup made in the Database settings' Backup & Restore. The backup is checked first: it has `metadata.json`, lists the app's main database, that folder is there, and every database it would put in place opens in a storage format this version reads — so a backup this apack can't read is refused before any of your data is replaced. A backup made by a newer apack may also hold stores this one doesn't have; importing it would replace your data with an incomplete copy, so it's refused unless you pass `--skip-unknown`, which imports it without them. If the backup lists a store it holds nothing for, the listing says so and that store comes back empty. Without `--force` it lists the backup, its contents and what it would replace, and changes nothing. The app migrates the data on its next start if the backup is from an earlier version.
+Replace the database and the run history the backup holds, and the media folder when it has one, with a backup made in the Database settings' Backup & Restore. The backup is checked first: it has `metadata.json`, lists the app's main database, that folder is there, and every database it would put in place opens in a storage format this version reads — so a backup this apack can't read is refused before any of your data is replaced. A backup made by a newer apack may also hold stores this one doesn't have; importing it would replace your data with an incomplete copy, so it's refused unless you pass `--skip-unknown`, which imports it without them. If the backup lists a store it holds nothing for, the listing says so and that store comes back empty. Without `--force` it lists the backup, its contents and what it would replace, and changes nothing. The app migrates the data on its next start if the backup is from an earlier version.
 
 #### `apack db reset [--force] [--keep-keys]` (names its data dir)
 
-Delete all of the app's data, as Reset Database in the Database settings does: both database partitions (the data and the run history) and the stored secrets. The app creates its default data (settings, written flows, the packs' content) on its next start and shows onboarding. Without `--force` it lists the entities per type and each stored secret it would delete.
+Delete all of the app's data, as Reset Database in the Database settings does: the database, the run history and the stored secrets. The app creates its default data (settings, written flows, the packs' content) on its next start and shows onboarding. Without `--force` it lists the entities per type and each stored secret it would delete.
 
 No backup holds the secrets — `export` and the Database settings' backups copy the databases and the media folder, never the secrets or the data key that encrypts them — so a deleted secret is entered again in Settings → Secrets. That's why the listing names each one by provider and label (never its value), and why `--keep-keys` leaves them where they are and deletes only the data.
 
@@ -791,7 +796,7 @@ No backup holds the secrets — `export` and the Database settings' backups copy
 
 Destroy every Settings row (the user's changes to the default settings); the app recreates the defaults on its next start. Without `--force` it lists each row and the settings it stores.
 
-In the apack repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return query.all().count()"`.
+In the apack repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:runs`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return query.all().count()"`.
 
 ### Cleanup
 
