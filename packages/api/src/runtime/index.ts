@@ -1,10 +1,10 @@
 import { createActor } from 'xstate';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 import { bindHost, type HostRuntime } from '@apackdev/sdk/runtime';
-import { _getLmdbPath, _getVolatileLmdbPath } from '@apackdev/sdk/utils';
+import { _getLmdbPath, _getRunHistoryPath, _getVolatileLmdbPath } from '@apackdev/sdk/utils';
 import type { EarsEngine } from '@apackdev/ears';
-import type { LmdbStore, WriteFailure } from '@apackdev/ears/lmdb';
-import { assertNoDatabaseWriter, openDatabaseStore, storedSettings } from '@apackdev/host/database';
+import type { LmdbStore, RecordStore, WriteFailure } from '@apackdev/ears/lmdb';
+import { assertNoDatabaseWriter, openDatabaseStore, openRunHistoryStore, storedSettings } from '@apackdev/host/database';
 import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apackdev/host/packs';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
@@ -47,6 +47,8 @@ function logErrors(actor: string) {
 /** The app's data: its LMDB store, the engine that persists to it (both faces: the composition keeps `admin`), and its registered packs */
 export interface AppStore {
   store: LmdbStore;
+  /** The run history's store, closed with the app's */
+  runHistory: RecordStore;
   engine: EarsEngine;
   packs: PackRegistry;
 }
@@ -64,6 +66,9 @@ export let appSettingsAccess: ReturnType<typeof createSettingsAccess>;
  * ever read.
  */
 export let appStore: LmdbStore | undefined;
+
+/** The run history's open store, so shutdown can close it */
+export let appRunHistory: RecordStore | undefined;
 
 /**
  * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller
@@ -107,13 +112,15 @@ export function openAppStore(): AppStore {
     schema: packs,
     onWriteFailure: reportDroppedWrite,
   });
-  runtime = createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs });
+  const runHistory = openRunHistoryStore(_getRunHistoryPath());
+  runtime = createHostRuntime({ store, runHistory, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs });
   bindHost(runtime);
   printLogEvents();
   appPacks = packs;
   appSettingsAccess = createSettingsAccess(runtime.services.settings, packs.getPackRuntime);
   appStore = store;
-  return { store, engine, packs };
+  appRunHistory = runHistory;
+  return { store, runHistory, engine, packs };
 }
 
 /**

@@ -5,6 +5,7 @@ import { secretRedaction } from '../secrets/redaction.ts';
 import type { HostRuntime, RootEvents } from '@apackdev/sdk/runtime';
 import type { EarsEngine } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
+import type { _RunHistoryRecords } from '@apackdev/sdk/services';
 import type { PackRegistry } from '../packs/registry.ts';
 import { createAppData } from './app-data.ts';
 import { createOnboarding } from './onboarding.ts';
@@ -16,10 +17,13 @@ import { createSettingsStore } from '../features/settings/be/store.ts';
 import { inference } from './inference.ts';
 import { secrets } from './secrets.ts';
 import { createTraceStore } from './trace-store.ts';
+import { createRunHistory } from './run-history.ts';
 
 export interface HostRuntimeOptions {
   /** The app's LMDB store, which appData and traceStore work on */
   store: LmdbStore;
+  /** The run history's store (`openRunHistoryStore`; a test's `_memoryRecords()`), which runHistory works on */
+  runHistory: _RunHistoryRecords;
   /** The app's engine: packs get its operations, the services its `admin` too */
   engine: EarsEngine;
   /** The app's event bus */
@@ -30,7 +34,7 @@ export interface HostRuntimeOptions {
 }
 
 /** The running app as the SDK reaches it, which the composition root binds with `bindHost` */
-export function createHostRuntime({ transport, appVersion, store, engine, packs }: HostRuntimeOptions): HostRuntime {
+export function createHostRuntime({ transport, appVersion, store, runHistory, engine, packs }: HostRuntimeOptions): HostRuntime {
   const settings = createSettingsService(createSettingsStore({
     ears: () => engine,
     catalog: packs.settingsCatalog,
@@ -50,6 +54,7 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
         onReplaced: () => transport.rootEvents.emitIncoming({ to: HOST.bus, event: { type: 'DATA_REPLACED' } }),
       }),
       traceStore: createTraceStore(store),
+      runHistory: createRunHistory(runHistory),
       inference,
       secrets,
       filesystem,

@@ -2,7 +2,8 @@
 // (apack db) share, so both hydrate a data dir the same way
 import { createEarsEngine, makePolicy, type EarsAdmin, type EarsEngine, type Ears, type PartitionPolicy } from '@apackdev/ears';
 import { _bindEars } from '@apackdev/sdk/ears';
-import { openLmdbStore, type LmdbPaths, type LmdbStore, type WriteFailure } from '@apackdev/ears/lmdb';
+import { openLmdbStore, openRecordStore, type LmdbPaths, type LmdbStore, type RecordStore, type WriteFailure } from '@apackdev/ears/lmdb';
+import { _RUN_HISTORY_INDEXES } from '@apackdev/sdk/services';
 import { resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import type { _AppDataPaths } from '@apackdev/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
@@ -48,6 +49,11 @@ export function openDatabaseStore({ paths, schema, readOnly, log, onWriteFailure
     rowRules: (type) => schema.getRowRules?.(type),
   });
   return { store, engine };
+}
+
+/** The run history's store at `path`, indexed as `services.runHistory` looks its records up */
+export function openRunHistoryStore(path: string, { readOnly }: { readOnly?: boolean } = {}): RecordStore {
+  return openRecordStore({ path, indexes: _RUN_HISTORY_INDEXES, readOnly });
 }
 
 /** An app's database opened outside the app */

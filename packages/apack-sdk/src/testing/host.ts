@@ -11,6 +11,8 @@ import type { EarsEngine, EntityRow } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
 import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
 import type { TraceStore } from '../services/trace-store.ts';
+import { _createRunHistory, type RunHistory } from '../services/run-history.ts';
+import { _memoryRecords } from './memory-records.ts';
 import type { OnboardingService } from '../services/onboarding.ts';
 import type { SecretMetadata, SecretProvider, SecretsService } from '../services/secrets.ts';
 import { _secretRules } from '../services/secrets-rules.ts';
@@ -77,7 +79,13 @@ const memoryOnboarding: OnboardingService = {
 export function resetTestHostState(): void {
   testSecrets = [];
   onboarded = false;
+  testHistory = _createRunHistory(_memoryRecords());
 }
+
+let testHistory = _createRunHistory(_memoryRecords());
+
+/** The test runtime's run history, in memory: what `services.runHistory` is until `resetTestData` replaces it */
+export const testRunHistory = (): RunHistory => testHistory;
 
 /** The user's keys in memory, keeping the host's rules */
 const memorySecrets: SecretsService = {
@@ -177,6 +185,7 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
         readBackupSummary: async () => null,
       },
       traceStore: memoryTraceStore(engine),
+      get runHistory() { return testHistory; },
       // No test reaches a provider: code calling a model fails until the test mocks inference
       inference: {
         generateText: unmockedInference, streamText: unmockedInference, createAgent: unmockedInference,

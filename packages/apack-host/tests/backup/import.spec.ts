@@ -12,7 +12,7 @@ import { createSettingsBackupValidator } from '../../src/features/settings/be/ba
 import { appSettingsDefinition } from '../../src/features/settings/be/app-definition.ts';
 import { createHostRuntime } from '../../src/services/index.ts';
 import { createNativePackTestRegistry } from '../../src/testing/pack-registry.ts';
-import { testRootEvents } from '@apackdev/sdk/testing';
+import { _memoryRecords, testRootEvents } from '@apackdev/sdk/testing';
 import { tempDir, removeTempDirs, schemaContext, writeData } from '../database/fixtures.ts';
 
 const stores: LmdbStore[] = [];
@@ -55,7 +55,7 @@ async function fixture(settings: unknown = {}) {
 function appData(f: Awaited<ReturnType<typeof fixture>>) {
   vi.stubEnv('APACK_ENV', 'test');
   vi.stubEnv('APACK_USER_DATA_DIR', f.current);
-  return createHostRuntime({ store: f.store, engine: f.engine, packs: createNativePackTestRegistry(),
+  return createHostRuntime({ runHistory: _memoryRecords(), store: f.store, engine: f.engine, packs: createNativePackTestRegistry(),
     appVersion: '1.0.0', transport: { rootEvents: testRootEvents } }).services.appData;
 }
 

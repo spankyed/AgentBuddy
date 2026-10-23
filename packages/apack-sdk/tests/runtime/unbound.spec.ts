@@ -41,6 +41,7 @@ const runtime: HostRuntime = {
     onboarding: { isComplete: unused, complete: unused },
     appData: { reset: unused, exportBackup: unused, importBackup: unused, readBackupSummary: unused },
     traceStore: { entities: unused, getEntityMeta: unused, getAttr: unused, relations: unused },
+    runHistory: { newId: unused, add: unused, update: unused, get: unused, findChildren: unused, tree: unused, findRuns: unused, stopActive: unused, prune: unused },
     inference: {
       generateText: unused, streamText: unused, createAgent: unused, embed: unused, embedMany: unused,
       generateImage: unused, generateSpeech: unused, transcribe: unused, rerank: unused,
@@ -77,6 +78,7 @@ describe('with no app bound', () => {
       ['services.appData', () => boundHost().services.appData.reset()],
       ['services.onboarding', () => boundHost().services.onboarding.isComplete()],
       ['services.traceStore', () => boundHost().services.traceStore.entities()],
+      ['services.runHistory', () => boundHost().services.runHistory.findRuns()],
       ['services.secrets', () => boundHost().services.secrets.list()],
       ['services.filesystem', () => boundHost().services.filesystem.readFile('/tmp/x')],
       ['repository', () => repository.memoQueries],

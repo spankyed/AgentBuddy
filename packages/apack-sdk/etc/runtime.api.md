@@ -94,6 +94,7 @@ export interface HostRuntimeServices {
     filesystem: FilesystemService;
     inference: InferenceService;
     onboarding: OnboardingService;
+    runHistory: RunHistory;
     secrets: SecretsService;
     settings: SettingsAdmin;
     traceStore: TraceStore;

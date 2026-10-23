@@ -144,6 +144,9 @@ export interface FakeTextCall {
 export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {
 }
 
+// @internal
+export function _memoryRecords(): _RunHistoryRecords;
+
 // @public
 export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): NativePackDeclaration;
 
@@ -207,6 +210,9 @@ export interface TestRootEvents extends RootEvents {
 
 // @public
 export const testRootEvents: TestRootEvents;
+
+// @public
+export const testRunHistory: () => RunHistory;
 
 // @public
 export interface TestRuntimeStartOptions {

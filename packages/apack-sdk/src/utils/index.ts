@@ -8,7 +8,7 @@ export * from './pure.ts';
 // --- Paths (direct) ---
 export {
   getUserDataPath,
-  _getLmdbPath, _getVolatileLmdbPath, _getSecretsFilePath, _getMediaPath,
+  _getLmdbPath, _getVolatileLmdbPath, _getRunHistoryPath, _getSecretsFilePath, _getMediaPath,
   ensureDirectoryExists, createExportDir,
   _resolvePath, _appDataPaths, _packDataDir, type _AppDataPaths,
 } from './paths.ts';

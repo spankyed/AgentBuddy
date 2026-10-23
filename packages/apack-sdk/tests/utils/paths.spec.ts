@@ -2,7 +2,7 @@
 // switch left to disagree about — the app and `apack db` read the same paths from the same function.
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { _appDataPaths, _packDataDir, _getLmdbPath, _getMediaPath, _getSecretsFilePath, _getVolatileLmdbPath, _resolvePath } from '../../src/utils/paths.ts';
+import { _appDataPaths, _packDataDir, _getLmdbPath, _getMediaPath, _getSecretsFilePath, _getVolatileLmdbPath, _getRunHistoryPath, _resolvePath } from '../../src/utils/paths.ts';
 
 const saved = { nodeEnv: process.env.NODE_ENV, apackEnv: process.env.APACK_ENV, userDataDir: process.env.APACK_USER_DATA_DIR };
 const dataDir = path.join(path.sep, 'tmp', 'a-data-dir');
@@ -25,6 +25,7 @@ describe('_appDataPaths', () => {
     expect(_appDataPaths(dataDir)).toEqual({
       lmdb: path.join(appDir, 'ears-db'),
       volatileLmdb: path.join(appDir, 'ears-trace'),
+      runHistory: path.join(appDir, 'run-history'),
       secretsFile: path.join(appDir, 'secrets.json'),
       media: path.join(appDir, 'media'),
     });
@@ -44,6 +45,7 @@ describe('_appDataPaths', () => {
     expect({
       lmdb: _getLmdbPath(),
       volatileLmdb: _getVolatileLmdbPath(),
+      runHistory: _getRunHistoryPath(),
       secretsFile: _getSecretsFilePath(),
       media: _getMediaPath(),
     }).toEqual(_appDataPaths(dataDir));
