@@ -24,7 +24,7 @@ function emptyDatabaseResults() {
     pendingQueryCall: null, pendingTransactionCall: null, selectedSchemaItem: null,
     isAiQueryLoading: false, isRefreshing: false,
     traceFlows: [], currentFlowId: null, flowEvents: [], expandedNodes: new Set<string>(),
-    nodeDetails: new Map<string, import('@apackdev/sdk/steps').TNode>(), isLoadingTrace: false,
+    nodeDetails: new Map<string, import('@apackdev/sdk/steps').RunNode>(), isLoadingTrace: false,
     tracePagination: { offset: 0, limit: 50, hasMore: false },
   };
 }

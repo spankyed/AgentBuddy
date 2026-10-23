@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
 import { reportError, createLogger } from '@apackdev/sdk/logger';
 import { isEntityType } from '@apackdev/sdk/ears';
 import { EARS, create } from '#generated/ears.ts';
@@ -12,8 +12,8 @@ type StepActor = { send: (event: { type: 'COMPLETE'; result: unknown } | { type:
 const LABEL_SOURCES = ['title', 'name', 'topic'] as const;
 
 /** The step's fields: its literal params with its resolved mappings over them, without undefined values */
-export function stepFields(tNode: TNode): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(tNode.resolvedParams ?? {}).filter(([, value]) => value !== undefined));
+export function stepFields(runNode: RunNode): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(runNode.resolvedParams ?? {}).filter(([, value]) => value !== undefined));
 }
 
 /** Throws naming the entity type when the running app hasn't registered it (the SDK's and every registered pack's count) */
@@ -34,15 +34,15 @@ export function createEntityRow(entityType: string, fields: Record<string, unkno
   return create(entityType, data).row();
 }
 
-/** Reports a create or update step's error against its TNode */
-export function reportStepError(error: unknown, t: TNode, n: CreateNode | { id: string; label: string; nodeType: string }, ctx: ExecutionContext) {
+/** Reports a create or update step's error against its RunNode */
+export function reportStepError(error: unknown, t: RunNode, n: CreateNode | { id: string; label: string; nodeType: string }, ctx: ExecutionContext) {
   return reportError({
     error,
     source: `brain-${n.nodeType}`,
     step: {
       phase: `${n.nodeType}.execute`,
-      flowTNodeId: ctx.flowTNodeId,
-      tNodeId: t.id,
+      flowRunNodeId: ctx.flowRunNodeId,
+      runNodeId: t.id,
       nodeId: n.id as EARS.EntityId,
       nodeLabel: n.label,
       nodeType: n.nodeType,
@@ -51,7 +51,7 @@ export function reportStepError(error: unknown, t: TNode, n: CreateNode | { id: 
   });
 }
 
-export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as CreateNode;
   const a = actor as StepActor;
   try {

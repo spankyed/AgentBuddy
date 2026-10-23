@@ -271,7 +271,7 @@ describe('generated step registrations', () => {
 
     const be = files['src/__generated__/pack-entry.ts'];
     expect(be).toContain("import { compile as __step_llm_build_compile } from '../steps/llm/build.ts';");
-    expect(be).toContain("{ type: 'llm', node: JSON.parse(\"{\\\"label\\\":\\\"LLM\\\"}\"), build: { compile: __step_llm_build_compile, validate: __step_llm_build_validate, getLabel: __step_llm_build_getLabel }, runtime: { handler: async (tNode, node, ctx, actor) => (await import('../steps/llm/runtime.ts')).handler(tNode, node, ctx, actor), isAsync: true } },");
+    expect(be).toContain("{ type: 'llm', node: JSON.parse(\"{\\\"label\\\":\\\"LLM\\\"}\"), build: { compile: __step_llm_build_compile, validate: __step_llm_build_validate, getLabel: __step_llm_build_getLabel }, runtime: { handler: async (runNode, node, ctx, actor) => (await import('../steps/llm/runtime.ts')).handler(runNode, node, ctx, actor), isAsync: true } },");
     expect(be).toContain("{ type: 'cron', kind: 'trigger', node: JSON.parse(\"{\\\"label\\\":\\\"Cron\\\"}\"), trigger: { trackField: \"schedule\", compile: __step_cron_trigger_compile, decompile: __step_cron_trigger_decompile, register: async (node, ctx) => (await import('../steps/cron/runtime.ts')).register(node, ctx) } },");
     expect(be).not.toContain('llmStepFE');
 

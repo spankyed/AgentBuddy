@@ -28,22 +28,22 @@ export { ContentRuntime }
 
 // @public (undocumented)
 export interface FlowRun {
-    eventTNodeIds: string[];
+    eventRunNodeIds: string[];
     steps: FlowStepTrace[];
 }
 
 // @public
 export interface FlowStepTrace {
+    kind: string;
     // (undocumented)
     label: string;
     nodeAttributes: Record<string, unknown>;
     params: Record<string, unknown>;
     result?: unknown;
     // (undocumented)
-    status: string;
+    runNodeId: string;
     // (undocumented)
-    tNodeId: string;
-    tNodeType: string;
+    status: string;
 }
 
 // @public

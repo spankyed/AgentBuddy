@@ -16,7 +16,7 @@ import {
 } from '@apackdev/host/features';
 import { createAppBus, createParticipantClaims, HOST } from '@apackdev/host/bus';
 import { createHostRuntime } from '@apackdev/host/services';
-import { _settingsAdmin, type TNode } from '@apackdev/sdk/services';
+import { _settingsAdmin, type RunNode } from '@apackdev/sdk/services';
 import { compileSettingsCatalog, createSettingsAccess } from '@apackdev/host/settings';
 import { forwardSecretsChanges } from '@apackdev/host/secrets';
 import { assertSourceResolution } from '@apackdev/host/build/source-resolution';
@@ -49,7 +49,7 @@ function logErrors(actor: string) {
 export interface AppStore {
   store: LmdbStore;
   /** The run history's store, closed with the app's */
-  runHistory: RecordStore<TNode>;
+  runHistory: RecordStore<RunNode>;
   engine: EarsEngine;
   packs: PackRegistry;
 }
@@ -69,7 +69,7 @@ export let appSettingsAccess: ReturnType<typeof createSettingsAccess>;
 export let appStore: LmdbStore | undefined;
 
 /** The run history's open store, so shutdown can close it */
-export let appRunHistory: RecordStore<TNode> | undefined;
+export let appRunHistory: RecordStore<RunNode> | undefined;
 
 /**
  * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller

@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNode, FieldMapping } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunNode, FieldMapping } from '@apackdev/sdk/steps';
 import type { EARS } from '@apackdev/sdk';
 import type { NodeEntity } from '#generated/types.ts';
 import { repository } from '#generated/repository.ts';
@@ -16,7 +16,7 @@ interface ActionNodeConfig {
 
 type ActionNode = NodeEntity & ActionNodeConfig;
 
-export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as ActionNode;
   const a = actor as { send: (event: any) => void };
   const nodeData = t.nodeAttributes || {};
@@ -26,7 +26,7 @@ export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, ac
 
   try {
     brainLogger.debug(`Executing action node: ${n.label}`, {
-      tNode: t,
+      runNode: t,
       node: n,
       nodeAttributeKeys: Object.keys(nodeData),
     });
@@ -44,7 +44,7 @@ export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, ac
         label: n.label,
         params,
         servicesForAction: ctx.runtime.servicesForAction,
-        flowId: ctx.flowTNodeId,
+        flowId: ctx.flowRunNodeId,
       });
 
       brainLogger.debug(`Inline action completed successfully:`, { nodeLabel: n.label, result });
@@ -76,7 +76,7 @@ export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, ac
       label: action.label,
       params,
       servicesForAction: ctx.runtime.servicesForAction,
-      flowId: ctx.flowTNodeId,
+      flowId: ctx.flowRunNodeId,
     });
 
     brainLogger.debug(`Action completed successfully:`, {
@@ -93,8 +93,8 @@ export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, ac
       source: 'brain-action',
       step: {
         phase: 'action.execute',
-        flowTNodeId: ctx.flowTNodeId,
-        tNodeId: t.id,
+        flowRunNodeId: ctx.flowRunNodeId,
+        runNodeId: t.id,
         nodeId: n.id,
         nodeLabel: n.label,
         nodeType: n.nodeType,

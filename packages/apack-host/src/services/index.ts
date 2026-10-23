@@ -6,7 +6,7 @@ import type { HostRuntime, RootEvents } from '@apackdev/sdk/runtime';
 import type { EarsEngine } from '@apackdev/ears';
 import type { RecordStore } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
-import type { TNode } from '@apackdev/sdk/services';
+import type { RunNode } from '@apackdev/sdk/services';
 import type { PackRegistry } from '../packs/registry.ts';
 import { createAppData } from './app-data.ts';
 import { createOnboarding } from './onboarding.ts';
@@ -26,7 +26,7 @@ export interface HostRuntimeOptions {
    * The run history's record store, which runHistory works on and appData backs up and resets with the database: the
    * app's on disk (`openRunHistoryStore`), a test's in memory (`_memoryRunHistoryStore()`)
    */
-  runHistory: RecordStore<TNode>;
+  runHistory: RecordStore<RunNode>;
   /** The app's engine: packs get its operations, the services its `admin` too */
   engine: EarsEngine;
   /** The app's event bus */

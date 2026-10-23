@@ -125,9 +125,9 @@ export const getLabel: StepBuildFacet['getLabel'] = (step, index) => {
 
 ```typescript
 // runtime.ts
-import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
 
-export async function handler(tNode: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(runNode: RunNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const a = actor as { send(event: unknown): void };
   a.send({ type: 'COMPLETE', result: { ok: true } });
 }
@@ -143,7 +143,7 @@ brain reads them before it decides how to run the step; `sync` is the one that c
 
 | Member | Description |
 |---|---|
-| `handler(tNode, node, executionContext, actor)` | Runs the step. `tNode` is its run node, its record in the run history (`services.runHistory`), `node` the compiled entity, `executionContext` has `flowTNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `servicesForAction(label)`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, tNodeId, … } })` (`@apackdev/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
+| `handler(runNode, node, executionContext, actor)` | Runs the step. `runNode` is its run node, its record in the run history (`services.runHistory`), `node` the compiled entity, `executionContext` has `flowRunNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `servicesForAction(label)`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, runNodeId, … } })` (`@apackdev/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
 | `isAsync` | The handler returns a promise; a rejection is reported and sent as `ERROR` |
 | `sync` | The handler's module is imported with the pack entry rather than on the step's first run, so its sends land in the brain's own dispatch. For a handler whose sends have to be ordered with the transition that called it — `kill` ends the flow *and* completes itself, and a tick's delay leaves the step reading as still running. Exclusive with `isAsync` |
 | `spawnsSubflow` | The brain spawns a sub-flow machine for the node instead of a step machine (the `subflow` step) |
@@ -157,7 +157,7 @@ Conventions the brain reads from a `COMPLETE` result and the node:
 | `result.noMatch: true` | Ends the current chain |
 | `final: true` on the compiled node | The flow completes when this step completes |
 | Never sending `COMPLETE` | The step stays executing (set `waits: true`) |
-| `KILL_FLOW` sent to `ctx.runtime.getFlowActor(flowTNodeId)` | Kills the flow |
+| `KILL_FLOW` sent to `ctx.runtime.getFlowActor(flowRunNodeId)` | Kills the flow |
 
 ### Trigger facet
 
@@ -169,7 +169,7 @@ A trigger (`kind: 'trigger'`) compiles a DSL track, not a step:
 | `compile(track, trackId, ts, trackKey)` | Track → trigger node entity |
 | `decompile(node)` | Node → track fields (`{ schedule: '0 * * * *' }`) |
 | `persistent?` | Keeps the flow alive after all tracks drain |
-| `register?(node, ctx)` | Runtime hooks per trigger node when the flow actor registers (cron jobs). `ctx` has `flowTNodeId` and `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType, payload?, targetFlowId? })` |
+| `register?(node, ctx)` | Runtime hooks per trigger node when the flow actor registers (cron jobs). `ctx` has `flowRunNodeId` and `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType, payload?, targetFlowId? })` |
 | `queryFields?` | Extra entity fields loaded with the trigger's nodes (`['cronExpression']`) |
 | `validateTrack?(track)` | `{ valid, errors }` before compiling |
 | `validate?(node)` | `{ valid, errors }` for a compiled node on persist |

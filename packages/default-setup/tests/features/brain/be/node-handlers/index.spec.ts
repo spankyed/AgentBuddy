@@ -6,7 +6,7 @@ import { executeNode } from '#features/brain/be/node-handlers/index.ts'
 it('fails a step no running pack provides, naming its type', async () => {
   const sent: Array<{ type: string; error?: { message?: string } }> = []
   const node = { id: 'Node-1', label: 'stamp it', nodeType: 'stamp', entityType: 'Node' }
-  executeNode({ id: 'TNode-1' } as never, node as never, { flowTNodeId: 'TNode-0', runtime: {} } as never, { send: (event: never) => sent.push(event) })
+  executeNode({ id: 'RunNode-1' } as never, node as never, { flowRunNodeId: 'RunNode-0', runtime: {} } as never, { send: (event: never) => sent.push(event) })
 
   await Promise.resolve()
   expect(sent.map(event => event.type)).toEqual(['ERROR'])

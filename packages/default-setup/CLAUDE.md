@@ -111,7 +111,7 @@ The worked examples here:
 
 | pair | the slot |
 |---|---|
-| `GET_NODE_DETAILS` → `NODE_DETAILS_RESULT` | `Map<nodeId, TNode>` (`features/database/fe/state.ts`), and `expandNode` checks `nodeDetails.has(id)` before asking, so the slot doubles as a cache |
+| `GET_NODE_DETAILS` → `NODE_DETAILS_RESULT` | `Map<nodeId, RunNode>` (`features/database/fe/state.ts`), and `expandNode` checks `nodeDetails.has(id)` before asking, so the slot doubles as a cache |
 | `explorer.LIST_FILES` → `explorer.FILES_LISTED` | `dirContents[ev.data.path]` (`features/code/fe/features/explorer/state.ts:259`) |
 | `CREATE_NODE{tempId}` → `NODE_CREATED{tempId}` | the temp node it replaces, via `reconcileNodeId` (`features/flows/fe/state.ts`) |
 | `pr.GET_BRANCH_DIFF` → `pr.BRANCH_DIFF_RECEIVED` | `diffsByRef[refKey(base, head)]` (`features/code/fe/features/pull-request/state.ts`), read as the comparison the view is on, and `needsDiff` asks the slot rather than counting files |
@@ -175,7 +175,7 @@ than copying whichever one you land on.
 reply only for the node in `selectedStepNode`, so every asker must select before it asks — stated over two
 of its four askers and broken by the fourth, which asked for an erroring node's details and never selected
 it, so the panel that exists to show them was never given any.
-`tests/features/brain/fe/tnode-correlation.spec.ts` asks each asker rather than describing them, which is
+`tests/features/brain/fe/run-node-correlation.spec.ts` asks each asker rather than describing them, which is
 the thing to copy if a guard stays.
 
 **And a guard cannot correlate on what the answer does not carry.** `answersCurrentPage` matched a flow

@@ -1,11 +1,11 @@
 import type { RecordIndexes, RecordStore } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
-import type { TNodeKind } from '../steps/types.ts';
+import type { RunNodeKind } from '../steps/types.ts';
 import { truncateResult } from '../steps/result-truncator.ts';
 import { createLogger } from '../logger/logger.ts';
 
 /** A run-history node's id: time-sortable, so a node's children and a flow's runs come back in the order they began */
-export type TNodeId = `TNode-${string}`;
+export type RunNodeId = `RunNode-${string}`;
 
 /** Where a run node is: running, finished, failed, or stopped by a kill, a restart or the app closing first */
 export type RunStatus = 'active' | 'completed' | 'failed' | 'stopped';
@@ -15,17 +15,17 @@ export type RunStatus = 'active' | 'completed' | 'failed' | 'stopped';
  * session's root, linked by `parentId`. It is a record in the run history (`services.runHistory`), not an entity:
  * the engine never holds one.
  */
-export interface TNode {
-  id: TNodeId;
-  tNodeType: TNodeKind;
+export interface RunNode {
+  id: RunNodeId;
+  kind: RunNodeKind;
   label: string;
   status: RunStatus;
   startedAt: number;
   completedAt?: number;
   /** The node this one ran under: absent on a session's root */
-  parentId?: TNodeId;
+  parentId?: RunNodeId;
   /** The session's root, which the whole tree is pruned with */
-  rootId: TNodeId;
+  rootId: RunNodeId;
   /** The flow whose nodes this run walks */
   flowId?: EARS.EntityId;
   /** The step, trigger or subflow node this one ran */
@@ -42,20 +42,20 @@ export interface TNode {
 }
 
 /** A node as it starts: the run history gives it its id, its root, `active` and its start time */
-export type TNodeStart = Omit<TNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>;
+export type RunNodeStart = Omit<RunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>;
 
 /** What a running node's record may take: its details. Its identity and place are fixed when it starts, and `finish` ends it */
-export type TNodePatch = Partial<Pick<TNode, 'label' | 'nodeAttributes' | 'result'>>;
+export type RunNodePatch = Partial<Pick<RunNode, 'label' | 'nodeAttributes' | 'result'>>;
 
 /** A node with its children, each with theirs: one node's whole subtree */
-export interface RunTree extends TNode {
+export interface RunTree extends RunNode {
   children: RunTree[];
 }
 
 /** How a list of nodes is paged: oldest first unless `reverse`, resuming after `cursor` */
 export interface RunPage {
   limit?: number;
-  cursor?: TNodeId;
+  cursor?: RunNodeId;
   reverse?: boolean;
 }
 
@@ -70,18 +70,18 @@ export interface RunHistory {
    * stored, since the history bounds what it stores and a step runs on its params whole. One whose parent isn't in
    * the history is returned but not recorded, and logged: a tree has no orphans.
    */
-  start(node: TNodeStart): TNode;
+  start(node: RunNodeStart): RunNode;
   /** Ends a node now, completed or failed; an id with no node is ignored */
-  finish(id: TNodeId, status: 'completed' | 'failed'): void;
+  finish(id: RunNodeId, status: 'completed' | 'failed'): void;
   /** Records a node's details: its label, attributes or result; an id with no node is ignored */
-  update(id: TNodeId, patch: TNodePatch): void;
-  get(id: TNodeId): TNode | undefined;
+  update(id: RunNodeId, patch: RunNodePatch): void;
+  get(id: RunNodeId): RunNode | undefined;
   /** A node's children, in the order they began */
-  findChildren(id: TNodeId, page?: RunPage): TNode[];
+  findChildren(id: RunNodeId, page?: RunPage): RunNode[];
   /** A node and every node under it, or undefined */
-  tree(id: TNodeId): RunTree | undefined;
+  tree(id: RunNodeId): RunTree | undefined;
   /** Flow nodes at any depth, newest first, of one flow when `flowId` is given */
-  findRuns(options?: { flowId?: EARS.EntityId; limit?: number; cursor?: TNodeId }): TNode[];
+  findRuns(options?: { flowId?: EARS.EntityId; limit?: number; cursor?: RunNodeId }): RunNode[];
   /** Marks every node still `active` as `stopped`: what is left of runs a kill, a restart or the app closing ended */
   stopActive(): void;
   /** Removes whole runs: every session tree whose root is not active and ended before `before`. Returns how many */
@@ -92,12 +92,12 @@ export interface RunHistory {
  * @internal What a run history's record store files its nodes under, which the store is opened with: their place in
  * a tree, their status and kind, and two computed — a flow node's flow (`runOf`) and whether it is a session's root
  */
-export const _RUN_HISTORY_INDEXES: RecordIndexes<TNode> = {
+export const _RUN_HISTORY_INDEXES: RecordIndexes<RunNode> = {
   parentId: (node) => node.parentId,
   rootId: (node) => node.rootId,
   status: (node) => node.status,
-  tNodeType: (node) => node.tNodeType,
-  runOf: (node) => (node.tNodeType === 'flow' ? node.flowId : undefined),
+  kind: (node) => node.kind,
+  runOf: (node) => (node.kind === 'flow' ? node.flowId : undefined),
   isRoot: (node) => node.parentId === undefined || undefined,
 };
 
@@ -107,7 +107,7 @@ const logger = createLogger('run-history');
  * The values being written, made storable and bounded. Only those: a value stored earlier was bounded when it was
  * written, and bounding it again would wrap its marker in another
  */
-function bounded<T extends Partial<TNode>>(fields: T): T {
+function bounded<T extends Partial<RunNode>>(fields: T): T {
   return {
     ...fields,
     ...(fields.nodeAttributes !== undefined && { nodeAttributes: truncateResult(fields.nodeAttributes) as Record<string, unknown> }),
@@ -117,12 +117,12 @@ function bounded<T extends Partial<TNode>>(fields: T): T {
 }
 
 /** @internal The run history over its record store: the host's on disk, a test's in memory (`createMemoryRecordStore`) */
-export function _createRunHistory(records: RecordStore<TNode>): RunHistory {
+export function _createRunHistory(records: RecordStore<RunNode>): RunHistory {
   const history: RunHistory = {
     start(fields) {
-      const id = records.newId('TNode') as TNodeId;
+      const id = records.newId('RunNode') as RunNodeId;
       const parent = fields.parentId === undefined ? undefined : records.get(fields.parentId);
-      const node: TNode = { ...fields, id, rootId: parent?.rootId ?? id, status: 'active', startedAt: Date.now() };
+      const node: RunNode = { ...fields, id, rootId: parent?.rootId ?? id, status: 'active', startedAt: Date.now() };
       if (fields.parentId !== undefined && !parent) {
         logger.warn(`Dropped run node ${id}: its parent ${fields.parentId} isn't in the run history`);
       } else {
@@ -144,18 +144,18 @@ export function _createRunHistory(records: RecordStore<TNode>): RunHistory {
       const node = records.get(id);
       if (!node) return undefined;
       // One read: the whole run, in the order its nodes began, then grown from `id`
-      const childrenOf = new Map<string, TNode[]>();
+      const childrenOf = new Map<string, RunNode[]>();
       for (const each of records.findBy('rootId', node.rootId)) {
         if (each.parentId === undefined) continue;
         const siblings = childrenOf.get(each.parentId);
         if (siblings) siblings.push(each);
         else childrenOf.set(each.parentId, [each]);
       }
-      const grow = (parent: TNode): RunTree => ({ ...parent, children: (childrenOf.get(parent.id) ?? []).map(grow) });
+      const grow = (parent: RunNode): RunTree => ({ ...parent, children: (childrenOf.get(parent.id) ?? []).map(grow) });
       return grow(node);
     },
     findRuns: ({ flowId, limit, cursor } = {}) => (flowId === undefined
-      ? records.findBy('tNodeType', 'flow', { reverse: true, limit, cursor })
+      ? records.findBy('kind', 'flow', { reverse: true, limit, cursor })
       : records.findBy('runOf', flowId, { reverse: true, limit, cursor })),
     stopActive() {
       const now = Date.now();

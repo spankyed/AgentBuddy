@@ -178,7 +178,7 @@ describe('services.appData', () => {
   it('brings back the run history a backup holds, with what was running then stopped', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-history-backup-'));
     dirs.push(dir);
-    const { id } = services.runHistory.start({ tNodeType: 'flow', label: 'Running at the backup' });
+    const { id } = services.runHistory.start({ kind: 'flow', label: 'Running at the backup' });
     const backup = await services.appData.exportBackup(dir, 'history', ['lmdb', 'runHistory']);
     services.runHistory.update(id, { label: 'Changed since' });
 
@@ -196,7 +196,7 @@ describe('services.appData', () => {
 
 describe('a reset', () => {
   it('empties the run history with the database', async () => {
-    const { id } = services.runHistory.start({ tNodeType: 'flow', label: 'Before the reset' });
+    const { id } = services.runHistory.start({ kind: 'flow', label: 'Before the reset' });
 
     await services.appData.reset();
 

@@ -11,7 +11,7 @@ import type { Contract } from './contract.ts';
 import { executeQuery } from './execute/query.ts';
 import { executeTransaction } from './execute/transaction.ts';
 import { generateSchemaInfo } from './repository/schema.ts';
-import type { TNodeId } from '@apackdev/sdk/steps';
+import type { RunNodeId } from '@apackdev/sdk/steps';
 import { createLogger } from '@apackdev/sdk/logger';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
@@ -133,7 +133,7 @@ export const databaseSystem = setup({
       
       try {
         // The events a flow run heard are its children, each with what it ran; newest first, a page at a time
-        const all = (services.runHistory.tree(flowId as TNodeId)?.children ?? []).reverse();
+        const all = (services.runHistory.tree(flowId as RunNodeId)?.children ?? []).reverse();
         const events = all.slice(offset, offset + limit);
         logger.info('Retrieved events for flow', { count: events.length, flowId });
         broadcastToSurface('database', { 
@@ -158,7 +158,7 @@ export const databaseSystem = setup({
       const { nodeId } = databaseSpec.typeOf('GET_NODE_DETAILS', event);
       
       try {
-        const details = services.runHistory.get(nodeId as TNodeId) ?? null;
+        const details = services.runHistory.get(nodeId as RunNodeId) ?? null;
         logger.info('Retrieved node details', { nodeId });
         broadcastToSurface('database', { 
           type: 'NODE_DETAILS_RESULT',

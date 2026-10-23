@@ -6,8 +6,8 @@ import { defineSystem } from '@apackdev/sdk/framework';
 
 import { EARS } from '#generated/ears.ts';
 import type { Contract } from './contract.ts';
-import type { BrainContext, FlowTNodeData } from './types.ts';
-import type { TNodeId } from '@apackdev/sdk/steps';
+import type { BrainContext, FlowRunNodeData } from './types.ts';
+import type { RunNodeId } from '@apackdev/sdk/steps';
 import { repository } from '#generated/repository.ts';
 import { createLogger, reportError, setDebugEnabled, isDebugEnabled } from '@apackdev/sdk/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system.ts';
@@ -80,7 +80,7 @@ export const brainSystem = setup({
 
       // Start new brain and assign to context
       enqueue.assign(({ spawn, self }) => {
-        const { machine, tNodeId } = createFlowNodeSystem(self)
+        const { machine, runNodeId } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
           input: {}
         });
@@ -91,7 +91,7 @@ export const brainSystem = setup({
         return {
           brainActor: actor,
           runningRootFlowId: currentRootFlowId,
-          rootRunId: tNodeId,
+          rootRunId: runNodeId,
           startError: undefined,
         };
       });
@@ -200,8 +200,8 @@ export const brainSystem = setup({
       broadcastToSurface('brain', {
         type: 'RECEIVE_SURFACE_DATA',
         data: {
-          flowTNodeId: '' as EARS.EntityId,
-          tNodeTree: [],
+          flowRunNodeId: '' as EARS.EntityId,
+          runNodeTree: [],
           possibleEvents: [],
           flowHierarchy: [],
         }
@@ -217,13 +217,13 @@ export const brainSystem = setup({
       
       // Start new brain and assign to context
       enqueue.assign(({ spawn, self }) => {
-        const { machine, tNodeId } = createFlowNodeSystem(self)
+        const { machine, runNodeId } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
           input: {}
         });
         
         // Send fresh data after starting new brain
-        const data = repository.brainQueries.rootData(tNodeId);
+        const data = repository.brainQueries.rootData(runNodeId);
         broadcastToSurface('brain', { 
           type: 'RECEIVE_SURFACE_DATA',
           data
@@ -240,26 +240,26 @@ export const brainSystem = setup({
         return {
           brainActor: actor,
           runningRootFlowId: currentRootFlowId,
-          rootRunId: tNodeId,
+          rootRunId: runNodeId,
           startError: undefined,
         };
       });
       enqueue('notifyClientReady');
     }),
     sendSurfaceData: ({ context, event, self }) => {
-      // Use provided flowTNodeId or fall back to root
-      const flowId = event.type === 'REQUEST_SURFACE_DATA' && event.flowTNodeId
-        ? event.flowTNodeId as TNodeId
+      // Use provided flowRunNodeId or fall back to root
+      const flowId = event.type === 'REQUEST_SURFACE_DATA' && event.flowRunNodeId
+        ? event.flowRunNodeId as RunNodeId
         : undefined;
 
-      let data: FlowTNodeData;
+      let data: FlowRunNodeData;
       try {
         data = flowId
-          ? repository.brainQueries.extendedTNodeData(flowId)
+          ? repository.brainQueries.extendedRunNodeData(flowId)
           : repository.brainQueries.rootData(context.rootRunId);
       } catch {
         // A run the history no longer holds (pruned, or the data replaced)
-        data = { flowTNodeId: '' as EARS.EntityId, tNodeTree: [], possibleEvents: [], flowHierarchy: [] };
+        data = { flowRunNodeId: '' as EARS.EntityId, runNodeTree: [], possibleEvents: [], flowHierarchy: [] };
       }
 
       broadcastToSurface('brain', {
@@ -294,51 +294,51 @@ export const brainSystem = setup({
       setDebugEnabled('brain', inspectEnabled);
       broadcastToSurface('brain', { type: 'INSPECT_TOGGLED', enabled: inspectEnabled });
     },
-    openTNode: ({ event }) => {
-      const ev = brainSpec.typeOf('OPEN_TNODE', event);
-      const tNodeId = ev.tNodeId as TNodeId;
+    openRunNode: ({ event }) => {
+      const ev = brainSpec.typeOf('OPEN_RUN_NODE', event);
+      const runNodeId = ev.runNodeId as RunNodeId;
 
-      // Check if this is a flow TNode before trying to get extended data
-      const tNode = repository.brainQueries.tNodeById(tNodeId);
-      if (!tNode || tNode.tNodeType !== 'flow') {
-        // Silently ignore non-flow TNodes
+      // Check if this is a flow RunNode before trying to get extended data
+      const runNode = repository.brainQueries.runNodeById(runNodeId);
+      if (!runNode || runNode.kind !== 'flow') {
+        // Silently ignore non-flow RunNodes
         return;
       }
 
-      const data = repository.brainQueries.extendedTNodeData(tNodeId);
+      const data = repository.brainQueries.extendedRunNodeData(runNodeId);
 
       broadcastToSurface('brain', {
-        type: 'TNODE_OPENED',
-        tNodeId,
+        type: 'RUN_NODE_OPENED',
+        runNodeId,
         data
       });
     },
-    goBackTNode: ({ context, event }) => {
-      const currentFlowTNodeId = brainSpec.typeOf('GO_BACK_TNODE', event).currentFlowTNodeId as TNodeId | undefined;
-      const parentFlow = currentFlowTNodeId ? repository.brainQueries.parentFlowOf(currentFlowTNodeId) : undefined;
+    goBackRunNode: ({ context, event }) => {
+      const currentFlowRunNodeId = brainSpec.typeOf('GO_BACK_RUN_NODE', event).currentFlowRunNodeId as RunNodeId | undefined;
+      const parentFlow = currentFlowRunNodeId ? repository.brainQueries.parentFlowOf(currentFlowRunNodeId) : undefined;
 
       const data = parentFlow
-        ? repository.brainQueries.extendedTNodeData(parentFlow.id)
+        ? repository.brainQueries.extendedRunNodeData(parentFlow.id)
         : repository.brainQueries.rootData(context.rootRunId);
 
       broadcastToSurface('brain', {
-        type: 'TNODE_OPENED',
-        tNodeId: data.flowTNodeId,
+        type: 'RUN_NODE_OPENED',
+        runNodeId: data.flowRunNodeId,
         data
       });
     },
-    getTNodeDetails: ({ event }) => {
-      const ev = brainSpec.typeOf('GET_TNODE_DETAILS', event);
-      const tNodeId = ev.tNodeId as TNodeId;
+    getRunNodeDetails: ({ event }) => {
+      const ev = brainSpec.typeOf('GET_RUN_NODE_DETAILS', event);
+      const runNodeId = ev.runNodeId as RunNodeId;
       
-      const tNode = repository.brainQueries.tNodeById(tNodeId);
-      const revealIn = repository.brainQueries.revealIn(tNodeId);
+      const runNode = repository.brainQueries.runNodeById(runNodeId);
+      const revealIn = repository.brainQueries.revealIn(runNodeId);
       
       broadcastToSurface('brain', {
-        type: 'TNODE_DETAILS',
-        tNodeId,
-        // An event is JSON, where a missing TNode has to be said: null
-        details: tNode ? { ...tNode, ...(revealIn && { revealIn }) } : null
+        type: 'RUN_NODE_DETAILS',
+        runNodeId,
+        // An event is JSON, where a missing RunNode has to be said: null
+        details: runNode ? { ...runNode, ...(revealIn && { revealIn }) } : null
       });
     },
     toggleInspect: () => {
@@ -474,14 +474,14 @@ export const brainSystem = setup({
         always: { guard: ({ context }) => context.brainActor === undefined, target: 'stopped' },
         initial: 'active',
         on: {
-          OPEN_TNODE: {
-            actions: 'openTNode',
+          OPEN_RUN_NODE: {
+            actions: 'openRunNode',
           },
-          GO_BACK_TNODE: {
-            actions: 'goBackTNode',
+          GO_BACK_RUN_NODE: {
+            actions: 'goBackRunNode',
           },
-          GET_TNODE_DETAILS: {
-            actions: 'getTNodeDetails',
+          GET_RUN_NODE_DETAILS: {
+            actions: 'getRunNodeDetails',
           },
           TOGGLE_INSPECT: {
             actions: 'toggleInspect',
@@ -505,13 +505,13 @@ export const brainSystem = setup({
             actions: 'killBrain',
             target: 'stopped',
           },
-          TNODE_SPAWNED: {
+          RUN_NODE_SPAWNED: {
             actions: ({ event }) => {
               // Forward to frontend
               broadcastToSurface('brain', event);
             }
           },
-          TNODE_UPDATED: {
+          RUN_NODE_UPDATED: {
             actions: ({ event }) => {
               // Forward to frontend
               broadcastToSurface('brain', event);

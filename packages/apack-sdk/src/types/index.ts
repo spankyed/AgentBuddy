@@ -4,7 +4,7 @@ export type {
   DocumentEntity, CollectionEntity, DocumentShortCode, ContentSection, ContentType,
   FieldContent, ListContent, MarkdownContent, TextContent, CodeContent,
 } from './sdk-entities.ts';
-export type { TNodeKind } from '../steps/types.ts';
+export type { RunNodeKind } from '../steps/types.ts';
 // The SDK-owned entity types, relation kinds and roles
 export { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES, SDK_ROW_RULES } from './sdk-entities.ts';
 export { _reservedEntries } from './reserved-names.ts';

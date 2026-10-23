@@ -118,15 +118,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
-import type { TNode } from '@apackdev/sdk/steps';
+import type { RunNode } from '@apackdev/sdk/steps';
 import type { EARS } from '@apackdev/sdk';
 type EntityId = EARS.EntityId;
 import DataRenderer from '@apackdev/ui/components/DataRenderer';
 import { openSurface } from '#generated/fe.ts';
 
 interface Props {
-  /** The run node, with where its blueprint is when it has one (the brain's TNODE_DETAILS) */
-  node?: TNode & { revealIn?: { flowId: EntityId; nodeId: EntityId } };
+  /** The run node, with where its blueprint is when it has one (the brain's RUN_NODE_DETAILS) */
+  node?: RunNode & { revealIn?: { flowId: EntityId; nodeId: EntityId } };
 }
 
 const props = defineProps<Props>();

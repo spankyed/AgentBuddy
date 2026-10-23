@@ -1,13 +1,13 @@
-import type { TNode, RunTree } from '@apackdev/sdk/steps'
+import type { RunNode, RunTree } from '@apackdev/sdk/steps'
 
-export interface NormalizedTNodeTree {
-  byId: Record<string, TNode>;
+export interface NormalizedRunNodeTree {
+  byId: Record<string, RunNode>;
   rootIds: string[];
   childrenById: Record<string, string[]>;
 }
 
-export function normalizeTNodeTree(tree: RunTree[]): NormalizedTNodeTree {
-  const normalized: NormalizedTNodeTree = {
+export function normalizeRunNodeTree(tree: RunTree[]): NormalizedRunNodeTree {
+  const normalized: NormalizedRunNodeTree = {
     byId: {},
     rootIds: [],
     childrenById: {}
@@ -15,7 +15,7 @@ export function normalizeTNodeTree(tree: RunTree[]): NormalizedTNodeTree {
 
   function processNode(node: RunTree, isRoot = false) {
     const { children, ...nodeWithoutChildren } = node;
-    normalized.byId[node.id] = nodeWithoutChildren as TNode;
+    normalized.byId[node.id] = nodeWithoutChildren as RunNode;
 
     if (isRoot && !normalized.rootIds.includes(node.id)) {
       normalized.rootIds.push(node.id);
@@ -38,7 +38,7 @@ export function normalizeTNodeTree(tree: RunTree[]): NormalizedTNodeTree {
   return normalized;
 }
 
-export function denormalizeTNodeTree(normalized: NormalizedTNodeTree): RunTree[] {
+export function denormalizeRunNodeTree(normalized: NormalizedRunNodeTree): RunTree[] {
   function buildNode(id: string): RunTree {
     const node = normalized.byId[id];
     const childIds = normalized.childrenById[id] || [];
@@ -56,19 +56,19 @@ function withoutId(ids: string[], id: string): string[] {
   return ids.filter(existingId => existingId !== id);
 }
 
-export function applyTNodeSpawn(
-  tree: NormalizedTNodeTree | undefined,
-  tNode: TNode,
+export function applyRunNodeSpawn(
+  tree: NormalizedRunNodeTree | undefined,
+  runNode: RunNode,
   parentId: string | undefined,
-  currentFlowTNodeId: string | undefined,
-): NormalizedTNodeTree {
-  const isDirectFlowChild = parentId === currentFlowTNodeId;
+  currentFlowRunNodeId: string | undefined,
+): NormalizedRunNodeTree {
+  const isDirectFlowChild = parentId === currentFlowRunNodeId;
 
   if (!tree) {
     return {
-      byId: { [tNode.id]: tNode },
-      rootIds: (!parentId || isDirectFlowChild) ? [tNode.id] : [],
-      childrenById: { [tNode.id]: [] }
+      byId: { [runNode.id]: runNode },
+      rootIds: (!parentId || isDirectFlowChild) ? [runNode.id] : [],
+      childrenById: { [runNode.id]: [] }
     };
   }
 
@@ -78,15 +78,15 @@ export function applyTNodeSpawn(
     childrenById: { ...tree.childrenById }
   };
 
-  const alreadyExists = !!newTree.byId[tNode.id];
-  newTree.byId[tNode.id] = tNode;
-  newTree.childrenById[tNode.id] = newTree.childrenById[tNode.id] || [];
+  const alreadyExists = !!newTree.byId[runNode.id];
+  newTree.byId[runNode.id] = runNode;
+  newTree.childrenById[runNode.id] = newTree.childrenById[runNode.id] || [];
 
   if (alreadyExists) {
-    newTree.rootIds = withoutId(newTree.rootIds, tNode.id);
+    newTree.rootIds = withoutId(newTree.rootIds, runNode.id);
     for (const [nodeId, childIds] of Object.entries(newTree.childrenById)) {
-      if (nodeId === tNode.id) continue;
-      newTree.childrenById[nodeId] = withoutId(childIds, tNode.id);
+      if (nodeId === runNode.id) continue;
+      newTree.childrenById[nodeId] = withoutId(childIds, runNode.id);
     }
   }
 
@@ -96,11 +96,11 @@ export function applyTNodeSpawn(
     } else {
       newTree.childrenById[parentId] = [...newTree.childrenById[parentId]];
     }
-    if (!newTree.childrenById[parentId].includes(tNode.id)) {
-      newTree.childrenById[parentId].push(tNode.id);
+    if (!newTree.childrenById[parentId].includes(runNode.id)) {
+      newTree.childrenById[parentId].push(runNode.id);
     }
-  } else if (!newTree.rootIds.includes(tNode.id)) {
-    newTree.rootIds.push(tNode.id);
+  } else if (!newTree.rootIds.includes(runNode.id)) {
+    newTree.rootIds.push(runNode.id);
   }
 
   return newTree;

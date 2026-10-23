@@ -1,4 +1,4 @@
-// A flow spawns a child actor per step and per subflow, each under a `step-tnode-…`/`flow-tnode-…` id.
+// A flow spawns a child actor per step and per subflow, each under a `step-run-node-…`/`flow-run-node-…` id.
 // XState tracks a parent's children by their own id, so each spawn names one: without it they share a key,
 // the parent holds only the last, and stopping the flow leaves the rest running.
 import { describe, expect, it } from 'vitest'

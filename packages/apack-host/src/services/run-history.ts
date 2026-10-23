@@ -1,5 +1,5 @@
 import type { RecordStore } from '@apackdev/ears';
-import { _createRunHistory, type RunHistory, type TNode } from '@apackdev/sdk/services';
+import { _createRunHistory, type RunHistory, type RunNode } from '@apackdev/sdk/services';
 import { createLogger } from '@apackdev/sdk/logger';
 
 const logger = createLogger('run-history');
@@ -13,7 +13,7 @@ export const RUN_HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
  * that ended more than `RUN_HISTORY_RETENTION_MS` ago is removed with all it ran. A session the app stopped this way
  * ended now, so it is kept for the full period from here.
  */
-export function createRunHistory(store: RecordStore<TNode>): RunHistory {
+export function createRunHistory(store: RecordStore<RunNode>): RunHistory {
   const history = _createRunHistory(store);
   history.stopActive();
   const removed = history.prune({ before: Date.now() - RUN_HISTORY_RETENTION_MS });

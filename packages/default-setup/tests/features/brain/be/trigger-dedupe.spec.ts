@@ -12,7 +12,7 @@ describe('brain trigger dedupe', () => {
 
     const deduped = dedupeMatchingTriggerNodes(nodes, {
       flowId: 'Flow-root' as EARS.EntityId,
-      flowTNodeId: 'TNode-root' as EARS.EntityId,
+      flowRunNodeId: 'RunNode-root' as EARS.EntityId,
       eventType: 'user.message',
     });
 
@@ -37,7 +37,7 @@ describe('brain trigger dedupe', () => {
 
     const deduped = dedupeMatchingTriggerNodes(nodes, {
       flowId: 'Flow-root' as EARS.EntityId,
-      flowTNodeId: 'TNode-root' as EARS.EntityId,
+      flowRunNodeId: 'RunNode-root' as EARS.EntityId,
       eventType: 'user.message',
     });
 
@@ -53,7 +53,7 @@ describe('brain trigger dedupe', () => {
 
     const deduped = dedupeMatchingTriggerNodes(nodes, {
       flowId: 'Flow-root' as EARS.EntityId,
-      flowTNodeId: 'TNode-root' as EARS.EntityId,
+      flowRunNodeId: 'RunNode-root' as EARS.EntityId,
       eventType: 'user.message',
     });
 

@@ -248,7 +248,7 @@ export const flowRepository = {
    * **The file owns a flow's interior and nothing that points into it.** The interior is what the file writes —
    * the flow's own fields, its nodes, and the relations leaving them (`INTERIOR_KINDS`, plus any kind the file
    * emits). Everything else is the database's and survives by construction: a link from another entity (a run's
-   * TNode, another flow's subflow), the flow's fields the file doesn't declare (a content key, a user's
+   * RunNode, another flow's subflow), the flow's fields the file doesn't declare (a content key, a user's
    * description), and its roles. So identity is kept — a flow or node the file still declares keeps its id, and
    * so does each relation it keeps — a node the file dropped goes with its edges, and importing the same file
    * twice changes nothing.

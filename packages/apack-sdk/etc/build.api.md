@@ -809,6 +809,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 defaults?: Record<string, unknown> | undefined;
             };
+            kind?: "step" | "trigger" | undefined;
             trigger?: {
                 compile: string;
                 decompile: string;
@@ -819,7 +820,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 validateTrack?: string | undefined;
                 register?: string | undefined;
             } | undefined;
-            kind?: "step" | "trigger" | undefined;
             build?: {
                 compile: string;
                 validate: string;
@@ -852,6 +852,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 defaults?: Record<string, unknown> | undefined;
             };
+            kind?: "step" | "trigger" | undefined;
             trigger?: {
                 compile: string;
                 decompile: string;
@@ -862,7 +863,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 validateTrack?: string | undefined;
                 register?: string | undefined;
             } | undefined;
-            kind?: "step" | "trigger" | undefined;
             build?: {
                 compile: string;
                 validate: string;
@@ -952,6 +952,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 defaults?: Record<string, unknown> | undefined;
             };
+            kind?: "step" | "trigger" | undefined;
             trigger?: {
                 compile: string;
                 decompile: string;
@@ -962,7 +963,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 validateTrack?: string | undefined;
                 register?: string | undefined;
             } | undefined;
-            kind?: "step" | "trigger" | undefined;
             build?: {
                 compile: string;
                 validate: string;
@@ -1030,6 +1030,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 defaults?: Record<string, unknown> | undefined;
             };
+            kind?: "step" | "trigger" | undefined;
             trigger?: {
                 compile: string;
                 decompile: string;
@@ -1040,7 +1041,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 validateTrack?: string | undefined;
                 register?: string | undefined;
             } | undefined;
-            kind?: "step" | "trigger" | undefined;
             build?: {
                 compile: string;
                 validate: string;
@@ -1394,6 +1394,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 defaults?: Record<string, unknown> | undefined;
             };
+            kind?: "step" | "trigger" | undefined;
             trigger?: {
                 compile: string;
                 decompile: string;
@@ -1404,7 +1405,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 validateTrack?: string | undefined;
                 register?: string | undefined;
             } | undefined;
-            kind?: "step" | "trigger" | undefined;
             build?: {
                 compile: string;
                 validate: string;
@@ -1560,6 +1560,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 defaults?: Record<string, unknown> | undefined;
             };
+            kind?: "step" | "trigger" | undefined;
             trigger?: {
                 compile: string;
                 decompile: string;
@@ -1570,7 +1571,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 validateTrack?: string | undefined;
                 register?: string | undefined;
             } | undefined;
-            kind?: "step" | "trigger" | undefined;
             build?: {
                 compile: string;
                 validate: string;
@@ -1740,6 +1740,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 defaults?: Record<string, unknown> | undefined;
             };
+            kind?: "step" | "trigger" | undefined;
             trigger?: {
                 compile: string;
                 decompile: string;
@@ -1750,7 +1751,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 validateTrack?: string | undefined;
                 register?: string | undefined;
             } | undefined;
-            kind?: "step" | "trigger" | undefined;
             build?: {
                 compile: string;
                 validate: string;
@@ -1906,6 +1906,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 defaults?: Record<string, unknown> | undefined;
             };
+            kind?: "step" | "trigger" | undefined;
             trigger?: {
                 compile: string;
                 decompile: string;
@@ -1916,7 +1917,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 validateTrack?: string | undefined;
                 register?: string | undefined;
             } | undefined;
-            kind?: "step" | "trigger" | undefined;
             build?: {
                 compile: string;
                 validate: string;
@@ -2086,6 +2086,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 defaults?: Record<string, unknown> | undefined;
             };
+            kind?: "step" | "trigger" | undefined;
             trigger?: {
                 compile: string;
                 decompile: string;
@@ -2096,7 +2097,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 validateTrack?: string | undefined;
                 register?: string | undefined;
             } | undefined;
-            kind?: "step" | "trigger" | undefined;
             build?: {
                 compile: string;
                 validate: string;
@@ -2348,6 +2348,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             defaultLabel?: string | undefined;
             defaults?: Record<string, unknown> | undefined;
         };
+        kind?: "step" | "trigger" | undefined;
         trigger?: {
             compile: string;
             decompile: string;
@@ -2358,7 +2359,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             validateTrack?: string | undefined;
             register?: string | undefined;
         } | undefined;
-        kind?: "step" | "trigger" | undefined;
         build?: {
             compile: string;
             validate: string;
@@ -2391,6 +2391,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             defaultLabel?: string | undefined;
             defaults?: Record<string, unknown> | undefined;
         };
+        kind?: "step" | "trigger" | undefined;
         trigger?: {
             compile: string;
             decompile: string;
@@ -2401,7 +2402,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             validateTrack?: string | undefined;
             register?: string | undefined;
         } | undefined;
-        kind?: "step" | "trigger" | undefined;
         build?: {
             compile: string;
             validate: string;
@@ -2569,6 +2569,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             defaultLabel?: string | undefined;
             defaults?: Record<string, unknown> | undefined;
         };
+        kind?: "step" | "trigger" | undefined;
         trigger?: {
             compile: string;
             decompile: string;
@@ -2579,7 +2580,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             validateTrack?: string | undefined;
             register?: string | undefined;
         } | undefined;
-        kind?: "step" | "trigger" | undefined;
         build?: {
             compile: string;
             validate: string;
@@ -2689,6 +2689,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             defaultLabel?: string | undefined;
             defaults?: Record<string, unknown> | undefined;
         };
+        kind?: "step" | "trigger" | undefined;
         trigger?: {
             compile: string;
             decompile: string;
@@ -2699,7 +2700,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             validateTrack?: string | undefined;
             register?: string | undefined;
         } | undefined;
-        kind?: "step" | "trigger" | undefined;
         build?: {
             compile: string;
             validate: string;
@@ -2823,6 +2823,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             defaultLabel?: string | undefined;
             defaults?: Record<string, unknown> | undefined;
         };
+        kind?: "step" | "trigger" | undefined;
         trigger?: {
             compile: string;
             decompile: string;
@@ -2833,7 +2834,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             validateTrack?: string | undefined;
             register?: string | undefined;
         } | undefined;
-        kind?: "step" | "trigger" | undefined;
         build?: {
             compile: string;
             validate: string;
@@ -2943,6 +2943,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             defaultLabel?: string | undefined;
             defaults?: Record<string, unknown> | undefined;
         };
+        kind?: "step" | "trigger" | undefined;
         trigger?: {
             compile: string;
             decompile: string;
@@ -2953,7 +2954,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             validateTrack?: string | undefined;
             register?: string | undefined;
         } | undefined;
-        kind?: "step" | "trigger" | undefined;
         build?: {
             compile: string;
             validate: string;
@@ -3077,6 +3077,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             defaultLabel?: string | undefined;
             defaults?: Record<string, unknown> | undefined;
         };
+        kind?: "step" | "trigger" | undefined;
         trigger?: {
             compile: string;
             decompile: string;
@@ -3087,7 +3088,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             validateTrack?: string | undefined;
             register?: string | undefined;
         } | undefined;
-        kind?: "step" | "trigger" | undefined;
         build?: {
             compile: string;
             validate: string;
@@ -3700,6 +3700,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         defaultLabel?: string | undefined;
         defaults?: Record<string, unknown> | undefined;
     };
+    kind?: "step" | "trigger" | undefined;
     trigger?: {
         compile: string;
         decompile: string;
@@ -3710,7 +3711,6 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         validateTrack?: string | undefined;
         register?: string | undefined;
     } | undefined;
-    kind?: "step" | "trigger" | undefined;
     build?: {
         compile: string;
         validate: string;
@@ -3743,6 +3743,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         defaultLabel?: string | undefined;
         defaults?: Record<string, unknown> | undefined;
     };
+    kind?: "step" | "trigger" | undefined;
     trigger?: {
         compile: string;
         decompile: string;
@@ -3753,7 +3754,6 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         validateTrack?: string | undefined;
         register?: string | undefined;
     } | undefined;
-    kind?: "step" | "trigger" | undefined;
     build?: {
         compile: string;
         validate: string;
@@ -3786,6 +3786,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         defaultLabel?: string | undefined;
         defaults?: Record<string, unknown> | undefined;
     };
+    kind?: "step" | "trigger" | undefined;
     trigger?: {
         compile: string;
         decompile: string;
@@ -3796,7 +3797,6 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         validateTrack?: string | undefined;
         register?: string | undefined;
     } | undefined;
-    kind?: "step" | "trigger" | undefined;
     build?: {
         compile: string;
         validate: string;
@@ -3829,6 +3829,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         defaultLabel?: string | undefined;
         defaults?: Record<string, unknown> | undefined;
     };
+    kind?: "step" | "trigger" | undefined;
     trigger?: {
         compile: string;
         decompile: string;
@@ -3839,7 +3840,6 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         validateTrack?: string | undefined;
         register?: string | undefined;
     } | undefined;
-    kind?: "step" | "trigger" | undefined;
     build?: {
         compile: string;
         validate: string;

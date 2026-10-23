@@ -3,7 +3,7 @@ import { hasOwn } from '../utils/shared.ts';
 // the host's registry
 /**
  * The entries of `declared` (a pack's `entities` or `relKinds`) that use a name `reserved` owns: its key or
- * its value. Each is written as it appears in apack.json (`"Flow"`, or `"Run": "TNode"` when they differ).
+ * its value. Each is written as it appears in apack.json (`"Flow"`, or `"Run": "RunNode"` when they differ).
  *
  * @internal
  */

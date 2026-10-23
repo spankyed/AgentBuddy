@@ -337,6 +337,9 @@ export interface RelationEntity extends BaseEntity {
 export function _reservedEntries(declared: Record<string, string>, reserved: Record<string, string>): string[];
 
 // @public (undocumented)
+export type RunNodeKind = 'flow' | 'event' | 'step';
+
+// @public (undocumented)
 export const SDK_ENTITIES: {
     readonly Relation: "Relation";
     readonly Flow: "Flow";
@@ -553,9 +556,6 @@ export interface TextContent {
     // (undocumented)
     type: 'text';
 }
-
-// @public (undocumented)
-export type TNodeKind = 'flow' | 'event' | 'step';
 
 // (No @packageDocumentation comment for this package)
 

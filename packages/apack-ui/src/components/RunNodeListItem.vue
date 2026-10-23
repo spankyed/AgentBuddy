@@ -1,15 +1,15 @@
 <template>
   <div
-    class="tnode-item"
+    class="run-node-item"
     :class="{ 'has-children': hasChildren(node) }"
   >
     <div
-      class="relative w-full overflow-hidden tnode-container group"
+      class="relative w-full overflow-hidden run-node-container group"
       :class="[itemClasses, isExpanded && (hasChildren(node) || hasDetails) ? 'expanded' : '']"
     >
       <!-- Clickable header area -->
       <button
-        class="relative w-full tnode-header"
+        class="relative w-full run-node-header"
         :class="[glowClasses]"
         @click="handleClick"
         @dblclick="handleDoubleClick"
@@ -66,7 +66,7 @@
       </button>
 
       <!-- Inline Details Section (when expanded) -->
-      <div v-if="isExpanded && hasDetails" class="tnode-details">
+      <div v-if="isExpanded && hasDetails" class="run-node-details">
         <div class="mx-3 mb-3 px-4 py-3 bg-neutral-900/80 rounded-b-lg border-t border-neutral-800/50">
           <!-- Node Attributes (lazy loaded or from node itself) -->
           <div v-if="displayNodeAttributes && Object.keys(displayNodeAttributes).length > 0" class="mb-3">
@@ -80,13 +80,13 @@
             <!-- Left side: Step/Event/Flow Type and Entity ID -->
             <div class="flex items-center gap-x-3 min-w-[150px] mr-auto">
               <!-- Step/Event/Flow Type -->
-              <span v-if="node.tNodeType === 'flow'" class="text-purple-400 font-medium flex-shrink-0">
+              <span v-if="node.kind === 'flow'" class="text-purple-400 font-medium flex-shrink-0">
                 flow
               </span>
-              <span v-else-if="node.tNodeType === 'step' && node.stepNodeType" class="text-blue-400 font-medium flex-shrink-0">
+              <span v-else-if="node.kind === 'step' && node.stepNodeType" class="text-blue-400 font-medium flex-shrink-0">
                 {{ node.stepNodeType }}
               </span>
-              <span v-else-if="node.tNodeType === 'event' && node.eventType" class="text-purple-400 font-medium flex-shrink-0">
+              <span v-else-if="node.kind === 'event' && node.eventType" class="text-purple-400 font-medium flex-shrink-0">
                 {{ node.eventType }}
               </span>
 
@@ -116,8 +116,8 @@
       </div>
 
       <!-- Children nested inside parent container -->
-      <div v-if="isExpanded && hasChildren(node)" class="tnode-children">
-        <TNodeListItem
+      <div v-if="isExpanded && hasChildren(node)" class="run-node-children">
+        <RunNodeListItem
           v-for="child in (node as RunTree).children"
           :key="child.id"
           :node="child"
@@ -135,17 +135,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
-import type { RunTree, TNode } from '@apackdev/sdk/steps';
+import type { RunTree, RunNode } from '@apackdev/sdk/steps';
 import DataRenderer from './DataRenderer.vue';
 import { useNodeStyles } from './node-styles.ts'
 
 const { getNodeConfig, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getNodeStatusClasses } = useNodeStyles()
 
 interface Props {
-  node: TNode | RunTree;
+  node: RunNode | RunTree;
   depth?: number;
-  nodeDetails?: TNode;
-  nodeDetailsMap?: Map<string, TNode>;
+  nodeDetails?: RunNode;
+  nodeDetailsMap?: Map<string, RunNode>;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -155,19 +155,19 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'toggle': [nodeId: string];
   'request-details': [nodeId: string];
-  'open-flow': [tNodeId: string];
+  'open-flow': [runNodeId: string];
 }>();
 
 const isExpanded = ref(false);
 
-const hasChildren = (node: TNode | RunTree): node is RunTree => {
+const hasChildren = (node: RunNode | RunTree): node is RunTree => {
   return 'children' in node && Array.isArray(node.children) && node.children.length > 0;
 };
 
 const hasDetails = computed(() => {
-  return props.node.tNodeType === 'flow' ||
-         props.node.tNodeType === 'step' ||
-         props.node.tNodeType === 'event' ||
+  return props.node.kind === 'flow' ||
+         props.node.kind === 'step' ||
+         props.node.kind === 'event' ||
          props.node.nodeAttributes ||
          props.nodeDetails?.nodeAttributes;
 });
@@ -181,11 +181,11 @@ const displayNodeAttributes = computed(() => {
 const effectiveNodeType = computed((): string => {
   if (!props.node) return 'neutral';
 
-  if (props.node.tNodeType === 'step' && props.node.stepNodeType) {
+  if (props.node.kind === 'step' && props.node.stepNodeType) {
     return props.node.stepNodeType;
   }
 
-  switch (props.node.tNodeType) {
+  switch (props.node.kind) {
     case 'flow': return 'flow';
     case 'event': return 'listener';
     default: return 'action';
@@ -223,9 +223,9 @@ const statusRingClasses = computed(() => {
 });
 
 function getNodeTypeLabel(): string {
-  if (props.node.tNodeType === 'flow') return 'Flow Node';
-  if (props.node.tNodeType === 'event') return props.node.eventType || 'Event';
-  if (props.node.tNodeType === 'step') return props.node.stepNodeType || 'Step';
+  if (props.node.kind === 'flow') return 'Flow Node';
+  if (props.node.kind === 'event') return props.node.eventType || 'Event';
+  if (props.node.kind === 'step') return props.node.stepNodeType || 'Step';
   return 'Unknown Node';
 }
 
@@ -277,13 +277,13 @@ const handleDoubleClick = () => {
 </script>
 
 <style scoped>
-.tnode-item {
+.run-node-item {
   user-select: none;
   margin-bottom: 0.25rem;
   width: 100%;
 }
 
-.tnode-container {
+.run-node-container {
   border-radius: 0.375rem;
   border: 1px solid transparent;
   background: rgba(255, 255, 255, 0.02);
@@ -295,7 +295,7 @@ const handleDoubleClick = () => {
   }
 }
 
-.tnode-header {
+.run-node-header {
   transform-origin: center;
   position: relative;
   text-align: left;
@@ -307,23 +307,23 @@ const handleDoubleClick = () => {
   border-radius: 0.375rem;
 }
 
-.tnode-header:hover {
+.run-node-header:hover {
   filter: brightness(1.2);
 }
 
-.expanded .tnode-header {
+.expanded .run-node-header {
   border-radius: 0.375rem 0.375rem 0 0;
 }
 
-.expanded .tnode-header:hover {
+.expanded .run-node-header:hover {
   filter: brightness(1.15);
 }
 
-.tnode-header * {
+.run-node-header * {
   transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.tnode-children {
+.run-node-children {
   position: relative;
   padding: 0.5rem 0.75rem;
   animation: slideIn 0.15s ease-out;
@@ -333,15 +333,15 @@ const handleDoubleClick = () => {
   gap: 0.25rem;
 }
 
-.tnode-children .tnode-item:last-child {
+.run-node-children .run-node-item:last-child {
   margin-bottom: 0;
 }
 
-.tnode-children .tnode-item {
+.run-node-children .run-node-item {
   max-width: 100%;
 }
 
-.tnode-details {
+.run-node-details {
   animation: slideIn 0.15s ease-out;
 }
 
@@ -356,11 +356,11 @@ const handleDoubleClick = () => {
   }
 }
 
-.tnode-item:has(.tnode-item .tnode-item .tnode-item) .tnode-header {
+.run-node-item:has(.run-node-item .run-node-item .run-node-item) .run-node-header {
   font-size: 0.6875rem;
 }
 
-.tnode-item.has-children .tnode-container {
+.run-node-item.has-children .run-node-container {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 </style>

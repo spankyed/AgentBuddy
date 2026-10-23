@@ -2,7 +2,7 @@
 import * as fs from 'node:fs';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import type { EARS } from '@apackdev/ears';
-import { _createRunHistory, type TNode, type TNodeId } from '@apackdev/sdk/services';
+import { _createRunHistory, type RunNode, type RunNodeId } from '@apackdev/sdk/services';
 import { findRunningApp, openRunHistoryStore } from '@apackdev/host/database';
 import { toJSON } from './output';
 import { parseDbArgs, TARGET_USAGE, type DbIo } from './target';
@@ -29,7 +29,7 @@ export const RUNS_USAGE = [
 ].join('\n');
 
 /** One line per run: its id, status, when it started, its label and the flow it ran */
-export function runLine(run: TNode): string {
+export function runLine(run: RunNode): string {
   const flow = run.flowId ? `  (${run.flowId})` : '';
   return `${run.id}  ${run.status.padEnd(9)}  ${new Date(run.startedAt).toISOString()}  ${run.label}${flow}`;
 }
@@ -51,7 +51,7 @@ export async function dbRuns(args: string[], io: DbIo): Promise<void> {
   try {
     const history = _createRunHistory(store);
     if (typeof values.run === 'string') {
-      const tree = history.tree(values.run as TNodeId);
+      const tree = history.tree(values.run as RunNodeId);
       if (!tree) throw new Error(`No run node ${values.run} in the run history`);
       io.out(toJSON(tree));
       return;

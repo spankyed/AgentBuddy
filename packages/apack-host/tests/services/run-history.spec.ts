@@ -5,13 +5,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import type { RecordStore } from '@apackdev/ears';
-import type { RunHistory, TNode, TNodeId, TNodeStart } from '@apackdev/sdk/services';
+import type { RunHistory, RunNode, RunNodeId, RunNodeStart } from '@apackdev/sdk/services';
 import { _memoryRunHistoryStore } from '@apackdev/sdk/testing';
 import { openRunHistoryStore } from '../../src/database/open.ts';
 import { createRunHistory, RUN_HISTORY_RETENTION_MS } from '../../src/services/run-history.ts';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-history-'));
-const open: RecordStore<TNode>[] = [];
+const open: RecordStore<RunNode>[] = [];
 afterEach(() => { for (const store of open.splice(0)) store.close(); });
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
@@ -25,15 +25,15 @@ const STORES: Record<string, () => RunHistory> = {
 };
 
 /** Starts a node and returns its id */
-function node(history: RunHistory, fields: Partial<TNodeStart> & Pick<TNodeStart, 'tNodeType'>): TNodeId {
-  return history.start({ label: fields.tNodeType, ...fields }).id;
+function node(history: RunHistory, fields: Partial<RunNodeStart> & Pick<RunNodeStart, 'kind'>): RunNodeId {
+  return history.start({ label: fields.kind, ...fields }).id;
 }
 
 /** A node as a run long ago left it, written to the store directly: times a running app would never give it */
-function recorded(store: RecordStore<TNode>, fields: Partial<TNode> & Pick<TNode, 'tNodeType' | 'startedAt'>): TNodeId {
-  const id = store.newId('TNode') as TNodeId;
+function recorded(store: RecordStore<RunNode>, fields: Partial<RunNode> & Pick<RunNode, 'kind' | 'startedAt'>): RunNodeId {
+  const id = store.newId('RunNode') as RunNodeId;
   const parent = fields.parentId === undefined ? undefined : store.get(fields.parentId);
-  store.put({ label: fields.tNodeType, status: 'completed', ...fields, id, rootId: parent?.rootId ?? id });
+  store.put({ label: fields.kind, status: 'completed', ...fields, id, rootId: parent?.rootId ?? id });
   return id;
 }
 
@@ -42,11 +42,11 @@ describe.each(Object.keys(STORES))('the run history %s', (where) => {
 
   it('builds a tree with each node once, under its own parent', () => {
     const history = fresh();
-    const session = node(history, { tNodeType: 'flow' });
-    const event = node(history, { tNodeType: 'event', parentId: session });
-    const s1 = node(history, { tNodeType: 'step', parentId: event });
-    const s2 = node(history, { tNodeType: 'step', parentId: s1 });
-    const s3 = node(history, { tNodeType: 'step', parentId: s2 });
+    const session = node(history, { kind: 'flow' });
+    const event = node(history, { kind: 'event', parentId: session });
+    const s1 = node(history, { kind: 'step', parentId: event });
+    const s2 = node(history, { kind: 'step', parentId: s1 });
+    const s3 = node(history, { kind: 'step', parentId: s2 });
     const shape = (tree: { id: string; children: unknown[] }): unknown => [tree.id, (tree.children as typeof tree[]).map(shape)];
     // A chain, not a fan: each node appears once, under the node it ran under
     expect(shape(history.tree(event)!)).toEqual([event, [[s1, [[s2, [[s3, []]]]]]]]);
@@ -55,8 +55,8 @@ describe.each(Object.keys(STORES))('the run history %s', (where) => {
 
   it('lists a node\'s children in the order they began, and pages them', () => {
     const history = fresh();
-    const parent = node(history, { tNodeType: 'flow' });
-    const children = Array.from({ length: 4 }, () => node(history, { tNodeType: 'event', parentId: parent }));
+    const parent = node(history, { kind: 'flow' });
+    const children = Array.from({ length: 4 }, () => node(history, { kind: 'event', parentId: parent }));
     expect(history.findChildren(parent).map((child) => child.id)).toEqual(children);
     expect(history.findChildren(parent, { limit: 2, cursor: children[1] }).map((child) => child.id)).toEqual(children.slice(2));
     expect(history.findChildren(parent, { reverse: true, limit: 1 }).map((child) => child.id)).toEqual([children[3]]);
@@ -64,10 +64,10 @@ describe.each(Object.keys(STORES))('the run history %s', (where) => {
 
   it('finds flow runs newest first, of one flow or of every flow', () => {
     const history = fresh();
-    const session = node(history, { tNodeType: 'flow', flowId: 'Flow-root' });
-    const first = node(history, { tNodeType: 'flow', flowId: 'Flow-a', parentId: session });
-    node(history, { tNodeType: 'step', flowId: 'Flow-a', parentId: first });
-    const second = node(history, { tNodeType: 'flow', flowId: 'Flow-b', parentId: session });
+    const session = node(history, { kind: 'flow', flowId: 'Flow-root' });
+    const first = node(history, { kind: 'flow', flowId: 'Flow-a', parentId: session });
+    node(history, { kind: 'step', flowId: 'Flow-a', parentId: first });
+    const second = node(history, { kind: 'flow', flowId: 'Flow-b', parentId: session });
     expect(history.findRuns({ flowId: 'Flow-a' }).map((run) => run.id)).toEqual([first]);
     expect(history.findRuns().map((run) => run.id)).toEqual([second, first, session]);
     // What a record carries only to be found by is not part of the node
@@ -76,8 +76,8 @@ describe.each(Object.keys(STORES))('the run history %s', (where) => {
 
   it('marks every node still active as stopped', () => {
     const history = fresh();
-    const session = node(history, { tNodeType: 'flow' });
-    const done = node(history, { tNodeType: 'step', parentId: session });
+    const session = node(history, { kind: 'flow' });
+    const done = node(history, { kind: 'step', parentId: session });
     history.finish(done, 'completed');
     history.stopActive();
     expect(history.get(session)).toMatchObject({ status: 'stopped', completedAt: expect.any(Number) });
@@ -86,17 +86,17 @@ describe.each(Object.keys(STORES))('the run history %s', (where) => {
 
   it('drops a node whose parent it does not hold, and ignores a write to one it does not hold', () => {
     const history = fresh();
-    const orphan = node(history, { tNodeType: 'step', parentId: 'TNode-missing' });
+    const orphan = node(history, { kind: 'step', parentId: 'RunNode-missing' });
     expect(history.get(orphan)).toBeUndefined();
-    history.update('TNode-missing', { label: 'x' });
-    history.finish('TNode-missing', 'completed');
-    expect(history.get('TNode-missing')).toBeUndefined();
+    history.update('RunNode-missing', { label: 'x' });
+    history.finish('RunNode-missing', 'completed');
+    expect(history.get('RunNode-missing')).toBeUndefined();
   });
 
   it('starts a node now and active, under its parent\'s root, and ends it now with its status', () => {
     const history = fresh();
-    const session = history.start({ tNodeType: 'flow', label: 'Session' });
-    const step = history.start({ tNodeType: 'step', label: 'Step', parentId: session.id, resolvedParams: { text: 'x'.repeat(20_000) } });
+    const session = history.start({ kind: 'flow', label: 'Session' });
+    const step = history.start({ kind: 'step', label: 'Step', parentId: session.id, resolvedParams: { text: 'x'.repeat(20_000) } });
     // Returned as given, not as stored: a step runs on its params whole
     expect(step).toMatchObject({ status: 'active', rootId: session.id, startedAt: expect.any(Number), resolvedParams: { text: 'x'.repeat(20_000) } });
     history.finish(step.id, 'failed');
@@ -105,7 +105,7 @@ describe.each(Object.keys(STORES))('the run history %s', (where) => {
 
   it('bounds a long result once, however often the node is written after', () => {
     const history = fresh();
-    const step = node(history, { tNodeType: 'flow' });
+    const step = node(history, { kind: 'flow' });
     history.update(step, { result: { text: 'x'.repeat(20_000) } });
     history.update(step, { label: 'Renamed' });
     history.finish(step, 'completed');
@@ -116,7 +116,7 @@ describe.each(Object.keys(STORES))('the run history %s', (where) => {
 
   it('stores what a step returned in a form the store can hold', () => {
     const history = fresh();
-    const step = node(history, { tNodeType: 'flow' });
+    const step = node(history, { kind: 'flow' });
     history.update(step, { result: { count: 10n } });
     expect(history.get(step)).toMatchObject({ result: { count: '10' } });
   });
@@ -127,7 +127,7 @@ describe('the app\'s run history', () => {
     const dir = path.join(fs.mkdtempSync(path.join(root, 'case-')), 'run-history');
     const store = openRunHistoryStore(dir);
     const before = createRunHistory(store);
-    const left = node(before, { tNodeType: 'flow' });
+    const left = node(before, { kind: 'flow' });
     store.close();
 
     const reopened = openRunHistoryStore(dir);
@@ -139,10 +139,10 @@ describe('the app\'s run history', () => {
     const dir = path.join(fs.mkdtempSync(path.join(root, 'case-')), 'run-history');
     const store = openRunHistoryStore(dir);
     const old = Date.now() - RUN_HISTORY_RETENTION_MS - 60_000;
-    const session = recorded(store, { tNodeType: 'flow', startedAt: old, completedAt: old });
-    const event = recorded(store, { tNodeType: 'event', parentId: session, startedAt: old });
-    const subflow = recorded(store, { tNodeType: 'flow', parentId: event, startedAt: old });
-    const step = recorded(store, { tNodeType: 'step', parentId: subflow, startedAt: old });
+    const session = recorded(store, { kind: 'flow', startedAt: old, completedAt: old });
+    const event = recorded(store, { kind: 'event', parentId: session, startedAt: old });
+    const subflow = recorded(store, { kind: 'flow', parentId: event, startedAt: old });
+    const step = recorded(store, { kind: 'step', parentId: subflow, startedAt: old });
     store.close();
 
     const reopened = openRunHistoryStore(dir);
@@ -156,10 +156,10 @@ describe('the app\'s run history', () => {
     const store = openRunHistoryStore(dir);
     const old = Date.now() - RUN_HISTORY_RETENTION_MS - 60_000;
     // A long session: it started before the period and ended within it, so what it ran first is as old as it is
-    const ended = recorded(store, { tNodeType: 'flow', startedAt: old, completedAt: Date.now() });
-    const endedStep = recorded(store, { tNodeType: 'step', parentId: ended, startedAt: old });
-    const running = recorded(store, { tNodeType: 'flow', status: 'active', startedAt: old });
-    const runningStep = recorded(store, { tNodeType: 'step', parentId: running, startedAt: old });
+    const ended = recorded(store, { kind: 'flow', startedAt: old, completedAt: Date.now() });
+    const endedStep = recorded(store, { kind: 'step', parentId: ended, startedAt: old });
+    const running = recorded(store, { kind: 'flow', status: 'active', startedAt: old });
+    const runningStep = recorded(store, { kind: 'step', parentId: running, startedAt: old });
     store.close();
 
     const reopened = openRunHistoryStore(dir);

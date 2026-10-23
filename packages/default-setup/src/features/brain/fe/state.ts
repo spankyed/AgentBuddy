@@ -6,14 +6,14 @@ import { Activity, Play, RefreshCw, Power, PlayCircle, Pause } from 'lucide-vue-
 import { targetIs, type TrailClickEvent } from '@apackdev/sdk/fe';
 import type { BrainContext } from './contract.ts';
 import type { OutgoingBrainEvents } from '#features/brain/be/types.ts'
-import type { FlowTNodeData } from '#generated/types.ts';
+import type { FlowRunNodeData } from '#generated/types.ts';
 import { sendToSystem } from '#generated/events.ts';
-import type { StepRuntimeError, TNode, RunTree } from '@apackdev/sdk/steps';
+import type { StepRuntimeError, RunNode, RunTree } from '@apackdev/sdk/steps';
 import {
-  applyTNodeSpawn,
-  denormalizeTNodeTree,
-  normalizeTNodeTree,
-  type NormalizedTNodeTree,
+  applyRunNodeSpawn,
+  denormalizeRunNodeTree,
+  normalizeRunNodeTree,
+  type NormalizedRunNodeTree,
 } from './trace-tree.ts';
 
 export const id = 'brain' as const;
@@ -21,7 +21,7 @@ export type BrainState = ActorRefFrom<typeof brainState>
 
 
 type SystemEvent = OutgoingBrainEvents
-  | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNode | null }
+  | { type: 'RUN_NODE_DETAILS'; runNodeId: string; details: RunNode | null }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: any }
   | { type: 'BRAIN_PAUSED' }
@@ -31,7 +31,7 @@ type SystemEvent = OutgoingBrainEvents
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'SELECT_AND_SHOW_FIRST_NODE' }
-  | { type: 'FLOW.NAVIGATE'; tNodeId: string }
+  | { type: 'FLOW.NAVIGATE'; runNodeId: string }
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventType: string }
   | { type: 'TOGGLE_LEFT_PANEL' }
@@ -53,18 +53,18 @@ type SurfaceEvent =
 export type BrainEvents = UIEvent | SystemEvent | SurfaceEvent | TrailClickEvent
 const typeOf = safeEvents<BrainEvents>()
 
-function normalizeFlowTNodeData(data: FlowTNodeData): {
-  normalizedTree?: NormalizedTNodeTree;
-  tNodeTree?: RunTree[];
+function normalizeFlowRunNodeData(data: FlowRunNodeData): {
+  normalizedTree?: NormalizedRunNodeTree;
+  runNodeTree?: RunTree[];
 } {
-  if (!data.tNodeTree) {
-    return { normalizedTree: undefined, tNodeTree: undefined };
+  if (!data.runNodeTree) {
+    return { normalizedTree: undefined, runNodeTree: undefined };
   }
 
-  const normalizedTree = normalizeTNodeTree(data.tNodeTree);
+  const normalizedTree = normalizeRunNodeTree(data.runNodeTree);
   return {
     normalizedTree,
-    tNodeTree: denormalizeTNodeTree(normalizedTree),
+    runNodeTree: denormalizeRunNodeTree(normalizedTree),
   };
 }
 
@@ -78,54 +78,54 @@ const brainState = setup({
     setBrainData: assign(({ context, event }) => {
       if (context.brainIsDead) return {};
       const typedEv = typeOf('RECEIVE_SURFACE_DATA', event);
-      const { normalizedTree, tNodeTree } = normalizeFlowTNodeData(typedEv.data);
+      const { normalizedTree, runNodeTree } = normalizeFlowRunNodeData(typedEv.data);
       return {
-        flowTNodeId: typedEv.data.flowTNodeId,
-        tNodeTree,
+        flowRunNodeId: typedEv.data.flowRunNodeId,
+        runNodeTree,
         normalizedTree,
         possibleEvents: typedEv.data.possibleEvents,
         flowHierarchy: typedEv.data.flowHierarchy || [],
       };
     }),
-    setTNodeData: assign(({ event }) => {
-      const typedEv = typeOf('TNODE_OPENED', event);
-      const { normalizedTree, tNodeTree } = normalizeFlowTNodeData(typedEv.data);
+    setRunNodeData: assign(({ event }) => {
+      const typedEv = typeOf('RUN_NODE_OPENED', event);
+      const { normalizedTree, runNodeTree } = normalizeFlowRunNodeData(typedEv.data);
       return {
-        flowTNodeId: typedEv.data.flowTNodeId,
-        tNodeTree,
+        flowRunNodeId: typedEv.data.flowRunNodeId,
+        runNodeTree,
         normalizedTree,
         possibleEvents: typedEv.data.possibleEvents,
         flowHierarchy: typedEv.data.flowHierarchy || [],
       };
     }),
-    addTNodeToTree: assign(({ context, event }) => {
-      if (event.type !== 'TNODE_SPAWNED') return {};
+    addRunNodeToTree: assign(({ context, event }) => {
+      if (event.type !== 'RUN_NODE_SPAWNED') return {};
 
-      const { tNode, parentId, flowTNodeId } = event;
+      const { runNode, parentId, flowRunNodeId } = event;
 
-      // Filter: Only accept TNode spawns for the currently viewed flow
+      // Filter: Only accept RunNode spawns for the currently viewed flow
       // This prevents subflow internal events from appearing in parent flow view
-      if (flowTNodeId !== context.flowTNodeId) {
+      if (flowRunNodeId !== context.flowRunNodeId) {
         return {};
       }
 
-      const newTree = applyTNodeSpawn(context.normalizedTree, tNode, parentId, context.flowTNodeId);
+      const newTree = applyRunNodeSpawn(context.normalizedTree, runNode, parentId, context.flowRunNodeId);
 
       // Update denormalized tree as well
-      const denormalizedTree = denormalizeTNodeTree(newTree);
+      const denormalizedTree = denormalizeRunNodeTree(newTree);
 
       return {
         normalizedTree: newTree,
-        tNodeTree: denormalizedTree
+        runNodeTree: denormalizedTree
       };
     }),
-    updateTNodeInTree: assign(({ context, event }) => {
-      if (event.type !== 'TNODE_UPDATED') return {};
+    updateRunNodeInTree: assign(({ context, event }) => {
+      if (event.type !== 'RUN_NODE_UPDATED') return {};
 
       const { data } = event;
-      const { tNodeId, status } = data;
+      const { runNodeId, status } = data;
 
-      if (!context.normalizedTree || !context.normalizedTree.byId[tNodeId]) {
+      if (!context.normalizedTree || !context.normalizedTree.byId[runNodeId]) {
         return {};
       }
 
@@ -137,29 +137,29 @@ const brainState = setup({
       };
 
       // Update the node status
-      newTree.byId[tNodeId] = {
-        ...newTree.byId[tNodeId],
+      newTree.byId[runNodeId] = {
+        ...newTree.byId[runNodeId],
         status
       };
 
       // Update denormalized tree
-      const denormalizedTree = denormalizeTNodeTree(newTree);
+      const denormalizedTree = denormalizeRunNodeTree(newTree);
 
       return {
         normalizedTree: newTree,
-        tNodeTree: denormalizedTree
+        runNodeTree: denormalizedTree
       };
     }),
     refreshNodeDetailsIfSelected: ({ context, event }) => {
-      if (event.type !== 'TNODE_UPDATED') return;
+      if (event.type !== 'RUN_NODE_UPDATED') return;
 
-      const { tNodeId } = event.data;
+      const { runNodeId } = event.data;
 
       // If this is the currently selected step node, refresh its details
-      if (context.selectedStepNode?.id === tNodeId) {
+      if (context.selectedStepNode?.id === runNodeId) {
         sendToSystem(id, {
-          type: 'GET_TNODE_DETAILS',
-          tNodeId,
+          type: 'GET_RUN_NODE_DETAILS',
+          runNodeId,
         });
       }
     },
@@ -176,20 +176,20 @@ const brainState = setup({
       if (event.type !== 'FLOW.NAVIGATE') return;
 
       sendToSystem(id, {
-        type: 'OPEN_TNODE',
-        tNodeId: event.tNodeId,
+        type: 'OPEN_RUN_NODE',
+        runNodeId: event.runNodeId,
       });
     },
     goBack: ({ context }) => {
       sendToSystem(id, {
-        type: 'GO_BACK_TNODE',
-        currentFlowTNodeId: context.flowTNodeId,
+        type: 'GO_BACK_RUN_NODE',
+        currentFlowRunNodeId: context.flowRunNodeId,
       });
     },
     requestSurfaceData: ({ context }) => {
       sendToSystem(id, {
         type: 'REQUEST_SURFACE_DATA',
-        ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId }),
+        ...(context.flowRunNodeId && { flowRunNodeId: context.flowRunNodeId }),
       });
     },
     toggleLeftPanel: assign({
@@ -199,8 +199,8 @@ const brainState = setup({
       if (event.type !== 'NODE.CLICK') return {};
 
       sendToSystem(id, {
-        type: 'GET_TNODE_DETAILS',
-        tNodeId: event.nodeId,
+        type: 'GET_RUN_NODE_DETAILS',
+        runNodeId: event.nodeId,
       });
 
       // Set the selected node ID immediately
@@ -231,8 +231,8 @@ const brainState = setup({
 
       // Request details for this node
       sendToSystem(id, {
-        type: 'GET_TNODE_DETAILS',
-        tNodeId: firstNodeId,
+        type: 'GET_RUN_NODE_DETAILS',
+        runNodeId: firstNodeId,
       });
 
       // Set the selected node ID immediately
@@ -250,22 +250,22 @@ const brainState = setup({
      * admits a reply only for the node being waited on. Asking without selecting is an answer the guard drops.
      */
     selectAndShowFailingNode: assign(({ event }) => {
-      if (event.type !== 'BRAIN_RUNTIME_ERROR' || !event.error.tNodeId) return {};
-      const tNodeId = event.error.tNodeId;
+      if (event.type !== 'BRAIN_RUNTIME_ERROR' || !event.error.runNodeId) return {};
+      const runNodeId = event.error.runNodeId;
 
       sendToSystem(id, {
-        type: 'GET_TNODE_DETAILS',
-        tNodeId,
+        type: 'GET_RUN_NODE_DETAILS',
+        runNodeId,
       });
 
       return {
         selectedStepNode: {
-          id: tNodeId
+          id: runNodeId
         } as any
       };
     }),
     setStepNodeDetails: assign(({ event }) => {
-      if (event.type !== 'TNODE_DETAILS') return {};
+      if (event.type !== 'RUN_NODE_DETAILS') return {};
       return {
         selectedStepNode: event.details || undefined
       };
@@ -348,11 +348,11 @@ const brainState = setup({
       const target = (event as TrailClickEvent).target;
 
       if (target === 'root') {
-        sendToSystem(id, { type: 'GO_BACK_TNODE' });
+        sendToSystem(id, { type: 'GO_BACK_RUN_NODE' });
       } else if (target.startsWith('flow:')) {
-        const flowTNodeId = target.substring(5);
-        if (flowTNodeId !== context.flowTNodeId) {
-          sendToSystem(id, { type: 'OPEN_TNODE', tNodeId: flowTNodeId });
+        const flowRunNodeId = target.substring(5);
+        if (flowRunNodeId !== context.flowRunNodeId) {
+          sendToSystem(id, { type: 'OPEN_RUN_NODE', runNodeId: flowRunNodeId });
         }
       }
     },
@@ -367,15 +367,15 @@ const brainState = setup({
      *
      * **The invariant it rests on: every action that asks assigns `selectedStepNode` first.** Three set the
      * id and then send (a click, the first node shown, a step's error) and the fourth only asks about the
-     * node already selected. So the reply's own `tNodeId` tells it from an answer for a node the view has
+     * node already selected. So the reply's own `runNodeId` tells it from an answer for a node the view has
      * since moved off, and no request id is needed.
      *
      * An action that asks without selecting gets its answer dropped here, silently — which is what the
-     * error path did, so the failing node's details never reached the panel. `tnode-correlation.spec.ts`
+     * error path did, so the failing node's details never reached the panel. `run-node-correlation.spec.ts`
      * holds each asking action to it, rather than this comment enumerating them.
      */
     answersSelectedNode: ({ context, event }) =>
-      (event as { tNodeId?: string }).tNodeId === context.selectedStepNode?.id,
+      (event as { runNodeId?: string }).runNodeId === context.selectedStepNode?.id,
   },
 }).createMachine({
   id,
@@ -414,7 +414,7 @@ const brainState = setup({
             ? [{ label: 'Brain', target: 'root' }]
             : ctx.flowHierarchy.map((flow, i) => ({
                 label: i === 0 ? 'Brain' : flow.label,
-                target: `flow:${flow.flowTNodeId}`
+                target: `flow:${flow.flowRunNodeId}`
               }))
         ),
         ...contextMenuFn<BrainContext>((ctx) => [
@@ -467,7 +467,7 @@ const brainState = setup({
         CLOSE_DETAILS: {
           actions: 'closeDetails'
         },
-        TNODE_DETAILS: {
+        RUN_NODE_DETAILS: {
           guard: 'answersSelectedNode',
           actions: 'setStepNodeDetails'
         },
@@ -477,14 +477,14 @@ const brainState = setup({
         SURFACE_DEACTIVATED: {
           // No action needed for deactivation
         },
-        TNODE_OPENED: {
-          actions: 'setTNodeData'
+        RUN_NODE_OPENED: {
+          actions: 'setRunNodeData'
         },
-        TNODE_SPAWNED: {
-          actions: 'addTNodeToTree'
+        RUN_NODE_SPAWNED: {
+          actions: 'addRunNodeToTree'
         },
-        TNODE_UPDATED: {
-          actions: ['updateTNodeInTree', 'refreshNodeDetailsIfSelected']
+        RUN_NODE_UPDATED: {
+          actions: ['updateRunNodeInTree', 'refreshNodeDetailsIfSelected']
         },
         EVENT_PULSE: {
           actions: ['pulseEvent', ({ self, context }) => {
@@ -493,11 +493,11 @@ const brainState = setup({
               self.send({ type: 'CLEAR_PULSE' });
             }, 400);
             // Request fresh data for the current flow to show new events
-            // Pass the current flowTNodeId to maintain the current view
+            // Pass the current flowRunNodeId to maintain the current view
             setTimeout(() => {
               sendToSystem(id, {
                 type: 'REQUEST_SURFACE_DATA',
-                ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId }),
+                ...(context.flowRunNodeId && { flowRunNodeId: context.flowRunNodeId }),
               });
             }, 100);
           }]

@@ -22,7 +22,7 @@ const { default: databaseState } = await import('#features/database/fe/state.ts'
 
 /**
  * A trace node as the viewer lists it: the two fields it reads, which is deliberately not a whole
- * `TNode`. **The cast stops here** — the events the cases send are checked, so a misspelled event
+ * `RunNode`. **The cast stops here** — the events the cases send are checked, so a misspelled event
  * type is a compile error rather than a send the machine ignores while the case asserts nothing.
  */
 const anEvent = (id: string) => ({ id, label: id, children: [] }) as unknown as RunTree;

@@ -18,7 +18,7 @@ export type { OnboardingService } from './onboarding.ts';
 export { UnknownBackupDatabasesError } from './app-data.ts';
 export {
   _createRunHistory, _RUN_HISTORY_INDEXES, type RunHistory, type RunPage, type RunStatus, type RunTree,
-  type TNode, type TNodeId, type TNodeStart, type TNodePatch,
+  type RunNode, type RunNodeId, type RunNodeStart, type RunNodePatch,
 } from './run-history.ts';
 export { _createInferenceService, type _InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type _ResolveModel } from './inference.ts';
 export type { FileEntry, FileStat, FilesystemService } from './filesystem.ts';

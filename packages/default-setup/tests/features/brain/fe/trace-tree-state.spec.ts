@@ -1,37 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { applyTNodeSpawn, denormalizeTNodeTree, normalizeTNodeTree, type NormalizedTNodeTree } from '#features/brain/fe/trace-tree.ts';
-import type { TNode, RunTree } from '@apackdev/sdk/steps';
+import { applyRunNodeSpawn, denormalizeRunNodeTree, normalizeRunNodeTree, type NormalizedRunNodeTree } from '#features/brain/fe/trace-tree.ts';
+import type { RunNode, RunTree } from '@apackdev/sdk/steps';
 
-function tNode(id: string, label = id): TNode {
+function runNode(id: string, label = id): RunNode {
   return {
     id,
-    entityType: 'tnode',
-    tNodeType: 'step',
+    entityType: 'run-node',
+    kind: 'step',
     label,
     status: 'running',
-  } as unknown as TNode;
+  } as unknown as RunNode;
 }
 
 describe('brain trace tree state', () => {
   it('dedupes duplicate ids when normalizing initial trace data', () => {
     const tree = [
-      { ...tNode('event-1'), children: [tNode('step-1'), tNode('step-1')] },
-      { ...tNode('event-1'), children: [tNode('step-1'), tNode('step-2')] },
+      { ...runNode('event-1'), children: [runNode('step-1'), runNode('step-1')] },
+      { ...runNode('event-1'), children: [runNode('step-1'), runNode('step-2')] },
     ] as RunTree[];
 
-    const normalized = normalizeTNodeTree(tree);
+    const normalized = normalizeRunNodeTree(tree);
 
     expect(normalized.rootIds).toEqual(['event-1']);
     expect(normalized.childrenById['event-1']).toEqual(['step-1', 'step-2']);
-    expect(denormalizeTNodeTree(normalized)).toHaveLength(1);
+    expect(denormalizeRunNodeTree(normalized)).toHaveLength(1);
   });
 
   it('upserts replayed spawn events without duplicating parent membership', () => {
-    const initial: NormalizedTNodeTree = {
+    const initial: NormalizedRunNodeTree = {
       byId: {
-        'event-1': tNode('event-1'),
-        'step-1': tNode('step-1', 'old'),
-        'child-1': tNode('child-1'),
+        'event-1': runNode('event-1'),
+        'step-1': runNode('step-1', 'old'),
+        'child-1': runNode('child-1'),
       },
       rootIds: ['event-1'],
       childrenById: {
@@ -41,7 +41,7 @@ describe('brain trace tree state', () => {
       },
     };
 
-    const updated = applyTNodeSpawn(initial, tNode('step-1', 'new'), 'event-1', 'flow-1');
+    const updated = applyRunNodeSpawn(initial, runNode('step-1', 'new'), 'event-1', 'flow-1');
 
     expect(updated.childrenById['event-1']).toEqual(['step-1']);
     expect(updated.childrenById['step-1']).toEqual(['child-1']);

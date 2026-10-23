@@ -4,7 +4,7 @@
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
 // `apack.json` names it at `features[].surface.contract`.
 import type { SurfaceInbox } from '@apackdev/sdk/fe'
-import type { RunTree, TNode } from '@apackdev/sdk/steps'
+import type { RunTree, RunNode } from '@apackdev/sdk/steps'
 import type { DatabaseSettings } from '#generated/types.ts'
 import type { DatabaseSchemaInfo } from '../be/types.ts'
 
@@ -36,11 +36,11 @@ export interface DatabaseContext {
   settings: DatabaseSettings | null;
   // Trace viewer fields
   viewMode: 'database' | 'trace';
-  traceFlows: TNode[];
+  traceFlows: RunNode[];
   currentFlowId: string | null;
   flowEvents: RunTree[];
   expandedNodes: Set<string>;
-  nodeDetails: Map<string, TNode>;
+  nodeDetails: Map<string, RunNode>;
   isLoadingTrace: boolean;
   tracePagination: {
     offset: number;

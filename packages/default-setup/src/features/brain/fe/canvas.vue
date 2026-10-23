@@ -84,11 +84,11 @@
       </div>
     </Transition>
 
-    <!-- Center: TNode Graph (Always visible) -->
+    <!-- Center: RunNode Graph (Always visible) -->
     <div class="relative flex-1 overflow-hidden bg-neutral-900" @click="handleCanvasClick">
-      <TNodeGraph
-        :tnode-tree="tNodeTree"
-        :flow-tnode-id="flowTNodeId"
+      <RunNodeGraph
+        :run-node-tree="runNodeTree"
+        :flow-run-node-id="flowRunNodeId"
         :can-go-back="canGoBack"
         :animations-enabled="animationsEnabled"
         :selected-node-id="selectedStepNode?.id"
@@ -98,7 +98,7 @@
       />
 
       <!-- Brain Stopped Overlay -->
-      <div v-if="brainIsDead && tNodeTree && tNodeTree.length" class="absolute inset-0 z-20 flex items-center justify-center bg-neutral-900/60 backdrop-blur-[1px]">
+      <div v-if="brainIsDead && runNodeTree && runNodeTree.length" class="absolute inset-0 z-20 flex items-center justify-center bg-neutral-900/60 backdrop-blur-[1px]">
         <div class="text-center">
           <div class="flex items-center justify-center w-14 h-14 mx-auto mb-4 rounded-full bg-neutral-800/80 border border-neutral-700/50">
             <svg class="w-7 h-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,7 +131,7 @@ import { useSurface } from '@apackdev/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { onMounted, onUnmounted } from 'vue'
 import { type BrainState } from '#features/brain/fe/state.ts';
-import TNodeGraph from './components/TNodeGraph.vue';
+import RunNodeGraph from './components/RunNodeGraph.vue';
 import EventsList from './components/EventsList.vue';
 import StepNodeDetails from './components/StepNodeDetails.vue';
 import { sendToSystem } from '#generated/events.ts';
@@ -139,9 +139,9 @@ import { sendToSystem } from '#generated/events.ts';
 const actor: BrainState = useSurface();
 
 // Selectors for state
-const tNodeTree = useSelector(actor, (state) => state.context.tNodeTree);
+const runNodeTree = useSelector(actor, (state) => state.context.runNodeTree);
 const possibleEvents = useSelector(actor, (state) => state.context.possibleEvents);
-const flowTNodeId = useSelector(actor, (state) => state.context.flowTNodeId);
+const flowRunNodeId = useSelector(actor, (state) => state.context.flowRunNodeId);
 const pulsingEventType = useSelector(actor, (state) => state.context.pulsingEventType);
 const canGoBack = useSelector(actor, (state) => (state.context.flowHierarchy?.length ?? 0) > 1);
 const brainIsPaused = useSelector(actor, (state) => state.context.brainIsPaused);
@@ -159,9 +159,9 @@ const handleNodeClick = (nodeId: string) => {
   actor.send({ type: 'NODE.CLICK', nodeId });
 };
 
-const handleFlowNavigate = (tNodeId: string) => {
+const handleFlowNavigate = (runNodeId: string) => {
   if (brainIsDead.value) return;
-  actor.send({ type: 'FLOW.NAVIGATE', tNodeId });
+  actor.send({ type: 'FLOW.NAVIGATE', runNodeId });
 };
 
 const handleBackClick = () => {

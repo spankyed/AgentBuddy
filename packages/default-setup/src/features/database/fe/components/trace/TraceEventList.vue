@@ -13,7 +13,7 @@
       
       <div v-else class="p-4">
         <div class="space-y-1">
-          <TNodeListItem
+          <RunNodeListItem
             v-for="event in flowEvents"
             :key="event.id"
             :node="event"
@@ -48,7 +48,7 @@ import { useSurface } from '@apackdev/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import type { DatabaseState } from '../../state.ts'
 import { Loader2 } from 'lucide-vue-next'
-import TNodeListItem from '@apackdev/ui/components/TNodeListItem'
+import RunNodeListItem from '@apackdev/ui/components/RunNodeListItem'
 
 const databaseActor: DatabaseState = useSurface()
 
