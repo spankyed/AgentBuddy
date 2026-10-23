@@ -169,9 +169,9 @@ export async function withDatabase<T>(db: AppDatabase, use: () => Promise<T> | T
  */
 export function undeclaredEntityTypes(db: AppDatabase): Array<{ type: string; rows: number }> {
   const declared = db.schema.getRegisteredEntityTypes();
-  return db.ears.getAllEntityTypes()
-    .filter((type) => !declared.has(type))
-    .map((type) => ({ type, rows: db.admin.getEntitiesOfType(type).length }))
+  return Object.entries(db.ears.getSchemaStats().entities)
+    .filter(([type]) => !declared.has(type))
+    .map(([type, rows]) => ({ type, rows }))
     .sort((left, right) => right.rows - left.rows || left.type.localeCompare(right.type));
 }
 
@@ -189,7 +189,7 @@ export function undeclaredEntityTypes(db: AppDatabase): Array<{ type: string; ro
  * holds only the value, so no amount of observation produces the alias; a dir with no snapshots has to be given one.
  */
 export function consoleScope(db: AppDatabase): ConsoleScope {
-  const observed = Object.fromEntries(db.ears.getAllEntityTypes().map((type) => [type, type]));
+  const observed = Object.fromEntries(Object.keys(db.ears.getSchemaStats().entities).map((type) => [type, type]));
   return {
     EARS: consoleEars({ entities: { ...observed, ...db.schema.entities }, relKinds: db.schema.relKinds, roles: db.schema.roles }, {
       hint: 'Name the pack that declares it with --schema-from, which takes a snapshot, a pack, or a directory of packs.',

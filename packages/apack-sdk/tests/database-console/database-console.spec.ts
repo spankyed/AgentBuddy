@@ -20,7 +20,7 @@ describe('the helpers console code sees', () => {
   // `apack db query`/`exec` all rest on what a query can and cannot reach
   it('gives a query these, and nothing that writes', async () => {
     expect([...READ_HELPER_NAMES].sort()).toEqual([
-      'findRelations', 'getAttr', 'getRelationStats', 'getRoles', 'getRow', 'getSchemaStats', 'query',
+      'findRelations', 'getAttr', 'getRoles', 'getRow', 'getSchemaStats', 'query',
     ]);
     for (const name of READ_HELPER_NAMES) {
       await expect(runQueryCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -91,13 +91,14 @@ describe('runTransactionCode', () => {
 });
 
 describe('getSchemaStats', () => {
-  it('counts entities, attribute kinds and relation kinds', () => {
+  it('counts entities, attribute kinds, relation kinds and roles', () => {
     untypedCreate('Flow', { id: 'Flow-1', shortCode: 'FLOW-1', label: 'a', flowType: 'workflow' });
-    untypedCreate('Flow', { id: 'Flow-2', shortCode: 'FLOW-2', label: 'b', flowType: 'workflow' }).link('contains', 'Flow-1');
+    untypedCreate('Flow', { id: 'Flow-2', shortCode: 'FLOW-2', label: 'b', flowType: 'workflow' }).link('contains', 'Flow-1').grant('root_flow');
     const stats = getSchemaStats();
     expect(stats.entities.Flow).toBe(2);
     expect(stats.attributes.label).toEqual({ entityCount: 2, totalValues: 2 });
-    expect(stats.relations.contains).toEqual({ totalRelations: 1, uniqueSources: 1, uniqueTargets: 1 });
+    expect(stats.relations.contains).toEqual({ total: 1, uniqueSources: 1, uniqueTargets: 1 });
+    expect(stats.roles).toEqual({ root_flow: 1 });
   });
 });
 

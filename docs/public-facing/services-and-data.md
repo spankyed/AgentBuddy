@@ -394,16 +394,16 @@ transact(() => {
 });
 ```
 
-`query.ids(id).out(kinds)` walks to the entities an entity links to and `in(kinds)` to those linking to it; `outEdges(kinds)` and `inEdges(kinds)` return the edges themselves. A relation reads the same wherever it comes from — `outEdges`, `inEdges`, `findRelations` — as `{ id, kind, source, target, info }`: its own id, its kind, its two ends and its `info` (a flow edge's handles). `findRelations` finds relations by any of `kind`, `source` and `target`; `getRelationStats(kind)` counts them:
+`query.ids(id).out(kinds)` walks to the entities an entity links to and `in(kinds)` to those linking to it; `outEdges(kinds)` and `inEdges(kinds)` return the edges themselves. A relation reads the same wherever it comes from — `outEdges`, `inEdges`, `findRelations` — as `{ id, kind, source, target, info }`: its own id, its kind, its two ends and its `info` (a flow edge's handles). `findRelations` finds relations by any of `kind`, `source` and `target`, and `getSchemaStats().relations` counts each kind's:
 
 ```typescript
-import { findRelations, getRelationStats } from '@apackdev/sdk/ears';
+import { findRelations, getSchemaStats } from '@apackdev/sdk/ears';
 
 const [edge] = findRelations({ source: nodeId, kind: EARS.RelKind.TRANSITIONS_TO });
 edge.target;                       // the node it leads to
 edge.info;                         // { sourceHandle: 'yes' }
 write(edge.id).destroy();                  // that one edge, leaving any other between the same nodes
-getRelationStats(EARS.RelKind.CONTAINS);   // { total, uniqueSources, uniqueTargets }
+getSchemaStats().relations.contains;      // { total, uniqueSources, uniqueTargets }
 ```
 
 `untypedQuery` from `@apackdev/sdk/ears` is the unchecked query, for fields only known at runtime.

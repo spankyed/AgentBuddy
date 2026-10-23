@@ -11,7 +11,6 @@ import { EntityRow } from '@apackdev/ears';
 import type { Query } from '@apackdev/ears';
 import { RelationMatch } from '@apackdev/ears';
 import { RelationRow } from '@apackdev/ears';
-import { RelationStats } from '@apackdev/ears';
 import { SchemaStats } from '@apackdev/ears';
 import type { Upsert } from '@apackdev/ears';
 import type { Write } from '@apackdev/ears';
@@ -24,18 +23,6 @@ export function boundEars(): Ears;
 
 // @public (undocumented)
 export const findRelations: (match?: RelationMatch) => RelationRow[];
-
-// @public (undocumented)
-export const getAllAttributeKinds: () => EARS.AttrKind[];
-
-// @public (undocumented)
-export const getAllEntityTypes: () => EARS.Entity[];
-
-// @public (undocumented)
-export const getAllRelationKinds: () => string[];
-
-// @public (undocumented)
-export const getRelationStats: (kind: EARS.RelKind) => RelationStats;
 
 // @public (undocumented)
 export const getRoles: (id: EARS.EntityId) => string[];
