@@ -166,8 +166,27 @@ Nine commits on `run-history-store`, which holds C1 and C2 picked off `ears-engi
 | C7 backups | `a457bd5269` | — |
 | C8 retention | `343729ea73` | A session the app stopped at open (a crash, a quit mid-run) ended then, and is kept 30 days from there |
 | C9 `apack db runs` | `066aa4d6a2` | Plus `npm run db:runs` |
-| C10 docs | this commit | `docs/goals/goal-lmdb-only.md` gets a note that its trace parts are superseded, rather than a rewrite |
+| C10 docs | `40a98e81f2` | `docs/goals/goal-lmdb-only.md` gets a note that its trace parts are superseded, rather than a rewrite |
 
-Left for after merge, with the user's go-ahead: delete `ears-trace` from the data dirs by hand. No version of
-apack reads it any more, and nothing at boot removes it.
+### After the plan
+
+A review of the result found the run history's API was still a record store's, with its meaning in its callers.
+These followed on the same branch:
+
+| Change | Commit |
+|---|---|
+| The packaged-authoring spec reads a step's `result` field (the chain caught it) | `f19ec39cd7` |
+| One `RecordStore` interface in the ears root with an in-memory twin; indexes are functions, so `runOf` and `isRoot` are computed rather than stored; one format/kind stamp check for both environments | `e08d633f22` |
+| A backup's stores are one table, each with its format and its check | `0869fc3f44` |
+| The run history owns a node's lifecycle (`start`, `update`, `finish`); the brain's pass-through commands go | `a410ba3701` |
+| A run's tree is one read by its root; a flow run's events are its tree's children; `trace-query.ts` goes | `4db4321d95` |
+| `TNode` is `RunNode`, `tNodeType` is `kind` | `8e7f6cfe6b` |
+| "Run", not "trace", for what a flow run leaves behind, in names, files, events and copy | `63706fa0c6` |
+| **A step runs on its input whole** (`StepInput`), never on the run node's bounded copy: an llm step had been sending a cut-off prompt past 10 KB | `f1f6842a40` |
+| `RunNode` is a union by kind, with one recorded `input` (flows, steps) or `payload` (events) in place of `nodeAttributes` and `resolvedParams` | `b922adc916` |
+| `start` returns a run node as stored, nothing running on one any more | `4df7a5bf82` |
+| `step-input.ts` and `execute-step.ts` (`executeStep`), named for what they hold | `0f09bde4a4`, `3468ab96a9` |
+
+The `ears-trace` stores in the apack data dirs were deleted by hand on 2026-10-23, once no app held them. Older
+`abuddy*` data dirs, from the app's previous name, still hold theirs.
 
