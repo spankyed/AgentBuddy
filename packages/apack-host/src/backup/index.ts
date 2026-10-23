@@ -21,18 +21,6 @@ const defaultLog: BackupLog = {
   warn: (message, detail) => logger.warn(message, detail),
 };
 
-/**
- * A backup's database folders, each a store of the app's, with the storage format this version writes it in: the
- * engine's database and the run history
- */
-const DATABASE_FORMATS = {
-  lmdb: LMDB_FORMAT_VERSION,
-  runHistory: RECORD_STORE_FORMAT_VERSION,
-} as const;
-
-export type DatabaseName = keyof typeof DATABASE_FORMATS;
-export const isKnownDatabase = (name: string): name is DatabaseName => Object.hasOwn(DATABASE_FORMATS, name);
-
 /** A store a backup copies from and an import puts back into: the LMDB store, or the run history's record store */
 export interface BackupStore {
   readonly path: string;
@@ -42,14 +30,20 @@ export interface BackupStore {
   reopen(): void;
 }
 
+/**
+ * A backup's database folders, each a store of the app's: the storage format this version writes it in, and how a
+ * backup's copy of it is checked — opened read-only, so one in a format this version can't read is refused, and closed
+ */
+const DATABASES = {
+  lmdb: { format: LMDB_FORMAT_VERSION, check: (dir: string) => closeEnv(openEnvAt(dir, { readOnly: true }), () => {}) },
+  runHistory: { format: RECORD_STORE_FORMAT_VERSION, check: (dir: string) => openRecordStore({ path: dir, indexes: {}, readOnly: true }).close() },
+} as const;
+
+export type DatabaseName = keyof typeof DATABASES;
+export const isKnownDatabase = (name: string): name is DatabaseName => Object.hasOwn(DATABASES, name);
+
 /** The app's stores, by the backup folder each is copied to: the database always, the run history where there is one */
 export type BackupStores = { lmdb: BackupStore } & Partial<Record<Exclude<DatabaseName, 'lmdb'>, BackupStore>>;
-
-/** Opens a backup's copy of a store read-only, refusing one in a format this version can't read, and closes it */
-const CHECK_COPY: Record<DatabaseName, (dir: string) => void> = {
-  lmdb: (dir) => closeEnv(openEnvAt(dir, { readOnly: true }), () => {}),
-  runHistory: (dir) => openRecordStore({ path: dir, indexes: {}, readOnly: true }).close(),
-};
 
 /**
  * Copies the stores in `databases` (and the media folder `mediaPath`, with the database) into a new backup folder.
@@ -81,7 +75,7 @@ export async function exportDatabase(
     // What wrote it, for the refusal message and for reading a backup folder by eye. Provenance only: whether a
     // backup restores is settled by opening its databases (readBackup), never by what this says.
     ...(appVersion !== undefined && { appVersion }),
-    storageFormats: Object.fromEntries(databases.map((name) => [name, DATABASE_FORMATS[name]])),
+    storageFormats: Object.fromEntries(databases.map((name) => [name, DATABASES[name].format])),
   });
 
   for (const dbName of databases) {
@@ -294,7 +288,7 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = [], vali
   };
   // Every database the import would put in place, so one this version can't read is found before anything is
   // replaced, not when the store opens the new files again
-  for (const name of databases) refusing(() => CHECK_COPY[name](path.join(dir, name)));
+  for (const name of databases) refusing(() => DATABASES[name].check(path.join(dir, name)));
   const env = refusing(() => openEnvAt(path.join(dir, 'lmdb'), { readOnly: true }));
   try {
     validate?.(new LmdbReader(env));
