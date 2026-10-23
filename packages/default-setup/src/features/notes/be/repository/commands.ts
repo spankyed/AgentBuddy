@@ -1,8 +1,7 @@
-import { write, findById, query } from '#generated/ears.ts';
+import { write, findById, getAttr, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
-import { trash } from '@apackdev/sdk/repositories';
 
 import { REFERENCES } from '../types.ts';
 import { resolveReferencesTo, syncReferences } from './link-utils.ts';
@@ -174,16 +173,20 @@ export const noteCommands = {
     if (!findById<NoteEntity>(id)) return [];
     const subtree = (noteId: EARS.EntityId): EARS.EntityId[] =>
       [noteId, ...query.ids(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().flatMap(subtree)];
-    return trash.move(subtree(id));
+    // A note in the trash takes its sub-notes with it; any already there keep when they went
+    const ids = subtree(id);
+    for (const noteId of ids) write(noteId).trash();
+    return ids;
   },
 
   /** Takes a note and its trashed sub-notes out of the trash; returns the ids restored */
   restore: (id: EARS.EntityId): string[] => {
-    if (trash.restore([id]).length === 0) return [];
+    if (getAttr(id, 'trashedAt') === null) return [];
+    write(id).restore();
     const restoredIds: string[] = [id];
     // If parent is still in the trash, detach so note restores at root
     const parentIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
-    if (parentIds.length > 0 && trash.isTrashed(parentIds[0])) {
+    if (parentIds.length > 0 && getAttr(parentIds[0], 'trashedAt') !== null) {
       write(parentIds[0]).unlink(EARS.RelKind.CONTAINS, id);
     }
     const childIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();

@@ -1,8 +1,7 @@
 // A note's REFERENCES are an index derived from its text: one relation per note its links name that exists, built
 // again from the text whenever it might be stale — so a link to a note that doesn't exist yet is indexed once it does
 import { beforeEach, expect, it } from 'vitest';
-import { findRelations, untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
-import { trash } from '@apackdev/sdk/repositories';
+import { findRelations, untypedCreate, untypedQuery, untypedWrite } from '@apackdev/sdk/ears';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { repository } from '#generated/repository.ts';
 import type { EARS } from '#generated/ears.ts';
@@ -61,11 +60,11 @@ it('finds the notes linking to a new note by their recorded targets, not by text
 it('indexes a link from a note in the trash, and to one', () => {
   const binned = note('Binned');
   const source = note('Source', link('Note-later'));
-  trash.move([source]);
+  untypedWrite(source).trash();
   note('Later', '', 'Note-later');
   expect(references(source)).toEqual(['Note-later']);
 
-  trash.move([binned]);
+  untypedWrite(binned).trash();
   const linker = note('Linker', link(binned));
   expect(references(linker)).toEqual([binned]);
 });

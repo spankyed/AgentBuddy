@@ -10,7 +10,6 @@ import { contentPath } from '../build/manifest.ts';
 import { contentPackId } from '../utils/apply.ts';
 import { RECORD_KEYS, itemLabel, type CompiledContentFile, type ContentItem } from '../build/content/items.ts';
 import { _contentWriterRegistry, type ContentWriteContext, type ContentMatch, type ContentWriter } from './writers.ts';
-import { trash } from '../repositories/trash.ts';
 import { errorMessage } from '../utils/shared.ts';
 import type { ContentEditPolicy } from '../framework/declaration-schema.ts';
 
@@ -148,7 +147,7 @@ export interface ContentEntity {
  *
  * **It reaches only as far as the feature's delete does.** A row destroyed rather than trashed leaves nothing
  * carrying a content key, so nothing here can tell that it ever existed — the entity's own delete is what
- * decides which it is (`trash.move` against `destroy()`).
+ * decides which it is (`trash()` against `destroy()`).
  */
 export function contentEntity(entityType: string | undefined, key: string): ContentEntity | undefined {
   if (!entityType) return undefined;
@@ -421,7 +420,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
                * The fields the write sets are the record's, and `trashedAt` is not one of them, so nothing
                * else would clear it.
                */
-              if (deleted === true) trash.restore([existing!.id]);
+              if (deleted === true) untypedWrite(existing!.id).restore();
               updateTracked(existing!, applied, record, context, contentKey, hooks);
               counts.updated++;
               ctx.log(`  ${key} updated: ${label}`);
