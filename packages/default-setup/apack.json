@@ -18,7 +18,6 @@
   },
   "data": {
     "relations": [
-      "parent_of",
       "has",
       "relates_to"
     ]
@@ -1074,9 +1073,7 @@
       "description": "Organize documents, collections and indexed content.",
       "entities": {
         "SearchIndex": null,
-        "IndexedDoc": null,
-        "Document": "src/features/library/be/types.ts#DocumentEntity",
-        "Collection": "src/features/library/be/types.ts#CollectionEntity"
+        "IndexedDoc": null
       },
       "settings": {
         "schema": {
@@ -1212,9 +1209,7 @@
             "useItems": "src/features/library/fe/references.ts#useItems"
           }
         }
-      },
-      "designation": "commands",
-      "getCommands": "src/features/library/be/services/library.ts#libraryCommands"
+      }
     },
     "flows": {
       "description": "Build and manage flows of connected steps.",
@@ -2357,20 +2352,22 @@
         "prefix": "database:",
         "globals": {
           "EARS": "typeof _dsl.EARS",
-          "qx": "typeof _dsl.qx",
+          "query": "typeof _dsl.query",
           "getAllEntities": "typeof _dsl.getAllEntities",
           "getAll": "typeof _dsl.getAll",
-          "queryEntitiesByRelationTo": "typeof _dsl.queryEntitiesByRelationTo",
+          "findEntitiesByRelationTo": "typeof _dsl.findEntitiesByRelationTo",
           "getAttr": "typeof _dsl.getAttr",
           "getAttrs": "typeof _dsl.getAttrs",
           "getRoles": "typeof _dsl.getRoles",
           "getEntitiesOfType": "typeof _dsl.getEntitiesOfType",
-          "queryEntitiesByAttribute": "typeof _dsl.queryEntitiesByAttribute",
-          "queryEntitiesInRelationTo": "typeof _dsl.queryEntitiesInRelationTo",
+          "findEntitiesByAttribute": "typeof _dsl.findEntitiesByAttribute",
+          "findEntitiesInRelationTo": "typeof _dsl.findEntitiesInRelationTo",
           "findRelations": "typeof _dsl.findRelations",
           "getRelationStats": "typeof _dsl.getRelationStats",
           "getSchemaStats": "typeof _dsl.getSchemaStats",
-          "tx": "typeof _dsl.tx",
+          "create": "typeof _dsl.create",
+          "upsert": "typeof _dsl.upsert",
+          "write": "typeof _dsl.write",
           "destroyEntity": "typeof _dsl.destroyEntity",
           "prepareEntity": "typeof _dsl.prepareEntity",
           "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults",
@@ -2495,8 +2492,6 @@
       }
     },
     "writers": {
-      "Collection": "src/content/writers/library.ts#collectionWriter",
-      "Document": "src/content/writers/library.ts#documentWriter",
       "Note": "src/content/writers/notes.ts#noteWriter"
     }
   },

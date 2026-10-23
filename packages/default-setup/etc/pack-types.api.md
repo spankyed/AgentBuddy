@@ -6,10 +6,9 @@
 import * as _apackdev_ears from '@apackdev/ears';
 import { EARS as EARS$2 } from '@apackdev/ears';
 import * as _apackdev_sdk from '@apackdev/sdk';
-import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@apackdev/sdk';
+import { ActionEntity, ActionParameter, ContentSection, DocumentShortCode, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@apackdev/sdk';
 import { ArtifactItem } from '@apackdev/sdk/artifacts';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
-import { PackCommand } from '@apackdev/sdk/commands';
 import { HostSurfaceEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PublicSurfaceInboxOf, Qualified, Reply, SurfaceInboxOf, TypedSendToSurface, TypedSendToSystem, TypedSendToWindow } from '@apackdev/sdk/events';
 import { HotkeysMap, NavHistory, SurfaceInbox, SurfaceStateOf, TabGroup } from '@apackdev/sdk/fe';
 import { Simplify as Simplify$1 } from '@apackdev/sdk/helpers';
@@ -4679,12 +4678,6 @@ type CodeConnectedData = {
     settings?: CodeSettings;
 };
 
-interface CodeContent {
-    type: 'code';
-    text: string;
-    language: string;
-}
-
 type CodeContext = {
     baseDirectory: string;
     openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[];
@@ -4823,16 +4816,6 @@ interface CollectionDTO {
     symlinkPath?: string;
 }
 
-interface CollectionEntity extends BaseEntity {
-    _type: EARS.Entity.Collection;
-    name: string;
-    description?: string;
-    displayOrder?: number;
-    symlinkPath?: string;
-    /** Hash of the content source at the last apply. Absent on user-created collections. */
-    contentHash?: string;
-}
-
 type CommandLifecycleLine = z.infer<typeof CommandLifecycleLineSchema>;
 
 /** Native input queue lifecycle; command_uuid identifies the submitted user message. */
@@ -4898,9 +4881,6 @@ interface ConsumerHandlers {
     /** Called when the app-server process exits unexpectedly. Consumer should clean up thread state. */
     onCrash?(error: string): void;
 }
-
-/** A section of a document's content, as the library compiler parses it from markdown */
-type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
 
 interface ContextReference {
     refType: ContextReferenceType;
@@ -5280,25 +5260,6 @@ interface DocumentDTO {
     updatedAt: string;
 }
 
-interface DocumentEntity extends BaseEntity {
-    _type: EARS.Entity.Document;
-    name: string;
-    content: ContentSection[];
-    shortCode: DocumentShortCode;
-    displayOrder?: number;
-    /** Free-form tags, stored directly on the document as a string array. */
-    tags?: string[];
-    /**
-     * What this document is: `commands` marks a slash-command list, which the `commands` designation's
-     * owner serves. A written document's own frontmatter `type` says so, and the format it was compiled
-     * with supplies a default where a whole source is one kind; a document created in the app carries
-     * whatever its creator passed. Absent, it is just a document.
-     */
-    documentType?: string;
-    /** Hash of the content source at the last apply. Absent on user-created documents. */
-    contentHash?: string;
-}
-
 interface DocumentItem {
     type: 'document';
     id: EARS.EntityId;
@@ -5315,8 +5276,6 @@ interface DocumentItem {
     isSymlinked?: boolean;
     filePath?: string;
 }
-
-type DocumentShortCode = `DOC-${number}`;
 
 type DocumentsListener = () => void;
 
@@ -5340,10 +5299,6 @@ declare namespace EARS {
         type SearchIndex = typeof SearchIndex;
         const IndexedDoc = "IndexedDoc";
         type IndexedDoc = typeof IndexedDoc;
-        const Document = "Document";
-        type Document = typeof Document;
-        const Collection = "Collection";
-        type Collection = typeof Collection;
         const Relation = "Relation";
         type Relation = typeof Relation;
         const Flow = "Flow";
@@ -5356,12 +5311,14 @@ declare namespace EARS {
         type Action = typeof Action;
         const Prompt = "Prompt";
         type Prompt = typeof Prompt;
+        const Document = "Document";
+        type Document = typeof Document;
+        const Collection = "Collection";
+        type Collection = typeof Collection;
     }
-    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Document | Entity.Collection | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt;
+    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt | Entity.Document | Entity.Collection;
     type EntityId<E extends string = string> = _apackdev_ears.EARS.EntityId<E>;
     namespace RelKind {
-        const PARENT_OF = "parent_of";
-        type PARENT_OF = typeof PARENT_OF;
         const HAS = "has";
         type HAS = typeof HAS;
         const RELATES_TO = "relates_to";
@@ -5376,9 +5333,11 @@ declare namespace EARS {
         type SPAWNED = typeof SPAWNED;
         const TRACKED = "tracked";
         type TRACKED = typeof TRACKED;
+        const PARENT_OF = "parent_of";
+        type PARENT_OF = typeof PARENT_OF;
         const Custom: <T extends string>(k: T) => T & RelKind;
     }
-    type RelKind = RelKind.PARENT_OF | RelKind.HAS | RelKind.RELATES_TO | RelKind.CONTAINS | RelKind.TRANSITIONS_TO | RelKind.INSTANCE_OF | RelKind.SPAWNED | RelKind.TRACKED | (string & {});
+    type RelKind = RelKind.HAS | RelKind.RELATES_TO | RelKind.CONTAINS | RelKind.TRANSITIONS_TO | RelKind.INSTANCE_OF | RelKind.SPAWNED | RelKind.TRACKED | RelKind.PARENT_OF | (string & {});
     namespace RoleKind {
         const Custom: <T extends string>(k: T) => T & RoleKind;
     }
@@ -5473,14 +5432,6 @@ interface ExecOnceResult {
     stdout: string;
     stderr: string;
     exitCode: number;
-}
-
-interface FieldContent {
-    type: 'field';
-    fields: Array<{
-        key: string;
-        value: string;
-    }>;
 }
 
 interface FileChangeInfo {
@@ -6838,16 +6789,6 @@ declare class LibraryService {
     findByCode(shortCode: string): Promise<DocumentDTO | undefined>;
     findByName(name: string): Promise<DocumentDTO | undefined>;
     findByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined>;
-    /**
-     * The chat's slash commands: the field sections of every command document, in document order then
-     * name, one `**name**: placeholder` field per command.
-     *
-     * **One source, so no precedence rule.** Every command is a field of a document of
-     * `COMMANDS_DOCUMENT_TYPE`, so there is nothing to merge and no declaration a document could shadow;
-     * a name two documents define keeps the first. This pack ships its own in
-     * `src/content/commands/internal/`.
-     */
-    commands(): PackCommand[];
     getText(id: EARS.EntityId): Promise<string | undefined>;
     list(folderId?: EARS.EntityId): Promise<LibraryItem[]>;
     create(params: {
@@ -6881,11 +6822,6 @@ interface LibrarySystemContext {
     currentItems: LibraryItem[];
     currentFolderId: EARS.EntityId | null;
     currentPath: string[];
-}
-
-interface ListContent {
-    type: 'list';
-    items: string[];
 }
 
 /** A page of the app server's MCP server statuses */
@@ -6959,11 +6895,6 @@ type LogsInternalEvents = {
 };
 
 type LogsSettings = SettingsOf<'logs'>;
-
-interface MarkdownContent {
-    type: 'markdown';
-    text: string;
-}
 
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
@@ -8274,8 +8205,6 @@ type OwnEntityShapes = {
     'Note': NoteEntity;
     'BrowserTab': BrowserTabEntity;
     'BrowserBookmark': BrowserBookmarkEntity;
-    'Document': DocumentEntity;
-    'Collection': CollectionEntity;
 };
 
 /** The repositories this pack declares (apack.json features[].repositories) */
@@ -9192,11 +9121,6 @@ interface TerminalInfo {
 interface TerminalTab extends OpenFile {
     isTerminal: true;
     terminalInfo: TerminalInfo;
-}
-
-interface TextContent {
-    type: 'text';
-    text: string;
 }
 
 type Thinking = z.infer<typeof ThinkingSchema>;
@@ -10298,7 +10222,7 @@ declare const browserQueries: {
  * Database Service
  *
  * `services.database`: live-data context for AI query generation. Actions read and write
- * entities through `services.repository`; pack code imports `qx`/`tx` from `#generated/ears`.
+ * entities through `services.repository`; pack code imports `query`/`create`/`write` from `#generated/ears`.
  */
 /**
  * Build a query context from live data for AI query generation.
@@ -11307,6 +11231,7 @@ declare const libraryCommands: {
     readonly createCollection: (name: string, description?: string, parentId?: EARS.EntityId, id?: string, contentHash?: string) => CollectionDTO;
     readonly updateCollection: (id: EARS.EntityId, name: string, description?: string, contentHash?: string) => CollectionDTO;
     readonly deleteCollection: (id: EARS.EntityId) => void;
+    /** A document with no folder given moves to the root, which is `null` to the repository */
     readonly moveDocument: (documentId: EARS.EntityId, newCollectionId?: EARS.EntityId) => DocumentDTO;
     readonly renameItem: (id: EARS.EntityId, name: string, type: "document" | "folder") => LibraryItem;
     readonly deleteItems: (ids: EARS.EntityId[]) => void;
@@ -13317,8 +13242,10 @@ declare const terminalQueries: {
 };
 
 declare const threadCommands: {
+    /** `id` and `createdAt` keep an imported thread's own; a new thread gets fresh ones */
     readonly create: (input: ThreadCreateData & {
         id?: string;
+        createdAt?: number;
     }) => {
         id: EARS.EntityId;
         shortCode: string;
