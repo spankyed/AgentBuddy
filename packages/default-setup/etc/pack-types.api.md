@@ -1456,8 +1456,8 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     reason: z.ZodOptional<z.ZodString>;
     input: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
-    cwd: string;
     revision: string;
+    cwd: string;
     command: string;
     id: string;
     input: Record<string, unknown>;
@@ -1473,8 +1473,8 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     reason?: string | undefined;
     choiceToken?: string | undefined;
 }, {
-    cwd: string;
     revision: string;
+    cwd: string;
     command: string;
     id: string;
     input: Record<string, unknown>;
@@ -1874,14 +1874,29 @@ declare const ClaudeNativeMcpFormOperationSchema: z.ZodDiscriminatedUnion<"opera
     operation: z.ZodLiteral<"edit">;
     field: z.ZodString;
     value: z.ZodNullable<z.ZodUnion<[z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodString, "many">]>>;
+    cursorOffset: z.ZodOptional<z.ZodNumber>;
 }, "strict", z.ZodTypeAny, {
     value: string | number | boolean | string[] | null;
     operation: "edit";
     field: string;
+    cursorOffset?: number | undefined;
 }, {
     value: string | number | boolean | string[] | null;
     operation: "edit";
     field: string;
+    cursorOffset?: number | undefined;
+}>, z.ZodObject<{
+    operation: z.ZodLiteral<"cursor">;
+    field: z.ZodString;
+    cursorOffset: z.ZodNumber;
+}, "strict", z.ZodTypeAny, {
+    operation: "cursor";
+    field: string;
+    cursorOffset: number;
+}, {
+    operation: "cursor";
+    field: string;
+    cursorOffset: number;
 }>, z.ZodObject<{
     operation: z.ZodEnum<["accept", "decline", "cancel"]>;
 }, "strict", z.ZodTypeAny, {
@@ -1914,11 +1929,12 @@ declare const ClaudeNativeMcpFormSchema: z.ZodObject<{
     currentFieldIndex: z.ZodOptional<z.ZodNumber>;
     focusedButton: z.ZodNullable<z.ZodEnum<["accept", "decline"]>>;
     textInputValue: z.ZodString;
+    textInputCursorOffset: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    ready: boolean;
     revision: string;
     message: string;
     values: Record<string, string | number | boolean | string[]>;
+    ready: boolean;
     id: string;
     sessionId: string;
     errors: Record<string, string>;
@@ -1930,11 +1946,12 @@ declare const ClaudeNativeMcpFormSchema: z.ZodObject<{
     focusedButton: "accept" | "decline" | null;
     textInputValue: string;
     currentFieldIndex?: number | undefined;
+    textInputCursorOffset?: number | undefined;
 }, {
-    ready: boolean;
     revision: string;
     message: string;
     values: Record<string, string | number | boolean | string[]>;
+    ready: boolean;
     id: string;
     sessionId: string;
     errors: Record<string, string>;
@@ -1946,6 +1963,7 @@ declare const ClaudeNativeMcpFormSchema: z.ZodObject<{
     focusedButton: "accept" | "decline" | null;
     textInputValue: string;
     currentFieldIndex?: number | undefined;
+    textInputCursorOffset?: number | undefined;
 }>;
 
 type ClaudeNativeMcpUrl = z.infer<typeof ClaudeNativeMcpUrlSchema>;
@@ -1996,9 +2014,9 @@ declare const ClaudeNativeMcpUrlSchema: z.ZodObject<{
     }>, "many">;
     warnings: z.ZodArray<z.ZodString, "many">;
 }, "strip", z.ZodTypeAny, {
-    ready: boolean;
     revision: string;
     message: string;
+    ready: boolean;
     id: string;
     kind: "mcp_elicitation" | "mcp_elicitation_waiting" | "mcp_url_elicitation";
     title: string;
@@ -2015,9 +2033,9 @@ declare const ClaudeNativeMcpUrlSchema: z.ZodObject<{
     }[];
     warnings: string[];
 }, {
-    ready: boolean;
     revision: string;
     message: string;
+    ready: boolean;
     id: string;
     kind: "mcp_elicitation" | "mcp_elicitation_waiting" | "mcp_url_elicitation";
     title: string;
