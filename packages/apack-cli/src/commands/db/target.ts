@@ -117,14 +117,14 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
     if (db.schema.degraded !== undefined) io.err(`Warning: ${db.schema.degraded}`);
     for (const note of db.schema.notes) io.err(`Note: ${note}`);
     // What the schema could not tell the user, now that the data is here: which types are in it that nothing
-    // declares. A read of one is fine — `consoleScope` names it — and a write is not, which is the half
-    // `degraded` cannot cover, since its condition is that no pack was read at all
+    // declares. A read of one is fine — `consoleScope` names it — and a write goes through with no pack to check
+    // it, which is the half `degraded` cannot cover, since its condition is that no pack was read at all
     const undeclared = undeclaredEntityTypes(db);
     if (undeclared.length > 0) {
       const listed = undeclared.map(({ type, rows }) => `${type} (${rows})`).join(', ');
       io.err(`Note: no installed pack declares these entity types, which the data holds anyway: ${listed}.`);
-      io.err('  A query may name them here. A write that names one would create a row called after the type '
-        + 'instead of an entity, so name their pack with --schema-from before changing them.');
+      io.err('  A query may name them here, and so may a write — but no installed pack checks what it writes, '
+        + 'so name their pack with --schema-from before changing them.');
     }
     return lock ? { ...db, close: () => { try { db.close(); } finally { lock.release(); } } } : db;
   } catch (error) {
@@ -181,8 +181,9 @@ export function undeclaredEntityTypes(db: AppDatabase): Array<{ type: string; ro
  *
  * **Declared wins on a collision**, so a pack's name keeps the value it declared and an observed type only ever
  * adds a name that stood for nothing. That ordering is the whole of what keeps this a widening of the console
- * rather than of the schema: `db.schema` still means *declared*, which is what the engine's entity-type check
- * and a write go on.
+ * rather than of the schema: `db.schema` still means *declared*. The engine's entity-type check is wider —
+ * `openAppDatabase` adds the types hydration found, so a write naming an observed type goes through, unchecked
+ * by any pack.
  *
  * **`relKinds` is deliberately not widened.** `EARS.RelKind.PARENT_OF` is `'parent_of'` and the data holds only
  * the value, so no amount of observation produces the alias; a dir with no snapshots has to be given one.

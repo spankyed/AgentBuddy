@@ -89,12 +89,10 @@ export interface ConsoleScope {
 /**
  * A name the database cannot account for is an error, not a number.
  *
- * `EARS.Entity.Note` for a name nothing declares used to read `undefined`, and `qx(undefined)` means *every*
- * entity — so a query for one type answered with the whole database, measured as 607 rows where 2 were asked
- * for. That is a wrong answer rather than a failure, which is why it has to be refused here: `qx('Note')` for
- * an unknown name is harmless (it finds nothing), and `qx()` with no start is a declared, documented overload
- * that eight callers and this console's own examples use. The namespace is the only layer that can tell the
- * two apart, because it is the only one that knows the name was asked for.
+ * A namespace that read `undefined` for a name nothing declares would pass that on as though it were a type.
+ * The engine refuses `qx(undefined)` too, but only as an unknown type with no name in it; the namespace is the
+ * one layer that knows which name was asked for, so it is where the error can name it, list what is known and
+ * carry the caller's `hint` (the CLI's `--schema-from`).
  *
  * It is a `Proxy` rather than a getter per name because the names are data: what is declared comes from the
  * installed packs. The traps are what legitimate code does with the object — `db script` is handed it raw

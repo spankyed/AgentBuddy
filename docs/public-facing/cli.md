@@ -791,7 +791,7 @@ No backup holds the secrets — `export` and the Database settings' backups copy
 
 Destroy every Settings row (the user's changes to the default settings); the app recreates the defaults on its next start. Without `--force` it lists each row and the settings it stores.
 
-In the apack repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return qx().count()"`.
+In the apack repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return qx.all().count()"`.
 
 ### Cleanup
 
