@@ -19,6 +19,8 @@ import type { JSONSchema7 } from 'ai';
 import type { LanguageModel } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import type { RecordIndexes } from '@apackdev/ears';
+import type { RecordStore } from '@apackdev/ears';
 import type { rerank } from 'ai';
 import type { RerankingModel } from 'ai';
 import type { SpeechModel } from 'ai';
@@ -95,7 +97,7 @@ export function _createPackServices(): {
 };
 
 // @internal
-export function _createRunHistory(records: _RunHistoryRecords): RunHistory;
+export function _createRunHistory(records: RecordStore<TNode>): RunHistory;
 
 // @public
 export interface FileEntry {
@@ -223,7 +225,7 @@ export const repository: Record<string, unknown>;
 export type _ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => _InferenceModels[K] | Promise<_InferenceModels[K]>;
 
 // @internal
-export const _RUN_HISTORY_INDEXES: readonly ["parentId", "rootId", "status", "tNodeType", "runOf", "isRoot"];
+export const _RUN_HISTORY_INDEXES: RecordIndexes<TNode>;
 
 // @public
 export interface RunHistory {
@@ -243,26 +245,6 @@ export interface RunHistory {
     stopActive(): void;
     tree(id: TNodeId): RunTree | undefined;
     update(id: TNodeId, patch: TNodePatch): void;
-}
-
-// @internal
-export interface _RunHistoryRecords {
-    // (undocumented)
-    delete(id: string): void;
-    // (undocumented)
-    findBy(index: string, value: string | number | boolean, options?: {
-        reverse?: boolean;
-        limit?: number;
-        cursor?: string;
-    }): object[];
-    // (undocumented)
-    get(id: string): object | undefined;
-    // (undocumented)
-    newId(prefix: string): string;
-    // (undocumented)
-    put(record: {
-        id: string;
-    }): void;
 }
 
 // @public

@@ -1,3 +1,4 @@
+import type { RecordIndexes, RecordStore } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
 import type { TNodeKind } from '../steps/types.ts';
 import { truncateResult } from '../steps/result-truncator.ts';
@@ -83,20 +84,18 @@ export interface RunHistory {
   prune(options: { before: number }): number;
 }
 
-/** @internal The records a run history keeps: a record store's operations (`openRecordStore`, `@apackdev/ears/lmdb`) */
-export interface _RunHistoryRecords {
-  get(id: string): object | undefined;
-  put(record: { id: string }): void;
-  delete(id: string): void;
-  findBy(index: string, value: string | number | boolean, options?: { reverse?: boolean; limit?: number; cursor?: string }): object[];
-  newId(prefix: string): string;
-}
-
-/** @internal The fields a run history's records are indexed by, which its record store must declare */
-export const _RUN_HISTORY_INDEXES = ['parentId', 'rootId', 'status', 'tNodeType', 'runOf', 'isRoot'] as const;
-
-/** The fields a record carries only to be found by: a flow node's flow, and whether it is a session's root */
-type Indexed = { runOf?: EARS.EntityId; isRoot?: true };
+/**
+ * @internal What a run history's record store files its nodes under, which the store is opened with: their place in
+ * a tree, their status and kind, and two computed — a flow node's flow (`runOf`) and whether it is a session's root
+ */
+export const _RUN_HISTORY_INDEXES: RecordIndexes<TNode> = {
+  parentId: (node) => node.parentId,
+  rootId: (node) => node.rootId,
+  status: (node) => node.status,
+  tNodeType: (node) => node.tNodeType,
+  runOf: (node) => (node.tNodeType === 'flow' ? node.flowId : undefined),
+  isRoot: (node) => node.parentId === undefined || undefined,
+};
 
 const logger = createLogger('run-history');
 
@@ -113,62 +112,46 @@ function bounded<T extends Partial<TNode>>(fields: T): T {
   };
 }
 
-/** A node as the store holds it: with the fields it is found by */
-function stored(node: TNode): TNode & Indexed {
-  return {
-    ...node,
-    ...(node.tNodeType === 'flow' && node.flowId !== undefined && { runOf: node.flowId }),
-    ...(node.parentId === undefined && { isRoot: true }),
-  };
-}
-
-function read(record: object | undefined): TNode | undefined {
-  if (!record) return undefined;
-  const { runOf: _runOf, isRoot: _isRoot, ...node } = record as TNode & Indexed;
-  return node;
-}
-
-/** @internal The run history over its records: the host's are a record store on disk, a test's in memory */
-export function _createRunHistory(records: _RunHistoryRecords): RunHistory {
-  const nodes = (found: object[]) => found.map((record) => read(record)!);
+/** @internal The run history over its record store: the host's on disk, a test's in memory (`createMemoryRecordStore`) */
+export function _createRunHistory(records: RecordStore<TNode>): RunHistory {
   const history: RunHistory = {
     newId: () => records.newId('TNode') as TNodeId,
     add(node) {
       if (node.parentId === undefined) {
-        records.put(stored({ ...bounded(node), rootId: node.id }));
+        records.put({ ...bounded(node), rootId: node.id });
         return;
       }
-      const parent = read(records.get(node.parentId));
+      const parent = records.get(node.parentId);
       if (!parent) {
         logger.warn(`Dropped run node ${node.id}: its parent ${node.parentId} isn't in the run history`);
         return;
       }
-      records.put(stored({ ...bounded(node), rootId: parent.rootId }));
+      records.put({ ...bounded(node), rootId: parent.rootId });
     },
     update(id, patch) {
-      const node = read(records.get(id));
-      if (node) records.put(stored({ ...node, ...bounded(patch) }));
+      const node = records.get(id);
+      if (node) records.put({ ...node, ...bounded(patch) });
     },
-    get: (id) => read(records.get(id)),
-    findChildren: (id, page = {}) => nodes(records.findBy('parentId', id, page)),
+    get: (id) => records.get(id),
+    findChildren: (id, page = {}) => records.findBy('parentId', id, page),
     tree(id) {
       const node = history.get(id);
       if (!node) return undefined;
       const grow = (parent: TNode): RunTree => ({ ...parent, children: history.findChildren(parent.id).map(grow) });
       return grow(node);
     },
-    findRuns: ({ flowId, limit, cursor } = {}) => nodes(flowId === undefined
+    findRuns: ({ flowId, limit, cursor } = {}) => (flowId === undefined
       ? records.findBy('tNodeType', 'flow', { reverse: true, limit, cursor })
       : records.findBy('runOf', flowId, { reverse: true, limit, cursor })),
     stopActive() {
       const now = Date.now();
-      for (const node of nodes(records.findBy('status', 'active'))) records.put(stored({ ...node, status: 'stopped', completedAt: now }));
+      for (const node of records.findBy('status', 'active')) records.put({ ...node, status: 'stopped', completedAt: now });
     },
     prune({ before }) {
       let removed = 0;
-      for (const root of nodes(records.findBy('isRoot', true))) {
+      for (const root of records.findBy('isRoot', true)) {
         if (root.status === 'active' || (root.completedAt ?? root.startedAt) >= before) continue;
-        for (const node of nodes(records.findBy('rootId', root.id))) records.delete(node.id);
+        for (const node of records.findBy('rootId', root.id)) records.delete(node.id);
         removed++;
       }
       return removed;
