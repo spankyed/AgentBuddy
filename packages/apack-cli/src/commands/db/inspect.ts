@@ -33,10 +33,10 @@ export interface InspectOptions {
 const entityType = (id: string) => id.split('-')[0];
 
 /** The ids an entity's relations in one direction reach, by relation kind */
-function relatedByKind(query: Ears, entityId: EARS.EntityId, direction: Direction): Map<string, string[]> {
+function relatedByKind(ears: Ears, entityId: EARS.EntityId, direction: Direction): Map<string, string[]> {
   const relations = direction === 'outgoing'
-    ? query.findRelations({ sourceEntity: entityId })
-    : query.findRelations({ targetEntity: entityId });
+    ? ears.findRelations({ sourceEntity: entityId })
+    : ears.findRelations({ targetEntity: entityId });
   const byKind = new Map<string, string[]>();
   for (const relation of relations) {
     const other = direction === 'outgoing' ? relation.targetEntity : relation.sourceEntity;
@@ -53,26 +53,26 @@ function relatedByKind(query: Ears, entityId: EARS.EntityId, direction: Directio
  * The lines showing an entity and its relations in `options.directions`, followed `options.depth` levels (a
  * related entity at the last level is listed by id, and one already shown isn't shown again)
  */
-export function graphLines(query: Ears, entityId: string, options: InspectOptions, depth = options.depth, indent = '', seen = new Set<string>()): string[] {
+export function graphLines(ears: Ears, entityId: string, options: InspectOptions, depth = options.depth, indent = '', seen = new Set<string>()): string[] {
   if (seen.has(entityId)) return [`${indent}[${entityType(entityId)}] ${entityId} (shown above)`];
   seen.add(entityId);
-  const attributes = query.getAll(entityId as EARS.EntityId);
+  const attributes = ears.getAll(entityId as EARS.EntityId);
   if (Object.keys(attributes).length === 0) return [`${indent}Not found: ${entityId}`];
 
   const name = String(attributes.label ?? attributes.name ?? attributes.title ?? '');
   const lines = [`${indent}[${entityType(entityId)}] ${entityId}${name ? ` "${name.length > 40 ? `${name.slice(0, 40)}...` : name}"` : ''}`];
-  const roles = query.getRoles(entityId as EARS.EntityId);
+  const roles = ears.getRoles(entityId as EARS.EntityId);
   if (roles.length > 0) lines.push(`${indent}  roles: ${roles.join(', ')}`);
 
   for (const direction of options.directions) {
-    const byKind = relatedByKind(query, entityId as EARS.EntityId, direction);
+    const byKind = relatedByKind(ears, entityId as EARS.EntityId, direction);
     const arrow = direction === 'outgoing' ? '->' : '<-';
     for (const [kind, related] of byKind) {
       lines.push(`${indent}  ${arrow} ${kind} (${related.length})`);
       const shown = related.slice(0, 10);
       for (const relatedId of shown) {
         lines.push(...(depth > 1
-          ? graphLines(query, relatedId, options, depth - 1, `${indent}    `, seen)
+          ? graphLines(ears, relatedId, options, depth - 1, `${indent}    `, seen)
           : [`${indent}      [${entityType(relatedId)}] ${relatedId}`]));
       }
       if (related.length > shown.length) lines.push(`${indent}      ... and ${related.length - shown.length} more`);
@@ -82,11 +82,12 @@ export function graphLines(query: Ears, entityId: string, options: InspectOption
 }
 
 /** Entities and outgoing relations per entity type, for the types that have entities */
-export function relationStatsLines(query: Ears, entityTypes: Iterable<string>): string[] {
+export function relationStatsLines(ears: Ears, entityTypes: Iterable<string>): string[] {
   const rows = [...entityTypes].sort().flatMap((type) => {
-    const ids = query.getEntitiesOfType(type as EARS.Entity);
+    // The registered types, the trash included: what the data dir holds of each
+    const ids = ears.query.withTrashed(type).ids();
     if (ids.length === 0) return [];
-    const relations = ids.reduce((sum, id) => sum + query.findRelations({ sourceEntity: id }).length, 0);
+    const relations = ids.reduce((sum, id) => sum + ears.findRelations({ sourceEntity: id }).length, 0);
     return [[type, String(ids.length), String(relations), (relations / ids.length).toFixed(1)]];
   });
   const header = ['Entity type', 'Entities', 'Relations', 'Per entity'];
@@ -113,7 +114,7 @@ export async function dbInspect(args: string[], io: DbIo): Promise<void> {
       if (!db.schema.getRegisteredEntityTypes().has(values.type as string)) {
         throw new Error(`Not an entity type of the installed packs: ${values.type as string}`);
       }
-      const ids = db.ears.getEntitiesOfType(values.type as EARS.Entity);
+      const ids = db.admin.getEntitiesOfType(values.type as EARS.Entity);
       io.out(`${ids.length} ${values.type} entities${ids.length > 5 ? ', the first 5:' : ''}`);
       for (const id of ids.slice(0, 5)) graphLines(db.ears, id, { depth, directions }).forEach((line) => io.out(line));
     } else {

@@ -10,7 +10,7 @@ import { boundHost } from '../runtime/host-runtime.ts';
 import type { EarsNames } from '../runtime/packs-view.ts';
 import { EARS as EARS_NAMES } from '../types/index.ts';
 import { defineEars, prepareEntity, type EARS } from '@apackdev/ears';
-import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, destroyEntity, getAll, getRoles, grantRole, revokeRole, createRelation, removeRelation, removeRelationById, getAllEntities, getEntitiesOfType, getAllEntityTypes, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations, findEntitiesByAttribute, findEntitiesByRelationTo, findEntitiesInRelationTo } from '../ears/index.ts';
+import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, getAll, getRoles, grantRole, revokeRole, removeRelationById, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations, getSchemaStats as engineSchemaStats } from '../ears/index.ts';
 import { errorMessage } from '../utils/shared.ts';
 
 /** Entities per type, and each attribute kind's and relation kind's use, over the whole database */
@@ -20,12 +20,9 @@ export interface SchemaStats {
   relations: Record<string, { totalRelations: number; uniqueSources: number; uniqueTargets: number }>;
 }
 
-/** The installed engine's data, counted per entity type, attribute kind and relation kind */
+/** The installed engine's data, counted per entity type (the trash and the engine's own types included), attribute kind and relation kind */
 export function getSchemaStats(): SchemaStats {
-  const stats: SchemaStats = { entities: {}, attributes: {}, relations: {} };
-  for (const entityType of getAllEntityTypes()) {
-    stats.entities[entityType] = getEntitiesOfType(entityType).length;
-  }
+  const stats: SchemaStats = { entities: engineSchemaStats().entities, attributes: {}, relations: {} };
   for (const kind of getAllAttributeKinds()) {
     stats.attributes[String(kind)] = getAttributeStats(kind);
   }
@@ -40,14 +37,9 @@ const { getAttr, createEntityWithDefaults, updateEntity } = /*#__PURE__*/ define
 
 const readHelpers = {
   query: untypedQuery,
-  getAllEntities,
   getAll,
-  findEntitiesByRelationTo,
   getAttr,
   getRoles,
-  getEntitiesOfType,
-  findEntitiesByAttribute,
-  findEntitiesInRelationTo,
   findRelations,
   getRelationStats,
   getSchemaStats,
@@ -57,12 +49,9 @@ const writeHelpers = {
   create: untypedCreate,
   upsert: untypedUpsert,
   write: untypedWrite,
-  destroyEntity,
   prepareEntity,
   createEntityWithDefaults,
   updateEntity,
-  createRelation,
-  removeRelation,
   removeRelationById,
   grantRole,
   revokeRole,

@@ -25,7 +25,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - `PackShapes['Node']` is the pack's step node union: its own and its dependencies' `XNode extends NodeBase` types. It's `NodeBase` when no step defines one.
 
 **Field parameters.**
-- They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `linksPick`, `orderBy`, `distinct`, `groupBy`, `getAttr`, `findWithFields`, `findByIdWithFields` and `updateEntity`.
+- They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `linksPick`, `orderBy`, `distinct`, `groupBy`, `getAttr` and `updateEntity`. A list field's `where` also takes one of its elements, which the value index answers.
 - This form is what gives editors field-name completions and makes a typo's error list the valid fields.
 - For a union shape, such as `Node` rows, only the fields every member has are accepted.
 - A query whose fields vary by member, or are only known at runtime, uses `untypedQuery` from `@apackdev/ears` on purpose. The brain trigger queries in default-setup are the example. (It's the same untyped `query` an engine has, `createEarsEngine(...).query`.)
@@ -87,7 +87,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
    - `@apackdev/cli`: `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` (a real dependent pack under bundler and node16, against both the workspace source and the packed `@apackdev/ears` and `@apackdev/sdk`) and `packages/publish-checks/tests/published-sdk-any.integration.spec.ts`
 3. **Mutation-check every rule you touch.** Break it on purpose and confirm a test fails.
 4. **Check editor completions and error messages.** `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` in `@apackdev/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.
-   - Field positions should list the entity's fields: `query(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')`, `getAttr(id, '|')`, `findWithFields(EARS.Entity.X, ['|'])`.
+   - Field positions should list the entity's fields: `query(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')` and `getAttr(id, '|')`.
    - Entity-name positions should list entity names: `query('|')`, `findAll('|')`, `createEntity('|')`, `.linksTo(kind, '|')`, `.ofType('|')`.
    - A typo (`where('titel')`) should produce an error that lists the valid fields.
    - Compare against the previous version with the TypeScript language service (`getCompletionsAtPosition`), not just by compiling.

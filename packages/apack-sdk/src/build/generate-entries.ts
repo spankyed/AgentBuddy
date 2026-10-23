@@ -1222,8 +1222,7 @@ export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
 export type EntityName = ${entityNames.join(' | ')};
 
 export const {
-  query, create, upsert, write, transact, findById, findAll, findWhere, findFirst,
-  findWithFields, findByIdWithFields, findWithRole, findFirstWithRole,
+  query, create, upsert, write, transact, findById, findAll, findWhere,
   createEntity, createEntityWithDefaults, updateEntity, getAttr,
 } = /*#__PURE__*/ defineEars<PackShapes, EntityName>(boundEars);
 `;

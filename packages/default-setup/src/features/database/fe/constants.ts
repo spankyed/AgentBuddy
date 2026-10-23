@@ -25,7 +25,7 @@ export const attributeQueryTemplate = (value: string) =>
 export const relationQueryTemplate = (value: string) =>
   `// Query entities with ${value} relations
 const results = [];
-const allEntities = getAllEntities();
+const allEntities = query.all().ids();
 
 for (const entityId of allEntities) {
   const targets = query.ids(entityId).linksTo('${value}').ids();

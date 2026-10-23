@@ -1,8 +1,7 @@
-import { write, findById, findAll } from '#generated/ears.ts';
+import { write, findById, findAll, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts'
 
-import { exists } from '@apackdev/sdk/ears';
 import { trash } from '@apackdev/sdk/repositories';
 import type { TerminalInfo } from '../types.ts'
 import { createLogger } from '@apackdev/sdk/logger'
@@ -63,7 +62,7 @@ export const terminalCommands = {
   
   
   resize: (id: EARS.EntityId, cols: number, rows: number): void => {
-    if (!exists(id)) {
+    if (!query.ids(id).exists()) {
       logger.error(`Terminal ${id} not found`)
       return
     }
@@ -76,7 +75,7 @@ export const terminalCommands = {
   },
 
   rename: (id: EARS.EntityId, customTitle: string): void => {
-    if (!exists(id)) {
+    if (!query.ids(id).exists()) {
       logger.error(`Terminal ${id} not found`)
       return
     }
@@ -88,7 +87,7 @@ export const terminalCommands = {
   },
 
   updateCwd: (id: EARS.EntityId, cwd: string, title?: string): void => {
-    if (!exists(id)) {
+    if (!query.ids(id).exists()) {
       logger.error(`Terminal ${id} not found`)
       return
     }
@@ -107,7 +106,7 @@ export const terminalCommands = {
   },
   
   updatePid: (id: EARS.EntityId, pid: number): void => {
-    if (!exists(id)) {
+    if (!query.ids(id).exists()) {
       logger.error(`Terminal ${id} not found`)
       return
     }
@@ -119,7 +118,7 @@ export const terminalCommands = {
   },
   
   markClosed: (id: EARS.EntityId): void => {
-    if (!exists(id)) {
+    if (!query.ids(id).exists()) {
       logger.error(`Terminal ${id} not found`)
       return
     }
@@ -133,7 +132,7 @@ export const terminalCommands = {
   },
   
   delete: (id: EARS.EntityId): void => {
-    if (!exists(id)) {
+    if (!query.ids(id).exists()) {
       logger.error(`Terminal ${id} not found`)
       return
     }

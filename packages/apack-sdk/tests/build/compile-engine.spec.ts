@@ -30,12 +30,12 @@ describe('a flow compile', () => {
     const installed = createEarsEngine({ isEntityType: (name) => name === EARS.Entity.Flow });
     _bindEars(installed);
     const appFlow = untypedQuery(EARS.Entity.Flow).count() === 0 && installed.create(EARS.Entity.Flow).set('label', 'Mine').id();
-    const before = installed.getAllEntities();
+    const before = installed.admin.getAllEntities();
 
     expect(rt.roundTrip(flows.simple)).toHaveProperty('Simple');
 
     expect(boundEars()).toBe(installed);
-    expect(installed.getAllEntities()).toEqual(before);
+    expect(installed.admin.getAllEntities()).toEqual(before);
     expect(untypedQuery(EARS.Entity.Flow).pick(['label'])).toEqual([{ id: appFlow, label: 'Mine' }]);
     expect(rt.engine().query(EARS.Entity.Flow).pick(['label'])).toEqual([{ id: expect.any(String), label: 'Simple' }]);
   });

@@ -723,7 +723,7 @@ While a command changes the database it holds a lock on the data dir (`db-write.
 
 #### `apack db query <code> | --file <path> [-o pretty|json|csv] [--out <file>]`
 
-Run query code with the Database console's read helpers: `query`, `EARS`, `getAttr`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `findEntitiesByAttribute`, `findEntitiesByRelationTo`, `findEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`apack db script`) can.
+Run query code with the Database console's read helpers: `query` (with `query.withTrashed` and `query.trashed`), `EARS`, `getAttr`, `getAll`, `getRoles`, `findRelations`, `getRelationStats`, `getSchemaStats`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`apack db script`) can.
 
 ```bash
 apack db query "return query(EARS.Entity.Settings).pickAll()" -o json --out settings.json
@@ -732,7 +732,7 @@ apack db query --file ./report.js -o csv
 
 #### `apack db exec <code> | --file <path> [-o pretty|json|csv] [--out <file>]` (names its data dir)
 
-Run transaction code with the console's read and write helpers (`create`, `upsert`, `write`, `destroyEntity`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `createRelation`, `removeRelation`, `removeRelationById`, `grantRole`, `revokeRole`). The code runs as one transaction: if it throws part way, none of its writes are kept, and the failure says so. It is synchronous — `await` doesn't parse, and code returning a promise is refused — since an await would split the transaction. A write that fails to reach the files fails the command.
+Run transaction code with the console's read and write helpers (`create`, `upsert`, `write`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `removeRelationById`, `grantRole`, `revokeRole`; `write(id)` links, unlinks, trashes and destroys). The code runs as one transaction: if it throws part way, none of its writes are kept, and the failure says so. It is synchronous — `await` doesn't parse, and code returning a promise is refused — since an await would split the transaction. A write that fails to reach the files fails the command.
 
 ```bash
 apack db exec "write('Note-123').set('title', 'Renamed')"
@@ -749,7 +749,7 @@ Run a script file against the database, for work a one-liner can't do: it import
 ```ts
 // notes-report.ts
 export default async ({ db, EARS, args, log }) => {
-  const notes = db.ears.getEntitiesOfType(EARS.Entity.Note);
+  const notes = db.ears.query(EARS.Entity.Note).ids();
   log(`${notes.length} notes`);
   return notes.map((id) => db.ears.getAll(id));
 };

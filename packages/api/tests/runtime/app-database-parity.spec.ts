@@ -26,11 +26,12 @@ const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
 /** Every entity with its attributes and roles, and every relation, in a stable order */
-function snapshot(query: Ears) {
-  const ids = [...query.getAllEntities()].sort();
+function snapshot(ears: Ears) {
+  // Every entity, the trash included, and every relation's row
+  const ids = [...ears.query.withTrashed.all().ids(), ...ears.findRelations().map((r) => r.id)].sort();
   return {
-    entities: ids.map((id) => ({ id, attributes: query.getAll(id), roles: [...query.getRoles(id)].sort() })),
-    relations: query.findRelations()
+    entities: ids.map((id) => ({ id, attributes: ears.getAll(id), roles: [...ears.getRoles(id)].sort() })),
+    relations: ears.findRelations()
       .map(({ id, relationType, sourceEntity, targetEntity, info }) => ({ id, relationType, sourceEntity, targetEntity, info }))
       .sort((a, b) => a.id.localeCompare(b.id)),
   };

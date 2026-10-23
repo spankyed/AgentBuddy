@@ -24,7 +24,7 @@ export const SCRIPT_USAGE = [
   'called with the open database and returns its result, printed like a query\'s:',
   '',
   '  export default async ({ db, EARS, args, log }) => {',
-  '    const notes = db.ears.getEntitiesOfType(EARS.Entity.Note);',
+  '    const notes = db.ears.query(EARS.Entity.Note).ids();',
   '    log(`${notes.length} notes`);',
   '    return notes.map((id) => db.ears.getAll(id));',
   '  };',

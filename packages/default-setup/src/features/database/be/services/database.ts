@@ -5,8 +5,7 @@
  * entities through `services.repository`; pack code imports `query`/`create`/`write` from `#generated/ears`.
  */
 
-import { EARS } from '#generated/ears.ts';
-import { getEntitiesOfType, getAllEntityTypes, getAll } from '@apackdev/sdk/ears';
+import { getAllEntityTypes, getAll, isEntityType, untypedQuery } from '@apackdev/sdk/ears';
 import { findRelations } from '@apackdev/sdk/ears';
 
 /**
@@ -18,10 +17,12 @@ export function buildQueryContext(): { schema: string; topology: string } {
   // Sample entities
   const schemaLines: string[] = [];
   for (const type of getAllEntityTypes()) {
-    const ids = getEntitiesOfType(type as EARS.Entity);
-    if (ids.length === 0) continue;
+    // The engine's own numbering rows are no type a query can name
+    if (!isEntityType(type)) continue;
+    const first = untypedQuery.withTrashed(type).first();
+    if (!first) continue;
 
-    const raw = getAll(ids[0]);
+    const raw = getAll(first);
     const fields: string[] = [];
     const sample: Record<string, unknown> = {};
 
@@ -40,7 +41,7 @@ export function buildQueryContext(): { schema: string; topology: string } {
 
     const sampleStr = JSON.stringify(sample);
     const truncated = sampleStr.length > 200 ? sampleStr.slice(0, 200) + '…}' : sampleStr;
-    schemaLines.push(`${type} (${ids.length})\n  fields: ${fields.join(', ')}\n  sample: ${truncated}`);
+    schemaLines.push(`${type} (${untypedQuery.withTrashed(type).count()})\n  fields: ${fields.join(', ')}\n  sample: ${truncated}`);
   }
 
   // Build topology: relation counts by source type, kind and target type

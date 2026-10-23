@@ -13,11 +13,10 @@ import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  query, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
+  query, createEntity, findById, findAll, findWhere, createEntityWithDefaults, updateEntity, getAttr,
   type EntityShape,
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
-import { filterSystemFields } from '@apackdev/ears';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { createLogger, type Logger } from '@apackdev/sdk/logger';
 import {
@@ -72,11 +71,10 @@ describe('Type inference — typed EARS helpers', () => {
     expectTypeOf(() => findById(actionId)!.actionFn).returns.toEqualTypeOf<string>();
   });
 
-  it('findAll, findWhere and findFirst read the declared shape', () => {
+  it('findAll and findWhere read the declared shape', () => {
     // Wrapped in functions: only their types are checked
     expectTypeOf(() => findAll(EARS.Entity.Prompt)[0].templateFn).returns.toEqualTypeOf<string>();
     expectTypeOf(() => findWhere(EARS.Entity.Thread, 'status', 'active')[0].topic).returns.toEqualTypeOf<string>();
-    expectTypeOf(() => findFirst(EARS.Entity.Thread, 'status', 'active')!.status).returns.toEqualTypeOf<string>();
   });
 
   it('createEntityWithDefaults returns the declared shape with the created fields', () => {
@@ -102,23 +100,16 @@ describe('Type inference — typed EARS helpers', () => {
     expectTypeOf(getAttr('x' as EARS.EntityId, 'actionFn')).toBeUnknown();
   });
 
-  it('findWithFields picks the requested fields', () => {
-    expectTypeOf(findWithFields(EARS.Entity.Action, ['label', 'actionFn'])[0]).toEqualTypeOf<Pick<EntityShape<'Action'>, 'label' | 'actionFn'>>();
+  it('pick picks the requested fields', () => {
+    expectTypeOf(query(EARS.Entity.Action).pick(['label', 'actionFn'])[0]).toEqualTypeOf<{ id: EARS.EntityId<'Action'> } & Pick<EntityShape<'Action'>, 'label' | 'actionFn'>>();
     // @ts-expect-error not a field of Action
-    findWithFields(EARS.Entity.Action, ['notAField']);
+    query(EARS.Entity.Action).pick(['notAField']);
   });
 
-  it('filterSystemFields<T> preserves the generic shape', () => {
-    type Entity = { label: string; status: string; entityType: string };
-    expectTypeOf(filterSystemFields<Entity>).returns.toEqualTypeOf<Partial<Entity>>();
-  });
-
-  it('filterSystemFields takes an interface, as a pack declares its entities', () => {
-    // A `Record<string, …>` constraint would reject this: an interface has no implicit index
-    // signature, while the object-literal alias above has one
-    interface TerminalEntity { id: string; title: string; pid: number }
-    const terminal = {} as TerminalEntity;
-    expectTypeOf(filterSystemFields(terminal)).toEqualTypeOf<Partial<TerminalEntity>>();
+  it('where takes an element of a declared list field', () => {
+    // Type-level only
+    const check = () => query(EARS.Entity.Note).where('linkTargets', 'Note-x');
+    expectTypeOf(check).toBeFunction();
   });
 });
 
@@ -314,14 +305,6 @@ describe('Generic flow — runtime verification', () => {
     expect(result).toBeNull();
   });
 
-
-  it('filterSystemFields<T> returns Partial<T>', () => {
-    type Entity = { label: string; status: string; entityType: string };
-    const input: Entity = { label: 'test', status: 'active', entityType: 'Action' };
-    const filtered = filterSystemFields(input);
-    expect(filtered).toBeDefined();
-    expect(typeof filtered).toBe('object');
-  });
 
   it('createLogger returns Logger with callable methods', () => {
     const logger = createLogger('type-test');

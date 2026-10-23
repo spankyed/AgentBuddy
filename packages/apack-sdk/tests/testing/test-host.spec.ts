@@ -70,7 +70,7 @@ describe('the test host', () => {
     expect(ears()).not.toBe(before);
     expect(boundHost().ears.repository).toBe(ears().repository);
     expect(repository.memoQueries).toBe(before.repository.memoQueries);
-    expect(before.getAllEntities()).toContain(id);
+    expect(before.query.ids(id).exists()).toBe(true);
     await expect(boundHost().services.appData.exportBackup('/tmp')).rejects.toThrow("isn't supported in unit tests");
     resetTestData();
   });

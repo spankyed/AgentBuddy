@@ -129,7 +129,7 @@ function memoryTraceStore(engine: () => EarsEngine): TraceStore {
   const entityMeta = (id: EARS.EntityId) =>
     ({ type: String(getAttr(id, 'entityType') ?? id.slice(0, id.indexOf('-'))), createdAt: Number(getAttr(id, 'createdAt') ?? 0) });
   return {
-    entities: () => engine().getAllEntities().map((id) => ({ id, meta: entityMeta(id) })),
+    entities: () => engine().admin.getAllEntities().map((id) => ({ id, meta: entityMeta(id) })),
     getEntityMeta: (id) => (getAttr(id, 'entityType') === null ? null : entityMeta(id)),
     getAttr: (kind, id) => getAttr(id, kind) ?? undefined,
     relations: (filter = {}) => engine().findRelations({

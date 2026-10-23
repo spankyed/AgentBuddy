@@ -2,7 +2,7 @@
  * Tests verifying that default-setup imports from @apackdev/sdk and @apackdev/ears resolve to the
  * runtime the harness binds.
  */
-import { untypedCreate, exists } from '@apackdev/sdk/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 import {
   findById, findAll, findWhere, query, write,
   createEntityWithDefaults, getAttr,
@@ -60,14 +60,14 @@ describe('Tier 1 — EARS delegates', () => {
     expect(query.withTrashed.ids(entity.id).pickOne(['trashedAt'])?.trashedAt).toBe(5);
   });
 
-  it('exists returns true for existing entities', () => {
+  it('query.ids(id).exists() answers for existing entities', () => {
     const entity = createEntityWithDefaults(
       EARS.Entity.Action as any,
       { label: 'Exists', actionFn: 'fn()' } as any,
       'ACT',
     );
-    expect(exists(entity.id)).toBe(true);
-    expect(exists('Action-nonexistent' as any)).toBe(false);
+    expect(query.ids(entity.id).exists()).toBe(true);
+    expect(query.ids('Action-nonexistent' as any).exists()).toBe(false);
   });
 
 });

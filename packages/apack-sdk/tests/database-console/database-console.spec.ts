@@ -20,9 +20,7 @@ describe('the helpers console code sees', () => {
   // `apack db query`/`exec` all rest on what a query can and cannot reach
   it('gives a query these, and nothing that writes', async () => {
     expect([...READ_HELPER_NAMES].sort()).toEqual([
-      'findEntitiesByAttribute', 'findEntitiesByRelationTo', 'findEntitiesInRelationTo', 'findRelations', 'getAll',
-      'getAllEntities', 'getAttr', 'getEntitiesOfType', 'getRelationStats', 'getRoles', 'getSchemaStats',
-      'query',
+      'findRelations', 'getAll', 'getAttr', 'getRelationStats', 'getRoles', 'getSchemaStats', 'query',
     ]);
     for (const name of READ_HELPER_NAMES) {
       await expect(runQueryCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -31,8 +29,8 @@ describe('the helpers console code sees', () => {
 
   it('gives a transaction the write helpers as well', async () => {
     expect([...WRITE_HELPER_NAMES].sort()).toEqual([
-      'create', 'createEntityWithDefaults', 'createRelation', 'destroyEntity', 'grantRole', 'prepareEntity', 'removeRelation',
-      'removeRelationById', 'revokeRole', 'updateEntity', 'upsert', 'write',
+      'create', 'createEntityWithDefaults', 'grantRole', 'prepareEntity', 'removeRelationById', 'revokeRole', 'updateEntity',
+      'upsert', 'write',
     ]);
     for (const name of [...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES]) {
       await expect(runTransactionCode(`return typeof ${name}`, scope), name).resolves.toBe('function');

@@ -30,8 +30,6 @@ EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
 EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains')
 getAll(id)            Record<string, any> — all attributes for a single entity
 getAttr(id, EARS.AttrKind.Custom('fieldName'))   single attribute value
-getAllEntities()       string[] — all entity IDs in the database
-getEntitiesOfType(EARS.Entity.X)   string[] — all IDs of a type
 getRoles(id)          string[] — roles on an entity
 getSchemaStats()      { entities, attributes, relations } with counts
 
@@ -43,9 +41,10 @@ Chainable (return query, keep chaining):
   query.ids('Thread-1')                              single entity by ID
   query.ids(['Thread-1', 'Thread-2'])                multiple by ID (absent ids are dropped)
   query.all()                                        every entity
+  query.withTrashed(...) / query.trashed(type)       the same, reaching the trash too / only the trash
   .ofType(EARS.Entity.X)                           filter by entity type
-  .where('field', value)                           filter by exact attribute match (value must not be undefined)
-  .where('field', v => ...)                        filter by a predicate over each value
+  .where('field', value)                           filter by exact attribute match, or a list holding it (value must not be undefined)
+  .where('field', v => ...)                        filter by a predicate over the whole value
   .has('field')                                    filter: has this attribute
   .lacks('field')                                  filter: lacks this attribute
   .withRole(role)                                  filter by role

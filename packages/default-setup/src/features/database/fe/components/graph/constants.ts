@@ -19,7 +19,7 @@ export const relationQueryTemplate = (value: string) =>
 `// Query entities with ${value} relations
 // This returns the source entities that have the specified relation type
 const sources = [];
-const allIds = getAllEntities();
+const allIds = query.all().ids();
 
 for (const sourceId of allIds) {
   const targets = query.ids(sourceId).related('${value}', sourceId, true).ids();
