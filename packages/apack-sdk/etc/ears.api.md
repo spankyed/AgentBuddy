@@ -67,9 +67,6 @@ export const NO_ENGINE_BOUND: string;
 // @public (undocumented)
 export const registerRepository: (name: string, value: unknown) => void;
 
-// @public (undocumented)
-export const removeRelationById: (relId: EARS.EntityId) => void;
-
 // @public
 export const repository: Record<string, unknown>;
 

@@ -2,7 +2,7 @@
 // The SDK declares these entities (sdk-entities.ts), so it owns their reads and writes; packs build
 // their views on top (default-setup's flows repository).
 import { getTimestamp, RepositoryError, RepositoryErrorCode, RESERVED_ATTRIBUTES } from '@apackdev/ears';
-import { findRelations, generateLabelWithCount, generateShortCode, getRow, getRoles, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
+import { findRelations, generateLabelWithCount, generateShortCode, getRow, getRoles, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import type { FlowEntity, NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
@@ -225,13 +225,7 @@ export const flowRepository = {
         logger.warn('Error deleting node during flow deletion', { nodeId, error });
       }
     }
-    for (const { id: relId } of findRelations({ sourceEntity: flowId })) {
-      try {
-        removeRelationById(relId);
-      } catch (error) {
-        logger.warn('Error removing relation during flow deletion', { relId, error });
-      }
-    }
+    // Its own relations go with it
     untypedWrite(flowId).destroy();
     logger.info('Deleted flow and all its contents', { flowId, deletedNodes: nodeIds.length });
   },
@@ -289,7 +283,7 @@ export const flowRepository = {
     for (const id of rows.keys()) {
       for (const details of findRelations({ sourceEntity: id })) {
         const key = relationKey(details.sourceEntity, details.relationType, details.targetEntity, details.info);
-        if (owned.has(details.relationType) && !wanted.has(key)) removeRelationById(details.id);
+        if (owned.has(details.relationType) && !wanted.has(key)) untypedWrite(details.id).destroy();
       }
     }
     for (const relation of compiled.relation) {
@@ -375,22 +369,13 @@ export const flowRepository = {
     untypedWrite(nodeId).setMany(changed);
   },
 
-  /** Deletes a node with its edges, its flow's link to it and its related entity's link */
+  /**
+   * Deletes a node with every relation to or from it — its edges, its flow's link to it and its related entity's
+   * link — which destroying it removes; a run's record of the node is kept in the run history's partition
+   */
   deleteNode: (nodeId: EARS.EntityId): void => {
-    const flowId = (query(EARS.Entity.Flow).ids() as EARS.EntityId[]).find((id) => flowNodeIds(id).includes(nodeId));
-    if (!flowId) throw new RepositoryError(`Node ${nodeId} not found in any flow`, RepositoryErrorCode.NOT_FOUND);
-
-    // Every relation once, so a second edge between the same two nodes (another handle) goes with the first
-    const nodeIds = flowNodeIds(flowId);
-    const isEdge = (rel: { relationType: string; sourceEntity: EARS.EntityId; targetEntity: EARS.EntityId }) =>
-      EDGE_KINDS.includes(rel.relationType) && nodeIds.includes(rel.sourceEntity) && nodeIds.includes(rel.targetEntity);
-    const removed = [
-      ...findRelations({ sourceEntity: nodeId }).filter(isEdge),
-      ...findRelations({ targetEntity: nodeId }).filter((rel) => rel.sourceEntity !== nodeId && isEdge(rel)),
-      ...findRelations({ sourceEntity: flowId, relationType: EARS.RelKind.CONTAINS, targetEntity: nodeId }),
-      ...findRelations({ sourceEntity: nodeId, relationType: EARS.RelKind.INSTANCE_OF }),
-    ];
-    for (const rel of removed) removeRelationById(rel.id);
+    const inAFlow = (query(EARS.Entity.Flow).ids() as EARS.EntityId[]).some((id) => flowNodeIds(id).includes(nodeId));
+    if (!inAFlow) throw new RepositoryError(`Node ${nodeId} not found in any flow`, RepositoryErrorCode.NOT_FOUND);
     untypedWrite(nodeId).destroy();
   },
 
@@ -411,7 +396,7 @@ export const flowRepository = {
   },
 
   deleteEdge: (edgeId: EARS.EntityId): void => {
-    removeRelationById(edgeId);
+    untypedWrite(edgeId).destroy();
   },
 
   /** Moves an edge to new ends and handles, keeping its id; throws, leaving it as it was, when that edge isn't allowed */

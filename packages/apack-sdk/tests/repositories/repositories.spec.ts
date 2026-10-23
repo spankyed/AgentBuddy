@@ -138,11 +138,11 @@ describe('flowRepository', () => {
   // Two edges between the same pair of nodes, one per handle, are two edges: listed apart and removed together.
   // Removed as links, not left to the node's destroy: a partition keeping history keeps what a destroy took
   it('lists two edges between the same two nodes on different handles, and deletes both with the node', () => {
-    const unlinked: string[] = [];
+    const removed: string[] = [];
     const sink: PersistenceSink = {
       onCreateEntity() {}, onDestroyEntity() {}, onDropAttr() {}, onPutAttr() {}, onAddRelation() {},
       onUpdateRelation() {}, onUnitStart() {}, onUnitEnd() {},
-      onRemoveRelation(relId, destroyed) { if (!destroyed) unlinked.push(relId); },
+      onRemoveRelation(relId) { removed.push(relId); },
     };
     const sdkTypes = new Set<string>(Object.values(EARS.Entity));
     _bindEars(createEarsEngine({ isRelationKind: () => true, isRole: () => true, persistence: sink, isEntityType: (name) => sdkTypes.has(name) }));
@@ -161,7 +161,8 @@ describe('flowRepository', () => {
     const handleEdges = findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO }).map((rel) => rel.id);
     flowRepository.deleteNode(b.id);
     expect(findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO })).toEqual([]);
-    expect(unlinked).toEqual(expect.arrayContaining(handleEdges));
+    // Both reach persistence: an edge is stored in its nodes' partition, which a node's deletion empties of its links
+    expect(removed).toEqual(expect.arrayContaining(handleEdges));
     expect(flowRepository.flowEdges(flow.id)).toEqual([]);
   });
 

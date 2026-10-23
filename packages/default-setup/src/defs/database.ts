@@ -14,4 +14,3 @@ export { getSchemaStats } from '@apackdev/sdk/ears';
 
 // Write: only a transaction gets these; a query naming one fails with "<name> is not defined"
 export { create, upsert, write, createEntityWithDefaults } from '#generated/ears.ts';
-export { removeRelationById } from '@apackdev/sdk/ears';
