@@ -2349,7 +2349,7 @@
         "globals": {
           "EARS": "typeof _dsl.EARS",
           "query": "typeof _dsl.query",
-          "getAll": "typeof _dsl.getAll",
+          "getRow": "typeof _dsl.getRow",
           "getAttr": "typeof _dsl.getAttr",
           "getRoles": "typeof _dsl.getRoles",
           "findRelations": "typeof _dsl.findRelations",

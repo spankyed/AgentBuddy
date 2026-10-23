@@ -31,7 +31,7 @@ upsert(type, id)      the entity with this id, created as type when missing → 
 write(id)             an existing entity → write builder (throws when no entity has the id)
 EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
 EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains')
-getAll(id)            Record<string, any> — all attributes for a single entity
+getRow(id)            { id, entityType, ...attributes } for a single entity, or undefined
 getRoles(id)          string[] — roles on an entity
 createEntityWithDefaults(type, attrs)   create with auto-generated fields
 updateEntity(id, attrs)                 update entity attributes

@@ -46,7 +46,8 @@ export async function dbExport(args: string[], io: DbIo): Promise<void> {
     for (const type of types) {
       const ids = db.admin.getEntitiesOfType(type as EARS.Entity);
       if (ids.length === 0 && !requested) continue;
-      const rows = ids.map((id) => ({ id, ...db.ears.getAll(id) }));
+      // Listed ids are the engine's, so each has a row
+      const rows = ids.map((id) => db.ears.getRow(id)!);
       fs.writeFileSync(path.join(outDir, `${type}.${format}`), format === 'csv' ? toCSV(rows) : `${toJSON(rows)}\n`);
       counts[type] = rows.length;
       io.out(`${type}: ${rows.length}`);

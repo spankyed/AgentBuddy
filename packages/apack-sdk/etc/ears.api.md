@@ -8,6 +8,7 @@ import { Blueprint } from '@apackdev/ears';
 import type { Create } from '@apackdev/ears';
 import { EARS } from '@apackdev/ears';
 import type { Ears } from '@apackdev/ears';
+import { EntityRow } from '@apackdev/ears';
 import type { Query } from '@apackdev/ears';
 import { RelationMatch } from '@apackdev/ears';
 import { RelationRow } from '@apackdev/ears';
@@ -38,9 +39,6 @@ export const generateLabelWithCount: (baseLabel: string, entityType: EARS.Entity
 export const generateShortCode: (entityType: EARS.Entity, prefix: string) => string;
 
 // @public (undocumented)
-export const getAll: (id: EARS.EntityId) => Record<string, unknown>;
-
-// @public (undocumented)
 export const getAllAttributeKinds: () => EARS.AttrKind[];
 
 // @public (undocumented)
@@ -60,6 +58,9 @@ export const getRelationStats: (kind: EARS.RelKind) => RelationStats;
 
 // @public (undocumented)
 export const getRoles: (id: EARS.EntityId) => string[];
+
+// @public (undocumented)
+export const getRow: (id: EARS.EntityId) => EntityRow | undefined;
 
 // @public (undocumented)
 export const getSchemaStats: () => SchemaStats;

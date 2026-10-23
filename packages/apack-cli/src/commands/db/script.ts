@@ -26,7 +26,7 @@ export const SCRIPT_USAGE = [
   '  export default async ({ db, EARS, args, log }) => {',
   '    const notes = db.ears.query(EARS.Entity.Note).ids();',
   '    log(`${notes.length} notes`);',
-  '    return notes.map((id) => db.ears.getAll(id));',
+  '    return notes.map((id) => db.ears.getRow(id));',
   '  };',
   '',
   '  db     the open database: ears (query, create, upsert, write, the finders), admin, store, schema, paths, userDataDir',
