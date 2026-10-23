@@ -6,6 +6,7 @@
 
 import type { BaseEntity } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
+import type { ShortCode } from '@apackdev/ears';
 
 // @public
 export interface ActionInput {

@@ -117,7 +117,6 @@ const defaultThread: ThreadCreateData | ThreadViewData = {
 
 const defaultChatThread: AgentThreadData = {
   id: undefined,
-  shortCode: '',
   topic: '',
   instructions: '',
   status: 'backlog',

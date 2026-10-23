@@ -115,7 +115,7 @@ describe('flow applier', () => {
     const flowId = flows('Demo Flow')[0].id as never;
     const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
 
-    const added = boundEars().createEntityWithDefaults('Node' as never, { label: 'mine' }).id;
+    const added = boundEars().create('Node' as never, { label: 'mine' }).id();
     untypedWrite(flowId).link('contains' as never, added as never);
     // Both, and that is right: a node arrives with the `contains` edge that holds it, so the wiring moved too
     expect(driftedGraphParts(item, flowId), 'a node the user added').toEqual(['edges', `node:${added}`]);

@@ -45,7 +45,7 @@ export function openDatabaseStore({ paths, schema, readOnly, log, onWriteFailure
     isEntityType: (name) => schema.getRegisteredEntityTypes().has(name),
     isRelationKind: (name) => schema.getRegisteredRelationKinds().has(name),
     isRole: (name) => schema.getRegisteredRoles().has(name),
-    requiredFields: (type) => schema.getRequiredFields?.(type) ?? [],
+    rowRules: (type) => schema.getRowRules?.(type),
   });
   return { store, engine };
 }
@@ -120,7 +120,7 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
       getRegisteredEntityTypes: () => knownToEngine,
       getRegisteredRelationKinds: () => kindsKnownToEngine,
       getRegisteredRoles: () => rolesKnownToEngine,
-      ...(schema.getRequiredFields && { getRequiredFields: schema.getRequiredFields }),
+      ...(schema.getRowRules && { getRowRules: schema.getRowRules }),
     },
     readOnly,
     log,

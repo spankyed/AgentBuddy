@@ -1060,7 +1060,7 @@ ${manifest.extensions?.settings ? `  settings: ${dataLiteral(manifest.extensions
     entities: ${dataLiteral(_packEntityTypes(manifest))},
     relKinds: ${dataLiteral(_packRelationTypes(manifest))},
     roles: ${dataLiteral(_packRoles(manifest))},
-    requiredFields: ${requiredFieldsLiteral()},
+    rowRules: ${rowRulesLiteral()},
   },
 ${hookEntries.length ? `  lifecycle: { ${hookEntries.map(({ name, binding }) => `${propertyKey(name, name)}: ${binding}`).join(', ')} },\n` : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
 };
@@ -1240,7 +1240,7 @@ export type EntityName = ${entityNames.join(' | ')};
 
 export const {
   query, create, upsert, write, transact, findById, findAll, findWhere,
-  newId, createEntityWithDefaults, getAttr,
+  newId, getAttr,
 } = /*#__PURE__*/ defineEars<PackShapes, EntityName, EARS.RelKind, EARS.RoleKind>(boundEars);
 `;
   }
@@ -1798,7 +1798,7 @@ export const contentRuntime: ContentRuntime = {
   entities: ${dataLiteral(_packEntityTypes(manifest))},
   relKinds: ${dataLiteral(_packRelationTypes(manifest))},
   roles: ${dataLiteral(_packRoles(manifest))},
-  requiredFields: ${requiredFieldsLiteral()},
+  rowRules: ${rowRulesLiteral()},
   repositories: { ${repositories.map(([name]) => `${propertyKey(name, name)}: __repo_${name}`).join(', ')} },
   contentWriters: { ${hooks.map(([entity], i) => `${propertyKey(entity)}: __contentWriter_${i}`).join(', ')} },
 };
@@ -2004,12 +2004,13 @@ export type { ImportMode } from '@apackdev/sdk/utils';
   }
 
   /**
-   * The fields each of this pack's own shaped entities requires, read off its shape: what the engine refuses a created
-   * row without. An entity with no shape requires nothing, and a dependency's register their own.
+   * What each of this pack's own shaped entities holds a created row to, read off its shape: the fields the engine
+   * refuses a created row without, and the prefix it numbers a short code with. An entity with no shape is held to
+   * nothing, and a dependency's register their own.
    */
-  function requiredFieldsLiteral(): string {
+  function rowRulesLiteral(): string {
     return dataLiteral(Object.fromEntries(packShapes().map(({ entity, exportName, file }) =>
-      [entity, moduleReader().requiredFieldsOf(file, exportName)])));
+      [entity, moduleReader().rowRulesOf(file, exportName)])));
   }
 
   /** This pack's own shaped entities, each shape checked to be a type its module exports */

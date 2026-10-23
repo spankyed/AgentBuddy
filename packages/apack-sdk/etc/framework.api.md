@@ -13,6 +13,7 @@ import type { EventObject } from 'xstate';
 import type { MachineContext } from 'xstate';
 import type { Mapper } from 'xstate';
 import type { ParameterizedObject } from 'xstate';
+import type { RowRules } from '@apackdev/ears';
 import { z } from 'zod';
 
 // @public
@@ -85,9 +86,9 @@ export interface ContentRuntime {
     relKinds: Record<string, string>;
     // (undocumented)
     repositories: Record<string, unknown>;
-    requiredFields?: Record<string, readonly string[]>;
     // (undocumented)
     roles: Record<string, string>;
+    rowRules?: Record<string, RowRules>;
 }
 
 // @public
@@ -407,9 +408,9 @@ export interface PackEARS {
     entities: Record<string, string>;
     // (undocumented)
     relKinds: Record<string, string>;
-    requiredFields?: Record<string, readonly string[]>;
     // (undocumented)
     roles: Record<string, string>;
+    rowRules?: Record<string, RowRules>;
 }
 
 // @internal

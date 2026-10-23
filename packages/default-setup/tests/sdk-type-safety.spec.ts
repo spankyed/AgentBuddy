@@ -13,7 +13,7 @@ import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  query, create, upsert, newId, findById, findAll, findWhere, createEntityWithDefaults, write, getAttr,
+  query, create, upsert, newId, findById, findAll, findWhere, write, getAttr,
   type EntityShape,
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
@@ -84,14 +84,19 @@ describe('Type inference — typed EARS helpers', () => {
     expectTypeOf(check).toBeFunction();
   });
 
-  it('createEntityWithDefaults returns the declared shape with the created fields', () => {
-    const result = createEntityWithDefaults(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()' });
-    expectTypeOf(result.actionFn).toEqualTypeOf<string>();
-    expectTypeOf(result.shortCode).toEqualTypeOf<string>();
-    // Type-level only: the engine refuses this row at runtime too
+  it('create may leave out the short code a shape numbers, which reads back as its type\'s', () => {
+    const action = findById(create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()' }).id())!;
+    expectTypeOf(action.shortCode).toEqualTypeOf<`ACT-${number}`>();
+    expect(action.shortCode).toMatch(/^ACT-\d+$/);
+    // Type-level only: the engine refuses these rows at runtime too
     const check = () => {
+      create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()', shortCode: 'ACT-40' });
+      // @ts-expect-error a short code is its type's, ACT-<n>
+      create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()', shortCode: 'X-1' });
+      // @ts-expect-error a field the shape requires, and doesn't number, is still required
+      create(EARS.Entity.Action, { input: {}, actionFn: 'fn()' });
       // @ts-expect-error not a field of Action
-      createEntityWithDefaults(EARS.Entity.Action, { notAField: 1 });
+      create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()', notAField: 1 });
     };
     expectTypeOf(check).toBeFunction();
   });
@@ -284,11 +289,7 @@ describe('Generic flow — runtime verification', () => {
       entityType: EARS.Entity;
     };
 
-    const entity = createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'TypedAction', actionFn: 'fn()', category: 'test' } as any,
-      'ACT',
-    );
+    const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'TypedAction', actionFn: 'fn()', category: 'test' }).id())!;
 
     const found = findById<ActionEntity>(entity.id);
     expect(found).toBeDefined();
@@ -299,16 +300,8 @@ describe('Generic flow — runtime verification', () => {
   it('findAll<T> returns typed array', () => {
     type ActionEntity = { input: {}, label: string; actionFn: string };
 
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'A1', actionFn: 'fn1()' } as any,
-      'ACT',
-    );
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'A2', actionFn: 'fn2()' } as any,
-      'ACT',
-    );
+    findById(create(EARS.Entity.Action, { input: {}, label: 'A1', actionFn: 'fn1()' }).id())!;
+    findById(create(EARS.Entity.Action, { input: {}, label: 'A2', actionFn: 'fn2()' }).id())!;
 
     const all = findAll<ActionEntity>(EARS.Entity.Action as any);
     expect(all).toHaveLength(2);
@@ -317,16 +310,8 @@ describe('Generic flow — runtime verification', () => {
   });
 
   it('findWhere returns the declared shape', () => {
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'CatA', actionFn: 'fn()', category: 'alpha' } as any,
-      'ACT',
-    );
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'CatB', actionFn: 'fn()', category: 'beta' } as any,
-      'ACT',
-    );
+    findById(create(EARS.Entity.Action, { input: {}, label: 'CatA', actionFn: 'fn()', category: 'alpha' }).id())!;
+    findById(create(EARS.Entity.Action, { input: {}, label: 'CatB', actionFn: 'fn()', category: 'beta' }).id())!;
 
     const results = findWhere(EARS.Entity.Action, 'category', 'alpha');
     expect(results).toHaveLength(1);
@@ -335,11 +320,7 @@ describe('Generic flow — runtime verification', () => {
   });
 
   it('query() fluent chain produces typed results', () => {
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'Chain', actionFn: 'fn()' } as any,
-      'ACT',
-    );
+    findById(create(EARS.Entity.Action, { input: {}, label: 'Chain', actionFn: 'fn()' }).id())!;
 
     const ids = query(EARS.Entity.Action as any).ids();
     expect(Array.isArray(ids)).toBe(true);
@@ -356,11 +337,7 @@ describe('Generic flow — runtime verification', () => {
 
   it('query().map() returns correctly typed array', () => {
     // The row map() then walks
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'MapTest', actionFn: 'fn()' } as any,
-      'ACT',
-    );
+    findById(create(EARS.Entity.Action, { input: {}, label: 'MapTest', actionFn: 'fn()' }).id())!;
 
     const labels = query(EARS.Entity.Action as any).map(
       (entityId) => `prefix-${entityId}`

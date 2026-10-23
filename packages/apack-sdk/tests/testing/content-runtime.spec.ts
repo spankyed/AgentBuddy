@@ -50,7 +50,8 @@ describe.skipIf(!built)("a built pack's content runtime", () => {
     expect(counts).toEqual({ created: 3, updated: 0, skipped: 0 });
 
     const notes = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>('Note', 'title', 'Intro');
-    expect(notes[0]).toMatchObject({ shortCode: expect.stringMatching(/^NOTE-\d+$/), lastSeen: 0 });
+    // What noteCommands writes and a bare record doesn't carry: the note went through default-setup's hooks
+    expect(notes[0]).toMatchObject({ hideCompletedChildren: false, lastSeen: 0 });
     // A note's references index the notes its links name that exist; this one names a note there is none of
     expect(findRelations({ sourceEntity: notes[0].id, relationType: 'references' })).toEqual([]);
     const [plan] = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>('Note', 'title', 'Plan');

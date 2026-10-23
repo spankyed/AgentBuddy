@@ -59,7 +59,7 @@ describe('a pack depending on default-setup content with its formats', () => {
     await expect(generatePackFiles({ ...manifest, dependencies: {} }, { packRoot: FIXTURE })).rejects.toThrow(/default-setup/);
   });
 
-  it("gets NOTE and DOC shortCodes, order, nesting, sections, media and REFERENCES from default-setup's format and hooks", async () => {
+  it("gets DOC shortCodes, order, nesting, sections, media and REFERENCES from default-setup's format and hooks", async () => {
     resetDatabase();
     // The note the handbook links to: a content note's id is made when it is written, so a link by id reaches a note
     // that is already there, and a reference is indexed only to a note that exists
@@ -71,7 +71,7 @@ describe('a pack depending on default-setup content with its formats', () => {
     });
 
     const { rows, relations, media } = snapshot();
-    expect(rows['Note:Team Handbook']).toMatchObject({ shortCode: expect.stringMatching(/^NOTE-\d+$/), icon: '📘', favorite: true, lastSeen: 0, contentHash: expect.any(String) });
+    expect(rows['Note:Team Handbook']).toMatchObject({ icon: '📘', favorite: true, lastSeen: 0, hideCompletedChildren: false, contentHash: expect.any(String) });
     expect(rows['Note:Roadmap']).toMatchObject({ noteType: 'tasklist', displayOrder: 1 });
     expect(rows['Note:Roadmap/ship it']).toMatchObject({ noteType: 'task', displayOrder: 0, completed: false });
     expect(rows['Note:Roadmap/write docs']).toMatchObject({ noteType: 'task', displayOrder: 1, completed: true });

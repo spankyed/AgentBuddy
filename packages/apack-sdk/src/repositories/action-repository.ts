@@ -30,7 +30,9 @@ export const actionRepository = {
   create: (data: ActionInput): ActionEntity => {
     if (!data.label?.trim()) throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
     if (!data.actionFn?.trim()) throw new RepositoryError('Action function is required', RepositoryErrorCode.VALIDATION_ERROR);
-    return ears().createEntityWithDefaults(EARS.Entity.Action, { ...data, input: data.input || {} }, 'ACT') as unknown as ActionEntity;
+    // `create` numbers its short code
+    const id = ears().create(EARS.Entity.Action, { ...data, input: data.input || {} }).id();
+    return ears().findById<ActionEntity>(id)!;
   },
 
   update: (id: EARS.EntityId, updates: Partial<ActionInput>): void => {

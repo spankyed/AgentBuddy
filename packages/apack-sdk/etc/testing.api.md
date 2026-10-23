@@ -24,6 +24,7 @@ import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
 import type { Ref } from 'vue';
 import type { rerank } from 'ai';
+import { RowRules } from '@apackdev/ears';
 import type { SnapshotFrom } from 'xstate';
 import type { streamText } from 'ai';
 import type { ToolLoopAgent } from 'ai';
@@ -213,8 +214,8 @@ export interface TestRuntimeStartOptions {
     onboarding?: OnboardingService;
     packs?: PackRegistryView;
     relationKinds?: readonly string[];
-    requiredFields?: Readonly<Record<string, readonly string[]>>;
     roles?: readonly string[];
+    rowRules?: Readonly<Record<string, RowRules>>;
     serviceOverrides?: ReadonlyMap<string, unknown>;
     settings?: SettingsAdmin;
 }

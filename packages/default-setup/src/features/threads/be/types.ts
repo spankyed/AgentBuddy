@@ -1,4 +1,5 @@
 export type * from './export-types.ts';
+import type { ShortCode } from '@apackdev/ears';
 import { type BaseEntity, EARS } from '#generated/ears.ts';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "#features/code/be/services/claude-code/types.ts";
@@ -194,7 +195,8 @@ export interface ThreadEntity extends BaseEntity {
   timestamp: number;
   lastMessageTimestamp?: number;
   lastVisitedTimestamp?: number;
-  shortCode?: string;
+  /** Numbered by `create` */
+  shortCode: ThreadTypeShortCode;
   status: string; // Dynamic statuses from settings
   tags?: string[]; // Tag names from settings
   forcedMode?: string; // Forced mode name for this thread
@@ -245,7 +247,8 @@ export type ThreadViewData = Simplify<
   ThreadCreateData
   & {
     id: ThreadEntity['id'];
-    shortCode: ThreadEntity['shortCode'];
+    /** `''` while the view holds a thread not yet created */
+    shortCode: ThreadEntity['shortCode'] | '';
     status: ThreadEntity['status'];
     timestamp: ThreadEntity['timestamp'];
     archived?: ThreadEntity['archived'];
@@ -265,12 +268,12 @@ export type ThreadExtendedData = ThreadLinkedFields & {
   status?: string;
   pinned?: boolean;
   archived?: boolean;
-  shortCode?: string;
+  shortCode?: ThreadEntity['shortCode'];
   timestamp?: number;
   lastMessageTimestamp?: number;
 }
 
-export type ThreadTypeShortCode = `T-${number}`;
+export type ThreadTypeShortCode = ShortCode<'T'>;
 
 export type ThreadConnectedData = {
   threads: ThreadExtended[];

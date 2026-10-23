@@ -6,6 +6,7 @@
 
 import type { BaseEntity } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
+import type { ShortCode } from '@apackdev/ears';
 
 // @public (undocumented)
 export interface ActionEntity extends BaseEntity {
@@ -26,7 +27,7 @@ export interface ActionEntity extends BaseEntity {
     label: string;
     // (undocumented)
     output?: unknown;
-    shortCode?: string;
+    shortCode: ShortCode<'ACT'>;
     // (undocumented)
     updatedAt: number;
 }
@@ -166,7 +167,7 @@ export interface DocumentEntity extends BaseEntity {
 }
 
 // @public
-export type DocumentShortCode = `DOC-${number}`;
+export type DocumentShortCode = ShortCode<'DOC'>;
 
 // @public (undocumented)
 export namespace EARS {
@@ -255,8 +256,7 @@ export interface FlowEntity extends BaseEntity {
     flowType: 'workflow' | 'integration';
     // (undocumented)
     label: string;
-    // (undocumented)
-    shortCode: string;
+    shortCode: ShortCode<'F'>;
 }
 
 // @public (undocumented)
@@ -317,7 +317,7 @@ export interface PromptEntity extends BaseEntity {
     // (undocumented)
     label: string;
     outputSchema?: unknown;
-    shortCode?: string;
+    shortCode: ShortCode<'PROMPT'>;
     templateFn: string;
     // (undocumented)
     updatedAt: number;
@@ -365,21 +365,41 @@ export const SDK_REL_KINDS: {
 };
 
 // @public
-export const SDK_REQUIRED_FIELDS: {
-    readonly Relation: readonly [];
-    readonly Flow: readonly ["shortCode", "label", "flowType"];
-    readonly Node: readonly ["nodeType", "label"];
-    readonly TNode: readonly ["tNodeType", "label", "status", "startedAt"];
-    readonly Action: readonly ["label", "input", "actionFn"];
-    readonly Prompt: readonly ["label", "inputs", "templateFn"];
-    readonly Document: readonly ["name", "content", "shortCode"];
-    readonly Collection: readonly ["name"];
-};
-
-// @public
 export const SDK_ROLES: {
     readonly ROOT_FLOW: "root_flow";
     readonly ENTRY_EVENT: "entry_event";
+};
+
+// @public
+export const SDK_ROW_RULES: {
+    readonly Relation: {
+        readonly required: readonly [];
+    };
+    readonly Flow: {
+        readonly required: readonly ["shortCode", "label", "flowType"];
+        readonly shortCode: "F";
+    };
+    readonly Node: {
+        readonly required: readonly ["nodeType", "label"];
+    };
+    readonly TNode: {
+        readonly required: readonly ["tNodeType", "label", "status", "startedAt"];
+    };
+    readonly Action: {
+        readonly required: readonly ["label", "input", "actionFn", "shortCode"];
+        readonly shortCode: "ACT";
+    };
+    readonly Prompt: {
+        readonly required: readonly ["label", "inputs", "templateFn", "shortCode"];
+        readonly shortCode: "PROMPT";
+    };
+    readonly Document: {
+        readonly required: readonly ["name", "content", "shortCode"];
+        readonly shortCode: "DOC";
+    };
+    readonly Collection: {
+        readonly required: readonly ["name"];
+    };
 };
 
 // @public

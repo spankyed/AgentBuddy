@@ -1,7 +1,6 @@
-import { write, findById, getAttr, query } from '#generated/ears.ts';
+import { create, write, findById, getAttr, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
-import { createEntityWithDefaults } from '#generated/ears.ts';
 
 import { resolveReferencesTo, syncReferences } from './link-utils.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
@@ -92,21 +91,18 @@ export const noteCommands = {
       }
     }
 
-    const note = createEntityWithDefaults(
-      EARS.Entity.Note,
-      {
-        title: input.title,
-        content: input.content || '',
-        icon: input.icon ?? null,
-        noteType: input.noteType ?? 'document',
-        completed: input.completed ?? false,
-        hideCompletedChildren: false,
-        displayOrder,
-        lastSeen: 0,
-        ...(input.id && { id: input.id as EARS.EntityId }),
-      },
-      'NOTE',
-    );
+    const noteId = create(EARS.Entity.Note, {
+      title: input.title,
+      content: input.content || '',
+      icon: input.icon ?? null,
+      noteType: input.noteType ?? 'document',
+      completed: input.completed ?? false,
+      hideCompletedChildren: false,
+      displayOrder,
+      lastSeen: 0,
+      ...(input.id && { id: input.id as EARS.EntityId<'Note'> }),
+    }).id();
+    const note = findById<NoteEntity>(noteId)!;
 
     // Create parent-child relationship
     if (input.parentId) {

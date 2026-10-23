@@ -391,7 +391,7 @@ describe('an entity we wrote with no recorded parts', () => {
 
   /** An entity with no hash of ours is the user's by identity, which the adoption must not reach */
   it('is not adopted when it carries no hash of ours', () => {
-    ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'Intro', body: 'theirs' });
+    ears().create('Memo' as EARS.Entity, { name: 'Intro', body: 'theirs' });
 
     expect(apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), applyRecord()))
       .toEqual({ created: 0, updated: 0, skipped: 1 });
@@ -752,8 +752,8 @@ describe('wipe-and-replace', () => {
   const folderNames = () => ears().query('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
 
   it("removes rows of every entity type the entry content, even types its records don't hold", () => {
-    ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'old folder' });
-    ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
+    ears().create('Folder' as EARS.Entity, { name: 'old folder' });
+    ears().create('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
 
     // Only top-level memos: no Folder record, yet the entry content folders too
     expect(wipeImport(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]))).toEqual({ created: 1, updated: 0, skipped: 0 });
@@ -764,7 +764,7 @@ describe('wipe-and-replace', () => {
   });
 
   it('wipes when the entry has no records', () => {
-    ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
+    ears().create('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
 
     expect(wipeImport(compiled('pack-a', []))).toEqual({ created: 0, updated: 0, skipped: 0 });
 
@@ -773,7 +773,7 @@ describe('wipe-and-replace', () => {
 
   it("leaves entity types the entry doesn't content", () => {
     const memosOnly = createFormatApplier({ key: 'memos', entities: ['Memo'], identity: ['name'] });
-    ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'kept folder' });
+    ears().create('Folder' as EARS.Entity, { name: 'kept folder' });
 
     memosOnly.apply({ compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), mode: 'wipe-and-replace', log: () => {} });
 
@@ -785,7 +785,7 @@ describe('an update hook that fails part way', () => {
   it("reports the error and leaves the row updatable, not edited: the next content updates it", () => {
     let failing = true;
     registerHooks('Memo', {
-      create: (record) => ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: record.name, body: record.body, pinned: false }).id,
+      create: (record) => ears().create('Memo' as EARS.Entity, { name: record.name, body: record.body, pinned: false }).id(),
       update: (id, record) => {
         ears().write(id).setMany({ body: record.body });
         if (failing) throw new Error('disk full');

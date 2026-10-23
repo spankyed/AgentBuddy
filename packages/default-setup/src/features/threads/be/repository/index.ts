@@ -4,14 +4,13 @@ import { create, write, findById, findAll, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
-import { generateShortCode, wouldCreateCycle } from '@apackdev/sdk/ears';
+import { wouldCreateCycle } from '@apackdev/sdk/ears';
 import { createLogger } from '@apackdev/sdk/logger';
 import { b64Encode, b64Decode } from '@apackdev/ears';
 import type {
   ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,
   ThreadCreateData,
   ThreadExtendedData,
-  ThreadTypeShortCode,
   ThreadConnectedData,
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ThreadLinkRelation,
 } from '../types.ts';
@@ -163,14 +162,12 @@ export const threadCommands = {
     }
 
     const ts = Date.now();
-    const shortCode = generateShortCode(EARS.Entity.Thread, 'T') as ThreadTypeShortCode;
 
     const status = input.status || featureSettings.forFeature('threads').get()?.statuses[0]?.label || '';
     const id = create(EARS.Entity.Thread, {
       ...(input.id ? { id: input.id as EARS.EntityId<'Thread'> } : {}),
       createdAt: input.createdAt ?? ts,
       status,
-      shortCode: shortCode,
       timestamp: ts,
       lastMessageTimestamp: ts,
       topic: input.topic,
@@ -188,7 +185,8 @@ export const threadCommands = {
     // Create relationships for linked threads only
     linkThreads(id, input.linkedThreads ?? []);
 
-    return { id, shortCode, timestamp: ts, status };
+    // `create` numbered its short code
+    return { id, shortCode: findById<ThreadEntity>(id)!.shortCode, timestamp: ts, status };
   },
   
   update: (id: EARS.EntityId, updates: {

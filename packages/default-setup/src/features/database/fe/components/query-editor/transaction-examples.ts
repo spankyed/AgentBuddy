@@ -74,25 +74,18 @@ return query.ids(flowId).pickAll();`
   },
 
 
-  // Repository Helpers
+  // Numbered rows
   {
-    title: 'Use Repository Helpers',
-    description: 'Create entities with auto-generated fields',
-    query: `// Create entity with defaults (auto-generates shortCode, label, etc.)
-const note = createEntityWithDefaults(EARS.Entity.Note, {
-  title: 'Smart Note', content: 'AI-powered helper', icon: null, noteType: 'document', completed: false,
-  hideCompletedChildren: false, displayOrder: 0, lastSeen: 0,
-});
+    title: 'Create a Numbered Row',
+    description: "A row whose type declares a short code is numbered when it brings none",
+    query: `// A Document's shortCode is numbered by create: DOC-<n>
+const docId = create(EARS.Entity.Document, { name: 'Smart Doc', content: [] }).id();
 
 // Update several fields; { touch: false } writes without stamping updatedAt
-write(note.id).setMany({ favorite: true });
-write(note.id, { touch: false }).set('lastSeen', Date.now());
+write(docId).setMany({ tags: ['ai'] });
+write(docId, { touch: false }).set('displayOrder', 0);
 
-// Link it to a thread
-const threadId = query(EARS.Entity.Thread).first();
-if (threadId) write(note.id).link(EARS.RelKind.SPAWNED, threadId);
-
-return query.ids(note.id).pickAll();`
+return query.ids(docId).pick(['shortCode', 'name', 'tags']);`
   },
 
   // Safe Operations
