@@ -13,9 +13,6 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '#generated/ears.ts'
 import { untypedQuery } from '@apackdev/sdk/ears';
-
-/** Whether an entity has the id, in the trash or not */
-const idTaken = (id: string): boolean => untypedQuery.withTrashed.ids(id as never).exists();
 import { restoreJsonMediaRefs } from '@apackdev/sdk/utils'
 import { repository } from '#generated/repository.ts';
 import type { ExportedThreadsData } from './export-types.ts'
@@ -76,7 +73,7 @@ export function importThreads(importDir: string): ImportResult {
       const tags = thread.tags.filter(t => validTags.has(t))
 
       // Skip entity if its ID already exists in the database
-      if (idTaken(thread.id as EARS.EntityId)) {
+      if (untypedQuery.withTrashed.ids(thread.id as EARS.EntityId).exists()) {
         result.errors.push(`Skipped thread "${thread.topic}": entity ID already exists (${thread.id})`)
         result.skipped++
         continue

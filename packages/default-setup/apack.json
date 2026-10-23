@@ -2358,12 +2358,9 @@
           "create": "typeof _dsl.create",
           "upsert": "typeof _dsl.upsert",
           "write": "typeof _dsl.write",
-          "prepareEntity": "typeof _dsl.prepareEntity",
           "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults",
           "updateEntity": "typeof _dsl.updateEntity",
-          "removeRelationById": "typeof _dsl.removeRelationById",
-          "grantRole": "typeof _dsl.grantRole",
-          "revokeRole": "typeof _dsl.revokeRole"
+          "removeRelationById": "typeof _dsl.removeRelationById"
         }
       }
     },

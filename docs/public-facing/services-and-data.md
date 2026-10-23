@@ -382,7 +382,6 @@ A role is a string tag on an entity (`EARS.RoleKind` is a `string`; `EARS.RoleKi
 | `write(id).grant(role)` / `.revoke(role)` | `#generated/ears` | Adds / removes the role; no-op when already there / absent |
 | `write(id).grantExclusive(role, among)` | `#generated/ears` | Makes `id` the only holder among `among`: revokes the role from each of them, then grants it |
 | `query(type).withRole(role)` | `#generated/ears` | Narrows a query to holders |
-| `grantRole(id, role)` / `revokeRole(id, role)` | `@apackdev/sdk/ears` | The same as `write(id).grant(role)` / `.revoke(role)`: a role is held once |
 | `getRoles(id)` | `@apackdev/sdk/ears` | The entity's roles, `string[]` |
 
 ### Relation and entity helpers

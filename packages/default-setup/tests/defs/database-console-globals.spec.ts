@@ -4,7 +4,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { getSchemaStats, READ_HELPER_NAMES, WRITE_HELPER_NAMES } from '@apackdev/sdk/database-console';
+import { READ_HELPER_NAMES, WRITE_HELPER_NAMES } from '@apackdev/sdk/database-console';
 import * as defs from '../../src/defs/database.ts';
 
 const manifest = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '..', '..', 'apack.json'), 'utf-8'));
@@ -21,12 +21,6 @@ describe('the Database console globals', () => {
       expect(type, name).toBe(`typeof _dsl.${name}`);
       expect(Object.keys(defs), name).toContain(name);
     }
-  });
-
-  it("type getSchemaStats as the console's own, not the engine's narrower one", () => {
-    // @apackdev/ears exports a function of the same name whose counts are plain numbers; the editor would then
-    // reject `getSchemaStats().attributes.label.totalValues`, which works
-    expect(defs.getSchemaStats).toBe(getSchemaStats);
   });
 
   it('leave nothing in the defs module that console code cannot use', () => {

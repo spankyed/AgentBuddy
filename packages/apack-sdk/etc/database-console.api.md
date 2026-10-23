@@ -16,9 +16,6 @@ export interface ConsoleScope {
 }
 
 // @public
-export function getSchemaStats(): SchemaStats;
-
-// @public
 export function installedEars(): ConsoleScope['EARS'];
 
 // @public
@@ -29,23 +26,6 @@ export function runQueryCode(code: string, scope: ConsoleScope): Promise<unknown
 
 // @public
 export function runTransactionCode(code: string, scope: ConsoleScope): Promise<unknown>;
-
-// @public
-export interface SchemaStats {
-    // (undocumented)
-    attributes: Record<string, {
-        entityCount: number;
-        totalValues: number;
-    }>;
-    // (undocumented)
-    entities: Record<string, number>;
-    // (undocumented)
-    relations: Record<string, {
-        totalRelations: number;
-        uniqueSources: number;
-        uniqueTargets: number;
-    }>;
-}
 
 // @public
 export const WRITE_HELPER_NAMES: readonly string[];

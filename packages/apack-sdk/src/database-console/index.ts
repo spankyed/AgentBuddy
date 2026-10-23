@@ -9,29 +9,9 @@
 import { boundHost } from '../runtime/host-runtime.ts';
 import type { EarsNames } from '../runtime/packs-view.ts';
 import { EARS as EARS_NAMES } from '../types/index.ts';
-import { defineEars, prepareEntity, type EARS } from '@apackdev/ears';
-import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, getAll, getRoles, grantRole, revokeRole, removeRelationById, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations, getSchemaStats as engineSchemaStats } from '../ears/index.ts';
+import { defineEars } from '@apackdev/ears';
+import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, getAll, getRoles, removeRelationById, getRelationStats, findRelations, getSchemaStats } from '../ears/index.ts';
 import { errorMessage } from '../utils/shared.ts';
-
-/** Entities per type, and each attribute kind's and relation kind's use, over the whole database */
-export interface SchemaStats {
-  entities: Record<string, number>;
-  attributes: Record<string, { entityCount: number; totalValues: number }>;
-  relations: Record<string, { totalRelations: number; uniqueSources: number; uniqueTargets: number }>;
-}
-
-/** The installed engine's data, counted per entity type (the trash and the engine's own types included), attribute kind and relation kind */
-export function getSchemaStats(): SchemaStats {
-  const stats: SchemaStats = { entities: engineSchemaStats().entities, attributes: {}, relations: {} };
-  for (const kind of getAllAttributeKinds()) {
-    stats.attributes[String(kind)] = getAttributeStats(kind);
-  }
-  for (const kind of getAllRelationKinds()) {
-    const { total, uniqueSources, uniqueTargets } = getRelationStats(kind as EARS.RelKind);
-    stats.relations[kind] = { totalRelations: total, uniqueSources, uniqueTargets };
-  }
-  return stats;
-}
 
 const { getAttr, createEntityWithDefaults, updateEntity } = /*#__PURE__*/ defineEars(boundEars);
 
@@ -49,12 +29,9 @@ const writeHelpers = {
   create: untypedCreate,
   upsert: untypedUpsert,
   write: untypedWrite,
-  prepareEntity,
   createEntityWithDefaults,
   updateEntity,
   removeRelationById,
-  grantRole,
-  revokeRole,
 };
 
 /**
