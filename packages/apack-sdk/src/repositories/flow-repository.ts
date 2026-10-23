@@ -2,7 +2,7 @@
 // The SDK declares these entities (sdk-entities.ts), so it owns their reads and writes; packs build
 // their views on top (default-setup's flows repository).
 import { getTimestamp, RepositoryError, RepositoryErrorCode, RESERVED_ATTRIBUTES } from '@apackdev/ears';
-import { findRelations, generateLabelWithCount, generateShortCode, getAll, getRoles, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
+import { findRelations, generateLabelWithCount, generateShortCode, getRow, getRoles, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
@@ -50,7 +50,7 @@ function writeDeclared(row: { id: EARS.EntityId; entityType: string } & Record<s
     untypedCreate(entityType as never, { id, createdAt: createdAt as number | undefined }).setMany(fields);
     return;
   }
-  const current = getAll(id) as Record<string, unknown>;
+  const current: Record<string, unknown> = getRow(id) ?? {};
   if ('nodeType' in fields && current.nodeType !== fields.nodeType) {
     for (const field of Object.keys(current)) {
       if (!(field in fields) && !ENGINE_FIELDS.has(field)) untypedWrite(id).delete(field);

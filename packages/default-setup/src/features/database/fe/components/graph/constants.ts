@@ -22,15 +22,12 @@ const sources = [];
 const allIds = query.all().ids();
 
 for (const sourceId of allIds) {
-  const targets = query.ids(sourceId).related('${value}', sourceId, true).ids();
+  const targets = query.ids(sourceId).linksTo('${value}').ids();
   if (targets.length > 0) {
-    const sourceData = getAll(sourceId);
     sources.push({
-      id: sourceId,
-      type: sourceId.split('-')[0],
+      ...getRow(sourceId),
       targetCount: targets.length,
       targets: targets.slice(0, 3), // Show first 3 targets
-      ...sourceData
     });
   }
 }

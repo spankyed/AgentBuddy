@@ -56,8 +56,8 @@ function relatedByKind(ears: Ears, entityId: EARS.EntityId, direction: Direction
 export function graphLines(ears: Ears, entityId: string, options: InspectOptions, depth = options.depth, indent = '', seen = new Set<string>()): string[] {
   if (seen.has(entityId)) return [`${indent}[${entityType(entityId)}] ${entityId} (shown above)`];
   seen.add(entityId);
-  const attributes = ears.getAll(entityId as EARS.EntityId);
-  if (Object.keys(attributes).length === 0) return [`${indent}Not found: ${entityId}`];
+  const attributes = ears.getRow(entityId as EARS.EntityId);
+  if (!attributes) return [`${indent}Not found: ${entityId}`];
 
   const name = String(attributes.label ?? attributes.name ?? attributes.title ?? '');
   const lines = [`${indent}[${entityType(entityId)}] ${entityId}${name ? ` "${name.length > 40 ? `${name.slice(0, 40)}...` : name}"` : ''}`];

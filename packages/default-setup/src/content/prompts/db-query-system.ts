@@ -28,7 +28,7 @@ GLOBALS:
 query(...)               query builder (see API below)
 EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
 EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains')
-getAll(id)            Record<string, any> — all attributes for a single entity
+getRow(id)            { id, entityType, ...attributes } for a single entity, or undefined
 getAttr(id, EARS.AttrKind.Custom('fieldName'))   single attribute value
 getRoles(id)          string[] — roles on an entity
 getSchemaStats()      { entities, attributes, relations } with counts
@@ -111,12 +111,11 @@ return query.ids(flowId).linksTo('contains', EARS.Entity.Node, false).pickAll();
 
 // Inspect a single entity's full data
 const id = query(EARS.Entity.Thread).first();
-return getAll(id);
+return getRow(id);
 
 // Build custom objects using query.map (iterates IDs, not objects)
 return query(EARS.Entity.Flow).map(id => ({
-  id,
-  ...getAll(id),
+  ...getRow(id),
   nodeCount: query.ids(id).linksTo('contains', EARS.Entity.Node).count()
 }));`;
 }

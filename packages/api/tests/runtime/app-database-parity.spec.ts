@@ -30,7 +30,7 @@ function snapshot(ears: Ears) {
   // Every entity, the trash included, and every relation's row
   const ids = [...ears.query.withTrashed.all().ids(), ...ears.findRelations().map((r) => r.id)].sort();
   return {
-    entities: ids.map((id) => ({ id, attributes: ears.getAll(id), roles: [...ears.getRoles(id)].sort() })),
+    entities: ids.map((id) => ({ id, attributes: ears.getRow(id), roles: [...ears.getRoles(id)].sort() })),
     relations: ears.findRelations()
       .map(({ id, relationType, sourceEntity, targetEntity, info }) => ({ id, relationType, sourceEntity, targetEntity, info }))
       .sort((a, b) => a.id.localeCompare(b.id)),

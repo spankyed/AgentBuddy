@@ -180,7 +180,7 @@ describe('flowRepository', () => {
     });
     const nodeIds = (flowId: EARS.EntityId) => flowRepository.flowNodes(flowId).map((node) => node.id).sort();
     const edgeIds = (flowId: EARS.EntityId) => flowRepository.flowEdges(flowId).map((edge) => edge.id).sort();
-    const rows = (flowId: EARS.EntityId) => [flowId, ...nodeIds(flowId)].map((id) => [id, boundEars().getAll(id)]);
+    const rows = (flowId: EARS.EntityId) => [flowId, ...nodeIds(flowId)].map((id) => [id, boundEars().getRow(id)]);
 
     it('refuses a file linking from something it does not write, before changing anything', () => {
       const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
@@ -225,7 +225,7 @@ describe('flowRepository', () => {
       expect(findRelations({ sourceEntity: run }).map((r) => [r.relationType, r.targetEntity]).sort()).toEqual(
         [[EARS.RelKind.INSTANCE_OF, flowId], [EARS.RelKind.TRACKED, greetNode.id]].sort(),
       );
-      expect(boundEars().getAll(flowId)).toMatchObject({ contentKey: 'pack:flows/Demo', description: 'mine', label: 'Demo' });
+      expect(boundEars().getRow(flowId)).toMatchObject({ contentKey: 'pack:flows/Demo', description: 'mine', label: 'Demo' });
     });
 
     it('keeps a step\'s node when its type changes, but none of the old type\'s fields', () => {
@@ -238,7 +238,7 @@ describe('flowRepository', () => {
       expect(before).toMatchObject({ actionId: ids.get('Greet'), params: { n: 1 } });
 
       flowRepository.importFromDSL(flow({ type: 'llm', model: 'x:y' }));
-      const after = boundEars().getAll(before.id) as Record<string, unknown>;
+      const after = boundEars().getRow(before.id) as Record<string, unknown>;
       expect(after).toMatchObject({ nodeType: 'llm', model: 'x:y', label: 'S' });
       expect(after).not.toHaveProperty('actionId');
       expect(after).not.toHaveProperty('params');

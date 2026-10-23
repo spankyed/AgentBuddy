@@ -123,7 +123,8 @@ export interface SettingsRow {
 }
 
 function describeSettingsRow(db: AppDatabase, id: EARS.EntityId): SettingsRow {
-  const attributes = db.ears.getAll(id);
+  // A listed Settings row is in the engine
+  const attributes = db.ears.getRow(id)!;
   const data = attributes.data;
   return {
     id,
