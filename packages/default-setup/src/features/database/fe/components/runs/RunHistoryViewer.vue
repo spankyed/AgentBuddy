@@ -6,7 +6,7 @@
       class="relative flex-shrink-0 overflow-hidden border-r shadow-sm bg-neutral-900 border-neutral-800"
       :style="{ width: flowPanelWidth + 'px' }"
     >
-      <TraceFlowSelector />
+      <RunSelector />
       
       <!-- Resize Handle -->
       <div
@@ -17,7 +17,7 @@
       </div>
     </div>
     
-    <!-- Main Trace Content Area -->
+    <!-- The selected run -->
     <div class="flex flex-col flex-1 min-w-0">
       <!-- Header -->
       <div class="px-4 py-3 border-b border-neutral-800 bg-neutral-900">
@@ -34,14 +34,14 @@
           <div class="flex items-center gap-2">
             <button
               @click="refreshFlows"
-              :disabled="isLoadingTrace"
+              :disabled="isLoadingRuns"
               class="p-2 transition-colors rounded-lg hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Refresh trace data"
+              title="Refresh runs"
             >
               <RefreshCw
                 :class="[
                   'w-4 h-4 text-neutral-400',
-                  isLoadingTrace && 'animate-spin'
+                  isLoadingRuns && 'animate-spin'
                 ]"
               />
             </button>
@@ -51,14 +51,14 @@
       
       <!-- Event List or Empty State -->
       <div class="flex-1 overflow-hidden">
-        <TraceEventList v-if="currentFlowId" />
+        <RunEventList v-if="currentFlowId" />
         <div v-else class="flex items-center justify-center h-full">
           <div class="px-6 py-8 text-center">
             <div class="flex items-center justify-center w-12 h-12 mx-auto mb-3 rounded-full bg-neutral-800/50">
               <History class="w-6 h-6 text-neutral-500" />
             </div>
             <p class="text-sm font-medium text-neutral-400">No flow selected</p>
-            <p class="mt-1 text-xs text-neutral-500">Select a flow from the left panel to view its event trace</p>
+            <p class="mt-1 text-xs text-neutral-500">Select a flow from the left panel to view the events it ran</p>
           </div>
         </div>
       </div>
@@ -73,20 +73,20 @@ import { ref, computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { DatabaseState } from '../../state.ts'
 import { RefreshCw, History } from 'lucide-vue-next'
-import TraceFlowSelector from './TraceFlowSelector.vue'
-import TraceEventList from './TraceEventList.vue'
+import RunSelector from './RunSelector.vue'
+import RunEventList from './RunEventList.vue'
 
 const databaseActor: DatabaseState = useSurface()
 
 // State selectors
 const currentFlowId = useSelector(databaseActor, (state) => state.context.currentFlowId)
-const traceFlows = useSelector(databaseActor, (state) => state.context.traceFlows)
-const isLoadingTrace = useSelector(databaseActor, (state) => state.context.isLoadingTrace)
+const flowRuns = useSelector(databaseActor, (state) => state.context.flowRuns)
+const isLoadingRuns = useSelector(databaseActor, (state) => state.context.isLoadingRuns)
 
 // Computed properties
 const currentFlowLabel = computed(() => {
   if (!currentFlowId.value) return null
-  const flow = traceFlows.value.find(f => f.id === currentFlowId.value)
+  const flow = flowRuns.value.find(f => f.id === currentFlowId.value)
   return flow?.label || 'Unknown Flow'
 })
 
@@ -128,6 +128,6 @@ function handleMouseUp() {
 
 // Actions
 function refreshFlows() {
-  databaseActor.send({ type: 'TRACE.REQUEST_FLOWS' })
+  databaseActor.send({ type: 'RUNS.REQUEST_FLOWS' })
 }
 </script>

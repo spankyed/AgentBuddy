@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyRunNodeSpawn, denormalizeRunNodeTree, normalizeRunNodeTree, type NormalizedRunNodeTree } from '#features/brain/fe/trace-tree.ts';
+import { applyRunNodeSpawn, denormalizeRunNodeTree, normalizeRunNodeTree, type NormalizedRunNodeTree } from '#features/brain/fe/run-tree.ts';
 import type { RunNode, RunTree } from '@apackdev/sdk/steps';
 
 function runNode(id: string, label = id): RunNode {
@@ -12,8 +12,8 @@ function runNode(id: string, label = id): RunNode {
   } as unknown as RunNode;
 }
 
-describe('brain trace tree state', () => {
-  it('dedupes duplicate ids when normalizing initial trace data', () => {
+describe('brain run tree state', () => {
+  it('dedupes duplicate ids when normalizing initial run data', () => {
     const tree = [
       { ...runNode('event-1'), children: [runNode('step-1'), runNode('step-1')] },
       { ...runNode('event-1'), children: [runNode('step-1'), runNode('step-2')] },

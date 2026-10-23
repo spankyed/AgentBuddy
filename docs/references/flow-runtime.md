@@ -1,6 +1,6 @@
 # Flow Runtime
 
-This document describes how apack executes flows at runtime. It covers the backend brain runtime, flow actors, step actors, trigger routing, schedules, traces, and completion semantics.
+This document describes how apack executes flows at runtime. It covers the backend brain runtime, flow actors, step actors, trigger routing, schedules, run history, and completion semantics.
 
 ## Vocabulary
 
@@ -18,7 +18,7 @@ This document describes how apack executes flows at runtime. It covers the backe
 
 | File | Responsibility |
 | --- | --- |
-| `packages/default-setup/src/features/brain/be/system.ts` | Owns the brain system, starts/stops the root flow actor, routes incoming events, forwards trace updates to the frontend. |
+| `packages/default-setup/src/features/brain/be/system.ts` | Owns the brain system, starts/stops the root flow actor, routes incoming events, forwards run node updates to the frontend. |
 | `packages/default-setup/src/features/brain/be/flow-system.ts` | Builds one flow actor for a root flow or spawned subflow, registers listeners/schedules, spawns step and child-flow actors, handles completion. |
 | `packages/default-setup/src/features/brain/be/step-system.ts` | Builds one step actor, creates the step RunNode, calls the node handler, reports completion/failure to the parent flow actor. |
 | `packages/default-setup/src/features/brain/be/node-handlers/index.ts` | `executeNode`: runs the step type's registered runtime handler (`extensions/steps/<type>/runtime.ts` or its `index.ts`); a type without one completes with `{ executed: true }`. |
@@ -199,16 +199,16 @@ On resume, the flow actor:
 
 Brain kill and restart clear the event queue, pending runtime actors, schedules, and actor registry, and mark what the session was running as `stopped` in the run history (`services.runHistory`), which keeps it.
 
-## Trace Data
+## Run Data
 
-The runtime emits trace events to the frontend:
+The runtime tells the frontend about run nodes:
 
 - `RUN_NODE_SPAWNED` when flow, event, or step run nodes are created in the run history.
 - `RUN_NODE_UPDATED` when RunNodes complete or fail.
-- `RUN_NODE_OPENED` and `RECEIVE_SURFACE_DATA` when the UI requests flow trace data.
+- `RUN_NODE_OPENED` and `RECEIVE_SURFACE_DATA` when the UI requests a flow run's data.
 - `RUN_NODE_DETAILS` for details-panel data.
 
-Trace hierarchy:
+Run hierarchy:
 
 ```text
 flow RunNode
@@ -245,4 +245,4 @@ At runtime, the compiled graph is executed through the same flow actor machinery
 - Local events target a runtime flow RunNode id, not a blueprint flow id.
 - Global events broadcast to all registered runtime flow actors.
 - Completing the root flow kills the brain.
-- Killing or restarting the brain clears volatile traces, schedules, ad-hoc listeners, and actor registry entries.
+- Killing or restarting the brain marks the session's running nodes `stopped` and clears schedules, ad-hoc listeners, and actor registry entries.

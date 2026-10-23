@@ -71,7 +71,7 @@ describe('a fire step whose payload mapping resolves to nothing', () => {
     const app = await startApp({ systems: ['brain'] })
     await app.runFlow('Outer', { event: 'go', data: { present: 'from the event' } })
     await app.settle()
-    const step = app.flowTrace('Outer').find((s) => s.label === 'ping')
+    const step = app.flowSteps('Outer').find((s) => s.label === 'ping')
     return (step?.result as { payload?: unknown } | undefined)?.payload
   }
 

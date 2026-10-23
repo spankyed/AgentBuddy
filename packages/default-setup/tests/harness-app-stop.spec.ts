@@ -35,7 +35,7 @@ describe("default-setup's onShutdown", () => {
 })
 
 describe('a real schedule', () => {
-  // An action step, which has a runtime handler: its trace completes only once the brain ran it
+  // An action step, which has a runtime handler: its run node completes only once the brain ran it
   const startEverySecond = async () => {
     repository.actionCommands.create({ label: 'Tick', actionFn: 'return { ticked: true }' })
     importFlows({ 'Every Second': { root: true, tracks: [schedule(EVERY_SECOND, [[action('Tick', { label: 'tick' })]])] } })
@@ -43,7 +43,7 @@ describe('a real schedule', () => {
     await app.connect()
     return app
   }
-  const ranTick = (app: TestApp) => expect(app.flowTrace('Every Second')).toContainEqual(expect.objectContaining({ label: 'tick', status: 'completed', result: { ticked: true } }))
+  const ranTick = (app: TestApp) => expect(app.flowSteps('Every Second')).toContainEqual(expect.objectContaining({ label: 'tick', status: 'completed', result: { ticked: true } }))
 
   it("doesn't tick once its app stopped, as the harness stops it after each test", async () => {
     const app = await startEverySecond()

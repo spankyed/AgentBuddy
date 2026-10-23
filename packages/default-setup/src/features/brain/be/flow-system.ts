@@ -166,7 +166,7 @@ function createChildNode(
  * every child shares a key, so stopping this flow stops only the last one spawned and the rest keep running.
  * The child is the flow's own, so it has no system id.
  *
- * XState types `id` from a machine's declared children, and a flow's are dynamic — one per trace node —
+ * XState types `id` from a machine's declared children, and a flow's are dynamic — one per run node —
  * so the id is passed through this one cast rather than at each call site.
  */
 function spawnFlowChild(
@@ -459,7 +459,7 @@ export function createFlowNodeSystem(
           }
 
           const lastStep = {
-            id: typedEv.runNodeId,          // Trace RunNode ID (always present)
+            id: typedEv.runNodeId,          // Its run node's id (always present)
             label: typedEv.stepLabel || '',
             result: typedEv.result,
             timestamp: Date.now(),
@@ -591,7 +591,7 @@ export function createFlowNodeSystem(
         notifyParentOfCompletion: sendParent(({ context }) => ({
           type: 'CHILD_COMPLETED',
           stepId: context.flowStepNodeId,  // Blueprint Node ID (undefined for root flow)
-          runNodeId: flowRunNodeId,             // Trace RunNode ID (always defined)
+          runNodeId: flowRunNodeId,             // Its run node's id (always defined)
           stepLabel: context.flowStepLabel,
           eventRunNodeId: context.eventRunNodeId,
           result: context.finalResult,

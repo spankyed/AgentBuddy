@@ -14,7 +14,7 @@ import {
   denormalizeRunNodeTree,
   normalizeRunNodeTree,
   type NormalizedRunNodeTree,
-} from './trace-tree.ts';
+} from './run-tree.ts';
 
 export const id = 'brain' as const;
 export type BrainState = ActorRefFrom<typeof brainState>

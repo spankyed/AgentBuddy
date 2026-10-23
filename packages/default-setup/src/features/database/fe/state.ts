@@ -23,9 +23,9 @@ function emptyDatabaseResults() {
     queryResult: null, isLoading: false, error: null, executionTime: null,
     pendingQueryCall: null, pendingTransactionCall: null, selectedSchemaItem: null,
     isAiQueryLoading: false, isRefreshing: false,
-    traceFlows: [], currentFlowId: null, flowEvents: [], expandedNodes: new Set<string>(),
-    nodeDetails: new Map<string, import('@apackdev/sdk/steps').RunNode>(), isLoadingTrace: false,
-    tracePagination: { offset: 0, limit: 50, hasMore: false },
+    flowRuns: [], currentFlowId: null, flowEvents: [], expandedNodes: new Set<string>(),
+    nodeDetails: new Map<string, import('@apackdev/sdk/steps').RunNode>(), isLoadingRuns: false,
+    runPagination: { offset: 0, limit: 50, hasMore: false },
   };
 }
 
@@ -49,10 +49,10 @@ type UIEvent =
   | { type: 'MODE.TOGGLE' }
   | { type: 'AI_QUERY.GENERATE'; prompt: string; mode: 'query' | 'transaction' }
   | { type: 'VIEW_MODE.TOGGLE' }
-  | { type: 'TRACE.SELECT_FLOW'; flowId: string }
-  | { type: 'TRACE.EXPAND_NODE'; nodeId: string }
-  | { type: 'TRACE.LOAD_MORE' }
-  | { type: 'TRACE.REQUEST_FLOWS' }
+  | { type: 'RUNS.SELECT_FLOW'; flowId: string }
+  | { type: 'RUNS.EXPAND_NODE'; nodeId: string }
+  | { type: 'RUNS.LOAD_MORE' }
+  | { type: 'RUNS.REQUEST_FLOWS' }
   | { type: 'ENTITY.DELETE'; entityId: string }
   | DatabaseInboxEvent
   | { type: 'BACK_TO_EXPLORER' }
@@ -104,7 +104,7 @@ const databaseState = setup({
      */
     answersCurrentPage: ({ context, event }) => {
       const ev = event as { flowId?: string; offset?: number };
-      return ev.flowId === context.currentFlowId && ev.offset === context.tracePagination.offset;
+      return ev.flowId === context.currentFlowId && ev.offset === context.runPagination.offset;
     },
   },
   actions: {
@@ -307,29 +307,29 @@ const databaseState = setup({
       isRefreshing: false,
     }),
 
-    /* ── trace viewer actions ────────────────────────────── */
+    /* ── run history viewer actions ──────────────────────── */
     toggleViewMode: assign(({ context }) => {
-      const newMode = context.viewMode === 'database' ? 'trace' : 'database';
-      if (newMode === 'trace' && context.traceFlows.length === 0) {
-        // Request trace flows when switching to trace mode for the first time
+      const newMode = context.viewMode === 'database' ? 'runs' : 'database';
+      if (newMode === 'runs' && context.flowRuns.length === 0) {
+        // Ask for the flow runs when switching to the run history the first time
         sendToSystem(id, {
-          type: 'GET_TRACE_FLOWS',
+          type: 'GET_FLOW_RUNS',
         });
       }
       return {
         viewMode: newMode,
-        isLoadingTrace: newMode === 'trace' && context.traceFlows.length === 0,
+        isLoadingRuns: newMode === 'runs' && context.flowRuns.length === 0,
       };
     }),
 
-    requestTraceFlows: () => {
+    requestFlowRuns: () => {
       sendToSystem(id, {
-        type: 'GET_TRACE_FLOWS',
+        type: 'GET_FLOW_RUNS',
       });
     },
 
-    setTraceFlows: assign(({ event }) => {
-      const ev = typeOf('TRACE_FLOWS_RESULT', event);
+    setFlowRuns: assign(({ event }) => {
+      const ev = typeOf('FLOW_RUNS_RESULT', event);
       // Newest first, as the run history lists them
       const sortedFlows = ev.flows;
 
@@ -344,20 +344,20 @@ const databaseState = setup({
         });
 
         return {
-          traceFlows: sortedFlows,
+          flowRuns: sortedFlows,
           currentFlowId: firstFlow.id,
-          isLoadingTrace: true, // Still loading events for the selected flow
+          isLoadingRuns: true, // Still loading events for the selected flow
         };
       }
 
       return {
-        traceFlows: sortedFlows,
-        isLoadingTrace: false,
+        flowRuns: sortedFlows,
+        isLoadingRuns: false,
       };
     }),
 
     selectFlow: assign(({ event }) => {
-      const ev = typeOf('TRACE.SELECT_FLOW', event);
+      const ev = typeOf('RUNS.SELECT_FLOW', event);
       sendToSystem(id, {
         type: 'GET_FLOW_EVENTS',
         flowId: ev.flowId,
@@ -367,12 +367,12 @@ const databaseState = setup({
       return {
         currentFlowId: ev.flowId,
         flowEvents: [],
-        tracePagination: {
+        runPagination: {
           offset: 0,
           limit: 50,
           hasMore: false,
         },
-        isLoadingTrace: true,
+        isLoadingRuns: true,
       };
     }),
 
@@ -386,37 +386,37 @@ const databaseState = setup({
         flowEvents: ev.offset > 0
           ? [...context.flowEvents, ...ev.events]
           : ev.events,
-        tracePagination: {
-          ...context.tracePagination,
+        runPagination: {
+          ...context.runPagination,
           hasMore: ev.hasMore,
         },
-        isLoadingTrace: false,
+        isLoadingRuns: false,
       };
     }),
 
     loadMoreEvents: enqueueActions(({ context, enqueue }) => {
       // One page at a time. The guard admits the offset being awaited, so a second click while the first
       // page is in flight would move that offset and strand the page already asked for.
-      if (!context.currentFlowId || !context.tracePagination.hasMore || context.isLoadingTrace) return;
+      if (!context.currentFlowId || !context.runPagination.hasMore || context.isLoadingRuns) return;
 
-      const newOffset = context.tracePagination.offset + context.tracePagination.limit;
+      const newOffset = context.runPagination.offset + context.runPagination.limit;
       sendToSystem(id, {
         type: 'GET_FLOW_EVENTS',
         flowId: context.currentFlowId,
         offset: newOffset,
-        limit: context.tracePagination.limit,
+        limit: context.runPagination.limit,
       });
       enqueue.assign({
-        tracePagination: {
-          ...context.tracePagination,
+        runPagination: {
+          ...context.runPagination,
           offset: newOffset,
         },
-        isLoadingTrace: true,
+        isLoadingRuns: true,
       });
     }),
 
     expandNode: enqueueActions(({ event, context, enqueue }) => {
-      const ev = typeOf('TRACE.EXPAND_NODE', event);
+      const ev = typeOf('RUNS.EXPAND_NODE', event);
       const newExpanded = new Set(context.expandedNodes);
 
       if (newExpanded.has(ev.nodeId)) {
@@ -512,7 +512,7 @@ const databaseState = setup({
     currentQuery: exampleQuery,
     mode: 'query',
     settings: null,
-    // Trace viewer fields
+    // Run history viewer fields
     viewMode: 'database',
     // Backup fields
     backupInfo: null,
@@ -533,8 +533,8 @@ const databaseState = setup({
 AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
     AI_QUERY_GENERATED: { actions: 'setAiQueryResult' },
     FEATURE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
-    // Trace viewer events
-    TRACE_FLOWS_RESULT: { actions: 'setTraceFlows' },
+    // Run history viewer events
+    FLOW_RUNS_RESULT: { actions: 'setFlowRuns' },
     FLOW_EVENTS_RESULT: { guard: 'answersCurrentPage', actions: 'setFlowEvents' },
     NODE_DETAILS_RESULT: { actions: 'setNodeDetails' },
     // Backup events
@@ -551,7 +551,7 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
   meta: {
     ...breadcrumb('explorer', 'Database Explorer', true),
     ...contextMenu([
-      { label: 'View Trace History', icon: History, event: { type: 'VIEW_MODE.TOGGLE' }, iconColor: 'text-purple-400' },
+      { label: 'View Run History', icon: History, event: { type: 'VIEW_MODE.TOGGLE' }, iconColor: 'text-purple-400' },
 { separator: true, label: 'Backup & Restore', icon: HardDriveDownload, event: { type: 'VIEW_BACKUP' }, iconColor: 'text-green-400' },
     ]),
   },
@@ -584,19 +584,19 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
           actions: ['setRefreshing', 'refreshSchema'],
         },
         'VIEW_MODE.TOGGLE': {
-          actions: ['toggleViewMode', 'requestTraceFlows'],
+          actions: ['toggleViewMode', 'requestFlowRuns'],
         },
-        'TRACE.SELECT_FLOW': {
+        'RUNS.SELECT_FLOW': {
           actions: 'selectFlow',
         },
-        'TRACE.EXPAND_NODE': {
+        'RUNS.EXPAND_NODE': {
           actions: 'expandNode',
         },
-        'TRACE.LOAD_MORE': {
+        'RUNS.LOAD_MORE': {
           actions: 'loadMoreEvents',
         },
-        'TRACE.REQUEST_FLOWS': {
-          actions: 'requestTraceFlows',
+        'RUNS.REQUEST_FLOWS': {
+          actions: 'requestFlowRuns',
         },
         'VIEW_BACKUP': {
           target: 'backup',

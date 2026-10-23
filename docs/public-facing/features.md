@@ -187,7 +187,7 @@ Backend code that needs the connection or every incoming event subscribes with `
 ### Logging and errors
 
 - `createLogger(source)` from `@apackdev/sdk/logger` logs with your source; its entries reach the app's log. `createLogger(source, { debug: true })` logs `debug` messages only while `setDebugEnabled(source, true)` is in effect (on by default outside production). Backend pack code doesn't call `console.*`.
-- `reportError({ error, source, title?, operation?, entityId?, severity?, userMessage? })` logs an error and shows it to the user. A flow step passes `step: { phase, runNodeId, nodeId, … }` instead: the error is recorded on the step's trace node and shown in the flow, and `reportError` returns it for `actor.send({ type: 'ERROR', error })`.
+- `reportError({ error, source, title?, operation?, entityId?, severity?, userMessage? })` logs an error and shows it to the user. A flow step passes `step: { phase, runNodeId, nodeId, … }` instead: the error is recorded on the step's run node and shown in the flow, and `reportError` returns it for `actor.send({ type: 'ERROR', error })`.
 
 ## Frontend surface
 

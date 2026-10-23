@@ -114,7 +114,7 @@ The compiled body of `action` runs in one sandbox, whether a flow's action step 
 - `params`: the step's resolved input (or the params the caller passed)
 - `services`: the object below, with `services.logger` named `action:<label>`, so the Logs view shows which action logged
 - `z`: zod, for schemas
-- `flowId`: the running flow's trace node id when a flow step runs it; `undefined` otherwise
+- `flowId`: the running flow's run node id when a flow step runs it; `undefined` otherwise
 
 ### Available services
 
@@ -176,7 +176,7 @@ The build keeps only the function's body, and the runtime calls it with fixed pa
 | `params` | The step's `params`, overridden by its resolved `map` (see [Mappings](#mappings)) | `params` |
 | `services` | The app's `services` | The app's `services` |
 | `z` | zod | `undefined` |
-| `flowId` | The running flow's trace node id | `undefined` |
+| `flowId` | The running flow's run node id | `undefined` |
 
 The function's return value is the step's result (`$.lastStep.result`).
 
@@ -416,7 +416,7 @@ An `action` step's `params`, and a `create` or `update` step's fields, are the s
 | `$.event.data.payload` | A sent event's payload: what `fire`'s `payload` holds, or what a client or `runFlow` sent (`$.event.data.payload.text`) |
 | `$.event.data.<target>` | In a subflow's `flow.entry` track, the subflow step's mapped field, or, when it inherits, the parent event's field |
 | `$.lastStep.result` | The result of the step that ran before this one in the track (`$.lastStep.label` its label) |
-| `$.steps[label=<label>].result` | The result of an earlier step in this track, by label (`$.steps[id=<trace node id>]` by trace node) |
+| `$.steps[label=<label>].result` | The result of an earlier step in this track, by label (`$.steps[id=<run node id>]` by run node) |
 
 `$.steps` holds only the track's own steps, in the order they completed (a subflow that inherits starts its entry track with the parent track's).
 

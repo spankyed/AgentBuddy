@@ -111,19 +111,19 @@ export const databaseSystem = setup({
         payload: { prompt: prompt.trim(), mode: mode ?? 'query', provider },
       });
     },
-    getTraceFlows: () => {
+    getFlowRuns: () => {
       try {
         // A session's root and every subflow it ran, newest first
         const flows = services.runHistory.findRuns({ limit: 100 });
-        logger.info('Retrieved trace flows', { count: flows.length });
+        logger.info('Retrieved flow runs', { count: flows.length });
         broadcastToSurface('database', { 
-          type: 'TRACE_FLOWS_RESULT',
+          type: 'FLOW_RUNS_RESULT',
           flows
         });
       } catch (error: unknown) {
-        logger.error('Failed to get trace flows:', { error: errorMessage(error) });
+        logger.error('Failed to get flow runs:', { error: errorMessage(error) });
         broadcastToSurface('database', { 
-          type: 'TRACE_FLOWS_RESULT',
+          type: 'FLOW_RUNS_RESULT',
           flows: []
         });
       }
@@ -305,8 +305,8 @@ export const databaseSystem = setup({
         REFRESH_SCHEMA: {
           actions: 'sendDatabaseRefresh',
         },
-        GET_TRACE_FLOWS: {
-          actions: 'getTraceFlows',
+        GET_FLOW_RUNS: {
+          actions: 'getFlowRuns',
         },
         GET_FLOW_EVENTS: {
           actions: 'getFlowEvents',
