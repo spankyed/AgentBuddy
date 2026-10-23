@@ -59,6 +59,7 @@
                   "host/onboarding",
                   "host/appData",
                   "host/traceStore",
+                  "host/runHistory",
                   "host/inference",
                   "host/secrets",
                   "host/filesystem"

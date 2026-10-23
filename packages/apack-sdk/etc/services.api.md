@@ -94,6 +94,9 @@ export function _createPackServices(): {
     bindServices(services: PackServiceAccess): () => void;
 };
 
+// @internal
+export function _createRunHistory(records: _RunHistoryRecords): RunHistory;
+
 // @public
 export interface FileEntry {
     // (undocumented)
@@ -138,6 +141,7 @@ export interface HostServices {
     onboarding: OnboardingService;
     // (undocumented)
     repository: typeof repository;
+    runHistory: RunHistory;
     secrets: SecretsService;
     settings: SettingsService;
     traceStore: TraceStore;
@@ -218,6 +222,68 @@ export const repository: Record<string, unknown>;
 
 // @internal
 export type _ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => _InferenceModels[K] | Promise<_InferenceModels[K]>;
+
+// @internal
+export const _RUN_HISTORY_INDEXES: readonly ["parentId", "rootId", "status", "tNodeType", "runOf", "isRoot"];
+
+// @public
+export interface RunHistory {
+    add(node: TNodeInput): void;
+    findChildren(id: TNodeId, page?: RunPage): TNode[];
+    findRuns(options?: {
+        flowId?: EARS.EntityId;
+        limit?: number;
+        cursor?: TNodeId;
+    }): TNode[];
+    // (undocumented)
+    get(id: TNodeId): TNode | undefined;
+    newId(): TNodeId;
+    prune(options: {
+        before: number;
+    }): number;
+    stopActive(): void;
+    tree(id: TNodeId): RunTree | undefined;
+    update(id: TNodeId, patch: TNodePatch): void;
+}
+
+// @internal
+export interface _RunHistoryRecords {
+    // (undocumented)
+    delete(id: string): void;
+    // (undocumented)
+    findBy(index: string, value: string | number | boolean, options?: {
+        reverse?: boolean;
+        limit?: number;
+        cursor?: string;
+    }): object[];
+    // (undocumented)
+    get(id: string): object | undefined;
+    // (undocumented)
+    newId(prefix: string): string;
+    // (undocumented)
+    put(record: {
+        id: string;
+    }): void;
+}
+
+// @public
+export interface RunPage {
+    // (undocumented)
+    cursor?: TNodeId;
+    // (undocumented)
+    limit?: number;
+    // (undocumented)
+    reverse?: boolean;
+}
+
+// @public
+export type RunStatus = 'active' | 'completed' | 'failed' | 'stopped';
+
+// @public
+export interface RunTree extends TNode {
+    // (undocumented)
+    children: RunTree[];
+}
 
 // @public
 export interface SecretMetadata {
@@ -324,6 +390,50 @@ export interface SettingsService {
     // (undocumented)
     set(target: SettingsTarget, path: readonly string[], value: unknown, condition?: SettingsWriteCondition): void;
 }
+
+// @public
+export interface TNode {
+    // (undocumented)
+    completedAt?: number;
+    // (undocumented)
+    cronExpression?: string;
+    // (undocumented)
+    eventType?: string;
+    // (undocumented)
+    final?: boolean;
+    flowId?: EARS.EntityId;
+    // (undocumented)
+    id: TNodeId;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    nodeAttributes?: Record<string, unknown>;
+    nodeId?: EARS.EntityId;
+    parentId?: TNodeId;
+    // (undocumented)
+    resolvedParams?: Record<string, unknown>;
+    result?: unknown;
+    rootId: TNodeId;
+    // (undocumented)
+    startedAt: number;
+    // (undocumented)
+    status: RunStatus;
+    // (undocumented)
+    stepNodeType?: string;
+    // (undocumented)
+    tNodeType: TNodeKind;
+    // (undocumented)
+    triggerType?: string;
+}
+
+// @public
+export type TNodeId = `TNode-${string}`;
+
+// @public
+export type TNodeInput = Omit<TNode, 'rootId'>;
+
+// @public
+export type TNodePatch = Partial<Pick<TNode, 'label' | 'status' | 'completedAt' | 'nodeAttributes' | 'result'>>;
 
 // @internal
 export const _toSecretMetadata: (input: SecretMetadata) => SecretMetadata;

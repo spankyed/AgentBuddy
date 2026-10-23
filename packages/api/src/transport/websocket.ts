@@ -8,7 +8,7 @@ import { createRpcContext } from './context.ts';
 import { jsonSafeEncoder } from './encoder.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '../boot/config.ts';
-import { appPacks, appStore, backendActor } from '../runtime/index.ts';
+import { appPacks, appRunHistory, appStore, backendActor } from '../runtime/index.ts';
 import { installDevPack, reloadPackById } from '@apackdev/host/packs/runtime';
 import { writePrivateFile } from '@apackdev/host/private-file';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
@@ -163,6 +163,11 @@ export function createWebSocketServer() {
       if (errorCount > 0) console.error(`[backend] ${errorCount} write(s) didn't reach the database`, lastError);
     } catch (error) {
       console.error('[backend] Closing the database failed', error);
+    }
+    try {
+      appRunHistory?.close();
+    } catch (error) {
+      console.error('[backend] Closing the run history failed', error);
     }
     const { apiPortFile, apiTokenFile } = resolveAppEnvironment();
     for (const file of [apiPortFile, apiTokenFile]) {
