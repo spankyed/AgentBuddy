@@ -41,11 +41,11 @@ export interface TNode {
   result?: unknown;
 }
 
-/** A node as it is added: its root is the parent's, or its own id when it has no parent */
-export type TNodeInput = Omit<TNode, 'rootId'>;
+/** A node as it starts: the run history gives it its id, its root, `active` and its start time */
+export type TNodeStart = Omit<TNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>;
 
-/** What an update may change: a node's identity and place in its tree are fixed when it is added */
-export type TNodePatch = Partial<Pick<TNode, 'label' | 'status' | 'completedAt' | 'nodeAttributes' | 'result'>>;
+/** What a running node's record may take: its details. Its identity and place are fixed when it starts, and `finish` ends it */
+export type TNodePatch = Partial<Pick<TNode, 'label' | 'nodeAttributes' | 'result'>>;
 
 /** A node with its children, each with theirs: one node's whole subtree */
 export interface RunTree extends TNode {
@@ -65,11 +65,15 @@ export interface RunPage {
  * by a `transact` that throws, and none waits on one.
  */
 export interface RunHistory {
-  /** A new node id, sorting after every one handed out before */
-  newId(): TNodeId;
-  /** Records a node. One whose parent isn't in the history is dropped and logged: a tree has no orphans */
-  add(node: TNodeInput): void;
-  /** Changes a node; an id with no node is ignored */
+  /**
+   * Records a node starting now, under a new id that sorts after every one before, and returns it as given — not as
+   * stored, since the history bounds what it stores and a step runs on its params whole. One whose parent isn't in
+   * the history is returned but not recorded, and logged: a tree has no orphans.
+   */
+  start(node: TNodeStart): TNode;
+  /** Ends a node now, completed or failed; an id with no node is ignored */
+  finish(id: TNodeId, status: 'completed' | 'failed'): void;
+  /** Records a node's details: its label, attributes or result; an id with no node is ignored */
   update(id: TNodeId, patch: TNodePatch): void;
   get(id: TNodeId): TNode | undefined;
   /** A node's children, in the order they began */
@@ -115,18 +119,20 @@ function bounded<T extends Partial<TNode>>(fields: T): T {
 /** @internal The run history over its record store: the host's on disk, a test's in memory (`createMemoryRecordStore`) */
 export function _createRunHistory(records: RecordStore<TNode>): RunHistory {
   const history: RunHistory = {
-    newId: () => records.newId('TNode') as TNodeId,
-    add(node) {
-      if (node.parentId === undefined) {
-        records.put({ ...bounded(node), rootId: node.id });
-        return;
+    start(fields) {
+      const id = records.newId('TNode') as TNodeId;
+      const parent = fields.parentId === undefined ? undefined : records.get(fields.parentId);
+      const node: TNode = { ...fields, id, rootId: parent?.rootId ?? id, status: 'active', startedAt: Date.now() };
+      if (fields.parentId !== undefined && !parent) {
+        logger.warn(`Dropped run node ${id}: its parent ${fields.parentId} isn't in the run history`);
+      } else {
+        records.put(bounded(node));
       }
-      const parent = records.get(node.parentId);
-      if (!parent) {
-        logger.warn(`Dropped run node ${node.id}: its parent ${node.parentId} isn't in the run history`);
-        return;
-      }
-      records.put({ ...bounded(node), rootId: parent.rootId });
+      return node;
+    },
+    finish(id, status) {
+      const node = records.get(id);
+      if (node) records.put({ ...node, status, completedAt: Date.now() });
     },
     update(id, patch) {
       const node = records.get(id);

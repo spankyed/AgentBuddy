@@ -47,8 +47,7 @@ describe('reportError', () => {
     testPacks.designations.set('brain', 'default-setup/brain');
     // The step's run node, holding what the step ran with
     const history = testRunHistory();
-    const tNodeId = history.newId();
-    history.add({ id: tNodeId, tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0, nodeAttributes: { input: 'hello' } });
+    const tNodeId = history.start({ tNodeType: 'step', label: 'Step', nodeAttributes: { input: 'hello' } }).id;
     let returned: ReturnType<typeof reportError>;
     const { logs, toSurfaces, outgoing } = capture(() => {
       returned = reportError({

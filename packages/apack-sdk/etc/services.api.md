@@ -229,19 +229,19 @@ export const _RUN_HISTORY_INDEXES: RecordIndexes<TNode>;
 
 // @public
 export interface RunHistory {
-    add(node: TNodeInput): void;
     findChildren(id: TNodeId, page?: RunPage): TNode[];
     findRuns(options?: {
         flowId?: EARS.EntityId;
         limit?: number;
         cursor?: TNodeId;
     }): TNode[];
+    finish(id: TNodeId, status: 'completed' | 'failed'): void;
     // (undocumented)
     get(id: TNodeId): TNode | undefined;
-    newId(): TNodeId;
     prune(options: {
         before: number;
     }): number;
+    start(node: TNodeStart): TNode;
     stopActive(): void;
     tree(id: TNodeId): RunTree | undefined;
     update(id: TNodeId, patch: TNodePatch): void;
@@ -411,10 +411,10 @@ export interface TNode {
 export type TNodeId = `TNode-${string}`;
 
 // @public
-export type TNodeInput = Omit<TNode, 'rootId'>;
+export type TNodePatch = Partial<Pick<TNode, 'label' | 'nodeAttributes' | 'result'>>;
 
 // @public
-export type TNodePatch = Partial<Pick<TNode, 'label' | 'status' | 'completedAt' | 'nodeAttributes' | 'result'>>;
+export type TNodeStart = Omit<TNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>;
 
 // @internal
 export const _toSecretMetadata: (input: SecretMetadata) => SecretMetadata;

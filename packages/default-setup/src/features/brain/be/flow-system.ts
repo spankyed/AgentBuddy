@@ -340,17 +340,13 @@ export function createFlowNodeSystem(
               continue; // Skip this event node but process others
             }
 
-            const eventTNode = repository.brainCommands.createEventTNode(eventNode, flowTNodeId);
-
-            // Create execution context with cleaner structure
             // Handle flow.entry events specially - they have a 'data' property we need to unwrap
             const { type: _type, ...eventPayload } = typedEv;
             const eventData = 'data' in eventPayload ? eventPayload.data : eventPayload;
 
-            // Store event payload directly as nodeAttributes for event TNodes
-            // Use the full eventData if no specific payload property exists
+            // The event node keeps the payload as its attributes: the event's own, or the whole event without one
             const payloadToStore = eventData.payload !== undefined ? eventData.payload : eventData;
-            repository.brainCommands.updateTNodeAttributes(eventTNode.id, payloadToStore);
+            const eventTNode = repository.brainCommands.createEventTNode(eventNode, flowTNodeId, payloadToStore);
 
             // Emit TNODE_SPAWNED event for UI to display event TNode
             brain.send({
@@ -509,7 +505,7 @@ export function createFlowNodeSystem(
           // Mark listener TNode completed once its track drains. This reuses the
           // same TNODE_UPDATED pipeline that step/flow completions flow through.
           if (eventTrackCompleted) {
-            repository.brainCommands.updateTNodeStatus(typedEv.eventTNodeId, 'completed');
+            appServices.runHistory.finish(typedEv.eventTNodeId, 'completed');
             brain.send({
               type: 'TNODE_UPDATED',
               data: {
@@ -578,12 +574,9 @@ export function createFlowNodeSystem(
         }),
         markFlowCompleted: ({ context }) => {
           brainLogger.debug(`Flow ${flowTNodeId} completed (isFinalStep: ${context.isFinalStep})`);
-          repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed');
-          
-          // Save the flow's result to nodeAttributes so it appears in the details panel
-          if (context.finalResult !== undefined) {
-            repository.brainCommands.updateTNodeResult(flowTNodeId, context.finalResult);
-          }
+          // The flow's result goes on its node, where the details panel shows it
+          if (context.finalResult !== undefined) appServices.runHistory.update(flowTNodeId, { result: context.finalResult });
+          appServices.runHistory.finish(flowTNodeId, 'completed');
 
           // Emit TNODE_UPDATED event
           brain.send({

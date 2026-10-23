@@ -1,37 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { repository } from '#generated/repository.ts'
 import { services } from '#generated/services.ts'
-import type { TNodeId } from '@apackdev/sdk/steps'
+import type { EARS } from '#generated/ears.ts'
 
-/** A step node in the run history, as a running step leaves it */
-function runningStep(): TNodeId {
-  const id = services.runHistory.newId()
-  services.runHistory.add({ id, tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0 })
-  return id
-}
+describe('brainCommands starting run nodes', () => {
+  it('starts an event node under the flow run that heard it, with its payload, its trigger and the flow it walks', () => {
+    const flowRun = services.runHistory.start({ tNodeType: 'flow', label: 'Root', flowId: 'Flow-root' as EARS.EntityId })
 
-describe('brainCommands recording run nodes', () => {
-  it('records a status, an end time and an event payload on a node the run history holds', () => {
-    const id = runningStep()
+    const event = repository.brainCommands.createEventTNode(
+      { id: 'Node-trigger', label: 'go', eventType: 'go' },
+      flowRun.id,
+      { text: 'hello' },
+    )
 
-    repository.brainCommands.updateTNodeStatus(id, 'completed')
-    repository.brainCommands.updateTNodeAttributes(id, { payload: 1 })
-
-    expect(services.runHistory.get(id)).toMatchObject({ status: 'completed', completedAt: expect.any(Number), nodeAttributes: { payload: 1 } })
-  })
-
-  it('records nothing for a node the run history does not hold', () => {
-    const gone = 'TNode-gone' as TNodeId
-    repository.brainCommands.updateTNodeStatus(gone, 'completed')
-    repository.brainCommands.updateTNodeResult(gone, { ok: true })
-    expect(services.runHistory.get(gone)).toBeUndefined()
-  })
-
-  it('stops what is still running, and keeps it in the run history', () => {
-    const id = runningStep()
-
-    repository.brainCommands.stopActive()
-
-    expect(services.runHistory.get(id)).toMatchObject({ status: 'stopped', completedAt: expect.any(Number) })
+    expect(services.runHistory.get(event.id)).toMatchObject({
+      tNodeType: 'event', status: 'active', parentId: flowRun.id, rootId: flowRun.id,
+      nodeId: 'Node-trigger', flowId: 'Flow-root', triggerType: 'listener', nodeAttributes: { text: 'hello' },
+    })
   })
 })
