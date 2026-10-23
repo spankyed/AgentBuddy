@@ -24,7 +24,6 @@ const TARGET_OPTIONS = {
   'data-dir': { type: 'string' },
   profile: { type: 'string', multiple: true },
   'schema-from': { type: 'string' },
-  volatile: { type: 'boolean', default: false },
 } satisfies ParseArgsConfig['options'];
 
 export const TARGET_USAGE = [
@@ -32,14 +31,11 @@ export const TARGET_USAGE = [
   '  --profile <name>       Built-in or custom stored profile',
   '  --schema-from <path>   Packs to read entity types from, for a data dir that publishes none: a snapshot,',
   '                         a pack directory, or a directory of them (an app, a checkout)',
-  '  --volatile             Read the run history too (TNode rows), which the app keeps in its own partition',
 ].join('\n');
 
 export type DbTarget = Pick<AppEnvironment, 'env' | 'userDataDir' | 'apiPortFile'> & {
   /** The command named this data dir (`--data-dir` or `--profile`) rather than taking the default */
   named: boolean;
-  /** `--volatile`: the run history is read with the rest of the data */
-  volatile: boolean;
   /** `--schema-from`: packs naming the entity types a data dir doesn't publish — a snapshot, a pack, or a directory of packs */
   schemaFrom?: string;
 };
@@ -52,8 +48,8 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   } catch (error) {
     throw new Error(`${(error as Error).message}\n\n${usage}`);
   }
-  const { 'data-dir': dataDir, profile: profileValues, 'schema-from': schemaFrom, volatile } = parsed.values as
-    { 'data-dir'?: string; profile?: string[]; 'schema-from'?: string; volatile: boolean };
+  const { 'data-dir': dataDir, profile: profileValues, 'schema-from': schemaFrom } = parsed.values as
+    { 'data-dir'?: string; profile?: string[]; 'schema-from'?: string };
   if (profileValues && profileValues.length > 1) throw new Error('Specify --profile once.');
   const profile = profileValues?.[0];
   // An empty value would otherwise read as "not given" and target the default data dir
@@ -69,7 +65,7 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
     : undefined;
   const context = resolveAppEnvironment({ env, ...(userDataDir !== undefined && { userDataDir }) });
   const target: DbTarget = {
-    env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1, volatile,
+    env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1,
     ...(schemaFrom !== undefined && { schemaFrom: path.resolve(schemaFrom) }),
   };
   return { values: parsed.values as typeof parsed.values & Record<keyof O, unknown>, positionals: parsed.positionals, target };
@@ -108,7 +104,6 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
       env: target.env,
       userDataDir: target.userDataDir,
       readOnly: !write,
-      includeVolatile: target.volatile,
       log: () => {},
       ...(target.schemaFrom !== undefined && { schemaFrom: target.schemaFrom }),
     });

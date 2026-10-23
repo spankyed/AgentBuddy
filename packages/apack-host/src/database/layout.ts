@@ -5,22 +5,12 @@ import * as fs from 'node:fs';
 import { _appDataPaths, type _AppDataPaths } from '@apackdev/sdk/utils';
 
 /**
- * The stores of the database in `userDataDir`. Throws when the data dir holds no database, or only part of one:
- * the app writes both partitions, so a data dir missing one was copied or emptied by hand, and a tool that opened
- * it would read an app's data while writing somewhere the app never looks.
+ * The stores of the database in `userDataDir`. Throws when the data dir holds no database: a tool that opened one
+ * there would write somewhere the app never looks. The run history needs no check: it is a store of its own, and
+ * one that isn't there yet is created empty by whoever opens it.
  */
 export function findAppDataPaths(userDataDir: string): _AppDataPaths {
   const paths = _appDataPaths(userDataDir);
-  if (!fs.existsSync(paths.lmdb) && !fs.existsSync(paths.volatileLmdb)) {
-    throw new Error(`No apack database in ${userDataDir}`);
-  }
-  const missing = ([['the data', paths.lmdb], ['the run history', paths.volatileLmdb]] as const)
-    .filter(([, dir]) => !fs.existsSync(dir));
-  if (missing.length > 0) {
-    throw new Error(
-      `The apack database in ${userDataDir} is missing ${missing.map(([what, dir]) => `${what} (${dir})`).join(' and ')}: ` +
-      'copy the whole data dir, or start apack on it once to create it',
-    );
-  }
+  if (!fs.existsSync(paths.lmdb)) throw new Error(`No apack database in ${userDataDir}`);
   return paths;
 }

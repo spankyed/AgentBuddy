@@ -41,11 +41,11 @@ describe('services.appData', () => {
 
     version.current = '0.4.1';
     try {
-      const backup = await services.appData.exportBackup(dir, 'probe', ['volatileLmdb']);
+      const backup = await services.appData.exportBackup(dir, 'probe', ['lmdb']);
       expect(backup).toBe(path.join(dir, 'probe'));
       // What made it, so a backup folder says where it came from without opening its databases
       expect(await services.appData.readBackupSummary(backup)).toEqual({
-        timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false, appVersion: '0.4.1',
+        timestamp: expect.any(Number), databases: ['lmdb'], size: expect.any(Number), hasMedia: false, appVersion: '0.4.1',
       });
       const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
       expect(metadata).toMatchObject({ appVersion: '0.4.1', storageFormat: expect.any(Number) });
@@ -74,18 +74,6 @@ describe('services.appData', () => {
     expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true }))
       .toEqual({ databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] });
     expect(untypedQuery.ids('Prompt-kept').pickOne(['label'])).toBeUndefined();
-  });
-
-  it('restores a backup whose listed store it holds nothing for, and says which', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-empty-db-backup-'));
-    dirs.push(dir);
-    // exportBackup lists volatileLmdb but copies no folder when there is nothing in it
-    const backup = await services.appData.exportBackup(dir, 'sparse', ['lmdb', 'volatileLmdb']);
-    fs.rmSync(path.join(backup, 'volatileLmdb'), { recursive: true, force: true });
-
-    // Reported, so the app can tell the user that store came back empty rather than dropping it silently
-    expect(await services.appData.importBackup(backup))
-      .toEqual({ databases: ['lmdb'], missingDatabases: ['volatileLmdb'], unknownEntityTypes: [] });
   });
 
   it('restores current preferences, onboarding completion and unavailable feature overrides', async () => {

@@ -100,9 +100,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     expect(fromApi.entities.some(({ roles }) => roles.length > 0)).toBe(true);
     expect(fromApi.entities.find(({ id }) => id === 'Note-parity')).toMatchObject({ roles: ['assistant_birth'] });
     expect(fromTool).toEqual(fromApi);
-    // The tool knows the built-in pack's entity types. Which partition each lands in is not compared here:
-    // both sides call the one `appPartitionPolicy()`, so an equality between them cannot fail —
-    // tests/database/partition-policy.spec.ts is where that routing is asserted
+    // The tool knows the built-in pack's entity types
     expect(db.schema.getRegisteredEntityTypes()).toEqual(types);
   });
 });

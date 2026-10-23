@@ -1,7 +1,7 @@
 import { createActor } from 'xstate';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 import { bindHost, type HostRuntime } from '@apackdev/sdk/runtime';
-import { _getLmdbPath, _getRunHistoryPath, _getVolatileLmdbPath } from '@apackdev/sdk/utils';
+import { _getLmdbPath, _getRunHistoryPath } from '@apackdev/sdk/utils';
 import type { EarsEngine } from '@apackdev/ears';
 import type { LmdbStore, RecordStore, WriteFailure } from '@apackdev/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore, openRunHistoryStore, storedSettings } from '@apackdev/host/database';
@@ -73,7 +73,7 @@ export let appRunHistory: RecordStore | undefined;
 /**
  * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller
  * registers them), the LMDB store and the app's engine persisting to it (`openDatabaseStore`, `@apackdev/host/database`,
- * which `apack db` opens a data dir with too) with their partition policy and entity types, and
+ * which `apack db` opens a data dir with too) with their entity types, the run history's store, and
  * `bindHost(createHostRuntime(...))` with the root event bus, whose log events are printed, the app version, the
  * registry (the SDK's lookups read it), the engine (packs get its operations, bound by the bind) and the host
  * services over the store and the engine's admin face. The caller hydrates the store once the packs are registered.
@@ -108,7 +108,7 @@ export function openAppStore(): AppStore {
     settingsForPack: (packId) => runtime.services.settings.forPack(packId),
   });
   const { store, engine } = openDatabaseStore({
-    paths: { primary: _getLmdbPath(), volatileBackup: _getVolatileLmdbPath() },
+    path: _getLmdbPath(),
     schema: packs,
     onWriteFailure: reportDroppedWrite,
   });
@@ -206,7 +206,7 @@ export async function setupBackend(): Promise<void> {
     }
   }
 
-  // ── Hydrate (policy now sees all entity types from all packs)
+  // ── Hydrate (the engine now knows every pack's entity types)
   await store.hydrate();
 
   // ── Start the packs: each one's onInit, the migrations (the app's, then external packs'), the content

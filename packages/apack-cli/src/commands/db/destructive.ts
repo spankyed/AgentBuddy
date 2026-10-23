@@ -79,9 +79,8 @@ export async function dbReset(args: string[], io: DbIo): Promise<void> {
   const done = await withDatabase(db, async () => {
     const secrets = secretsStoreAt(db);
     const keys = fs.existsSync(db.paths.secretsFile) ? keyLines(secrets) : [];
-    io.out(`${force ? 'Deleting' : 'Would delete'} the database (${db.paths.lmdb} and ${db.paths.volatileLmdb}):`);
+    io.out(`${force ? 'Deleting' : 'Would delete'} the database (${db.paths.lmdb}):`);
     countLines(entityCounts(db)).forEach((line) => io.out(line));
-    io.out(`  and the volatile partition (run history)`);
     if (keepKeys) {
       io.out(`Keeping ${keys.length} stored API key(s) (--keep-keys)`);
     } else {

@@ -39,7 +39,7 @@ export async function dbBackup(args: string[], io: DbIo): Promise<void> {
       fs.mkdirSync(path.dirname(destination), { recursive: true });
       stage = fs.mkdtempSync(path.join(path.dirname(destination), '.apack-backup-'));
       const backup = await exportDatabase(db.store, stage, {
-        name: 'backup', databases: ['lmdb', 'volatileLmdb'], mediaPath: db.paths.media,
+        name: 'backup', databases: ['lmdb'], mediaPath: db.paths.media,
         appVersion: readHostCompatibility(target.userDataDir).version,
         log: { info: message => io.err(message), warn: message => io.err(message) },
       });
