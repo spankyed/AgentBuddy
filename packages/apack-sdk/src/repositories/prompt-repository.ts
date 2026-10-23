@@ -3,7 +3,6 @@
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { boundEars as ears } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
-import { trash } from './trash.ts';
 import type { PromptEntity, TemplateInput } from '../types/sdk-entities.ts';
 
 /** A prompt's fields, as it's created */
@@ -43,6 +42,6 @@ export const promptRepository = {
   /** Moves a prompt to the trash; it stays stored */
   delete: (id: EARS.EntityId): void => {
     if (!ears().query.withTrashed.ids(id).exists()) throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-    trash.move([id]);
+    ears().write(id).trash();
   },
 };

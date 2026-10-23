@@ -4,7 +4,6 @@ import { create, write, findById, findAll, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
-import { trash } from '@apackdev/sdk/repositories';
 import { updateEntity } from '#generated/ears.ts';
 import { generateShortCode, wouldCreateCycle } from '@apackdev/sdk/ears';
 import { createLogger } from '@apackdev/sdk/logger';
@@ -907,7 +906,8 @@ export const chatCommands = {
     // "undoing" their message. The message text is prefilled into the chat
     // input so they can re-send or edit it.
     const toDelete = nonDeleted.slice(targetIndex).flatMap((msg) => msg.id ? [msg.id as EARS.EntityId] : []);
-    const deletedIds: string[] = trash.move(toDelete);
+    for (const messageId of toDelete) write(messageId).trash();
+    const deletedIds: string[] = toDelete;
 
     return { deletedCount: deletedIds.length, deletedIds };
   },

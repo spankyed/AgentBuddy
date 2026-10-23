@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, type PersistenceSink } from '@apackdev/ears';
 import { findRelations, _bindEars, boundEars, untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
-import { actionRepository, flowRepository, promptRepository, tnodeRepository, trash } from '../../src/repositories/index.ts';
+import { actionRepository, flowRepository, promptRepository, tnodeRepository } from '../../src/repositories/index.ts';
 import { compile as compileFlowDSL } from '../../src/build/compilers/flow-compiler.ts';
 import { resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { EARS } from '../../src/types/entities.ts';
@@ -308,40 +308,6 @@ describe('actionRepository and promptRepository', () => {
     expect(() => promptRepository.create({ label: 'P', templateFn: '' })).toThrow('Template is required');
     expect(() => actionRepository.update('Action-missing' as EARS.EntityId, {})).toThrow('Action Action-missing not found');
     expect(() => promptRepository.delete('Prompt-missing' as EARS.EntityId)).toThrow('Prompt Prompt-missing not found');
-  });
-});
-
-describe('trash', () => {
-  // Any entity type: prompts here
-  const note = (title: string) => untypedCreate('Prompt', { id: `Prompt-${title}` as EARS.EntityId }).set('title', title).id();
-  const findById = (id: EARS.EntityId) => boundEars().findById<Record<string, unknown>>(id);
-  const inTrash = (id: EARS.EntityId) => boundEars().query.withTrashed.ids(id).pickAll()[0];
-
-  it('moves entities to the trash, where finders skip them, and restores them unmarked', () => {
-    const [a, b] = [note('a'), note('b')];
-
-    expect(trash.move([a, b, 'Prompt-missing' as EARS.EntityId], 1000)).toEqual([a, b]);
-    expect(trash.move([a], 2000)).toEqual([]);
-    expect(findById(a)).toBeUndefined();
-    expect(boundEars().findAll('Prompt')).toEqual([]);
-    expect(inTrash(a)).toMatchObject({ trashedAt: 1000, updatedAt: 1000 });
-    expect(trash.isTrashed(a)).toBe(true);
-    expect(trash.list('Prompt').map((n) => n.id).sort()).toEqual([a, b].sort());
-
-    expect(trash.restore([a, 'Prompt-missing' as EARS.EntityId])).toEqual([a]);
-    expect(trash.restore([a])).toEqual([]);
-    const restored = findById(a);
-    expect(restored).toMatchObject({ title: 'a' });
-    expect(restored).not.toHaveProperty('trashedAt');
-    expect(trash.isTrashed(a)).toBe(false);
-    expect(trash.list('Prompt').map((n) => n.id)).toEqual([b]);
-  });
-
-  it('lists the entities trashed longer ago than an age', () => {
-    const [old, recent] = [note('old'), note('recent')];
-    trash.move([old], 1_000);
-    trash.move([recent], 9_000);
-    expect(trash.olderThan('Prompt', 5_000, 10_000).map((n) => n.id)).toEqual([old]);
   });
 });
 

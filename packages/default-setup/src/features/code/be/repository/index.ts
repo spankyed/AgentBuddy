@@ -2,7 +2,6 @@ import { write, findById, findAll, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts'
 
-import { trash } from '@apackdev/sdk/repositories';
 import type { TerminalInfo } from '../types.ts'
 import { createLogger } from '@apackdev/sdk/logger'
 
@@ -137,9 +136,8 @@ export const terminalCommands = {
       return
     }
 
-    // To the trash, inactive, rather than deleted (trash.move stamps updatedAt)
-    write(id).set('active', false)
-    trash.move([id])
+    // To the trash, inactive, rather than deleted
+    write(id).set('active', false).set('updatedAt', Date.now()).trash()
   }
 }
 

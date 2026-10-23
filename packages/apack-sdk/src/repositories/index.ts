@@ -8,4 +8,3 @@ export {
   documentRepository, collectionRepository, collectionPath, nextDisplayOrder, displayOrderOf,
   parentCollectionOf, collectionOfDocument, type DocumentInput, type CollectionInput,
 } from './document-repository.ts';
-export { trash, type TrashFields, type Trashed } from './trash.ts';

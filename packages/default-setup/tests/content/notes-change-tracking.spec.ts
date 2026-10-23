@@ -11,7 +11,6 @@ import { compileBuiltinFormat, type ContentFormatConfig, type ContentItem } from
 import { createFormatApplier } from '@apackdev/sdk/content';
 import type { ApplyRecord, ImportMode, ApplyResult, ContentSelection } from '@apackdev/sdk/utils';
 import { untypedQuery as query, untypedWrite } from '@apackdev/sdk/ears';
-import { trash } from '@apackdev/sdk/repositories';
 import { dropAttribute, entityIds } from '@apackdev/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';
 import { FIXTURES, PACK_DIR, applyAfter, resetDatabase, snapshot, type Snapshot } from './harness.ts';
@@ -232,7 +231,7 @@ describe('notes applying (generic pipeline)', () => {
   });
 
   /**
-   * **A note the user deleted is not written again.** Notes delete softly (`trash.move` marks the row and keeps
+   * **A note the user deleted is not written again.** Notes delete softly (`trash()` marks the row and keeps
    * its `contentKey`), so the record of the deletion is on the row the applier searches for — but the applier used
    * a finder that hides deleted rows, missed it, missed it again by identity, and created a second note beside
    * the one in the trash. The lookup seeing deleted rows is what makes the rule hold for every content key,
@@ -247,13 +246,13 @@ describe('notes applying (generic pipeline)', () => {
     contentNotes('v1');
     const welcome = notesTitled('Welcome');
     if (welcome.length !== 1) throw new Error(`expected one written Welcome note to delete, found ${welcome.length}`);
-    trash.move([welcome[0]]);
+    untypedWrite(welcome[0]).trash();
 
     contentNotes('v2', { mode: 'replace-on-collision' });
 
     const after = notesTitled('Welcome');
     expect(after, 'the apply created a second Welcome beside the deleted one').toEqual(welcome);
-    expect(trash.isTrashed(welcome[0]), 'still in the user\'s trash').toBe(true);
+    expect(query.trashed('Note').ids(), 'still in the user\'s trash').toContain(welcome[0]);
   });
 
   /**
@@ -273,7 +272,7 @@ describe('notes applying (generic pipeline)', () => {
     const deepChild = snapshot().rows['Note:Projects/Archive/Old Task'];
     expect(deepChild, 'the fixture no longer has the child this case is about').toBeDefined();
     expect(deepChild.completed, 'v1 leaves it incomplete, which is what v2 changes').toBe(false);
-    trash.move([projects[0]]);
+    untypedWrite(projects[0]).trash();
 
     contentNotes('v2', { mode: 'replace-on-collision' });
 
@@ -289,7 +288,7 @@ describe('notes applying (generic pipeline)', () => {
    * the user's deletion.
    *
    * Destroying the row rather than trashing it is the whole point of the case, so it uses `write().destroy()`
-   * directly: `trash.move` would leave the row the earlier cases are about and prove nothing new.
+   * directly: `trash()` would leave the row the earlier cases are about and prove nothing new.
    */
   it('leaves a note the user deleted outright alone, given what the last apply wrote', () => {
     reset();

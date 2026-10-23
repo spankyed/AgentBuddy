@@ -1,6 +1,5 @@
 import { findById, findAll, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import { trash } from '@apackdev/sdk/repositories';
 
 import type { NoteDTO } from '../types.ts';
 import { REFERENCES } from '../types.ts';
@@ -81,10 +80,12 @@ export const noteQueries = {
   referencedBy: (noteId: EARS.EntityId): EARS.EntityId[] =>
     query.ids(noteId).linksTo(REFERENCES, EARS.Entity.Note, false).ids(),
 
-  trashedDTOs: (): NoteDTO[] => trash.list<NoteEntity>(EARS.Entity.Note).map(toDTO),
+  trashedDTOs: (): NoteDTO[] => (query.trashed(EARS.Entity.Note).pickAll() as NoteEntity[]).map(toDTO),
 
   expiredSoftDeleted: (maxAgeDays: number): NoteEntity[] =>
-    trash.olderThan<NoteEntity>(EARS.Entity.Note, maxAgeDays * 24 * 60 * 60 * 1000),
+    query.trashed(EARS.Entity.Note)
+      .where('trashedAt', (at) => typeof at === 'number' && at < Date.now() - maxAgeDays * 24 * 60 * 60 * 1000)
+      .pickAll() as NoteEntity[],
 
   connectedData: () => ({
     notes: noteQueries.allDTOs(),

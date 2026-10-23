@@ -478,16 +478,10 @@ query.withTrashed.ids(id).linksTo('contains');   // a trashed entity's children,
 query.trashed('Bookmark').pickAll();             // only the trashed ones, each with its trashedAt
 ```
 
-`trash` from `@apackdev/sdk/repositories` moves several entities at once and stamps `updatedAt`:
+The entities trashed more than a week ago, say, are a query over `trashedAt`:
 
 ```typescript
-import { trash } from '@apackdev/sdk/repositories';
-
-trash.move([bookmarkId]);                        // the ids it moved (not missing or already trashed ones)
-trash.list<Bookmark>('Bookmark');                // the trashed bookmarks
-trash.olderThan<Bookmark>('Bookmark', 7 * 24 * 60 * 60 * 1000);  // trashed more than 7 days ago
-trash.restore([bookmarkId]);
-trash.isTrashed(bookmarkId);
+query.trashed('Bookmark').where('trashedAt', (at) => at < Date.now() - 7 * 24 * 60 * 60 * 1000).ids();
 ```
 
 What trashing means beyond the mark stays with your feature: trashing an entity's children with it, or emptying the trash by deleting the entities (`write(id).destroy()`).
