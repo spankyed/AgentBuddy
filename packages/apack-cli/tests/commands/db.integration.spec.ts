@@ -441,7 +441,8 @@ describe('apack db exec', () => {
   it('fails when a write never reaches the files', async () => {
     const dir = await appDataDir();
     const { error } = await run(['exec', "write('Note-a').set('count', 1n)", '--data-dir', dir]);
-    expect(error?.message).toMatch(/1 write\(s\) didn't reach the database/);
+    // The value LMDB can't store, and the updatedAt the engine stamps in the same write
+    expect(error?.message).toMatch(/2 write\(s\) didn't reach the database/);
   });
 
   it('keeps none of what the code wrote when it throws part way', async () => {
