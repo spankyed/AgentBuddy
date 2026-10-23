@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@apackdev/sdk/logger';
-import { closeEnv, openEnvAt, LmdbReader, LMDB_FORMAT_VERSION, type LmdbStore } from '@apackdev/ears/lmdb';
+import { closeEnv, openEnvAt, openRecordStore, LmdbReader, LMDB_FORMAT_VERSION, RECORD_STORE_FORMAT_VERSION } from '@apackdev/ears/lmdb';
 import { UnknownBackupDatabasesError } from '@apackdev/sdk/services';
 
 const logger = createLogger('database:backup');
@@ -21,22 +21,43 @@ const defaultLog: BackupLog = {
   warn: (message, detail) => logger.warn(message, detail),
 };
 
-/** A backup's database folders: the store each holds */
-const DATABASES = ['lmdb'] as const;
+/**
+ * A backup's database folders, each a store of the app's, with the storage format this version writes it in: the
+ * engine's database and the run history
+ */
+const DATABASE_FORMATS = {
+  lmdb: LMDB_FORMAT_VERSION,
+  runHistory: RECORD_STORE_FORMAT_VERSION,
+} as const;
 
-export type DatabaseName = (typeof DATABASES)[number];
-export const isKnownDatabase = (name: string): name is DatabaseName => (DATABASES as readonly string[]).includes(name);
+export type DatabaseName = keyof typeof DATABASE_FORMATS;
+export const isKnownDatabase = (name: string): name is DatabaseName => Object.hasOwn(DATABASE_FORMATS, name);
 
-/** Where a backup's database folder comes from and goes to */
-const databasePath = (store: Pick<LmdbStore, 'path'>, _name: DatabaseName) => store.path;
+/** A store a backup copies from and an import puts back into: the LMDB store, or the run history's record store */
+export interface BackupStore {
+  readonly path: string;
+  /** LMDB's own copy of one moment of the store into `targetDir` */
+  copyTo(targetDir: string): Promise<void>;
+  close(): unknown;
+  reopen(): void;
+}
+
+/** The app's stores, by the backup folder each is copied to: the database always, the run history where there is one */
+export type BackupStores = { lmdb: BackupStore } & Partial<Record<Exclude<DatabaseName, 'lmdb'>, BackupStore>>;
+
+/** Opens a backup's copy of a store read-only, refusing one in a format this version can't read, and closes it */
+const CHECK_COPY: Record<DatabaseName, (dir: string) => void> = {
+  lmdb: (dir) => closeEnv(openEnvAt(dir, { readOnly: true }), () => {}),
+  runHistory: (dir) => openRecordStore({ path: dir, indexes: [], readOnly: true }).close(),
+};
 
 /**
- * Copies `store`'s databases (and the media folder `mediaPath`, with the primary database) into a new backup folder.
- * Each database is copied by LMDB itself (`store.copyTo`), so a backup taken while the app is running holds the
- * database as of one moment rather than whatever the files happened to say as they were read.
+ * Copies the stores in `databases` (and the media folder `mediaPath`, with the database) into a new backup folder.
+ * Each is copied by LMDB itself (`copyTo`), so a backup taken while the app is running holds each store as of one
+ * moment rather than whatever the files happened to say as they were read.
  */
 export async function exportDatabase(
-  store: Pick<LmdbStore, 'path' | 'copyTo'>,
+  stores: BackupStores,
   targetPath: string,
   { name, databases = ['lmdb'], mediaPath, appVersion, log = defaultLog }:
     { name?: string; databases?: DatabaseName[]; mediaPath: string; appVersion?: string; log?: BackupLog },
@@ -60,11 +81,12 @@ export async function exportDatabase(
     // What wrote it, for the refusal message and for reading a backup folder by eye. Provenance only: whether a
     // backup restores is settled by opening its databases (readBackup), never by what this says.
     ...(appVersion !== undefined && { appVersion }),
-    storageFormat: LMDB_FORMAT_VERSION,
+    storageFormats: Object.fromEntries(databases.map((name) => [name, DATABASE_FORMATS[name]])),
   });
 
   for (const dbName of databases) {
-    if (await fs.pathExists(databasePath(store, dbName))) {
+    const store = stores[dbName];
+    if (store && await fs.pathExists(store.path)) {
       await store.copyTo(path.join(fullBackupPath, dbName));
       log.info(`Backed up ${dbName}`);
     }
@@ -83,7 +105,7 @@ export type DatabaseImportResult = Pick<BackupContents, 'databases' | 'missingDa
 
 /** Keep previous files until both installation and the caller's acceptance succeed. */
 export async function importDatabase(
-  store: LmdbStore,
+  stores: BackupStores,
   backupPath: string,
   mediaPath: string,
   { skipUnknownDatabases = false, entityTypes = [], log = defaultLog, validate, accept, restored, withReplacement = replace => replace() }:
@@ -98,7 +120,7 @@ export async function importDatabase(
       withReplacement?: (replace: () => Promise<DatabaseImportResult>) => Promise<DatabaseImportResult>;
     } = {},
 ): Promise<DatabaseImportResult> {
-  const temporary = await fs.mkdtemp(path.join(path.dirname(store.path), '.apack-import-'));
+  const temporary = await fs.mkdtemp(path.join(path.dirname(stores.lmdb.path), '.apack-import-'));
   const candidate = path.join(temporary, 'candidate');
   const rollback = path.join(temporary, 'rollback');
   let preserveRollback = false;
@@ -120,17 +142,23 @@ export async function importDatabase(
     if (unknownEntityTypes.length) {
       log.warn('The backup holds entities of types no installed pack declares', { types: unknownEntityTypes.map(([type, count]) => `${type} (${count})`) });
     }
+    // A store the backup holds and the caller has none for is left out, as a store it doesn't know is
+    const restoring = databases.flatMap((name) => {
+      const store = stores[name];
+      return store ? [{ name, store }] : [];
+    });
+    const closeAll = () => { for (const { store } of restoring) store.close(); };
+    const reopenAll = () => { for (const { store } of restoring) store.reopen(); };
     return await withReplacement(async () => {
-      for (const name of databases) await store.copyTo(path.join(rollback, name));
+      for (const { name, store } of restoring) await store.copyTo(path.join(rollback, name));
       const candidateMedia = path.join(candidate, 'media');
       const hasMedia = await fs.pathExists(candidateMedia);
       if (hasMedia && await fs.pathExists(mediaPath)) await fs.copy(mediaPath, path.join(rollback, 'media'));
       try {
-        store.close();
-        for (const name of databases) {
-          const target = databasePath(store, name);
-          await fs.remove(target);
-          await fs.copy(path.join(candidate, name), target);
+        closeAll();
+        for (const { name, store } of restoring) {
+          await fs.remove(store.path);
+          await fs.copy(path.join(candidate, name), store.path);
           log.info(`Imported ${name}`);
         }
         if (hasMedia) {
@@ -138,25 +166,24 @@ export async function importDatabase(
           await fs.copy(candidateMedia, mediaPath);
           log.info('Restored media assets');
         }
-        store.reopen();
+        reopenAll();
         const result = { databases, missingDatabases, unknownEntityTypes };
         await accept?.(result);
         log.info('Import completed');
         return result;
       } catch (error) {
         try {
-          store.close();
-          for (const name of databases) {
-            const target = databasePath(store, name);
-            await fs.remove(target);
-            await fs.copy(path.join(rollback, name), target);
+          closeAll();
+          for (const { name, store } of restoring) {
+            await fs.remove(store.path);
+            await fs.copy(path.join(rollback, name), store.path);
           }
           if (hasMedia) {
             await fs.remove(mediaPath);
             const previousMedia = path.join(rollback, 'media');
             if (await fs.pathExists(previousMedia)) await fs.copy(previousMedia, mediaPath);
           }
-          store.reopen();
+          reopenAll();
           await restored?.();
         } catch (restoreError) {
           preserveRollback = true;
@@ -207,10 +234,10 @@ export interface BackupContents {
   /** The apack that made it, when it recorded one */
   appVersion?: string;
   /**
-   * The storage format its databases were written in, when it recorded one. Provenance only: whether this build can
-   * read them is settled by opening them, so a backup that opens restores whatever this says.
+   * The storage format each of its databases was written in, when it recorded them. Provenance only: whether this
+   * build can read them is settled by opening them, so a backup that opens restores whatever this says.
    */
-  storageFormat?: number;
+  storageFormats?: Record<string, unknown>;
   /** The databases it restores */
   databases: DatabaseName[];
   hasMedia: boolean;
@@ -239,7 +266,7 @@ export interface BackupContents {
 export function readBackup(dir: string, entityTypes: Iterable<string> = [], validate?: (query: LmdbReader) => void): BackupContents {
   const metadataFile = path.join(dir, 'metadata.json');
   if (!fs.existsSync(metadataFile)) throw new Error(`${dir} isn't a backup: it has no metadata.json`);
-  let metadata: { timestamp?: unknown; databases?: unknown; appVersion?: unknown; storageFormat?: unknown };
+  let metadata: { timestamp?: unknown; databases?: unknown; appVersion?: unknown; storageFormats?: unknown };
   try {
     metadata = fs.readJsonSync(metadataFile);
   } catch (error) {
@@ -257,9 +284,9 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = [], vali
 
   // Whether a backup can be restored is the files' answer, not the metadata's: a backup whose databases open is
   // restorable whatever metadata.json claims. What it recorded about its origin goes into the message, no more.
-  const open = (name: DatabaseName) => {
+  const refusing = <T>(open: () => T): T => {
     try {
-      return openEnvAt(path.join(dir, name), { readOnly: true });
+      return open();
     } catch (error) {
       const made = appVersion ? ` (backup made by apack ${appVersion})` : '';
       throw new Error(`${(error as Error).message}${made}`, { cause: error });
@@ -267,8 +294,8 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = [], vali
   };
   // Every database the import would put in place, so one this version can't read is found before anything is
   // replaced, not when the store opens the new files again
-  for (const name of databases.filter((name) => name !== 'lmdb')) closeEnv(open(name), () => {});
-  const env = open('lmdb');
+  for (const name of databases) refusing(() => CHECK_COPY[name](path.join(dir, name)));
+  const env = refusing(() => openEnvAt(path.join(dir, 'lmdb'), { readOnly: true }));
   try {
     validate?.(new LmdbReader(env));
     const perType = new Map<string, number>();
@@ -285,7 +312,7 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = [], vali
     return {
       ...(typeof metadata.timestamp === 'number' && { timestamp: metadata.timestamp }),
       ...(appVersion !== undefined && { appVersion }),
-      ...(typeof metadata.storageFormat === 'number' && { storageFormat: metadata.storageFormat }),
+      ...(isRecord(metadata.storageFormats) && { storageFormats: metadata.storageFormats }),
       databases,
       unknownDatabases,
       missingDatabases,
@@ -297,3 +324,6 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = [], vali
     closeEnv(env, () => {});
   }
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);

@@ -2065,7 +2065,7 @@ type IncomingDatabaseEvents = {
     type: 'EXPORT_DATABASE';
     path: string;
     name?: string;
-    databases: 'lmdb'[];
+    databases: ('lmdb' | 'runHistory')[];
 } | {
     type: 'IMPORT_DATABASE';
     path: string;

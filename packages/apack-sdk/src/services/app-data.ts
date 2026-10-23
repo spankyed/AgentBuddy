@@ -1,6 +1,6 @@
 
-/** A store a backup can hold: the database. API keys are never backed up. */
-export type BackupDatabase = 'lmdb';
+/** A store a backup can hold: the database, or the run history. API keys are never backed up. */
+export type BackupDatabase = 'lmdb' | 'runHistory';
 
 export interface BackupSummary {
   timestamp: number;
