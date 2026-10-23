@@ -554,14 +554,12 @@ export const brainCommands = {
   
   clearVolatileData: (): void => {
     // Get all TNode entities (volatile execution data)
-    const allTNodes = query(EARS.Entity.TNode).ids();
+    const traces = query(EARS.Entity.TNode).ids();
 
-    // Destroy each TNode entity without persisting (volatile data)
-    allTNodes.forEach(tNodeId => {
-      write(tNodeId).destroy({ keepStored: true }); // skip persistence for volatile data
-    });
+    // Out of memory only: the run history stays stored, its links included
+    traces.forEach(id => write(id).unload());
 
-    brainLogger.info(`Cleared ${allTNodes.length} volatile TNode entities from memory`);
+    brainLogger.info(`Cleared ${traces.length} volatile TNode entities from memory`);
   },
 } as const;
 
