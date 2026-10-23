@@ -801,7 +801,7 @@ describe('apack db export', () => {
     await ok(['export', '--out', out, '--data-dir', dir]);
     const notes = JSON.parse(fs.readFileSync(path.join(out, 'Note.json'), 'utf-8'));
     expect(notes.map((n: { id: string }) => n.id).sort()).toEqual(['Note-a', 'Note-b']);
-    expect(notes.find((n: { id: string }) => n.id === 'Note-a')).toMatchObject({ title: 'Alpha', role: 'pinned' });
+    expect(notes.find((n: { id: string }) => n.id === 'Note-a')).toMatchObject({ title: 'Alpha', role: ['pinned'] });
     expect(fs.existsSync(path.join(out, 'Relation.json'))).toBe(true);
     expect(fs.existsSync(path.join(out, 'Flow.json'))).toBe(false);
     const summary = JSON.parse(fs.readFileSync(path.join(out, 'export.json'), 'utf-8'));
