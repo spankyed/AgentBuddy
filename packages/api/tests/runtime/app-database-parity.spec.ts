@@ -82,6 +82,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     // the volatile partition, which neither hydrates
     const first = await bootApi();
     startPacks(first.packs);
+    untypedCreate('Note', { id: 'Note-child' }).set('title', 'child');
     untypedCreate('Note', { id: 'Note-parity' }).set('title', 'mine').grant('pinned').link('parent_of', 'Note-child');
     untypedCreate('TNode', { id: 'TNode-parity' }).set('status', 'done');
     closeApi(first);

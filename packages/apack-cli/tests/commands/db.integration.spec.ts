@@ -82,8 +82,9 @@ async function appDataDir(): Promise<string> {
   await write(dir, () => {
     untypedCreate('AppState', { id: id('AppState-app') }).set('hasOnboarded', true);
     untypedCreate('Settings', { id: id('Settings-app') }).set('label', 'App').set('data', { app: { personal: { name: 'Developer' } } });
-    untypedCreate('Note', { id: id('Note-a') }).set('title', 'Alpha').grant('pinned').link('parent_of', id('Note-b'));
+    const alpha = untypedCreate('Note', { id: id('Note-a') }).set('title', 'Alpha').grant('pinned');
     untypedCreate('Note', { id: id('Note-b') }).set('title', 'Beta, "quoted"');
+    alpha.link('parent_of', id('Note-b'));
     // The run history, which the app keeps in its own partition (TNode is excluded from the main one)
     untypedCreate('TNode', { id: id('TNode-1') }).set('status', 'completed');
   });

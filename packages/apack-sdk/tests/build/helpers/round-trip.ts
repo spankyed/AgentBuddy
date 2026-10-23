@@ -33,9 +33,7 @@ export function createRoundTrip(rootFlowRole: string, steps?: StepDefinition[]) 
       opts?: { actions?: Map<string, string>; prompts?: Map<string, string> },
     ): FlowDSL {
       const { create } = engine;
-      const compiled = compile(dsl, { ...opts, steps });
-      loadCompiledRows(engine, compiled);
-
+      // The actions and prompts the nodes are instances of, before the rows that link to them
       if (opts?.actions) {
         for (const [label, id] of opts.actions) {
           create(EARS.Entity.Action, { id: id as EARS.EntityId }).set('label', label);
@@ -46,6 +44,8 @@ export function createRoundTrip(rootFlowRole: string, steps?: StepDefinition[]) 
           create(EARS.Entity.Prompt, { id: id as EARS.EntityId }).set('label', label);
         }
       }
+      const compiled = compile(dsl, { ...opts, steps });
+      loadCompiledRows(engine, compiled);
 
       const { filePath } = exportFlowsToDSL(tmpDir, { rootFlowRole, engine: engine, steps }, false);
       return JSON.parse(fs.readFileSync(filePath, 'utf-8'));

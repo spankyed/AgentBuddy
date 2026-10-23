@@ -175,8 +175,8 @@ describe('openAppDatabase', () => {
   it('hydrates the primary partition with the installed types, and installs the engine until close', async () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => {
-      untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept').grant('pinned').link('mentions', id('Note-2'));
       untypedCreate('Note', { id: id('Note-2') }).set('title', 'other');
+      untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept').grant('pinned').link('mentions', id('Note-2'));
       untypedCreate('TNode', { id: id('TNode-1') }).set('step', 'volatile');
     });
 
