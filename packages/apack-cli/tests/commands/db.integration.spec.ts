@@ -82,11 +82,11 @@ async function appDataDir(): Promise<string> {
   await write(dir, () => {
     untypedCreate('AppState', { id: id('AppState-app') }).set('hasOnboarded', true);
     untypedCreate('Settings', { id: id('Settings-app') }).set('label', 'App').set('data', { app: { personal: { name: 'Developer' } } });
-    const alpha = untypedCreate('Note', { id: id('Note-a') }).set('title', 'Alpha').grant('pinned');
+    const alpha = untypedCreate('Note', { id: id('Note-a') }).set('title', 'Alpha').grant('assistant_birth');
     untypedCreate('Note', { id: id('Note-b') }).set('title', 'Beta, "quoted"');
     alpha.link('parent_of', id('Note-b'));
     // The run history, which the app keeps in its own partition (TNode is excluded from the main one)
-    untypedCreate('TNode', { id: id('TNode-1') }).set('status', 'completed');
+    untypedCreate('TNode', { id: id('TNode-1'), tNodeType: 'step', label: 'Step', startedAt: 0, status: 'completed' });
   });
   return dir;
 }
@@ -756,7 +756,7 @@ describe('apack db inspect', () => {
       '[Note] Note-b "Beta, "quoted""',
       '  <- parent_of (1)',
       '    [Note] Note-a "Alpha"',
-      '      roles: pinned',
+      '      roles: assistant_birth',
       '      -> parent_of (1)',
       '          [Note] Note-b',
     ]);
@@ -771,7 +771,7 @@ describe('apack db inspect', () => {
     const dir = await appDataDir();
     const incoming = await ok(['inspect', 'Note-a', '--data-dir', dir, '--incoming']);
     // Note-a has one outgoing relation (parent_of Note-b) and no incoming one, so only its own line is left
-    expect(incoming.out).toBe('[Note] Note-a "Alpha"\n  roles: pinned');
+    expect(incoming.out).toBe('[Note] Note-a "Alpha"\n  roles: assistant_birth');
 
     await write(dir, () => {
       for (const n of [1, 2, 3, 4, 5, 6]) untypedCreate('Note', { id: id(`Note-many-${n}`) }).set('title', `Many ${n}`);
@@ -802,7 +802,7 @@ describe('apack db export', () => {
     await ok(['export', '--out', out, '--data-dir', dir]);
     const notes = JSON.parse(fs.readFileSync(path.join(out, 'Note.json'), 'utf-8'));
     expect(notes.map((n: { id: string }) => n.id).sort()).toEqual(['Note-a', 'Note-b']);
-    expect(notes.find((n: { id: string }) => n.id === 'Note-a')).toMatchObject({ title: 'Alpha', role: ['pinned'] });
+    expect(notes.find((n: { id: string }) => n.id === 'Note-a')).toMatchObject({ title: 'Alpha', role: ['assistant_birth'] });
     expect(fs.existsSync(path.join(out, 'Relation.json'))).toBe(true);
     expect(fs.existsSync(path.join(out, 'Flow.json'))).toBe(false);
     const summary = JSON.parse(fs.readFileSync(path.join(out, 'export.json'), 'utf-8'));
@@ -845,7 +845,7 @@ describe('apack db clear-settings', () => {
     await ok(['clear-settings', '--force', '--data-dir', dir]);
 
     expect(JSON.parse((await rows()).out)).toEqual(before.filter((entity) => entity !== 'Settings-app'));
-    expect(JSON.parse((await ok(['query', 'return getRoles("Note-a")', '--data-dir', dir, '-o', 'json'])).out)).toEqual(['pinned']);
+    expect(JSON.parse((await ok(['query', 'return getRoles("Note-a")', '--data-dir', dir, '-o', 'json'])).out)).toEqual(['assistant_birth']);
     expect(JSON.parse((await ok(['query', 'return findRelations({ sourceEntity: "Note-a" }).map((r) => r.targetEntity)', '--data-dir', dir, '-o', 'json'])).out))
       .toEqual(['Note-b']);
     expect((await ok(['query', 'return getAttr("Note-a", "title")', '--data-dir', dir])).out).toBe('Alpha');
