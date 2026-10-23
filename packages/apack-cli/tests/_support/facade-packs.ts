@@ -65,7 +65,7 @@ const BASE_PACK = {
   'tsconfig.json': tsconfig,
   'apack.json': JSON.stringify({
     id: 'base-pack', name: 'Base', version: '1.0.0',
-    data: { entities: { Tag: "src/types.ts#TagEntity", Item: "src/types.ts#ItemEntity" } },
+    data: { entities: { Tag: "src/types.ts#TagEntity", Item: "src/types.ts#ItemEntity" }, relations: ['tagged'] },
 
     features: {
       calendar: { description: 'Feature declaration fixture.',
@@ -129,7 +129,7 @@ const APP_PACK = {
     id: 'app-pack', name: 'App', version: '1.0.0',
     dependencies: { 'base-pack': 'file:../base-pack' },
     consumes: { services: ['base-pack/search'] },
-    data: { entities: { Memo: "src/types.ts#ItemEntity" } },
+    data: { entities: { Memo: "src/types.ts#ItemEntity" }, relations: ['related'] },
     // Same type name as the dependency's Item shape
 
     features: { memos: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, surface: { label: 'Fixture', state: 'src/surface.ts' } } },
@@ -398,10 +398,16 @@ write(memoId).add('|add|', true);
 write(memoId).delete('|delete|');
 write(memoId).deleteAt('|deleteAt|', 0);
 write(memoId).set('pinnd', true);
+query.ids(memoId).out('|outKind|');
+write(memoId).link('|linkKind|', memoId);
+query('Memo').linkedTo('|linkedToKind|', memoId);
+write(memoId).link('relatd', memoId);
 `;
 const FIELD_POSITIONS = ['pick', 'pickOne', 'outPick', 'where', 'findWhere', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr'];
 /** The fields a write may name: the declared ones, without the engine's own (`createdAt`, `updatedAt`, …) */
 const WRITE_POSITIONS = ['set', 'add', 'deleteAt'];
+/** Relation kinds: the pack's own, its dependency's and the SDK's */
+const KIND_POSITIONS = ['outKind', 'linkKind', 'linkedToKind'];
 const NAME_POSITIONS = ['findAll', 'createEntity', 'out', 'in', 'ofType'];
 
 /** String completions at each marked position of COMPLETIONS, and the file's diagnostics */
@@ -538,6 +544,8 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
     // A typo's error lists the fields it could have been, for a read and a write
     expect(diagnostics.find((message) => message.includes('"txet"'))).toMatch(/"text"/);
     expect(diagnostics.find((message) => message.includes('"pinnd"'))).toMatch(/"pinned"/);
+    expect(missing(KIND_POSITIONS, ['related', 'tagged', 'contains']), 'positions without relation-kind completions').toEqual([]);
+    expect(diagnostics.find((message) => message.includes('"relatd"'))).toMatch(/"related"/);
   });
 
   it.each(['bundler', 'node16'] as const)('offers system-id and event-type completions for sendToSystem under moduleResolution %s', (moduleResolution) => {

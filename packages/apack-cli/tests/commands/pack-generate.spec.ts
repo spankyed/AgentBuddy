@@ -131,8 +131,9 @@ describe('apack pack generate-entries', () => {
 
     const output = readGenerated();
     expect(output).toContain('export type Entity = string');
-    // Relation kinds stay open; the SDK's own are named
-    expect(output).toMatch(/export type RelKind =[\s\S]*\(string & \{\}\)/);
+    // Relation kinds are closed even with none of the pack's own: the SDK's are named
+    expect(output).toContain('export const RELATION_KINDS = [RelKind.CONTAINS,');
+    expect(output).toContain('export type RelKind = (typeof RELATION_KINDS)[number];');
   });
 
   it('includes AttrKind namespace with Role and RelationDetails', async () => {

@@ -15,6 +15,8 @@ import { readInstalledPackBuilds } from '../packs/discovery.ts';
 export interface DatabaseSchema {
   /** The SDK's entity types, the host's and the packs' */
   getRegisteredEntityTypes(): ReadonlySet<string>;
+  /** The SDK's relation kinds and the packs' */
+  getRegisteredRelationKinds(): ReadonlySet<string>;
 }
 
 /** The installed packs' schema, with the names a tool shows and the packs it was read from */
@@ -202,12 +204,14 @@ export function readInstalledSchema(context: SchemaContext, options: { schemaFro
     addNames(relKinds, relKindOwners, manifest.id, _packRelationTypes(manifest), 'relation kind');
   }
   const entityTypes = new Set(Object.values(entities));
+  const relationKinds = new Set(Object.values(relKinds));
 
   return {
     entities,
     relKinds,
     packs: packs.map(({ id }) => ({ id })),
     getRegisteredEntityTypes: () => entityTypes,
+    getRegisteredRelationKinds: () => relationKinds,
     ...(degraded !== undefined && { degraded }),
     notes,
   };

@@ -109,7 +109,7 @@ describe('the EARS console code sees', () => {
       { Entity: Record<string, string>; RelKind: Record<string, string> };
 
     expect(ears.Entity).toMatchObject({ Memo: 'Memo', Flow: 'Flow' });
-    expect(ears.RelKind).toMatchObject({ mentions: 'mentions', Custom: EARS.RelKind.Custom });
+    expect(ears.RelKind).toMatchObject({ mentions: 'mentions', CONTAINS: 'contains' });
   });
 
   it("names a registered pack's entity type, not only the pack whose console it is", async () => {

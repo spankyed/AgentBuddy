@@ -2,7 +2,6 @@ import { findById, findAll, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 
 import type { NoteDTO } from '../types.ts';
-import { REFERENCES } from '../types.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
 
 function toDTO(note: NoteEntity): NoteDTO {
@@ -78,7 +77,7 @@ export const noteQueries = {
   },
 
   referencedBy: (noteId: EARS.EntityId): EARS.EntityId[] =>
-    query.ids(noteId).in(REFERENCES, EARS.Entity.Note).ids(),
+    query.ids(noteId).in(EARS.RelKind.REFERENCES, EARS.Entity.Note).ids(),
 
   trashedDTOs: (): NoteDTO[] => (query.trashed(EARS.Entity.Note).pickAll() as NoteEntity[]).map(toDTO),
 

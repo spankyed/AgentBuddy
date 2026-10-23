@@ -64,7 +64,7 @@ describe('registerPack repositories', () => {
   afterEach(() => { _bindEars(testEngine); });
 
   it("registers a pack's repositories with the installed engine (the app's), where repository and services read them", () => {
-    const engine = createEarsEngine({ isEntityType: () => false });
+    const engine = createEarsEngine({ isRelationKind: () => true, isEntityType: () => false });
     _bindEars(engine);
     const noteQueries = { all: () => [] };
     registerPack({ id: 'repo-pack', repositories: { noteQueries } });
@@ -75,7 +75,7 @@ describe('registerPack repositories', () => {
   });
 
   it('removes them when the pack is unregistered', () => {
-    const engine = createEarsEngine({ isEntityType: () => false });
+    const engine = createEarsEngine({ isRelationKind: () => true, isEntityType: () => false });
     _bindEars(engine);
     registerPack({ id: 'repo-pack', repositories: { noteQueries: {} } });
 
@@ -85,7 +85,7 @@ describe('registerPack repositories', () => {
   });
 
   it('rejects a repository name another pack registered, keeping that pack\'s', () => {
-    const engine = createEarsEngine({ isEntityType: () => false });
+    const engine = createEarsEngine({ isRelationKind: () => true, isEntityType: () => false });
     _bindEars(engine);
     const theirs = { name: 'theirs' };
     registerPack({ id: 'first-pack', repositories: { settingsQueries: theirs } });
@@ -97,7 +97,7 @@ describe('registerPack repositories', () => {
   });
 
   it("removes a pack's repositories when a later part of its registration is refused", () => {
-    const engine = createEarsEngine({ isEntityType: () => false });
+    const engine = createEarsEngine({ isRelationKind: () => true, isEntityType: () => false });
     _bindEars(engine);
     registerPack({ id: 'first-pack', features: { chat: { designation: 'standup' } } } as unknown as PackRegistration);
     registered.push('first-pack');
@@ -375,7 +375,7 @@ describe('runtime settings admission', () => {
 
 describe('registered settings authority', () => {
   const previousEngine = boundEars();
-  beforeEach(() => { _bindEars(createEarsEngine({ isEntityType: name => name === 'Settings' })); });
+  beforeEach(() => { _bindEars(createEarsEngine({ isRelationKind: () => true, isEntityType: name => name === 'Settings' })); });
   afterEach(() => { _bindEars(previousEngine); });
 
   it('binds the accepted pack and revokes retained access when it unregisters', () => {

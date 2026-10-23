@@ -6,7 +6,7 @@ import { createEarsEngine, type EarsEngine } from '@apackdev/ears';
 import { _bindEars } from '../ears/index.ts';
 import type { ContentRuntime } from '../framework/content-runtime.ts';
 export { nativePackDeclarationFixture } from './pack-declaration.ts';
-import { SDK_ENTITIES } from '../types/sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import type { EARS } from '../types/entities.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { _isHostBound } from '../runtime/host-runtime.ts';
@@ -28,6 +28,8 @@ export { answerTo } from './answers.ts';
 export interface TestRuntimeStartOptions {
   /** Entity types beyond the SDK's; later calls add theirs */
   entityTypes?: readonly string[];
+  /** Relation kinds beyond the SDK's; later calls add theirs */
+  relationKinds?: readonly string[];
   /**
    * The registered packs the SDK's lookups read (the harness passes the registry it creates), under `testPacks`, which
    * tests fill directly; none by default. First call only
@@ -50,12 +52,13 @@ export interface TestRuntimeStartOptions {
 }
 
 const entityTypes = new Set<string>(Object.values(SDK_ENTITIES));
+const relationKinds = new Set<string>(Object.values(SDK_REL_KINDS));
 let started: Pick<TestRuntimeStartOptions, 'packs' | 'appVersion' | 'onboarding' | 'settings' | 'serviceOverrides'> | undefined;
 let engine: EarsEngine | undefined;
 
 /** A new in-memory engine checking entity types against the test runtime's, and installed */
 function installFreshEngine(repositories: Record<string, unknown> = {}): EarsEngine {
-  engine = createEarsEngine({ isEntityType: (value: string) => entityTypes.has(value) });
+  engine = createEarsEngine({ isEntityType: (value: string) => entityTypes.has(value), isRelationKind: (value: string) => relationKinds.has(value) });
   for (const [name, repo] of Object.entries(repositories)) engine.registerRepository(name, repo);
   _bindEars(engine);
   return engine;
@@ -68,8 +71,8 @@ function testEngine(): EarsEngine {
 }
 
 /**
- * Starts the in-memory runtime: an EARS engine (created and installed) with the SDK's entity types plus `entityTypes`,
- * writes not persisted, and binds
+ * Starts the in-memory runtime: an EARS engine (created and installed) with the SDK's entity types plus `entityTypes`
+ * and relation kinds plus `relationKinds`, writes not persisted, and binds
  * an in-memory app (`bindHost`): `testRootEvents` as its bus (so `broadcastToSurface`, `sendToSystem`, `onIncoming` and
  * log events go there; its log events are printed and its SYSTEM_ERROR events recorded for `takeSystemErrors`),
  * `testPacks` over `packs`, `appVersion`, an `appData` that resets the database and keeps onboarding in `onboarding`, a trace store
@@ -78,6 +81,7 @@ function testEngine(): EarsEngine {
  */
 export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
   for (const type of options.entityTypes ?? []) entityTypes.add(type);
+  for (const kind of options.relationKinds ?? []) relationKinds.add(kind);
   if (started) {
     for (const key of ['packs', 'appVersion', 'onboarding', 'serviceOverrides'] as const) {
       if (options[key] !== undefined && options[key] !== started[key]) {
@@ -95,7 +99,7 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
 
 /** Registers a pack's content runtime: its entity types, its repositories (with the engine) and its content writers (in `testPacks`) */
 export function registerContentRuntime(runtime: ContentRuntime): void {
-  startTestRuntime({ entityTypes: Object.values(runtime.entities) });
+  startTestRuntime({ entityTypes: Object.values(runtime.entities), relationKinds: Object.values(runtime.relKinds) });
   for (const [name, repo] of Object.entries(runtime.repositories)) testEngine().registerRepository(name, repo);
   for (const [entity, hooks] of Object.entries(runtime.contentWriters)) testPacks.contentWriters.set(entity, hooks);
 }

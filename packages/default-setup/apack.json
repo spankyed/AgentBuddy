@@ -19,7 +19,13 @@
   "data": {
     "relations": [
       "has",
-      "relates_to"
+      "relates_to",
+      "references",
+      "forked_from",
+      "compacts",
+      "blocks",
+      "blocked_by",
+      "duplicates"
     ]
   },
   "features": {

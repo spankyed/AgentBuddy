@@ -4,14 +4,13 @@ import { beforeEach, expect, it } from 'vitest';
 import { findRelations, untypedCreate, untypedQuery, untypedWrite } from '@apackdev/sdk/ears';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { repository } from '#generated/repository.ts';
-import type { EARS } from '#generated/ears.ts';
-import { REFERENCES } from '../../../../../src/features/notes/be/types.ts';
+import { EARS } from '#generated/ears.ts';
 import { syncReferences } from '../../../../../src/features/notes/be/repository/link-utils.ts';
 
 beforeEach(() => resetTestData());
 
 const link = (id: string) => `[see](apack-ref://note/${id})`;
-const references = (id: EARS.EntityId) => findRelations({ sourceEntity: id, relationType: REFERENCES }).map((r) => r.targetEntity).sort();
+const references = (id: EARS.EntityId) => findRelations({ sourceEntity: id, relationType: EARS.RelKind.REFERENCES }).map((r) => r.targetEntity).sort();
 const note = (title: string, content = '', id?: string) => repository.noteCommands.create({ title, content, ...(id && { id }) }).id as EARS.EntityId;
 
 it('indexes the notes a note links to that exist, and not one that does not', () => {

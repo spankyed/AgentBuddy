@@ -13,8 +13,9 @@ import type {
   ThreadExtendedData,
   ThreadTypeShortCode,
   ThreadConnectedData,
-  AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType,
+  AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ThreadLinkRelation,
 } from '../types.ts';
+import { ThreadRelations } from '../types.ts';
 import type { ThreadTagOption } from '#generated/types.ts';
 import type { ArtifactItem } from '@apackdev/sdk/artifacts';
 
@@ -58,7 +59,7 @@ export const threadQueries = {
   // Get linked threads
   linkedThreads: (threadId: EARS.EntityId) =>
     query.ids(threadId)
-      .outEdges(["parent_of", "blocks", "blocked_by", "duplicates"], EARS.Entity.Thread)
+      .outEdges(ThreadRelations, EARS.Entity.Thread)
       .flatMap(({ kind, id }) => {
         const row = query.ids(id).pickOne(["shortCode", "topic", "status", "timestamp"] as const);
         return row ? [{ relation: kind, ...row }] : [];
@@ -99,7 +100,7 @@ export const threadQueries = {
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
     const extendedThreads = threads.map(thread => {
       // Compute parentId by finding threads that link to this one via 'parent_of' (reverse direction)
-      const parentIds = query.ids(thread.id).in('parent_of', EARS.Entity.Thread).ids();
+      const parentIds = query.ids(thread.id).in(EARS.RelKind.PARENT_OF, EARS.Entity.Thread).ids();
       return {
         ...thread,
         ...(parentIds.length > 0 ? { parentId: parentIds[0] as string } : {}),
@@ -147,9 +148,9 @@ const logger = createLogger('threads-repository');
  * Links a thread to the threads it names, skipping one that no longer exists: the list comes from a form that
  * may have been open while that thread was deleted, and a save shouldn't fail for it.
  */
-function linkThreads(id: EARS.EntityId, linked: ReadonlyArray<{ relation: string; id: EARS.EntityId }>): void {
+function linkThreads(id: EARS.EntityId, linked: ReadonlyArray<{ relation: ThreadLinkRelation; id: EARS.EntityId }>): void {
   for (const rel of linked) {
-    if (query.ids(rel.id).exists()) write(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
+    if (query.ids(rel.id).exists()) write(id).link(rel.relation, rel.id);
     else logger.warn('Skipped a link to a thread that no longer exists', { threadId: id, linked: rel.id, relation: rel.relation });
   }
 }
@@ -220,9 +221,9 @@ export const threadCommands = {
     // Update linked threads
     if (linkedThreads !== undefined) {
       // Remove all existing custom relations
-      const existingLinks = query.ids(id).outEdges(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
+      const existingLinks = query.ids(id).outEdges(ThreadRelations);
       for (const link of existingLinks) {
-        write(id).unlink(EARS.RelKind.Custom(link.kind), link.id);
+        write(id).unlink(link.kind, link.id);
       }
 
       // Add new relations
@@ -239,11 +240,11 @@ export const threadCommands = {
   },
 
   linkFork: (sourceThreadId: EARS.EntityId, forkedThreadId: EARS.EntityId): void => {
-    write(forkedThreadId).link(EARS.RelKind.Custom('forked_from'), sourceThreadId);
+    write(forkedThreadId).link(EARS.RelKind.FORKED_FROM, sourceThreadId);
   },
 
   forkCount: (sourceThreadId: EARS.EntityId): number => {
-    return query.ids(sourceThreadId).in('forked_from', EARS.Entity.Thread).ids().length;
+    return query.ids(sourceThreadId).in(EARS.RelKind.FORKED_FROM, EARS.Entity.Thread).ids().length;
   },
 
   setParent: (parentId: EARS.EntityId, childIds: EARS.EntityId[]): { reparented: string[]; skipped: string[] } => {
@@ -264,7 +265,7 @@ export const threadCommands = {
       }
 
       // Remove existing parent link (reverse direction: find who has parent_of pointing to this child)
-      const oldParentIds = query.ids(childId).in('parent_of', EARS.Entity.Thread).ids();
+      const oldParentIds = query.ids(childId).in(EARS.RelKind.PARENT_OF, EARS.Entity.Thread).ids();
       for (const oldParentId of oldParentIds) {
         write(oldParentId).unlink(EARS.RelKind.PARENT_OF, childId);
       }
@@ -294,19 +295,19 @@ export const threadCommands = {
 
     // 2. Remove all thread relationships (parent_of, blocks, blocked_by, duplicates)
     // First, unlink this thread from any threads it links to
-    const existingLinks = query.ids(id).outEdges(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
+    const existingLinks = query.ids(id).outEdges(ThreadRelations);
     for (const link of existingLinks) {
-      write(id).unlink(EARS.RelKind.Custom(link.kind), link.id);
+      write(id).unlink(link.kind, link.id);
     }
 
     // Also unlink any threads that link to this thread
     // Find threads that have this thread as a linked thread
     const allThreads = findAll<ThreadEntity>(EARS.Entity.Thread);
     for (const thread of allThreads) {
-      const linkedToThis = query.ids(thread.id).outEdges(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
+      const linkedToThis = query.ids(thread.id).outEdges(ThreadRelations);
       for (const link of linkedToThis) {
         if (link.id === id) {
-          write(thread.id).unlink(EARS.RelKind.Custom(link.kind), id);
+          write(thread.id).unlink(link.kind, id);
         }
       }
     }
@@ -807,7 +808,7 @@ export const chatCommands = {
     const compactedMessageIds: EARS.EntityId[] = [];
     for (const msg of eligible) {
       const msgId = (msg as any).id as EARS.EntityId;
-      write(markerId).link(EARS.RelKind.Custom('compacts'), msgId);
+      write(markerId).link(EARS.RelKind.COMPACTS, msgId);
       write(msgId).set('compacted', true);
       compactedMessageIds.push(msgId);
     }
@@ -822,7 +823,7 @@ export const chatCommands = {
     }
 
     const messageIds = (query.ids(markerId)
-      .out(EARS.RelKind.Custom('compacts'), EARS.Entity.Message)
+      .out(EARS.RelKind.COMPACTS, EARS.Entity.Message)
       .pick([] as const) ?? []).map(m => m.id);
 
     for (const msgId of messageIds) {

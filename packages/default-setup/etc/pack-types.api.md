@@ -1294,6 +1294,18 @@ declare namespace EARS {
         type HAS = typeof HAS;
         const RELATES_TO = "relates_to";
         type RELATES_TO = typeof RELATES_TO;
+        const REFERENCES = "references";
+        type REFERENCES = typeof REFERENCES;
+        const FORKED_FROM = "forked_from";
+        type FORKED_FROM = typeof FORKED_FROM;
+        const COMPACTS = "compacts";
+        type COMPACTS = typeof COMPACTS;
+        const BLOCKS = "blocks";
+        type BLOCKS = typeof BLOCKS;
+        const BLOCKED_BY = "blocked_by";
+        type BLOCKED_BY = typeof BLOCKED_BY;
+        const DUPLICATES = "duplicates";
+        type DUPLICATES = typeof DUPLICATES;
         const CONTAINS = "contains";
         type CONTAINS = typeof CONTAINS;
         const TRANSITIONS_TO = "transitions_to";
@@ -1306,9 +1318,12 @@ declare namespace EARS {
         type TRACKED = typeof TRACKED;
         const PARENT_OF = "parent_of";
         type PARENT_OF = typeof PARENT_OF;
-        const Custom: <T extends string>(k: T) => T & RelKind;
     }
-    type RelKind = RelKind.HAS | RelKind.RELATES_TO | RelKind.CONTAINS | RelKind.TRANSITIONS_TO | RelKind.INSTANCE_OF | RelKind.SPAWNED | RelKind.TRACKED | RelKind.PARENT_OF | (string & {});
+    /** Every relation kind this pack may link with: its own, its dependencies' and the SDK's */
+    const RELATION_KINDS: readonly ["has", "relates_to", "references", "forked_from", "compacts", "blocks", "blocked_by", "duplicates", "contains", "transitions_to", "instance_of", "spawned", "tracked", "parent_of"];
+    type RelKind = (typeof RELATION_KINDS)[number];
+    /** Whether a kind that arrived as data (an event's field, a stored row) is one of them */
+    const isRelKind: (value: unknown) => value is RelKind;
     namespace RoleKind {
         const Custom: <T extends string>(k: T) => T & RoleKind;
     }
@@ -2489,7 +2504,7 @@ type IncomingThreadsEvents = {
     instructions: string;
     linkedThreads?: {
         id: string;
-        relation: 'blocked_by' | 'blocks' | 'duplicates' | 'parent_of';
+        relation: ThreadLinkRelation;
     }[];
     parentThreadId?: string;
 } | {
@@ -5152,6 +5167,7 @@ interface ThreadReadParams {
     includeTurns?: boolean;
 }
 
+/** The kinds a thread links to another thread with, which the link form offers */
 declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "duplicates"];
 
 interface ThreadRollbackParams {

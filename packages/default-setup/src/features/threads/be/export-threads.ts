@@ -55,7 +55,7 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
 
     // Query fork source
     const forkedFromIds = query.ids(thread.id)
-      .out(EARS.RelKind.Custom('forked_from'), EARS.Entity.Thread)
+      .out(EARS.RelKind.FORKED_FROM, EARS.Entity.Thread)
       .ids()
     let forkedFrom: string | undefined
     if (forkedFromIds.length > 0) {

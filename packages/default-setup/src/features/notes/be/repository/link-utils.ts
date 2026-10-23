@@ -5,7 +5,6 @@ import { EARS } from '#generated/ears.ts';
 import { parseReferenceHref } from '@apackdev/sdk/framework';
 import { NOTE_TYPE_TO_REFERENCE_TYPE } from '../../reference-types.ts';
 
-import { REFERENCES } from '../types.ts';
 
 /**
  * Extract canonical note, task and task-list targets from internal Markdown references.
@@ -38,13 +37,13 @@ export function syncReferences(sourceId: EARS.EntityId, content: string): void {
 
   const wanted = new Set(targets.filter((id) => query.withTrashed.ids(id).exists()));
   // Every REFERENCES relation the note has, one to a note that is gone included, so a stale one is removed too
-  const current = new Set(findRelations({ sourceEntity: sourceId, relationType: REFERENCES }).map((r) => r.targetEntity as EARS.EntityId));
+  const current = new Set(findRelations({ sourceEntity: sourceId, relationType: EARS.RelKind.REFERENCES }).map((r) => r.targetEntity as EARS.EntityId));
 
   for (const targetId of wanted) {
-    if (!current.has(targetId)) write(sourceId).link(REFERENCES, targetId, { replace: true });
+    if (!current.has(targetId)) write(sourceId).link(EARS.RelKind.REFERENCES, targetId, { replace: true });
   }
   for (const targetId of current) {
-    if (!wanted.has(targetId)) write(sourceId).unlink(REFERENCES, targetId);
+    if (!wanted.has(targetId)) write(sourceId).unlink(EARS.RelKind.REFERENCES, targetId);
   }
 }
 

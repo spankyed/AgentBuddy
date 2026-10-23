@@ -92,6 +92,27 @@ describe('Type inference — typed EARS helpers', () => {
     createEntityWithDefaults(EARS.Entity.Action, { notAField: 1 });
   });
 
+  it('names only declared relation kinds, in a link and in a read or walk over links', () => {
+    // Type-level only: never called
+    const check = (noteId: EARS.EntityId<'Note'>, otherId: EARS.EntityId, fromData: string) => {
+      write(noteId).link(EARS.RelKind.REFERENCES, otherId).unlink('references', otherId);
+      query.ids(noteId).out(EARS.RelKind.CONTAINS, EARS.Entity.Message);
+      expectTypeOf(query.ids(noteId).outEdges(['references', 'contains'])[0].kind).toEqualTypeOf<'references' | 'contains'>();
+      // @ts-expect-error not a declared relation kind
+      write(noteId).link('refrences', otherId);
+      // @ts-expect-error in a walk too
+      query.ids(noteId).out('contians');
+      // @ts-expect-error and in a filter
+      query(EARS.Entity.Note).linkedTo('refrences', otherId);
+      // @ts-expect-error a kind that arrives as data is narrowed first
+      write(noteId).link(fromData, otherId);
+      if (EARS.isRelKind(fromData)) write(noteId).link(fromData, otherId);
+      // @ts-expect-error no escape from the pack's facade: an undeclared kind is declared in apack.json
+      EARS.RelKind.Custom('anything');
+    };
+    expectTypeOf(check).toBeFunction();
+  });
+
   it('write names only declared fields, checks their values, and takes an options argument', () => {
     // Type-level only: never called, since no entity has this id
     const check = () => {

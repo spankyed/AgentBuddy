@@ -249,6 +249,8 @@ export interface PackRegistry extends PackRegistryView {
   getSurfaceEventValidationMap(): Map<string, SurfaceEventTypes>;
   /** The SDK's entity types, the host's and the registered packs' */
   getRegisteredEntityTypes(): ReadonlySet<string>;
+  /** The SDK's relation kinds and the registered packs' */
+  getRegisteredRelationKinds(): ReadonlySet<string>;
   /** Lifecycle hooks of the currently registered packs, in registration order. */
   getLifecycleHooks(): PackLifecycleHooks[];
   /** A registered pack's registration, as it was registered */
@@ -759,6 +761,10 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     ...RESERVED_ENTITIES,
     ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.entities ?? {})),
   ]));
+  const relationKinds = derived((): ReadonlySet<string> => new Set<string>([
+    ...Object.values(SDK_REL_KINDS),
+    ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.relKinds ?? {})),
+  ]));
   const services = derived((): Record<string, unknown> =>
     Object.fromEntries([...admitted.values()].flatMap(pack => [...pack.services])));
 
@@ -829,6 +835,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     },
 
     getRegisteredEntityTypes: entityTypes,
+    getRegisteredRelationKinds: relationKinds,
     getRegisteredServices: services,
 
     getLifecycleHooks: () => [...registrations.values()].flatMap((reg) => (reg.lifecycle ? [reg.lifecycle] : [])),

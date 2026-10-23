@@ -187,7 +187,6 @@ export namespace EARS {
     export type AttributeStore = EARS_2.AttributeStore;
     const // (undocumented)
     RelKind: {
-        readonly Custom: <T extends string>(k: T) => T & EARS_2.RelKind;
         readonly CONTAINS: "contains";
         readonly TRANSITIONS_TO: "transitions_to";
         readonly INSTANCE_OF: "instance_of";
