@@ -3,7 +3,7 @@ import { featureSettings } from '#generated/settings.ts';
 import { create, write, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
-import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
+import { RepositoryError, RepositoryErrorCode } from '@apackdev/sdk/repositories';
 import { wouldCreateCycle } from '@apackdev/sdk/ears';
 import { createLogger } from '@apackdev/sdk/logger';
 import { b64Encode, b64Decode } from '@apackdev/ears';

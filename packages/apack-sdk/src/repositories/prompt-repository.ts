@@ -1,6 +1,6 @@
 // Prompts (Prompt rows), which llm steps run: the SDK declares Prompt, and its flow compiler and
 // appliers resolve prompts by label
-import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
+import { RepositoryError, RepositoryErrorCode } from './repository-error.ts';
 import { boundEars as ears } from '../ears/index.ts';
 import { sdkEntities } from '../ears/sdk-entities.ts';
 import { EARS } from '../types/entities.ts';

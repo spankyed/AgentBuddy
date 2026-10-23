@@ -1,6 +1,6 @@
 import { create, write, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
+import { RepositoryError, RepositoryErrorCode } from '@apackdev/sdk/repositories';
 
 import { resolveReferencesTo, syncReferences } from './link-utils.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';

@@ -185,6 +185,23 @@ export const promptRepository: {
 };
 
 // @public
+export class RepositoryError extends Error {
+    constructor(message: string, code: RepositoryErrorCode);
+    // (undocumented)
+    code: RepositoryErrorCode;
+}
+
+// @public
+export const RepositoryErrorCode: {
+    readonly NOT_FOUND: "NOT_FOUND";
+    readonly VALIDATION_ERROR: "VALIDATION_ERROR";
+    readonly OPERATION_FAILED: "OPERATION_FAILED";
+};
+
+// @public (undocumented)
+export type RepositoryErrorCode = typeof RepositoryErrorCode[keyof typeof RepositoryErrorCode];
+
+// @public
 export const tnodeRepository: {
     updateTNodeResult: (tNodeId: EARS.EntityId, result: unknown) => void;
 };
