@@ -41,7 +41,7 @@ QUERY API (query) — use to find entities before mutating:
   query(EARS.Entity.Thread)                          all of a type (a type name only, never an id)
   query.ids('Thread-1')  /  query.ids([id1, id2])        entities by id (absent ids are dropped)
   query.all()                                         every entity
-  query.withTrashed(...) / query.trashed(type)        the same, reaching the trash too / only the trash
+  query.withTrashed(...) / query.trashed(...)         the same, reaching the trash too / only the trash
   .where('field', value)                           filter by attribute value, or a list holding it
   .has('field')  /  .lacks('field')                filter by presence / absence
   .out('contains', EARS.Entity.Message)        walk outgoing edges ( .in(...) walks incoming ones )
