@@ -1,6 +1,6 @@
 
-/** A store a backup can hold: the primary database or the volatile trace store. API keys are never backed up. */
-export type BackupDatabase = 'lmdb' | 'volatileLmdb';
+/** A store a backup can hold: the database. API keys are never backed up. */
+export type BackupDatabase = 'lmdb';
 
 export interface BackupSummary {
   timestamp: number;

@@ -50,7 +50,7 @@ export interface AppDataService {
 }
 
 // @public
-export type BackupDatabase = 'lmdb' | 'volatileLmdb';
+export type BackupDatabase = 'lmdb';
 
 // @public (undocumented)
 export interface BackupSummary {

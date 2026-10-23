@@ -9,7 +9,7 @@ import { _appDataPaths } from '@apackdev/sdk/utils';
 import { findDatabaseWriter, publishRunningApp, openDatabaseStore, readInstalledSchema } from '@apackdev/host/database';
 import { db } from '../../src/commands/db';
 
-it('creates an importable backup with media and run history, and refuses overwrite and nested destinations', async () => {
+it('creates an importable backup with media, and refuses overwrite and nested destinations', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-backup-'));
   const source = path.join(root, 'source');
   const out = path.join(root, 'backup');
@@ -19,14 +19,11 @@ it('creates an importable backup with media and run history, and refuses overwri
     const primary = openEnvAt(paths.lmdb);
     primary.entities.putSync('Note-a', { type: 'Note' });
     closeEnv(primary, () => {});
-    const history = openEnvAt(paths.volatileLmdb);
-    history.entities.putSync('TNode-a', { type: 'TNode' });
-    closeEnv(history, () => {});
     fs.mkdirSync(paths.media, { recursive: true });
     fs.writeFileSync(path.join(paths.media, 'asset.txt'), 'media');
     await db(['backup', '--data-dir', source, '--out', out], io);
     expect(fs.statSync(out).mode & 0o777).toBe(0o700);
-    expect(readBackup(out)).toMatchObject({ databases: ['lmdb', 'volatileLmdb'], hasMedia: true });
+    expect(readBackup(out)).toMatchObject({ databases: ['lmdb'], hasMedia: true });
     expect(fs.readFileSync(path.join(out, 'media/asset.txt'), 'utf8')).toBe('media');
     const copy = openEnvAt(path.join(out, 'lmdb'), { readOnly: true });
     expect(copy.entities.get('Note-a')).toEqual({ type: 'Note' });
@@ -36,13 +33,12 @@ it('creates an importable backup with media and run history, and refuses overwri
     const restoreContext = resolveAppEnvironment({ env: 'production', userDataDir: path.join(root, 'restored') });
     const restored = _appDataPaths(restoreContext.userDataDir);
     const { store } = openDatabaseStore({
-      paths: { primary: restored.lmdb, volatileBackup: restored.volatileLmdb },
+      path: restored.lmdb,
       schema: readInstalledSchema(restoreContext), log: () => {},
     });
     try {
       await importDatabase(store, out, restored.media, { log: { info: () => {}, warn: () => {} } });
-      expect(store.envs.primary.entities.get('Note-a')).toEqual({ type: 'Note' });
-      expect(store.envs.volatileBackup.entities.get('TNode-a')).toEqual({ type: 'TNode' });
+      expect(store.env.entities.get('Note-a')).toEqual({ type: 'Note' });
       expect(fs.readFileSync(path.join(restored.media, 'asset.txt'), 'utf8')).toBe('media');
     } finally { store.close(); }
     const running = publishRunningApp(source);
@@ -73,11 +69,11 @@ it('creates an importable backup with media and run history, and refuses overwri
     fs.rmSync(path.join(out, 'media'));
     fs.renameSync(path.join(out, 'saved-media'), path.join(out, 'media'));
     fs.writeFileSync(metadataPath, JSON.stringify(metadata));
-    fs.rmSync(path.join(out, 'volatileLmdb'), { recursive: true });
+    fs.rmSync(path.join(out, 'lmdb'), { recursive: true });
     io.out.mockClear();
-    await expect(db(['backup', 'verify', out, '--json'], io)).rejects.toThrow('Missing backup databases');
+    await expect(db(['backup', 'verify', out, '--json'], io)).rejects.toThrow("The backup's lmdb folder is missing");
     expect(io.out).toHaveBeenCalledOnce();
-    expect(JSON.parse(io.out.mock.lastCall![0])).toMatchObject({ valid: false, path: out, error: expect.stringContaining('Missing backup databases') });
+    expect(JSON.parse(io.out.mock.lastCall![0])).toMatchObject({ valid: false, path: out, error: expect.stringContaining("The backup's lmdb folder is missing") });
     expect(findDatabaseWriter(source)).toBeNull();
     await expect(db(['backup', '--data-dir', source, '--out', out], io)).rejects.toThrow('already exists');
     await expect(db(['backup', '--data-dir', source, '--out', path.join(source, 'nested')], io)).rejects.toThrow('outside');

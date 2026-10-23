@@ -42,13 +42,13 @@ async function fixture(settings: unknown = {}) {
   const current = tempDir('settings-backup-current-');
   const paths = _appDataPaths(current);
   const { store, engine } = openDatabaseStore({
-    paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
+    path: paths.lmdb,
     schema: readInstalledSchema(schemaContext(current)), log: () => {},
   });
   stores.push(store);
-  store.envs.primary.entities.putSync('Note-current', { type: 'Note' });
+  store.env.entities.putSync('Note-current', { type: 'Note' });
   // Hydration loads attribute rows, so the incumbent needs one to be visible in memory after a restore.
-  store.envs.primary.attrs.putSync('entityType\x1FNote-current', { t: 'string', v: 'Note' });
+  store.env.attrs.putSync('entityType\x1FNote-current', { t: 'string', v: 'Note' });
   return { backup, store, engine, current, media: paths.media };
 }
 
@@ -64,11 +64,11 @@ it('restores and hydrates the incumbent when imported data fails hydration', asy
   const service = appData(f);
   vi.spyOn(f.store, 'hydrate').mockRejectedValueOnce(new Error('candidate hydration failed'));
   await expect(service.importBackup(f.backup)).rejects.toThrow('candidate hydration failed');
-  expect(f.store.envs.primary.entities.get('Note-current')).toEqual({ type: 'Note' });
-  expect(f.store.envs.primary.entities.get('Note-candidate')).toBeUndefined();
+  expect(f.store.env.entities.get('Note-current')).toEqual({ type: 'Note' });
+  expect(f.store.env.entities.get('Note-candidate')).toBeUndefined();
   expect(f.engine.query.ids('Note-current' as EARS.EntityId).pickOne(['entityType'])).not.toBeNull();
   expect(fs.existsSync(f.media)).toBe(false);
-  expect(fs.readdirSync(path.dirname(f.store.paths.primary)).filter(name => name.startsWith('.apack-import-'))).toEqual([]);
+  expect(fs.readdirSync(path.dirname(f.store.path)).filter(name => name.startsWith('.apack-import-'))).toEqual([]);
 });
 
 it('preserves the recovery error and a durable copy when import and reopening both fail', async () => {
@@ -79,7 +79,7 @@ it('preserves the recovery error and a durable copy when import and reopening bo
   try { await service.importBackup(f.backup); } catch (error) { failure = error; }
   expect(failure).toBeInstanceOf(AggregateError);
   const rollback = (failure as AggregateError).message.split('retained at ')[1];
-  expect(path.dirname(path.dirname(rollback))).toBe(path.dirname(f.store.paths.primary));
+  expect(path.dirname(path.dirname(rollback))).toBe(path.dirname(f.store.path));
   const copy = openEnvAt(path.join(rollback, 'lmdb'), { readOnly: true });
   try { expect(copy.entities.get('Note-current')).toEqual({ type: 'Note' }); }
   finally { closeEnv(copy, () => {}); }
@@ -94,7 +94,7 @@ it('refuses invalid settings before entering replacement or closing the live dat
   await expect(importDatabase(store, backup, media, { validate, log, withReplacement: replace })).rejects.toThrow();
   expect(replace).not.toHaveBeenCalled();
   expect(close).not.toHaveBeenCalled();
-  expect(store.envs.primary.entities.get('Note-current')).toEqual({ type: 'Note' });
+  expect(store.env.entities.get('Note-current')).toEqual({ type: 'Note' });
 });
 
 it('installs the validated copy even when the original backup is removed after preflight', async () => {
@@ -103,8 +103,8 @@ it('installs the validated copy even when the original backup is removed after p
     fs.rmSync(backup, { recursive: true });
     return replace();
   } });
-  expect(store.envs.primary.entities.get('Note-candidate')).toEqual({ type: 'Note' });
-  expect(store.envs.primary.entities.get('Note-current')).toBeUndefined();
+  expect(store.env.entities.get('Note-candidate')).toEqual({ type: 'Note' });
+  expect(store.env.entities.get('Note-current')).toBeUndefined();
   expect(fs.readFileSync(path.join(media, 'asset.txt'), 'utf8')).toBe('candidate');
 });
 
@@ -112,8 +112,8 @@ it('restores live data and absence of media when reopening the imported database
   const { backup, store, media } = await fixture();
   vi.spyOn(store, 'reopen').mockImplementationOnce(() => { throw new Error('open failed'); });
   await expect(importDatabase(store, backup, media, { validate, log })).rejects.toThrow('open failed');
-  expect(store.envs.primary.entities.get('Note-current')).toEqual({ type: 'Note' });
-  expect(store.envs.primary.entities.get('Note-candidate')).toBeUndefined();
+  expect(store.env.entities.get('Note-current')).toEqual({ type: 'Note' });
+  expect(store.env.entities.get('Note-candidate')).toBeUndefined();
   expect(fs.existsSync(media)).toBe(false);
 });
 

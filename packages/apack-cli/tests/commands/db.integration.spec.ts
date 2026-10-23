@@ -58,7 +58,7 @@ function schemaContext(userDataDir: string) {
 async function write(userDataDir: string, change: () => void): Promise<void> {
   const paths = _appDataPaths(userDataDir);
   const { store, engine } = openDatabaseStore({
-    paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
+    path: paths.lmdb,
     schema: readInstalledSchema(schemaContext(userDataDir)),
     log: () => {},
   });
@@ -85,14 +85,12 @@ async function appDataDir(): Promise<string> {
     const alpha = untypedCreate('Note', { id: id('Note-a') }).set('title', 'Alpha').grant('assistant_birth');
     untypedCreate('Note', { id: id('Note-b') }).set('title', 'Beta, "quoted"');
     alpha.link('parent_of', id('Note-b'));
-    // The run history, which the app keeps in its own partition (TNode is excluded from the main one)
-    untypedCreate('TNode', { id: id('TNode-1'), tNodeType: 'step', label: 'Step', startedAt: 0, status: 'completed' });
   });
   return dir;
 }
 
 /** A backup of a data dir, as the app exports it */
-async function backupOf(userDataDir: string, { withMedia = false, databases }: { withMedia?: boolean; databases?: Array<'lmdb' | 'volatileLmdb'> } = {}): Promise<string> {
+async function backupOf(userDataDir: string, { withMedia = false, databases }: { withMedia?: boolean; databases?: Array<'lmdb'> } = {}): Promise<string> {
   const paths = _appDataPaths(userDataDir);
   if (withMedia) {
     fs.mkdirSync(paths.media, { recursive: true });
@@ -101,7 +99,7 @@ async function backupOf(userDataDir: string, { withMedia = false, databases }: {
   const log = { info: () => {}, warn: () => {} };
   // Through an open store, as the app backs up: LMDB copies each database itself
   const { store } = openDatabaseStore({
-    paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
+    path: paths.lmdb,
     schema: readInstalledSchema(schemaContext(userDataDir)),
     // Read-only: LMDB copies a database whose files this user can't write just as well
     readOnly: true,
@@ -183,8 +181,8 @@ describe('apack db query', () => {
 
   it('reads data whose files it may not write', async () => {
     const dir = await appDataDir();
-    const { lmdb, volatileLmdb } = _appDataPaths(dir);
-    const files = [lmdb, volatileLmdb].flatMap((db) => fs.readdirSync(db).map((file) => path.join(db, file)));
+    const { lmdb } = _appDataPaths(dir);
+    const files = [lmdb].flatMap((db) => fs.readdirSync(db).map((file) => path.join(db, file)));
     for (const file of files) fs.chmodSync(file, 0o444);
     try {
       const { out } = await ok(['query', "return getRow('Note-a')?.title", '--data-dir', dir]);
@@ -387,28 +385,6 @@ describe('the lock a change holds', () => {
     holdLock(dir);
     expect((await run(['exec', 'return 1', '--data-dir', dir])).error?.message).toMatch(/quit it first/);
     expect(findDatabaseWriter(dir)).toBeNull();
-  });
-});
-
-describe('the run history', () => {
-  it('is left out until --volatile asks for it, in queries, exports and what a reset would delete', async () => {
-    const dir = await appDataDir();
-    const counted = "return [query.withTrashed('TNode').count(), query.withTrashed('Note').count()]";
-    expect(JSON.parse((await ok(['query', counted, '--data-dir', dir, '-o', 'json'])).out)).toEqual([0, 2]);
-    expect(JSON.parse((await ok(['query', counted, '--data-dir', dir, '-o', 'json', '--volatile'])).out)).toEqual([1, 2]);
-
-    const out = path.join(dir, 'export');
-    await ok(['export', '--out', out, '--data-dir', dir, '--volatile']);
-    expect(JSON.parse(fs.readFileSync(path.join(out, 'TNode.json'), 'utf-8'))).toEqual([expect.objectContaining({ id: 'TNode-1', status: 'completed' })]);
-
-    expect((await ok(['reset', '--data-dir', dir, '--volatile'])).out).toContain('  TNode: 1');
-    expect((await ok(['reset', '--data-dir', dir])).out).not.toContain('TNode');
-  });
-
-  it('is deleted by a reset either way', async () => {
-    const dir = await appDataDir();
-    await ok(['reset', '--force', '--data-dir', dir]);
-    expect(JSON.parse((await ok(['query', "return query.withTrashed.all().ids()", '--data-dir', dir, '-o', 'json', '--volatile'])).out)).toEqual([]);
   });
 });
 
@@ -869,8 +845,8 @@ describe('a dry run of a command that changes data', () => {
     expect((await run(['reset', '--force', '--data-dir', running])).error?.message).toMatch(/quit it first/);
 
     const copy = await appDataDir();
-    const { lmdb, volatileLmdb } = _appDataPaths(copy);
-    const files = [lmdb, volatileLmdb].flatMap((db) => fs.readdirSync(db).map((file) => path.join(db, file)));
+    const { lmdb } = _appDataPaths(copy);
+    const files = [lmdb].flatMap((db) => fs.readdirSync(db).map((file) => path.join(db, file)));
     for (const file of files) fs.chmodSync(file, 0o444);
     try {
       expect((await ok(['clear-settings', '--data-dir', copy])).out).toContain('Would destroy 1 Settings row(s)');
@@ -941,7 +917,7 @@ describe('apack db reset', () => {
 });
 
 describe('apack db import', () => {
-  const backupWith = async (title: string, options: { databases?: Array<'lmdb' | 'volatileLmdb'> } = {}) => {
+  const backupWith = async (title: string, options: { databases?: Array<'lmdb'> } = {}) => {
     const source = await appDataDir();
     await write(source, () => { untypedWrite(id('Note-a')).set('title', title); untypedWrite(id('Note-b')).destroy(); });
     return backupOf(source, { withMedia: true, ...options });
@@ -978,23 +954,6 @@ describe('apack db import', () => {
     const refused = await run(['import', backup, '--force', '--data-dir', dir]);
     expect(refused.error?.message).toMatch(new RegExp(`is in storage format 99, but this version reads format ${LMDB_FORMAT_VERSION}`));
     expect(refused.error?.message).toContain('(backup made by apack 0.3.14)');
-    expect((await ok(['query', "return getRow('Note-a')?.title", '--data-dir', dir])).out).toBe('Alpha');
-  });
-
-  // Every database the import would put in place, not only the main one: finding it afterwards would leave the
-  // rollback to put the user's data back
-  it('refuses a backup whose run history is in a storage format this version cannot read, before replacing anything', async () => {
-    const dir = await appDataDir();
-    const backup = await backupWith('From the backup', { databases: ['lmdb', 'volatileLmdb'] });
-    expect(fs.existsSync(path.join(backup, 'volatileLmdb'))).toBe(true);
-    writeStorageFormat(path.join(backup, 'volatileLmdb'), 99);
-
-    const refused = await run(['import', backup, '--force', '--data-dir', dir]);
-
-    expect(refused.error?.message).toMatch(new RegExp(`is in storage format 99, but this version reads format ${LMDB_FORMAT_VERSION}`));
-    // Nothing was put in place: the import says so for each database it replaces, and the rollback would have had to
-    // put the user's data back
-    expect(refused.err).not.toContain('Imported ');
     expect((await ok(['query', "return getRow('Note-a')?.title", '--data-dir', dir])).out).toBe('Alpha');
   });
 
@@ -1046,20 +1005,6 @@ describe('apack db import', () => {
     expect((await run(['import', missing, '--force', '--data-dir', dir])).error?.message).toMatch(/lmdb folder is missing/);
 
     expect((await ok(['query', "return getRow('Note-a')?.title", '--data-dir', dir])).out).toBe('Alpha');
-  });
-
-  it('says when the backup lists a store it holds nothing for, rather than dropping it quietly', async () => {
-    const dir = await appDataDir();
-    const backup = await backupWith('From the backup');
-    const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
-    // Listed, but the folder isn't there: empty when the backup was made, or lost since
-    fs.writeFileSync(path.join(backup, 'metadata.json'), JSON.stringify({ ...metadata, databases: ['lmdb', 'volatileLmdb'] }));
-
-    const listed = await ok(['import', backup, '--data-dir', dir]);
-    expect(listed.out).toContain('lists volatileLmdb but holds nothing for it, so it comes back empty');
-
-    await ok(['import', backup, '--force', '--data-dir', dir]);
-    expect((await ok(['query', "return getRow('Note-a')?.title", '--data-dir', dir])).out).toBe('From the backup');
   });
 
   it('says when the backup holds rows of a type no installed pack declares, and keeps them', async () => {

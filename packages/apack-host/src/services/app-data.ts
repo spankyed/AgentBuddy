@@ -32,9 +32,9 @@ export function createAppData({ store, engine, registry, settings, onReplaced }:
     }
   }
 
-  async function reloadMemory(includeVolatile = false): Promise<void> {
+  async function reloadMemory(): Promise<void> {
     engine.clear();
-    await store.hydrate({ includeVolatile });
+    await store.hydrate();
   }
 
   async function replaceData<T>(replace: () => Promise<T>): Promise<T> {
@@ -64,12 +64,12 @@ export function createAppData({ store, engine, registry, settings, onReplaced }:
         return importDatabase(store, backupPath, _getMediaPath(), {
           ...options, entityTypes, validate,
           withReplacement: replaceData,
-          accept: async result => {
-            await reloadMemory(result.databases.includes('volatileLmdb'));
+          accept: async () => {
+            await reloadMemory();
             // Run declared versioned data changes after restore, before notifying consumers.
             if (runAppMigrations(registry)) runPackMigrations(registry.packMigrationTargets('pack'));
           },
-          // The data before the import, hydrated as boot hydrates it: the run history stays on disk
+          // The data before the import, hydrated again
           restored: () => reloadMemory(),
         });
       });

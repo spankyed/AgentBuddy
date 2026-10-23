@@ -21,17 +21,14 @@ const defaultLog: BackupLog = {
   warn: (message, detail) => logger.warn(message, detail),
 };
 
-/** A backup's database folders, by the partition of the store they hold */
-const DATABASE_PARTITIONS = {
-  lmdb: 'primary',
-  volatileLmdb: 'volatileBackup',
-} as const;
+/** A backup's database folders: the store each holds */
+const DATABASES = ['lmdb'] as const;
 
-export type DatabaseName = keyof typeof DATABASE_PARTITIONS;
-export const isKnownDatabase = (name: string): name is DatabaseName => Object.hasOwn(DATABASE_PARTITIONS, name);
+export type DatabaseName = (typeof DATABASES)[number];
+export const isKnownDatabase = (name: string): name is DatabaseName => (DATABASES as readonly string[]).includes(name);
 
-/** Where a backup's database folder comes from and goes to: the store's partition */
-const databasePath = (store: Pick<LmdbStore, 'paths'>, name: DatabaseName) => store.paths[DATABASE_PARTITIONS[name]];
+/** Where a backup's database folder comes from and goes to */
+const databasePath = (store: Pick<LmdbStore, 'path'>, _name: DatabaseName) => store.path;
 
 /**
  * Copies `store`'s databases (and the media folder `mediaPath`, with the primary database) into a new backup folder.
@@ -39,7 +36,7 @@ const databasePath = (store: Pick<LmdbStore, 'paths'>, name: DatabaseName) => st
  * database as of one moment rather than whatever the files happened to say as they were read.
  */
 export async function exportDatabase(
-  store: Pick<LmdbStore, 'paths' | 'copyTo'>,
+  store: Pick<LmdbStore, 'path' | 'copyTo'>,
   targetPath: string,
   { name, databases = ['lmdb'], mediaPath, appVersion, log = defaultLog }:
     { name?: string; databases?: DatabaseName[]; mediaPath: string; appVersion?: string; log?: BackupLog },
@@ -68,7 +65,7 @@ export async function exportDatabase(
 
   for (const dbName of databases) {
     if (await fs.pathExists(databasePath(store, dbName))) {
-      await store.copyTo(DATABASE_PARTITIONS[dbName], path.join(fullBackupPath, dbName));
+      await store.copyTo(path.join(fullBackupPath, dbName));
       log.info(`Backed up ${dbName}`);
     }
   }
@@ -101,7 +98,7 @@ export async function importDatabase(
       withReplacement?: (replace: () => Promise<DatabaseImportResult>) => Promise<DatabaseImportResult>;
     } = {},
 ): Promise<DatabaseImportResult> {
-  const temporary = await fs.mkdtemp(path.join(path.dirname(store.paths.primary), '.apack-import-'));
+  const temporary = await fs.mkdtemp(path.join(path.dirname(store.path), '.apack-import-'));
   const candidate = path.join(temporary, 'candidate');
   const rollback = path.join(temporary, 'rollback');
   let preserveRollback = false;
@@ -124,7 +121,7 @@ export async function importDatabase(
       log.warn('The backup holds entities of types no installed pack declares', { types: unknownEntityTypes.map(([type, count]) => `${type} (${count})`) });
     }
     return await withReplacement(async () => {
-      for (const name of databases) await store.copyTo(DATABASE_PARTITIONS[name], path.join(rollback, name));
+      for (const name of databases) await store.copyTo(path.join(rollback, name));
       const candidateMedia = path.join(candidate, 'media');
       const hasMedia = await fs.pathExists(candidateMedia);
       if (hasMedia && await fs.pathExists(mediaPath)) await fs.copy(mediaPath, path.join(rollback, 'media'));

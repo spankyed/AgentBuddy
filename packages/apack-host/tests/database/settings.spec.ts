@@ -10,5 +10,5 @@ it.each([
   const reader = { getEntityMeta: vi.fn(() => entity), getAttr: vi.fn(() => value) };
   const store = { read: vi.fn(() => reader) } as unknown as LmdbStore;
   expect(storedSettings(store)).toEqual(expected);
-  expect(store.read).toHaveBeenCalledWith('primary');
+  expect(store.read).toHaveBeenCalledWith();
 });

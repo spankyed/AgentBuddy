@@ -26,8 +26,8 @@ function fixture() {
   fs.outputFileSync(path.join(backup, 'media', 'asset'), 'candidate media');
   fs.writeJsonSync(path.join(backup, 'metadata.json'), { databases: ['lmdb'] });
   const store = {
-    paths: { primary, volatileBackup: path.join(root, 'volatile') },
-    copyTo: (_partition: string, dest: string) => fs.copy(primary, dest),
+    path: primary,
+    copyTo: (dest: string) => fs.copy(primary, dest),
     close: vi.fn(), reopen: vi.fn(),
   } as unknown as LmdbStore;
   return { root, primary, backup, media, store };
