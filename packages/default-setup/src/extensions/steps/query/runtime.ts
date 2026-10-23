@@ -1,4 +1,4 @@
-import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 import { reportError, createLogger } from '@apackdev/sdk/logger';
 import { isModelId } from '@apackdev/sdk/models';
 import { services } from '#generated/services.ts';
@@ -25,7 +25,7 @@ function stripCodeFence(text: string): string {
   return text.trim().replace(/^```(?:typescript|ts|javascript|js)?\n?/, '').replace(/\n?```$/, '').trim();
 }
 
-export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(input: StepInput, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as QueryNode;
   const a = actor as { send: (event: { type: string; result?: unknown; error?: unknown }) => void };
 
@@ -80,7 +80,7 @@ export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, 
       step: {
         phase: 'query.execute',
         flowRunNodeId: ctx.flowRunNodeId,
-        runNodeId: t.id,
+        runNodeId: input.runNodeId,
         nodeId: n.id,
         nodeLabel: n.label,
         nodeType: n.nodeType,

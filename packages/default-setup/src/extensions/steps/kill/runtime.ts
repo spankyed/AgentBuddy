@@ -1,6 +1,6 @@
-import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 
-export function handler(_tNode: RunNode, _node: unknown, ctx: ExecutionContext, actor: unknown): void {
+export function handler(_input: StepInput, _node: unknown, ctx: ExecutionContext, actor: unknown): void {
   const a = actor as { send: (event: any) => void };
 
   const flowActor = ctx.runtime.getFlowActor(ctx.flowRunNodeId);

@@ -6,22 +6,17 @@ import type { FlowRunNodeData, EventListenerEntity } from '../types.ts';
 import type { NodeEntity } from '#generated/types.ts';
 import type { FlowNode } from '#extensions/steps/subflow/types.ts';
 import { stepRegistry } from '@apackdev/sdk/steps';
-import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers.ts';
+import { prepareStepInput } from './node-attribute-mappers.ts';
 import { brainLogger } from '../utils/brain-inspect.ts';
-import type { ExecutionContext, RunTree, RunNode, RunNodeId } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunTree, RunNode, RunNodeId, StepInput } from '@apackdev/sdk/steps';
 import type { FlowEntity } from '@apackdev/sdk';
 // Brain Repository - the flows the brain runs, and their runs in the run history
 
-// Helper function to prepare node attributes with optional execution context
-function resolveNodeAttributes(
-  node: Partial<NodeEntity>,
-  executionContext?: ExecutionContext,
-): PreparedAttributes | undefined {
-  if (executionContext && node.nodeType) {
-    return prepareNodeAttributes(node as NodeEntity, executionContext);
-  }
-
-  return undefined;
+/** What a node runs on, whole, when it runs in a track; a node started outside one has neither settings nor params */
+function inputOf(node: Partial<NodeEntity>, executionContext?: ExecutionContext): Omit<StepInput, 'runNodeId'> {
+  return executionContext && node.nodeType
+    ? prepareStepInput(node as NodeEntity, executionContext)
+    : { settings: {}, params: {} };
 }
 
 /** The run history: every flow run's nodes, recorded as the brain runs them */
@@ -214,7 +209,7 @@ export const brainCommands = {
     flowStepId: EARS.EntityId,
     parentId?: RunNodeId,
     executionContext?: ExecutionContext
-  ): { flowRunNode: RunNode; flowId: EARS.EntityId } => {
+  ): { flowRunNode: RunNode; flowId: EARS.EntityId; input: StepInput } => {
     // Get the flow reference from the flow node (get all fields for attributes)
     const flowStepNode = query.ids(flowStepId)
       .pickAll()[0] as Partial<FlowNode> | undefined;
@@ -241,7 +236,7 @@ export const brainCommands = {
       );
     }
 
-    const prepared = resolveNodeAttributes(flowStepNode, executionContext);
+    const input = inputOf(flowStepNode, executionContext);
     const flowRunNode = history().start({
       kind: 'flow',
       label: flowStepNode.label || flow.label!,
@@ -250,20 +245,20 @@ export const brainCommands = {
       // The subflow step it ran, and the flow that step runs
       nodeId: flowStepId,
       flowId: flowStepNode.flowRef as EARS.EntityId,
-      nodeAttributes: { ...prepared?.nodeAttributes },
-      ...(prepared && { resolvedParams: prepared.resolvedParams }),
+      nodeAttributes: input.settings,
+      resolvedParams: input.params,
       // Preserve the flow node's final status
       ...(flowStepNode.final && { final: true }),
     });
 
-    return { flowRunNode, flowId: flowStepNode.flowRef as EARS.EntityId };
+    return { flowRunNode, flowId: flowStepNode.flowRef as EARS.EntityId, input: { runNodeId: flowRunNode.id, ...input } };
   },
   
   createStepRunNode: (
     stepId: EARS.EntityId,
     parentId: RunNodeId,
     executionContext?: ExecutionContext
-  ): { runNode: RunNode; step: NodeEntity } => {
+  ): { runNode: RunNode; step: NodeEntity; input: StepInput } => {
     if (!stepId) {
       throw new Error(
         'Cannot create step RunNode: Step ID is required'
@@ -281,7 +276,7 @@ export const brainCommands = {
 
     // The flow holding this step
     const flowId = query.ids(stepId).in(EARS.RelKind.CONTAINS, EARS.Entity.Flow).first();
-    const prepared = resolveNodeAttributes(step, executionContext);
+    const input = inputOf(step, executionContext);
     const runNode = history().start({
       kind: 'step',
       label: step.label ?? '',
@@ -290,11 +285,12 @@ export const brainCommands = {
       nodeId: stepId,
       ...(flowId && { flowId }),
       ...(step.final && { final: true }),
-      ...(prepared && { nodeAttributes: prepared.nodeAttributes }),
-      ...(prepared && { resolvedParams: prepared.resolvedParams }),
+      nodeAttributes: input.settings,
+      resolvedParams: input.params,
     });
 
-    return { runNode, step: step as NodeEntity };
+    // The run history keeps a bounded copy of the input; the step runs on it whole
+    return { runNode, step: step as NodeEntity, input: { runNodeId: runNode.id, ...input } };
   },
   
   /** A new session's root run: the root flow the brain starts with, under a new id each time it starts */

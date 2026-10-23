@@ -28,6 +28,7 @@ export type {
   SdkEntityShapes,
   ExecutionEvent,
   StepRun,
+  StepInput,
   RuntimeServices,
   ExecutionContext,
   StepRuntimeError,

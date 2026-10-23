@@ -1,4 +1,4 @@
-import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 import { reportError, createLogger } from '@apackdev/sdk/logger';
 import { services } from '#generated/services.ts';
 import type { TransformNode, TransformOutputType } from './types.ts';
@@ -28,7 +28,7 @@ function toOutput(value: unknown, outputType: TransformOutputType): unknown {
   }
 }
 
-export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(input: StepInput, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as TransformNode;
   const a = actor as { send: (event: { type: string; result?: unknown; error?: unknown }) => void };
 
@@ -39,7 +39,7 @@ export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, 
     const outputType = n.outputType ?? 'json';
     const params: Record<string, unknown> = {
       input: ctx.lastStep?.result,
-      ...t.resolvedParams,
+      ...input.params,
     };
 
     brainLogger.debug(`Executing transform node: ${n.label}`, { outputType, paramKeys: Object.keys(params) });
@@ -68,7 +68,7 @@ export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, 
       step: {
         phase: 'transform.execute',
         flowRunNodeId: ctx.flowRunNodeId,
-        runNodeId: t.id,
+        runNodeId: input.runNodeId,
         nodeId: n.id,
         nodeLabel: n.label,
         nodeType: n.nodeType,

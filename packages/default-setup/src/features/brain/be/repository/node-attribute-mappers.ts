@@ -1,7 +1,6 @@
 import type { NodeEntity } from '#generated/types.ts';
 import type { FieldMapping, SourceResolver } from '../types.ts';
 import { brainLogger } from '../utils/brain-inspect.ts';
-import { truncateResult, isTruncated } from '@apackdev/sdk/steps';
 import type { ExecutionContext } from '@apackdev/sdk/steps';
 
 /*─────────────────────────────────────────────────────────────
@@ -112,8 +111,7 @@ const COMMON_ATTRIBUTES_TO_EXCLUDE = new Set([
   'updatedAt',
   'fieldMappings'
   
-  // Note: Configuration fields like actionId, model, eventType etc. 
-  // are now INCLUDED in nodeAttributes so they can be displayed in UI
+  // A step's own settings (actionId, model, eventType, ...) stay: they are what it runs on
 ]);
 
 function extractAttributes(node: NodeEntity): Record<string, any> {
@@ -151,59 +149,21 @@ function applyFieldMappingsIfSupported(
 }
 
 /*─────────────────────────────────────────────────────────────
- * Truncation helper
- *─────────────────────────────────────────────────────────────*/
-
-function truncateAll(obj: Record<string, any>): Record<string, any> {
-  const out: Record<string, any> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    const truncated = truncateResult(value);
-    // Unwrap truncated strings so downstream consumers (actions) receive
-    // a plain string instead of a { value, _truncated, ... } wrapper.
-    out[key] = (isTruncated(truncated) && truncated._type === 'string')
-      ? truncated.value
-      : truncated;
-  }
-  return out;
-}
-
-/*─────────────────────────────────────────────────────────────
  * Public API
  *─────────────────────────────────────────────────────────────*/
 
-export interface PreparedAttributes {
-  /** All attributes (config + user data) for UI display, truncated to bound the run node's size. */
-  nodeAttributes: Record<string, any>;
-  /**
-   * Only user-provided params (direct + mapped), whole: this is what the step runs on and writes, so it
-   * is never truncated. A create or update step writing it would otherwise persist a cut-off string, or a
-   * `{ value, _truncated }` wrapper in place of a long array or object.
-   */
-  resolvedParams: Record<string, any>;
-}
-
-export function prepareNodeAttributes(
+/**
+ * What a step runs on, whole: its settings with its field mappings applied (also what its run node records, which
+ * the run history bounds), and the params it runs on (the node's own, and those mapped). Nothing here is truncated:
+ * a step runs on its input as it is, and only the run history's copy is bounded.
+ */
+export function prepareStepInput(
   node: NodeEntity,
   executionContext: ExecutionContext
-): PreparedAttributes {
-  const baseAttributes = extractAttributes(node);
+): { settings: Record<string, unknown>; params: Record<string, unknown> } {
   const mappedParams = applyFieldMappingsIfSupported(node as any, executionContext);
-
-  // nodeAttributes: everything merged (for UI display)
-  const resolvedAttributes = {
-    ...baseAttributes,
-    ...mappedParams
-  };
-
-  // resolvedParams: only user-provided data (for execution)
-  // Sources: 1) direct params from DSL  2) resolved field mappings
-  const resolvedParams: Record<string, any> = {
-    ...(node as any).params,
-    ...mappedParams,
-  };
-
   return {
-    nodeAttributes: truncateAll(resolvedAttributes),
-    resolvedParams,
+    settings: { ...extractAttributes(node), ...mappedParams },
+    params: { ...(node as any).params, ...mappedParams },
   };
 }

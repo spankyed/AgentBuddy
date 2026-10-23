@@ -1,5 +1,5 @@
 import type { NodeEntity } from '#generated/types.ts';
-import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 import { getStepBinding, stepRegistry } from '@apackdev/sdk/steps';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 
@@ -12,7 +12,7 @@ function completeLater(actor: { send(event: { type: string; result?: unknown }):
   });
 }
 
-/** Records a step's error on its RunNode and fails it, after the spawn that runs it finishes */
+/** Records a step's error on its run node and fails it, after the spawn that runs it finishes */
 function failLater(actor: { send(event: { type: string; error?: unknown }): void }, report: () => unknown): void {
   queueMicrotask(() => {
     const error = report();
@@ -21,7 +21,7 @@ function failLater(actor: { send(event: { type: string; error?: unknown }): void
 }
 
 export function executeNode(
-  runNode: RunNode,
+  input: StepInput,
   node: NodeEntity,
   executionContext: ExecutionContext,
   actor: any
@@ -35,7 +35,7 @@ export function executeNode(
   const step = (phase: string) => ({
     phase,
     flowRunNodeId: executionContext.flowRunNodeId,
-    runNodeId: runNode.id,
+    runNodeId: input.runNodeId,
     nodeId: node.id,
     nodeLabel: node.label,
     nodeType: node.nodeType,
@@ -60,7 +60,7 @@ export function executeNode(
   };
 
   if (isAsync) {
-    const promise = handler(runNode, node, context, actor) as Promise<void>;
+    const promise = handler(input, node, context, actor) as Promise<void>;
     promise.catch((err) => {
       const runtimeError = reportError({
         error: err,
@@ -70,6 +70,6 @@ export function executeNode(
       try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
     });
   } else {
-    handler(runNode, node, context, actor);
+    handler(input, node, context, actor);
   }
 } 

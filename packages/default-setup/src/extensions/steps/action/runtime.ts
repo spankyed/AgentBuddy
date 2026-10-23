@@ -1,4 +1,4 @@
-import type { ExecutionContext, RunNode, FieldMapping } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput, FieldMapping } from '@apackdev/sdk/steps';
 import type { EARS } from '@apackdev/sdk';
 import type { NodeEntity } from '#generated/types.ts';
 import { repository } from '#generated/repository.ts';
@@ -16,17 +16,17 @@ interface ActionNodeConfig {
 
 type ActionNode = NodeEntity & ActionNodeConfig;
 
-export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(input: StepInput, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as ActionNode;
   const a = actor as { send: (event: any) => void };
-  const nodeData = t.nodeAttributes || {};
+  const nodeData = input.settings;
 
   let actionId: string | undefined;
   let actionLabel: string | undefined;
 
   try {
     brainLogger.debug(`Executing action node: ${n.label}`, {
-      runNode: t,
+      runNodeId: input.runNodeId,
       node: n,
       nodeAttributeKeys: Object.keys(nodeData),
     });
@@ -68,7 +68,7 @@ export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, 
       input: Object.keys(action.input || {}),
     });
 
-    const params: Record<string, any> = (t.resolvedParams as Record<string, any>) || {};
+    const params: Record<string, any> = input.params;
 
     brainLogger.debug(`Executing action with resolved params:`, params);
 
@@ -94,7 +94,7 @@ export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, 
       step: {
         phase: 'action.execute',
         flowRunNodeId: ctx.flowRunNodeId,
-        runNodeId: t.id,
+        runNodeId: input.runNodeId,
         nodeId: n.id,
         nodeLabel: n.label,
         nodeType: n.nodeType,

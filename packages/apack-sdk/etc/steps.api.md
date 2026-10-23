@@ -254,6 +254,13 @@ export interface StepFEFacet {
     nodeConfig: StepNodeConfig;
 }
 
+// @public
+export interface StepInput {
+    params: Record<string, unknown>;
+    runNodeId: RunNodeId;
+    settings: Record<string, unknown>;
+}
+
 // @public (undocumented)
 export interface StepLayoutDescriptor {
     // (undocumented)
@@ -360,7 +367,7 @@ export interface StepRuntimeError {
 
 // @public (undocumented)
 export interface StepRuntimeFacet {
-    handler?: (runNode: RunNode, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
+    handler?: (input: StepInput, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
     // (undocumented)
     isAsync?: boolean;
     spawnsSubflow?: boolean;

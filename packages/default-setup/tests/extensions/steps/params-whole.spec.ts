@@ -1,8 +1,8 @@
-// A step's resolved params are what it runs on and writes, so they reach it whole. The run node's copy
-// (nodeAttributes) is truncated to bound its size; truncating the params too made a create or
-// update step persist a cut-off string, or a `{ value, _truncated }` wrapper in place of a long array.
+// What a step runs on reaches it whole: its params, and its settings with their mappings applied. The run node
+// keeps a bounded copy for display; running on that copy made a create or update step persist a cut-off string,
+// or a `{ value, _truncated }` wrapper in place of a long array, and an llm step send a cut-off prompt.
 import { describe, expect, it } from 'vitest'
-import { importFlows, startApp } from '@apackdev/testing/harness'
+import { importFlows, mockInference, startApp } from '@apackdev/testing/harness'
 import { action, entry, keepAlive, on } from '#generated/flow-helpers.ts'
 import { repository } from '#generated/repository.ts'
 import { untypedQuery } from '@apackdev/sdk/ears'
@@ -63,5 +63,31 @@ describe('the params a step runs on', () => {
     const result = big.result as { text: { value: string; _truncated?: boolean } }
     expect(result.text._truncated).toBe(true)
     expect(result.text.value.length).toBeLessThan(LONG_TEXT_LENGTH)
+  })
+
+  it('send a long mapped prompt to the model whole', async () => {
+    const inference = mockInference('ok')
+    repository.actionCommands.create({ label: 'Long', actionFn: `return { text: 'x'.repeat(${LONG_TEXT_LENGTH}) }` })
+    importFlows({
+      Outer: {
+        root: true,
+        tracks: [
+          entry([keepAlive()]),
+          on('go', [[
+            action('Long', { label: 'long' }),
+            { type: 'llm', label: 'ask', prompt: 'placeholder', map: { prompt: '$.lastStep.result.text' } },
+          ]]),
+        ],
+      },
+    })
+    const app = await startApp({ systems: ['brain'] })
+    await app.runFlow('Outer', { event: 'go' })
+    await app.settle()
+
+    const [call] = inference.calls as unknown as Array<{ messages: Array<{ text: string }> }>
+    expect(call.messages[0].text).toHaveLength(LONG_TEXT_LENGTH)
+    // What the run node records of it is the bounded copy, marked
+    const ask = app.flowSteps('Outer').find((step) => step.label === 'ask')!
+    expect((ask.nodeAttributes.prompt as { _truncated?: boolean })._truncated).toBe(true)
   })
 })
