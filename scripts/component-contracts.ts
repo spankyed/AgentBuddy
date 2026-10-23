@@ -69,10 +69,20 @@ export function componentContracts(options: ContractOptions): Map<string, string
   const scope = (name: string, meaning: ts.SymbolFlags) => checker.getSymbolsInScope(source, meaning).find((s) => s.name === name)!;
   const fromVue = (symbol: ts.Symbol) => (symbol.declarations ?? []).length > 0
     && symbol.declarations!.every((d) => /\/node_modules\/@vue\//.test(d.getSourceFile().fileName));
+  /**
+   * The members of a union as its source wrote them. A union written over an alias (`RunNode | undefined`, an
+   * optional prop's) is flattened into the alias's own members, which print as paths into the build; TypeScript
+   * keeps the written form as the union's `origin`, which no public API exposes, so it is read here and the
+   * flattened members are the fallback when it is absent
+   */
+  const writtenMembers = (type: ts.UnionType): readonly ts.Type[] => {
+    const origin = (type as ts.UnionType & { origin?: ts.Type }).origin;
+    return origin?.isUnion() ? origin.types : type.types;
+  };
   // Union members print in type-creation order, which depends on the rest of the program: sort them
   const typeText = (type: ts.Type, location: ts.Node): string => {
     if (!type.isUnion() || type.aliasSymbol) return relativize(checker.typeToString(type, location, flags));
-    let members = [...new Set(type.types.map((member) => typeText(member, location)))];
+    let members = [...new Set(writtenMembers(type).map((member) => typeText(member, location)))];
     if (members.includes('true') && members.includes('false')) members = [...members.filter((m) => m !== 'true' && m !== 'false'), 'boolean'];
     // Function and conditional types need parentheses inside a union
     return members.map((m) => (/=>|\bextends\b/.test(m) ? `(${m})` : m)).sort().join(' | ');
