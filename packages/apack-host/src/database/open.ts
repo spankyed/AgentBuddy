@@ -9,6 +9,10 @@ import type { _AppDataPaths } from '@apackdev/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
 import { readInstalledSchema, type DatabaseSchema, type InstalledSchema } from './schema.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
+import { createLogger } from '@apackdev/sdk/logger';
+import * as fs from 'node:fs';
+
+const logger = createLogger('run-history');
 
 export interface DatabaseStoreOptions {
   /** Told when a write is dropped, with the row it was for (`openLmdbStore`'s port) */
@@ -38,9 +42,23 @@ export function openDatabaseStore({ path, schema, readOnly, log, onWriteFailure 
   return { store, engine };
 }
 
-/** The run history's store at `path`, indexed as `services.runHistory` looks its records up */
-export function openRunHistoryStore(path: string, { readOnly }: { readOnly?: boolean } = {}): RecordStore<RunNode> {
-  return openRecordStore({ path, indexes: _RUN_HISTORY_INDEXES, readOnly });
+/**
+ * The run history's store at `dir`, indexed as `services.runHistory` looks its records up. Opened to write, a store
+ * that can't be opened — another format, another kind of files, damaged — is moved aside, to
+ * `<dir>.unreadable-<time>`, and a new one is started: the history is a log, so what that costs is past runs, and
+ * refusing would keep the whole app from starting over it. Opened read-only, it refuses as any store does.
+ */
+export function openRunHistoryStore(dir: string, { readOnly }: { readOnly?: boolean } = {}): RecordStore<RunNode> {
+  const open = () => openRecordStore<RunNode>({ path: dir, indexes: _RUN_HISTORY_INDEXES, readOnly });
+  try {
+    return open();
+  } catch (error) {
+    if (readOnly || !fs.existsSync(dir)) throw error;
+    const aside = `${dir}.unreadable-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    fs.renameSync(dir, aside);
+    logger.warn(`The run history at ${dir} couldn't be opened (${errorMessage(error)}): it was moved to ${aside}, and a new one started`);
+    return open();
+  }
 }
 
 /** An app's database opened outside the app */

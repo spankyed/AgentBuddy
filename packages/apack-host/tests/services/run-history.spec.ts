@@ -5,6 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import type { RecordStore } from '@apackdev/ears';
+import { closeEnv, openEnvAt } from '@apackdev/ears/lmdb';
 import type { RunHistory, RunNode, RunNodeId, RunNodeStart } from '@apackdev/sdk/services';
 import { _memoryRunHistoryStore } from '@apackdev/sdk/testing';
 import { openRunHistoryStore } from '../../src/database/open.ts';
@@ -167,5 +168,20 @@ describe('the app\'s run history', () => {
     open.push(reopened);
     const history = createRunHistory(reopened);
     expect([ended, endedStep, running, runningStep].every((id) => history.get(id) !== undefined)).toBe(true);
+  });
+
+  it('moves a store it cannot read aside and starts a new one, rather than keeping the app from starting', () => {
+    const dir = path.join(fs.mkdtempSync(path.join(root, 'case-')), 'run-history');
+    // Files that aren't a run history: an EARS database where the record store should be
+    closeEnv(openEnvAt(dir), () => {});
+    expect(() => openRunHistoryStore(dir, { readOnly: true })).toThrow('are an EARS database, not a record store');
+
+    const store = openRunHistoryStore(dir);
+    open.push(store);
+    const history = createRunHistory(store);
+    expect(history.get(node(history, { kind: 'flow' }))).toBeDefined();
+    const aside = fs.readdirSync(path.dirname(dir)).filter((name) => name.startsWith('run-history.unreadable-'));
+    expect(aside).toHaveLength(1);
+    expect(fs.existsSync(path.join(path.dirname(dir), aside[0], 'data.mdb'))).toBe(true);
   });
 });
