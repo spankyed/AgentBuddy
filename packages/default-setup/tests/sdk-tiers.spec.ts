@@ -78,7 +78,7 @@ describe('Tier 2 — EARS types', () => {
     expect(sdkEARS.Entity).toBeDefined();
     expect(sdkEARS.Entity.Relation).toBe('Relation');
     expect(typeof sdkEARS.AttrKind.Custom).toBe('function');
-    expect(typeof sdkEARS.RelKind.Custom).toBe('function');
+    expect(sdkEARS.RelKind.CONTAINS).toBe('contains');
   });
 
   it('generated EARS registry has domain entities', () => {

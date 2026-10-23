@@ -19,10 +19,7 @@ export namespace EARS {
   export type EntityId<E extends string = string> = Core.EntityId<E>;
 
   // ─── RelKind ───────────────────────────────────────────────────────────
-  export const RelKind = {
-    ...SDK_REL_KINDS,
-    Custom: Core.RelKind.Custom,
-  } as const;
+  export const RelKind = SDK_REL_KINDS;
 
   export type RelKind = Core.RelKind;
 

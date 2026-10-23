@@ -214,7 +214,8 @@ export interface ArtifactEntity extends BaseEntity {
   artifactType: ArtifactType;
 }
 
-export const ThreadRelations = ['parent_of', 'blocks', 'blocked_by', 'duplicates'] as const;
+/** The kinds a thread links to another thread with, which the link form offers */
+export const ThreadRelations = [EARS.RelKind.PARENT_OF, EARS.RelKind.BLOCKS, EARS.RelKind.BLOCKED_BY, EARS.RelKind.DUPLICATES] as const;
 export type ThreadLinkRelation = typeof ThreadRelations[number];
 
 export type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic'> & {
@@ -458,7 +459,7 @@ export type AgentSettings = ThreadsSettings['chat'];
 
 export type IncomingThreadsEvents =
   // Thread management events
-  | { type: 'CREATE_THREAD'; topic: string; tags?: string[]; instructions: string; linkedThreads?: { id: string; relation: 'parent_of' | 'blocks' | 'blocked_by' | 'duplicates' }[]; parentThreadId?: string }
+  | { type: 'CREATE_THREAD'; topic: string; tags?: string[]; instructions: string; linkedThreads?: { id: string; relation: ThreadLinkRelation }[]; parentThreadId?: string }
   | { type: 'VIEW_THREAD'; threadId: string }
   | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: string }
   | { type: 'UPDATE_THREAD_FIELD'; threadId: string; key: string; value: any }

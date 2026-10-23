@@ -211,6 +211,7 @@ export interface TestRuntimeStartOptions {
     entityTypes?: readonly string[];
     onboarding?: OnboardingService;
     packs?: PackRegistryView;
+    relationKinds?: readonly string[];
     serviceOverrides?: ReadonlyMap<string, unknown>;
     settings?: SettingsAdmin;
 }

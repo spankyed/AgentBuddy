@@ -281,6 +281,14 @@ EARS.Entity.Bookmark  // "Bookmark"
 EARS.RelKind.TAGGED_WITH  // "tagged_with"
 ```
 
+**A relation kind is declared before anything links with it.** `EARS.RelKind` is the closed union of the pack's
+kinds, its dependencies' and the SDK's, so every place that names a kind — `link`, `unlink`, `out`, `in`,
+`outEdges`, `inEdges`, `linkedTo`, `linkedFrom` — completes the declared ones and refuses a misspelled one at
+compile time. The engine refuses an undeclared kind at runtime too (`UNKNOWN_RELATION_KIND`), on a read as well as
+a write, since a read naming a kind nothing declared would answer as if no entity had such a link. A kind that
+arrives as data (an event's field, an imported file) is narrowed with `EARS.isRelKind(value)`; `EARS.RELATION_KINDS`
+lists them all. There is no escape from the pack's facade: an undeclared kind is a missing line in `apack.json`.
+
 ### Queries and writes
 
 EARS queries and writes are **synchronous** — do not `await` them.
@@ -501,7 +509,10 @@ Unit tests and tooling create their own with `createEarsEngine` from `@apackdev/
 ```typescript
 import { createEarsEngine } from '@apackdev/ears';
 
-const engine = createEarsEngine({ isEntityType: (name) => ['Bookmark', 'Tag'].includes(name) });
+const engine = createEarsEngine({
+  isEntityType: (name) => ['Bookmark', 'Tag'].includes(name),
+  isRelationKind: (name) => name === 'tagged_with',
+});
 engine.create('Bookmark').set('url', 'https://example.com');   // an operation on the engine you hold
 engine.query('Bookmark').count();                             // 1
 
@@ -509,10 +520,10 @@ engine.query('Bookmark').count();                             // 1
 
 - The engine's members are its operations: `query`, `create`, `upsert`, `write`, `transact`, the finders, relation reads, graph helpers and its repository registry, untyped.
 - `engine.admin`, beside them, is for the code that created the engine: bulk loading, clearing (`admin.clear()`), direct attribute and relation writes. Pack code never gets it.
-- `isEntityType` says which names are entity types: `create('Bookmark')` and `query('Bookmark')` refuse `'Bookmark'` unless it returns true for it.
+- `isEntityType` says which names are entity types: `create('Bookmark')` and `query('Bookmark')` refuse `'Bookmark'` unless it returns true for it. `isRelationKind` says which are relation kinds, which a link and every read or walk over links refuse otherwise.
 - An engine you create is the one you hold: nothing acts on it but what you call on it. The functions in `@apackdev/sdk/ears` act on the app's, and with none bound (a script, a test without the harness) they throw, naming how to bind one.
 
-In a pack's unit tests you don't need any of this: `setupPackTests` from `@apackdev/testing/harness` installs an engine with your pack's and its dependencies' entity types, and gives each test a fresh one ([Testing](testing.md)).
+In a pack's unit tests you don't need any of this: `setupPackTests` from `@apackdev/testing/harness` installs an engine with your pack's and its dependencies' entity types and relation kinds, and gives each test a fresh one ([Testing](testing.md)).
 
 ### Entity shapes
 

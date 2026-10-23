@@ -1,8 +1,6 @@
 export type * from './export-types.ts';
 import { type BaseEntity, EARS } from '#generated/ears.ts';
 
-export const REFERENCES = EARS.RelKind.Custom('references');
-
 export interface NoteEntity extends BaseEntity {
   entityType: EARS.Entity.Note;
   title: string;

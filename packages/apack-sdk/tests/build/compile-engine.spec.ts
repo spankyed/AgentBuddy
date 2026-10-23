@@ -27,7 +27,7 @@ describe('a flow compile', () => {
   });
 
   it("leaves the bound engine's data untouched, and compiles into its own", () => {
-    const installed = createEarsEngine({ isEntityType: (name) => name === EARS.Entity.Flow });
+    const installed = createEarsEngine({ isRelationKind: () => true, isEntityType: (name) => name === EARS.Entity.Flow });
     _bindEars(installed);
     const appFlow = untypedQuery(EARS.Entity.Flow).count() === 0 && installed.create(EARS.Entity.Flow).set('label', 'Mine').id();
     const before = installed.admin.getAllEntities();

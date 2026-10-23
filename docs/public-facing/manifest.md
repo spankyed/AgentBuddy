@@ -685,12 +685,14 @@ Duplicate entity declarations name both owners and fail validation.
 
 Keys become TypeScript constants in generated `ears.ts`. Entity constants equal their keys; a relation
 wire is declared once in `data.relations`, shared across the pack's features. Its constant name is
-uppercase (`tagged_with` → `TAGGED_WITH`). Duplicate and SDK-owned relation wires are refused.
+uppercase (`tagged_with` → `TAGGED_WITH`). Duplicate and SDK-owned relation wires are refused. Every kind
+the pack links with is declared: the generated `EARS.RelKind` is closed over the pack's, its dependencies' and
+the SDK's, and the engine refuses any other at runtime.
 Shapes type attributes without changing stored identities.
 
 No two packs may use the same name: a key or a value another installed pack declares fails `apack pack build` (for a dependency) and the app's registration of the pack.
 
-The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` and `Prompt`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`), `SPAWNED` (`spawned`) and `TRACKED` (`tracked`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `apack.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
+The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action`, `Prompt`, `Document` and `Collection`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`), `SPAWNED` (`spawned`), `TRACKED` (`tracked`) and `PARENT_OF` (`parent_of`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `apack.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
 
 ## DSL definitions
 

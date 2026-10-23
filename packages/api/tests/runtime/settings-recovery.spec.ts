@@ -17,7 +17,7 @@ const fixture = vi.hoisted(() => ({ data: { app: { projects: 'invalid' }, featur
 vi.mock('@apackdev/host/database', async importOriginal => ({
   ...await importOriginal<typeof import('@apackdev/host/database')>(),
   openDatabaseStore: ({ schema }: import('@apackdev/host/database').DatabaseStoreOptions) => {
-    const engine = createEarsEngine({ isEntityType: name => schema.getRegisteredEntityTypes().has(name) });
+    const engine = createEarsEngine({ isRelationKind: () => true, isEntityType: name => schema.getRegisteredEntityTypes().has(name) });
     return { engine, store: {
       read: () => ({ getAttr: () => fixture.data, getEntityMeta: () => ({ type: 'Settings' }) }),
       hydrate: async () => {

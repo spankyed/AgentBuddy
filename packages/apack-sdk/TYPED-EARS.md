@@ -43,6 +43,14 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   isn't a registered type.
 - Overload order in `typed.ts` is part of the contract wherever a function still has more than one.
 
+**Relation kinds.**
+- The generated `EARS.RelKind` is closed: `(typeof RELATION_KINDS)[number]`, the pack's kinds, its dependencies'
+  and the SDK's, with no open `string` member and no `Custom`. `defineEars`' third parameter (`R`) carries it to
+  `QueryBuilder` and `WriteBuilder`, so `link`, `unlink`, `out`, `in`, `outEdges`, `inEdges`, `linkedTo`,
+  `linkedFrom` and `LinkOptions.acyclicIn` take only those kinds, complete them, and list them in a typo's error.
+- A kind that arrives as data is narrowed with the generated `EARS.isRelKind`; the untyped twins and an engine's
+  own operations take any string (`R` defaults to `string`), and the engine refuses an undeclared one at runtime.
+
 **Ids.**
 - Typed queries return ids tagged with their entity type (`ids()`, `first()`, `pick`'s `id`, a row's `id`).
 - A plain `EARS.EntityId` carries no tag and is accepted wherever a tagged id is, including `includes` and `Set.has`. Only an id tagged with a different entity type is rejected.
@@ -93,6 +101,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 4. **Check editor completions and error messages.** `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` in `@apackdev/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.
    - Field positions should list the entity's fields: `query(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')` and `getAttr(id, '|')`.
    - Entity-name positions should list entity names: `query('|')`, `findAll('|')`, `createEntity('|')`, `.out(kind, '|')`, `.ofType('|')`.
+   - Relation-kind positions should list the pack's, its dependencies' and the SDK's kinds: `.out('|')`, `.link('|', id)`, `.linkedTo('|', id)`.
    - A typo (`where('titel')`) should produce an error that lists the valid fields.
    - Compare against the previous version with the TypeScript language service (`getCompletionsAtPosition`), not just by compiling.
 5. **Update the API reports** (`npm run api:update` in `packages/apack-ears` and `packages/apack-sdk`) and review the `apack-ears/etc/index.api.md` and `apack-sdk/etc/types.api.md` diffs as part of the change.

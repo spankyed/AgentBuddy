@@ -161,8 +161,8 @@ export function emitEARS(ownId: string, registry: ReturnType<typeof mergeRegistr
   // Relation alone doesn't close it
   const declaresEntities = [...registry.entities.values()].some(({ source }) => source !== SDK_SOURCE);
   const entityUnion = declaresEntities ? [...registry.entities.keys()].map(k => `Entity.${k}`).join(' | ') : 'string';
-  const relUnion = [...registry.relKinds.keys()].map(k => `RelKind.${k}`).join(' | ');
-  const relType = relUnion ? `${relUnion} | (string & {})` : '(string & {})';
+  // Closed: the SDK's kinds are in every pack, so the list is never empty
+  const relKindList = [...registry.relKinds.keys()].map(k => `RelKind.${k}`).join(', ');
 
   // A namespace without members has no runtime value, and EARS.Entity is read at runtime
   const entityValue = entityMembers.length > 0
@@ -179,9 +179,12 @@ ${entityValue}${prototypeExport('Entity', registry.entities)}
 
   export namespace RelKind {
 ${relKindMembers.join('\n')}
-    export const Custom = <T extends string>(k: T) => k as T & RelKind;
   }
-  export type RelKind = ${relType};
+  /** Every relation kind this pack may link with: its own, its dependencies' and the SDK's */
+  export const RELATION_KINDS = [${relKindList}] as const;
+  export type RelKind = (typeof RELATION_KINDS)[number];
+  /** Whether a kind that arrived as data (an event's field, a stored row) is one of them */
+  export const isRelKind = (value: unknown): value is RelKind => (RELATION_KINDS as readonly unknown[]).includes(value);
 
   export namespace RoleKind {
     export const Custom = <T extends string>(k: T) => k as T & RoleKind;
@@ -1224,7 +1227,7 @@ export type EntityName = ${entityNames.join(' | ')};
 export const {
   query, create, upsert, write, transact, findById, findAll, findWhere,
   createEntity, createEntityWithDefaults, getAttr,
-} = /*#__PURE__*/ defineEars<PackShapes, EntityName>(boundEars);
+} = /*#__PURE__*/ defineEars<PackShapes, EntityName, EARS.RelKind>(boundEars);
 `;
   }
 

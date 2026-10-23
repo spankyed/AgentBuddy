@@ -40,7 +40,11 @@ export interface DatabaseStoreOptions {
  */
 export function openDatabaseStore({ paths, schema, readOnly, log, onWriteFailure }: DatabaseStoreOptions): { store: LmdbStore; engine: EarsEngine } {
   const store = openLmdbStore({ paths, policy: appPartitionPolicy(), onWriteFailure, engine: () => engine.admin, readOnly, log });
-  const engine = createEarsEngine({ persistence: store.sink, isEntityType: (name) => schema.getRegisteredEntityTypes().has(name) });
+  const engine = createEarsEngine({
+    persistence: store.sink,
+    isEntityType: (name) => schema.getRegisteredEntityTypes().has(name),
+    isRelationKind: (name) => schema.getRegisteredRelationKinds().has(name),
+  });
   return { store, engine };
 }
 
@@ -106,9 +110,10 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   // `getRegisteredEntityTypes` is a backup's yardstick for "no installed pack declares this"
   // (`apack-cli/src/commands/db/destructive.ts:190`), which an observed set would answer wrongly.
   const knownToEngine = new Set(schema.getRegisteredEntityTypes());
+  const kindsKnownToEngine = new Set(schema.getRegisteredRelationKinds());
   const { store, engine } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
-    schema: { getRegisteredEntityTypes: () => knownToEngine },
+    schema: { getRegisteredEntityTypes: () => knownToEngine, getRegisteredRelationKinds: () => kindsKnownToEngine },
     readOnly,
     log,
   });
@@ -124,6 +129,8 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   // after hydration and not during it: nothing hydration does consults the check (a bulk load doesn't), so the
   // set it would be widening from is the data it is reading.
   for (const type of engine.getAllEntityTypes()) knownToEngine.add(type);
+  // Relation kinds the same way: links a removed pack made are still there to read
+  for (const kind of engine.getAllRelationKinds()) kindsKnownToEngine.add(kind);
   // Bound so the SDK's engine operations (`@apackdev/sdk/ears`) read this database until `close()`, which
   // puts back whatever was bound before rather than leaving none. `apack db`, the one caller today, has no
   // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command

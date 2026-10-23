@@ -234,7 +234,7 @@ describe('openAppDatabase', () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => { untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept'); });
     // A process that already has an engine: the app, or a test file that started a runtime
-    const outer = createEarsEngine({ isEntityType: (name) => name === 'Note' });
+    const outer = createEarsEngine({ isRelationKind: () => true, isEntityType: (name) => name === 'Note' });
     _bindEars(outer);
     try {
       const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });

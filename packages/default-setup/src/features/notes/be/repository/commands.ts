@@ -3,7 +3,6 @@ import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { createEntityWithDefaults } from '#generated/ears.ts';
 
-import { REFERENCES } from '../types.ts';
 import { resolveReferencesTo, syncReferences } from './link-utils.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
 
@@ -314,12 +313,12 @@ export const noteCommands = {
     write(id).unlink(EARS.RelKind.CONTAINS);
 
     // Clean up REFERENCES relations (outgoing)
-    write(id).unlink(REFERENCES);
+    write(id).unlink(EARS.RelKind.REFERENCES);
 
     // Clean up incoming REFERENCES (other notes pointing to this one)
-    const referencingIds = query.withTrashed.ids(id).in(REFERENCES, EARS.Entity.Note).ids();
+    const referencingIds = query.withTrashed.ids(id).in(EARS.RelKind.REFERENCES, EARS.Entity.Note).ids();
     for (const refId of referencingIds) {
-      write(refId).unlink(REFERENCES, id);
+      write(refId).unlink(EARS.RelKind.REFERENCES, id);
     }
 
     // Destroy the entity
