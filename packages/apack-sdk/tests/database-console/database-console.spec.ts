@@ -1,8 +1,8 @@
 // The Database console's code runners, which the Database surface and `apack db query`/`exec` share
 import * as os from 'node:os';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
-import { consoleEars, getSchemaStats, installedEars, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
+import { getSchemaStats, untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
+import { consoleEars, installedEars, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
 import { testPacks } from '../../src/testing/packs.ts';
 import { EARS } from '../../src/types/index.ts';
 import { resetTestData, startTestRuntime } from '../../src/testing/index.ts';
@@ -29,8 +29,7 @@ describe('the helpers console code sees', () => {
 
   it('gives a transaction the write helpers as well', async () => {
     expect([...WRITE_HELPER_NAMES].sort()).toEqual([
-      'create', 'createEntityWithDefaults', 'grantRole', 'prepareEntity', 'removeRelationById', 'revokeRole', 'updateEntity',
-      'upsert', 'write',
+      'create', 'createEntityWithDefaults', 'removeRelationById', 'updateEntity', 'upsert', 'write',
     ]);
     for (const name of [...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES]) {
       await expect(runTransactionCode(`return typeof ${name}`, scope), name).resolves.toBe('function');

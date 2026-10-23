@@ -12,6 +12,7 @@ import type { Query } from '@apackdev/ears';
 import { RelationMatch } from '@apackdev/ears';
 import { RelationRow } from '@apackdev/ears';
 import { RelationStats } from '@apackdev/ears';
+import { SchemaStats } from '@apackdev/ears';
 import type { Upsert } from '@apackdev/ears';
 import type { Write } from '@apackdev/ears';
 
@@ -61,14 +62,7 @@ export const getRelationStats: (kind: EARS.RelKind) => RelationStats;
 export const getRoles: (id: EARS.EntityId) => string[];
 
 // @public (undocumented)
-export const getSchemaStats: () => {
-    entities: Record<string, number>;
-    attributes: Record<string, number>;
-    relations: Record<string, number>;
-};
-
-// @public (undocumented)
-export const grantRole: (id: EARS.EntityId, role: string) => void;
+export const getSchemaStats: () => SchemaStats;
 
 // @public (undocumented)
 export const isEntityType: (name: string) => boolean;
@@ -93,9 +87,6 @@ export const removeRelationById: (relId: EARS.EntityId) => void;
 
 // @public
 export const repository: Record<string, unknown>;
-
-// @public (undocumented)
-export const revokeRole: (id: EARS.EntityId, role: string) => void;
 
 // @public (undocumented)
 export const rootParent: (start: EARS.EntityId, relKind: EARS.RelKind) => EARS.EntityId;
