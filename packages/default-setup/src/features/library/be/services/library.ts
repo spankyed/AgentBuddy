@@ -4,8 +4,6 @@ import type { DocumentDTO, CollectionDTO, LibraryItem } from '#features/library/
 import { EARS } from '#generated/ears.ts';
 import * as symlink from '#features/library/be/repository/symlink.ts';
 import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
-import { COMMANDS_DOCUMENT_TYPE } from '#features/library/be/types.ts';
-import type { PackCommand } from '@apackdev/sdk/commands';
 
 
 // ---------------------------------------------------------------------------
@@ -100,30 +98,6 @@ export class LibraryService {
       if (docPath.length !== collectionPath.length) return false;
       return collectionPath.every((seg, i) => docPath[i] === seg);
     });
-  }
-
-  /**
-   * The chat's slash commands: the field sections of every command document, in document order then
-   * name, one `**name**: placeholder` field per command.
-   *
-   * **One source, so no precedence rule.** Every command is a field of a document of
-   * `COMMANDS_DOCUMENT_TYPE`, so there is nothing to merge and no declaration a document could shadow;
-   * a name two documents define keeps the first. This pack ships its own in
-   * `src/content/commands/internal/`.
-   */
-  commands(): PackCommand[] {
-    const commands = new Map<string, PackCommand>()
-    for (const doc of repository.libraryQueries.getDocuments()
-      .filter((doc: DocumentDTO) => doc.documentType === COMMANDS_DOCUMENT_TYPE)
-      .sort((a: DocumentDTO, b: DocumentDTO) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name))) {
-      for (const section of doc.content) {
-        if (section.type !== 'field') continue
-        // A name appears once. Not a precedence rule between sources — there is one source — but a
-        // display one: the chat lists each command once, and the first document to define it wins.
-        for (const field of section.fields) if (!commands.has(field.key)) commands.set(field.key, { name: field.key, placeholder: field.value })
-      }
-    }
-    return [...commands.values()]
   }
 
   async getText(id: EARS.EntityId): Promise<string | undefined> {
@@ -338,4 +312,3 @@ export const libraryService = new LibraryService();
  * A function rather than a list, because the rows are content the user edits: the registry calls it on
  * every read, so there is nothing to invalidate when a command document changes.
  */
-export const libraryCommands = (): PackCommand[] => libraryService.commands();

@@ -1160,11 +1160,12 @@ describe('a data dir whose packs are gone', () => {
   // An alias is not in the data, only its value, so this is the half observation cannot supply
   it('does not invent a relation kind, whose alias no row holds', async () => {
     const { dir, packDir } = await withoutItsPack();
-    const observed = await ok(['query', "return 'PARENT_OF' in EARS.RelKind", '--data-dir', dir]);
+    // A kind default-setup declares rather than the SDK, so it goes with the pack
+    const observed = await ok(['query', "return 'RELATES_TO' in EARS.RelKind", '--data-dir', dir]);
     expect(observed.out).toBe('false');
 
-    const named = await ok(['query', 'return EARS.RelKind.PARENT_OF', '--data-dir', dir, '--schema-from', packDir]);
-    expect(named.out).toBe('parent_of');
+    const named = await ok(['query', 'return EARS.RelKind.RELATES_TO', '--data-dir', dir, '--schema-from', packDir]);
+    expect(named.out).toBe('relates_to');
   });
 
   it('declares them again when --schema-from names the pack, and stops warning', async () => {

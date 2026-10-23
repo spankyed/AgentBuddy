@@ -4,7 +4,8 @@ import * as path from 'path'
 
 import { EARS } from '#generated/ears.ts'
 import type { LibraryItem, FolderContents, BreadcrumbItem } from '../types.ts'
-import { formatFileSize, findParentCollection } from './helpers.ts'
+import { parentCollectionOf } from '@apackdev/sdk/repositories'
+import { formatFileSize } from './helpers.ts'
 import type { DocumentShortCode } from '#features/library/be/types.ts';
 
 const SYMLINK_PREFIX = 'symlink:'
@@ -187,7 +188,7 @@ function buildSymlinkBreadcrumbs(collectionId: string, relativePath: string): Br
   if (!collection) return breadcrumbs
 
   // Add EARS parent breadcrumbs for the symlink collection
-  let parentId: EARS.EntityId | null = findParentCollection(collectionId as EARS.EntityId)
+  let parentId: EARS.EntityId | null = parentCollectionOf(collectionId as EARS.EntityId)
   const parentCrumbs: BreadcrumbItem[] = []
   while (parentId) {
     const parents = query.ids(parentId).pickAll()
@@ -199,7 +200,7 @@ function buildSymlinkBreadcrumbs(collectionId: string, relativePath: string): Br
         path: [],
       })
     }
-    parentId = findParentCollection(parentId)
+    parentId = parentCollectionOf(parentId)
   }
   breadcrumbs.push(...parentCrumbs)
 

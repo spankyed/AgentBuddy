@@ -23,8 +23,10 @@ describe('a built pack\'s snapshot', () => {
   it.skipIf(!built)('records its own entity names', () => {
     const own = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/default-setup/apack.json'), 'utf-8'));
     const snapshot = snapshotAt('packages/default-setup');
-    expect(Object.keys(_packEntityTypes(own))).toHaveLength(11);
-    for (const name of Object.keys(_packEntityTypes(own))) {
+    const ownNames = Object.keys(_packEntityTypes(own));
+    // Derived from the manifest, so it is not a count to keep in step; it says the loop looked at something
+    expect(ownNames.length).toBeGreaterThan(0);
+    for (const name of ownNames) {
       expect(snapshot.types.entities, name).toHaveProperty(name);
     }
   });

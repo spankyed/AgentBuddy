@@ -23,9 +23,10 @@ describe('memo content', () => {
   });
 });
 
-// A pack contributes slash commands as content, through default-setup's `commands` format: its document
-// nests in that pack's folders, and whichever feature plays the `commands` designation then serves its
-// commands beside its own. There is no manifest key for one.
+// A pack's slash commands are documents, and it has two ways to get them: a content directory compiled
+// with default-setup's `commands` format, or `extensions.commands` in its manifest. This pack uses both,
+// which is the case worth pinning — the shorthand compiles under its own reserved key, so it neither
+// collides with the pack's own `commands` source nor merges into its document.
 describe('slash commands', () => {
   it("writes its command document and has its command served", async () => {
     await importContent({ keys: ['commands'] });
@@ -34,4 +35,16 @@ describe('slash commands', () => {
     expect(document.content).toEqual([{ type: 'field', fields: [{ key: 'memo-list', value: 'Tag (optional)' }] }]);
     expect(getCommands()).toContainEqual({ name: 'memo-list', placeholder: 'Tag (optional)' });
   });
+
+  // Ordinary content once desugared, so removal, offers and the three-way merge are the shared
+  // machinery's and are tested there; what is this key's own is the document it compiles to
+  it('writes the commands its manifest declares as a document of their own', async () => {
+    await importContent({ keys: ['declared-commands'] });
+
+    const document = untypedQuery('Document').where('name', 'e2e-fixture commands').pickAll()[0];
+    expect(document.documentType).toBe('commands');
+    expect(document.content).toEqual([{ type: 'field', fields: [{ key: 'memo-quick', value: 'What to note' }] }]);
+    expect(getCommands()).toContainEqual({ name: 'memo-quick', placeholder: 'What to note' });
+  });
+
 });

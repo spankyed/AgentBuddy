@@ -185,7 +185,7 @@ export function undeclaredEntityTypes(db: AppDatabase): Array<{ type: string; ro
  * `openAppDatabase` adds the types hydration found, so a write naming an observed type goes through, unchecked
  * by any pack.
  *
- * **`relKinds` is deliberately not widened.** `EARS.RelKind.PARENT_OF` is `'parent_of'` and the data holds only
+ * **`relKinds` is deliberately not widened.** `EARS.RelKind.RELATES_TO` is `'relates_to'` and the data holds only
  * the value, so no amount of observation produces the alias; a dir with no snapshots has to be given one.
  */
 export function consoleScope(db: AppDatabase): ConsoleScope {

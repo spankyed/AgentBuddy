@@ -1,6 +1,12 @@
-// The SDK's build and apply modules know no pack's entity types: library, notes and FAQ applying
-// belong to default-setup (its content entries, compiler modules and content writers). A new name here
-// needs a reason in ALLOWED, not a quiet exception.
+// The SDK's build and apply modules know no pack's entity types: the library *format*, notes and FAQ
+// applying belong to default-setup (its content entries, compiler modules and content writers). A new
+// name here needs a reason in ALLOWED, not a quiet exception.
+//
+// `Document`, `Collection` and the sections they hold are deliberately absent from the list: they are
+// the SDK's own entities, so its writers name them (`content/document-writers.ts`). What stays forbidden
+// is default-setup's — `Note` and `Symlink`, the FAQ, the export DTOs, the `library`/`notes`/`faqs`
+// content keys and the repositories behind them. Adding a document type name back here would mean the
+// SDK could no longer write its own rows.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -9,8 +15,8 @@ const SRC = path.resolve(import.meta.dirname, '../../src');
 const SCANNED = ['build', 'content'];
 const DECLARATION_SCHEMA = 'framework/declaration-schema.ts';
 
-/** Library, notes and FAQ entity types, their shapes, compiled content formats, repositories and content keys */
-const FORBIDDEN = /\b(Document|Collection|Note|Symlink|FAQ|DocumentEntity|CollectionEntity|NoteEntity|ContentSection|FieldContent|ListContent|MarkdownContent|TextContent|CodeContent|DocumentShortCode|Exported(Item|Document|Collection|Symlink|Library|Note|Notes)|CompiledFAQ|library(Commands|Queries)|note(Commands|Queries)|(compile|import)(Library|Notes|Faq)\w*|create(Library|Notes)ContentApplier|parseMarkdownSections|library|notes|faqs?)\b/gi;
+/** default-setup's entity types, their shapes, compiled content formats, repositories and content keys */
+const FORBIDDEN = /\b(Note|Symlink|FAQ|NoteEntity|Exported(Item|Document|Collection|Symlink|Library|Note|Notes)|CompiledFAQ|library(Commands|Queries)|note(Commands|Queries)|(compile|import)(Library|Notes|Faq)\w*|create(Library|Notes)ContentApplier|parseMarkdownSections|library|notes|faqs?)\b/gi;
 
 /** `file:line` substrings that name one of them for another reason */
 const ALLOWED: Record<string, string> = {

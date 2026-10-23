@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine } from '@apackdev/ears';
 import { _bindEars, boundEars, repository } from '@apackdev/sdk/ears';
 import { getSettingsCatalog, type PackFeatureSystem, type PackRegistration } from '@apackdev/sdk/framework';
-import { getCommands } from '@apackdev/sdk/commands';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
 import { SDK_ENTITIES } from '@apackdev/sdk/types';
@@ -269,7 +268,6 @@ describe('registerPack content writers', () => {
     expect(_contentWriterRegistry.get('Memo')).toBe(memoHooks);
     expect(_contentWriterRegistry.get('Card')).toBeUndefined();
     expect(artifactRegistry.has('card-view')).toBe(false);
-    expect(getCommands()).toEqual([]);
   });
 
   it("drops a pack's hooks when it unregisters, freeing the entity for another pack", () => {
@@ -281,32 +279,6 @@ describe('registerPack content writers', () => {
     registerPack({ id: 'other-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: theirs } } as unknown as PackRegistration);
     registered.push('other-pack');
     expect(_contentWriterRegistry.get('Memo')).toBe(theirs);
-  });
-});
-
-describe('registerPack commands', () => {
-  const commands = [{ name: 'standup', placeholder: 'Topic' }];
-  const owner = (id: string) => ({ id,
-    features: { lib: { designation: 'commands', getCommands: () => commands } } } as unknown as PackRegistration);
-
-  it('rejects a second pack claiming the role, registering none of it', () => {
-    registerPack(owner('memo-pack'));
-    registered.push('memo-pack');
-
-    expect(() => registerPack({ ...owner('other-pack'), steps: [] })).toThrow('Designation collision');
-
-    expect(getPackRegistration('other-pack')).toBeNull();
-    expect(getCommands()).toEqual(commands);
-  });
-
-  it("rolls its commands back when a later part of the registration is refused", () => {
-    const invalid = { settings: { defaults: { hidden: true }, schema: {"type":"object","properties":{"hidden":{"type":"string"}},"required":["hidden"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} } };
-
-    expect(() => registerPack({ ...owner('bad-pack'),
-      features: { lib: { designation: 'commands' }, memos: invalid } } as unknown as PackRegistration)).toThrow();
-
-    expect(getCommands()).toEqual([]);
-    expect(getSettingsCatalog().features).toEqual({});
   });
 });
 

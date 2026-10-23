@@ -153,6 +153,13 @@
     }
   },
   "extensions": {
+    "commands": {
+      "list": {
+        "memo-quick": {
+          "placeholder": "What to note"
+        }
+      }
+    },
     "settings": {
       "assistant": {
         "title": "Fixture Assistant",

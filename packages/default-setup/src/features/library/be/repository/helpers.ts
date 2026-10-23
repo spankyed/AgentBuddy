@@ -1,60 +1,11 @@
-import { query } from '#generated/ears.ts';
-import { EARS } from '#generated/ears.ts'
+// The library view's own helpers. The tree's mechanics — a child's parent, a new child's place among
+// mixed siblings, a folder's path — are the SDK's, beside the entities, and this feature's code calls
+// them there by their own names (`@apackdev/sdk/repositories`).
 import type { ContentSection } from '#features/library/be/types.ts';
+import { parentCollectionOf } from '@apackdev/sdk/repositories';
+import type { EARS } from '#generated/ears.ts';
 
-// ================ Helper Functions ================
-
-export const findParentCollection = (childId: EARS.EntityId): EARS.EntityId | null => 
-  query(EARS.Entity.Collection).pickAll().find(col => 
-    query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).ids().includes(childId)
-  )?.id as EARS.EntityId || null
-
-export const isRootCollection = (id: EARS.EntityId): boolean => !findParentCollection(id)
-
-export const findDocumentCollection = (docId: EARS.EntityId): EARS.EntityId | null =>
-  query(EARS.Entity.Collection).pickAll().find(col =>
-    query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
-  )?.id as EARS.EntityId || null
-
-export const getDisplayOrder = (item: any): number => {
-  const d = item?.displayOrder
-  return Array.isArray(d) ? d[0] || 0 : (d as number) || 0
-}
-
-const getItemsForReordering = (folderId: EARS.EntityId | null) => {
-  if (folderId === null) {
-    return [
-      ...query(EARS.Entity.Collection).pickAll()
-        .filter(c => isRootCollection(c.id as EARS.EntityId))
-        .map(c => ({ id: c.id as EARS.EntityId, displayOrder: getDisplayOrder(c), type: 'folder' as const })),
-      ...query(EARS.Entity.Document).pickAll()
-        .filter(d => !findDocumentCollection(d.id as EARS.EntityId))
-        .map(d => ({ id: d.id as EARS.EntityId, displayOrder: getDisplayOrder(d), type: 'document' as const }))
-    ]
-  }
-  return [
-    ...query.ids(folderId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll()
-      .map(c => ({ id: c.id as EARS.EntityId, displayOrder: getDisplayOrder(c), type: 'folder' as const })),
-    ...query.ids(folderId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll()
-      .map(d => ({ id: d.id as EARS.EntityId, displayOrder: getDisplayOrder(d), type: 'document' as const }))
-  ]
-}
-
-export function getNextDisplayOrder(parentId: EARS.EntityId | null): number {
-  const items = getItemsForReordering(parentId)
-  return Math.max(0, ...items.map(i => i.displayOrder)) + 1000
-}
-
-export function getCollectionPath(collectionId: EARS.EntityId): string[] {
-  const path: string[] = []
-  let currentId: EARS.EntityId | null = collectionId
-  while (currentId) {
-    const collection = query.ids(currentId).pickAll()[0]
-    if (collection) path.unshift(collection.name as string)
-    currentId = findParentCollection(currentId)
-  }
-  return path
-}
+export const isRootCollection = (id: EARS.EntityId): boolean => !parentCollectionOf(id);
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B'

@@ -1,11 +1,14 @@
-import { query, create, write } from '#generated/ears.ts';
+import { create, write, query } from '#generated/ears.ts';
 import * as path from 'path'
 import { EARS } from '#generated/ears.ts'
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types.ts'
 // [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository' (dormant: ../search-index/README.md)
 import { libraryQueries } from './queries.ts'
-import { findParentCollection, getDisplayOrder, getNextDisplayOrder, getCollectionPath, formatFileSize, getContentLength } from './helpers.ts'
-import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
+import {
+  collectionPath, collectionRepository, displayOrderOf, documentRepository, nextDisplayOrder, parentCollectionOf,
+} from '@apackdev/sdk/repositories'
+import { formatFileSize, getContentLength } from './helpers.ts'
+import type { ContentSection } from '#features/library/be/types.ts';
 
 
 type DocumentsListener = () => void;
@@ -51,45 +54,10 @@ const writers = {
     /** What the document is: `commands` makes it a slash-command list, as frontmatter does for content */
     documentType?: string,
   ): DocumentDTO {
-    const now = Date.now()
-
-    // Generate shortcode
-    const documentCount = query(EARS.Entity.Document).count() + 1
-    const shortCode = `DOC-${documentCount}` as DocumentShortCode
-
-    // Get display order
-    const displayOrder = getNextDisplayOrder(collectionId || null)
-
-    // Create document entity
-    const builder = id ? create(EARS.Entity.Document, { id: id as EARS.EntityId<'Document'> }) : create(EARS.Entity.Document)
-    const documentId = builder.id()
-
-    builder.setMany({
-      name,
-      content,
-      shortCode,
-      displayOrder,
-      tags, // Store tags directly as string array
-      ...(documentType !== undefined && { documentType }),
-      ...(contentHash && { contentHash }),
-      updatedAt: now,
+    const row = documentRepository.create({
+      name, content, tags, parentId: collectionId, id, contentHash, documentType,
     })
-
-    if (collectionId) {
-      write(collectionId).link(EARS.RelKind.CONTAINS, documentId)
-    }
-
-    const document = libraryQueries.findDocument(documentId)
-
-    // [SEARCH_INDEX_FF] Auto-index in search indices (fire and forget)
-    // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
-    //   logger.error('Failed to auto-index new document', {
-    //     documentId,
-    //     error: errorMessage(error)
-    //   })
-    // })
-
-    return document!
+    return libraryQueries.findDocument(row.id as EARS.EntityId)!
   },
 
   updateDocument(
@@ -102,72 +70,16 @@ const writers = {
     /** What the document is: `commands` makes it a slash-command list */
     documentType?: string,
   ): DocumentDTO {
-    const documentId = id
-    const now = Date.now()
-
-    write(documentId).setMany({
-      name,
-      content,
-      ...(contentHash && { contentHash }),
-      ...(documentType !== undefined && { documentType }),
-      updatedAt: now,
+    // `parentId` only when the caller named one: omitted leaves the document in its folder
+    documentRepository.update(id, {
+      name, content, tags, contentHash, documentType,
+      ...(collectionId !== undefined && { parentId: collectionId }),
     })
-      
-    write(documentId).setMany({ tags })
-
-    // Find collections that contain this document
-    const allCollections = query(EARS.Entity.Collection).pickAll()
-    const collections: typeof allCollections = []
-    for (const col of allCollections) {
-      const docs = query.ids(col.id as EARS.EntityId)
-        .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-        .ids()
-      if (docs.includes(documentId as EARS.EntityId)) {
-        collections.push(col)
-      }
-    }
-    const currentCollection = collections[0]
-
-    // Only handle collection changes if a collectionId is explicitly provided
-    if (collectionId !== undefined) {
-      if (currentCollection && currentCollection.id !== collectionId) {
-        write(currentCollection.id as EARS.EntityId).unlink(EARS.RelKind.CONTAINS, documentId)
-      }
-      
-      if (collectionId) {
-        write(collectionId).link(EARS.RelKind.CONTAINS, documentId, { replace: true })
-      }
-    }
-    // If collectionId is undefined, we keep the document in its current collection
-
-    const document = libraryQueries.findDocument(documentId)
-
-    // [SEARCH_INDEX_FF] Re-index in search indices (fire and forget)
-    // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
-    //   logger.error('Failed to re-index updated document', {
-    //     documentId,
-    //     error: errorMessage(error)
-    //   })
-    // })
-
-    return document!
+    return libraryQueries.findDocument(id)!
   },
 
   deleteDocument(id: EARS.EntityId): void {
-    const documentId = id
-
-    const collection = query(EARS.Entity.Collection).pickAll().find(col => 
-      query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
-    )
-
-    if (collection) {
-      write(collection.id as EARS.EntityId).unlink(EARS.RelKind.CONTAINS, documentId)
-    }
-
-    // [SEARCH_INDEX_FF] Remove from all search indices (fire and forget)
-    // searchIndexRepo.removeDocumentFromAllIndices(documentId)
-
-    write(documentId).destroy()
+    documentRepository.remove(id)
   },
 
   createCollection(
@@ -178,12 +90,12 @@ const writers = {
     contentHash?: string,
   ): CollectionDTO {
     // Create collection entity
-    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId<'Collection'> }) : create(EARS.Entity.Collection)
-    const collectionId = builder.id()
     const now = Date.now()
+    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId, createdAt: now }) : create(EARS.Entity.Collection, { createdAt: now })
+    const collectionId = builder.id()
     
     // Get display order
-    const displayOrder = getNextDisplayOrder(parentId || null)
+    const displayOrder = nextDisplayOrder(parentId || null)
 
     const attrs: Record<string, any> = {
       name,
@@ -201,7 +113,7 @@ const writers = {
       write(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }
 
-    const path = getCollectionPath(collectionId)
+    const path = collectionPath(collectionId)
 
     return {
       id: collectionId,
@@ -247,17 +159,17 @@ const writers = {
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
-    const path = getCollectionPath(collectionId)
+    const path = collectionPath(collectionId)
 
     const buildChildren = (children: any[]): CollectionDTO[] =>
       children.map(child => ({
         id: child.id,
         name: child.name as string,
         description: child.description as string | undefined,
-        path: getCollectionPath(child.id as EARS.EntityId),
+        path: collectionPath(child.id as EARS.EntityId),
         documentCount: query.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
         childCollections: buildChildren(query.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
-        displayOrder: getDisplayOrder(child),
+        displayOrder: displayOrderOf(child),
         createdAt: new Date(child.createdAt as number).toISOString(),
         updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),
       }))
@@ -269,77 +181,32 @@ const writers = {
       path,
       documentCount,
       childCollections: buildChildren(childCollections),
-      displayOrder: getDisplayOrder(collection!),
+      displayOrder: displayOrderOf(collection!),
       createdAt: new Date(collection!.createdAt as number).toISOString(),
       updatedAt: new Date(collection!.updatedAt as number || collection!.createdAt as number).toISOString(),
     }
   },
 
   deleteCollection(id: EARS.EntityId): void {
-    const collectionId = id
-
-    const documents = query.ids(collectionId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .pickAll()
-
-    for (const doc of documents) {
-      write(collectionId).unlink(EARS.RelKind.CONTAINS, doc.id as EARS.EntityId)
-    }
-
-    const parent = findParentCollection(collectionId) ? query.ids(findParentCollection(collectionId)!).pickAll()[0] : null
-
-    if (parent) {
-      write(parent.id as EARS.EntityId).unlink(EARS.RelKind.PARENT_OF, collectionId)
-    }
-
-    const children = query.ids(collectionId)
-      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-      .pickAll()
-
-    for (const child of children) {
-      write(collectionId).unlink(EARS.RelKind.PARENT_OF, child.id as EARS.EntityId)
-      if (parent) {
-        write(parent.id as EARS.EntityId).link(EARS.RelKind.PARENT_OF, child.id as EARS.EntityId)
-      }
-    }
-
-    // [SEARCH_INDEX_FF] Delete all search indices associated with this folder (fire and forget)
-    // searchIndexRepo.deleteSearchIndicesForFolder(collectionId)
-
-    write(collectionId).destroy()
+    collectionRepository.remove(id)
   },
 
+  /** A document with no folder given moves to the root, which is `null` to the repository */
   moveDocument(
     documentId: EARS.EntityId,
     newCollectionId?: EARS.EntityId
   ): DocumentDTO {
-    const docId = documentId
-
-    const currentCollection = query(EARS.Entity.Collection).pickAll().find(col => 
-      query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
-    )
-
-    if (currentCollection) {
-      write(currentCollection.id as EARS.EntityId).unlink(EARS.RelKind.CONTAINS, docId)
-    }
-
-    if (newCollectionId) {
-      write(newCollectionId).link(EARS.RelKind.CONTAINS, docId)
-    }
-
-    const document = libraryQueries.findDocument(docId)
-    return document!
+    documentRepository.update(documentId, { parentId: newCollectionId ?? null })
+    return libraryQueries.findDocument(documentId)!
   },
 
   renameItem(id: EARS.EntityId, name: string, type: 'document' | 'folder'): LibraryItem {
     const entityId = id
     const now = Date.now()
     
-    write(entityId).setMany({
-      name,
-      updatedAt: now,
-    })
-    
+    if (type === 'document') documentRepository.update(entityId, { name })
+    else collectionRepository.update(entityId, { name })
+
     if (type === 'document') {
       const doc = libraryQueries.findDocument(entityId)
       if (!doc) {
@@ -357,7 +224,7 @@ const writers = {
         tags: doc.tags,
         size: formatFileSize(getContentLength(content)),
         kind: 'Document',
-        displayOrder: getDisplayOrder(doc),
+        displayOrder: displayOrderOf(doc),
         createdAt: doc.createdAt,
         updatedAt: new Date(now).toISOString(),
       }
@@ -367,7 +234,7 @@ const writers = {
       const childCount = 0 // Simplified for now
       
       // Find parent folder
-      const parentId = findParentCollection(entityId)
+      const parentId = parentCollectionOf(entityId)
       
       return {
         type: 'folder',
@@ -377,7 +244,7 @@ const writers = {
         childCount,
         size: `${childCount} items`,
         kind: 'Folder',
-        displayOrder: getDisplayOrder(collection),
+        displayOrder: displayOrderOf(collection),
         createdAt: new Date(collection.createdAt as number).toISOString(),
         updatedAt: new Date(now).toISOString(),
       }
@@ -403,7 +270,7 @@ const writers = {
         // Move collection to new parent
         const collectionId = id
         
-        const currentParent = findParentCollection(collectionId)
+        const currentParent = parentCollectionOf(collectionId)
         
         // Remove from current parent if exists
         if (currentParent) {
@@ -416,7 +283,7 @@ const writers = {
         }
         
         // Update display order
-        const displayOrder = getNextDisplayOrder(targetFolderId)
+        const displayOrder = nextDisplayOrder(targetFolderId)
         write(collectionId).set('displayOrder', displayOrder)
       }
     }
@@ -428,11 +295,11 @@ const writers = {
     parentId?: EARS.EntityId,
     id?: string,
   ): CollectionDTO {
-    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId<'Collection'> }) : create(EARS.Entity.Collection)
-    const collectionId = builder.id()
     const now = Date.now()
+    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId, createdAt: now }) : create(EARS.Entity.Collection, { createdAt: now })
+    const collectionId = builder.id()
 
-    const displayOrder = getNextDisplayOrder(parentId || null)
+    const displayOrder = nextDisplayOrder(parentId || null)
 
     builder.setMany({
       name,
@@ -445,7 +312,7 @@ const writers = {
       write(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }
 
-    const path = getCollectionPath(collectionId)
+    const path = collectionPath(collectionId)
 
     return {
       id: collectionId,
@@ -469,8 +336,8 @@ const writers = {
     write(collectionId).set('updatedAt', now)
 
     const col = query.ids(collectionId).pickAll()[0]
-    const colPath = getCollectionPath(collectionId)
-    const parentId = findParentCollection(collectionId) || undefined
+    const colPath = collectionPath(collectionId)
+    const parentId = parentCollectionOf(collectionId) || undefined
 
     return {
       id: collectionId,
@@ -487,8 +354,7 @@ const writers = {
   },
 
   updateDocumentTags(documentId: EARS.EntityId, tags: string[]): void {
-    write(documentId).set('tags', tags)
-    // write(documentId).set('updatedAt', Date.now())
+    documentRepository.update(documentId, { tags })
   }
 } as const
 

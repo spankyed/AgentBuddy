@@ -19,6 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as tar from 'tar';
 import { isDeepStrictEqual } from 'node:util';
+import { DECLARED_COMMANDS_KEY } from '@apackdev/sdk/framework';
 import { replaceDir } from '../replace-dir.ts';
 import { parseSnapshot, parseContentIndex, contentFile, CONTENT_INDEX_FILE, _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type ContentIndex, type PackManifest, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
 import type { PackRegistry } from './registry.ts';
@@ -245,6 +246,9 @@ function readCompiledContent(dir: string, manifest: PackManifest, integrity: Pac
     if (typeof entry === 'string' || entry.path !== undefined || entry.format !== undefined) expected.set(key, true);
   }
   for (const key of Object.keys(datasets)) expected.set(key, false);
+  // The commands in extensions.commands compile under a reserved key the pack declares no source for
+  if (manifest.extensions?.commands) expected.set(DECLARED_COMMANDS_KEY, true);
+
   for (const entry of index.entries) {
     if (!expected.has(entry.key)) throw new Error(`Content index for "${manifest.id}" includes undeclared compiled entry "${entry.key}"`);
     if (entry.written !== expected.get(entry.key)) throw new Error(`Content index for "${manifest.id}" has the wrong written policy for "${entry.key}"`);

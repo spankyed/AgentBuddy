@@ -7,7 +7,8 @@
 
 import { query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts'
-import { isRootCollection, findDocumentCollection } from './repository/helpers.ts'
+import { collectionOfDocument } from '@apackdev/sdk/repositories'
+import { isRootCollection } from './repository/helpers.ts'
 import { extractMediaRefs, copyMediaByRef } from '@apackdev/sdk/utils'
 import { createExportDir } from '@apackdev/sdk/utils'
 import type { ExportFormat } from './export-types.ts'
@@ -86,7 +87,7 @@ export function buildExportTree(): { items: ExportedItem[]; itemCount: number } 
   // Get root-level documents (not in any collection)
   const allDocuments = query(EARS.Entity.Document).pickAll()
   for (const doc of allDocuments) {
-    const collectionId = findDocumentCollection(doc.id as EARS.EntityId)
+    const collectionId = collectionOfDocument(doc.id as EARS.EntityId)
     if (!collectionId) {
       items.push({
         id: doc.id as string,

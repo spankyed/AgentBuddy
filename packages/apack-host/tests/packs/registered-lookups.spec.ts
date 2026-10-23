@@ -13,7 +13,6 @@ import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { blockRegistry } from '@apackdev/sdk/blocks';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
 import { getSettingsCatalog, onPackCatalogChanged, type PackRegistration } from '@apackdev/sdk/framework';
-import { getCommands } from '@apackdev/sdk/commands';
 import { importCompiledContent, type ContentApplier } from '@apackdev/sdk/utils';
 import { SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 
@@ -215,7 +214,7 @@ describe('appliers', () => {
 describe('captured contribution addresses', () => {
   it('reads a definition address once, captures data and preserves executable identity across removal', async () => {
     const { createPackRegistry } = await import('../../src/packs/registry.ts');
-    const isolated = createPackRegistry({ nativeDeclarations: [{ id: 'captured-address', features: { lib: { description: 'Holder.', designation: 'commands' } },
+    const isolated = createPackRegistry({ nativeDeclarations: [{ id: 'captured-address', features: { lib: { description: 'Holder.', designation: 'notebook' } },
       steps: { stuck: { node: { label: 'Stuck' } } } }] });
     const readType = vi.fn(() => {
       if (readType.mock.calls.length > 1) throw new Error('type cannot be read again');
@@ -223,7 +222,7 @@ describe('captured contribution addresses', () => {
     });
     const step: StepDefinition = { get type() { return readType(); }, kind: 'step', node: { label: 'Stuck' } };
     isolated.registerPack({ id: 'captured-address', steps: [step],
-      features: { lib: { designation: 'commands', getCommands: () => [{ name: 'leaves', placeholder: 'Cleanly' }] } } });
+      features: { lib: { designation: 'notebook' } } });
     const accepted = isolated.step('stuck');
     expect(accepted?.node?.label).toBe('Stuck');
     step.node!.label = 'Caller mutation';
@@ -235,7 +234,6 @@ describe('captured contribution addresses', () => {
     expect(readType).toHaveBeenCalledOnce();
     expect(isolated.getPackRegistration('captured-address')).toBeNull();
     expect(isolated.step('stuck')).toBeUndefined();
-    expect(isolated.commands()).toEqual([]);
     expect(() => isolated.unregisterPack('captured-address')).toThrow('is not registered');
   });
 });
@@ -310,7 +308,7 @@ describe('a pack whose registration is refused', () => {
       ears: { entities: { Note: 'Note' }, relKinds: {} },
       contentWriters: { Note: {} },
       appliers: [anApplier('notes')],
-      features: { notes: { designation: 'commands', getCommands: () => [{ name: 'standup', placeholder: 'Topic' }], surface: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
+      features: { notes: { designation: 'notebook', surface: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
     });
 
     // Every kind of its own, and the role the incumbent already plays — the candidate is refused atomically
@@ -322,7 +320,7 @@ describe('a pack whose registration is refused', () => {
       ears: { entities: { Card: 'Card' }, relKinds: {} },
       contentWriters: { Card: {} },
       appliers: [anApplier('cards')],
-      features: { cards: { designation: 'commands', getCommands: () => [{ name: 'standup', placeholder: 'Theirs' }], surface: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },
+      features: { cards: { designation: 'notebook', surface: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },
     })).toThrow('Designation collision');
 
     // Nothing of the refused pack survives
@@ -338,7 +336,6 @@ describe('a pack whose registration is refused', () => {
     expect(artifactRegistry.has('note-view')).toBe(true);
     expect(blockRegistry.has('note-block')).toBe(true);
     expect(_contentWriterRegistry.get('Note')).toBeDefined();
-    expect(getCommands().map((command) => command.name)).toEqual(['standup']);
     expect(getSettingsCatalog().features).toHaveProperty('incumbent/notes');
   });
 
@@ -405,21 +402,3 @@ describe('feature settings defaults', () => {
 
 });
 
-describe('commands', () => {
-  /**
-   * There is no order across packs to keep: one feature plays the role, so the list is whatever its
-   * provider returns. What a reload has to preserve is that the owner serves again after it returns —
-   * the case the old cross-pack ordering was really about.
-   */
-  it('are the designated owner\'s, and come back when it registers again', () => {
-    add({ id: 'owner-pack', features: { lib: { designation: 'commands', getCommands: () => [{ name: 'first', placeholder: 'A' }] } } });
-    add({ id: 'other-pack' });
-    expect(getCommands().map((command) => command.name)).toEqual(['first']);
-
-    remove('owner-pack');
-    expect(getCommands()).toEqual([]);
-
-    add({ id: 'owner-pack', features: { lib: { designation: 'commands', getCommands: () => [{ name: 'first', placeholder: 'A, rebuilt' }] } } });
-    expect(getCommands()).toEqual([{ name: 'first', placeholder: 'A, rebuilt' }]);
-  });
-});

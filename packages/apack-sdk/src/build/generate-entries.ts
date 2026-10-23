@@ -373,7 +373,6 @@ function toPascalCase(id: string): string {
 // collide with generated names (`specs`, `ref`, `<feature>Entry`).
 const systemBinding = (id: string) => `__system_${id}`;
 const surfaceBinding = (id: string) => `__surface_${id}`;
-const commandsBinding = (id: string) => `__getCommands_${id}`;
 
 export interface GenerateEntriesOptions {
   packRoot: string;
@@ -980,18 +979,6 @@ ${items.join('\n')}
       `import { ${exportName} as ${binding} } from '${toImportPath(root, source)}';`).join('\n');
 
     const writerEntries = contentWriterEntries();
-    /**
-     * Each feature's command provider, by feature id: `features.<id>.commands`, a `path#export` naming a
-     * function. The commands themselves are content, so the manifest says only where to ask, and it asks
-     * the feature — the app resolves the `commands` designation to a ref and calls that feature's, so one
-     * declared anywhere else is never reached. The manifest refuses that declaration rather than leaving
-     * it a silent no-op (`checkCommandProviderClaims`).
-     */
-    const commandProviders = Object.entries(manifest.features ?? {}).flatMap(([id, feature]) => {
-      if (!feature.getCommands) return [];
-      const { source, exportName } = valueExport(`The command provider for feature "${id}"`, feature.getCommands);
-      return [{ id, binding: commandsBinding(id), path: toImportPath(root, source), exportName }];
-    });
 
     const featuresLiteral = features.map(f => {
       const parts: string[] = [];
@@ -1001,8 +988,6 @@ ${items.join('\n')}
       parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       // JSON.parse preserves own __proto__ keys, which an object literal would treat as a prototype setter.
       if (f.settings) parts.push(`      settings: JSON.parse(${dataLiteral(JSON.stringify(f.settings))})`);
-      const provider = commandProviders.find(c => c.id === f.id);
-      if (provider) parts.push(`      getCommands: ${provider.binding}`);
       return `    '${f.id}': {\n${parts.join(',\n')},\n    }`;
     }).join(',\n');
     const blocks = blockDefinitions();
@@ -1033,7 +1018,6 @@ ${systemImports}
 import { featureServices, bindServices } from './services.ts';
 ${hooksImport}
 ${writerEntries.map(([, path, exportName], i) => `import { ${exportName} as __contentWriter_${i} } from '${path}';`).join('\n')}
-${commandProviders.map(c => `import { ${c.exportName} as ${c.binding} } from '${c.path}';`).join('\n')}
 ${migrations.imports.join('\n')}
 ${steps.imports.join('\n')}
 ${blocks.imports.join('\n')}
@@ -1920,6 +1904,17 @@ ${featureBindings.join('\n')}
     for (const [key, source] of Object.entries(resolvedContentSources())) {
       if (source.kind === 'applier') {
         packApplier(key, source.applier);
+        continue;
+      }
+
+      /**
+       * The declared commands apply as ordinary Document content, so removal, offers and the three-way
+       * merge are the machinery every other entry uses — there is no second path for a command.
+       */
+      if (source.kind === 'declared') {
+        applierImports.add('createFormatApplier');
+        const options = { key, entities: [SDK_ENTITIES.Document], identity: ['name'], ...(source.onUserEdit && { onUserEdit: source.onUserEdit }) };
+        registrations.push(`createFormatApplier(${dataLiteral(options)})`);
         continue;
       }
 

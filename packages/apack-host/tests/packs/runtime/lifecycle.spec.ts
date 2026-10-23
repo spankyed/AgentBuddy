@@ -225,7 +225,7 @@ describe('activating and tearing down a pack at runtime', () => {
       id: PACK_ID,
       name: 'Activate Pack',
       version: '1.0.0',
-      features: { main: { description: 'Feature declaration fixture.', designation: 'commands',
+      features: { main: { description: 'Feature declaration fixture.', designation: 'notebook',
         system: { entry: 'src/features/main/be/system.ts' } } },
       content: { sources: { memos: { applier: 'memos.ts' } } },
       migrations: { pack: { '1.0.0': { description: 'memos', up: 'migration.ts#up' } } },
@@ -235,7 +235,7 @@ describe('activating and tearing down a pack at runtime', () => {
     writeBuild(
       sourceDir,
       PACK_ID,
-      `{ main: { designation: 'commands', getCommands: () => [{ name: 'activate-memo', placeholder: 'Text' }], `
+      `{ main: { designation: 'notebook', `
         + `system: { machine: { id: 'activate-pack-system' }, receives: [] } } }, `
         + "appliers: [{ key: 'memos', apply: () => { globalThis.activatePackRuns.push('apply'); return { created: 1, updated: 0, skipped: 0 }; } }], "
         + "migrations: { pack: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }] }",
@@ -279,14 +279,12 @@ describe('activating and tearing down a pack at runtime', () => {
     expect(bus.send.mock.calls.map(([event]) => event.type)).not.toContain('ACTIVATE_PACK');
   });
 
-  it('registers the commands its manifest declares, and tells the running systems before starting its own', async () => {
+  it('tells the running systems before starting its own', async () => {
     await install();
     const { activatePack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    const { getCommands } = await import('@apackdev/sdk/commands');
 
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
 
-    expect(getCommands()).toEqual([{ name: 'activate-memo', placeholder: 'Text' }]);
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['PACK_CHANGED', 'ACTIVATE_PACK']);
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });
@@ -306,10 +304,9 @@ describe('activating and tearing down a pack at runtime', () => {
     expect(runs).toEqual(['migration', 'apply']);
   });
 
-  it('drops its commands and appliers when torn down, and tells the systems still running after stopping its own', async () => {
+  it('drops its appliers when torn down, and tells the systems still running after stopping its own', async () => {
     await install();
     const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    const { getCommands } = await import('@apackdev/sdk/commands');
     const { importCompiledContent } = await import('@apackdev/sdk/utils');
     activatePack(registry, PACK_ID, bus as never);
     const compiledDir = path.join(tmpDir, 'compiled-content');
@@ -321,7 +318,6 @@ describe('activating and tearing down a pack at runtime', () => {
 
     teardownPack(registry, PACK_ID, bus as never);
 
-    expect(getCommands()).toEqual([]);
     expect(importCompiledContent({ compiledDir })).toEqual({});
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED']);
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
