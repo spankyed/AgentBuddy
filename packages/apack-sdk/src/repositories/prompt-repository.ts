@@ -18,12 +18,12 @@ export interface PromptInput {
   contentHash?: string;
 }
 
-/** Reads and writes of prompts; deleted prompts stay stored, and reads leave them out */
+/** Reads and writes of prompts; trashed prompts stay stored, and reads leave them out */
 export const promptRepository = {
-  /** A prompt that isn't deleted */
+  /** A prompt that isn't in the trash */
   byId: (id: EARS.EntityId): PromptEntity | undefined => ears().findById<PromptEntity>(id) ?? undefined,
 
-  /** Every prompt that isn't deleted */
+  /** Every prompt that isn't in the trash */
   all: (): PromptEntity[] => ears().findAll<PromptEntity>(EARS.Entity.Prompt),
 
   byLabel: (label: string): PromptEntity | undefined => ears().findWhere<PromptEntity>(EARS.Entity.Prompt, 'label', label)[0],
@@ -42,7 +42,7 @@ export const promptRepository = {
 
   /** Moves a prompt to the trash; it stays stored */
   delete: (id: EARS.EntityId): void => {
-    if (!ears().findByIdRaw<PromptEntity>(id)) throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    if (!ears().query.withTrashed.ids(id).exists()) throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     trash.move([id]);
   },
 };

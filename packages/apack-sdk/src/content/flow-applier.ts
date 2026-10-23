@@ -31,7 +31,7 @@ type GraphState = [Array<[string, unknown]>, Array<[string, Array<[string, unkno
 
 /** An entity's content as stored now: every attribute but the four that say which or when */
 function contentOf(id: EARS.EntityId): Array<[string, unknown]> {
-  const row = ears().findByIdRaw(id) as Record<string, unknown> | null;
+  const row = ears().query.withTrashed.ids(id).pickAll()[0] as Record<string, unknown> | undefined;
   return Object.entries(row ?? {}).filter(([field]) => !ROW_KEYS.has(field)).sort(([a], [b]) => (a < b ? -1 : 1));
 }
 
@@ -138,7 +138,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
           ? [replacing.id, ...findRelations({ sourceEntity: replacing.id, relationType: EARS.RelKind.CONTAINS }).map((r) => r.targetEntity)]
           : []);
         const ids = (compileFlowDSL({ [name]: entry }, { actions: actionMap, prompts: promptMap }).entity as Array<{ id: string }>).map((row) => row.id);
-        const taken = ids.find((id) => !ownIds.has(id) && ears().findByIdRaw(id as EARS.EntityId));
+        const taken = ids.find((id) => !ownIds.has(id) && ears().query.withTrashed.ids(id as EARS.EntityId).exists());
         if (!taken) return undefined;
         const flowId = findRelations({ targetEntity: taken as EARS.EntityId, relationType: EARS.RelKind.CONTAINS })[0]?.sourceEntity ?? taken;
         const contentKey = ears().getAttr(flowId as EARS.EntityId, CONTENT_KEY) as string | null;

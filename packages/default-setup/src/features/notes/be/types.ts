@@ -23,8 +23,6 @@ export interface NoteEntity extends BaseEntity {
   label?: string;
   /** Hash of the content source at the last apply. Absent on user-created notes. */
   contentHash?: string;
-  deleted?: boolean;
-  deletedAt?: number;
 }
 
 export interface NoteDTO {
@@ -43,7 +41,8 @@ export interface NoteDTO {
   updatedAt: number;
   lastSeen: number;
   favorite: boolean;
-  deletedAt?: number;
+  /** When the note was put in the trash, for a note listed from there */
+  trashedAt?: number;
 }
 
 export type OutgoingNotesSearchEvent = { type: 'NOTES_SEARCH_RESULTS'; results: NoteDTO[] }

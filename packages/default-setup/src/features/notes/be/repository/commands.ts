@@ -1,4 +1,4 @@
-import { write, findById, findByIdRaw, query } from '#generated/ears.ts';
+import { write, findById, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { createRelation, removeRelation } from '@apackdev/sdk/ears';
@@ -186,12 +186,12 @@ export const noteCommands = {
   restore: (id: EARS.EntityId): string[] => {
     if (trash.restore([id]).length === 0) return [];
     const restoredIds: string[] = [id];
-    // If parent is still deleted, detach so note restores at root
-    const parentIds = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    // If parent is still in the trash, detach so note restores at root
+    const parentIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
     if (parentIds.length > 0 && trash.isTrashed(parentIds[0])) {
       removeRelation(parentIds[0], EARS.RelKind.CONTAINS, id);
     }
-    const childIds = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    const childIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const childId of childIds) {
       restoredIds.push(...noteCommands.restore(childId));
     }
@@ -296,19 +296,18 @@ export const noteCommands = {
   },
 
   delete: (id: EARS.EntityId): void => {
-    const existing = findByIdRaw<NoteEntity>(id);
-    if (!existing) {
+    if (!query.withTrashed.ids(id).exists()) {
       throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
 
-    // Recursively delete children first
-    const childIds = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    // Recursively delete children first; a note being deleted, and its family, are often in the trash
+    const childIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const childId of childIds) {
       noteCommands.delete(childId);
     }
 
     // Remove parent relationship (if any)
-    const parentIds = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const parentIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
     for (const parentId of parentIds) {
       removeRelation(parentId, EARS.RelKind.CONTAINS, id);
     }
@@ -320,7 +319,7 @@ export const noteCommands = {
     write(id).unlink(REFERENCES);
 
     // Clean up incoming REFERENCES (other notes pointing to this one)
-    const referencingIds = query.ids(id).linksTo(REFERENCES, EARS.Entity.Note, false).ids();
+    const referencingIds = query.withTrashed.ids(id).linksTo(REFERENCES, EARS.Entity.Note, false).ids();
     for (const refId of referencingIds) {
       removeRelation(refId, REFERENCES, id);
     }

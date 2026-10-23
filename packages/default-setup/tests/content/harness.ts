@@ -115,7 +115,7 @@ export function snapshot(): Snapshot {
   const rows = new Map<string, Record<string, unknown>>();
   const relations: Array<{ source: string; kind: string; target: string }> = [];
   for (const id of ids) {
-    const row = (query.ids(id as EARS.EntityId).pickAll() as Array<Record<string, unknown>>)[0];
+    const row = (query.withTrashed.ids(id as EARS.EntityId).pickAll() as Array<Record<string, unknown>>)[0];
     if (!row) continue;
     if (typeOf(id) === 'Relation') {
       const details = row.relationDetails as { sourceEntity: string; targetEntity: string; relationType: string } | undefined;

@@ -81,7 +81,7 @@ function contentNotes(
 /** Every Note row with this title, deleted ones included: a recreated note is a second id, not a changed row */
 function notesTitled(title: string): EARS.EntityId[] {
   return (entityIds() as EARS.EntityId[]).filter((id) => id.startsWith('Note-')
-    && (query.ids(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === title);
+    && (query.withTrashed.ids(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === title);
 }
 
 function notesOf(snap: Snapshot, { withHash = false } = {}) {
@@ -253,7 +253,7 @@ describe('notes applying (generic pipeline)', () => {
 
     const after = notesTitled('Welcome');
     expect(after, 'the apply created a second Welcome beside the deleted one').toEqual(welcome);
-    expect((query.ids(welcome[0]).pickAll() as Array<{ deleted?: boolean }>)[0]?.deleted, 'still the user\'s').toBe(true);
+    expect(trash.isTrashed(welcome[0]), 'still in the user\'s trash').toBe(true);
   });
 
   /**

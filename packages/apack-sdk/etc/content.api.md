@@ -22,9 +22,9 @@ export interface ContentEntity {
     // (undocumented)
     contentHash?: string;
     // (undocumented)
-    deleted?: boolean;
-    // (undocumented)
     id: EARS.EntityId;
+    // (undocumented)
+    trashedAt?: number;
 }
 
 // @public

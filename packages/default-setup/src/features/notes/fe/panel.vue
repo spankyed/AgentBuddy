@@ -91,7 +91,7 @@
         >
           <span v-if="note.icon" class="shrink-0 text-xs">{{ note.icon }}</span>
           <span class="truncate flex-1">{{ note.title || 'Untitled' }}</span>
-          <span class="shrink-0 text-[10px] text-neutral-600">{{ formatDeletedAge(note.deletedAt) }}</span>
+          <span class="shrink-0 text-[10px] text-neutral-600">{{ formatDeletedAge(note.trashedAt) }}</span>
           <div class="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 rounded"
@@ -459,9 +459,9 @@ function handleEmptyTrash() {
   actor.send({ type: 'NOTE.EMPTY_TRASH' })
 }
 
-function formatDeletedAge(deletedAt?: number): string {
-  if (!deletedAt) return ''
-  const days = Math.floor((Date.now() - deletedAt) / (1000 * 60 * 60 * 24))
+function formatDeletedAge(trashedAt?: number): string {
+  if (!trashedAt) return ''
+  const days = Math.floor((Date.now() - trashedAt) / (1000 * 60 * 60 * 24))
   if (days === 0) return 'today'
   if (days === 1) return '1 day ago'
   return `${days} days ago`

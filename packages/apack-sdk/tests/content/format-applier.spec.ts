@@ -197,7 +197,7 @@ describe('the applied content a run records', () => {
     const first = applyRecord();
     applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     const id = memo('Intro').id;
-    untypedWrite(id).set('deleted' as never, true);
+    untypedWrite(id).trash();
 
     const counts = offering.apply({
       compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]),
@@ -205,7 +205,7 @@ describe('the applied content a run records', () => {
     });
 
     expect(counts).toEqual({ created: 0, updated: 1, skipped: 0 });
-    expect(ears().getAttr(id, 'deleted' as never), 'out of the trash').toBeFalsy();
+    expect(ears().getAttr(id, 'trashedAt' as never), 'out of the trash').toBeFalsy();
     expect(ears().getAttr(id, 'body' as never)).toBe('Hello again');
   });
 
@@ -435,12 +435,12 @@ describe('content the pack has dropped', () => {
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
     const extraKey = [...first.written.keys()].find((key) => key.includes('Extra'))!;
     const extraId = memo('Extra').id;
-    untypedWrite(extraId).set('deleted' as never, true);
+    untypedWrite(extraId).trash();
 
     const second = after(first);
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
 
-    expect(ears().findByIdRaw(extraId), 'the trashed entity was destroyed').toBeTruthy();
+    expect(ears().query.withTrashed.ids(extraId).exists(), 'the trashed entity was destroyed').toBeTruthy();
     expect([...second.removed], 'and the entry goes, so nothing recomputes the removal').toEqual([extraKey]);
   });
 
@@ -678,7 +678,7 @@ describe("a folder another pack written", () => {
     applyOffering(emptied, second);
 
     expect(memo('guide.md').body, 'the item the user rewrote').toBe('mine');
-    expect(ears().findByIdRaw(folderId), 'the folder it is in went with the content').toBeTruthy();
+    expect(ears().query.withTrashed.ids(folderId).exists(), 'the folder it is in went with the content').toBeTruthy();
     expect(contents(folders()[0]), "the sibling nobody touched is gone, and the edited one isn't").toEqual(['guide.md']);
     expect([...second.offers.keys()].map((key) => key.includes('guide')), 'the edited item is offered').toEqual([true]);
   });
@@ -688,7 +688,7 @@ describe("a folder another pack written", () => {
     registerHooks('Folder', { container: false });
     const first = applyRecord();
     apply(tree('pack-a', ['welcome.md', 'guide.md']), first);
-    untypedWrite(folders()[0].id).set('deleted' as never, true);
+    untypedWrite(folders()[0].id).trash();
 
     const second = after(first);
     apply(tree('pack-a', ['welcome.md', 'guide.md']), second);

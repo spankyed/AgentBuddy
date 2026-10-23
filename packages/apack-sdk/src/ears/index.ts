@@ -40,12 +40,23 @@ export function boundEars(): Ears {
 const onBound = <K extends keyof Ears>(name: K) =>
   ((...args: unknown[]) => (boundEars()[name] as (...a: unknown[]) => unknown)(...args)) as unknown as Ears[K];
 
-/** The unchecked query entry points on the bound engine: `untypedQuery(type)`, `.ids(ids)`, `.all()` */
+/**
+ * The unchecked query entry points on the bound engine: `untypedQuery(type)`, `.ids(ids)`, `.all()`, which reach no
+ * entity in the trash, `.withTrashed` reaching those too, and `.trashed(type)`
+ */
 export const untypedQuery: Query = Object.assign(
   ((start: unknown) => boundEars().query(start as never)) as unknown as Query,
   {
     ids: ((ids) => boundEars().query.ids(ids)) as Query['ids'],
     all: (() => boundEars().query.all()) as Query['all'],
+    withTrashed: Object.assign(
+      ((start: unknown) => boundEars().query.withTrashed(start as never)) as unknown as Query['withTrashed'],
+      {
+        ids: ((ids) => boundEars().query.withTrashed.ids(ids)) as Query['ids'],
+        all: (() => boundEars().query.withTrashed.all()) as Query['all'],
+      },
+    ),
+    trashed: ((type) => boundEars().query.trashed(type)) as Query['trashed'],
   },
 );
 /** `create` on the bound engine, unchecked against any pack's shapes */

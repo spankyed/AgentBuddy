@@ -17,12 +17,12 @@ export interface ActionInput {
   contentHash?: string;
 }
 
-/** Reads and writes of actions; deleted actions stay stored, and reads leave them out */
+/** Reads and writes of actions; trashed actions stay stored, and reads leave them out */
 export const actionRepository = {
-  /** An action that isn't deleted */
+  /** An action that isn't in the trash */
   byId: (id: EARS.EntityId): ActionEntity | undefined => ears().findById<ActionEntity>(id) ?? undefined,
 
-  /** Every action that isn't deleted */
+  /** Every action that isn't in the trash */
   all: (): ActionEntity[] => ears().findAll<ActionEntity>(EARS.Entity.Action),
 
   byLabel: (label: string): ActionEntity | undefined => ears().findWhere<ActionEntity>(EARS.Entity.Action, 'label', label)[0],
@@ -41,7 +41,7 @@ export const actionRepository = {
 
   /** Moves an action to the trash; it stays stored */
   delete: (id: EARS.EntityId): void => {
-    if (!ears().findByIdRaw<ActionEntity>(id)) throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    if (!ears().query.withTrashed.ids(id).exists()) throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     trash.move([id]);
   },
 };

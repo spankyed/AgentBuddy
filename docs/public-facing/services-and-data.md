@@ -382,7 +382,7 @@ A role is a string tag on an entity (`EARS.RoleKind` is a `string`; `EARS.RoleKi
 | `write(id).grant(role)` / `.revoke(role)` | `#generated/ears` | Adds / removes the role; no-op when already there / absent |
 | `write(id).grantExclusive(role, among)` | `#generated/ears` | Makes `id` the only holder among `among`: revokes the role from each of them, then grants it |
 | `query(type).withRole(role)` | `#generated/ears` | Narrows a query to holders |
-| `findWithRole(type, role)` / `findFirstWithRole(type, role)` | `#generated/ears` | Typed rows holding the role, soft-deleted rows (`deleted: true`) left out |
+| `findWithRole(type, role)` / `findFirstWithRole(type, role)` | `#generated/ears` | Typed rows holding the role, rows in the trash left out |
 | `grantRole(id, role)` / `revokeRole(id, role)` | `@apackdev/sdk/ears` | Direct attribute writes; `grantRole` doesn't check for a duplicate |
 | `getRoles(id)` | `@apackdev/sdk/ears` | The entity's roles, `string[]` |
 
@@ -397,8 +397,8 @@ From `@apackdev/sdk/ears` (untyped, on the app's engine):
 | `removeRelation(sourceId, kind, targetId?)` | Removes that relation; without `targetId`, every `kind` relation from the source |
 | `removeRelationById(relationId)` | Removes one relation by id (from `findRelations`) |
 | `destroyEntity(id)` | Hard-deletes the entity: its attributes and every relation to or from it |
-| `exists(id)` | Whether any row has the id (soft-deleted rows included) |
-| `countEntities(entityType)` | Rows of the type, soft-deleted rows left out |
+| `exists(id)` | Whether a row outside the trash has the id |
+| `countEntities(entityType)` | Rows of the type, rows in the trash left out |
 | `isEntityType(name)` | Whether the running app has registered the entity type: the SDK's and every registered pack's |
 
 ### Blueprints
@@ -471,9 +471,20 @@ import { repository } from '#generated/repository.ts';
 repository.bookmarkCommands.create({ url, title });
 ```
 
-### Trash (soft delete)
+### Trash
 
-`trash` from `@apackdev/sdk/repositories` moves entities of any type to a trash instead of deleting them. A trashed entity stays stored, marked `deleted: true` with the time it was trashed (`deletedAt`); the `find*` helpers leave it out, and `findByIdRaw` still reads it.
+The engine has a trash. `write(id).trash()` puts an entity in it: it stays stored, with its edges, marked with when
+it was trashed (`trashedAt`, an attribute only the engine writes), and **no query reaches it** — not `query(type)`,
+`query.ids`, `query.all`, a link's far end (`linksTo`, `links`, `linksPick`) or the `find*` helpers. A write still
+reaches it, so `write(id).restore()` takes it out. Two entry points read the trash:
+
+```typescript
+query.withTrashed('Bookmark').ids();             // every bookmark, trashed ones included (also .ids, .all)
+query.withTrashed.ids(id).linksTo('contains');   // a trashed entity's children, themselves trashed or not
+query.trashed('Bookmark').pickAll();             // only the trashed ones, each with its trashedAt
+```
+
+`trash` from `@apackdev/sdk/repositories` moves several entities at once and stamps `updatedAt`:
 
 ```typescript
 import { trash } from '@apackdev/sdk/repositories';
@@ -481,11 +492,11 @@ import { trash } from '@apackdev/sdk/repositories';
 trash.move([bookmarkId]);                        // the ids it moved (not missing or already trashed ones)
 trash.list<Bookmark>('Bookmark');                // the trashed bookmarks
 trash.olderThan<Bookmark>('Bookmark', 7 * 24 * 60 * 60 * 1000);  // trashed more than 7 days ago
-trash.restore([bookmarkId]);                     // removes both marks
+trash.restore([bookmarkId]);
 trash.isTrashed(bookmarkId);
 ```
 
-What trashing means beyond the marks stays with your feature: trashing an entity's children with it, or emptying the trash by deleting the entities (`write(id).destroy()`).
+What trashing means beyond the mark stays with your feature: trashing an entity's children with it, or emptying the trash by deleting the entities (`write(id).destroy()`).
 
 ### Engine instances
 
@@ -528,11 +539,10 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
-`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findByIdRaw`, `findAll`, `findWhere`, `findFirst`,
+`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findAll`, `findWhere`, `findFirst`,
 `findWithFields`, `findByIdWithFields`, `findWithRole`, `findFirstWithRole`, `createEntity`,
 `createEntityWithDefaults`, `updateEntity` and `getAttr`. `@apackdev/ears` exports the
-writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out soft-deleted rows (`deleted: true`), except
-`findByIdRaw`. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
+writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out rows in the trash, as every query does. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's
 declared shapes), `PackShapes` (the SDK's, the dependencies' and this pack's), `EntityName`, and
 `AllEntities` (the `EARS.Entity` map). Queries written with a declared entity type are checked
@@ -580,7 +590,7 @@ openBookmark(tagId);           // compile error: an EARS.EntityId<'Tag'>
 `apack pack build` lists your entities without a shape, whose fields read as `unknown` values.
 
 Declare every attribute you actually write. A field written at runtime but missing from
-the interface (a soft-delete marker, say) becomes a compile error at its read sites.
+the interface (a status flag, say) becomes a compile error at its read sites.
 
 ### Entity names
 

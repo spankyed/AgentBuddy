@@ -83,7 +83,7 @@ describe.each(CASES)('exporting $name', (testCase) => {
   it('strips internal fields', () => {
     testCase.apply();
     for (const item of read(testCase.run(tmpDir).filePath)) {
-      for (const field of ['id', 'entityType', 'createdAt', 'updatedAt', 'deleted', 'deletedAt']) {
+      for (const field of ['id', 'entityType', 'createdAt', 'updatedAt', 'trashedAt']) {
         expect(item).not.toHaveProperty(field);
       }
     }

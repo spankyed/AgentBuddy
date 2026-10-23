@@ -92,7 +92,7 @@ export async function action(
     const threadData = services.repository.chatQueries.threadData(threadId as any);
     const messages = threadData?.messages ?? [];
     const lastAssistant = [...messages].reverse().find(
-      (m: any) => m.sender !== 'user' && m.text && !m.compacted && !m.deleted,
+      (m: any) => m.sender !== 'user' && m.text && !m.compacted,
     );
     const goalMet = lastAssistant?.text ? /\bGOAL_MET\b/.test(lastAssistant.text) : false;
 
