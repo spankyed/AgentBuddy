@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { create, write, findById, query } from '#generated/ears.ts';
+import { create, write, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
@@ -36,8 +36,8 @@ function findArtifactByThreadAndType(
 
 // Queries
 export const threadQueries = {
-  byId: (id: EARS.EntityId) => 
-    findById<ThreadEntity>(id),
+  byId: (id: EARS.EntityId): ThreadEntity | undefined =>
+    query.ids(id).ofType(EARS.Entity.Thread).pickOne() ?? undefined,
   
   all: (): ThreadEntity[] =>
     query(EARS.Entity.Thread).pickAll().filter(t => !t.archived),
@@ -164,7 +164,8 @@ export const threadCommands = {
     const ts = Date.now();
 
     const status = input.status || featureSettings.forFeature('threads').get()?.statuses[0]?.label || '';
-    const id = create(EARS.Entity.Thread, {
+    // `create` numbers its short code
+    const { id, shortCode } = create(EARS.Entity.Thread, {
       ...(input.id ? { id: input.id as EARS.EntityId<'Thread'> } : {}),
       createdAt: input.createdAt ?? ts,
       status,
@@ -175,7 +176,7 @@ export const threadCommands = {
       tags: input.tags || [],  // Store tags as array of names
       ...(input.forcedMode && { forcedMode: input.forcedMode }),  // Set forced mode if provided
       ...(input.pinned && { pinned: input.pinned })
-    }).id();
+    }).row();
 
     // Grant role if provided
     if (input.role) {
@@ -185,8 +186,7 @@ export const threadCommands = {
     // Create relationships for linked threads only
     linkThreads(id, input.linkedThreads ?? []);
 
-    // `create` numbered its short code
-    return { id, shortCode: findById<ThreadEntity>(id)!.shortCode, timestamp: ts, status };
+    return { id, shortCode, timestamp: ts, status };
   },
   
   update: (id: EARS.EntityId, updates: {

@@ -4,7 +4,7 @@
  */
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  findById, query, write, create, getAttr
+  query, write, create, getAttr
 } from '#generated/ears.ts';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { EARS } from '#generated/ears.ts';
@@ -22,31 +22,31 @@ describe('Tier 1 — EARS delegates', () => {
   });
 
   it('create numbers an Action with its short code', () => {
-    const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'SDK Test', actionFn: 'noop()' }).id())!;
+    const entity = create(EARS.Entity.Action, { input: {}, label: 'SDK Test', actionFn: 'noop()' }).row();
     expect(entity.id).toMatch(/^Action-/);
     expect(entity.label).toBe('SDK Test');
     expect(entity.shortCode).toMatch(/^ACT-/);
     expect(entity.createdAt).toBeTypeOf('number');
   });
 
-  it('findById and queries by type and by a field read the row back', () => {
-    const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'Findable', actionFn: 'fn()', category: 'test' }).id())!;
+  it('a row by id, by type and by a field reads back', () => {
+    const entity = create(EARS.Entity.Action, { input: {}, label: 'Findable', actionFn: 'fn()', category: 'test' }).row();
 
-    expect(findById(entity.id)).toBeDefined();
+    expect(query.ids(entity.id).pickOne()).toBeDefined();
     expect(query(EARS.Entity.Action as any).pickAll().length).toBe(1);
     expect(query(EARS.Entity.Action as any).where('category', 'test').pickAll().length).toBe(1);
   });
 
-  it('query.withTrashed reaches an entity in the trash, which findById does not', () => {
-    const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'ToDelete', actionFn: 'fn()' }).id())!;
+  it('query.withTrashed reaches an entity in the trash, which a plain query does not', () => {
+    const entity = create(EARS.Entity.Action, { input: {}, label: 'ToDelete', actionFn: 'fn()' }).row();
     write(entity.id).trash(5);
 
-    expect(findById(entity.id)).toBeUndefined();
+    expect(query.ids(entity.id).pickOne()).toBeNull();
     expect(query.withTrashed.ids(entity.id).pickOne(['trashedAt'])?.trashedAt).toBe(5);
   });
 
   it('query.ids(id).exists() answers for existing entities', () => {
-    const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'Exists', actionFn: 'fn()' }).id())!;
+    const entity = create(EARS.Entity.Action, { input: {}, label: 'Exists', actionFn: 'fn()' }).row();
     expect(query.ids(entity.id).exists()).toBe(true);
     expect(query.ids('Action-nonexistent' as any).exists()).toBe(false);
   });

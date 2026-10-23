@@ -21,7 +21,7 @@ export interface PromptInput {
 /** Reads and writes of prompts; trashed prompts stay stored, and reads leave them out */
 export const promptRepository = {
   /** A prompt that isn't in the trash */
-  byId: (id: EARS.EntityId): PromptEntity | undefined => ears().findById<PromptEntity>(id) ?? undefined,
+  byId: (id: EARS.EntityId): PromptEntity | undefined => sdkEntities.query.ids(id).ofType(EARS.Entity.Prompt).pickOne() ?? undefined,
 
   /** Every prompt that isn't in the trash */
   all: (): PromptEntity[] => sdkEntities.query(EARS.Entity.Prompt).pickAll(),
@@ -33,8 +33,7 @@ export const promptRepository = {
     if (!data.label?.trim()) throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
     if (!data.templateFn?.trim()) throw new RepositoryError('Template is required', RepositoryErrorCode.VALIDATION_ERROR);
     // `create` numbers its short code
-    const id = ears().create(EARS.Entity.Prompt, { ...data, inputs: data.inputs || {} }).id();
-    return ears().findById<PromptEntity>(id)!;
+    return sdkEntities.create(EARS.Entity.Prompt, { ...data, inputs: data.inputs || {} }).row();
   },
 
   update: (id: EARS.EntityId, updates: Partial<PromptInput>): void => {

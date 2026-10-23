@@ -1,4 +1,4 @@
-import { create, write, findById, getAttr, query } from '#generated/ears.ts';
+import { create, write, query, getAttr } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 
@@ -7,7 +7,7 @@ import type { NoteEntity } from '#features/notes/be/types.ts';
 
 /** Strips the sub-document link to a note from its parent's content */
 function removeParentLink(parentId: EARS.EntityId, id: EARS.EntityId): void {
-  const parent = findById<NoteEntity>(parentId);
+  const parent = query.ids(parentId).ofType(EARS.Entity.Note).pickOne();
   if (parent?.content) {
     const escaped = (id as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const documentPattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(document:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
@@ -20,9 +20,9 @@ function removeParentLink(parentId: EARS.EntityId, id: EARS.EntityId): void {
 
 /** Appends a sub-document link to a note to its parent's content; tasks get none */
 function appendParentLink(parentId: EARS.EntityId, id: EARS.EntityId, noteType: string): void {
-  const parent = findById<NoteEntity>(parentId);
+  const parent = query.ids(parentId).ofType(EARS.Entity.Note).pickOne();
   if (parent && noteType !== 'task') {
-    const title = findById<NoteEntity>(id)?.title ?? 'Untitled';
+    const title = query.ids(id).ofType(EARS.Entity.Note).pickOne()?.title ?? 'Untitled';
     const linkMarkdown = `\n\n[${title}](document://${id})`;
     write(parentId).setMany({ content: (parent.content || '') + linkMarkdown });
   }
@@ -84,14 +84,14 @@ export const noteCommands = {
           });
 
       for (const sid of siblingIds) {
-        const sib = findById<NoteEntity>(sid as EARS.EntityId);
+        const sib = query.ids(sid as EARS.EntityId).ofType(EARS.Entity.Note).pickOne();
         if (sib && sib.displayOrder >= displayOrder) {
           write(sib.id).setMany({ displayOrder: sib.displayOrder + 1 });
         }
       }
     }
 
-    const noteId = create(EARS.Entity.Note, {
+    const note = create(EARS.Entity.Note, {
       title: input.title,
       content: input.content || '',
       icon: input.icon ?? null,
@@ -101,8 +101,7 @@ export const noteCommands = {
       displayOrder,
       lastSeen: 0,
       ...(input.id && { id: input.id as EARS.EntityId<'Note'> }),
-    }).id();
-    const note = findById<NoteEntity>(noteId)!;
+    }).row();
 
     // Create parent-child relationship
     if (input.parentId) {
@@ -130,7 +129,7 @@ export const noteCommands = {
     favorite?: boolean;
     noteType?: 'document' | 'tasklist' | 'task';
   }, skipTimestamp?: boolean): void => {
-    const existing = findById<NoteEntity>(id);
+    const existing = query.ids(id).ofType(EARS.Entity.Note).pickOne();
     if (!existing) {
       throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
@@ -166,7 +165,7 @@ export const noteCommands = {
 
   /** Moves a note and its sub-notes to the trash; returns the ids moved */
   softDelete: (id: EARS.EntityId): string[] => {
-    if (!findById<NoteEntity>(id)) return [];
+    if (!query.ids(id).ofType(EARS.Entity.Note).pickOne()) return [];
     const subtree = (noteId: EARS.EntityId): EARS.EntityId[] =>
       [noteId, ...query.ids(noteId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().flatMap(subtree)];
     // A note in the trash takes its sub-notes with it; any already there keep when they went
@@ -193,7 +192,7 @@ export const noteCommands = {
   },
 
   move: (id: EARS.EntityId, newParentId: EARS.EntityId | null): { oldParentId: string | null } => {
-    const note = findById<NoteEntity>(id);
+    const note = query.ids(id).ofType(EARS.Entity.Note).pickOne();
     if (!note) {
       throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
@@ -225,7 +224,7 @@ export const noteCommands = {
   },
 
   reorder: (id: EARS.EntityId, newParentId: EARS.EntityId | null, newIndex: number): { oldParentId: string | null; affectedIds: string[] } => {
-    const note = findById<NoteEntity>(id);
+    const note = query.ids(id).ofType(EARS.Entity.Note).pickOne();
     if (!note) {
       throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
@@ -250,7 +249,7 @@ export const noteCommands = {
         });
 
     const siblings = siblingIds
-      .map(sid => findById<NoteEntity>(sid as EARS.EntityId))
+      .map(sid => query.ids(sid as EARS.EntityId).ofType(EARS.Entity.Note).pickOne())
       .filter((n): n is NoteEntity => n !== undefined)
       .sort((a, b) => a.displayOrder - b.displayOrder);
 
@@ -274,7 +273,7 @@ export const noteCommands = {
     if (parentChanged && oldParentId) {
       const oldSiblingIds = query.ids(oldParentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
       const oldSiblings = oldSiblingIds
-        .map(sid => findById<NoteEntity>(sid as EARS.EntityId))
+        .map(sid => query.ids(sid as EARS.EntityId).ofType(EARS.Entity.Note).pickOne())
         .filter((n): n is NoteEntity => n !== undefined)
         .sort((a, b) => a.displayOrder - b.displayOrder);
       for (let i = 0; i < oldSiblings.length; i++) {

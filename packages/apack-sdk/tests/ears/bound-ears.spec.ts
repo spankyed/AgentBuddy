@@ -49,7 +49,7 @@ describe('_bindEars', () => {
 
     _bindEars(first);
     expect(defineEars<{ Note: { title: string } }, 'Note'>(boundEars).query('Note').pickAll().map((row) => row.title)).toEqual(['first']);
-    expect(first.findById(id)).toMatchObject({ title: 'first' });
+    expect(first.query.ids(id).pickOne()).toMatchObject({ title: 'first' });
   });
 
   it('reads the bound engine\'s repositories through repository', () => {

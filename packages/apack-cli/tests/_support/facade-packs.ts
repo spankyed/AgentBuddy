@@ -152,7 +152,7 @@ const APP_PACK = {
 };
 
 const CONSUMER = `
-import { EARS as PackEARS, query, create, upsert, write, findById, newId, type EntityShape, type EntityName } from '#generated/ears.ts';
+import { EARS as PackEARS, query, create, upsert, write, newId, type EntityShape, type EntityName } from '#generated/ears.ts';
 import { broadcastToSurface, sendToSystem } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
@@ -162,7 +162,7 @@ type Expect<T extends true> = T;
 type Equal<A, B> = (<X>() => X extends A ? 1 : 2) extends (<X>() => X extends B ? 1 : 2) ? true : false;
 
 declare const memoId: EARS.EntityId<'Memo'>;
-const memo = findById(memoId)!;
+const memo = query.ids(memoId).pickOne()!;
 export type OwnField = Expect<Equal<typeof memo.text, string>>;
 export type NotAny = Expect<Equal<IsAny<typeof memo.pinned>, false>>;
 
@@ -250,7 +250,10 @@ newId('Nope');
 // Ids from queries and rows carry their entity type, so the next lookup is typed
 const firstMemo = query('Memo').first()!;
 export type QueryIdTagged = Expect<Equal<typeof firstMemo, EARS.EntityId<'Memo'>>>;
-const memoFromQuery = findById(firstMemo)!;
+const memoFromQuery = query.ids(firstMemo).pickOne()!;
+// And a created row, read back from its write
+const created = create('Memo', { text: 'x', pinned: false }).row();
+export type CreatedRow = Expect<Equal<typeof created.text, string>>;
 export type LookupFromQueryId = Expect<Equal<typeof memoFromQuery.text, string>>;
 export type RowIdTagged = Expect<Equal<(typeof tags)[number]['id'], EARS.EntityId<'Tag'>>>;
 // A plain id is accepted where a tagged one is expected; another entity's id is not

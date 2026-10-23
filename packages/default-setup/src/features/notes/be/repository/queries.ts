@@ -1,4 +1,4 @@
-import { findById, query } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { ancestors } from '@apackdev/sdk/ears';
 
@@ -34,11 +34,11 @@ function toDTO(note: NoteEntity): NoteDTO {
 }
 
 export const noteQueries = {
-  byId: (id: EARS.EntityId) =>
-    findById<NoteEntity>(id),
+  byId: (id: EARS.EntityId): NoteEntity | undefined =>
+    query.ids(id).ofType(EARS.Entity.Note).pickOne() ?? undefined,
 
   byIdDTO: (id: EARS.EntityId): NoteDTO | undefined => {
-    const note = findById<NoteEntity>(id);
+    const note = query.ids(id).ofType(EARS.Entity.Note).pickOne();
     return note ? toDTO(note) : undefined;
   },
 
@@ -53,7 +53,7 @@ export const noteQueries = {
   children: (parentId: EARS.EntityId): NoteDTO[] => {
     const childIds = query.ids(parentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     return childIds
-      .map(id => findById<NoteEntity>(id))
+      .map(id => query.ids(id).ofType(EARS.Entity.Note).pickOne())
       .filter((n): n is NoteEntity => n !== undefined)
       .map(toDTO);
   },
@@ -62,7 +62,7 @@ export const noteQueries = {
   ancestorChain: (noteId: EARS.EntityId): NoteDTO[] =>
     ancestors(noteId, EARS.RelKind.CONTAINS)
       .reverse()
-      .map(id => findById<NoteEntity>(id))
+      .map(id => query.ids(id).ofType(EARS.Entity.Note).pickOne())
       .filter((n): n is NoteEntity => n !== undefined)
       .map(toDTO),
 

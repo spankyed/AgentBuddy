@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@apackdev/testing/harness'
 import { startTestRuntime } from '@apackdev/sdk/testing'
 import { create, on, update } from '#generated/flow-helpers.ts'
-import { query, findById, type EARS } from '#generated/ears.ts'
+import { query, type EARS } from '#generated/ears.ts'
 import { repository } from '#generated/repository.ts'
 import { noteRow } from '../../_support/rows.ts'
 import * as createCompiler from '#extensions/steps/create/build.ts'
@@ -28,7 +28,7 @@ describe('create step', () => {
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['add', 'completed']])
     const created = result(run.steps[0])
     expect(created).toMatchObject({ entityType: 'Note', title: 'Groceries', content: 'body', favorite: false, label: 'Groceries' })
-    expect(findById(created.id as EARS.EntityId<'Note'>)).toMatchObject({ title: 'Groceries', content: 'body', label: 'Groceries' })
+    expect(query.ids(created.id as EARS.EntityId<'Note'>).pickOne()).toMatchObject({ title: 'Groceries', content: 'body', label: 'Groceries' })
   })
 
   it("doesn't label the entity from its title when inferLabel is false", async () => {
@@ -85,7 +85,7 @@ describe('update step', () => {
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['add', 'completed'], ['change', 'completed']])
     const id = result(run.steps[0]).id as EARS.EntityId<'Note'>
     expect(result(run.steps[1])).toMatchObject({ id, updated: true, content: 'Groceries', favorite: true })
-    expect(findById(id)).toMatchObject({ title: 'Groceries', content: 'Groceries', favorite: true })
+    expect(query.ids(id).pickOne()).toMatchObject({ title: 'Groceries', content: 'Groceries', favorite: true })
   })
 
   it('updates an entity by a literal id', async () => {
@@ -95,7 +95,7 @@ describe('update step', () => {
 
     await app.runFlow('Notes', { event: 'edit' })
 
-    expect(findById(note)).toMatchObject({ content: 'changed' })
+    expect(query.ids(note).pickOne()).toMatchObject({ content: 'changed' })
   })
 
   describe('onMissing', () => {
@@ -122,7 +122,7 @@ describe('update step', () => {
       expect(run.steps.map((s) => s.status)).toEqual(['completed'])
       const row = result(run.steps[0])
       expect(row).toMatchObject({ entityType: 'Note', title: 'Made', updated: false, created: true })
-      expect(findById(row.id as EARS.EntityId<'Note'>)).toMatchObject({ title: 'Made' })
+      expect(query.ids(row.id as EARS.EntityId<'Note'>).pickOne()).toMatchObject({ title: 'Made' })
     })
   })
 })

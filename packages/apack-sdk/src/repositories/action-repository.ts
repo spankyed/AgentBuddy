@@ -20,7 +20,7 @@ export interface ActionInput {
 /** Reads and writes of actions; trashed actions stay stored, and reads leave them out */
 export const actionRepository = {
   /** An action that isn't in the trash */
-  byId: (id: EARS.EntityId): ActionEntity | undefined => ears().findById<ActionEntity>(id) ?? undefined,
+  byId: (id: EARS.EntityId): ActionEntity | undefined => sdkEntities.query.ids(id).ofType(EARS.Entity.Action).pickOne() ?? undefined,
 
   /** Every action that isn't in the trash */
   all: (): ActionEntity[] => sdkEntities.query(EARS.Entity.Action).pickAll(),
@@ -32,8 +32,7 @@ export const actionRepository = {
     if (!data.label?.trim()) throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
     if (!data.actionFn?.trim()) throw new RepositoryError('Action function is required', RepositoryErrorCode.VALIDATION_ERROR);
     // `create` numbers its short code
-    const id = ears().create(EARS.Entity.Action, { ...data, input: data.input || {} }).id();
-    return ears().findById<ActionEntity>(id)!;
+    return sdkEntities.create(EARS.Entity.Action, { ...data, input: data.input || {} }).row();
   },
 
   update: (id: EARS.EntityId, updates: Partial<ActionInput>): void => {

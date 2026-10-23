@@ -7,5 +7,5 @@ import { procedure, router } from './trpc';
 export const entitiesRouter = router({
   exists: procedure.input(z.object({ id: z.custom<EARS.EntityId>(value =>
     typeof value === 'string' && value.includes('-'), 'Expected an entity ID') }))
-    .query(({ input }) => boundEars().findById(input.id) !== undefined),
+    .query(({ input }) => boundEars().query.ids(input.id).exists()),
 });
