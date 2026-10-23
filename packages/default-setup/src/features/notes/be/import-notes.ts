@@ -23,7 +23,7 @@ interface ImportResult {
  * Find an existing note by title within a given parent (or at root level).
  */
 function findExistingNote(title: string, parentId: string | undefined): NoteEntity | undefined {
-  const candidates = findWhere<NoteEntity>(EARS.Entity.Note, 'title', title)
+  const candidates = findWhere(EARS.Entity.Note, 'title', title)
   return candidates.find(note => {
     const parents = query.ids(note.id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
     const noteParentId = parents.length > 0 ? parents[0] : undefined

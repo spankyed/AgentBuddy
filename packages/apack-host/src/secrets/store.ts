@@ -218,9 +218,9 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
     add(provider, label, value) {
       const file = read();
       const id = `Secret-${crypto.randomUUID()}`;
-      const withMeta = _secretRules.add(file.secrets, { id, provider, label, createdAt: now(), value: undefined as never });
-      const encrypted = encrypt(file, id, provider, value);
-      file.secrets = withMeta.map((secret) => secret.id === id ? { ...secret, value: encrypted } : secret);
+      // The label is checked before a value is encrypted, so a refused one creates no data key
+      const added = _secretRules.add(file.secrets.map(_toSecretMetadata), { id, provider, label, createdAt: now() }).at(-1)!;
+      file.secrets = [...file.secrets, { ...added, value: encrypt(file, id, provider, value) }];
       write(file);
       return _toSecretMetadata(file.secrets.find((secret) => secret.id === id)!);
     },

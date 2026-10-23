@@ -47,7 +47,7 @@ const ENGINE_FIELDS: ReadonlySet<string> = new Set(RESERVED_ATTRIBUTES);
 function writeDeclared(row: { id: EARS.EntityId; entityType: string } & Record<string, unknown>): void {
   const { id, entityType, createdAt, ...fields } = row;
   if (!query.ids(id).exists()) {
-    untypedCreate(entityType as never, { id, createdAt: createdAt as number | undefined }).setMany(fields);
+    untypedCreate(entityType, { id, createdAt: createdAt as number | undefined }).setMany(fields);
     return;
   }
   const current: Record<string, unknown> = getRow(id) ?? {};

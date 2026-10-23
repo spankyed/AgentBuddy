@@ -13,8 +13,7 @@ export const actionQueries = {
   all: actionRepository.all,
   byLabel: actionRepository.byLabel,
 
-  byCategory: (category: string) =>
-    findWhere<ActionEntity>(EARS.Entity.Action, 'category', category),
+  byCategory: (category: string): ActionEntity[] => findWhere(EARS.Entity.Action, 'category', category),
 
   // Simple pagination
   paginated: (page = 1, pageSize = 20) => {

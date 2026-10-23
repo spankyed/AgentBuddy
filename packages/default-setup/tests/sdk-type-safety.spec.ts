@@ -75,6 +75,13 @@ describe('Type inference — typed EARS helpers', () => {
     // Wrapped in functions: only their types are checked
     expectTypeOf(() => findAll(EARS.Entity.Prompt)[0].templateFn).returns.toEqualTypeOf<string>();
     expectTypeOf(() => findWhere(EARS.Entity.Thread, 'status', 'active')[0].topic).returns.toEqualTypeOf<string>();
+    const check = () => {
+      // @ts-expect-error not a field of Thread
+      findWhere(EARS.Entity.Thread, 'statsu', 'active');
+      // @ts-expect-error a field's value is checked as where checks it
+      findWhere(EARS.Entity.Thread, 'topic', 42);
+    };
+    expectTypeOf(check).toBeFunction();
   });
 
   it('createEntityWithDefaults returns the declared shape with the created fields', () => {
@@ -98,6 +105,8 @@ describe('Type inference — typed EARS helpers', () => {
       write(actionId).set('labl', 'renamed');
       // @ts-expect-error not a field of Action
       write(actionId).delete('labl');
+      // @ts-expect-error a required field is replaced with set, never removed
+      write(actionId).delete('label');
       // @ts-expect-error the engine writes updatedAt
       write(actionId).set('updatedAt', 1);
       // A plain id names no entity type, so its writes are unchecked
@@ -244,9 +253,7 @@ describe('Generic flow — runtime verification', () => {
     expect(all[0].actionFn).toBeDefined();
   });
 
-  it('findWhere<T> returns typed filtered results', () => {
-    type ActionEntity = { label: string; category: string };
-
+  it('findWhere returns the declared shape', () => {
     createEntityWithDefaults(
       EARS.Entity.Action as any,
       { label: 'CatA', actionFn: 'fn()', category: 'alpha' } as any,
@@ -258,7 +265,7 @@ describe('Generic flow — runtime verification', () => {
       'ACT',
     );
 
-    const results = findWhere<ActionEntity>(EARS.Entity.Action as any, 'category', 'alpha');
+    const results = findWhere(EARS.Entity.Action, 'category', 'alpha');
     expect(results).toHaveLength(1);
     expect(results[0].label).toBe('CatA');
     expect(results[0].category).toBe('alpha');
