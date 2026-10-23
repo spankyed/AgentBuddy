@@ -10,7 +10,7 @@ import { boundHost } from '../runtime/host-runtime.ts';
 import type { EarsNames } from '../runtime/packs-view.ts';
 import { EARS as EARS_NAMES } from '../types/index.ts';
 import { defineEars, prepareEntity, type EARS } from '@apackdev/ears';
-import { boundEars, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, destroyEntity, getAll, getRoles, grantRole, revokeRole, createRelation, removeRelation, removeRelationById, getAllEntities, getEntitiesOfType, getAllEntityTypes, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations, findEntitiesByAttribute, findEntitiesByRelationTo, findEntitiesInRelationTo } from '../ears/index.ts';
+import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, destroyEntity, getAll, getRoles, grantRole, revokeRole, createRelation, removeRelation, removeRelationById, getAllEntities, getEntitiesOfType, getAllEntityTypes, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations, findEntitiesByAttribute, findEntitiesByRelationTo, findEntitiesInRelationTo } from '../ears/index.ts';
 import { errorMessage } from '../utils/shared.ts';
 
 /** Entities per type, and each attribute kind's and relation kind's use, over the whole database */
@@ -138,34 +138,35 @@ export function installedEars(): ConsoleScope['EARS'] {
   return consoleEars(boundHost().packs.earsNames());
 }
 
-function run(code: string, scope: ConsoleScope, helpers: Record<string, unknown>): Promise<unknown> {
+/** Console code as a function of nothing, over the helpers it's given; a plain function, so `await` doesn't parse */
+function compileCode(code: string, scope: ConsoleScope, helpers: Record<string, unknown>): () => unknown {
   // Blank code is nothing to run, not code that returns nothing: whitespace alone would otherwise build a function
   // body and answer `undefined`, which reads as a query that found nothing
   if (typeof code !== 'string' || code.trim() === '') throw new Error('No code to run');
   const names = ['EARS', ...Object.keys(helpers)];
   const body = new Function(...names, code);
-  return Promise.resolve(body(scope.EARS, ...Object.values(helpers)));
+  return () => body(scope.EARS, ...Object.values(helpers));
 }
 
 /** Runs query code with the read helpers; its error's message is the code's */
 export async function runQueryCode(code: string, scope: ConsoleScope): Promise<unknown> {
   try {
-    return await run(code, scope, readHelpers);
+    return await compileCode(code, scope, readHelpers)();
   } catch (error) {
     throw new Error(errorMessage(error));
   }
 }
 
 /**
- * Runs transaction code with the read and write helpers; its error's message starts "Transaction failed:". The
- * writes are not one transaction: each helper writes as the code runs, so what ran before a failure stands, which
- * the message says.
+ * Runs transaction code with the read and write helpers as one unit (`transact`): code that throws part way keeps
+ * none of its writes, and its error's message starts "Transaction failed:". The code is synchronous — `await`
+ * doesn't parse, and a returned promise is refused and undone — since an await would split the unit.
  */
 export async function runTransactionCode(code: string, scope: ConsoleScope): Promise<unknown> {
   try {
-    return await run(code, scope, { ...readHelpers, ...writeHelpers });
+    return transact(compileCode(code, scope, { ...readHelpers, ...writeHelpers }));
   } catch (error) {
     const reason = errorMessage(error);
-    throw new Error(`Transaction failed: ${reason}\n  The writes it made before failing stand: nothing is rolled back.`);
+    throw new Error(`Transaction failed: ${reason}\n  Nothing it wrote was kept: a transaction is undone as a whole.`);
   }
 }

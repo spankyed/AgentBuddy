@@ -71,13 +71,17 @@ describe('runTransactionCode', () => {
     expect(untypedQuery('Flow').ids()).toHaveLength(1);
   });
 
-  it('prefixes its error, and says the writes it already made stand', async () => {
-    await expect(runTransactionCode('throw new Error("boom")', scope)).rejects
-      .toThrow('Transaction failed: boom\n  The writes it made before failing stand: nothing is rolled back.');
+  it('keeps none of its writes when it throws part way, and prefixes its error', async () => {
+    await expect(runTransactionCode("create(EARS.Entity.Flow).set('label', 'Lost'); throw new Error('boom')", scope)).rejects
+      .toThrow('Transaction failed: boom\n  Nothing it wrote was kept: a transaction is undone as a whole.');
+    expect(untypedQuery('Flow').ids()).toEqual([]);
   });
 
-  it('awaits a returned promise', async () => {
-    await expect(runTransactionCode('return Promise.resolve(3)', scope)).resolves.toBe(3);
+  it('refuses code that would split the unit: an await, or a returned promise, keeping nothing', async () => {
+    await expect(runTransactionCode("await 1; create(EARS.Entity.Flow)", scope)).rejects.toThrow(/^Transaction failed:/);
+    await expect(runTransactionCode("create(EARS.Entity.Flow).set('label', 'Lost'); return Promise.resolve(3)", scope)).rejects
+      .toThrow(/^Transaction failed: transact\(\) takes a synchronous function/);
+    expect(untypedQuery('Flow').ids()).toEqual([]);
   });
 });
 

@@ -355,8 +355,11 @@ describe('the lock a change holds', () => {
 
   it('is held while a change runs and released after, so an app that starts meanwhile refuses to open the database', async () => {
     const dir = await appDataDir();
-    expect(await writerDuring(['exec', slowCode, '--data-dir', dir], dir))
-      .toEqual({ during: `apack db exec (pid ${process.pid})`, after: null });
+    // A script, since exec's transaction code is synchronous and so cannot keep the command running
+    const script = path.join(dir, 'slow.mjs');
+    fs.writeFileSync(script, `export default () => new Promise((resolve) => setTimeout(() => resolve(1), 60));`);
+    expect(await writerDuring(['script', script, '--data-dir', dir], dir))
+      .toEqual({ during: `apack db script (pid ${process.pid})`, after: null });
   });
 
   it('is not taken by a command that only reads', async () => {
@@ -440,21 +443,20 @@ describe('apack db exec', () => {
     expect(error?.message).toMatch(/1 write\(s\) didn't reach the database/);
   });
 
-  it('keeps what the code wrote before it threw: there is no rollback', async () => {
+  it('keeps none of what the code wrote when it throws part way', async () => {
     const dir = await appDataDir();
     const { error } = await run(['exec', "write('Note-a').set('title', 'Written'); throw new Error('boom')", '--data-dir', dir]);
-    expect(error?.message).toMatch(/^Transaction failed: boom[\s\S]*nothing is rolled back/);
-    // The code runs as one function, not one transaction: what it wrote before throwing is flushed on close
+    expect(error?.message).toMatch(/^Transaction failed: boom[\s\S]*Nothing it wrote was kept/);
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
-    expect(out).toBe('Written');
+    expect(out).toBe('Alpha');
   });
 
-  it("reports the code's own error first when closing fails too", async () => {
+  it('keeps a write it could not have stored out of the files too, when the code throws', async () => {
     const dir = await appDataDir();
-    // The code writes a value LMDB can't store, then throws
+    // A value LMDB can't store, written before the code throws: undone with the transaction, so it never reaches close
     const { error } = await run(['exec', "write('Note-a').set('count', 1n); throw new Error('boom')", '--data-dir', dir]);
-    expect(error?.message).toMatch(/^Transaction failed: boom[\s\S]*failed to close: 1 write\(s\) didn't reach the database/);
-    expect((error as Error).cause).toBeInstanceOf(Error);
+    expect(error?.message).toMatch(/^Transaction failed: boom[\s\S]*Nothing it wrote was kept/);
+    expect(error?.message).not.toMatch(/failed to close/);
   });
 });
 
@@ -545,6 +547,15 @@ describe('apack db script', () => {
     const { out } = await ok(['script', file, '--data-dir', dir, '--', 'From a script']);
     expect(out.split('\n')).toEqual(['renaming on string', '2']);
     expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('From a script');
+  });
+
+  it("reports the script's own error first when closing fails too", async () => {
+    const dir = await appDataDir();
+    // A script writes as it goes, outside any transaction: a value LMDB can't store, then a throw
+    const file = writeScript(dir, 'broken.mjs', "export default ({ db }) => { db.ears.write('Note-a').set('count', 1n); throw new Error('boom'); };");
+    const { error } = await run(['script', file, '--data-dir', dir]);
+    expect(error?.message).toMatch(/boom[\s\S]*failed to close: 1 write\(s\) didn't reach the database/);
+    expect((error as Error).cause).toBeInstanceOf(Error);
   });
 
   it('runs a plain module too, and writes what it returns to a file', async () => {

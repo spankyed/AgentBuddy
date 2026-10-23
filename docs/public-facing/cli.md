@@ -732,7 +732,7 @@ apack db query --file ./report.js -o csv
 
 #### `apack db exec <code> | --file <path> [-o pretty|json|csv] [--out <file>]` (names its data dir)
 
-Run transaction code with the console's read and write helpers (`create`, `upsert`, `write`, `destroyEntity`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `createRelation`, `removeRelation`, `removeRelationById`, `grantRole`, `revokeRole`). Despite the name, the code is not one transaction: each helper writes as the code runs, so code that throws part way leaves the writes it already made — the failure says so, and there is nothing to roll back. A write that fails to reach the files fails the command.
+Run transaction code with the console's read and write helpers (`create`, `upsert`, `write`, `destroyEntity`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `createRelation`, `removeRelation`, `removeRelationById`, `grantRole`, `revokeRole`). The code runs as one transaction: if it throws part way, none of its writes are kept, and the failure says so. It is synchronous — `await` doesn't parse, and code returning a promise is refused — since an await would split the transaction. A write that fails to reach the files fails the command.
 
 ```bash
 apack db exec "write('Note-123').set('title', 'Renamed')"
