@@ -102,10 +102,6 @@ export interface ActionEntity extends BaseEntity {
   shortCode?: string;
   createdAt: number;
   updatedAt: number;
-  /** Soft-delete marker, written by the repository rather than removing the row. */
-  deleted?: boolean;
-  /** Epoch ms at which the soft delete happened. */
-  deletedAt?: number;
 }
 
 export interface PromptEntity extends BaseEntity {
@@ -124,10 +120,6 @@ export interface PromptEntity extends BaseEntity {
   shortCode?: string;
   createdAt: number;
   updatedAt: number;
-  /** Soft-delete marker, written by the repository rather than removing the row. */
-  deleted?: boolean;
-  /** Epoch ms at which the soft delete happened. */
-  deletedAt?: number;
 }
 
 export interface FieldContent { type: 'field'; fields: Array<{ key: string; value: string }> }

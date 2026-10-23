@@ -300,7 +300,7 @@ describe('actionRepository and promptRepository', () => {
     promptRepository.delete(prompt.id);
     expect(actionRepository.all()).toEqual([]);
     expect(promptRepository.all()).toEqual([]);
-    expect(untypedQuery.ids([action.id]).pickOne(['deleted'])?.deleted).toBe(true);
+    expect(untypedQuery.withTrashed.ids([action.id]).pickOne(['trashedAt'])?.trashedAt).toEqual(expect.any(Number));
   });
 
   it('refuse an action or prompt without its label or body, and a missing id', () => {
@@ -315,7 +315,7 @@ describe('trash', () => {
   // Any entity type: prompts here
   const note = (title: string) => untypedCreate('Prompt', { id: `Prompt-${title}` as EARS.EntityId }).set('title', title).id();
   const findById = (id: EARS.EntityId) => boundEars().findById<Record<string, unknown>>(id);
-  const findByIdRaw = (id: EARS.EntityId) => boundEars().findByIdRaw(id);
+  const inTrash = (id: EARS.EntityId) => boundEars().query.withTrashed.ids(id).pickAll()[0];
 
   it('moves entities to the trash, where finders skip them, and restores them unmarked', () => {
     const [a, b] = [note('a'), note('b')];
@@ -324,7 +324,7 @@ describe('trash', () => {
     expect(trash.move([a], 2000)).toEqual([]);
     expect(findById(a)).toBeUndefined();
     expect(boundEars().findAll('Prompt')).toEqual([]);
-    expect(findByIdRaw(a)).toMatchObject({ deleted: true, deletedAt: 1000 });
+    expect(inTrash(a)).toMatchObject({ trashedAt: 1000, updatedAt: 1000 });
     expect(trash.isTrashed(a)).toBe(true);
     expect(trash.list('Prompt').map((n) => n.id).sort()).toEqual([a, b].sort());
 
@@ -332,8 +332,7 @@ describe('trash', () => {
     expect(trash.restore([a])).toEqual([]);
     const restored = findById(a);
     expect(restored).toMatchObject({ title: 'a' });
-    expect(restored).not.toHaveProperty('deleted');
-    expect(restored).not.toHaveProperty('deletedAt');
+    expect(restored).not.toHaveProperty('trashedAt');
     expect(trash.isTrashed(a)).toBe(false);
     expect(trash.list('Prompt').map((n) => n.id)).toEqual([b]);
   });

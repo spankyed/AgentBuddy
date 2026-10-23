@@ -30,7 +30,7 @@ function toDTO(note: NoteEntity): NoteDTO {
     updatedAt: note.updatedAt,
     lastSeen: note.lastSeen ?? 0,
     favorite: note.favorite ?? false,
-    ...(note.deletedAt ? { deletedAt: note.deletedAt } : {}),
+    ...(note.trashedAt ? { trashedAt: note.trashedAt } : {}),
   };
 }
 

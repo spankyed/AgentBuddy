@@ -11,7 +11,7 @@ it('checks the current database and excludes missing or trashed entities', async
   const id = untypedCreate('Note').set('title', 'Saved').id();
   expect(await caller().exists({ id })).toBe(true);
   expect(await caller().exists({ id: 'Note-missing' })).toBe(false);
-  untypedWrite(id).set('deleted', true);
+  untypedWrite(id).trash();
   expect(await caller().exists({ id })).toBe(false);
 });
 

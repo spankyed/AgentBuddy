@@ -2896,10 +2896,6 @@ interface MessageEntity extends BaseEntity {
     asideContext?: string;
     /** When true, message is hidden because a marker message compacted it. */
     compacted?: boolean;
-    /** Soft-delete marker, written by the repository rather than removing the row. */
-    deleted?: boolean;
-    /** Epoch ms at which the soft delete happened. */
-    deletedAt?: number;
 }
 
 interface MessageReferences {
@@ -2938,7 +2934,8 @@ interface NoteDTO {
     updatedAt: number;
     lastSeen: number;
     favorite: boolean;
-    deletedAt?: number;
+    /** When the note was put in the trash, for a note listed from there */
+    trashedAt?: number;
 }
 
 interface NoteEntity extends BaseEntity {
@@ -2961,8 +2958,6 @@ interface NoteEntity extends BaseEntity {
     label?: string;
     /** Hash of the content source at the last apply. Absent on user-created notes. */
     contentHash?: string;
-    deleted?: boolean;
-    deletedAt?: number;
 }
 
 interface NotesConnectedData {

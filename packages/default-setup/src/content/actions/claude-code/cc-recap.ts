@@ -54,7 +54,7 @@ function serializeMessages(messages: any[]): string {
   const lines: string[] = [];
 
   for (const msg of messages) {
-    if (msg.compacted || msg.status === 'cancelled' || msg.deleted) continue;
+    if (msg.compacted || msg.status === 'cancelled') continue;
 
     const role = msg.sender === 'user' ? 'User'
       : msg.sender === 'assistant' ? 'Assistant'

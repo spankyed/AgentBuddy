@@ -442,7 +442,7 @@ function getThreadArtifacts(threadId: EARS.EntityId): ArtifactItem[] {
 
 const MESSAGE_PAGE_SIZE = 50;
 
-const messagePickFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asUser", "asideText", "asideContext", "status", "compacted"] as const;
+const messagePickFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "context", "autoHide", "asUser", "asideText", "asideContext", "status", "compacted"] as const;
 
 function getThreadFields(threadId: EARS.EntityId): AgentThreadData | null {
   const thread = query.ids(threadId)
@@ -455,7 +455,6 @@ function getThreadFields(threadId: EARS.EntityId): AgentThreadData | null {
 function getAllThreadMessages(threadId: EARS.EntityId): Partial<MessageEntity>[] {
   return (query.ids(threadId)
     .linksPick(EARS.RelKind.CONTAINS, messagePickFields, EARS.Entity.Message) ?? [])
-    .filter(m => !m.deleted)
     .sort((a, b) => {
       if (a.status === 'queued' && b.status !== 'queued') return 1;
       if (b.status === 'queued' && a.status !== 'queued') return -1;
@@ -469,8 +468,7 @@ function paginatedMessages(threadId: EARS.EntityId, cursor?: string | null): {
   nextCursor: string | null;
 } {
   const allMessages = (query.ids(threadId)
-    .linksPick(EARS.RelKind.CONTAINS, messagePickFields, EARS.Entity.Message) ?? [])
-    .filter(m => !m.deleted);
+    .linksPick(EARS.RelKind.CONTAINS, messagePickFields, EARS.Entity.Message) ?? []);
 
   const queued = allMessages.filter(m => m.status === 'queued');
   const regular = allMessages.filter(m => m.status !== 'queued');
@@ -896,10 +894,9 @@ export const chatCommands = {
   }): { deletedCount: number; deletedIds: string[] } => {
     const { threadId, messageId } = params;
 
-    const messages = query.ids(threadId)
-      .linksPick(EARS.RelKind.CONTAINS, ["id", "deleted"] as const, EARS.Entity.Message) ?? [];
-
-    const nonDeleted = messages.filter(m => !m.deleted);
+    // A link reaches no message already in the trash
+    const nonDeleted = query.ids(threadId)
+      .linksPick(EARS.RelKind.CONTAINS, ["id"] as const, EARS.Entity.Message) ?? [];
     const targetIndex = nonDeleted.findIndex(m => m.id === messageId);
 
     if (targetIndex === -1) {

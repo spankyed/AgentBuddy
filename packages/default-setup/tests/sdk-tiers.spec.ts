@@ -4,8 +4,8 @@
  */
 import { untypedCreate, exists } from '@apackdev/sdk/ears';
 import {
-  findById, findByIdRaw, findAll, findWhere,
-  createEntityWithDefaults, updateEntity, getAttr,
+  findById, findAll, findWhere, query, write,
+  createEntityWithDefaults, getAttr,
 } from '#generated/ears.ts';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { EARS } from '#generated/ears.ts';
@@ -48,17 +48,16 @@ describe('Tier 1 — EARS delegates', () => {
     expect(findWhere(EARS.Entity.Action as any, 'category', 'test').length).toBe(1);
   });
 
-  it('findByIdRaw returns entity including after soft-delete', () => {
+  it('query.withTrashed reaches an entity in the trash, which findById does not', () => {
     const entity = createEntityWithDefaults(
       EARS.Entity.Action as any,
       { label: 'ToDelete', actionFn: 'fn()' } as any,
       'ACT',
     );
-    updateEntity(entity.id, { deleted: true });
+    write(entity.id).trash(5);
 
-    const raw = findByIdRaw(entity.id);
-    expect(raw).toBeDefined();
-    expect((raw as any).deleted).toBe(true);
+    expect(findById(entity.id)).toBeUndefined();
+    expect(query.withTrashed.ids(entity.id).pickOne(['trashedAt'])?.trashedAt).toBe(5);
   });
 
   it('exists returns true for existing entities', () => {

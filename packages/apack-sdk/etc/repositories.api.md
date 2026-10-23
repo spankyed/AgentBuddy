@@ -208,9 +208,7 @@ export type Trashed<T extends object = object> = T & TrashFields & {
 // @public
 export interface TrashFields {
     // (undocumented)
-    deleted?: boolean;
-    // (undocumented)
-    deletedAt?: number;
+    trashedAt?: number;
 }
 
 // (No @packageDocumentation comment for this package)

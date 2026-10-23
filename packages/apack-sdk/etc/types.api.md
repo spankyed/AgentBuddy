@@ -16,8 +16,6 @@ export interface ActionEntity extends BaseEntity {
     contentHash?: string;
     // (undocumented)
     createdAt: number;
-    deleted?: boolean;
-    deletedAt?: number;
     // (undocumented)
     description?: string;
     // (undocumented)
@@ -312,8 +310,6 @@ export interface PromptEntity extends BaseEntity {
     contentHash?: string;
     // (undocumented)
     createdAt: number;
-    deleted?: boolean;
-    deletedAt?: number;
     // (undocumented)
     description?: string;
     // (undocumented)

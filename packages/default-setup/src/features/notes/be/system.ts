@@ -200,8 +200,8 @@ export const notesSystem = setup({
       // Update parent's childCount
       const noteEntity = repository.noteQueries.byId(ev.id as EARS.EntityId);
       if (!noteEntity) {
-        // Note is soft-deleted, look up parent via relations
-        const parentIds = query.ids(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        // The note is in the trash: its parent is found through its relations, which the trash keeps
+        const parentIds = query.withTrashed.ids(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
         if (parentIds.length > 0) {
           const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
           if (parentDTO) {
