@@ -97,8 +97,9 @@ describe.each(Object.keys(STORES))('the run history %s', (where) => {
     const history = fresh();
     const session = history.start({ kind: 'flow', label: 'Session' });
     const step = history.start({ kind: 'step', label: 'Step', stepNodeType: 'llm', parentId: session.id, input: { text: 'x'.repeat(20_000) } });
-    // Returned as given, not as stored: a step runs on its params whole
-    expect(step).toMatchObject({ status: 'active', rootId: session.id, startedAt: expect.any(Number), input: { text: 'x'.repeat(20_000) } });
+    // Returned as stored: bounded, as every read of it is — nothing runs on a run node
+    expect(step).toEqual(history.get(step.id));
+    expect(step).toMatchObject({ status: 'active', rootId: session.id, startedAt: expect.any(Number), input: { text: { _truncated: true } } });
     history.finish(step.id, 'failed');
     expect(history.get(step.id)).toMatchObject({ status: 'failed', completedAt: expect.any(Number) });
   });
