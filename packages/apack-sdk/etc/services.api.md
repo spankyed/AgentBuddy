@@ -353,7 +353,7 @@ export interface TraceStore {
         id: EARS.EntityId;
         meta: TraceEntityMeta;
     }>;
-    getAttr(kind: string, id: EARS.EntityId): unknown;
+    getAttr(id: EARS.EntityId, kind: string): unknown;
     // (undocumented)
     getEntityMeta(id: EARS.EntityId): TraceEntityMeta | null;
     relations(filter?: {

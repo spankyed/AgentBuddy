@@ -12,7 +12,7 @@ export function createTraceStore(store: LmdbStore): TraceStore {
       return Array.from(rows, ({ key, value }) => ({ id: key as EARS.EntityId, meta: value }));
     },
     getEntityMeta: (id) => traceQuery().getEntityMeta(id) as TraceEntityMeta | null,
-    getAttr: (kind, id) => traceQuery().getAttr(kind, id),
+    getAttr: (id, kind) => traceQuery().getAttr(id, kind),
     relations(filter) {
       const rows = traceQuery().relations(filter) as Iterable<{ relId: string; rel: TraceRelation }>;
       return Array.from(rows, ({ relId, rel }) => ({ id: relId, rel }));

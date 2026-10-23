@@ -56,8 +56,12 @@ export function hashValues(values: unknown[]): string {
  * as our edit.
  */
 function fieldParts(id: EARS.EntityId, fields: string[]): Record<string, string> {
-  return Object.fromEntries(fields.map((field) => [field, hashValues([ears().getAttr(id, field as EARS.AttrKind) ?? null])]));
+  const row = ears().getRow(id);
+  return Object.fromEntries(fields.map((field) => [field, hashValues([row?.[field] ?? null])]));
 }
+
+/** The content key an entity was written under — read through the trash, as a row is — or undefined when none was */
+export const contentKeyOf = (id: EARS.EntityId): string | undefined => ears().getRow(id)?.[CONTENT_KEY] as string | undefined;
 
 /**
  * The parts of a recorded item whose value in the database is no longer what we wrote.
@@ -225,8 +229,8 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
         if (keyed) return { match: { id: keyed.id, contentHash: keyed.contentHash }, deleted: keyed.trashedAt !== undefined };
         const match = findByIdentity(record, context, hooks);
         if (!match) return {};
-        const owner = ears().getAttr(match.id, CONTENT_KEY) as string | null;
-        if (owner === null) return { match };
+        const owner = contentKeyOf(match.id);
+        if (owner === undefined) return { match };
         // The keyed lookup missed, so the row is another record's: a container holds this record's children too
         if (hooks?.container) return { match, reused: true };
         // A row carrying another record's content key (or another pack's) isn't this record's, whatever its name
@@ -264,7 +268,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 
       /** Hooks' repository commands may not store contentHash; the merge needs it, the parts and the key */
       const stamp = (id: EARS.EntityId, record: ContentItem, contentKey: string) => {
-        if (record.contentHash && ears().getAttr(id, CONTENT_HASH) !== record.contentHash) untypedWrite(id).set(CONTENT_HASH, record.contentHash);
+        if (record.contentHash && ears().getRow(id)?.[CONTENT_HASH] !== record.contentHash) untypedWrite(id).set(CONTENT_HASH, record.contentHash);
         untypedWrite(id).set(CONTENT_KEY, contentKey);
         // The one place the entity, the record and the fields just written are all in hand, so the one place
         // a per-part record of them can be taken
@@ -463,8 +467,8 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
        */
       const holdsOthers = (id: EARS.EntityId, prefix: string): boolean =>
         findRelations({ sourceEntity: id }).some((relation) => {
-          const childKey = ears().getAttr(relation.targetEntity as EARS.EntityId, CONTENT_KEY) as string | null;
-          return childKey === null || !childKey.startsWith(prefix);
+          const childKey = contentKeyOf(relation.targetEntity as EARS.EntityId);
+          return childKey === undefined || !childKey.startsWith(prefix);
         });
 
       /**

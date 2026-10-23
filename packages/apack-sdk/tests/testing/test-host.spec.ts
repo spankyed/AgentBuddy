@@ -59,10 +59,10 @@ describe('the test host', () => {
     expect(boundHost().ears.repository).toBe(ears().repository);
     registerRepository('memoQueries', { all: () => [] });
     const id = untypedCreate('Memo').set('text', 'hello').id();
-    expect(boundHost().services.traceStore.getAttr('text', id)).toBe('hello');
+    expect(boundHost().services.traceStore.getAttr(id, 'text')).toBe('hello');
     expect(entityIds()).toContain(id);
     dropAttribute(id, 'text');
-    expect(ears().getAttr(id, 'text')).toBeNull();
+    expect(ears().getRow(id)?.text).toBeUndefined();
     const before = ears();
     await boundHost().services.appData.reset();
     expect(entityIds()).toEqual([]);

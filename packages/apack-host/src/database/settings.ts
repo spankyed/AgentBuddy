@@ -6,9 +6,8 @@ import { openDatabaseStore } from './open.ts';
 
 /** Boot can inspect this one host-owned row before external packs are loaded or memory is hydrated. */
 export function storedSettings(store: LmdbStore): unknown {
-  const reader = store.read('primary');
-  const data = reader.getAttr('data', 'Settings-app');
-  return data !== null || reader.getEntityMeta('Settings-app') ? data : {};
+  const data = store.read('primary').getAttr('Settings-app', 'data');
+  return data === undefined ? {} : data;
 }
 
 /** Offline admission reads without hydrating or modifying the profile. The caller owns its storage lock. */

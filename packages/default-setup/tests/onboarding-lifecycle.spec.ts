@@ -28,7 +28,7 @@ async function initializedOnce(app: TestApp) {
 
 it('starts on readiness without keys, once across connections and preference reset', async () => {
   const app = await start();
-  expect(thread()).toBeNull();
+  expect(thread()).toBeUndefined();
   const rootActors = getAllFlowActorIds().length;
   await app.connect();
   await initializedOnce(app);
@@ -50,7 +50,7 @@ it('starts on readiness without keys, once across connections and preference res
 it('waits for a usable root when the client arrives first', async () => {
   const app = await start(false);
   await app.connect();
-  expect(thread()).toBeNull();
+  expect(thread()).toBeUndefined();
   expect(takeSystemErrors()).toHaveLength(1);
   const flow = repository.flowsQueries.connectedData().flows.find(flow => flow.label === 'Root Flow');
   expect(flow).toBeDefined();
@@ -63,7 +63,7 @@ it('queues readiness while paused and initializes after resume', async () => {
   const app = await start();
   await app.send('brain', { type: 'PAUSE_BRAIN' });
   await app.connect();
-  expect(thread()).toBeNull();
+  expect(thread()).toBeUndefined();
   await app.send('brain', { type: 'RESUME_BRAIN' });
   await initializedOnce(app);
 });
@@ -92,7 +92,7 @@ it('leaves completed onboarding alone', async () => {
   const app = await start();
   await app.connect();
   expect(initialized(app)).toEqual([]);
-  expect(thread()).toBeNull();
+  expect(thread()).toBeUndefined();
 });
 
 it('lets an authored root opt out of onboarding', async () => {
@@ -101,14 +101,14 @@ it('lets an authored root opt out of onboarding', async () => {
   const app = await startApp({ systems: ['host/settings', 'threads', 'brain'] });
   await app.connect();
   expect(initialized(app)).toEqual([]);
-  expect(thread()).toBeNull();
+  expect(thread()).toBeUndefined();
 });
 
 it('discards paused readiness when the root is replaced', async () => {
   const app = await start();
   await app.send('brain', { type: 'PAUSE_BRAIN' });
   await app.connect();
-  expect(thread()).toBeNull();
+  expect(thread()).toBeUndefined();
   await app.send('brain', { type: 'DATA_REPLACED' });
   await app.send('brain', { type: 'START_BRAIN' });
   await initializedOnce(app);

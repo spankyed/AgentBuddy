@@ -10,7 +10,7 @@ import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
 import type { FlowEntity } from '../types/sdk-entities.ts';
 import type { ContentEditPolicy } from '../framework/declaration-schema.ts';
-import { childContentKey, defineKey, hashValues, recordApplied, CONTENT_KEY, contentKeyPrefix, CONTENT_HASH } from './format-applier.ts';
+import { childContentKey, contentKeyOf, defineKey, hashValues, recordApplied, CONTENT_KEY, contentKeyPrefix, CONTENT_HASH } from './format-applier.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
 import { contentPackId } from '../utils/apply.ts';
 
@@ -122,8 +122,8 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
        */
       const lookupWritten = (flows: FlowEntity[], name: string): FlowEntity | undefined => {
         const contentKey = flowContentKey(packId, name);
-        return flows.find((flow) => ears().getAttr(flow.id, CONTENT_KEY) === contentKey)
-          ?? flows.find((flow) => flow.label === name && ears().getAttr(flow.id, CONTENT_KEY) === null);
+        return flows.find((flow) => contentKeyOf(flow.id) === contentKey)
+          ?? flows.find((flow) => flow.label === name && contentKeyOf(flow.id) === undefined);
       };
       const existingFlows = sdkEntities.query(EARS.Entity.Flow).pickAll();
       const actionMap = buildLabelMap(sdkEntities.query(EARS.Entity.Action).pickAll());
@@ -142,7 +142,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         const taken = ids.find((id) => !ownIds.has(id) && ears().query.withTrashed.ids(id as EARS.EntityId).exists());
         if (!taken) return undefined;
         const flowId = findRelations({ targetEntity: taken as EARS.EntityId, relationType: EARS.RelKind.CONTAINS })[0]?.sourceEntity ?? taken;
-        const contentKey = ears().getAttr(flowId as EARS.EntityId, CONTENT_KEY) as string | null;
+        const contentKey = contentKeyOf(flowId as EARS.EntityId);
         return contentKey ? `written by ${contentKey.slice(0, contentKey.indexOf(':'))}` : 'created by the user';
       };
 
@@ -256,7 +256,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         const targets = new Map<string, string>();
         for (const name of Object.keys(flowsDSL)) {
           const contentKey = flowContentKey(packId, name);
-          const written = flows.find((flow) => ears().getAttr(flow.id, CONTENT_KEY) === contentKey);
+          const written = flows.find((flow) => contentKeyOf(flow.id) === contentKey);
           if (!written) continue;
           targets.set(name, written.id);
           writtenIds.add(written.id);
@@ -279,7 +279,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         const prefix = `${contentKeyPrefix(packId)}flows/`;
         for (const itemKey of [...record.before.keys()].filter((k) => k.startsWith(prefix) && !record.defined.has(k))) {
           const item = record.before.get(itemKey)!;
-          const flow = sdkEntities.query(EARS.Entity.Flow).pickAll().find((f) => ears().getAttr(f.id, CONTENT_KEY) === itemKey);
+          const flow = sdkEntities.query(EARS.Entity.Flow).pickAll().find((f) => contentKeyOf(f.id) === itemKey);
           const { resolution, parts, offer } = resolveRemoval({
             applied: item,
             ...(flow !== undefined && { live: { contentHash: flow.contentHash } as LiveEntity }),
@@ -320,7 +320,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
           // Read back off the entities a moment after writing them, which is what makes this and
           // `driftedGraphParts` two reads of one question rather than two accounts of it
           const parts = graphParts(graphState(flowId));
-          const contentHash = ears().getAttr(flowId, CONTENT_HASH);
+          const contentHash = ears().getRow(flowId)?.[CONTENT_HASH];
           recordApplied(ctx, contentKey, {
             entityType: EARS.Entity.Flow,
             ...(typeof contentHash === 'string' && { contentHash }),

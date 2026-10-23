@@ -85,7 +85,7 @@ describe('the word query', () => {
   // Console code is unchecked, so a name may drop the `untyped` its export carries; it may not be another word
   it('gives console code the names the library exports, not a second set', () => {
     const { exported } = scan();
-    const injected = population('console helpers', [...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES], { atLeast: 10 });
+    const injected = population('console helpers', [...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES], { atLeast: 8 });
     const untypedTwin = (name: string) => `untyped${name[0].toUpperCase()}${name.slice(1)}`;
     expect(injected.filter((name) => !exported.has(name) && !exported.has(untypedTwin(name)))).toEqual([]);
   });

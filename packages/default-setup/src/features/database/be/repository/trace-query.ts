@@ -52,23 +52,23 @@ function buildTNodeEntity(
     id: nodeId as EARS.EntityId,
     entityType: EARS.Entity.TNode,
     createdAt: meta.createdAt,
-    tNodeType: query.getAttr('tNodeType', nodeId as EARS.EntityId) as any || 'step',
-    label: query.getAttr('label', nodeId as EARS.EntityId) as string || 'Node',
-    status: query.getAttr('status', nodeId as EARS.EntityId) as any || 'completed',
-    startedAt: query.getAttr('startedAt', nodeId as EARS.EntityId) as number || meta.createdAt,
+    tNodeType: query.getAttr(nodeId as EARS.EntityId, 'tNodeType') as any || 'step',
+    label: query.getAttr(nodeId as EARS.EntityId, 'label') as string || 'Node',
+    status: query.getAttr(nodeId as EARS.EntityId, 'status') as any || 'completed',
+    startedAt: query.getAttr(nodeId as EARS.EntityId, 'startedAt') as number || meta.createdAt,
   };
   
   // Get optional attributes
-  const completedAt = query.getAttr('completedAt', nodeId as EARS.EntityId) as number;
+  const completedAt = query.getAttr(nodeId as EARS.EntityId, 'completedAt') as number;
   if (completedAt) tNode.completedAt = completedAt;
   
-  const eventType = query.getAttr('eventType', nodeId as EARS.EntityId) as string;
+  const eventType = query.getAttr(nodeId as EARS.EntityId, 'eventType') as string;
   if (eventType) tNode.eventType = eventType;
   
-  const stepNodeType = query.getAttr('stepNodeType', nodeId as EARS.EntityId) as string;
+  const stepNodeType = query.getAttr(nodeId as EARS.EntityId, 'stepNodeType') as string;
   if (stepNodeType) tNode.stepNodeType = stepNodeType;
   
-  const final = query.getAttr('final', nodeId as EARS.EntityId) as boolean;
+  const final = query.getAttr(nodeId as EARS.EntityId, 'final') as boolean;
   if (final) tNode.final = final;
   
   // If includeChildren is true, recursively build children
@@ -111,7 +111,7 @@ export function getTraceFlows(limit = 100): TNodeEntity[] {
         const id = String(entityId) as EARS.EntityId;
         
         // Get tNodeType attribute to check if it's a flow
-        const tNodeType = query.getAttr('tNodeType', id as EARS.EntityId) as string;
+        const tNodeType = query.getAttr(id as EARS.EntityId, 'tNodeType') as string;
         if (tNodeType === 'flow') {
           // Build the full TNode entity
           const flow: TNodeEntity = {
@@ -119,16 +119,16 @@ export function getTraceFlows(limit = 100): TNodeEntity[] {
             entityType: EARS.Entity.TNode,
             createdAt: meta.createdAt,
             tNodeType: 'flow',
-            label: query.getAttr('label', id as EARS.EntityId) as string || 'Unnamed Flow',
-            status: query.getAttr('status', id as EARS.EntityId) as any || 'completed',
-            startedAt: query.getAttr('startedAt', id as EARS.EntityId) as number || meta.createdAt,
+            label: query.getAttr(id as EARS.EntityId, 'label') as string || 'Unnamed Flow',
+            status: query.getAttr(id as EARS.EntityId, 'status') as any || 'completed',
+            startedAt: query.getAttr(id as EARS.EntityId, 'startedAt') as number || meta.createdAt,
           };
           
           // Get optional attributes
-          const completedAt = query.getAttr('completedAt', id as EARS.EntityId) as number;
+          const completedAt = query.getAttr(id as EARS.EntityId, 'completedAt') as number;
           if (completedAt) flow.completedAt = completedAt;
           
-          const blueprint = query.getAttr('blueprint', id as EARS.EntityId);
+          const blueprint = query.getAttr(id as EARS.EntityId, 'blueprint');
           if (blueprint && typeof blueprint === 'object') {
             flow.blueprint = blueprint as TNodeEntity['blueprint'];
           }
@@ -221,32 +221,32 @@ export function getNodeDetails(nodeId: string): TNodeEntity | null {
       id: nodeId as EARS.EntityId,
       entityType: EARS.Entity.TNode,
       createdAt: meta.createdAt,
-      tNodeType: query.getAttr('tNodeType', nodeId as EARS.EntityId) as any || 'step',
-      label: query.getAttr('label', nodeId as EARS.EntityId) as string || 'Node',
-      status: query.getAttr('status', nodeId as EARS.EntityId) as any || 'completed',
-      startedAt: query.getAttr('startedAt', nodeId as EARS.EntityId) as number || meta.createdAt,
+      tNodeType: query.getAttr(nodeId as EARS.EntityId, 'tNodeType') as any || 'step',
+      label: query.getAttr(nodeId as EARS.EntityId, 'label') as string || 'Node',
+      status: query.getAttr(nodeId as EARS.EntityId, 'status') as any || 'completed',
+      startedAt: query.getAttr(nodeId as EARS.EntityId, 'startedAt') as number || meta.createdAt,
     };
     
     // Get all optional attributes
-    const completedAt = query.getAttr('completedAt', nodeId as EARS.EntityId) as number;
+    const completedAt = query.getAttr(nodeId as EARS.EntityId, 'completedAt') as number;
     if (completedAt) node.completedAt = completedAt;
     
-    const eventType = query.getAttr('eventType', nodeId as EARS.EntityId) as string;
+    const eventType = query.getAttr(nodeId as EARS.EntityId, 'eventType') as string;
     if (eventType) node.eventType = eventType;
     
-    const stepNodeType = query.getAttr('stepNodeType', nodeId as EARS.EntityId) as string;
+    const stepNodeType = query.getAttr(nodeId as EARS.EntityId, 'stepNodeType') as string;
     if (stepNodeType) node.stepNodeType = stepNodeType;
     
-    const final = query.getAttr('final', nodeId as EARS.EntityId) as boolean;
+    const final = query.getAttr(nodeId as EARS.EntityId, 'final') as boolean;
     if (final) node.final = final;
     
-    const blueprint = query.getAttr('blueprint', nodeId as EARS.EntityId);
+    const blueprint = query.getAttr(nodeId as EARS.EntityId, 'blueprint');
     if (blueprint && typeof blueprint === 'object') {
       node.blueprint = blueprint as TNodeEntity['blueprint'];
     }
     
     // Get the full nodeAttributes (this is what we lazy load)
-    const nodeAttributes = query.getAttr('nodeAttributes', nodeId as EARS.EntityId);
+    const nodeAttributes = query.getAttr(nodeId as EARS.EntityId, 'nodeAttributes');
     if (nodeAttributes && typeof nodeAttributes === 'object') {
       node.nodeAttributes = nodeAttributes as Record<string, unknown>;
     }

@@ -13,7 +13,7 @@ import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  query, create, upsert, newId, write, getAttr, type EntityShape
+  query, create, upsert, newId, write, type EntityShape
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
 import { resetTestData } from '@apackdev/sdk/testing';
@@ -182,9 +182,8 @@ describe('Type inference — typed EARS helpers', () => {
     expectTypeOf(check).toBeFunction();
   });
 
-  it('getAttr reads a declared field of a branded id, unknown otherwise', () => {
-    expectTypeOf(getAttr(actionId, 'actionFn')).toEqualTypeOf<string | null>();
-    expectTypeOf(getAttr('x' as EARS.EntityId, 'actionFn')).toBeUnknown();
+  it('a field picked by a branded id is typed by its shape, and none answers undefined', () => {
+    expectTypeOf(query.ids(actionId).pickOne(['actionFn'])?.actionFn).toEqualTypeOf<string | undefined>();
   });
 
   it('pick picks the requested fields', () => {
@@ -285,12 +284,12 @@ describe('Generic flow — runtime verification', () => {
     expectTypeOf(entity.actionFn).toEqualTypeOf<string>();
 
     const found = query.ids(entity.id).pickOne();
-    expectTypeOf(found).toEqualTypeOf<EntityShape<'Action'> | null>();
+    expectTypeOf(found).toEqualTypeOf<EntityShape<'Action'> | undefined>();
     expect(found).toEqual(entity);
     // An id with no type in it is narrowed by ofType, which checks the entity's type rather than asserting it
     const plain: EARS.EntityId = entity.id;
     expect(query.ids(plain).ofType(EARS.Entity.Action).pickOne()?.label).toBe('TypedAction');
-    expect(query.ids(plain).ofType(EARS.Entity.Prompt).pickOne()).toBeNull();
+    expect(query.ids(plain).ofType(EARS.Entity.Prompt).pickOne()).toBeUndefined();
   });
 
   it('a query by type returns every row of it', () => {

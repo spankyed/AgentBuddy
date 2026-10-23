@@ -2,7 +2,7 @@
 // write that is no edit of the note leaves its updatedAt alone
 import { beforeEach, expect, it, vi } from 'vitest';
 import { resetTestData } from '@apackdev/sdk/testing';
-import { getAttr } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 import type { EARS } from '#generated/ears.ts';
 
@@ -14,7 +14,7 @@ it('stores a cleared savedDisplayOrder as null', () => {
   const id = note();
   repository.noteCommands.update(id, { savedDisplayOrder: 3 });
   repository.noteCommands.update(id, { savedDisplayOrder: null }, true);
-  expect(getAttr(id, 'savedDisplayOrder')).toBeNull();
+  expect(query.ids(id).pickOne(['savedDisplayOrder'])?.savedDisplayOrder).toBeNull();
 });
 
 it('stamps updatedAt for an edit and not for a write it skips', () => {
@@ -23,9 +23,9 @@ it('stamps updatedAt for an edit and not for a write it skips', () => {
     const id = note();
     vi.setSystemTime(2_000);
     repository.noteCommands.update(id, { lastSeen: 2_000 }, true);
-    expect(getAttr(id, 'updatedAt')).toBe(1_000);
+    expect(query.ids(id).pickOne(['updatedAt'])?.updatedAt).toBe(1_000);
     repository.noteCommands.update(id, { title: 'Renamed' });
-    expect(getAttr(id, 'updatedAt')).toBe(2_000);
+    expect(query.ids(id).pickOne(['updatedAt'])?.updatedAt).toBe(2_000);
   } finally {
     vi.useRealTimers();
   }

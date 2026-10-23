@@ -373,7 +373,7 @@ async function buildPacks(published: boolean, dependencyStamp?: { format?: numbe
  * Incidents), so these positions are checked directly. `|name|` marks a position in the source.
  */
 const COMPLETIONS = `
-import { EARS, query, getAttr, newId, write, create } from '#generated/ears.ts';
+import { EARS, query, newId, write, create } from '#generated/ears.ts';
 import { sendToSystem } from '#generated/events.ts';
 declare const memoId: EARS.EntityId<'Memo'>;
 sendToSystem('|systemId|', { type: 'CLEAR_MEMOS' });
@@ -387,7 +387,6 @@ query('Memo').lacks('|lacks|');
 query('Memo').orderBy('|orderBy|');
 query('Memo').distinct('|distinct|');
 query('Memo').groupBy('|groupBy|');
-getAttr(memoId, '|getAttr|');
 newId('|newId|');
 query.ids(memoId).out('related', '|out|');
 query.ids(memoId).in('related', '|in|');
@@ -408,7 +407,7 @@ query.all().withRole('|withRole|');
 write(memoId).grant('pinnned');
 create('Memo', { |createRow| });
 `;
-const FIELD_POSITIONS = ['pick', 'pickOne', 'outPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr'];
+const FIELD_POSITIONS = ['pick', 'pickOne', 'outPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy'];
 /** The fields a write may name: the declared ones, without the engine's own (`createdAt`, `updatedAt`, …) */
 const WRITE_POSITIONS = ['set', 'add', 'deleteAt'];
 /** Relation kinds: the pack's own, its dependency's and the SDK's */

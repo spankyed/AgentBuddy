@@ -5821,7 +5821,7 @@ declare const brainQueries: {
         id: `${string}-${string}` & {
             readonly __entity?: "TNode" | undefined;
         };
-    }, "blueprint" | "completedAt" | "createdAt" | "cronExpression" | "entityType" | "eventType" | "id" | "label" | "nodeAttributes" | "startedAt" | "status" | "stepNodeType" | "tNodeType" | "triggerType">) | null;
+    }, "blueprint" | "completedAt" | "createdAt" | "cronExpression" | "entityType" | "eventType" | "id" | "label" | "nodeAttributes" | "startedAt" | "status" | "stepNodeType" | "tNodeType" | "triggerType">) | undefined;
     readonly eventAllSteps: (eventNodeId: EARS.EntityId) => NodeEntity[];
     readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
     readonly nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string) => NodeEntity | undefined;

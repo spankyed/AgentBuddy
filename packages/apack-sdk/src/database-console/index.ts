@@ -9,16 +9,12 @@
 import { boundHost } from '../runtime/host-runtime.ts';
 import type { EarsNames } from '../runtime/packs-view.ts';
 import { EARS as EARS_NAMES } from '../types/index.ts';
-import { defineEars } from '@apackdev/ears';
-import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, getRow, getRoles, getRelationStats, findRelations, getSchemaStats } from '../ears/index.ts';
+import { transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, getRow, getRoles, getRelationStats, findRelations, getSchemaStats } from '../ears/index.ts';
 import { errorMessage } from '../utils/shared.ts';
-
-const { getAttr } = /*#__PURE__*/ defineEars(boundEars);
 
 const readHelpers = {
   query: untypedQuery,
   getRow,
-  getAttr,
   getRoles,
   findRelations,
   getRelationStats,
