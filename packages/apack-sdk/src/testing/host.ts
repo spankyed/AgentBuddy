@@ -130,16 +130,13 @@ function memoryTraceStore(engine: () => EarsEngine): TraceStore {
     entities: () => engine().admin.getAllEntities().map((id) => ({ id, meta: entityMeta(engine().getRow(id)!) })),
     getEntityMeta: (id) => { const row = engine().getRow(id); return row ? entityMeta(row) : null; },
     getAttr: (id, kind) => engine().getRow(id)?.[kind],
-    relations: (filter = {}) => engine().findRelations({
-      ...(filter.kind && { relationType: filter.kind as EARS.RelKind }),
-      ...(filter.src && { sourceEntity: filter.src }),
-      ...(filter.tgt && { targetEntity: filter.tgt }),
+    relations: ({ kind, source, target, limit } = {}) => engine().findRelations({
+      ...(kind && { kind: kind as EARS.RelKind }),
+      ...(source && { source }),
+      ...(target && { target }),
     })
-      .slice(0, filter.limit)
-      .map((relation) => ({
-        id: relation.id,
-        rel: { kind: relation.relationType, src: relation.sourceEntity, tgt: relation.targetEntity, info: relation.info, createdAt: 0 },
-      })),
+      .slice(0, limit)
+      .map((relation) => ({ ...relation, createdAt: 0 })),
   };
 }
 

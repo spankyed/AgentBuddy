@@ -846,7 +846,7 @@ describe('apack db clear-settings', () => {
 
     expect(JSON.parse((await rows()).out)).toEqual(before.filter((entity) => entity !== 'Settings-app'));
     expect(JSON.parse((await ok(['query', 'return getRoles("Note-a")', '--data-dir', dir, '-o', 'json'])).out)).toEqual(['assistant_birth']);
-    expect(JSON.parse((await ok(['query', 'return findRelations({ sourceEntity: "Note-a" }).map((r) => r.targetEntity)', '--data-dir', dir, '-o', 'json'])).out))
+    expect(JSON.parse((await ok(['query', 'return findRelations({ source: "Note-a" }).map((r) => r.target)', '--data-dir', dir, '-o', 'json'])).out))
       .toEqual(['Note-b']);
     expect((await ok(['query', 'return getRow("Note-a")?.title', '--data-dir', dir])).out).toBe('Alpha');
   });

@@ -245,7 +245,7 @@ describe('demo notes', () => {
     expect(doc.shortCode).toMatch(/^DOC-\d+$/);
     expect(guides).toMatchObject({ name: 'Demo guides' });
     expect(doc).toMatchObject({ name: 'Getting started', tags: ['demo'], content: [{ type: 'text', text: 'Install demo-pack.' }] });
-    expect(findRelations({ sourceEntity: guides.id, targetEntity: doc.id }).length).toBeGreaterThan(0);
+    expect(findRelations({ source: guides.id, target: doc.id }).length).toBeGreaterThan(0);
   });
 });
 TS

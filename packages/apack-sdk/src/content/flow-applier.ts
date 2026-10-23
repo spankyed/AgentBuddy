@@ -45,11 +45,11 @@ function contentOf(id: EARS.EntityId): Array<[string, unknown]> {
  * catching — a field the user added to a node was not in the list, so it was not in the digest.
  */
 function graphState(flowId: EARS.EntityId): GraphState {
-  const nodeIds = findRelations({ sourceEntity: flowId, relationType: EARS.RelKind.CONTAINS }).map((r) => r.targetEntity as string).sort();
+  const nodeIds = findRelations({ source: flowId, kind: EARS.RelKind.CONTAINS }).map((r) => r.target as string).sort();
   const relations = [flowId, ...nodeIds]
-    .flatMap((source) => findRelations({ sourceEntity: source as EARS.EntityId }))
-    .filter((r) => GRAPH_REL_KINDS.includes(r.relationType))
-    .map((r) => JSON.stringify([r.sourceEntity, r.relationType, r.targetEntity, r.info ?? null]))
+    .flatMap((source) => findRelations({ source: source as EARS.EntityId }))
+    .filter((r) => GRAPH_REL_KINDS.includes(r.kind))
+    .map((r) => JSON.stringify([r.source, r.kind, r.target, r.info ?? null]))
     .sort();
   return [contentOf(flowId), nodeIds.map((id) => [id, contentOf(id as EARS.EntityId)]), relations];
 }
@@ -136,12 +136,12 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
        */
       const collidingOwner = (name: string, entry: FlowDSL[string], replacing: FlowEntity | undefined): string | undefined => {
         const ownIds = new Set<string>(replacing
-          ? [replacing.id, ...findRelations({ sourceEntity: replacing.id, relationType: EARS.RelKind.CONTAINS }).map((r) => r.targetEntity)]
+          ? [replacing.id, ...findRelations({ source: replacing.id, kind: EARS.RelKind.CONTAINS }).map((r) => r.target)]
           : []);
         const ids = (compileFlowDSL({ [name]: entry }, { actions: actionMap, prompts: promptMap }).entity as Array<{ id: string }>).map((row) => row.id);
         const taken = ids.find((id) => !ownIds.has(id) && ears().query.withTrashed.ids(id as EARS.EntityId).exists());
         if (!taken) return undefined;
-        const flowId = findRelations({ targetEntity: taken as EARS.EntityId, relationType: EARS.RelKind.CONTAINS })[0]?.sourceEntity ?? taken;
+        const flowId = findRelations({ target: taken as EARS.EntityId, kind: EARS.RelKind.CONTAINS })[0]?.source ?? taken;
         const contentKey = contentKeyOf(flowId as EARS.EntityId);
         return contentKey ? `written by ${contentKey.slice(0, contentKey.indexOf(':'))}` : 'created by the user';
       };

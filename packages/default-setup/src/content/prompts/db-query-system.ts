@@ -77,7 +77,7 @@ Walk then pick (terminal):
   .out('contains', EARS.Entity.Message).pick(['text', 'sender'])
     → Array<{ id, text, sender }>
   .outEdges('contains', EARS.Entity.Message)  /  .inEdges(...)
-    → Array<{ kind, id }>             each edge: its kind and the entity at its far end
+    → Array<{ id, kind, source, target, info }>   each edge as a relation, findRelations' row
 
 Iteration:
   .map(id => ...)         iterates entity IDs (NOT objects), returns Array<T>

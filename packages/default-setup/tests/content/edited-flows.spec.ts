@@ -113,10 +113,10 @@ describe('re-applying edited flows', () => {
 
   it("doesn't count relations stored in another order as an edit", () => {
     // Relinking a transition (as loading relations from disk in another order would) keeps its content
-    const [transition] = nodesOf('Codex').flatMap((node) => findRelations({ sourceEntity: node.id, relationType: 'transitions_to' }));
-    untypedWrite(transition.sourceEntity)
-      .unlink('transitions_to', transition.targetEntity)
-      .link('transitions_to', transition.targetEntity, { info: transition.info });
+    const [transition] = nodesOf('Codex').flatMap((node) => findRelations({ source: node.id, kind: 'transitions_to' }));
+    untypedWrite(transition.source)
+      .unlink('transitions_to', transition.target)
+      .link('transitions_to', transition.target, { info: transition.info });
     expect(contentFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
   });
 

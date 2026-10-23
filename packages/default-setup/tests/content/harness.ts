@@ -118,8 +118,8 @@ export function snapshot(): Snapshot {
     const row = (query.withTrashed.ids(id as EARS.EntityId).pickAll() as Array<Record<string, unknown>>)[0];
     if (!row) continue;
     if (typeOf(id) === 'Relation') {
-      const details = row.relationDetails as { sourceEntity: string; targetEntity: string; relationType: string } | undefined;
-      if (details) relations.push({ source: details.sourceEntity, kind: details.relationType, target: details.targetEntity });
+      const details = row.relationDetails as { source: string; target: string; kind: string } | undefined;
+      if (details) relations.push({ source: details.source, kind: details.kind, target: details.target });
     } else if (SNAPSHOT_TYPES.includes(typeOf(id))) {
       rows.set(id, row);
     }

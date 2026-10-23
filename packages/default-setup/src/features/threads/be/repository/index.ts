@@ -59,8 +59,8 @@ export const threadQueries = {
   linkedThreads: (threadId: EARS.EntityId) =>
     query.ids(threadId)
       .outEdges(ThreadRelations, EARS.Entity.Thread)
-      .flatMap(({ kind, id }) => {
-        const row = query.ids(id).pickOne(["shortCode", "topic", "status", "timestamp"] as const);
+      .flatMap(({ kind, target }) => {
+        const row = query.ids(target).pickOne(["shortCode", "topic", "status", "timestamp"] as const);
         return row ? [{ relation: kind, ...row }] : [];
       }),
   
@@ -218,7 +218,7 @@ export const threadCommands = {
       // Remove all existing custom relations
       const existingLinks = query.ids(id).outEdges(ThreadRelations);
       for (const link of existingLinks) {
-        write(id).unlink(link.kind, link.id);
+        write(id).unlink(link.kind, link.target);
       }
 
       // Add new relations
@@ -292,7 +292,7 @@ export const threadCommands = {
     // First, unlink this thread from any threads it links to
     const existingLinks = query.ids(id).outEdges(ThreadRelations);
     for (const link of existingLinks) {
-      write(id).unlink(link.kind, link.id);
+      write(id).unlink(link.kind, link.target);
     }
 
     // Also unlink any threads that link to this thread
@@ -301,7 +301,7 @@ export const threadCommands = {
     for (const thread of allThreads) {
       const linkedToThis = query.ids(thread.id).outEdges(ThreadRelations);
       for (const link of linkedToThis) {
-        if (link.id === id) {
+        if (link.target === id) {
           write(thread.id).unlink(link.kind, id);
         }
       }
@@ -754,7 +754,7 @@ export const chatCommands = {
     // CONTAINS relation so it always appears last — even after a reload.
     if (updates.status === 'queued') {
       const threadLinks = query.ids(messageId).outEdges(EARS.RelKind.CONTAINS, EARS.Entity.Thread);
-      for (const { id: tid } of threadLinks) {
+      for (const { target: tid } of threadLinks) {
         relinkMessageToEnd(tid, messageId);
       }
     }

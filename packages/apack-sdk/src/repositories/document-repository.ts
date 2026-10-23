@@ -46,14 +46,14 @@ export function displayOrderOf(row: unknown): number {
 
 /** The folder holding `childId`, or none when it is at the root */
 export function parentCollectionOf(childId: EARS.EntityId): EARS.EntityId | null {
-  const [relation] = findRelations({ relationType: EARS.RelKind.PARENT_OF, targetEntity: childId });
-  return (relation?.sourceEntity as EARS.EntityId) ?? null;
+  const [relation] = findRelations({ kind: EARS.RelKind.PARENT_OF, target: childId });
+  return (relation?.source as EARS.EntityId) ?? null;
 }
 
 /** The folder holding `documentId`, or none when it is at the root */
 export function collectionOfDocument(documentId: EARS.EntityId): EARS.EntityId | null {
-  const [relation] = findRelations({ relationType: EARS.RelKind.CONTAINS, targetEntity: documentId });
-  return (relation?.sourceEntity as EARS.EntityId) ?? null;
+  const [relation] = findRelations({ kind: EARS.RelKind.CONTAINS, target: documentId });
+  return (relation?.source as EARS.EntityId) ?? null;
 }
 
 /** A folder's names from the root down to it */

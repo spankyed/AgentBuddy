@@ -37,7 +37,7 @@ export function syncReferences(sourceId: EARS.EntityId, content: string): void {
 
   const wanted = new Set(targets.filter((id) => query.withTrashed.ids(id).exists()));
   // Every REFERENCES relation the note has, one to a note that is gone included, so a stale one is removed too
-  const current = new Set(findRelations({ sourceEntity: sourceId, relationType: EARS.RelKind.REFERENCES }).map((r) => r.targetEntity as EARS.EntityId));
+  const current = new Set(findRelations({ source: sourceId, kind: EARS.RelKind.REFERENCES }).map((r) => r.target as EARS.EntityId));
 
   for (const targetId of wanted) {
     if (!current.has(targetId)) write(sourceId).link(EARS.RelKind.REFERENCES, targetId, { replace: true });
