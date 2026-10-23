@@ -33,7 +33,7 @@ import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apackdev/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
-import { installedEngine } from '@apackdev/ears';
+import { boundEars } from '@apackdev/sdk/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { readInstalledPackBuilds, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
@@ -356,7 +356,7 @@ function publishRepositories(before: ReadonlyMap<string, unknown>, next: Readonl
   const names = [...new Set([...before.keys(), ...next.keys()])]
     .filter(name => before.has(name) !== next.has(name) || before.get(name) !== next.get(name));
   if (!names.length) return;
-  const engine = installedEngine();
+  const engine = boundEars();
   const write = (values: ReadonlyMap<string, unknown>, name: string) => values.has(name)
     ? engine.registerRepository(name, values.get(name)) : engine.unregisterRepository(name);
   const attempted: string[] = [];

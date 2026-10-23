@@ -524,17 +524,17 @@ Delete:
 - `tests/unit/service-registry.spec.ts` (whole file): restates the generated `Services` type;
   `sdk-type-safety.spec.ts` covers the typing and the unknown-service rejection.
 - `tests/unit/registries.spec.ts`: "exports featureServices with all expected service keys".
-- `tests/unit/sdk-tiers.spec.ts`: "qx and tx are callable functions", "createEntity produces a valid
+- `tests/unit/sdk-tiers.spec.ts`: "query and write are callable functions", "createEntity produces a valid
   entity ID", "RepositoryError is constructable and instanceof Error", "RepositoryErrorCode has expected
   values", "repository proxy delegates registerRepository", "getAttr reads stored attributes",
   "resetTestData resets all state", "emit and safeEvents are callable", "getAppVersion reads the host
   version", "content helpers are callable", "broadcastToSurface and sendToBrainSystem are callable", and the
   source-grep test for the `@/core` alias (with the sibling `@/repository` and `@/services` greps, which
   `check:specifiers` covers). Keep the rest of the file.
-- `tests/unit/sdk-type-safety.spec.ts`: "qx() returns a QueryBuilder typed with the pack shapes",
+- `tests/unit/sdk-type-safety.spec.ts`: "query() returns a QueryBuilder typed with the pack shapes",
   "QueryBuilder terminal methods are typed", "createEntityWithDefaults<T> returns T & { id, entityType }"
   (all duplicates of `typed-query-builder.spec.ts` or of tests above them).
-- `tests/unit/typed-query-builder.spec.ts`: "qx(someEntityId) returns untyped QueryBuilder" (the
+- `tests/unit/typed-query-builder.spec.ts`: "query.ids(someEntityId) returns untyped QueryBuilder" (the
   overload-order test asserts it).
 - `tests/unit/content-parity/notes-change-tracking.spec.ts`: "fresh content in mode %s matches the golden
   notes", "content only the included notes", "content default-setup's own notes" (all covered by

@@ -23,7 +23,8 @@ import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
 import { applyPacks } from '../../../../src/packs/runtime/apply.ts';
 import { readAppPackSources } from '../../../../src/packs/app-sources.ts';
 import { createFormatApplier } from '@apackdev/sdk/content';
-import { untypedQx, untypedTx } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedQuery, untypedWrite } from '@apackdev/sdk/ears';
 
 const referenceDeclarations = {
   types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [] } },
@@ -996,9 +997,9 @@ describe('importing a pack’s content', () => {
        * pack's content back: an apply would read the entry it just wrote and leave the deletion alone,
        * which is exactly not what was asked for.
        */
-      const { untypedQx, untypedTx } = await import('@apackdev/ears');
-      const memos = () => untypedQx('Memo' as never).pickAll();
-      untypedTx(memos()[0]!.id).destroy();
+      const { untypedQuery, untypedWrite } = await import('@apackdev/sdk/ears');
+      const memos = () => untypedQuery('Memo').pickAll();
+      untypedWrite(memos()[0]!.id).destroy();
       expect(memos(), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);
 
       system.send({ type: 'IMPORT_PACK_CONTENT', directory: compiledMemos(), mode: 'replace-on-collision' });
@@ -1073,7 +1074,7 @@ describe('a user answering for one of a pack’s content items', () => {
         PackPrompt: {
           remove(id) {
             removed.push(id);
-            untypedTx(id).update('deleted' as never, true);
+            untypedWrite(id).set('deleted', true);
           },
         },
       },
@@ -1081,7 +1082,7 @@ describe('a user answering for one of a pack’s content items', () => {
       declarationRevision: snapshot.declarationRevision, buildRevision: revision, buildFiles: integrity.files });
   }
 
-  const describedBy = (id: string) => untypedQx(id as never).pickOne(['description'])?.description as string | undefined;
+  const describedBy = (id: string) => untypedQuery.ids(id as EARS.EntityId).pickOne(['description'])?.description as string | undefined;
 
   let dir: string;
   beforeEach(() => {
@@ -1099,7 +1100,7 @@ describe('a user answering for one of a pack’s content items', () => {
   });
 
   const entityOf = (key: string, entity: 'Action' | 'PackPrompt') =>
-    (untypedQx(entity as never).where('contentKey', key).pickAll()[0] as { id: string } | undefined)?.id;
+    (untypedQuery(entity).where('contentKey', key).pickAll()[0] as { id: string } | undefined)?.id;
 
   /**
    * **One item restored leaves every other entry alone**, which is the whole of what makes this request
@@ -1109,7 +1110,7 @@ describe('a user answering for one of a pack’s content items', () => {
    */
   it('writes the item the user asked for, and nothing of any other entry', () => {
     const prompt = entityOf(PROMPT_KEY, 'PackPrompt')!;
-    untypedTx(prompt as never).update('description' as never, 'mine');
+    untypedWrite(prompt as EARS.EntityId).set('description', 'mine');
     fs.rmSync(dir, { recursive: true, force: true });
     contentPack('v2');
 

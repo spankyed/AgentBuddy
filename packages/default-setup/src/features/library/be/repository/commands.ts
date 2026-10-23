@@ -1,4 +1,4 @@
-import { tx, qx } from '#generated/ears.ts';
+import { create, write, query } from '#generated/ears.ts';
 import * as path from 'path'
 import { EARS } from '#generated/ears.ts'
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types.ts'
@@ -90,9 +90,9 @@ const writers = {
     contentHash?: string,
   ): CollectionDTO {
     // Create collection entity
-    const builder = id ? tx(id as EARS.EntityId, true) : tx(EARS.Entity.Collection)
-    const collectionId = builder.id()
     const now = Date.now()
+    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId, createdAt: now }) : create(EARS.Entity.Collection, { createdAt: now })
+    const collectionId = builder.id()
     
     // Get display order
     const displayOrder = nextDisplayOrder(parentId || null)
@@ -101,7 +101,6 @@ const writers = {
       name,
       displayOrder,
       ...(contentHash && { contentHash }),
-      createdAt: now,
       updatedAt: now,
     }
 
@@ -109,9 +108,9 @@ const writers = {
       attrs.description = description
     }
 
-    builder.updateBatch(attrs)
+    builder.setMany(attrs)
     if (parentId) {
-      tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
+      write(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }
 
     const path = collectionPath(collectionId)
@@ -149,14 +148,14 @@ const writers = {
       attrs.description = description
     }
 
-    tx(collectionId).updateBatch(attrs)
-    const collections = qx(collectionId).pickAll()
+    write(collectionId).setMany(attrs)
+    const collections = query.ids(collectionId).pickAll()
     const collection = collections[0]
-    const documentCount = (qx(collectionId)
+    const documentCount = (query.ids(collectionId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pickAll()).length
 
-    const childCollections = qx(collectionId)
+    const childCollections = query.ids(collectionId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
@@ -168,8 +167,8 @@ const writers = {
         name: child.name as string,
         description: child.description as string | undefined,
         path: collectionPath(child.id as EARS.EntityId),
-        documentCount: qx(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
-        childCollections: buildChildren(qx(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
+        documentCount: query.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
+        childCollections: buildChildren(query.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
         displayOrder: displayOrderOf(child),
         createdAt: new Date(child.createdAt as number).toISOString(),
         updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),
@@ -230,7 +229,7 @@ const writers = {
         updatedAt: new Date(now).toISOString(),
       }
     } else {
-      const collections = qx(entityId).pickAll()
+      const collections = query.ids(entityId).pickAll()
       const collection = collections[0]!
       const childCount = 0 // Simplified for now
       
@@ -275,17 +274,17 @@ const writers = {
         
         // Remove from current parent if exists
         if (currentParent) {
-          tx(currentParent).unlinkIf(EARS.RelKind.PARENT_OF, collectionId)
+          write(currentParent).unlink(EARS.RelKind.PARENT_OF, collectionId)
         }
         
         // Add to new parent if specified
         if (targetFolderId) {
-          tx(targetFolderId).link(EARS.RelKind.PARENT_OF, collectionId)
+          write(targetFolderId).link(EARS.RelKind.PARENT_OF, collectionId)
         }
         
         // Update display order
         const displayOrder = nextDisplayOrder(targetFolderId)
-        tx(collectionId).update('displayOrder', displayOrder)
+        write(collectionId).set('displayOrder', displayOrder)
       }
     }
   },
@@ -296,22 +295,21 @@ const writers = {
     parentId?: EARS.EntityId,
     id?: string,
   ): CollectionDTO {
-    const builder = id ? tx(id as EARS.EntityId, true) : tx(EARS.Entity.Collection)
-    const collectionId = builder.id()
     const now = Date.now()
+    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId, createdAt: now }) : create(EARS.Entity.Collection, { createdAt: now })
+    const collectionId = builder.id()
 
     const displayOrder = nextDisplayOrder(parentId || null)
 
-    builder.updateBatch({
+    builder.setMany({
       name,
       symlinkPath,
       displayOrder,
-      createdAt: now,
       updatedAt: now,
     })
 
     if (parentId) {
-      tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
+      write(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }
 
     const path = collectionPath(collectionId)
@@ -333,11 +331,11 @@ const writers = {
   updateSymlinkPath(collectionId: EARS.EntityId, newPath: string): CollectionDTO {
     const now = Date.now()
     const newName = path.basename(newPath) || 'Symlink'
-    tx(collectionId).update('symlinkPath', newPath)
-    tx(collectionId).update('name', newName)
-    tx(collectionId).update('updatedAt', now)
+    write(collectionId).set('symlinkPath', newPath)
+    write(collectionId).set('name', newName)
+    write(collectionId).set('updatedAt', now)
 
-    const col = qx(collectionId).pickAll()[0]
+    const col = query.ids(collectionId).pickAll()[0]
     const colPath = collectionPath(collectionId)
     const parentId = parentCollectionOf(collectionId) || undefined
 

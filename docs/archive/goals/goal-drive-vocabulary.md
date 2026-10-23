@@ -84,7 +84,7 @@ has to be added to `@apackdev/testing` and shipped to every pack, or not added a
 | the source a verb runs | `/eval` takes **`body`**; `/query` and `/transact` take **`code`** |
 | a surface | `/navigate` takes **`surface`**; `/state` returns **`activeSurfaceId`** and **`surfaceIds`** |
 | sending an event | `/send` takes `{ event }`; `/system` takes `{ to, event }` — two verbs for one act |
-| naming | every POST is a verb except `/system`, a noun; `/qx` and `/tx` are engine jargon on a public wire |
+| naming | every POST is a verb except `/system`, a noun; the engine verbs need names a public wire reads plainly |
 | reads | `/events`, `/drops` and `/errors` are **GET requests that clear**, so a retry returns different data |
 
 The first row is not cosmetic: `/state` hands back `activeSurfaceId`, and the only verb that consumes a
@@ -117,8 +117,8 @@ records from last time. Extra verbs are merged *over* the core table, so a scaff
 
 **D4. Three naming rules, and a spec that holds them.**
 - **A POST is a verb, a GET is a noun.** `/system` folds into `POST /send { to?, event }` (no `to` means
-  the app's root actor, which is what `/send` does today). `/qx` and `/tx` become `/query` and `/transact`;
-  the names `qx` and `tx` stay inside the code you write, where they are the real API.
+  the app's root actor, which is what `/send` does today). the engine verbs are `/query` and `/transact`;
+  `query` and `transact` are also the names in the code you write, where they are the real API.
 - **One concept, one field name, in requests and responses.** `code` is any source the session runs.
   `surface` and `surfaces` name surfaces everywhere, so `/state` stops saying `activeSurfaceId`.
 - **Every response stays `{ ok, value }` or `{ ok: false, error }`**, with `4xx` reserved for a request
@@ -272,8 +272,8 @@ exists would mean a drive session making real model calls, which is worse than n
   it answers with the whole tree and a subtree stays `/eval`'s job.
 - **`AppHelper.getContext()` keeps `activeSurfaceId`/`surfaceIds`.** The rename is the HTTP surface; that is a
   typed TypeScript API whose consumers are E2E specs, where the explicit name reads fine.
-- **The thirteen session methods were not renamed.** `session.qx` stays `qx` behind `/query`: those are the
-  names of the code a caller writes, and the coupling being removed was at the wire.
+- **The session methods carry the verbs' names.** `session.query` is behind `/query` and `session.transact` behind
+  `/transact`, so the code a caller writes and the wire say the same thing.
 
 ### Live verification
 

@@ -4,7 +4,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
-import { createEarsEngine, untypedQx, untypedTx } from '@apackdev/ears';
+import { createEarsEngine } from '@apackdev/ears';
+import { untypedQuery, untypedCreate } from '@apackdev/sdk/ears';
 import { bindHost, unbindHost, boundHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
 import { onConnected, onIncoming, untypedBroadcastToSurface, untypedSendToSystem } from '../../src/events/index.ts';
@@ -32,7 +33,7 @@ const unused = () => { throw new Error('unused'); };
 const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });
 const runtime: HostRuntime = {
   transport: { rootEvents: _rootEvents },
-  ears: engine.query,
+  ears: engine,
   packs: testPacksView(),
   appVersion: '1.2.3',
   services: {
@@ -79,8 +80,8 @@ describe('with no app bound', () => {
       ['services.filesystem', () => boundHost().services.filesystem.readFile('/tmp/x')],
       ['services.repository', () => boundHost().ears.repository],
     ];
-    for (const [name, use] of [['qx', () => untypedQx('Memo')], ['untypedTx', () => untypedTx('Memo')]] as const) {
-      expect(use, name).toThrow('No EARS engine is installed');
+    for (const [name, use] of [['untypedQuery', () => untypedQuery('Memo')], ['untypedCreate', () => untypedCreate('Memo')]] as const) {
+      expect(use, name).toThrow('No EARS engine is bound');
     }
     for (const [name, use] of needsApp) expect(use, name).toThrow('bindHost');
   });
@@ -151,18 +152,18 @@ describe('bindHost', () => {
     expect(() => bindHost(runtime)).toThrow('already bound');
   });
 
-  it("installs the app's engine for @apackdev/ears's free functions, until unbound", () => {
+  it("binds the app's engine for the SDK's engine operations, until unbound", () => {
     bindHost(runtime);
-    const id = untypedTx('Memo').put('title', 'bound').id();
-    expect(engine.query.findById(id)).toMatchObject({ title: 'bound' });
-    expect(untypedQx('Memo').ids()).toEqual([id]);
+    const id = untypedCreate('Memo').set('title', 'bound').id();
+    expect(engine.findById(id)).toMatchObject({ title: 'bound' });
+    expect(untypedQuery('Memo').ids()).toEqual([id]);
     unbindHost();
-    expect(() => untypedQx('Memo')).toThrow('No EARS engine is installed');
+    expect(() => untypedQuery('Memo')).toThrow('No EARS engine is bound');
   });
 
   it("reads the bound app's services on each call", () => {
     bindHost(runtime);
-    expect(boundHost().ears.repository).toBe(engine.query.repository);
+    expect(boundHost().ears.repository).toBe(engine.repository);
     expect(() => boundHost().services.secrets.list()).toThrow('unused');
   });
 });

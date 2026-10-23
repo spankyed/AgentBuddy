@@ -1,26 +1,38 @@
-// An EARS engine: its stores, indexes and caches, and the two faces over them. Holding the engine is the
-// capability: `query` is what packs reach (through the installed engine), `admin` stays with whoever created it.
+// An EARS engine: its stores, indexes and caches, and the operations over them as the engine's own members, with the
+// creator's privileges beside them in `admin`. A program is handed the engine typed as `Ears`, which has no `admin`:
+// the faces define the contract, not a security boundary (packs run in-process).
 import type { EARS } from './entities.ts';
 import { noopSink, type EARSRuntimeDeps } from './runtime.ts';
 import { createRelationIndex, type RelationIndex } from './relation-index.ts';
 import { createAttributeStorage } from './attribute-storage.ts';
 import { createEdgeStore, type EdgeStore } from './edge-store.ts';
-import { createQx, type qx } from './query.ts';
+import { createQuery, type Query } from './query.ts';
 import { createGraph } from './graph.ts';
-import { createTx, type tx } from './transaction.ts';
+import { createWrites, type Create, type Upsert, type Write } from './write.ts';
 import { createQueryHelpers } from './query-helpers.ts';
 import { createEntityCounters } from './entity-utils.ts';
-import { createTransactionHelpers, type CreatedEntityFields } from './transaction-helpers.ts';
+import { createEntityHelpers, type CreatedEntityFields } from './entity-helpers.ts';
 import { createRelationReads, type RelationMatch, type RelationRow, type RelationStats } from './relations.ts';
 import { createSpawn, type Blueprint } from './blueprint.ts';
 import { createRepositoryRegistry } from './repository.ts';
+import { createJournal } from './journal.ts';
 
-/** An engine's queries, transactions and repository registry: what packs use, through the installed engine */
-export interface EarsQuery {
+/** An engine's operations — its queries, writes, transactions and repository registry: what a program is handed */
+export interface Ears {
   /** Queries the engine, untyped (a pack's `#generated/ears` types it) */
-  qx: typeof qx;
-  /** Writes to the engine: creates an entity of a type, or changes the entity with an id */
-  tx: typeof tx;
+  query: Query;
+  /** Creates an entity of a registered type, with a new id or the one given */
+  create: Create;
+  /** Writes to the entity with an id, creating it as the type when no entity has it */
+  upsert: Upsert;
+  /** Writes to the entity with an id, which must exist */
+  write: Write;
+  /**
+   * Runs `fn` as one unit: if it throws, every write it made is undone and none reaches persistence; if it
+   * returns, persistence receives them together. Reads inside see its own writes. `fn` must be synchronous,
+   * and a unit inside another commits into it.
+   */
+  transact<T>(fn: () => T): T;
   /** Whether `name` is an entity type the engine's creator registered */
   isEntityType(name: string): boolean;
   findById<T = unknown>(id: EARS.EntityId): T | undefined;
@@ -54,11 +66,13 @@ export interface EarsQuery {
   getAllRelationKinds(): string[];
   getAttributeStats(kind: EARS.AttrKind): { entityCount: number; totalValues: number };
   getSchemaStats(): { entities: Record<string, number>; attributes: Record<string, number>; relations: Record<string, number> };
-  queryEntitiesByAttribute(kind: EARS.AttrKind, value?: unknown): EARS.EntityId[];
-  queryEntitiesByRelationTo(relKind: string, id: EARS.EntityId, asSource?: boolean): EARS.EntityId[];
-  queryEntitiesInRelationTo(target: EARS.EntityId): EARS.EntityId[];
+  findEntitiesByAttribute(kind: EARS.AttrKind, value?: unknown): EARS.EntityId[];
+  findEntitiesByRelationTo(relKind: string, id: EARS.EntityId, asSource?: boolean): EARS.EntityId[];
+  findEntitiesInRelationTo(target: EARS.EntityId): EARS.EntityId[];
   destroyEntity(id: EARS.EntityId, skipPersistence?: boolean): void;
   removeRelationById(relId: EARS.EntityId): void;
+  /** Moves a relation to new ends, or replaces its info, keeping its id */
+  updateRelation(relId: EARS.EntityId, patch: { sourceEntity?: EARS.EntityId; targetEntity?: EARS.EntityId; info?: unknown }): void;
   findRelations(match?: RelationMatch): RelationRow[];
   getRelationStats(kind: EARS.RelKind): RelationStats;
   descendants(start: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId[];
@@ -92,10 +106,12 @@ export interface EarsAdmin {
   mergeAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown, index?: number): void;
   dropAttr(id: EARS.EntityId, kind: EARS.AttrKind, index?: number): void;
   dropIf(id: EARS.EntityId, kind: EARS.AttrKind, criterion: unknown): void;
+  /** Removes every value of an attribute */
+  deleteAttr(id: EARS.EntityId, kind: EARS.AttrKind): void;
   updateAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
   addRelation(src: EARS.EntityId, kind: string, tgt: EARS.EntityId, info?: unknown): EARS.EntityId;
   updateRelation(relId: EARS.EntityId, newSource?: EARS.EntityId, newTarget?: EARS.EntityId, info?: unknown): void;
-  queryEntitiesByRole(role: string): EARS.EntityId[];
+  findEntitiesByRole(role: string): EARS.EntityId[];
   edgeStore: EdgeStore;
   /** The relation index, by kind (read it; write through the index functions) */
   readonly relationIndex: Readonly<RelationIndex>;
@@ -109,38 +125,38 @@ export interface EarsAdmin {
   repositories(): Record<string, unknown>;
 }
 
-/** An EARS engine */
-export interface EarsEngine {
-  query: EarsQuery;
+/** An EARS engine as its creator holds it: its operations, and the creator's privileges in `admin` */
+export interface EarsEngine extends Ears {
   admin: EarsAdmin;
 }
 
 /**
- * A new, empty engine. `isEntityType` tells an entity type from an id (`tx('Note')` creates a Note);
- * `persistence` receives every write (nothing by default). The engine is used through its faces, or
- * through the free functions once its query face is installed (`installEngine`).
+ * A new, empty engine. `isEntityType` says which names are entity types `create` and `query` accept;
+ * `persistence` receives every write (nothing by default). Whoever holds the engine calls its operations on it;
+ * the app's is the SDK's bound engine (`boundEars`, `@apackdev/sdk/ears`).
  */
 export function createEarsEngine({ persistence = noopSink, isEntityType }: EARSRuntimeDeps): EarsEngine {
-  const relations = createRelationIndex();
-  const storage = createAttributeStorage({ relations, persistence });
+  const { journal, unitSink, transact } = createJournal(persistence);
+  const relations = createRelationIndex(journal);
+  const storage = createAttributeStorage({ relations, persistence: unitSink, journal });
   const edgeStore = createEdgeStore({ relations, storage });
-  const qx = createQx({ storage, relations, isEntityType });
-  const graph = createGraph({ qx, edgeStore });
-  const tx = createTx({ storage, edgeStore, qx, graph, isEntityType });
-  const finders = createQueryHelpers(qx);
-  const counters = createEntityCounters(qx);
-  const writers = createTransactionHelpers({ tx, counters });
+  const query = createQuery({ storage, relations, isEntityType });
+  const graph = createGraph({ query, edgeStore });
+  const { create, upsert, write } = createWrites({ storage, edgeStore, graph, isEntityType, journal });
+  const finders = createQueryHelpers(query);
+  const counters = createEntityCounters(query);
+  const entityHelpers = createEntityHelpers({ create, write, counters });
   const relationReads = createRelationReads({ edgeStore, relations, storage });
   const repositories = createRepositoryRegistry();
 
-  const query: EarsQuery = {
-    qx, tx, isEntityType,
+  const operations: Ears = {
+    query, create, upsert, write, transact, isEntityType,
     ...finders,
-    ...writers,
+    ...entityHelpers,
     ...counters,
     ...relationReads,
     ...graph,
-    spawn: createSpawn(tx),
+    spawn: createSpawn({ create, query }),
     getAttr: storage.getAttr,
     getAttrs: storage.getAttrs,
     getAll: storage.getAll,
@@ -154,11 +170,12 @@ export function createEarsEngine({ persistence = noopSink, isEntityType }: EARSR
     getAllRelationKinds: storage.getAllRelationKinds,
     getAttributeStats: storage.getAttributeStats,
     getSchemaStats: storage.getSchemaStats,
-    queryEntitiesByAttribute: storage.queryEntitiesByAttribute,
-    queryEntitiesByRelationTo: storage.queryEntitiesByRelationTo,
-    queryEntitiesInRelationTo: storage.queryEntitiesInRelationTo,
+    findEntitiesByAttribute: storage.findEntitiesByAttribute,
+    findEntitiesByRelationTo: storage.findEntitiesByRelationTo,
+    findEntitiesInRelationTo: storage.findEntitiesInRelationTo,
     destroyEntity: storage.destroyEntity,
     removeRelationById: storage.removeRelationById,
+    updateRelation: (relId, { sourceEntity, targetEntity, info }) => storage.updateRelation(relId, sourceEntity, targetEntity, info),
     repository: repositories.repository,
     registerRepository: repositories.registerRepository,
     unregisterRepository: repositories.unregisterRepository,
@@ -173,10 +190,11 @@ export function createEarsEngine({ persistence = noopSink, isEntityType }: EARSR
     mergeAttr: storage.mergeAttr,
     dropAttr: storage.dropAttr,
     dropIf: storage.dropIf,
+    deleteAttr: storage.deleteAttr,
     updateAttr: storage.updateAttr,
     addRelation: storage.addRelation,
     updateRelation: storage.updateRelation,
-    queryEntitiesByRole: storage.queryEntitiesByRole,
+    findEntitiesByRole: storage.findEntitiesByRole,
     edgeStore,
     relationIndex: relations.index,
     addToIndex: relations.addToIndex,
@@ -186,5 +204,5 @@ export function createEarsEngine({ persistence = noopSink, isEntityType }: EARSR
     repositories: repositories.entries,
   };
 
-  return { query, admin };
+  return { ...operations, admin };
 }

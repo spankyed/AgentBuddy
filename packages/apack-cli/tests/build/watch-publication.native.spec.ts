@@ -6,7 +6,7 @@ import { createServer } from 'node:http';
 import { createActor, createMachine } from 'xstate';
 import { afterEach, beforeEach, expect, it, vi, type MockInstance } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
-import { installedEngine } from '@apackdev/ears';
+import { boundEars } from '@apackdev/sdk/ears';
 import { createSettingsStore, createSettingsService } from '@apackdev/host/settings';
 import { startTestRuntime, resetTestData } from '@apackdev/sdk/testing';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
@@ -44,7 +44,7 @@ async function startWatchedPack(signal: AbortSignal): Promise<WatchedPack & { cl
   const shared = path.join(temporary, 'shared');
   const hooks = path.join(temporary, 'hooks');
   resetTestData();
-  settings = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: registry.settingsCatalog }));
+  settings = createSettingsService(createSettingsStore({ ears: boundEars, catalog: registry.settingsCatalog }));
   vi.stubEnv('APACK_ENV', 'test');
   vi.stubEnv('APACK_USER_DATA_DIR', path.join(temporary, 'profile'));
   vi.stubEnv('SHIPPED_PACKS_DIR', '');

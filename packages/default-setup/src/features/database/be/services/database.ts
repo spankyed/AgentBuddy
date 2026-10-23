@@ -2,12 +2,12 @@
  * Database Service
  *
  * `services.database`: live-data context for AI query generation. Actions read and write
- * entities through `services.repository`; pack code imports `qx`/`tx` from `#generated/ears`.
+ * entities through `services.repository`; pack code imports `query`/`create`/`write` from `#generated/ears`.
  */
 
 import { EARS } from '#generated/ears.ts';
-import { getEntitiesOfType, getAllEntityTypes, getAll } from '@apackdev/ears';
-import { findRelations } from '@apackdev/ears';
+import { getEntitiesOfType, getAllEntityTypes, getAll } from '@apackdev/sdk/ears';
+import { findRelations } from '@apackdev/sdk/ears';
 
 /**
  * Build a query context from live data for AI query generation.

@@ -20,6 +20,9 @@ export function closeEnv(dbs: LmdbDbs, log?: (message: string) => void): void;
 export function closeShardedEnvs(envs: Record<Partition, LmdbDbs>, log?: (message: string) => void): void;
 
 // @public
+export function convertToFormat2(basePath: string): FormatConversion;
+
+// @public
 export function decodeAttr(rec?: AttrRecord | null): unknown;
 
 // @public
@@ -41,6 +44,16 @@ export type FindByAttrOpts = {
 };
 
 // @public
+export interface FormatConversion {
+    addedRows: number;
+    entityTypeAttrs: number;
+    orphanRows: number;
+    relationDetailAttrs: number;
+    relationRows: number;
+    rewrittenRows: number;
+}
+
+// @public
 export function hydrateSharded(params: {
     engine: EarsAdmin;
     envs: Record<Partition, LmdbDbs>;
@@ -51,7 +64,7 @@ export function hydrateSharded(params: {
 }): Promise<void>;
 
 // @public
-export const LMDB_FORMAT_VERSION = 1;
+export const LMDB_FORMAT_VERSION = 2;
 
 // @public
 export type LmdbDbs = {
@@ -65,7 +78,7 @@ export type LmdbDbs = {
 export type LmdbPaths = Record<Partition, string>;
 
 // @public (undocumented)
-export class LmdbQuery {
+export class LmdbReader {
     constructor(dbs: LmdbDbs);
     bfs(startId: string, opts?: {
         maxDepth?: number;
@@ -127,7 +140,7 @@ export interface LmdbStore {
     isOpen(): boolean;
     readonly paths: Readonly<LmdbPaths>;
     readonly policy: PartitionPolicy;
-    query(partition: Partition): LmdbQuery;
+    read(partition: Partition): LmdbReader;
     readonly readOnly: boolean;
     reopen(): void;
     reset(): Promise<void>;

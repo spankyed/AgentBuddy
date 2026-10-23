@@ -125,14 +125,14 @@ const unsupported = (name: string) => () => Promise.reject(new Error(`appData.${
 
 /** Reads the in-memory database: unit tests keep flow execution records (TNodes) there */
 function memoryTraceStore(engine: () => EarsEngine): TraceStore {
-  const getAttr = (id: EARS.EntityId, kind: string) => engine().query.getAttr(id, kind as EARS.AttrKind);
+  const getAttr = (id: EARS.EntityId, kind: string) => engine().getAttr(id, kind as EARS.AttrKind);
   const entityMeta = (id: EARS.EntityId) =>
     ({ type: String(getAttr(id, 'entityType') ?? id.slice(0, id.indexOf('-'))), createdAt: Number(getAttr(id, 'createdAt') ?? 0) });
   return {
-    entities: () => engine().query.getAllEntities().map((id) => ({ id, meta: entityMeta(id) })),
+    entities: () => engine().getAllEntities().map((id) => ({ id, meta: entityMeta(id) })),
     getEntityMeta: (id) => (getAttr(id, 'entityType') === null ? null : entityMeta(id)),
     getAttr: (kind, id) => getAttr(id, kind) ?? undefined,
-    relations: (filter = {}) => engine().query.findRelations({
+    relations: (filter = {}) => engine().findRelations({
       ...(filter.kind && { relationType: filter.kind as EARS.RelKind }),
       ...(filter.src && { sourceEntity: filter.src }),
       ...(filter.tgt && { targetEntity: filter.tgt }),
@@ -170,7 +170,7 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
   const runtime: HostRuntime = {
     transport: { rootEvents: testRootEvents },
     // The current engine: a reset replaces it
-    get ears() { return engine().query; },
+    get ears() { return engine(); },
     packs: testPacksView(packs),
     appVersion,
     services: {

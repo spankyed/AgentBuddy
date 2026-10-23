@@ -1,4 +1,4 @@
-import { tx, qx } from '#generated/ears.ts';
+import { query, create, write } from '#generated/ears.ts';
 import { Index } from 'usearch'
 
 import { EARS } from '#generated/ears.ts'
@@ -32,7 +32,7 @@ function generateIndexedDocShortCode(): string {
 }
 
 function findIndexedDoc(indexId: string, chunkKey: string): IndexedDocEntity | null {
-  const results = qx(EARS.Entity.IndexedDoc)
+  const results = query(EARS.Entity.IndexedDoc)
     .where('indexId', indexId)
     .where('chunkKey', chunkKey)
     .pickAll()
@@ -44,29 +44,29 @@ function findIndexedDoc(indexId: string, chunkKey: string): IndexedDocEntity | n
 }
 
 function createIndexedDoc(data: IndexedDocCreateData): EARS.EntityId {
-  const id = tx(EARS.Entity.IndexedDoc)
-    .put('shortCode', generateIndexedDocShortCode())
-    .put('indexId', data.indexId)
-    .put('chunkKey', data.chunkKey)
-    .put('documentId', data.documentId)
-    .put('vectorId', data.vectorId)
-    .put('text', data.text)
-    .put('metadata', data.metadata)
-    .put('chunkInfo', data.chunkInfo || null)
+  const id = create(EARS.Entity.IndexedDoc)
+    .set('shortCode', generateIndexedDocShortCode())
+    .set('indexId', data.indexId)
+    .set('chunkKey', data.chunkKey)
+    .set('documentId', data.documentId)
+    .set('vectorId', data.vectorId)
+    .set('text', data.text)
+    .set('metadata', data.metadata)
+    .set('chunkInfo', data.chunkInfo || null)
     .id()
   return id
 }
 
 function updateIndexedDoc(entityId: EARS.EntityId, data: IndexedDocUpdateData): void {
-  tx(entityId).updateBatch(data as Record<string, unknown>)
+  write(entityId).setMany(data as Record<string, unknown>)
 }
 
 function deleteIndexedDocsForIndex(indexId: string): void {
-  const docs = qx(EARS.Entity.IndexedDoc)
+  const docs = query(EARS.Entity.IndexedDoc)
     .where('indexId', indexId)
     .ids()
   
-  docs.forEach(id => tx(id).destroy())
+  docs.forEach(id => write(id).destroy())
 }
 
 // Helper to build chunk metadata
@@ -244,7 +244,7 @@ function removeDocumentChunks(
     // Find and destroy the IndexedDoc entity
     const indexedDoc = findIndexedDoc(indexId, key)
     if (indexedDoc) {
-      tx(indexedDoc.id).destroy()
+      write(indexedDoc.id).destroy()
     }
   })
   
@@ -258,7 +258,7 @@ export async function createSearchIndex(
   const now = Date.now()
 
   // Create SearchIndex entity with auto-generated ID
-  const builder = tx(EARS.Entity.SearchIndex)
+  const builder = create(EARS.Entity.SearchIndex, { createdAt: now })
   const indexId = builder.id()
 
   const searchIndex: SearchIndex = {
@@ -272,8 +272,10 @@ export async function createSearchIndex(
   }
 
   // Save to EARS
-  builder.updateBatch({
-    ...searchIndex,
+  // The engine holds the id and creation time; the row is the rest
+  const { id: _id, createdAt: _createdAt, ...fields } = searchIndex
+  builder.setMany({
+    ...fields,
     type: 'SearchIndex',
   })
   
@@ -294,7 +296,7 @@ export async function createSearchIndex(
 }
 
 export async function findSearchIndex(indexId: EARS.EntityId): Promise<SearchIndex | null> {
-  const indices = qx(indexId).pickAll()
+  const indices = query.ids(indexId).pickAll()
   const indexData = indices[0]
   
   if (!indexData || indexData.type !== 'SearchIndex') {
@@ -305,7 +307,7 @@ export async function findSearchIndex(indexId: EARS.EntityId): Promise<SearchInd
 }
 
 export async function getSearchIndicesForFolder(folderId: EARS.EntityId | null): Promise<SearchIndex[]> {
-  const allIndices = qx(EARS.Entity.SearchIndex)
+  const allIndices = query(EARS.Entity.SearchIndex)
     .where('folderId', folderId)
     .pickAll()
   
@@ -333,9 +335,8 @@ export async function updateSearchIndex(
   }
   
   // Update in EARS
-  tx(indexId).updateBatch({
-    ...updatedIndex,
-  })
+  const { id: _id, createdAt: _createdAt, ...fields } = updatedIndex
+  write(indexId).setMany(fields)
   
   // If embedding model changed, we need to re-index everything
   if (existingIndex.embeddingModel !== config.embeddingModel ||
@@ -386,7 +387,7 @@ export async function deleteSearchIndex(indexId: EARS.EntityId): Promise<void> {
   searchService.deleteIndexFiles(indexId)
   
   // Destroy the SearchIndex entity
-  tx(indexId).destroy()
+  write(indexId).destroy()
 }
 
 export async function indexDocumentsInFolder(
@@ -423,7 +424,7 @@ export async function indexDocumentsInFolder(
   
   // Update and save
   searchIndex.documentCount = mappings.size
-  tx(indexId).updateBatch({ ...searchIndex, type: 'SearchIndex', documentCount: mappings.size })
+  write(indexId).set('documentCount', mappings.size)
   
   if (mappings.size > 0) {
     await searchService.saveIndex(index, getIndexFilePath(indexId))
@@ -464,7 +465,7 @@ export async function indexDocument(
 
   // Update and save
   searchIndex.documentCount = mappings.size
-  tx(indexId).updateBatch({ ...searchIndex, type: 'SearchIndex', documentCount: mappings.size })
+  write(indexId).set('documentCount', mappings.size)
 
   await searchService.saveIndex(index, getIndexFilePath(indexId))
   searchService.saveMappings(indexId, mappings)
@@ -490,7 +491,7 @@ export async function removeDocumentFromIndex(
     searchService.saveMappings(indexId, mappings)
     
     searchIndex.documentCount = mappings.size
-    tx(indexId).updateBatch({ ...searchIndex, type: 'SearchIndex', documentCount: mappings.size })
+    write(indexId).set('documentCount', mappings.size)
   }
 }
 
@@ -601,7 +602,7 @@ async function getDocumentsToIndex(
 async function getChildCollectionsRecursive(
   collectionId: EARS.EntityId
 ): Promise<EARS.EntityId[]> {
-  const children = qx(collectionId)
+  const children = query.ids(collectionId)
     .linksTo(EARS.RelKind.PARENT_OF, 'Collection' as any)
     .ids()
   
@@ -645,7 +646,7 @@ export async function autoIndexNewDocument(documentId: EARS.EntityId): Promise<v
   if (!document) return
   
   // Find all indices that should include this document
-  const allIndices = qx(EARS.Entity.SearchIndex).pickAll()
+  const allIndices = query(EARS.Entity.SearchIndex).pickAll()
   
   for (const indexData of allIndices) {
     const searchIndex = indexData as unknown as SearchIndex
@@ -673,7 +674,7 @@ export async function autoIndexNewDocument(documentId: EARS.EntityId): Promise<v
 
 // Remove document from all indices when deleted
 export async function removeDocumentFromAllIndices(documentId: EARS.EntityId): Promise<void> {
-  const allIndices = qx(EARS.Entity.SearchIndex).pickAll()
+  const allIndices = query(EARS.Entity.SearchIndex).pickAll()
   
   for (const indexData of allIndices) {
     const searchIndex = indexData as unknown as SearchIndex

@@ -4,12 +4,13 @@ import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createEarsEngine, getEntitiesOfType, installEngine, installedEngine, untypedQx, type EARS } from '@apackdev/ears';
+import { createEarsEngine, type EARS } from '@apackdev/ears';
+import { getEntitiesOfType, _bindEars, boundEars, untypedQuery } from '@apackdev/sdk/ears';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
-import { dataDirWithPacks, removeTempDirs, schemaContext, tempDir, untypedTx, writeData } from './fixtures.ts';
+import { dataDirWithPacks, removeTempDirs, schemaContext, tempDir, untypedCreate, writeData } from './fixtures.ts';
 import { _appDirOf } from '@apackdev/sdk/env';
 
 function writeSnapshot(file: string, manifest: PackManifest): void {
@@ -131,9 +132,9 @@ describe('findAppDataPaths', () => {
 describe('openAppDatabase', () => {
   /**
    * The firing case for the refusal, and the reason it exists rather than a warning. With an incomplete schema
-   * the engine does not know `Note` is an entity type, so `tx('Note')` takes the name for an *id* and writes a
-   * row literally called `Note` — measured against a real data dir before this refusal existed. A read of the
-   * same dir is fine and is the whole point of the fallback.
+   * the engine does not know `Note` is an entity type, so `create('Note')` and `query('Note')` are refused one call
+   * at a time, part way through whatever the tool was writing. A read of the same dir is fine and is the whole
+   * point of the fallback.
    */
   // A dir whose packs were removed still holds their rows — uninstalling deletes a directory, not rows — so
   // "no pack installed" is a schema that cannot be written against, however true it is about the directory
@@ -165,7 +166,7 @@ describe('openAppDatabase', () => {
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, schemaFrom: snapshot, ...quiet });
     try {
       expect(db.schema.degraded).toBeUndefined();
-      expect(db.query.tx('Note').put('title', 'new').id().startsWith('Note-')).toBe(true);
+      expect(db.ears.create('Note').set('title', 'new').id().startsWith('Note-')).toBe(true);
     } finally {
       db.close();
     }
@@ -174,79 +175,79 @@ describe('openAppDatabase', () => {
   it('hydrates the primary partition with the installed types, and installs the engine until close', async () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => {
-      untypedTx(id('Note-1'), true).put('entityType', 'Note').put('title', 'kept').grant('pinned').link('mentions', id('Note-2'));
-      untypedTx(id('Note-2'), true).put('entityType', 'Note').put('title', 'other');
-      untypedTx(id('TNode-1'), true).put('step', 'volatile');
+      untypedCreate('Note', { id: id('Note-2') }).set('title', 'other');
+      untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept').grant('pinned').link('mentions', id('Note-2'));
+      untypedCreate('TNode', { id: id('TNode-1') }).set('step', 'volatile');
     });
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(installedEngine()).toBe(db.query);
+    expect(boundEars()).toBe(db.ears);
     expect(db.paths).toEqual(_appDataPaths(dir));
     expect(getEntitiesOfType('Note').sort()).toEqual(['Note-1', 'Note-2']);
-    expect(untypedQx('Note').ids()).toHaveLength(2);
-    expect(db.query.getRoles(id('Note-1'))).toEqual(['pinned']);
-    expect(db.query.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);
+    expect(untypedQuery('Note').ids()).toHaveLength(2);
+    expect(db.ears.getRoles(id('Note-1'))).toEqual(['pinned']);
+    expect(db.ears.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);
     // The volatile partition isn't hydrated, as in the app
-    expect(db.query.getAttr(id('TNode-1'), 'step')).toBeNull();
+    expect(db.ears.getAttr(id('TNode-1'), 'step')).toBeNull();
     db.close();
 
     const withHistory = await openAppDatabase({ env: 'test', userDataDir: dir, includeVolatile: true, ...quiet });
-    expect(withHistory.query.getAttr(id('TNode-1'), 'step')).toBe('volatile');
-    expect(withHistory.query.getAttr(id('Note-1'), 'title')).toBe('kept');
+    expect(withHistory.ears.getAttr(id('TNode-1'), 'step')).toBe('volatile');
+    expect(withHistory.ears.getAttr(id('Note-1'), 'title')).toBe('kept');
     withHistory.close();
 
     const db2 = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(db2.query.getAttr(id('TNode-1'), 'step')).toBeNull();
+    expect(db2.ears.getAttr(id('TNode-1'), 'step')).toBeNull();
     // An entity type creates an entity
-    const created = db2.query.tx('Note').put('title', 'new').id();
+    const created = db2.ears.create('Note').set('title', 'new').id();
     expect(created.startsWith('Note-')).toBe(true);
     db2.close();
-    expect(() => installedEngine()).toThrow();
+    expect(() => boundEars()).toThrow();
 
     const again = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
-    expect(again.query.getAttr(created, 'title')).toBe('new');
+    expect(again.ears.getAttr(created, 'title')).toBe('new');
     again.close();
   });
 
   it('refuses writes when read-only, and leaves the files as they were', async () => {
     const dir = dataDirWithPacks();
-    await writeData(dir, () => { untypedTx(id('Note-1'), true).put('title', 'kept'); });
+    await writeData(dir, () => { untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept'); });
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
-    expect(() => db.query.tx(id('Note-1')).put('title', 'changed')).toThrow(/open read-only/);
+    expect(() => db.ears.write(id('Note-1')).set('title', 'changed')).toThrow(/open read-only/);
     db.close();
     const again = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
-    expect(again.query.getAttr(id('Note-1'), 'title')).toBe('kept');
+    expect(again.ears.getAttr(id('Note-1'), 'title')).toBe('kept');
     again.close();
   });
 
   it('throws from close when a write failed to reach the files', async () => {
     const dir = dataDirWithPacks();
-    await writeData(dir, () => { untypedTx(id('Note-1'), true).put('title', 'kept'); });
+    await writeData(dir, () => { untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept'); });
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
     // JSON can't encode a BigInt
-    db.query.tx(id('Note-1')).put('count', 1n);
+    db.ears.write(id('Note-1')).set('count', 1n);
     expect(() => db.close()).toThrow(/1 write\(s\) didn't reach the database in .*BigInt/);
-    expect(() => installedEngine()).toThrow();
+    expect(() => boundEars()).toThrow();
   });
 
   it('puts back the engine that was installed before, however it ends', async () => {
     const dir = dataDirWithPacks();
-    await writeData(dir, () => { untypedTx(id('Note-1'), true).put('title', 'kept'); });
+    await writeData(dir, () => { untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept'); });
     // A process that already has an engine: the app, or a test file that started a runtime
     const outer = createEarsEngine({ isEntityType: (name) => name === 'Note' });
-    installEngine(outer.query);
+    _bindEars(outer);
     try {
       const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-      expect(installedEngine()).toBe(db.query);
+      expect(boundEars()).toBe(db.ears);
       db.close();
-      expect(installedEngine()).toBe(outer.query);
+      expect(boundEars()).toBe(outer);
 
       // And an open that fails installs nothing at all, rather than leaving this process without an engine
       const broken = dataDirWithPacks();
       await expect(openAppDatabase({ env: 'test', userDataDir: broken, ...quiet })).rejects.toThrow();
-      expect(installedEngine()).toBe(outer.query);
+      expect(boundEars()).toBe(outer);
     } finally {
-      installEngine(undefined);
+      _bindEars(undefined);
     }
   });
 

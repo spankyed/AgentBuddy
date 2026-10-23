@@ -5,7 +5,9 @@
 ```ts
 
 // @public
-export function consoleEars(names: EarsNames): ConsoleScope['EARS'];
+export function consoleEars(names: EarsNames, input?: {
+    hint?: string;
+}): ConsoleScope['EARS'];
 
 // @public
 export interface ConsoleScope {

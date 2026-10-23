@@ -1,4 +1,4 @@
-import { installedEngine } from '@apackdev/ears';
+import { boundEars } from '@apackdev/sdk/ears';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 import type { Message } from '@apackdev/sdk/events';
@@ -21,7 +21,7 @@ const { systemBusRouter } = await import('../../src/transport/bus.ts');
 const { settingsRouter } = await import('../../src/transport/settings.ts');
 
 const packs = createNativePackTestRegistry();
-const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog, onCatalogChanged: packs.onCatalogChanged }));
+const admin = createSettingsService(createSettingsStore({ ears: boundEars, catalog: packs.settingsCatalog, onCatalogChanged: packs.onCatalogChanged }));
 startTestRuntime({ packs, settings: admin, entityTypes: HOST_ENTITY_TYPES });
 packs.registerPack(hostRegistration({ settings: { machine: createSettingsSystem(), receives: [...settingsEvents] } }));
 const origins = new Map<string, PackOrigin>();

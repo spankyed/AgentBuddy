@@ -1,7 +1,7 @@
 // The Database console's code runners, which the Database surface and `apack db query`/`exec` share
 import * as os from 'node:os';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { untypedTx, untypedQx } from '@apackdev/ears';
+import { untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
 import { consoleEars, getSchemaStats, installedEars, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
 import { testPacks } from '../../src/testing/packs.ts';
 import { EARS } from '../../src/types/index.ts';
@@ -20,9 +20,9 @@ describe('the helpers console code sees', () => {
   // `apack db query`/`exec` all rest on what a query can and cannot reach
   it('gives a query these, and nothing that writes', async () => {
     expect([...READ_HELPER_NAMES].sort()).toEqual([
-      'findRelations', 'getAll', 'getAllEntities', 'getAttr', 'getAttrs', 'getEntitiesOfType', 'getRelationStats',
-      'getRoles', 'getSchemaStats', 'queryEntitiesByAttribute', 'queryEntitiesByRelationTo',
-      'queryEntitiesInRelationTo', 'qx',
+      'findEntitiesByAttribute', 'findEntitiesByRelationTo', 'findEntitiesInRelationTo', 'findRelations', 'getAll',
+      'getAllEntities', 'getAttr', 'getAttrs', 'getEntitiesOfType', 'getRelationStats', 'getRoles', 'getSchemaStats',
+      'query',
     ]);
     for (const name of READ_HELPER_NAMES) {
       await expect(runQueryCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -31,8 +31,8 @@ describe('the helpers console code sees', () => {
 
   it('gives a transaction the write helpers as well', async () => {
     expect([...WRITE_HELPER_NAMES].sort()).toEqual([
-      'createEntityWithDefaults', 'createRelation', 'destroyEntity', 'grantRole', 'prepareEntity', 'removeRelation',
-      'removeRelationById', 'revokeRole', 'tx', 'updateEntity',
+      'create', 'createEntityWithDefaults', 'createRelation', 'destroyEntity', 'grantRole', 'prepareEntity', 'removeRelation',
+      'removeRelationById', 'revokeRole', 'updateEntity', 'upsert', 'write',
     ]);
     for (const name of [...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES]) {
       await expect(runTransactionCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -42,8 +42,8 @@ describe('the helpers console code sees', () => {
 
 describe('runQueryCode', () => {
   it('returns what the code returns, reading the installed engine and the EARS it is given', async () => {
-    untypedTx('Flow-1', true).put('entityType', 'Flow').put('label', 'Main');
-    await expect(runQueryCode("return qx(EARS.Entity.Flow).pickAll().map((f) => f.label)", scope)).resolves.toEqual(['Main']);
+    untypedCreate('Flow', { id: 'Flow-1' }).set('label', 'Main');
+    await expect(runQueryCode("return query(EARS.Entity.Flow).pickAll().map((f) => f.label)", scope)).resolves.toEqual(['Main']);
     await expect(runQueryCode('return getAttr("Flow-1", "label")', scope)).resolves.toBe('Main');
     await expect(runQueryCode('return getSchemaStats().entities', scope)).resolves.toEqual({ Flow: 1 });
   });
@@ -52,7 +52,7 @@ describe('runQueryCode', () => {
     for (const name of WRITE_HELPER_NAMES) {
       await expect(runQueryCode(`return ${name}`, scope)).rejects.toThrow(new Error(`${name} is not defined`));
     }
-    expect(untypedQx('Flow').ids()).toEqual([]);
+    expect(untypedQuery('Flow').ids()).toEqual([]);
   });
 
   it('refuses blank code rather than answering undefined', async () => {
@@ -66,25 +66,37 @@ describe('runQueryCode', () => {
 
 describe('runTransactionCode', () => {
   it('writes with the write helpers and reads with the read helpers', async () => {
-    const id = await runTransactionCode("const id = tx(EARS.Entity.Flow).put('label', 'New').id(); return getAttr(id, 'label')", scope);
+    const id = await runTransactionCode("const id = create(EARS.Entity.Flow).set('label', 'New').id(); return getAttr(id, 'label')", scope);
     expect(id).toBe('New');
-    expect(untypedQx('Flow').ids()).toHaveLength(1);
+    expect(untypedQuery('Flow').ids()).toHaveLength(1);
   });
 
-  it('prefixes its error, and says the writes it already made stand', async () => {
-    await expect(runTransactionCode('throw new Error("boom")', scope)).rejects
-      .toThrow('Transaction failed: boom\n  The writes it made before failing stand: nothing is rolled back.');
+  it('keeps none of its writes when it throws part way, and prefixes its error', async () => {
+    await expect(runTransactionCode("create(EARS.Entity.Flow).set('label', 'Lost'); throw new Error('boom')", scope)).rejects
+      .toThrow('Transaction failed: boom\n  Nothing it wrote was kept: a transaction is undone as a whole.');
+    expect(untypedQuery('Flow').ids()).toEqual([]);
   });
 
-  it('awaits a returned promise', async () => {
-    await expect(runTransactionCode('return Promise.resolve(3)', scope)).resolves.toBe(3);
+  it('refuses code that would split the unit: an await, or a returned promise, keeping nothing', async () => {
+    await expect(runTransactionCode("await 1; create(EARS.Entity.Flow)", scope)).rejects.toThrow(/^Transaction failed:/);
+    await expect(runTransactionCode("create(EARS.Entity.Flow).set('label', 'Lost'); return Promise.resolve(3)", scope)).rejects
+      .toThrow(/^Transaction failed: transaction code must be synchronous, and this returned a promise/);
+    expect(untypedQuery('Flow').ids()).toEqual([]);
+  });
+
+  it('says what a returned promise kept: the writes after its first await, outside the unit', async () => {
+    const code = "return (async () => { create(EARS.Entity.Flow).set('label', 'Undone'); await 0; create(EARS.Entity.Flow).set('label', 'Kept'); })()";
+    await expect(runTransactionCode(code, scope)).rejects
+      .toThrow(/What it wrote before its first await was undone; what it writes after that runs outside the transaction and is kept/);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(untypedQuery('Flow').pick(['label']).map((row) => row.label)).toEqual(['Kept']);
   });
 });
 
 describe('getSchemaStats', () => {
   it('counts entities, attribute kinds and relation kinds', () => {
-    untypedTx('Flow-1', true).put('entityType', 'Flow').put('label', 'a');
-    untypedTx('Flow-2', true).put('entityType', 'Flow').put('label', 'b').link('contains', 'Flow-1');
+    untypedCreate('Flow', { id: 'Flow-1' }).set('label', 'a');
+    untypedCreate('Flow', { id: 'Flow-2' }).set('label', 'b').link('contains', 'Flow-1');
     const stats = getSchemaStats();
     expect(stats.entities.Flow).toBe(2);
     expect(stats.attributes.label).toEqual({ entityCount: 2, totalValues: 2 });
@@ -110,12 +122,52 @@ describe('the EARS console code sees', () => {
     // Another installed pack's type, as its registration declares it
     startTestRuntime({ entityTypes: ['Memo', 'Note'] });
     testPacks.earsEntities.set('Memo', 'Memo');
-    untypedTx('Memo-1' as EARS.EntityId, true).put('title', 'theirs');
-    untypedTx('Note-1' as EARS.EntityId, true).put('title', 'ours');
+    untypedCreate('Memo', { id: 'Memo-1' as EARS.EntityId }).set('title', 'theirs');
+    untypedCreate('Note', { id: 'Note-1' as EARS.EntityId }).set('title', 'ours');
 
     await expect(runQueryCode('return EARS.Entity.Memo', { EARS: installedEars() })).resolves.toBe('Memo');
-    // A name the console doesn't know reads as undefined, which queries everything, so the ids say which it was
-    await expect(runQueryCode('return qx(EARS.Entity.Memo).ids()', { EARS: installedEars() }))
+    await expect(runQueryCode('return query(EARS.Entity.Memo).ids()', { EARS: installedEars() }))
       .resolves.toEqual(['Memo-1']);
+
+    // `Note` has rows and no pack declares it. Reading it as `undefined` made `query` answer with the whole
+    // database — both entities here, where one was asked for — so the namespace refuses the name instead.
+    await expect(runQueryCode('return query(EARS.Entity.Note).ids()', { EARS: installedEars() }))
+      .rejects.toThrow('"Note" is not an entity type this database can account for');
+  });
+});
+
+describe('a name the database cannot account for', () => {
+  beforeEach(() => {
+    startTestRuntime({ entityTypes: ['Memo'] });
+    testPacks.earsEntities.set('Memo', 'Memo');
+    testPacks.earsRelKinds.set('MENTIONS', 'mentions');
+  });
+
+  const ears = () => installedEars() as Record<string, Record<string, string>>;
+
+  it('says what is known, and what would supply the rest', () => {
+    expect(() => ears().Entity.Bookmark).toThrow(/^"Bookmark" is not an entity type this database can account for\./);
+    expect(() => ears().Entity.Bookmark).toThrow(/Known: .*\bMemo\b/);
+    expect(() => ears().RelKind.REFERENCES).toThrow('"REFERENCES" is not a relation kind this database can account for');
+
+    const withHint = consoleEars({ entities: { Memo: 'Memo' }, relKinds: {} }, { hint: 'Try --schema-from.' }) as Record<string, Record<string, string>>;
+    expect(() => withHint.Entity.Bookmark).toThrow('Try --schema-from.');
+  });
+
+  // `db script` is handed this object raw, so everything a script does with it has to keep working
+  it('can still be enumerated, spread and serialised', () => {
+    const EARS_SCOPE = ears();
+    expect(Object.keys(EARS_SCOPE.Entity)).toContain('Memo');
+    expect({ ...EARS_SCOPE.Entity }.Memo).toBe('Memo');
+    expect(JSON.parse(JSON.stringify(EARS_SCOPE.Entity)).Memo).toBe('Memo');
+    expect(() => JSON.stringify(EARS_SCOPE)).not.toThrow();
+    expect(Object.entries(EARS_SCOPE.RelKind).map(([name]) => name)).toContain('MENTIONS');
+  });
+
+  // Asking whether a name is there is a question, and awaiting a result must not look like asking for one
+  it('answers a probe rather than throwing', async () => {
+    expect('Bookmark' in ears().Entity).toBe(false);
+    expect('Memo' in ears().Entity).toBe(true);
+    await expect(Promise.resolve(ears().Entity)).resolves.toBeDefined();
   });
 });

@@ -51,10 +51,10 @@ const PACK: Record<string, string> = {
   // Inferred types that name SDK declarations: the declaration emit prints them from whichever copy resolved
   'src/tags.ts': [
     "import { z } from 'zod';",
-    "import { qx, findAll } from '#generated/ears.ts';",
+    "import { query, findAll } from '#generated/ears.ts';",
     "export const TagInput = z.object({ name: z.string(), color: z.enum(['red', 'blue']).optional() });",
     'export const tagsService = {',
-    "  query: () => qx('Tag'),",
+    "  query: () => query('Tag'),",
     "  all: () => findAll('Tag'),",
     '  parse: (input: unknown) => TagInput.parse(input),',
     '};',

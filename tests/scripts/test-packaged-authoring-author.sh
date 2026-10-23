@@ -228,7 +228,7 @@ cat > tests/content/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { importContent } from '@apackdev/testing/harness';
 import { findAll } from '#generated/ears.ts';
-import { findRelations } from '@apackdev/ears';
+import { findRelations } from '@apackdev/sdk/ears';
 
 describe('demo notes', () => {
   it("content notes with default-setup's format and hooks", async () => {

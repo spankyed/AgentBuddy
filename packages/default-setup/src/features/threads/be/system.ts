@@ -6,7 +6,7 @@ import { setup } from 'xstate';
 import { answer } from './answer.ts';
 import { defineSystem } from '@apackdev/sdk/framework';
 
-import { tx, EARS } from '#generated/ears.ts';
+import { write, EARS } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 import type { Contract } from './contract.ts';
 import type { MessageEntity, ThreadLinkItem } from './types.ts';
@@ -782,7 +782,7 @@ export const threadsSystem = setup({
       const message = repository.chatQueries.messageById(messageId as EARS.EntityId);
       if (message?.autoHide) {
         asideText = generateAsideText(message, response);
-        tx(messageId as EARS.EntityId).put('asideText', asideText);
+        write(messageId as EARS.EntityId).set('asideText', asideText);
       }
 
       sendToSystem('brain', {
@@ -806,7 +806,7 @@ export const threadsSystem = setup({
     deleteMessage: ({ event }) => {
       const { messageId } = threadsSpec.typeOf('DELETE_MESSAGE', event);
       if (!repository.chatQueries.messageById(messageId as EARS.EntityId)) return;
-      tx(messageId as EARS.EntityId).destroy();
+      write(messageId as EARS.EntityId).destroy();
     },
     toggleCompacted: ({ event }) => {
       const { markerId, compacted } = threadsSpec.typeOf('TOGGLE_COMPACTED', event);

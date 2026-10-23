@@ -19,7 +19,7 @@ vi.mock('@apackdev/host/database', async importOriginal => ({
   openDatabaseStore: ({ schema }: import('@apackdev/host/database').DatabaseStoreOptions) => {
     const engine = createEarsEngine({ isEntityType: name => schema.getRegisteredEntityTypes().has(name) });
     return { engine, store: {
-      query: () => ({ getAttrCount: () => 1, getFirstAttr: () => fixture.data }),
+      read: () => ({ getAttrCount: () => 1, getFirstAttr: () => fixture.data }),
       hydrate: async () => {
         engine.admin.bulkLoadAttr('Settings-app' as EARS.EntityId, 'data' as EARS.AttrKind, fixture.data, 0);
         engine.admin.bulkLoadAttr('Settings-app' as EARS.EntityId, 'entityType' as EARS.AttrKind, 'Settings', 0);

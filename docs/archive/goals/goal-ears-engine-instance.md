@@ -13,7 +13,7 @@ Finished when:
   test is mutation-checked.
 - The pack-facing API reports (`etc/*.api.md`) are unchanged except for the new
   `ears/engine` entry.
-- The qx/tx benchmark (Phase 1) stays within the agreed tolerance at every phase.
+- The query/write benchmark (Phase 1) stays within the agreed tolerance at every phase.
 - `npm run typecheck`, `npm run typecheck -w @app/main`, `schema:check`,
   `api:check` (sdk, ui), `packages:build` + `packages:check`, and the api, sdk,
   host, cli, default-setup and renderer unit suites pass.
@@ -35,7 +35,7 @@ Never:
 
 ## Background
 
-EARS is the in-memory entity/attribute/relation store behind `qx`, `tx` and `repository`. It lives in `packages/apack-sdk/src/ears/` (about 1,800 lines) as a **module-level singleton**:
+EARS is the in-memory entity/attribute/relation store behind `query`, `create`/`write` and `repository`. It lives in `packages/apack-sdk/src/ears/` (about 1,800 lines) as a **module-level singleton**:
 
 - **State is ambient.** `attribute-storage.ts` (attribute store, entity index), `relation-index.ts`, `edge-store.ts`, `query.ts` (prefix cache), `graph.ts`, `blueprint.ts` and `repository.ts` (repository registry) hold module-scope Maps. Whoever shares the module instance shares the data.
 - **Host access depends on module identity.** The api hydrates from LMDB, injects persistence and resets memory through write functions (`initEARSRuntime`, `setPersistence`, `putAttr`, `bulkLoadAttr`, `clearMemory`, `edgeStore`, `relationIndex`). They must act on the same Maps packs query, so `@apackdev/host` can't hold its own copy.
@@ -50,7 +50,7 @@ EARS is the in-memory entity/attribute/relation store behind `qx`, `tx` and `rep
   - Tests reset with `clearMemory()` (default-setup `_hybrid/*`, `sdk-tiers`, `sdk-type-safety`) or re-run `initEARSRuntime` (SDK `tests/build/helpers/in-memory-ears.ts`, `round-trip.ts`).
   - Test files can't safely run in parallel against the engine.
 - **Capability is expressed as module visibility.** Hiding `putAttr` behind an unpublished export doesn't state "packs may query and transact but not hydrate or clear".
-- **Other engine users.** The CLI runs the engine in memory when it compiles and decompiles flows (`build/compilers/flow-to-dsl.ts` uses `qx` and `edgeStore`). At runtime, pack code reaches the api's bundled instance through the SDK bridge (`packages/api/src/packs/pack-loader.ts`).
+- **Other engine users.** The CLI runs the engine in memory when it compiles and decompiles flows (`build/compilers/flow-to-dsl.ts` uses `query` and `edgeStore`). At runtime, pack code reaches the api's bundled instance through the SDK bridge (`packages/api/src/packs/pack-loader.ts`).
 
 Alternatives considered and rejected:
 - **Move engine state into `@apackdev/host`, with the SDK delegating through the host module registry.** The SDK would have no standalone engine, breaking the CLI flow compiler, SDK tests and pack unit tests.
@@ -66,17 +66,17 @@ Final.
    - Constructor arguments replace `initEARSRuntime` and `setPersistence`.
    - The default persistence is the no-op sink used today.
 2. **Holding the instance is the capability.** The engine has two faces:
-   - `engine.query`: `qx`, `tx`, the query helpers, the `repository` registry and the read APIs packs use today.
+   - `engine.query`: `query`, `create`/`write`, the query helpers, the `repository` registry and the read APIs packs use today.
    - `engine.admin`: bulk load and hydration hooks, clearing, direct attribute and relation writes, `edgeStore`, `relationIndex`, and the entity-type checker.
 
    `createEarsEngine` is published. Calling it gives a new, empty engine and grants no access to the app's data.
 3. **Installation goes through the host module registry.**
    - The creator registers `engine.query` under `'ears'` (`registerHostModule`, already `@internal`).
-   - The SDK's free functions (`qx`, `tx`, `repository`, `defineEars`, the `find*` helpers) resolve it once and cache the reference.
+   - The SDK's free functions (`query`, `create`/`write`, `repository`, `defineEars`, the `find*` helpers) resolve it once and cache the reference.
    - Pack-facing signatures and the generated facades don't change.
 4. **Packs never receive `admin`.** Only the code that created the engine holds it: the api at boot, the CLI compiler, and tests.
 5. **No implicit default engine.**
-   - Calling `qx`/`tx` with no engine installed throws a clear error naming the fix.
+   - Calling `query`/`create`/`write` with no engine installed throws a clear error naming the fix.
    - A silent in-memory fallback would hide boot-order bugs in the app.
 6. **Where the code lives.**
    - The engine stays in `@apackdev/sdk`, exposed as the published entry `@apackdev/sdk/ears/engine` (`createEarsEngine` and the `EarsEngine`, `EarsQuery` and `EarsAdmin` types).
@@ -93,7 +93,7 @@ Final.
 
 ### Phase 1 — Safety net
 - **Engine contract tests** in `packages/apack-sdk/tests/ears/`, black-box against today's public API:
-  - `tx` create, update and delete, with the ids and fields returned;
+  - `create`, `write` and `destroy`, with the ids and fields returned;
   - relations: link, unlink, `linksTo`, `relatedTo`, `linkSymmetric`, cycle detection;
   - roles: grant, revoke, `withRole`;
   - query builder terminals and ordering;
@@ -102,9 +102,9 @@ Final.
   - the exact order and payload of persistence-sink calls for a sequence of writes;
   - hydration through bulk load, followed by queries.
 - **Benchmark** (`packages/apack-sdk/bench/ears.bench.ts`, Vitest bench): hydrate a realistic graph of 50k entities, 200k attributes and 100k relations, then time:
-  - `qx` by type with a `where` and `pickAll`;
+  - `query` by type with a `where` and `pickAll`;
   - relation traversal;
-  - `tx` batches of 1,000 creates.
+  - batches of 1,000 `create`s.
 
   Record the baseline in this doc. The tolerance is +10% median per case; investigate anything beyond it.
 
@@ -135,7 +135,7 @@ Final.
 
 ### Phase 5 — Remove the default instance and the hook
 - Delete the temporary default instance, `src/ears/internals.ts`, the `./ears/internals` export, the attw `--exclude-entrypoints`, the `tsconfig.package.json` exclusion, the drift-spec policy entry and the unreachability assertion for the hook.
-- Add a test that `qx`/`tx` throw a clear error when no engine is installed.
+- Add a test that `query`/`create`/`write` throw a clear error when no engine is installed.
 - Update the host-only check: the packed SDK still ships no host-only module, and `@apackdev/sdk/ears/engine` resolves with types in node16 and bundler.
 - Run `npm run api:update`. Only `ears.engine.api.md` may be added; other pack-facing reports stay unchanged.
 - Docs: root `CLAUDE.md` (SDK packages section), `docs/archive/goals/goal-sdk-types-architecture.md` (implementation notes) and the data-layer docs.
@@ -151,5 +151,5 @@ Final.
 - Never run bare tsc on `packages/preload`. Don't run `npm install` in the example pack. Don't edit monorepo version/release metadata.
 - Rebuild `packages/default-setup/dist/dev-entry.cjs` (`node packages/default-setup/dev-build.mjs`) before running the api suites.
 - Investigate failing tests and benchmark regressions before changing assertions or tolerances; mutation-check every new guard or test.
-- Pack-facing API signatures (`qx`, `tx`, `repository`, `defineEars`, the generated facades) must not change.
+- Pack-facing API signatures (`query`, `create`/`write`, `repository`, `defineEars`, the generated facades) must not change.
 - No polling or hacky workarounds.

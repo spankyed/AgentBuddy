@@ -154,8 +154,8 @@ const databaseState = setup({
 
     deleteEntity: enqueueActions(({ event, enqueue }) => {
       const ev = typeOf('ENTITY.DELETE', event);
-      // Use tx() to delete the entity
-      const deleteCode = `tx('${ev.entityId}').destroy(); return { deleted: '${ev.entityId}' };`;
+      // Use write() to delete the entity
+      const deleteCode = `write('${ev.entityId}').destroy(); return { deleted: '${ev.entityId}' };`;
       const call = newCall();
       enqueue.assign({ pendingTransactionCall: call });
       enqueue(() => sendToSystem(id, { type: 'EXECUTE_TRANSACTION', code: deleteCode }, { call }));

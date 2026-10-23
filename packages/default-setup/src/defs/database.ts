@@ -8,16 +8,17 @@ export { EARS } from '@apackdev/sdk/types';
 export type { BaseEntity, QueryBuilder, RelationMatch, RelationRow, RelationStats } from '@apackdev/ears';
 
 // Read: the pack's typed helpers where there are any, the engine's otherwise
-export { qx, getAttr, getAttrs } from '#generated/ears.ts';
+export { query, getAttr, getAttrs } from '#generated/ears.ts';
 export {
   getAll, getRoles, getAllEntities, getEntitiesOfType,
-  queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
+  findEntitiesByAttribute, findEntitiesByRelationTo, findEntitiesInRelationTo,
   findRelations, getRelationStats,
-} from '@apackdev/ears';
+} from '@apackdev/sdk/ears';
 export { getSchemaStats } from '@apackdev/sdk/database-console';
 
 // Write: only a transaction gets these; a query naming one fails with "<name> is not defined"
-export { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
+export { create, upsert, write, createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
+export { prepareEntity } from '@apackdev/ears';
 export {
-  untypedTx as tx, destroyEntity, prepareEntity, createRelation, removeRelation, removeRelationById, grantRole, revokeRole,
-} from '@apackdev/ears';
+  destroyEntity, createRelation, removeRelation, removeRelationById, grantRole, revokeRole,
+} from '@apackdev/sdk/ears';

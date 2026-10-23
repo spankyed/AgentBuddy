@@ -8,7 +8,8 @@ import * as os from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLogger, reportError, setDebugEnabled, type LogEvent } from '../../src/logger/index.ts';
 import { startTestRuntime, takeSystemErrors, testPacks, testRootEvents } from '../../src/testing/index.ts';
-import { RepositoryError, RepositoryErrorCode, untypedTx, untypedQx } from '@apackdev/ears';
+import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
+import { untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
 import type { Message } from '../../src/events/index.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
@@ -48,7 +49,7 @@ describe('reportError', () => {
     const printed = vi.spyOn(console, 'error').mockImplementation(() => {});
     testPacks.designations.set('brain', 'default-setup/brain');
     // The step's TNode, holding what the step ran with
-    untypedTx(tNodeId, true).put('entityType', 'TNode').put('nodeAttributes', { input: 'hello' });
+    untypedCreate('TNode', { id: tNodeId }).set('nodeAttributes', { input: 'hello' });
     let returned: ReturnType<typeof reportError>;
     const { logs, toSurfaces, outgoing } = capture(() => {
       returned = reportError({
@@ -67,7 +68,7 @@ describe('reportError', () => {
     // so a drop names the step rather than nothing; there is no pack here to put in `from`.
     expect(toSurfaces).toEqual([{ to: 'default-setup/brain', call: expect.any(String), event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! }, via: 'brain-llm' }]);
     expect(outgoing).toEqual([]);
-    expect(untypedQx(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
+    expect(untypedQuery.ids(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
       input: 'hello',
       result: { error: { message: 'model failed', source: 'brain-llm', phase: 'llm.execute', errorId, stack } },
     });

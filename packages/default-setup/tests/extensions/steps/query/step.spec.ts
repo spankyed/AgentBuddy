@@ -29,7 +29,7 @@ describe('query step', () => {
   });
 
   it("runs the model's query and completes with the query and its rows under `as`", async () => {
-    const query = "return qx(EARS.Entity.Action).pick(['label']).map((a) => a.label).sort();";
+    const query = "return query(EARS.Entity.Action).pick(['label']).map((a) => a.label).sort();";
     const inference = mockInference('```ts\n' + query + '\n```');
 
     const sent = await run({ resultKey: 'labels', model: 'openai:gpt-4o-mini' });
@@ -41,26 +41,26 @@ describe('query step', () => {
   });
 
   it('stores the rows under `rows` with the default model when the node names neither', async () => {
-    const inference = mockInference("return qx(EARS.Entity.Action).count();");
+    const inference = mockInference("return query(EARS.Entity.Action).count();");
 
     const sent = await run({});
 
-    expect(sent).toEqual([{ type: 'COMPLETE', result: { query: 'return qx(EARS.Entity.Action).count();', rows: 2 } }]);
+    expect(sent).toEqual([{ type: 'COMPLETE', result: { query: 'return query(EARS.Entity.Action).count();', rows: 2 } }]);
     expect(inference.calls[0].model).toBe(DEFAULT_MODEL);
   });
 
   it('fails, writing nothing, when the model returns a query that writes', async () => {
     const actionId = repository.actionQueries.all().find((a: { label: string }) => a.label === 'Alpha')!.id;
-    mockInference(`tx('${actionId}').update('label', 'Changed'); return true;`);
+    mockInference(`write('${actionId}').set('label', 'Changed'); return true;`);
 
     const message = errorMessage(await run({}));
 
-    expect(message).toContain('Query step "Find actions" generated a query that writes (tx); query steps only read');
+    expect(message).toContain('Query step "Find actions" generated a query that writes (write); query steps only read');
     expect(repository.actionQueries.all().map((a: { label: string }) => a.label).sort()).toEqual(['Alpha', 'Beta']);
   });
 
   it('fails with the error of a query that does not run', async () => {
-    mockInference('return qx(EARS.Entity.Action).pick([');
+    mockInference('return query(EARS.Entity.Action).pick([');
 
     expect(errorMessage(await run({}))).toContain('Query step "Find actions" generated a query that failed:');
   });

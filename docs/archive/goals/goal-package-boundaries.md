@@ -273,11 +273,11 @@ Final.
 9. **The engine is an instance** (from `goal-ears-engine-instance.md`).
    - `createEarsEngine({ persistence?, isEntityType })` in `@apackdev/ears` returns an engine that owns all its stores, indexes and caches. No EARS module keeps data at module scope. Constructor arguments replace `initEARSRuntime` and `setPersistence`; the default persistence is the no-op sink.
    - **Two faces; holding the engine is the capability.**
-     - `engine.query`: `qx`, `tx`, the query helpers, the repository registry and the read APIs packs use.
+     - `engine.query`: `query`, `create`/`write`, the query helpers, the repository registry and the read APIs packs use.
      - `engine.admin`: bulk load and hydration, clearing, direct attribute and relation writes, `edgeStore`, `relationIndex` and the entity-type checker.
 
      `createEarsEngine` is published. Calling it gives a new, empty engine and no access to the app's data.
-   - **Installation.** `@apackdev/ears` keeps a reference to the installed query face (`installEngine(query)`), not data. Its free functions (`qx`, `tx`, `find*`, `repository`, `defineEars` facades) resolve it. `bindHost` installs `runtime.ears`. Tooling and tests install their own. Using the engine with none installed throws, naming the fix. There's no implicit default engine.
+   - **Installation.** `@apackdev/ears` keeps a reference to the installed query face (`installEngine(query)`), not data. Its free functions (`query`, `create`/`write`, `find*`, `repository`, `defineEars` facades) resolve it. `bindHost` installs `runtime.ears`. Tooling and tests install their own. Using the engine with none installed throws, naming the fix. There's no implicit default engine.
    - **Only the creator holds `admin`:**
      - the api's composition root: hydration through `@apackdev/ears/lmdb`, and `appData`'s reset, backup and restore through `createHostRuntime`;
      - the CLI flow compiler and decompiler: a private engine per compile;
@@ -458,21 +458,21 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
 ### Phase 6 — The engine as an instance
 - **Safety net first**, against today's module-level engine in `@apackdev/ears`:
   - Contract tests in `packages/apack-ears/tests/`, black-box against the public API:
-    - `tx` create, update and delete, with the ids and fields returned;
+    - `create`, `write` and `destroy`, with the ids and fields returned;
     - relations (link, unlink, `linksTo`, `relatedTo`, `linkSymmetric`, cycle detection) and roles (grant, revoke, `withRole`);
     - query builder terminals and ordering, blueprints and `spawn`, repository registration;
     - the exact order and payload of persistence-sink calls for a sequence of writes;
     - hydration through bulk load, followed by queries.
-  - A Vitest benchmark (`packages/apack-ears/bench/ears.bench.ts`): hydrate 50k entities, 200k attributes and 100k relations, then time `qx` by type with a `where` and `pickAll`, relation traversal, and `tx` batches of 1,000 creates. Record the baseline in this doc. The tolerance is +10% median per case; investigate anything beyond it.
+  - A Vitest benchmark (`packages/apack-ears/bench/ears.bench.ts`): hydrate 50k entities, 200k attributes and 100k relations, then time `query` by type with a `where` and `pickAll`, relation traversal, and batches of 1,000 `create`s. Record the baseline in this doc. The tolerance is +10% median per case; investigate anything beyond it.
 
     **Baseline** (2026-09-16, module-level engine, `npm run bench -w @apackdev/ears`, Apple silicon, Node 23.11; each figure is the median of the case's per-run medians over 3 runs):
 
     | Case | Baseline (module engine) | After (engine instance) | Change |
     |---|---|---|---|
     | bulk load 50k entities, 200k attributes, 100k relations | 189.3 ms | 187.3 ms | −1% |
-    | `qx('Task').where('status', …).pickAll()` | 39.9 ms | 38.8 ms | −3% |
+    | `query('Task').where('status', …).pickAll()` | 39.9 ms | 38.8 ms | −3% |
     | relation traversal (a project's tasks, then their assignees) | 20.8 ms | 21.7 ms | +4% |
-    | `tx` batch of 1,000 creates | 3.40 ms | 3.33 ms | −2% |
+    | batch of 1,000 `create`s | 3.40 ms | 3.33 ms | −2% |
 
     The "after" column is the same benchmark on `createEarsEngine`'s faces (same machine, 3 runs), within the +10% tolerance.
 
@@ -481,11 +481,11 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
     | Case | Before (1 run) | After (median of 3) |
     |---|---|---|
     | bulk load 50k entities, 200k attributes, 100k relations | 237 ms | 196.6 ms (unchanged code) |
-    | `qx('Task').where('status', …).pickAll()` | 47.3 ms | 19.5 ms |
-    | 1,000 `qx(id)` lookups | 1,021 ms | 0.22 ms |
-    | `qx('Task')` with 3 chained steps (`ofType`, `orderBy`, `limit`) | 66.0 ms | 26.6 ms |
+    | `query('Task').where('status', …).pickAll()` | 47.3 ms | 19.5 ms |
+    | 1,000 `query.ids(id)` lookups | 1,021 ms | 0.22 ms |
+    | `query('Task')` with 3 chained steps (`ofType`, `orderBy`, `limit`) | 66.0 ms | 26.6 ms |
     | relation traversal (a project's tasks, then their assignees) | 22.2 ms | 0.0026 ms |
-    | `tx` batch of 1,000 creates | 3.58 ms | 3.70 ms (unchanged code) |
+    | batch of 1,000 `create`s | 3.58 ms | 3.70 ms (unchanged code) |
 
     The chained-steps case measured 24.0 ms in a single run of the fix; 3 runs of the fix before the stale-id check was added also give a median of 26.6 ms, so the check costs nothing when nothing was destroyed.
 - **Factory underneath, same behaviour:** convert each engine module to a factory closing over its state and compose `createEarsEngine` from them, keeping a temporary installed default so no caller changes. Pass cross-module dependencies (persistence, entity-type checker, relation index) through the factory.
@@ -498,7 +498,7 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
 - A guard test finds no top-level `new Map`/`new Set`/`let` state in `@apackdev/ears` engine modules.
 - The benchmark is within tolerance of the recorded baseline.
 - No production code or test imports engine write functions outside `admin`; no test calls `clearMemory` or `initEARSRuntime`.
-- `qx`/`tx` with no engine installed throw the documented error.
+- `query`/`create`/`write` with no engine installed throw the documented error.
 - A spec runs two engines in one process without sharing data, and a CLI compile leaves the installed engine untouched.
 - Default-setup's typed-EARS specs, `facade-typing.spec.ts` and completions are unchanged; pack-facing API reports change only by the added `createEarsEngine`/engine types.
 - The full check list passes.
@@ -637,9 +637,9 @@ Run sequentially on 2026-09-16 after Phase 8:
   | Case | Baseline | Final | Change |
   |---|---|---|---|
   | bulk load | 189.3 ms | 200.8 ms | +6% |
-  | `qx` where + `pickAll` | 39.9 ms | 40.8 ms | +2% |
+  | `query` where + `pickAll` | 39.9 ms | 40.8 ms | +2% |
   | relation traversal | 20.8 ms | 21.3 ms | +3% |
-  | `tx` 1,000 creates | 3.40 ms | 3.41 ms | +0% |
+  | 1,000 `create`s | 3.40 ms | 3.41 ms | +0% |
 
 - Example pack: `apack build` fails with `ERR_MODULE_NOT_FOUND: @apackdev/ears` from its content runtime bundle. Its `node_modules` has no `@apackdev/ears` link, and `npm install` there is the user's to run (its `package.json` declares the `file:` dependency). Its `tsc`, unit tests and `apack test` weren't reached; they passed through Phase 0 (8/8), before `@apackdev/ears` existed.
 

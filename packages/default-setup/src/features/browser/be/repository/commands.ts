@@ -1,4 +1,4 @@
-import { tx, qx } from '#generated/ears.ts';
+import { query, create, upsert, write } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
 import type { BrowserTabId, SavedTab, SavedBookmark } from '../types.ts';
@@ -19,46 +19,38 @@ export const browserCommands = {
       });
     }
 
-    const existingIds = qx(EARS.Entity.BrowserTab).ids() as BrowserTabId[];
+    const existingIds = query(EARS.Entity.BrowserTab).ids() as BrowserTabId[];
     const incomingIds = new Set(normalized.tabs.map(tab => tab.id));
     for (const id of existingIds) {
       if (!incomingIds.has(id)) {
-        tx(id).destroy();
+        write(id).destroy();
       }
     }
 
-    const existingSet = new Set(existingIds);
     for (const tab of normalized.tabs) {
-      const now = Date.now();
-      const transaction = existingSet.has(tab.id) ? tx(tab.id) : tx(tab.id, true);
-      transaction.batchPut({
-        entityType: EARS.Entity.BrowserTab,
+      upsert(EARS.Entity.BrowserTab, tab.id).setMany({
         url: tab.url,
         title: tab.title,
         favicon: tab.favicon,
         displayOrder: tab.displayOrder,
         isMuted: tab.isMuted,
         groupId: tab.groupId ?? '',
-        updatedAt: now,
-        ...(existingSet.has(tab.id) ? {} : { createdAt: now }),
+        updatedAt: Date.now(),
       });
     }
   },
   syncBookmarks: (bookmarks: SavedBookmark[]): void => {
-    const existingIds = qx(EARS.Entity.BrowserBookmark).ids();
+    const existingIds = query(EARS.Entity.BrowserBookmark).ids();
     for (const id of existingIds) {
-      tx(id).destroy();
+      write(id).destroy();
     }
 
     for (const bm of bookmarks) {
-      const id = tx(EARS.Entity.BrowserBookmark).id();
-      tx(id).batchPut({
-        entityType: EARS.Entity.BrowserBookmark,
+      create(EARS.Entity.BrowserBookmark).setMany({
         url: bm.url,
         title: bm.title,
         favicon: bm.favicon,
         displayOrder: bm.displayOrder,
-        createdAt: Date.now(),
         updatedAt: Date.now(),
       });
     }

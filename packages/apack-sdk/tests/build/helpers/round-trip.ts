@@ -32,22 +32,22 @@ export function createRoundTrip(rootFlowRole: string, steps?: StepDefinition[]) 
       dsl: FlowDSL,
       opts?: { actions?: Map<string, string>; prompts?: Map<string, string> },
     ): FlowDSL {
-      const { tx } = engine.query;
-      const compiled = compile(dsl, { ...opts, steps });
-      loadCompiledRows(engine.query, compiled);
-
+      const { create } = engine;
+      // The actions and prompts the nodes are instances of, before the rows that link to them
       if (opts?.actions) {
         for (const [label, id] of opts.actions) {
-          tx(id as EARS.EntityId, true).batchPut({ entityType: EARS.Entity.Action, label });
+          create(EARS.Entity.Action, { id: id as EARS.EntityId }).set('label', label);
         }
       }
       if (opts?.prompts) {
         for (const [label, id] of opts.prompts) {
-          tx(id as EARS.EntityId, true).batchPut({ entityType: EARS.Entity.Prompt, label });
+          create(EARS.Entity.Prompt, { id: id as EARS.EntityId }).set('label', label);
         }
       }
+      const compiled = compile(dsl, { ...opts, steps });
+      loadCompiledRows(engine, compiled);
 
-      const { filePath } = exportFlowsToDSL(tmpDir, { rootFlowRole, engine: engine.query, steps }, false);
+      const { filePath } = exportFlowsToDSL(tmpDir, { rootFlowRole, engine: engine, steps }, false);
       return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     },
   };

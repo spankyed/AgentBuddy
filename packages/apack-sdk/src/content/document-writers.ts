@@ -5,7 +5,7 @@
 // The entity types are the SDK's, so these are too, and nobody registers them: a pack declares writers
 // only for entities it owns, so these have no pack to be contributed by. `sdkContentWriters` in
 // `writers.ts` names them, which is also why this module imports only the *type* from there.
-import { untypedQx as qx } from '@apackdev/ears';
+import { untypedQuery as query } from '../ears/index.ts';
 import { collectionRepository, documentRepository } from '../repositories/document-repository.ts';
 import { EARS } from '../types/entities.ts';
 import type { ContentSection } from '../types/sdk-entities.ts';
@@ -27,7 +27,7 @@ export interface CollectionItem extends ContentItem {
 
 /** The folder a row sits in, or undefined at the root */
 function folderOf(id: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId | undefined {
-  return qx(id).linksTo(relKind, EARS.Entity.Collection, false).ids()[0];
+  return query.ids(id).linksTo(relKind, EARS.Entity.Collection, false).ids()[0];
 }
 
 /**
@@ -44,7 +44,7 @@ function namedIn(
 }
 
 const named = (entity: EARS.Entity, name: string): Array<{ id: EARS.EntityId; contentHash?: string }> =>
-  (qx(entity).where('name', name).pick(['contentHash']) as Array<{ id: EARS.EntityId; contentHash?: string }>);
+  (query(entity).where('name', name).pick(['contentHash']) as Array<{ id: EARS.EntityId; contentHash?: string }>);
 
 export const documentContentWriter: ContentWriter<DocumentItem> = {
   find(record, { parentId }) {

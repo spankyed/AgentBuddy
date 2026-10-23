@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { importContent } from '@apackdev/testing/harness';
 import { getCommands } from '@apackdev/sdk/commands';
-import { untypedQx } from '@apackdev/ears';
+import { untypedQuery } from '@apackdev/sdk/ears';
 import { repository } from '#generated/repository.ts';
 
 describe('memo content', () => {
@@ -31,7 +31,7 @@ describe('slash commands', () => {
   it("writes its command document and has its command served", async () => {
     await importContent({ keys: ['commands'] });
 
-    const document = untypedQx('Document').where('name', 'Memo commands').pickAll()[0];
+    const document = untypedQuery('Document').where('name', 'Memo commands').pickAll()[0];
     expect(document.content).toEqual([{ type: 'field', fields: [{ key: 'memo-list', value: 'Tag (optional)' }] }]);
     expect(getCommands()).toContainEqual({ name: 'memo-list', placeholder: 'Tag (optional)' });
   });
@@ -41,7 +41,7 @@ describe('slash commands', () => {
   it('writes the commands its manifest declares as a document of their own', async () => {
     await importContent({ keys: ['declared-commands'] });
 
-    const document = untypedQx('Document').where('name', 'e2e-fixture commands').pickAll()[0];
+    const document = untypedQuery('Document').where('name', 'e2e-fixture commands').pickAll()[0];
     expect(document.documentType).toBe('commands');
     expect(document.content).toEqual([{ type: 'field', fields: [{ key: 'memo-quick', value: 'What to note' }] }]);
     expect(getCommands()).toContainEqual({ name: 'memo-quick', placeholder: 'What to note' });

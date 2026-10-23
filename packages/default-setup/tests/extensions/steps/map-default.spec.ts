@@ -9,9 +9,9 @@
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@apackdev/testing/harness'
 import { entry, keepAlive, on } from '#generated/flow-helpers.ts'
-import { untypedQx } from '@apackdev/ears'
+import { untypedQuery } from '@apackdev/sdk/ears'
 
-const notes = () => untypedQx('Note').pickAll() as Array<Record<string, unknown>>
+const notes = () => untypedQuery('Note').pickAll() as Array<Record<string, unknown>>
 
 /** One create step, whose `content` is mapped from `source` with `fallback` to fall back on */
 async function runWithMapping(source: string, fallback?: unknown) {

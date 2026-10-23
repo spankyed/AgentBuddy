@@ -2,7 +2,8 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
-import { destroyEntity, findRelations, installedEngine as ears, untypedTx, untypedQx as qx } from '@apackdev/ears';
+import { destroyEntity, findRelations, boundEars as ears, untypedWrite, untypedQuery as query } from '../ears/index.ts';
+import type { QueryBuilder } from '@apackdev/ears';
 import { _getMediaPath, loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
 import { contentPath } from '../build/manifest.ts';
@@ -141,7 +142,7 @@ export interface ContentEntity {
  * an item nothing recorded one for, and names no entity.
  *
  * **The keyed lookup sees deleted rows, and that is the whole of how an apply knows the user removed one.**
- * `qx` carries no filter where the finders do (`@apackdev/ears`' `query-helpers.ts`, `!isDeleted`), and a
+ * `query` carries no filter where the finders do (`@apackdev/ears`' `query-helpers.ts`, `!isDeleted`), and a
  * soft-deleted row keeps the `contentKey` being searched for. Hide it and `findByIdentity` misses too, on the
  * same filter, so the record is created again: a fresh copy beside the one in the trash, every time the
  * pack's compiled content changes.
@@ -152,7 +153,7 @@ export interface ContentEntity {
  */
 export function contentEntity(entityType: string | undefined, key: string): ContentEntity | undefined {
   if (!entityType) return undefined;
-  return qx(entityType as EARS.Entity).where(CONTENT_KEY as string, key).pickAll()[0] as ContentEntity | undefined;
+  return (query(entityType as never) as QueryBuilder).where(CONTENT_KEY, key).pickAll()[0] as ContentEntity | undefined;
 }
 
 /**
@@ -242,7 +243,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
         const candidates = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>(record.entity as EARS.Entity, first, record[first])
           .filter((row) => rest.every((name) => row[name] === record[name]));
         const match = identity.includes('parent')
-          ? candidates.find((row) => qx(row.id).linksTo(relKind, undefined, false).ids()[0] === context.parentId)
+          ? candidates.find((row) => query.ids(row.id).linksTo(relKind, undefined, false).ids()[0] === context.parentId)
           : candidates[0];
         return match && { id: match.id, contentHash: match.contentHash };
       };
@@ -250,7 +251,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
       const create = (record: ContentItem, context: ContentWriteContext, hooks?: ContentWriter): EARS.EntityId => {
         if (hooks?.create) return hooks.create(record, context);
         const row = ears().createEntityWithDefaults(record.entity as EARS.Entity, fieldsOf(record));
-        if (context.parentId) untypedTx(context.parentId).link(relKind, row.id);
+        if (context.parentId) untypedWrite(context.parentId).link(relKind, row.id);
         return row.id;
       };
 
@@ -262,8 +263,8 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 
       /** Hooks' repository commands may not store contentHash; the merge needs it, the parts and the key */
       const stamp = (id: EARS.EntityId, record: ContentItem, contentKey: string) => {
-        if (record.contentHash && ears().getAttr(id, CONTENT_HASH) !== record.contentHash) untypedTx(id).update(CONTENT_HASH, record.contentHash);
-        untypedTx(id).update(CONTENT_KEY, contentKey);
+        if (record.contentHash && ears().getAttr(id, CONTENT_HASH) !== record.contentHash) untypedWrite(id).set(CONTENT_HASH, record.contentHash);
+        untypedWrite(id).set(CONTENT_KEY, contentKey);
         // The one place the entity, the record and the fields just written are all in hand, so the one place
         // a per-part record of them can be taken
         recordApplied(ctx, contentKey, {
@@ -275,7 +276,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 
       /**
        * Updates an entity to the record, resetting the fields the last apply set that the record no longer
-       * sets. EARS writes can't be rolled back, so when the update throws part way, the entity keeps its
+       * sets. The update is not one unit (`transact`), so when it throws part way, the entity keeps its
        * previous `contentHash` and its entry is re-taken over the fields that entry named: it isn't read as
        * the user's edit, the next apply updates it again, and a field the record newly sets isn't recorded
        * as ours while it holds a user's value.
@@ -291,7 +292,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
         try {
           update(existing.id, restoreMedia(record, existing.id, mediaDir, ctx.log).record, { ...context, clearedFields }, hooks);
         } catch (err) {
-          untypedTx(existing.id).update(CONTENT_HASH, existing.contentHash);
+          untypedWrite(existing.id).set(CONTENT_HASH, existing.contentHash);
           if (applied) {
             recordApplied(ctx, contentKey, {
               entityType: record.entity,

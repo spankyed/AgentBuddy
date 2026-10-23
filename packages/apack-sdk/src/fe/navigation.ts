@@ -16,7 +16,7 @@ function getApp(): HostShell {
 
 /**
  * Opens the surface at `ref` and hands its actor `event`, checking nothing about either: the untyped half of the
- * `openSurface` a pack's `#generated/fe` builds over this, as `untypedQx` is of `qx`. Pack code naming a surface
+ * `openSurface` a pack's `#generated/fe` builds over this, as `untypedQuery` is of `query`. Pack code naming a surface
  * itself uses the generated one, which checks the name and the event at compile time; this is for a ref that
  * arrives as data — a link block's target — and for host code, which has no pack to be typed against.
  *

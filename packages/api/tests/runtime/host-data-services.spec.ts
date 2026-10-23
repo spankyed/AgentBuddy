@@ -18,7 +18,7 @@ process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('../../src/runtime/index.ts');
 const { store, engine, packs } = openAppStore();
-const { untypedQx, untypedTx } = await import('@apackdev/ears');
+const { untypedQuery, untypedCreate, untypedUpsert, untypedWrite } = await import('@apackdev/sdk/ears');
 const { boundHost } = await import('@apackdev/sdk/runtime/internals');
 const { services } = boundHost();
 const settingsAdmin = () => boundHost().services.settings;
@@ -95,18 +95,18 @@ describe('services.appData', () => {
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
     fs.writeFileSync(metadataPath, JSON.stringify({ ...metadata, databases: ['lmdb', 'unknownLmdb'] }));
     fs.mkdirSync(path.join(backup, 'unknownLmdb'));
-    untypedTx('Note-kept', true).put('title', 'still here');
+    untypedCreate('Prompt', { id: 'Prompt-kept' }).set('title', 'still here');
 
     // A partial restore of a backup a newer apack made would cost the user their data to learn that
     const refused = services.appData.importBackup(backup);
     await expect(refused).rejects.toThrow("The backup holds data this apack doesn't have: unknownLmdb");
     await expect(refused).rejects.toMatchObject({ name: 'UnknownBackupDatabasesError', databases: ['unknownLmdb'] });
-    expect(untypedQx('Note-kept').pickOne(['title'])).toMatchObject({ title: 'still here' });
+    expect(untypedQuery.ids('Prompt-kept').pickOne(['title'])).toMatchObject({ title: 'still here' });
 
     // The app asks the user first, and imports it without that store when they say to
     expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true }))
       .toEqual({ databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] });
-    expect(untypedQx('Note-kept').pickOne(['title'])).toBeNull();
+    expect(untypedQuery.ids('Prompt-kept').pickOne(['title'])).toBeNull();
   });
 
   it('restores a backup whose listed store it holds nothing for, and says which', async () => {
@@ -134,7 +134,7 @@ describe('services.appData', () => {
       features: { 'removed/feature': { retained: true } },
     };
     appState.update({ hasOnboarded: true, version: '0.4.0' });
-    untypedTx('Settings-app', true).put('entityType', 'Settings').put('data', settings);
+    untypedUpsert('Settings', 'Settings-app').set('data', settings);
     await new Promise((resolve) => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'current', ['lmdb']);
 
@@ -165,8 +165,8 @@ describe('services.appData', () => {
       id: 'bookmarks',
       ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {} },
     });
-    const bookmark = untypedTx('Bookmark').put('url', 'https://example.com').id();
-    untypedTx('Tag').put('name', 'reading');
+    const bookmark = untypedCreate('Bookmark').set('url', 'https://example.com').id();
+    untypedCreate('Tag').set('name', 'reading');
     await new Promise((resolve) => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'with-pack', ['lmdb']);
     packs.unregisterPack('bookmarks');
@@ -178,8 +178,8 @@ describe('services.appData', () => {
       const result = await services.appData.importBackup(backup);
       expect(result.unknownEntityTypes).toContainEqual(['Bookmark', 1]);
       expect(result.unknownEntityTypes.map(([type]) => type)).not.toContain('Tag');
-      // The row is there, found by id: with no pack declaring the type, a query by type reads 'Bookmark' as an id
-      expect(untypedQx(bookmark).pickOne(['url'])).toMatchObject({ url: 'https://example.com' });
+      // The row is there, found by id: with no pack declaring the type, a query by type is refused
+      expect(untypedQuery.ids(bookmark).pickOne(['url'])).toMatchObject({ url: 'https://example.com' });
     } finally {
       packs.unregisterPack('tags');
     }
@@ -193,11 +193,11 @@ describe('services.appData', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-invalid-settings-'));
     dirs.push(dir);
     const settingsId = 'Settings-app';
-    untypedTx(settingsId, true).put('entityType', 'Settings').put('data', data);
+    untypedUpsert('Settings', settingsId).set('data', data);
     await new Promise(resolve => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'invalid', ['lmdb']);
     // The fixture wrote an invalid row directly to create the candidate; seed valid live data independently.
-    untypedTx(settingsId).put('data', {});
+    untypedWrite(settingsId).set('data', {});
     settingsAdmin().set({ kind: 'app' }, ['personal', 'name'], 'Keep live');
     const before = settingsAdmin().getSnapshot();
     const heard: string[] = [];

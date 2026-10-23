@@ -69,7 +69,7 @@ This is a contained change with its own payoff, independent of any trust story: 
   messages for pack systems. The envelope already carries `from`/`via` and the bus already routes on `to`,
   so the addressing survives; the synchronous assumptions do not.
 - **EARS does not cross it.** Packs query and transact synchronously against an in-memory engine
-  (`qx`/`tx`, *"synchronous, do NOT await"*). That is the hard constraint: an out-of-process pack cannot
+  (`query`, `create`/`write`, `transact` — *"synchronous, do NOT await"*). That is the hard constraint: an out-of-process pack cannot
   keep that API, and changing it changes every pack's data code. **This, not the process spawn, is what
   makes this expensive**, and any estimate that misses it is wrong.
 - **Services cross it** as RPC, which is what `declared-capabilities.md` would already have made explicit.

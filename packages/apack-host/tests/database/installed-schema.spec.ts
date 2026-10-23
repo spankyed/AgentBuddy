@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readInstalledSchema } from '../../src/database/schema.ts';
 import { writeInstalledPackFixture } from '../packs/runtime/build-fixture.ts';
-import { dataDirWithPacks, removeTempDirs, schemaContext } from './fixtures.ts';
+import { dataDirWithPacks, removeTempDirs, schemaContext, tempDir } from './fixtures.ts';
 import { _appDirOf } from '@apackdev/sdk/env';
 
 afterEach(removeTempDirs);
@@ -64,4 +64,94 @@ it('discovers feature-owned typed and untyped entities without authored source o
   expect(schema.entities.OfflineNote).toBe('OfflineNote');
   expect(schema.entities.OfflineIndex).toBe('OfflineIndex');
   expect(schema.relKinds.NOTE_LINK).toBe('note_link');
+});
+
+// `--schema-from` names a place, so one flag covers every pack behind it: a snapshot file, a pack directory, or a
+// directory of pack directories. Each shape in the wild supplies a different file, which is what the probe order is for.
+describe('--schema-from', () => {
+  const pack = (id: string, entity: string) => ({
+    id, name: id, version: '1.0.0', data: { entities: { [entity]: null } },
+  }) as Parameters<typeof writeInstalledPackFixture>[1];
+
+  /** A published or installed pack: the snapshot and no manifest, which is what `host-packs/` holds */
+  function snapshotOnlyPack(dir: string, id: string, entity: string): string {
+    writeInstalledPackFixture(dir, pack(id, entity));
+    fs.rmSync(path.join(dir, 'apack.json'));
+    return dir;
+  }
+
+  it('reads a pack directory that has the snapshot and no manifest at all', () => {
+    const dir = dataDirWithPacks();
+    const from = snapshotOnlyPack(path.join(tempDir('schema-from-'), 'published'), 'bookmarks', 'Bookmark');
+    expect(fs.existsSync(path.join(from, 'apack.json'))).toBe(false);
+
+    const schema = readInstalledSchema(schemaContext(dir), { schemaFrom: from });
+    expect(schema.entities.Bookmark).toBe('Bookmark');
+    expect(schema.packs.map(({ id }) => id)).toContain('bookmarks');
+  });
+
+  it("reads a checkout's pack, whose snapshot is under dist/", () => {
+    const dir = dataDirWithPacks();
+    const from = path.join(tempDir('schema-from-'), 'a-pack');
+    writeInstalledPackFixture(path.join(from, 'dist'), pack('bookmarks', 'Bookmark'));
+    fs.writeFileSync(path.join(from, 'apack.json'), JSON.stringify(pack('bookmarks', 'Bookmark')));
+
+    expect(readInstalledSchema(schemaContext(dir), { schemaFrom: from }).entities.Bookmark).toBe('Bookmark');
+  });
+
+  it('reads a pack declared only by its manifest, with nothing built', () => {
+    const dir = dataDirWithPacks();
+    const from = path.join(tempDir('schema-from-'), 'unbuilt');
+    fs.mkdirSync(from, { recursive: true });
+    fs.writeFileSync(path.join(from, 'apack.json'), JSON.stringify(pack('bookmarks', 'Bookmark')));
+
+    expect(readInstalledSchema(schemaContext(dir), { schemaFrom: from }).entities.Bookmark).toBe('Bookmark');
+  });
+
+  // The whole point of naming a place: this is what retires wanting the flag more than once
+  it('reads every pack in a directory of packs, with one flag', () => {
+    const dir = dataDirWithPacks();
+    const from = tempDir('schema-from-');
+    snapshotOnlyPack(path.join(from, 'bookmarks'), 'bookmarks', 'Bookmark');
+    snapshotOnlyPack(path.join(from, 'journal'), 'journal', 'Entry');
+    fs.writeFileSync(path.join(from, 'not-a-pack.txt'), 'ignored');
+
+    const schema = readInstalledSchema(schemaContext(dir), { schemaFrom: from });
+    expect(schema.entities.Bookmark).toBe('Bookmark');
+    expect(schema.entities.Entry).toBe('Entry');
+    expect(schema.packs.map(({ id }) => id).sort()).toEqual(['bookmarks', 'core', 'journal']);
+  });
+
+  // A pack directory never holds packs, so the narrower reading is tried first and a pack whose own
+  // subdirectory happens to look like one is still read as itself
+  it('reads a pack directory as one pack, not as a directory of them', () => {
+    const dir = dataDirWithPacks();
+    const from = snapshotOnlyPack(path.join(tempDir('schema-from-'), 'outer'), 'bookmarks', 'Bookmark');
+    snapshotOnlyPack(path.join(from, 'vendored'), 'journal', 'Entry');
+
+    const schema = readInstalledSchema(schemaContext(dir), { schemaFrom: from });
+    expect(schema.entities.Bookmark).toBe('Bookmark');
+    expect(schema.entities.Entry).toBeUndefined();
+  });
+
+  it('refuses a path that names no pack, rather than adding nothing in silence', () => {
+    const dir = dataDirWithPacks();
+    const empty = tempDir('schema-from-');
+    fs.writeFileSync(path.join(empty, 'readme.md'), 'no packs here');
+
+    expect(() => readInstalledSchema(schemaContext(dir), { schemaFrom: empty })).toThrow(`${empty} holds no pack`);
+    expect(() => readInstalledSchema(schemaContext(dir), { schemaFrom: path.join(empty, 'gone') })).toThrow('No pack or pack directory at');
+    expect(() => readInstalledSchema(schemaContext(dir), { schemaFrom: path.join(empty, 'gone.json') })).toThrow('No pack snapshot at');
+  });
+
+  it('says so when the packs it names are installed already', () => {
+    const dir = dataDirWithPacks();
+    const from = tempDir('schema-from-');
+    snapshotOnlyPack(path.join(from, 'core'), 'core', 'Note');
+    snapshotOnlyPack(path.join(from, 'journal'), 'journal', 'Entry');
+
+    const schema = readInstalledSchema(schemaContext(dir), { schemaFrom: from });
+    expect(schema.notes).toEqual([`${dir} already has core installed, so --schema-from ${from} added journal.`]);
+    expect(schema.entities.Entry).toBe('Entry');
+  });
 });

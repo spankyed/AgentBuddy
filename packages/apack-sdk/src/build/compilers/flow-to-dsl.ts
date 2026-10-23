@@ -1,4 +1,5 @@
-import { installedEngine, type EarsQuery } from '@apackdev/ears';
+import { type Ears } from '@apackdev/ears';
+import { boundEars } from '../../ears/index.ts';
 import { createExportDir, ensureDirectoryExists, writeExportJson } from '../../utils/index.ts';
 import type { StepDefinition } from '../../steps/index.ts';
 import { stepLookup, type StepLookup } from './step-lookup.ts';
@@ -22,30 +23,30 @@ export interface ExportFlowsOptions {
   rootFlowRole: string;
   flowIds?: string[];
   /** The engine to read the flows from; the installed one by default */
-  engine?: EarsQuery;
+  engine?: Ears;
   /** The step definitions to decompile with; the registered packs' by default */
   steps?: readonly StepDefinition[];
 }
 
-function getFlowNodes({ qx }: EarsQuery, steps: StepLookup, flowId: string): any[] {
-  const nodeIds = qx(flowId)
+function getFlowNodes({ query }: Ears, steps: StepLookup, flowId: string): any[] {
+  const nodeIds = query.ids(flowId as EARS.EntityId)
     .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
     .map(({ id }: any) => id);
 
-  const nodes = qx(nodeIds).pickAll();
+  const nodes = query.ids(nodeIds as EARS.EntityId[]).pickAll();
 
   return nodes.map((node: any) => {
     const rel = steps.getBuild(node.nodeType)?.relation;
     if (!rel) return node;
-    const linkedId = qx(node.id)
+    const linkedId = query.ids(node.id as EARS.EntityId)
       .links(EARS.RelKind.INSTANCE_OF)
       .map(({ id }: any) => id)[0];
     return linkedId ? { ...node, [rel.field]: linkedId } : node;
   });
 }
 
-function getFlowEdges(engine: EarsQuery, steps: StepLookup, flowId: string): any[] {
-  const { qx } = engine;
+function getFlowEdges(engine: Ears, steps: StepLookup, flowId: string): any[] {
+  const { query } = engine;
   const nodes = getFlowNodes(engine, steps, flowId);
   const nodeIds = nodes.map((n: any) => n.id).filter(Boolean);
 
@@ -53,7 +54,7 @@ function getFlowEdges(engine: EarsQuery, steps: StepLookup, flowId: string): any
   const edges: any[] = [];
 
   for (const source of nodeIds) {
-    qx(source)
+    query.ids(source as EARS.EntityId)
       .links([EARS.RelKind.TRANSITIONS_TO], [EARS.Entity.Node])
       .filter(({ id: targetId }: any) => nodeIds.includes(targetId))
       .forEach(({ relation, id: target }: any) => {
@@ -307,7 +308,7 @@ function buildTracksFromGraph(
  *─────────────────────────────────────────────────────────────────*/
 
 function decompileFlow(
-  engine: EarsQuery,
+  engine: Ears,
   steps: StepLookup,
   flow: any,
   actionMap: Map<string, string>,
@@ -329,12 +330,12 @@ export function exportFlowsToDSL(
   options: ExportFlowsOptions,
   versioned = true,
 ): { filePath: string; flowCount: number; skipped: string[] } {
-  const { rootFlowRole, flowIds, engine = installedEngine() } = options;
-  const { qx } = engine;
+  const { rootFlowRole, flowIds, engine = boundEars() } = options;
+  const { query } = engine;
   const steps = stepLookup(options.steps);
 
-  const actions = qx(EARS.Entity.Action).pickAll() as any[];
-  const prompts = qx(EARS.Entity.Prompt).pickAll() as any[];
+  const actions = query(EARS.Entity.Action).pickAll() as any[];
+  const prompts = query(EARS.Entity.Prompt).pickAll() as any[];
 
   const actionMap = new Map<string, string>();
   for (const action of actions) actionMap.set(action.id, action.label);
@@ -342,7 +343,7 @@ export function exportFlowsToDSL(
   const promptMap = new Map<string, string>();
   for (const prompt of prompts) promptMap.set(prompt.id, prompt.label);
 
-  let flows = qx(EARS.Entity.Flow).pickAll() as any[];
+  let flows = query(EARS.Entity.Flow).pickAll() as any[];
   if (flowIds) {
     const idSet = new Set(flowIds);
     flows = flows.filter((f: any) => idSet.has(f.id));
@@ -351,7 +352,7 @@ export function exportFlowsToDSL(
   const flowMap = new Map<string, string>();
   for (const flow of flows) flowMap.set(flow.id, flow.label);
 
-  const rootFlowId = qx().withRole(rootFlowRole).first();
+  const rootFlowId = query.all().withRole(rootFlowRole).first();
 
   const dsl: FlowDSL = {};
   const skipped: string[] = [];

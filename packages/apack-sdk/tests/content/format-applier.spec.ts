@@ -1,6 +1,6 @@
 // The generic writer's merge at its edges: an entity we wrote with no recorded parts, items two packs' content
 // both identifies, content the pack has dropped, and an update hook that fails part way.
-import { installedEngine as ears, untypedTx } from '@apackdev/ears';
+import { boundEars as ears, untypedWrite } from '@apackdev/sdk/ears';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -197,7 +197,7 @@ describe('the applied content a run records', () => {
     const first = applyRecord();
     applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     const id = memo('Intro').id;
-    untypedTx(id).update('deleted' as never, true);
+    untypedWrite(id).set('deleted' as never, true);
 
     const counts = offering.apply({
       compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]),
@@ -282,7 +282,7 @@ describe('an entity the user deleted outright', () => {
   it('is not created again when the last apply wrote it', () => {
     const first = applyRecord();
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
-    ears().tx(memo('Intro').id).destroy();
+    ears().write(memo('Intro').id).destroy();
     expect(memos('Intro'), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);
 
     const counts = apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), after(first));
@@ -295,7 +295,7 @@ describe('an entity the user deleted outright', () => {
   it('stays in the keys this run declares', () => {
     const first = applyRecord();
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
-    ears().tx(memo('Intro').id).destroy();
+    ears().write(memo('Intro').id).destroy();
 
     const second = after(first);
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), second);
@@ -311,7 +311,7 @@ describe('an entity the user deleted outright', () => {
    */
   it('is created again by an import that carries no record', () => {
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
-    ears().tx(memo('Intro').id).destroy();
+    ears().write(memo('Intro').id).destroy();
 
     expect(apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }])))
       .toEqual({ created: 1, updated: 0, skipped: 0 });
@@ -435,7 +435,7 @@ describe('content the pack has dropped', () => {
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
     const extraKey = [...first.written.keys()].find((key) => key.includes('Extra'))!;
     const extraId = memo('Extra').id;
-    untypedTx(extraId).update('deleted' as never, true);
+    untypedWrite(extraId).set('deleted' as never, true);
 
     const second = after(first);
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
@@ -530,7 +530,7 @@ describe("two packs' records with the same entry key and identity", () => {
 describe("a folder another pack written", () => {
   type Folder = { id: EARS.EntityId; name: string; label?: string; contentKey?: string };
   const folders = () => ears().findWhere<Folder>('Folder' as EARS.Entity, 'name', 'internal');
-  const contents = (folder: Folder) => ears().qx(folder.id).linksTo('contains', 'Memo' as EARS.Entity, true).pick(['name']).map((row) => row.name as string).sort();
+  const contents = (folder: Folder) => ears().query.ids(folder.id).linksTo('contains', 'Memo' as EARS.Entity, true).pick(['name']).map((row) => row.name as string).sort();
 
   /** A pack's entry: one folder holding a memo per name, with the pack's own label on the folder */
   function tree(packId: string, memoNames: string[], entryKey = 'memos'): string {
@@ -573,7 +573,7 @@ describe("a folder another pack written", () => {
     apply(tree('pack-a', ['welcome.md']));
     const packB = applyRecord();
     apply(tree('pack-b', ['theirs.md']), packB);
-    ears().tx(folders()[0].id).destroy();
+    ears().write(folders()[0].id).destroy();
 
     // Its memo is still there and still pack-b's, so only the folder is created
     expect(apply(tree('pack-b', ['theirs.md']), after(packB))).toMatchObject({ created: 1 });
@@ -688,7 +688,7 @@ describe("a folder another pack written", () => {
     registerHooks('Folder', { container: false });
     const first = applyRecord();
     apply(tree('pack-a', ['welcome.md', 'guide.md']), first);
-    untypedTx(folders()[0].id).update('deleted' as never, true);
+    untypedWrite(folders()[0].id).set('deleted' as never, true);
 
     const second = after(first);
     apply(tree('pack-a', ['welcome.md', 'guide.md']), second);
@@ -749,7 +749,7 @@ describe("a folder another pack written", () => {
 
 describe('wipe-and-replace', () => {
   const wipeImport = (dir: string) => applier.apply({ compiledDir: dir, mode: 'wipe-and-replace', log: () => {} });
-  const folderNames = () => ears().qx('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
+  const folderNames = () => ears().query('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
 
   it("removes rows of every entity type the entry content, even types its records don't hold", () => {
     ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'old folder' });

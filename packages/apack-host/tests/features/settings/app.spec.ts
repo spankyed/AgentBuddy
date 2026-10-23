@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, expect, it } from 'vitest';
-import { installedEngine, untypedQx, untypedTx } from '@apackdev/ears';
+import { boundEars, untypedQuery, untypedCreate } from '@apackdev/sdk/ears';
 import type { EARS } from '@apackdev/sdk';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { generateSettingsTypes } from '@apackdev/sdk/build';
@@ -10,7 +10,7 @@ import { createSettingsStore } from '../../../src/features/settings/be/store.ts'
 
 const id = 'Settings-app' as EARS.EntityId;
 beforeEach(() => resetTestData());
-const store = () => createSettingsStore({ ears: installedEngine, catalog: () => registry.settingsCatalog() });
+const store = () => createSettingsStore({ ears: boundEars, catalog: () => registry.settingsCatalog() });
 
 it('derives the public SDK types from the host definition', async () => {
   const generated = await generateSettingsTypes(appSettingsDefinition, 'AppSettings');
@@ -21,7 +21,7 @@ it('derives the public SDK types from the host definition', async () => {
 it('provides and resets app preferences without default-setup and owns returned values', () => {
   const settings = store();
   expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
-  expect(untypedQx(id).pickOne(['data'])).toBeNull();
+  expect(untypedQuery.ids(id).pickOne(['data'])).toBeNull();
   const first = settings.get<{ hotkeys: { switchSurfaceUp: { modifiers: string[] } } }>({ kind: 'app' });
   first.hotkeys.switchSurfaceUp.modifiers.push('changed');
   expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
@@ -44,7 +44,7 @@ it.each([
 
 it('refuses writes retaining invalid app values, including an unchanged replacement', () => {
   const data = { app: { projects: 'invalid' } };
-  untypedTx(id, true).put('entityType', 'Settings').put('data', data);
+  untypedCreate('Settings', { id }).set('data', data);
   const settings = store();
   const heard: string[] = [];
   settings.onChange(change => heard.push(change));
@@ -74,7 +74,7 @@ it('refuses newly missing required fields in feature arrays too', () => {
     } } }, required: ['items'] },
   } } } });
   try {
-    const settings = createSettingsStore({ ears: installedEngine, catalog: () => registry.settingsCatalog() });
+    const settings = createSettingsStore({ ears: boundEars, catalog: () => registry.settingsCatalog() });
     expect(() => settings.set({ kind: 'feature', featureRef: 'array-settings/entries' as import('@apackdev/sdk/ids').FeatureRef }, ['items'], [{}])).toThrow('name');
     expect(settings.getOverrides()).toEqual({});
   } finally { registry.unregisterPack('array-settings'); }
@@ -82,7 +82,7 @@ it('refuses newly missing required fields in feature arrays too', () => {
 
 it('refuses unknown root sections even when unchanged', () => {
   const data = { obsolete: { value: true } };
-  untypedTx(id, true).put('entityType', 'Settings').put('data', data);
+  untypedCreate('Settings', { id }).set('data', data);
   const settings = store();
   expect(() => settings.set({ kind: 'app' }, ['personal', 'name'], 'Ada')).toThrow('settings owner');
   expect(settings.getOverrides()).toEqual(data);
@@ -101,7 +101,7 @@ it('notifies a caller-bound handle when declared defaults change and stops on un
     defaults: { name },
   } } });
   catalog.setNative([declaration('Ada')]);
-  const settings = createSettingsStore({ ears: installedEngine, catalog: catalog.settings, onCatalogChanged: catalog.onChanged });
+  const settings = createSettingsStore({ ears: boundEars, catalog: catalog.settings, onCatalogChanged: catalog.onChanged });
   const service = createSettingsService(settings).forPack('observed');
   const handle = _settingsHandle<{ name: string }>({ kind: 'pack', packId: 'observed', groupId: 'assistant' }, service);
   const heard: string[] = [];

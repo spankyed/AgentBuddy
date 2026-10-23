@@ -1,7 +1,7 @@
 // A memo kept as a default-setup note. It's written through @apackdev/ears imported directly, not the generated
 // facade, and read back through the SDK's services with default-setup's repository: the pack, the SDK and its
 // dependency's runtime share one engine (SHARED_INSTANCE_PACKAGES).
-import { untypedTx } from '@apackdev/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 import { services } from '#generated/services.ts';
 
 export interface MemoNoteDTO {
@@ -10,7 +10,7 @@ export interface MemoNoteDTO {
 }
 
 export function addMemoNote(text: string): MemoNoteDTO | null {
-  const id = untypedTx('Note').batchPut({ title: text, content: '', noteType: 'document' }).id();
+  const id = untypedCreate('Note').setMany({ title: text, content: '', noteType: 'document' }).id();
   const note = services.repository.noteQueries.byIdDTO(id);
   return note ? { id: note.id, title: note.title } : null;
 }

@@ -3,21 +3,26 @@ import { nativePackDeclarationFixture } from '../../src/testing/index.ts';
 // nodes and edges, step results on TNodes, and actions and prompts
 import * as os from 'node:os';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { findRelations, installedEngine, untypedTx, untypedQx } from '@apackdev/ears';
+import { createEarsEngine, type PersistenceSink } from '@apackdev/ears';
+import { findRelations, _bindEars, boundEars, untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
 import { actionRepository, flowRepository, promptRepository, tnodeRepository, trash } from '../../src/repositories/index.ts';
 import { compile as compileFlowDSL } from '../../src/build/compilers/flow-compiler.ts';
 import { resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { EARS } from '../../src/types/entities.ts';
-import { actionStep, listenerTrigger } from '../build/helpers/test-steps.ts';
+import { actionStep, listenerTrigger, llmStep } from '../build/helpers/test-steps.ts';
 
 process.env.APACK_ENV ??= 'test';
 process.env.APACK_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime();
 
+/** The llm step with the node data a native fixture declares */
+const llm = { ...llmStep, node: { label: 'LLM' } };
+
 beforeAll(() => {
   testPacks.steps.set(listenerTrigger.type, listenerTrigger);
   testPacks.steps.set(actionStep.type, actionStep);
-  const declaration = nativePackDeclarationFixture({ id: 'repository-fixture', steps: [listenerTrigger, actionStep] });
+  testPacks.steps.set(llm.type, llm);
+  const declaration = nativePackDeclarationFixture({ id: 'repository-fixture', steps: [listenerTrigger, actionStep, llm] });
   for (const [type, step] of Object.entries(declaration.steps ?? {})) testPacks.stepDeclarations.set(type, {
     type, packId: declaration.id, origin: 'native', enabled: true, declaration: step,
   });
@@ -74,8 +79,8 @@ describe('flowRepository', () => {
     flowRepository.deleteFlow(flowId, { allowRoot: true });
 
     expect(flowRepository.rootFlow()).toBeUndefined();
-    expect(untypedQx(EARS.Entity.Flow).ids()).toEqual([]);
-    for (const id of nodeIds) expect(untypedQx([id]).count()).toBe(0);
+    expect(untypedQuery(EARS.Entity.Flow).ids()).toEqual([]);
+    for (const id of nodeIds) expect(untypedQuery.ids([id]).count()).toBe(0);
     expect(findRelations({ sourceEntity: flowId })).toEqual([]);
   });
 
@@ -84,7 +89,7 @@ describe('flowRepository', () => {
     const second = flowRepository.createFlow({ label: 'Second' });
     flowRepository.grantRootFlowRole(first.id);
     flowRepository.grantRootFlowRole(second.id);
-    expect(untypedQx().withRole(EARS.RoleKind.Custom('root_flow')).ids()).toEqual([second.id]);
+    expect(untypedQuery.all().withRole(EARS.RoleKind.Custom('root_flow')).ids()).toEqual([second.id]);
   });
 
   it("connects nodes, refusing a trigger target and a busy handle, and renumbers a node's handles", () => {
@@ -129,16 +134,146 @@ describe('flowRepository', () => {
       .toThrow('Source handle already has an outgoing connection');
     expect(edges()).toEqual(before);
   });
+
+  // Two edges between the same pair of nodes, one per handle, are two edges: listed apart and removed together.
+  // Removed as links, not left to the node's destroy: a partition keeping history keeps what a destroy took
+  it('lists two edges between the same two nodes on different handles, and deletes both with the node', () => {
+    const unlinked: string[] = [];
+    const sink: PersistenceSink = {
+      onCreateEntity() {}, onDestroyEntity() {}, onDropAttr() {}, onPutAttrArray() {}, onAddRelation() {},
+      onUpdateRelation() {}, onUnitStart() {}, onUnitEnd() {},
+      onRemoveRelation(relId, destroyed) { if (!destroyed) unlinked.push(relId); },
+    };
+    const sdkTypes = new Set<string>(Object.values(EARS.Entity));
+    _bindEars(createEarsEngine({ persistence: sink, isEntityType: (name) => sdkTypes.has(name) }));
+    const flow = flowRepository.createFlow();
+    const a = flowRepository.createNode(flow.id, { nodeType: 'action' });
+    const b = flowRepository.createNode(flow.id, { nodeType: 'action' });
+    flowRepository.createEdge(a.id, b.id, { sourceHandle: 'case-0' });
+    flowRepository.createEdge(a.id, b.id, { sourceHandle: 'case-1' });
+
+    expect(flowRepository.flowEdges(flow.id).map(({ source, target, sourceHandle }) => ({ source, target, sourceHandle })).sort((x, y) => x.sourceHandle!.localeCompare(y.sourceHandle!)))
+      .toEqual([
+        { source: a.id, target: b.id, sourceHandle: 'case-0' },
+        { source: a.id, target: b.id, sourceHandle: 'case-1' },
+      ]);
+
+    const handleEdges = findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO }).map((rel) => rel.id);
+    flowRepository.deleteNode(b.id);
+    expect(findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO })).toEqual([]);
+    expect(unlinked).toEqual(expect.arrayContaining(handleEdges));
+    expect(flowRepository.flowEdges(flow.id)).toEqual([]);
+  });
+
+  describe('importing a flow again', () => {
+    const demo = (steps: string[], root = false) => compileFlowDSL(
+      { Demo: { ...(root && { root: true }), tracks: [{ event: 'flow.entry', exits: [steps.map((action) => ({ type: 'action', action }))] }] } },
+      { actions: actionIds() },
+    );
+    let ids: Map<string, EARS.EntityId>;
+    const actionIds = () => ids;
+    beforeEach(() => {
+      ids = new Map([
+        ['Greet', actionRepository.create({ label: 'Greet', actionFn: 'return 1' }).id],
+        ['Wave', actionRepository.create({ label: 'Wave', actionFn: 'return 2' }).id],
+      ]);
+    });
+    const nodeIds = (flowId: EARS.EntityId) => flowRepository.flowNodes(flowId).map((node) => node.id).sort();
+    const edgeIds = (flowId: EARS.EntityId) => flowRepository.flowEdges(flowId).map((edge) => edge.id).sort();
+    const rows = (flowId: EARS.EntityId) => [flowId, ...nodeIds(flowId)].map((id) => [id, boundEars().getAll(id)]);
+
+    it('refuses a file linking from something it does not write, before changing anything', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      const oneStep = demo(['Greet']);
+      const broken = { ...oneStep, relation: [...oneStep.relation, { source: 'Node-missing', kind: EARS.RelKind.TRANSITIONS_TO, target: flowId }] };
+      expect(() => flowRepository.importFromDSL(broken as typeof oneStep)).toThrow(/links from Node-missing, which it doesn't write/);
+      expect(nodeIds(flowId)).toHaveLength(3);
+    });
+
+    it('changes nothing when the file is the same', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      const before = { rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ sourceEntity: flowId }).map((r) => r.id) };
+
+      expect(flowRepository.importFromDSL(demo(['Greet', 'Wave'])).flowIds).toEqual([flowId]);
+      expect({ rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ sourceEntity: flowId }).map((r) => r.id) }).toEqual(before);
+    });
+
+    it('removes a dropped node with its edges, and keeps the ids of what stays', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      const before = nodeIds(flowId);
+      expect(before).toHaveLength(3);
+      const greetNode = flowRepository.flowNodes(flowId).find((node) => node.actionId === ids.get('Greet'))!;
+      const kept = flowRepository.flowEdges(flowId).find((edge) => edge.target === greetNode.id)!;
+
+      flowRepository.importFromDSL(demo(['Greet']));
+      const after = nodeIds(flowId);
+      expect(after).toHaveLength(2);
+      expect(before).toEqual(expect.arrayContaining(after));
+      for (const gone of before.filter((id) => !after.includes(id))) expect(untypedQuery.ids(gone).exists()).toBe(false);
+      expect(untypedQuery(EARS.Entity.Node).count()).toBe(2);
+      expect(edgeIds(flowId)).toEqual([kept.id]);
+    });
+
+    it('keeps what points into the flow and its nodes, and the fields the file does not declare', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      const greetNode = flowRepository.flowNodes(flowId).find((node) => node.actionId === ids.get('Greet'))!;
+      // A run of the flow, and another flow's node naming it
+      const run = untypedCreate(EARS.Entity.TNode).link(EARS.RelKind.INSTANCE_OF, flowId).link(EARS.RelKind.TRACKED, greetNode.id).id();
+      boundEars().write(flowId).set('contentKey', 'pack:flows/Demo').set('description', 'mine');
+
+      flowRepository.importFromDSL(demo(['Greet']));
+      expect(findRelations({ sourceEntity: run }).map((r) => [r.relationType, r.targetEntity]).sort()).toEqual(
+        [[EARS.RelKind.INSTANCE_OF, flowId], [EARS.RelKind.TRACKED, greetNode.id]].sort(),
+      );
+      expect(boundEars().getAll(flowId)).toMatchObject({ contentKey: 'pack:flows/Demo', description: 'mine', label: 'Demo' });
+    });
+
+    it('keeps a step\'s node when its type changes, but none of the old type\'s fields', () => {
+      const flow = (step: { type: string } & Record<string, unknown>) => compileFlowDSL(
+        { Demo: { tracks: [{ event: 'flow.entry', exits: [[{ label: 'S', ...step }]] }] } },
+        { actions: actionIds(), prompts: new Map() },
+      );
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(flow({ type: 'action', action: 'Greet', params: { n: 1 } }));
+      const before = flowRepository.flowNodes(flowId).find((node) => node.nodeType === 'action')!;
+      expect(before).toMatchObject({ actionId: ids.get('Greet'), params: { n: 1 } });
+
+      flowRepository.importFromDSL(flow({ type: 'llm', model: 'x:y' }));
+      const after = boundEars().getAll(before.id) as Record<string, unknown>;
+      expect(after).toMatchObject({ nodeType: 'llm', model: 'x:y', label: 'S' });
+      expect(after).not.toHaveProperty('actionId');
+      expect(after).not.toHaveProperty('params');
+    });
+
+    it('keeps the root role when the file does not say root, and grants it when it does', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet'], true));
+      expect(flowRepository.rootFlow()).toBe(flowId);
+
+      flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      expect(flowRepository.rootFlow()).toBe(flowId);
+    });
+
+    it('leaves everything as it was when the import throws part way', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      const before = { rows: rows(flowId), edges: edgeIds(flowId) };
+      const oneStep = demo(['Greet']);
+      // A row of a type nothing registers, which fails after the dropped node and its edges are gone
+      const broken = { ...oneStep, entity: [...oneStep.entity, { id: 'Unknown-1', entityType: 'Unknown' }] };
+
+      expect(() => flowRepository.importFromDSL(broken as typeof oneStep)).toThrow(/not a registered entity type/);
+      expect({ rows: rows(flowId), edges: edgeIds(flowId) }).toEqual(before);
+      expect(untypedQuery(EARS.Entity.Node).count()).toBe(3);
+    });
+  });
 });
 
 describe('tnodeRepository', () => {
   it("records a step's result on its TNode, truncated, beside what's there", () => {
     const tNodeId = 'TNode-1' as EARS.EntityId;
-    untypedTx(tNodeId, true).put('entityType', EARS.Entity.TNode).put('nodeAttributes', { input: 'hi' });
+    untypedCreate(EARS.Entity.TNode, { id: tNodeId }).set('nodeAttributes', { input: 'hi' });
 
     tnodeRepository.updateTNodeResult(tNodeId, { text: 'x'.repeat(20000) });
 
-    expect(untypedQx(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
+    expect(untypedQuery.ids(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
       input: 'hi',
       result: { text: expect.objectContaining({ _truncated: true, _type: 'string', _originalLength: 20000 }) },
     });
@@ -146,7 +281,7 @@ describe('tnodeRepository', () => {
 
   it('leaves a TNode that does not exist alone', () => {
     tnodeRepository.updateTNodeResult('TNode-missing' as EARS.EntityId, { ok: true });
-    expect(untypedQx(['TNode-missing' as EARS.EntityId]).count()).toBe(0);
+    expect(untypedQuery.ids(['TNode-missing' as EARS.EntityId]).count()).toBe(0);
   });
 });
 
@@ -165,7 +300,7 @@ describe('actionRepository and promptRepository', () => {
     promptRepository.delete(prompt.id);
     expect(actionRepository.all()).toEqual([]);
     expect(promptRepository.all()).toEqual([]);
-    expect(untypedQx([action.id]).pickOne(['deleted'])?.deleted).toBe(true);
+    expect(untypedQuery.ids([action.id]).pickOne(['deleted'])?.deleted).toBe(true);
   });
 
   it('refuse an action or prompt without its label or body, and a missing id', () => {
@@ -178,9 +313,9 @@ describe('actionRepository and promptRepository', () => {
 
 describe('trash', () => {
   // Any entity type: prompts here
-  const note = (title: string) => untypedTx(`Prompt-${title}` as EARS.EntityId, true).put('entityType', 'Prompt').put('title', title).id();
-  const findById = (id: EARS.EntityId) => installedEngine().findById<Record<string, unknown>>(id);
-  const findByIdRaw = (id: EARS.EntityId) => installedEngine().findByIdRaw(id);
+  const note = (title: string) => untypedCreate('Prompt', { id: `Prompt-${title}` as EARS.EntityId }).set('title', title).id();
+  const findById = (id: EARS.EntityId) => boundEars().findById<Record<string, unknown>>(id);
+  const findByIdRaw = (id: EARS.EntityId) => boundEars().findByIdRaw(id);
 
   it('moves entities to the trash, where finders skip them, and restores them unmarked', () => {
     const [a, b] = [note('a'), note('b')];
@@ -188,7 +323,7 @@ describe('trash', () => {
     expect(trash.move([a, b, 'Prompt-missing' as EARS.EntityId], 1000)).toEqual([a, b]);
     expect(trash.move([a], 2000)).toEqual([]);
     expect(findById(a)).toBeUndefined();
-    expect(installedEngine().findAll('Prompt')).toEqual([]);
+    expect(boundEars().findAll('Prompt')).toEqual([]);
     expect(findByIdRaw(a)).toMatchObject({ deleted: true, deletedAt: 1000 });
     expect(trash.isTrashed(a)).toBe(true);
     expect(trash.list('Prompt').map((n) => n.id).sort()).toEqual([a, b].sort());

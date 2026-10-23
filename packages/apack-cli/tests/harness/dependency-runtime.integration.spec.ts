@@ -110,7 +110,7 @@ describe.skipIf(!built)("a dependent pack's unit tests on the harness runtime ti
   it("runs default-setup's systems and the app's settings beside them", async () => {
     const root = await dependentPack(`
 import { expect, it } from 'vitest';
-import { repository } from '@apackdev/ears';
+import { repository } from '@apackdev/sdk/ears';
 import { services } from '#generated/services.ts';
 import { startApp } from '@apackdev/testing/harness';
 it("connects to default-setup's notes and the app's settings", async () => {

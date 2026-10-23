@@ -2,7 +2,7 @@
 // it was trashed (`deletedAt`); the engine's finders (findById, findAll, findWhere, …) leave it out, and
 // findByIdRaw still reads it. Restoring removes both marks. What trashing an entity means beyond that (its
 // children, emptying the trash) is its feature's.
-import { installedEngine as ears } from '@apackdev/ears';
+import { boundEars as ears } from '../ears/index.ts';
 import type { EARS } from '../types/entities.ts';
 
 /** The marks a trashed entity carries */
@@ -40,7 +40,7 @@ export const trash = {
 
   /** The trashed entities of a type */
   list<T extends object = object>(entityType: string): Trashed<T>[] {
-    return (ears().qx(entityType as EARS.Entity).pickAll() as Trashed<T>[]).filter(trashed);
+    return (ears().query(entityType as never).pickAll() as Trashed<T>[]).filter(trashed);
   },
 
   /** The entities of a type trashed more than `maxAgeMs` before `now` */

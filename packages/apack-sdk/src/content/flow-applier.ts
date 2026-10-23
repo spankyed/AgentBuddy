@@ -1,6 +1,6 @@
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { promptRepository } from '../repositories/prompt-repository.ts';
-import { findRelations, installedEngine as ears, untypedTx } from '@apackdev/ears';
+import { findRelations, boundEars as ears, untypedWrite } from '../ears/index.ts';
 import { loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { contentPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
@@ -225,9 +225,11 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
 
         if (existing) {
           try {
-            // The flow writer's whole-item write is a delete and a re-import, since a flow's nodes and
-            // wiring arrive together
-            flowRepository.deleteFlow(existing.id, { allowRoot: true });
+            // The import reconciles a flow already under its compiled id in place, keeping what points into it
+            // (runs, subflows, the root role); one under another id can't be reconciled, so it is replaced
+            const compiledId = (compileFlowDSL({ [key]: entry }, { actions: actionMap, prompts: promptMap }).entity as Array<{ id: string; entityType?: string }>)
+              .find((row) => row.entityType === EARS.Entity.Flow)?.id;
+            if (compiledId !== existing.id) flowRepository.deleteFlow(existing.id, { allowRoot: true });
             replacedLabels.add(key);
             ctx.log(`  flow replaced (hash mismatch): ${key}`);
           } catch (error: any) {
@@ -313,7 +315,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         if (row) {
           const flowId = row.id as EARS.EntityId;
           const contentKey = flowContentKey(packId, name);
-          untypedTx(flowId).update(CONTENT_KEY, contentKey);
+          untypedWrite(flowId).set(CONTENT_KEY, contentKey);
           // Read back off the entities a moment after writing them, which is what makes this and
           // `driftedGraphParts` two reads of one question rather than two accounts of it
           const parts = graphParts(graphState(flowId));

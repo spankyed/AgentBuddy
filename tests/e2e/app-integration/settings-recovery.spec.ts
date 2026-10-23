@@ -8,7 +8,8 @@ import { appLaunchEnv } from '../../../packages/apack-testing/src/launch-env.ts'
 import { readSettingsOverrides } from '@apackdev/host/database';
 import { installPackFromLocal } from '@apackdev/host/packs';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
-import { untypedTx, type EARS } from '@apackdev/ears';
+import { type EARS } from '@apackdev/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 import { writeData } from '../../../packages/apack-host/tests/database/fixtures.ts';
 
 const root = path.resolve(import.meta.dirname, '../../..');
@@ -34,7 +35,7 @@ test('repairs invalid persisted settings in the app and starts packs only after 
     await installPackFromLocal(path.join(root, 'packages/default-setup'),
       resolveAppEnvironment({ env: 'test', userDataDir }).packsDir);
     await writeData(userDataDir, () => {
-      untypedTx('Settings-app' as EARS.EntityId, true).put('entityType', 'Settings').put('data', {
+      untypedCreate('Settings', { id: 'Settings-app' as EARS.EntityId }).set('data', {
         app: { projects: 'invalid' },
         features: { ...unavailable, 'default-setup/code': { defaultBaseDirectory: 123 } },
       });

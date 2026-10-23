@@ -6,7 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { EarsQuery } from '@apackdev/ears';
+import type { Ears } from '@apackdev/ears';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 
@@ -19,14 +19,14 @@ const { installPackFromLocal, installShippedPacks } = await import('@apackdev/ho
 const { openAppDatabase } = await import('@apackdev/host/database');
 const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
 const { unbindHost } = await import('@apackdev/sdk/runtime/internals');
-const { untypedTx } = await import('@apackdev/ears');
+const { untypedCreate } = await import('@apackdev/sdk/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
 /** Every entity with its attributes and roles, and every relation, in a stable order */
-function snapshot(query: EarsQuery) {
+function snapshot(query: Ears) {
   const ids = [...query.getAllEntities()].sort();
   return {
     entities: ids.map((id) => ({ id, attributes: query.getAll(id), roles: [...query.getRoles(id)].sort() })),
@@ -82,17 +82,18 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     // the volatile partition, which neither hydrates
     const first = await bootApi();
     startPacks(first.packs);
-    untypedTx('Note-parity', true).put('entityType', 'Note').put('title', 'mine').grant('pinned').link('parent_of', 'Note-child');
-    untypedTx('TNode-parity', true).put('entityType', 'TNode').put('status', 'done');
+    untypedCreate('Note', { id: 'Note-child' }).set('title', 'child');
+    untypedCreate('Note', { id: 'Note-parity' }).set('title', 'mine').grant('pinned').link('parent_of', 'Note-child');
+    untypedCreate('TNode', { id: 'TNode-parity' }).set('status', 'done');
     closeApi(first);
 
     const api = await bootApi();
-    const fromApi = snapshot(api.engine.query);
+    const fromApi = snapshot(api.engine);
     const types = api.packs.getRegisteredEntityTypes();
     closeApi(api);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, readOnly: true, log: () => {} });
-    const fromTool = snapshot(db.query);
+    const fromTool = snapshot(db.ears);
     db.close();
 
     expect(fromApi.entities.length).toBeGreaterThan(10);
@@ -116,18 +117,18 @@ describe('what the tool writes', () => {
     closeApi(booted);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, log: () => {} });
-    untypedTx('Note-tool', true).put('entityType', 'Note').put('title', 'from the tool').grant('pinned');
-    untypedTx('TNode-tool', true).put('entityType', 'TNode').put('status', 'done');
+    untypedCreate('Note', { id: 'Note-tool' }).set('title', 'from the tool').grant('pinned');
+    untypedCreate('TNode', { id: 'TNode-tool' }).set('status', 'done');
     db.close();
 
     const api = await bootApi();
     try {
       // The note is in the data the API hydrates, with its role
-      expect(api.engine.query.getAttr('Note-tool', 'title')).toBe('from the tool');
-      expect([...api.engine.query.getRoles('Note-tool')]).toEqual(['pinned']);
+      expect(api.engine.getAttr('Note-tool', 'title')).toBe('from the tool');
+      expect([...api.engine.getRoles('Note-tool')]).toEqual(['pinned']);
       // The run history isn't hydrated, and is in the partition the app keeps it in
-      expect(api.engine.query.getAttr('TNode-tool', 'status')).toBeNull();
-      expect(api.store.query('volatileBackup').getFirstAttr('status', 'TNode-tool')).toBe('done');
+      expect(api.engine.getAttr('TNode-tool', 'status')).toBeNull();
+      expect(api.store.read('volatileBackup').getFirstAttr('status', 'TNode-tool')).toBe('done');
     } finally {
       closeApi(api);
     }
