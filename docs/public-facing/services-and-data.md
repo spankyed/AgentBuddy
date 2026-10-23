@@ -345,7 +345,8 @@ What a write builder does:
 | `link(kind, target, { info?, replace?, acyclicIn? })` | Links to `target`. The same edge (kind, target and `info`) again changes nothing; `replace` leaves this as the only edge of the kind to `target`; `acyclicIn` refuses a cycle through those kinds |
 | `unlink(kind, target?)` / `unlinkAll()` | Removes edges of the kind (to `target` only, when given) / every edge from the entity |
 | `grant(role)` / `revoke(role)` / `grantExclusive(role, among)` | See *Roles* |
-| `destroy({ keepStored? })` | Deletes the entity and its edges; `keepStored` takes it out of the engine and leaves what was persisted |
+| `destroy()` | Deletes the entity and its edges |
+| `unload()` | Takes the entity and its edges out of memory, leaving what is stored of them |
 | `id()` | The entity's id |
 
 `updatedAt` is the engine's too: `create` stamps it (a row's own `createdAt` and `updatedAt` keep an import's
