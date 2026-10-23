@@ -253,7 +253,7 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 
 | Module | What |
 |---|---|
-| `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact`, `find*`, `createEntity*`, `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
+| `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact`, `find*`, `newId*`, `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
 | `#generated/repository` | `repository`, typed with your and your dependencies' repositories |
 | `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, relation, role, graph and blueprint operations, and `repository` |
 | `@apackdev/ears` | The engine itself: `createEarsEngine` for tests and tooling, `EarsError`, `RepositoryError`, `bp` blueprints, the core `EARS` types and `BaseEntity` |
@@ -297,11 +297,24 @@ EARS queries and writes are **synchronous** — do not `await` them.
 import { EARS, query, create, upsert, write, transact, createEntityWithDefaults } from '#generated/ears.ts';
 
 const bookmarks = query(EARS.Entity.Bookmark).pickAll();                 // typed with the Bookmark shape
-const id = create(EARS.Entity.Bookmark).setMany({ url, title }).id(); // EARS.EntityId<'Bookmark'>
+const id = create(EARS.Entity.Bookmark, { url, title }).id();          // EARS.EntityId<'Bookmark'>
 write(id).set('title', 'Docs');                                       // an entity that exists
-upsert(EARS.Entity.Bookmark, someId).set('title', 'Docs');            // created when no entity has someId
+upsert(EARS.Entity.Bookmark, someId, { url, title });                 // created when no entity has someId
 const created = createEntityWithDefaults(EARS.Entity.Bookmark, { url, title }, 'BKM');
 ```
+
+**A created row is the whole row.** `create(type, row)` takes it in one object: every field the shape requires,
+any it allows, and, for an import keeping them, its `id`, `createdAt` and `updatedAt`, which no field can be named:
+
+```typescript
+create(EARS.Entity.Bookmark, { url, title });                                  // a new id, created now
+create(EARS.Entity.Bookmark, { id: givenId, createdAt: originalTime, url, title });   // an import keeping both
+```
+
+A row missing a required field doesn't compile, so a row read back has what its shape says it has. `upsert` may
+create, so it takes the same row; `createEntityWithDefaults` takes it with the short code and label it generates left
+out. Code that needs an id before it can write the row — a terminal takes one before its process starts — mints it
+with `newId(type)` and creates the row once it knows it.
 
 Each entry point takes one kind of argument and refuses what it can't account for:
 
@@ -310,9 +323,9 @@ Each entry point takes one kind of argument and refuses what it can't account fo
 | `query(type)`, `query([types])` | every entity of the types | a name that isn't a registered entity type, `undefined` included |
 | `query.ids(id)`, `query.ids([ids])` | the ids given that exist | — absent ids are dropped |
 | `query.all()` | every entity but the relations (`findRelations` reads those) | — |
-| `create(type, { id?, createdAt? })` | a new entity | an unregistered type; an id already in use |
+| `create(type, row)` | a new entity: the row's fields, and its `id`, `createdAt` and `updatedAt` when given | an unregistered type; an id already in use; any other of the engine's own fields |
 | `write(id)` | the entity with the id | an id no entity has |
-| `upsert(type, id)` | the entity with the id, created as `type` when there is none | an unregistered type; an entity of another type |
+| `upsert(type, id, row)` | the entity with the id, written with the row, or created as `type` with it when there is none | an unregistered type; an entity of another type |
 
 A refusal is an `EarsError` with a `code` (`UNKNOWN_ENTITY_TYPE`, `NO_SUCH_ENTITY`, `ID_IN_USE`,
 `TYPE_MISMATCH`, `RESERVED_ATTRIBUTE`, `NO_VALUE`, `NOT_A_LIST`). So a query for a type whose pack isn't installed throws
@@ -334,7 +347,7 @@ What a write builder does:
 | `destroy({ keepStored? })` | Deletes the entity and its edges; `keepStored` takes it out of the engine and leaves what was persisted |
 | `id()` | The entity's id |
 
-`updatedAt` is the engine's too: `create` stamps it (`create(type, { createdAt, updatedAt })` keeps an import's own
+`updatedAt` is the engine's too: `create` stamps it (a row's own `createdAt` and `updatedAt` keep an import's
 times), and every attribute write stamps it once per `write(id)`. A write that is no edit of the entity — when it was
 last viewed, a position kept for later — passes `{ touch: false }`: `write(id, { touch: false }).set('lastSeen', now)`.
 `null` is a value like any other; `setMany` leaves a field whose value is `undefined` alone, `set(k, undefined)`
@@ -551,7 +564,7 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
-`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findAll`, `findWhere`, `createEntity`,
+`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findAll`, `findWhere`, `newId`,
 `createEntityWithDefaults` and `getAttr`. `@apackdev/ears` exports the
 writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out rows in the trash, as every query does. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's
@@ -573,13 +586,13 @@ query(EARS.Entity.Bookmark).orderBy('createdAt') // BaseEntity fields are includ
 `in(kind, type)` narrow to the *target* entity type, so a `pick` after them checks the target's fields. Entity types **without** a
 declared shape read as `BaseEntity & Record<string, unknown>`: every field is there, but
 you have to narrow a value before using it. An id carries its entity type when it comes
-from a typed helper (`createEntity(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookmark'>`),
+from a typed helper (`newId(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookmark'>`),
 so builders written with it (`query.ids(id)`, `write(id)`, `findById(id)`) are typed too;
 unbranded ids (`EARS.EntityId`) and `query.all()` read as undeclared.
 
 ### Entity ids
 
-Ids carry their entity type when it's known: from `createEntity` and `create(entityType).id()`, and
+Ids carry their entity type when it's known: from `newId` and `create(entityType).id()`, and
 from typed queries (`ids()`, `first()`, `pick` and a row's `id`). The next call is then typed
 without naming the shape:
 

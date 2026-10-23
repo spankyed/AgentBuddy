@@ -47,7 +47,7 @@ const ENGINE_FIELDS: ReadonlySet<string> = new Set(RESERVED_ATTRIBUTES);
 function writeDeclared(row: { id: EARS.EntityId; entityType: string } & Record<string, unknown>): void {
   const { id, entityType, createdAt, ...fields } = row;
   if (!query.ids(id).exists()) {
-    untypedCreate(entityType, { id, createdAt: createdAt as number | undefined }).setMany(fields);
+    untypedCreate(entityType, { ...fields, id, createdAt: createdAt as number | undefined });
     return;
   }
   const current: Record<string, unknown> = getRow(id) ?? {};
@@ -201,7 +201,7 @@ export const flowRepository = {
       description: flow?.description || FLOW_DEFAULTS.DESCRIPTION,
       flowType: flow?.flowType || FLOW_DEFAULTS.TYPE,
     };
-    const id = untypedCreate(EARS.Entity.Flow, { createdAt: ts }).setMany(fields).id();
+    const id = untypedCreate(EARS.Entity.Flow, { ...fields, createdAt: ts }).id();
     return { id, entityType: EARS.Entity.Flow, createdAt: ts, updatedAt: ts, ...fields };
   },
 
@@ -338,7 +338,7 @@ export const flowRepository = {
     validateNode(row as FlowNode, accepted);
 
     const { entityType: _type, createdAt: _created, updatedAt: _updated, ...fieldsToWrite } = row;
-    const nodeId = untypedCreate(EARS.Entity.Node, { createdAt: ts }).setMany(fieldsToWrite).id();
+    const nodeId = untypedCreate(EARS.Entity.Node, { ...fieldsToWrite, createdAt: ts }).id();
     untypedWrite(flowId).link(EARS.RelKind.CONTAINS, nodeId);
     const relatedId = field && related[field];
     if (relatedId) untypedWrite(nodeId).link(EARS.RelKind.INSTANCE_OF, relatedId as EARS.EntityId);

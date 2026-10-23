@@ -44,15 +44,16 @@ function findIndexedDoc(indexId: string, chunkKey: string): IndexedDocEntity | n
 }
 
 function createIndexedDoc(data: IndexedDocCreateData): EARS.EntityId {
-  const id = create(EARS.Entity.IndexedDoc)
-    .set('shortCode', generateIndexedDocShortCode())
-    .set('indexId', data.indexId)
-    .set('chunkKey', data.chunkKey)
-    .set('documentId', data.documentId)
-    .set('vectorId', data.vectorId)
-    .set('text', data.text)
-    .set('metadata', data.metadata)
-    .set('chunkInfo', data.chunkInfo || null)
+  const id = create(EARS.Entity.IndexedDoc, {
+    shortCode: generateIndexedDocShortCode(),
+    indexId: data.indexId,
+    chunkKey: data.chunkKey,
+    documentId: data.documentId,
+    vectorId: data.vectorId,
+    text: data.text,
+    metadata: data.metadata,
+    chunkInfo: data.chunkInfo || null,
+  })
     .id()
   return id
 }

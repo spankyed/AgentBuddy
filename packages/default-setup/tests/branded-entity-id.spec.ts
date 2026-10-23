@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
 import type { QueryBuilder } from '@apackdev/ears';
-import { EARS, createEntity, findAll, findById, query, type EntityShape, type PackShapes } from '#generated/ears.ts';
+import { EARS, newId, findAll, findById, query, type EntityShape, type PackShapes } from '#generated/ears.ts';
 
 // ─── EntityId<E> phantom brand ─────────────────────────────────────────
 
@@ -41,29 +41,29 @@ describe('Branded EntityId — phantom type parameter', () => {
   });
 });
 
-// ─── createEntity overloads ────────────────────────────────────────────
+// ─── newId overloads ────────────────────────────────────────────
 
-describe('Branded EntityId — createEntity overloads', () => {
-  it('createEntity(Entity.Action) returns EntityId<"Action">', () => {
-    expectTypeOf(createEntity(EARS.Entity.Action)).toEqualTypeOf<EARS.EntityId<'Action'>>();
+describe('Branded EntityId — newId overloads', () => {
+  it('newId(Entity.Action) returns EntityId<"Action">', () => {
+    expectTypeOf(newId(EARS.Entity.Action)).toEqualTypeOf<EARS.EntityId<'Action'>>();
   });
 
-  it('createEntity(Entity.Thread) returns EntityId<"Thread">', () => {
-    expectTypeOf(createEntity(EARS.Entity.Thread)).toEqualTypeOf<EARS.EntityId<'Thread'>>();
+  it('newId(Entity.Thread) returns EntityId<"Thread">', () => {
+    expectTypeOf(newId(EARS.Entity.Thread)).toEqualTypeOf<EARS.EntityId<'Thread'>>();
   });
 
-  it('createEntity(Entity.Flow) returns EntityId<"Flow">', () => {
-    expectTypeOf(createEntity(EARS.Entity.Flow)).toEqualTypeOf<EARS.EntityId<'Flow'>>();
+  it('newId(Entity.Flow) returns EntityId<"Flow">', () => {
+    expectTypeOf(newId(EARS.Entity.Flow)).toEqualTypeOf<EARS.EntityId<'Flow'>>();
   });
 
-  it('createEntity with an entity name only known at runtime returns EntityId<string>', () => {
+  it('newId with an entity name only known at runtime returns EntityId<string>', () => {
     const entityType: string = 'SomeUnregistered';
-    expectTypeOf(createEntity(entityType)).toEqualTypeOf<EARS.EntityId>();
+    expectTypeOf(newId(entityType)).toEqualTypeOf<EARS.EntityId>();
   });
 
-  it('createEntity rejects a literal entity name the pack does not declare', () => {
+  it('newId rejects a literal entity name the pack does not declare', () => {
     // @ts-expect-error not an entity this pack or its dependencies declare
-    createEntity('SomeUnregistered');
+    newId('SomeUnregistered');
   });
 });
 
@@ -118,8 +118,8 @@ describe('Branded EntityId — integration with QueryBuilder', () => {
     expectTypeOf(check).toBeFunction();
   });
 
-  it('createEntity returns branded id compatible with query input', () => {
-    type CreatedId = ReturnType<typeof createEntity<'Action'>>;
+  it('newId returns branded id compatible with query input', () => {
+    type CreatedId = ReturnType<typeof newId<'Action'>>;
     expectTypeOf<CreatedId>().toMatchTypeOf<EARS.EntityId>();
   });
 });

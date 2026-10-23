@@ -12,7 +12,8 @@ import { createFormatApplier } from '@apackdev/sdk/content';
 import type { ApplyRecord, ImportMode, ApplyResult, ContentSelection } from '@apackdev/sdk/utils';
 import { untypedQuery as query, untypedWrite } from '@apackdev/sdk/ears';
 import { dropAttribute, entityIds } from '@apackdev/sdk/testing';
-import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';
+import type { EARS } from '#generated/ears.ts';
+import { repository } from '#generated/repository.ts';
 import { FIXTURES, PACK_DIR, applyAfter, resetDatabase, snapshot, type Snapshot } from './harness.ts';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'apack.json'), 'utf-8'));
@@ -130,7 +131,7 @@ function expectWrittenValues(row: Record<string, unknown>, record: ContentItem) 
 /** The notes the fixtures' Welcome links to, as a user's notes (titled by their ids): links to missing notes are never unlinked */
 const LINK_TARGETS = ['Note-external-plan', 'Note-external-roadmap'];
 function addLinkTargets() {
-  for (const id of LINK_TARGETS) createEntityWithDefaults('Note', { title: id }, undefined, id as EARS.EntityId);
+  for (const id of LINK_TARGETS) repository.noteCommands.create({ title: id, id });
 }
 
 /** A row's REFERENCES targets in a snapshot */

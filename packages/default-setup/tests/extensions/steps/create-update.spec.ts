@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@apackdev/testing/harness'
 import { startTestRuntime } from '@apackdev/sdk/testing'
 import { create, on, update } from '#generated/flow-helpers.ts'
-import { createEntityWithDefaults, findAll, findById, type EARS } from '#generated/ears.ts'
+import { findAll, findById, type EARS } from '#generated/ears.ts'
+import { repository } from '#generated/repository.ts'
 import * as createCompiler from '#extensions/steps/create/build.ts'
 import * as updateCompiler from '#extensions/steps/update/build.ts'
 
@@ -85,7 +86,7 @@ describe('update step', () => {
   })
 
   it('updates an entity by a literal id', async () => {
-    const note = createEntityWithDefaults('Note', { content: 'original' }).id
+    const note = repository.noteCommands.create({ title: 'Note', content: 'original' }).id
     importFlows({ Notes: { root: true, tracks: [on('edit', [[update(note, { label: 'change', params: { content: 'changed' } })]])] } })
     const app = await startBrain()
 

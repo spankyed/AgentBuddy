@@ -89,25 +89,16 @@ const writers = {
     id?: string,
     contentHash?: string,
   ): CollectionDTO {
-    // Create collection entity
     const now = Date.now()
-    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId, createdAt: now }) : create(EARS.Entity.Collection, { createdAt: now })
-    const collectionId = builder.id()
-    
-    // Get display order
     const displayOrder = nextDisplayOrder(parentId || null)
-
-    const attrs: Record<string, any> = {
+    const collectionId = create(EARS.Entity.Collection, {
+      ...(id && { id: id as EARS.EntityId }),
+      createdAt: now,
       name,
       displayOrder,
       ...(contentHash && { contentHash }),
-    }
-
-    if (description) {
-      attrs.description = description
-    }
-
-    builder.setMany(attrs)
+      ...(description && { description }),
+    }).id()
     if (parentId) {
       write(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }
@@ -293,16 +284,14 @@ const writers = {
     id?: string,
   ): CollectionDTO {
     const now = Date.now()
-    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId, createdAt: now }) : create(EARS.Entity.Collection, { createdAt: now })
-    const collectionId = builder.id()
-
     const displayOrder = nextDisplayOrder(parentId || null)
-
-    builder.setMany({
+    const collectionId = create(EARS.Entity.Collection, {
+      ...(id && { id: id as EARS.EntityId }),
+      createdAt: now,
       name,
       symlinkPath,
       displayOrder,
-    })
+    }).id()
 
     if (parentId) {
       write(parentId).link(EARS.RelKind.PARENT_OF, collectionId)

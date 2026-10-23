@@ -165,13 +165,10 @@ export const threadCommands = {
     const ts = Date.now();
     const shortCode = generateShortCode(EARS.Entity.Thread, 'T') as ThreadTypeShortCode;
 
+    const status = input.status || featureSettings.forFeature('threads').get()?.statuses[0]?.label || '';
     const id = create(EARS.Entity.Thread, {
       ...(input.id ? { id: input.id as EARS.EntityId<'Thread'> } : {}),
       createdAt: input.createdAt ?? ts,
-    }).id();
-
-    const status = input.status || featureSettings.forFeature('threads').get()?.statuses[0]?.label || '';
-    write(id).setMany({
       status,
       shortCode: shortCode,
       timestamp: ts,
@@ -181,7 +178,7 @@ export const threadCommands = {
       tags: input.tags || [],  // Store tags as array of names
       ...(input.forcedMode && { forcedMode: input.forcedMode }),  // Set forced mode if provided
       ...(input.pinned && { pinned: input.pinned })
-    });
+    }).id();
 
     // Grant role if provided
     if (input.role) {
@@ -630,10 +627,7 @@ export const chatCommands = {
     }
 
     const timestamp = Date.now();
-    const messageTx = create(EARS.Entity.Message, { createdAt: timestamp })
-      .set('text', text.trim())
-      .set('timestamp', timestamp)
-      .set('sender', sender);
+    const messageTx = create(EARS.Entity.Message, { text: text.trim(), timestamp, sender, createdAt: timestamp });
 
     if (blocks) messageTx.set('blocks', blocks);
     if (forkable !== undefined) messageTx.set('forkable', forkable);
@@ -795,10 +789,7 @@ export const chatCommands = {
     );
 
     const timestamp = Date.now();
-    const markerTx = create(EARS.Entity.Message, { createdAt: timestamp })
-      .set('text', text.trim())
-      .set('timestamp', timestamp)
-      .set('sender', 'marker');
+    const markerTx = create(EARS.Entity.Message, { text: text.trim(), timestamp, sender: 'marker', createdAt: timestamp });
 
     const markerId = markerTx.link(EARS.RelKind.CONTAINS, threadId).id();
     write(threadId).link(EARS.RelKind.CONTAINS, markerId);
@@ -909,10 +900,7 @@ export const chatCommands = {
   }): { artifactId: EARS.EntityId } => {
     const { artifactType, title, content, threadId, color } = params;
 
-    const txn = create(EARS.Entity.Artifact)
-      .set('title', title)
-      .set('artifactType', artifactType)
-      .set('content', content);
+    const txn = create(EARS.Entity.Artifact, { title, artifactType, content });
     if (color) txn.set('color', color);
     const artifactId = txn.id();
 

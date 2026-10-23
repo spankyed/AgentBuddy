@@ -13,7 +13,7 @@ import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  query, createEntity, findById, findAll, findWhere, createEntityWithDefaults, write, getAttr,
+  query, create, upsert, newId, findById, findAll, findWhere, createEntityWithDefaults, write, getAttr,
   type EntityShape,
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
@@ -47,8 +47,8 @@ describe('Type inference — EARS runtime', () => {
     expectTypeOf(untypedCreate<'Action'>).returns.toEqualTypeOf<WriteBuilder<'Action'>>();
   });
 
-  it('createEntity() brands the id with a declared entity type', () => {
-    expectTypeOf(createEntity(EARS.Entity.Action)).toEqualTypeOf<EARS.EntityId<'Action'>>();
+  it('newId() brands the id with a declared entity type', () => {
+    expectTypeOf(newId(EARS.Entity.Action)).toEqualTypeOf<EARS.EntityId<'Action'>>();
   });
 
   it('QueryBuilder.map() is generic over its return type', () => {
@@ -85,11 +85,31 @@ describe('Type inference — typed EARS helpers', () => {
   });
 
   it('createEntityWithDefaults returns the declared shape with the created fields', () => {
-    const result = createEntityWithDefaults(EARS.Entity.Action, { label: 'test', actionFn: 'fn()' });
+    const result = createEntityWithDefaults(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()' });
     expectTypeOf(result.actionFn).toEqualTypeOf<string>();
     expectTypeOf(result.shortCode).toEqualTypeOf<string>();
     // @ts-expect-error not a field of Action
     createEntityWithDefaults(EARS.Entity.Action, { notAField: 1 });
+  });
+
+  it('creates a row with every field its shape requires, and its identity in the same object', () => {
+    // Type-level only: never called
+    const check = (givenId: EARS.EntityId<'Action'>) => {
+      create(EARS.Entity.Action, { label: 'a', input: {}, actionFn: 'fn()' });
+      create(EARS.Entity.Action, { id: givenId, createdAt: 1, label: 'a', input: {}, actionFn: 'fn()', category: 'c' });
+      upsert(EARS.Entity.Action, givenId, { label: 'a', input: {}, actionFn: 'fn()' });
+      // @ts-expect-error actionFn is required
+      create(EARS.Entity.Action, { label: 'a', input: {} });
+      // @ts-expect-error a row is required where the shape requires fields
+      create(EARS.Entity.Action);
+      // @ts-expect-error not a field of Action
+      create(EARS.Entity.Action, { label: 'a', input: {}, actionFn: 'fn()', labl: 'x' });
+      // @ts-expect-error the type argument is the row's entity type; a row never carries its own
+      create(EARS.Entity.Action, { label: 'a', input: {}, actionFn: 'fn()', entityType: 'Action' });
+      // @ts-expect-error upsert may create, so it is held to the same row
+      upsert(EARS.Entity.Action, givenId, { label: 'a' });
+    };
+    expectTypeOf(check).toBeFunction();
   });
 
   it('names only declared relation kinds, in a link and in a read or walk over links', () => {

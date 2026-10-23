@@ -28,7 +28,7 @@ export const browserCommands = {
     }
 
     for (const tab of normalized.tabs) {
-      upsert(EARS.Entity.BrowserTab, tab.id).setMany({
+      upsert(EARS.Entity.BrowserTab, tab.id, {
         url: tab.url,
         title: tab.title,
         favicon: tab.favicon,
@@ -45,7 +45,7 @@ export const browserCommands = {
     }
 
     for (const bm of bookmarks) {
-      create(EARS.Entity.BrowserBookmark).setMany({
+      create(EARS.Entity.BrowserBookmark, {
         url: bm.url,
         title: bm.title,
         favicon: bm.favicon,

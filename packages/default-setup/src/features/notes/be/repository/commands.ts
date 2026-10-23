@@ -100,11 +100,12 @@ export const noteCommands = {
         icon: input.icon ?? null,
         noteType: input.noteType ?? 'document',
         completed: input.completed ?? false,
+        hideCompletedChildren: false,
         displayOrder,
         lastSeen: 0,
-      } as any,
+        ...(input.id && { id: input.id as EARS.EntityId }),
+      },
       'NOTE',
-      input.id as EARS.EntityId | undefined,
     );
 
     // Create parent-child relationship

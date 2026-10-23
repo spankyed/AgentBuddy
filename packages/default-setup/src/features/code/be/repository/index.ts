@@ -1,8 +1,7 @@
-import { write, findById, findAll, query } from '#generated/ears.ts';
+import { create, write, findById, findAll, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts'
 
-import type { TerminalInfo } from '../types.ts'
 import { createLogger } from '@apackdev/sdk/logger'
 
 const logger = createLogger('code')
@@ -41,19 +40,9 @@ export const terminalQueries = {
 }
 
 export const terminalCommands = {
-  create: (terminalInfo: Partial<TerminalInfo> & { id: EARS.EntityId }): EARS.EntityId => {
-    // The terminal service created the entity when it took its id; this records what it started
-    write(terminalInfo.id).setMany({
-      title: terminalInfo.title,
-      pid: terminalInfo.pid,
-      shell: terminalInfo.shell || '/bin/bash',
-      cwd: terminalInfo.cwd,
-      active: true,
-      cols: terminalInfo.cols,
-      rows: terminalInfo.rows
-    })
-    
-    return terminalInfo.id
+  /** Records a terminal the service started, under the id it took for it (`newId`) */
+  create: (terminal: Pick<TerminalEntity, 'title' | 'pid' | 'shell' | 'cwd' | 'cols' | 'rows'> & { id: EARS.EntityId<'Terminal'> }): EARS.EntityId => {
+    return create(EARS.Entity.Terminal, { ...terminal, active: true }).id()
   },
   
   
