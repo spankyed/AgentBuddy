@@ -1,5 +1,6 @@
 import { findById, findAll, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
+import { ancestors } from '@apackdev/sdk/ears';
 
 import type { NoteDTO } from '../types.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
@@ -57,24 +58,13 @@ export const noteQueries = {
       .map(toDTO);
   },
 
-  ancestorChain: (noteId: EARS.EntityId): NoteDTO[] => {
-    const chain: NoteDTO[] = [];
-    let currentId: EARS.EntityId | null = noteId;
-
-    while (currentId) {
-      const parents = query.ids(currentId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-      if (parents.length === 0) break;
-      currentId = parents[0];
-      const note = findById<NoteEntity>(currentId);
-      if (note) {
-        chain.unshift(toDTO(note));
-      } else {
-        break;
-      }
-    }
-
-    return chain;
-  },
+  /** The notes above this one, its root first */
+  ancestorChain: (noteId: EARS.EntityId): NoteDTO[] =>
+    ancestors(noteId, EARS.RelKind.CONTAINS)
+      .reverse()
+      .map(id => findById<NoteEntity>(id))
+      .filter((n): n is NoteEntity => n !== undefined)
+      .map(toDTO),
 
   referencedBy: (noteId: EARS.EntityId): EARS.EntityId[] =>
     query.ids(noteId).in(EARS.RelKind.REFERENCES, EARS.Entity.Note).ids(),

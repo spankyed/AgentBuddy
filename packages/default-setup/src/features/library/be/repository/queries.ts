@@ -2,6 +2,7 @@ import { query } from '#generated/ears.ts';
 import * as fs from 'fs/promises'
 
 import { EARS } from '#generated/ears.ts'
+import { ancestors } from '@apackdev/sdk/ears'
 import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderItem, FolderContents, BreadcrumbItem } from '../types.ts'
 import { parentCollectionOf, collectionOfDocument, displayOrderOf, collectionPath } from '@apackdev/sdk/repositories'
 import { isRootCollection, formatFileSize, getContentLength } from './helpers.ts'
@@ -272,26 +273,11 @@ export const libraryQueries = {
       return []
     }
     
-    const breadcrumbs: BreadcrumbItem[] = []
-    let currentId: EARS.EntityId | null = folderId
-    
-    // Walk up the parent chain to build breadcrumbs
-    while (currentId) {
-      const collections = query.ids(currentId).pickAll()
-      const collection = collections[0]
-      if (collection) {
-        breadcrumbs.unshift({
-          id: currentId,
-          name: collection.name as string,
-          path: [], // We don't need path for breadcrumbs
-        })
-      }
-      
-      // Find parent
-      currentId = parentCollectionOf(currentId)
-    }
-    
-    return breadcrumbs
+    // The folder and every folder above it, the root first
+    return [folderId, ...ancestors(folderId, EARS.RelKind.PARENT_OF)].reverse().flatMap((id): BreadcrumbItem[] => {
+      const [collection] = query.ids(id).pickAll()
+      return collection ? [{ id, name: collection.name as string, path: [] }] : []
+    })
   },
 
   getParentFolderId(folderId: EARS.EntityId): EARS.EntityId | null {

@@ -219,8 +219,6 @@ export namespace EARS {
     // (undocumented)
     export type AttrKind = EARS_2.AttrKind;
     // (undocumented)
-    export type Blueprint = EARS_2.Blueprint;
-    // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
     // (undocumented)
     export type EntityId<E extends string = string> = EARS_2.EntityId<E>;

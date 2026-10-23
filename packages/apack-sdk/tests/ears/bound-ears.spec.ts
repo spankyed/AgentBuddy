@@ -3,10 +3,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, defineEars, type EARS } from '@apackdev/ears';
 import {
-  _bindEars, boundEars, findRelations, isEntityType, registerRepository, repository, spawn, transact,
+  _bindEars, boundEars, findRelations, isEntityType, registerRepository, repository, transact, wouldCreateCycle,
   untypedCreate, untypedQuery, untypedUpsert, untypedWrite,
 } from '../../src/ears/index.ts';
-import { bp } from '@apackdev/ears';
 
 const engineWith = (types: ReadonlySet<string>) => createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => types.has(name) });
 
@@ -25,7 +24,7 @@ describe('with no engine bound', () => {
       ['transact', () => transact(() => 1)],
       ['findRelations', () => findRelations()],
       ['isEntityType', () => isEntityType('Note')],
-      ['spawn', () => spawn(bp('Note').build())],
+      ['wouldCreateCycle', () => wouldCreateCycle('Note-1' as EARS.EntityId, 'Note-2' as EARS.EntityId, ['contains'])],
       ['registerRepository', () => registerRepository('noteQueries', {})],
       ['repository', () => repository.noteQueries],
       ['a typed facade', () => typed.query('Note')],

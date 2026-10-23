@@ -4,7 +4,6 @@
 
 ```ts
 
-import { Blueprint } from '@apackdev/ears';
 import type { Create } from '@apackdev/ears';
 import { EARS } from '@apackdev/ears';
 import type { Ears } from '@apackdev/ears';
@@ -48,12 +47,6 @@ export const getAllEntityTypes: () => EARS.Entity[];
 export const getAllRelationKinds: () => string[];
 
 // @public (undocumented)
-export const getAttributeStats: (kind: EARS.AttrKind) => {
-    entityCount: number;
-    totalValues: number;
-};
-
-// @public (undocumented)
 export const getRelationStats: (kind: EARS.RelKind) => RelationStats;
 
 // @public (undocumented)
@@ -68,15 +61,6 @@ export const getSchemaStats: () => SchemaStats;
 // @public (undocumented)
 export const isEntityType: (name: string) => boolean;
 
-// @public (undocumented)
-export const leaves: (kind: EARS.RelKind, filterType?: EARS.Entity) => EARS.EntityId[];
-
-// @public (undocumented)
-export const linkSymmetric: (a: EARS.EntityId, b: EARS.EntityId, kind: EARS.RelKind, info?: unknown) => void;
-
-// @public (undocumented)
-export const lowestCommonAncestor: (a: EARS.EntityId, b: EARS.EntityId, treeKind: EARS.RelKind) => EARS.EntityId | null;
-
 // @public
 export const NO_ENGINE_BOUND: string;
 
@@ -88,20 +72,6 @@ export const removeRelationById: (relId: EARS.EntityId) => void;
 
 // @public
 export const repository: Record<string, unknown>;
-
-// @public (undocumented)
-export const rootParent: (start: EARS.EntityId, relKind: EARS.RelKind) => EARS.EntityId;
-
-// @public (undocumented)
-export const shortestPath: (src: EARS.EntityId, tgt: EARS.EntityId, kinds: EARS.RelKind[]) => EARS.EntityId[] | null;
-
-// @public (undocumented)
-export const spawn: (root: Blueprint, options?: {
-    dedupe?: boolean;
-}) => EARS.EntityId;
-
-// @public (undocumented)
-export const topoSort: (roots: EARS.EntityId[], kind: EARS.RelKind, filterType?: EARS.Entity) => EARS.EntityId[];
 
 // @public (undocumented)
 export const transact: <T>(fn: () => T) => T;

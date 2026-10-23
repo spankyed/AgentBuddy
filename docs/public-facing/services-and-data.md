@@ -343,7 +343,7 @@ What a write builder does:
 | `add(k, v)` | Appends `v` to the attribute's list, starting one when there is none |
 | `merge(k, partial)` | Merges into the attribute's object |
 | `delete(k)` / `deleteAt(k, index)` / `deleteValue(k, v)` | Removes the attribute / the list's element at `index` / the list's first element equal to `v` |
-| `link(kind, target, { info?, replace?, acyclicIn?, symmetric? })` | Links to `target`. The same edge (kind, target and `info`) again changes nothing; `replace` leaves this as the only edge of the kind to `target`; `acyclicIn` refuses a cycle through those kinds |
+| `link(kind, target, { info?, replace?, acyclicIn? })` | Links to `target`. The same edge (kind, target and `info`) again changes nothing; `replace` leaves this as the only edge of the kind to `target`; `acyclicIn` refuses a cycle through those kinds |
 | `unlink(kind, target?)` / `unlinkAll()` | Removes edges of the kind (to `target` only, when given) / every edge from the entity |
 | `grant(role)` / `revoke(role)` / `grantExclusive(role, among)` | See *Roles* |
 | `destroy({ keepStored? })` | Deletes the entity and its edges; `keepStored` takes it out of the engine and leaves what was persisted |
@@ -430,41 +430,19 @@ From `@apackdev/sdk/ears` (untyped, on the app's engine):
 | `removeRelationById(relationId)` | Removes one relation by id (from `findRelations`) |
 | `isEntityType(name)` | Whether the running app has registered the entity type: the SDK's and every registered pack's |
 
-### Blueprints
+### Hierarchies
 
-`bp(entityType)` builds a description of an entity graph; `spawn(blueprint)` writes it and returns the root id:
-
-```typescript
-import { bp } from '@apackdev/ears';
-import { spawn } from '@apackdev/sdk/ears';
-
-const tag = bp(EARS.Entity.Tag).attr('name', 'docs').build();
-const id = spawn(
-  bp(EARS.Entity.Bookmark)
-    .attr('url', url)
-    .grant('unread')                          // role
-    .ensure('latest')                         // role only this entity holds, of every entity
-    .link(EARS.RelKind.TAGGED_WITH, tag)      // a nested blueprint, or an existing id
-    .build(),
-);
-```
-
-Nested blueprints are spawned and linked (replacing an identical existing relation). With the default `{ dedupe: true }`, a blueprint object reached twice creates one entity.
-
-### Graph helpers
-
-From `@apackdev/sdk/ears`; each walks relations of the given kind(s) and returns ids:
+A tree — folders, nested notes, threads — is entities linked by one relation kind, parent to child. From
+`@apackdev/sdk/ears`, each walk visits every entity once, so a cycle already in the data ends it:
 
 | Call | Returns |
 |---|---|
-| `descendants(start, kind)` / `ancestors(start, kind)` | Every entity reachable by following `kind` out of / into `start`, `start` excluded |
-| `rootParent(start, kind)` | The last entity reached following `kind` backwards (`start` when it has no parent) |
-| `leaves(kind, entityType?)` | Entities with no outgoing `kind` relation |
-| `lowestCommonAncestor(a, b, kind)` | The nearest shared ancestor on a `kind` tree, or `null` |
-| `topoSort(roots, kind, entityType?)` | `roots` and everything below them in dependency order; throws on a cycle |
-| `shortestPath(src, tgt, kinds)` | The id path from `src` to `tgt`, or `null` |
-| `wouldCreateCycle(src, tgt, kinds)` | `true` when `tgt` already reaches `src`, so linking `src → tgt` would close a cycle |
-| `linkSymmetric(a, b, kind, info?)` | Links both directions; throws on `a === b` |
+| `descendants(start, kind)` | Every entity reachable by following `kind` out of `start`, `start` excluded: its subtree |
+| `ancestors(start, kind)` | Every entity reachable by following `kind` into `start`, `start` excluded: in a tree, its parent first and its root last |
+| `wouldCreateCycle(src, tgt, kinds)` | `true` when `tgt` already reaches `src`, or is `src`, so linking `src → tgt` would close a cycle |
+
+Check `wouldCreateCycle` before moving an entity under a new parent, or link with `{ acyclicIn: [kind] }` to have
+the link refused instead. A path to the root is `ancestors(id, kind).reverse()`.
 
 ### Repository pattern
 
