@@ -64,6 +64,25 @@ order. `init`, `add` and the release version editor share this writer.
 
 ## Extensions
 
+### `extensions.commands`
+
+Slash commands this pack seeds, keyed by the name typed after the `/`:
+
+```json
+"extensions": { "commands": { "list": { "pr2md": { "placeholder": "PR number (optional)" } } } }
+```
+
+| field | type | required | notes |
+|---|---|---|---|
+| `list` | `{ <name>: { placeholder } }` | yes | Keyed by the name typed after the `/`: lowercase letters, digits and hyphens. `placeholder` is the hint the chat shows after the name, and may not be empty. At least one |
+| `onUserEdit` | `"offer" \| "theirs"` | no | As for any content entry. Nested beside `list` rather than among the names, so it can never collide with a command |
+
+Desugared at build time into ordinary content under the reserved key `declared-commands`, so it is merged,
+removed and offered like every other entry — and what the user gets is a document they own and may delete.
+A name a dependency declares is refused while you build; across unrelated packs it is first-wins and silent.
+See [Slash commands](content.md#slash-commands).
+
+
 `extensions` is what the pack gives the host, as against what it is made of (`features`) or what data it
 ships (`content`). Every entry is a contribution the app registers and other packs or the shell can reach.
 
@@ -161,7 +180,6 @@ unrepresentable.
 | `surface` | `{ label, state, icon?, canvas?, panel?, chat?, contract?, default? }` | no | Declarative frontend surface. State and views name modules; paths use default exports, or `path#exportName` for named exports. Codegen assembles the binding. Icons name Lucide exports or a custom component target. Contract is a leaf `path#exportName` containing published state/inbox types. `default: true` declares the startup default; a pack without a claim has none. See [surface declarations](features.md#defining-a-surface). |
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
-| `getCommands` | `string` | no | `"path#exportName"` of a function returning the chat's slash commands (`() => PackCommand[]`). Only the feature playing the `commands` designation may declare one — the app resolves that role to this feature and asks it, so one anywhere else is refused rather than left a silent no-op; see [Slash commands](content.md#slash-commands) |
 | `description` | `string` | yes | Nonblank feature purpose, independent of surface display labels |
 | `types` | `string` | no | Pack-root-relative TypeScript module re-exported through `#generated/types`; optional `.ts` or directory `index.ts` resolution. No undeclared files are inferred. |
 | `references` | `object` | no | Keyed reference identities and presentation metadata, with reactive item-provider exports; entity navigation uses declared surface destinations |
@@ -173,9 +191,9 @@ loading frontends: native claims precede installed claims, then fully qualified 
 lexically using the English locale. Authoring-source previews do not participate. Frontend delivery
 order cannot change the winner; opening waits for its matching accepted binding and actor. A saved
 selection, popout target or explicit navigation takes precedence over this startup default.
-A designation is a separately owned role, so duplicate roles across packs are errors. Two roles mean something
-to the app itself: `brain`, which `sendToSystem({ role: 'brain' }, event)` reaches, and `commands`, whose owner
-serves the chat's slash commands through the `getCommands` field above.
+A designation is a separately owned role, so duplicate roles across packs are errors. One role means something
+to the app itself: `brain`, which `sendToSystem({ role: 'brain' }, event)` reaches. The chat's slash commands
+need no role — the app derives them from stored documents (see [Slash commands](content.md#slash-commands)).
 
 ### Feature settings
 

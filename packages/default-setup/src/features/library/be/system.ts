@@ -2,11 +2,11 @@ import { featureSettings } from '#generated/settings.ts';
 // [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
 import type { Contract } from './contract.ts';
 
-import { setup, fromCallback } from 'xstate'
+import { setup } from 'xstate'
 import { defineSystem } from '@apackdev/sdk/framework'
 import type { EARS } from '#generated/ears.ts'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
-import { broadcastToSurface, sendToSystem } from '#generated/events.ts'
+import { broadcastToSurface } from '#generated/events.ts'
 import { repository } from '#generated/repository.ts';
 import * as path from 'path'
 import * as os from 'os'
@@ -40,29 +40,8 @@ function resolveHomePath(inputPath: string): string {
   return trimmed
 }
 
-/**
- * Tells the app when this feature's writes alter the chat's slash commands, which it plays the `commands`
- * designation to serve. The app reads the list from the designation and publishes it to every window, so this
- * says only *that* it moved; sending the list would make it this process's answer to nobody in particular.
- *
- * **One comparison, here, rather than a check in each handler that writes.** Every write goes through
- * `libraryCommands`, which announces itself, so no handler can forget to and a handler added later is covered.
- * The commands are a derivation over documents and most library writes don't touch one, so the list is compared
- * rather than republished: the serialized form is what "the same commands" means.
- */
-const commandWatcher = fromCallback(() => {
-  let last = JSON.stringify(libraryService.commands())
-  return repository.libraryCommands.onDocumentsChanged(() => {
-    const now = JSON.stringify(libraryService.commands())
-    if (now === last) return
-    last = now
-    sendToSystem('host/application', { type: 'COMMANDS_CHANGED' })
-  })
-})
-
 export const librarySystem = setup({
   types: librarySpec.types,
-  actors: { commandWatcher },
   actions: librarySpec.actions({
     createDocument: async ({ event }) => {
       const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string; documentType?: string }
@@ -411,8 +390,6 @@ export const librarySystem = setup({
 }).createMachine({
   id: 'library',
   initial: 'idle',
-  // Lives as long as this system does, so the subscription goes back when the actor stops
-  invoke: { src: 'commandWatcher' },
   context: () => ({
     documents: [],
     collections: [],

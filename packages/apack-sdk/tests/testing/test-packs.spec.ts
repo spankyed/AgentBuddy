@@ -15,7 +15,6 @@ const registered: PackRegistryView = {
   steps: () => [registeredNote],
   getRegisteredServices: () => ({ memos: 'registered' }),
   appliers: (packId) => (packId === 'memo-pack' ? [{ key: 'memos', apply: () => ({ created: 0, updated: 0, skipped: 0 }) }] : []),
-  commands: () => [{ name: 'standup', placeholder: 'Topic' }],
 };
 afterEach(() => testPacks.clear());
 
@@ -36,7 +35,6 @@ describe('testPacksView', () => {
     testPacks.designations.set('brain', 'test-brain');
     testPacks.services.set('memos', 'mocked');
     testPacks.appliers.set('memo-pack', []);
-    testPacks.commands.set('test-pack', [{ name: 'digest', placeholder: 'Week' }]);
 
     const view = testPacksView(registered);
     expect(view.step('note')).toEqual(ownNote);
@@ -44,7 +42,6 @@ describe('testPacksView', () => {
     expect(view.designation('brain')).toBe('test-brain');
     expect(view.getRegisteredServices()).toEqual({ memos: 'mocked' });
     expect(view.appliers('memo-pack')).toEqual([]);
-    expect(view.commands().map((c) => c.name)).toEqual(['standup', 'digest']);
 
     testPacks.clear();
     expect(view.step('note')).toBe(registeredNote);

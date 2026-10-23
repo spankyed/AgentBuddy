@@ -119,7 +119,9 @@
                 "Node",
                 "TNode",
                 "Action",
-                "Prompt"
+                "Prompt",
+                "Document",
+                "Collection"
               ]
             }
           },
@@ -136,7 +138,8 @@
                 "transitions_to",
                 "instance_of",
                 "spawned",
-                "tracked"
+                "tracked",
+                "parent_of"
               ]
             }
           },
@@ -179,7 +182,9 @@
                   "Node",
                   "TNode",
                   "Action",
-                  "Prompt"
+                  "Prompt",
+                  "Document",
+                  "Collection"
                 ]
               }
             },
@@ -559,11 +564,6 @@
             },
             "description": "Repository objects. Keys are repository names on `repository` (from #generated/repository), values are \"path#exportName\" of the object in a source file."
           },
-          "getCommands": {
-            "type": "string",
-            "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
-            "description": "\"path#exportName\" of this feature's command provider: a function returning the slash commands it serves. Only the feature playing the `commands` designation may declare one — the commands themselves are content, not manifest entries."
-          },
           "references": {
             "type": "object",
             "properties": {
@@ -759,6 +759,45 @@
     "extensions": {
       "type": "object",
       "properties": {
+        "commands": {
+          "type": "object",
+          "properties": {
+            "list": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "placeholder": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "What the chat shows after the command name, as a hint for what to type."
+                  }
+                },
+                "required": [
+                  "placeholder"
+                ],
+                "additionalProperties": false
+              },
+              "propertyNames": {
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "description": "The commands, keyed by the name typed after the \"/\"."
+            },
+            "onUserEdit": {
+              "type": "string",
+              "enum": [
+                "theirs",
+                "offer"
+              ],
+              "description": "What an apply does about an item the user has edited: \"theirs\" leaves it theirs for good (the default), \"offer\" records the newer version so they can take it. Neither overwrites their edit."
+            }
+          },
+          "required": [
+            "list"
+          ],
+          "additionalProperties": false,
+          "description": "Slash commands this pack seeds. Desugared into ordinary content, so a user owns and may delete what it writes."
+        },
         "settings": {
           "type": "object",
           "additionalProperties": {
