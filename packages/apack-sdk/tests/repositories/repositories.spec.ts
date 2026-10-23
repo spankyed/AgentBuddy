@@ -9,16 +9,20 @@ import { actionRepository, flowRepository, promptRepository, tnodeRepository, tr
 import { compile as compileFlowDSL } from '../../src/build/compilers/flow-compiler.ts';
 import { resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { EARS } from '../../src/types/entities.ts';
-import { actionStep, listenerTrigger } from '../build/helpers/test-steps.ts';
+import { actionStep, listenerTrigger, llmStep } from '../build/helpers/test-steps.ts';
 
 process.env.APACK_ENV ??= 'test';
 process.env.APACK_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime();
 
+/** The llm step with the node data a native fixture declares */
+const llm = { ...llmStep, node: { label: 'LLM' } };
+
 beforeAll(() => {
   testPacks.steps.set(listenerTrigger.type, listenerTrigger);
   testPacks.steps.set(actionStep.type, actionStep);
-  const declaration = nativePackDeclarationFixture({ id: 'repository-fixture', steps: [listenerTrigger, actionStep] });
+  testPacks.steps.set(llm.type, llm);
+  const declaration = nativePackDeclarationFixture({ id: 'repository-fixture', steps: [listenerTrigger, actionStep, llm] });
   for (const [type, step] of Object.entries(declaration.steps ?? {})) testPacks.stepDeclarations.set(type, {
     type, packId: declaration.id, origin: 'native', enabled: true, declaration: step,
   });
@@ -222,6 +226,22 @@ describe('flowRepository', () => {
         [[EARS.RelKind.INSTANCE_OF, flowId], [EARS.RelKind.TRACKED, greetNode.id]].sort(),
       );
       expect(boundEars().getAll(flowId)).toMatchObject({ contentKey: 'pack:flows/Demo', description: 'mine', label: 'Demo' });
+    });
+
+    it('keeps a step\'s node when its type changes, but none of the old type\'s fields', () => {
+      const flow = (step: { type: string } & Record<string, unknown>) => compileFlowDSL(
+        { Demo: { tracks: [{ event: 'flow.entry', exits: [[{ label: 'S', ...step }]] }] } },
+        { actions: actionIds(), prompts: new Map() },
+      );
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(flow({ type: 'action', action: 'Greet', params: { n: 1 } }));
+      const before = flowRepository.flowNodes(flowId).find((node) => node.nodeType === 'action')!;
+      expect(before).toMatchObject({ actionId: ids.get('Greet'), params: { n: 1 } });
+
+      flowRepository.importFromDSL(flow({ type: 'llm', model: 'x:y' }));
+      const after = boundEars().getAll(before.id) as Record<string, unknown>;
+      expect(after).toMatchObject({ nodeType: 'llm', model: 'x:y', label: 'S' });
+      expect(after).not.toHaveProperty('actionId');
+      expect(after).not.toHaveProperty('params');
     });
 
     it('keeps the root role when the file does not say root, and grants it when it does', () => {

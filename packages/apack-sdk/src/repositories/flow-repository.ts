@@ -1,7 +1,7 @@
 // The flow model's repository: flows, their nodes and the edges between them, and the root flow role.
 // The SDK declares these entities (sdk-entities.ts), so it owns their reads and writes; packs build
 // their views on top (default-setup's flows repository).
-import { filterSystemFields, getTimestamp, RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
+import { filterSystemFields, getTimestamp, RepositoryError, RepositoryErrorCode, RESERVED_ATTRIBUTES } from '@apackdev/ears';
 import { findRelations, generateLabelWithCount, generateShortCode, getAll, getRoles, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
@@ -36,12 +36,13 @@ const INTERIOR_KINDS: readonly string[] = [EARS.RelKind.CONTAINS, EARS.RelKind.T
 const relationKey = (source: string, kind: string, target: string, info: unknown) =>
   JSON.stringify([source, kind, target, info ?? null]);
 
-/** The fields an import may not rewrite on an entity that is already there: what identifies it and when it began */
-const IDENTITY_FIELDS = new Set(['id', 'entityType', 'createdAt']);
+/** The fields only the engine writes, which an import neither rewrites nor removes */
+const ENGINE_FIELDS: ReadonlySet<string> = new Set(RESERVED_ATTRIBUTES);
 
 /**
  * Writes an imported row: a new entity as the file has it; one already there, only the declared fields whose
- * value differs, leaving its identity and every field the file doesn't declare as they were.
+ * value differs, leaving its identity and every field the file doesn't declare as they were — except a node whose
+ * step type changed, which keeps its id (the id follows the label and position) but none of its old step's fields.
  */
 function writeDeclared(row: { id: EARS.EntityId; entityType: string } & Record<string, unknown>): void {
   const { id, entityType, createdAt, ...fields } = row;
@@ -50,8 +51,13 @@ function writeDeclared(row: { id: EARS.EntityId; entityType: string } & Record<s
     return;
   }
   const current = getAll(id) as Record<string, unknown>;
+  if ('nodeType' in fields && current.nodeType !== fields.nodeType) {
+    for (const field of Object.keys(current)) {
+      if (!(field in fields) && !ENGINE_FIELDS.has(field)) untypedWrite(id).delete(field);
+    }
+  }
   const changed = Object.fromEntries(Object.entries(fields)
-    .filter(([field, value]) => !IDENTITY_FIELDS.has(field) && JSON.stringify(current[field]) !== JSON.stringify(value)));
+    .filter(([field, value]) => !ENGINE_FIELDS.has(field) && JSON.stringify(current[field]) !== JSON.stringify(value)));
   if (Object.keys(changed).length > 0) untypedWrite(id).setMany(changed);
 }
 

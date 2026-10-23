@@ -160,13 +160,24 @@ export async function runQueryCode(code: string, scope: ConsoleScope): Promise<u
 /**
  * Runs transaction code with the read and write helpers as one unit (`transact`): code that throws part way keeps
  * none of its writes, and its error's message starts "Transaction failed:". The code is synchronous — `await`
- * doesn't parse, and a returned promise is refused and undone — since an await would split the unit.
+ * doesn't parse, and a returned promise is refused — since an await would split the unit. A promise is refused only
+ * once the code that made it has started, so what that code writes after its first await is outside the unit and
+ * kept, which the message says rather than claiming everything was undone.
  */
 export async function runTransactionCode(code: string, scope: ConsoleScope): Promise<unknown> {
+  let returnedPromise = false;
   try {
-    return transact(compileCode(code, scope, { ...readHelpers, ...writeHelpers }));
+    const body = compileCode(code, scope, { ...readHelpers, ...writeHelpers });
+    return transact(() => {
+      const result = body();
+      returnedPromise = result !== null && typeof result === 'object' && typeof (result as { then?: unknown }).then === 'function';
+      return result;
+    });
   } catch (error) {
-    const reason = errorMessage(error);
-    throw new Error(`Transaction failed: ${reason}\n  Nothing it wrote was kept: a transaction is undone as a whole.`);
+    if (returnedPromise) {
+      throw new Error('Transaction failed: transaction code must be synchronous, and this returned a promise.\n'
+        + '  What it wrote before its first await was undone; what it writes after that runs outside the transaction and is kept.');
+    }
+    throw new Error(`Transaction failed: ${errorMessage(error)}\n  Nothing it wrote was kept: a transaction is undone as a whole.`);
   }
 }

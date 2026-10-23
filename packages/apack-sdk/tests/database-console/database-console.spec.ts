@@ -80,8 +80,16 @@ describe('runTransactionCode', () => {
   it('refuses code that would split the unit: an await, or a returned promise, keeping nothing', async () => {
     await expect(runTransactionCode("await 1; create(EARS.Entity.Flow)", scope)).rejects.toThrow(/^Transaction failed:/);
     await expect(runTransactionCode("create(EARS.Entity.Flow).set('label', 'Lost'); return Promise.resolve(3)", scope)).rejects
-      .toThrow(/^Transaction failed: transact\(\) takes a synchronous function/);
+      .toThrow(/^Transaction failed: transaction code must be synchronous, and this returned a promise/);
     expect(untypedQuery('Flow').ids()).toEqual([]);
+  });
+
+  it('says what a returned promise kept: the writes after its first await, outside the unit', async () => {
+    const code = "return (async () => { create(EARS.Entity.Flow).set('label', 'Undone'); await 0; create(EARS.Entity.Flow).set('label', 'Kept'); })()";
+    await expect(runTransactionCode(code, scope)).rejects
+      .toThrow(/What it wrote before its first await was undone; what it writes after that runs outside the transaction and is kept/);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(untypedQuery('Flow').pick(['label']).map((row) => row.label)).toEqual(['Kept']);
   });
 });
 
