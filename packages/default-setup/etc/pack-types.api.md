@@ -1279,8 +1279,6 @@ declare namespace EARS {
         type Flow = typeof Flow;
         const Node = "Node";
         type Node = typeof Node;
-        const TNode = "TNode";
-        type TNode = typeof TNode;
         const Action = "Action";
         type Action = typeof Action;
         const Prompt = "Prompt";
@@ -1290,7 +1288,7 @@ declare namespace EARS {
         const Collection = "Collection";
         type Collection = typeof Collection;
     }
-    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt | Entity.Document | Entity.Collection;
+    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Relation | Entity.Flow | Entity.Node | Entity.Action | Entity.Prompt | Entity.Document | Entity.Collection;
     type EntityId<E extends string = string> = _apackdev_ears.EARS.EntityId<E>;
     namespace RelKind {
         const HAS = "has";
@@ -1315,21 +1313,15 @@ declare namespace EARS {
         type TRANSITIONS_TO = typeof TRANSITIONS_TO;
         const INSTANCE_OF = "instance_of";
         type INSTANCE_OF = typeof INSTANCE_OF;
-        const SPAWNED = "spawned";
-        type SPAWNED = typeof SPAWNED;
-        const TRACKED = "tracked";
-        type TRACKED = typeof TRACKED;
         const PARENT_OF = "parent_of";
         type PARENT_OF = typeof PARENT_OF;
     }
     /** Every relation kind this pack may link with: its own, its dependencies' and the SDK's */
-    const RELATION_KINDS: readonly ["has", "relates_to", "references", "forked_from", "compacts", "blocks", "blocked_by", "duplicates", "contains", "transitions_to", "instance_of", "spawned", "tracked", "parent_of"];
+    const RELATION_KINDS: readonly ["has", "relates_to", "references", "forked_from", "compacts", "blocks", "blocked_by", "duplicates", "contains", "transitions_to", "instance_of", "parent_of"];
     type RelKind = (typeof RELATION_KINDS)[number];
     /** Whether a kind that arrived as data (an event's field, a stored row) is one of them */
     const isRelKind: (value: unknown) => value is RelKind;
     namespace RoleKind {
-        const ROOT_TRACE_NODE = "root_trace_node";
-        type ROOT_TRACE_NODE = typeof ROOT_TRACE_NODE;
         const ASSISTANT_BIRTH = "assistant_birth";
         type ASSISTANT_BIRTH = typeof ASSISTANT_BIRTH;
         const ROOT_FLOW = "root_flow";
@@ -1338,7 +1330,7 @@ declare namespace EARS {
         type ENTRY_EVENT = typeof ENTRY_EVENT;
     }
     /** Every role this pack may grant: its own, its dependencies' and the SDK's */
-    const ROLES: readonly ["root_trace_node", "assistant_birth", "root_flow", "entry_event"];
+    const ROLES: readonly ["assistant_birth", "root_flow", "entry_event"];
     type RoleKind = (typeof ROLES)[number];
     /** Whether a role that arrived as data is one of them */
     const isRole: (value: unknown) => value is RoleKind;
@@ -4857,7 +4849,7 @@ type ServerStatus = 'error' | 'ready' | 'starting' | 'stopped';
  * The declared service selection: own services, the SDK baseline and explicitly consumed APIs.
  * The featureServices value itself stays feature-only.
  */
-type Services = typeof featureServices & Pick<HostServices, "appData" | "filesystem" | "inference" | "logger" | "onboarding" | "runHistory" | "secrets" | "settings" | "traceStore"> & {
+type Services = typeof featureServices & Pick<HostServices, "appData" | "filesystem" | "inference" | "logger" | "onboarding" | "runHistory" | "secrets" | "settings"> & {
     repository: Repositories;
     emitter: PackEmitter;
 };
@@ -6556,9 +6548,9 @@ declare const threadQueries: {
         id: `${string}-${string}` & {
             readonly __entity?: "Thread" | undefined;
         };
-        shortCode: ThreadTypeShortCode;
         topic: string;
         status: string;
+        shortCode: ThreadTypeShortCode;
         timestamp: number;
         relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
     }[];

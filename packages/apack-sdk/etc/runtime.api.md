@@ -96,7 +96,6 @@ export interface HostRuntimeServices {
     runHistory: RunHistory;
     secrets: SecretsService;
     settings: SettingsAdmin;
-    traceStore: TraceStore;
 }
 
 // @internal

@@ -176,7 +176,6 @@ export namespace EARS {
         readonly Relation: "Relation";
         readonly Flow: "Flow";
         readonly Node: "Node";
-        readonly TNode: "TNode";
         readonly Action: "Action";
         readonly Prompt: "Prompt";
         readonly Document: "Document";
@@ -191,8 +190,6 @@ export namespace EARS {
         readonly CONTAINS: "contains";
         readonly TRANSITIONS_TO: "transitions_to";
         readonly INSTANCE_OF: "instance_of";
-        readonly SPAWNED: "spawned";
-        readonly TRACKED: "tracked";
         readonly PARENT_OF: "parent_of";
     };
     // (undocumented)
@@ -344,23 +341,17 @@ export const SDK_ENTITIES: {
     readonly Relation: "Relation";
     readonly Flow: "Flow";
     readonly Node: "Node";
-    readonly TNode: "TNode";
     readonly Action: "Action";
     readonly Prompt: "Prompt";
     readonly Document: "Document";
     readonly Collection: "Collection";
 };
 
-// @public
-export const SDK_EXCLUDED_ENTITY_TYPES: readonly string[];
-
 // @public (undocumented)
 export const SDK_REL_KINDS: {
     readonly CONTAINS: "contains";
     readonly TRANSITIONS_TO: "transitions_to";
     readonly INSTANCE_OF: "instance_of";
-    readonly SPAWNED: "spawned";
-    readonly TRACKED: "tracked";
     readonly PARENT_OF: "parent_of";
 };
 
@@ -381,9 +372,6 @@ export const SDK_ROW_RULES: {
     };
     readonly Node: {
         readonly required: readonly ["nodeType", "label"];
-    };
-    readonly TNode: {
-        readonly required: readonly ["tNodeType", "label", "status", "startedAt"];
     };
     readonly Action: {
         readonly required: readonly ["label", "input", "actionFn", "shortCode"];
@@ -407,7 +395,6 @@ export type SdkEntityShapes = {
     Relation: RelationEntity;
     Flow: FlowEntity;
     Node: NodeBase;
-    TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
     Document: DocumentEntity;
@@ -565,41 +552,6 @@ export interface TextContent {
     text: string;
     // (undocumented)
     type: 'text';
-}
-
-// @public (undocumented)
-export interface TNodeEntity extends BaseEntity {
-    // (undocumented)
-    blueprint?: {
-        nodeId: EARS.EntityId;
-        flowId: EARS.EntityId;
-    };
-    // (undocumented)
-    completedAt?: TimestampMs;
-    // (undocumented)
-    cronExpression?: string;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    eventType?: string;
-    // (undocumented)
-    final?: boolean;
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    nodeAttributes?: Record<string, unknown>;
-    // (undocumented)
-    resolvedParams?: Record<string, unknown>;
-    // (undocumented)
-    startedAt: TimestampMs;
-    // (undocumented)
-    status: EntityStatus;
-    // (undocumented)
-    stepNodeType?: string;
-    // (undocumented)
-    tNodeType: TNodeKind;
-    // (undocumented)
-    triggerType?: string;
 }
 
 // @public (undocumented)

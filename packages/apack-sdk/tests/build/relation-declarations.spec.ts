@@ -25,7 +25,7 @@ describe('relation declarations', () => {
     expect(ManifestSchema.safeParse({ ...pack, data: { relations: [wire] } }).success).toBe(false);
   });
 
-  it.each(['contains', 'transitions_to', 'instance_of', 'spawned', 'tracked'])
+  it.each(['contains', 'transitions_to', 'instance_of', 'parent_of'])
   ('refuses SDK-owned wires in both installed and native declarations: %s', wire => {
     for (const result of [ManifestSchema.safeParse({ ...pack, data: { relations: [wire] } }),
       _NativePackDeclarationSchema.safeParse({ id: pack.id, data: { relations: [wire] } })]) {

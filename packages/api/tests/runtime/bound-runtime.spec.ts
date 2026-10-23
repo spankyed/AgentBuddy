@@ -39,7 +39,7 @@ describe('the bound app', () => {
   });
 
   it('has the host services over the opened store', async () => {
-    expect(services.traceStore.entities()).toEqual([]);
+    expect(services.runHistory.findRuns()).toEqual([]);
     expect(services.secrets.status().protection).toBeDefined();
     expect(services.secrets.list()).toEqual([]);
     await expect(services.appData.readBackupSummary(dataDir)).resolves.toBeNull();

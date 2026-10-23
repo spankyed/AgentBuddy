@@ -218,13 +218,13 @@ describe('flowRepository', () => {
     it('keeps what points into the flow and its nodes, and the fields the file does not declare', () => {
       const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
       const greetNode = flowRepository.flowNodes(flowId).find((node) => node.actionId === ids.get('Greet'))!;
-      // A run of the flow, and another flow's node naming it
-      const run = untypedCreate(EARS.Entity.TNode, { tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0 }).link(EARS.RelKind.INSTANCE_OF, flowId).link(EARS.RelKind.TRACKED, greetNode.id).id();
+      // Another flow's node, naming the flow and wired to one of its nodes
+      const outside = untypedCreate(EARS.Entity.Node, { nodeType: 'subflow', label: 'Run Demo' }).link(EARS.RelKind.INSTANCE_OF, flowId).link(EARS.RelKind.TRANSITIONS_TO, greetNode.id).id();
       boundEars().write(flowId).set('contentKey', 'pack:flows/Demo').set('description', 'mine');
 
       flowRepository.importFromDSL(demo(['Greet']));
-      expect(findRelations({ source: run }).map((r) => [r.kind, r.target]).sort()).toEqual(
-        [[EARS.RelKind.INSTANCE_OF, flowId], [EARS.RelKind.TRACKED, greetNode.id]].sort(),
+      expect(findRelations({ source: outside }).map((r) => [r.kind, r.target]).sort()).toEqual(
+        [[EARS.RelKind.INSTANCE_OF, flowId], [EARS.RelKind.TRANSITIONS_TO, greetNode.id]].sort(),
       );
       expect(boundEars().getRow(flowId)).toMatchObject({ contentKey: 'pack:flows/Demo', description: 'mine', label: 'Demo' });
     });

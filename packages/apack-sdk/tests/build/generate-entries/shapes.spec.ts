@@ -109,9 +109,9 @@ describe('generated entity shapes', () => {
     await expect(generate({ data: { entities: { Memo: "src/types.ts#ItemEntity" } },  })).rejects.toThrow('Entity shape "Memo": src/types.ts doesn\'t export a type named "ItemEntity"');
   });
 
-  it("fails when a pack redeclares the SDK's TNode shape", async () => {
-    write('src/types.ts', 'export interface MyTNode { x: string }\n');
-    await expect(generate({ data: { entities: { TNode: "src/types.ts#MyTNode" } } })).rejects.toThrow('is defined by the SDK');
+  it("fails when a pack redeclares the SDK's Flow shape", async () => {
+    write('src/types.ts', 'export interface MyFlow { x: string }\n');
+    await expect(generate({ data: { entities: { Flow: "src/types.ts#MyFlow" } } })).rejects.toThrow('is defined by the SDK');
   });
 
   it('accepts a shape exported by name from a list', async () => {

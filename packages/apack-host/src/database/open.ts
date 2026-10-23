@@ -9,18 +9,17 @@ import type { _AppDataPaths } from '@apackdev/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
 import { readInstalledSchema, type DatabaseSchema, type InstalledSchema } from './schema.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
-import { SDK_EXCLUDED_ENTITY_TYPES } from '@apackdev/sdk/types';
 
 /**
- * Which partition an entity type lives in: the SDK's volatile types in the volatile partition, everything
- * else persisted. It takes no arguments and nothing contributes to it — a partition is the engine's
+ * Which partition an entity type lives in: every type is persisted, since flow runs left the engine for the run
+ * history. It takes no arguments and nothing contributes to it — a partition is the engine's
  * business, and a pack has no way to ask for one of its types to be kept out of the database.
  *
  * So it is a constant rather than registry state, which is why it is here, at the one call that opens a
  * store, instead of being carried on whatever the caller passed as its schema.
  */
 export function appPartitionPolicy(): PartitionPolicy {
-  return makePolicy({ excludedEntityTypes: new Set(SDK_EXCLUDED_ENTITY_TYPES) });
+  return makePolicy({ excludedEntityTypes: new Set() });
 }
 
 export interface DatabaseStoreOptions {

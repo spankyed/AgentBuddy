@@ -157,7 +157,7 @@ export function findInternalPackageImports(dirs: readonly string[] = PACK_CODE_D
 
 /**
  * `file:line: specifier` for each `@apackdev/host` module a pack source loads. The host package is
- * private to the app; packs use @apackdev/sdk (`services.appData`, `services.traceStore`, …).
+ * private to the app; packs use @apackdev/sdk (`services.appData`, `services.runHistory`, …).
  */
 export function findHostImports(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
   return packRule('host-imports', dirs, root);

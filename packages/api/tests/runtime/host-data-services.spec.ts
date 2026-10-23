@@ -1,5 +1,5 @@
 // The pack-facing replacements for @apackdev/host in pack code: relation reads in @apackdev/ears,
-// and the host-implemented services.appData and services.traceStore, as the API's host init registers them.
+// and the host-implemented services.appData, as the API's host init registers it.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -26,39 +26,6 @@ const settingsAdmin = () => boundHost().services.settings;
 afterAll(() => {
   store.close();
   fs.rmSync(dataDir, { recursive: true, force: true });
-});
-
-describe('services.traceStore', () => {
-  const US = '\x1F';
-  const ids = { flow: 'TNode-trace-flow', event: 'TNode-trace-event', later: 'TNode-trace-later' } as const;
-
-  afterAll(() => {
-    const dbs = store.envs.volatileBackup;
-    for (const id of Object.values(ids)) dbs.entities.removeSync(id);
-    dbs.attrs.removeSync(`label${US}${ids.flow}`);
-    dbs.relations.removeSync('Relation-trace-1');
-    dbs.relations.removeSync('Relation-trace-2');
-  });
-
-  it("reads the volatile store's entities, attributes and relations", () => {
-    const dbs = store.envs.volatileBackup;
-    dbs.entities.putSync(ids.flow, { type: 'TNode', createdAt: 1 });
-    dbs.entities.putSync(ids.event, { type: 'TNode', createdAt: 2 });
-    dbs.entities.putSync(ids.later, { type: 'TNode', createdAt: 3 });
-    dbs.attrs.putSync(`label${US}${ids.flow}`, { t: 'string', v: 'Run' });
-    dbs.relations.putSync('Relation-trace-1', { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 });
-    dbs.relations.putSync('Relation-trace-2', { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 });
-
-    const traces = services.traceStore;
-    expect(traces.entities().filter((e) => e.id.startsWith('TNode-trace-')).map((e) => e.id).sort()).toEqual(Object.values(ids).sort());
-    expect(traces.getEntityMeta(ids.flow)).toEqual({ type: 'TNode', createdAt: 1 });
-    expect(traces.getAttr(ids.flow, 'label')).toBe('Run');
-    expect(traces.relations({ kind: 'tracked', source: ids.flow })).toEqual([
-      { id: 'Relation-trace-1', kind: 'tracked', source: ids.flow, target: ids.event, createdAt: 5 },
-      { id: 'Relation-trace-2', kind: 'tracked', source: ids.flow, target: ids.later, createdAt: 6 },
-    ]);
-    expect(traces.relations({ kind: 'tracked', source: ids.flow, limit: 1 })).toHaveLength(1);
-  });
 });
 
 describe('services.appData', () => {

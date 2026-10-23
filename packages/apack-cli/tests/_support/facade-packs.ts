@@ -313,8 +313,9 @@ query('Settings');
 query('AppState');
 // API keys aren't graph data: the host keeps them, packs see services.secrets
 // Library and notes entities belong to default-setup, not the SDK
-const tNodes = query(PackEARS.Entity.TNode).out(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
-export type TNodeShape = Expect<Equal<(typeof tNodes)[number]['tNodeType'], 'flow' | 'event' | 'step'>>;
+// A flow run is a record in the run history (services.runHistory), not an entity
+// @ts-expect-error TNode isn't an entity type
+query('TNode');
 // Node rows are the dependency's step node types (app-pack defines none), a hand-written one that doesn't
 // narrow nodeType, and adds no required field, included
 const node = query('Node').pickAll()[0]!;

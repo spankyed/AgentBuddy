@@ -1,8 +1,8 @@
-// Bounds what a step records on its TNode, so a large result can't grow memory without limit. A
+// Bounds what a step records on its run node, so a large result can't grow memory without limit. A
 // truncated value becomes `{ value, _truncated: true, ... }` describing what was cut.
 //
-// What it produces is written to the TNode (`@apackdev/sdk/repositories`' `tnodeRepository`), so it has to be a
-// value JSON can hold: a BigInt becomes its digits and a loop is cut where it closes. Neither may fail the
+// What it produces is written to the run history (`services.runHistory`, which bounds every value it is given), so
+// it has to be a value JSON can hold: a BigInt becomes its digits and a loop is cut where it closes. Neither may fail the
 // result — a step's row is the only record of what it returned.
 
 const MAX_STRING_LENGTH = 10240;  // 10KB for string values
