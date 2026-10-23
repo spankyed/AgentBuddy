@@ -4,7 +4,6 @@ import { create, write, findById, findAll, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
-import { updateEntity } from '#generated/ears.ts';
 import { generateShortCode, wouldCreateCycle } from '@apackdev/sdk/ears';
 import { createLogger } from '@apackdev/sdk/logger';
 import { b64Encode, b64Decode } from '@apackdev/ears';
@@ -180,7 +179,6 @@ export const threadCommands = {
       shortCode: shortCode,
       timestamp: ts,
       lastMessageTimestamp: ts,
-      updatedAt: ts,
       topic: input.topic,
       instructions: input.instructions,
       tags: input.tags || [],  // Store tags as array of names
@@ -220,7 +218,7 @@ export const threadCommands = {
 
     // Update fields (including tags as a direct field)
     if (Object.keys(fieldUpdates).length > 0) {
-      updateEntity(id, fieldUpdates);
+      write(id).setMany(fieldUpdates);
     }
 
     // Update linked threads
@@ -241,10 +239,7 @@ export const threadCommands = {
       throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
 
-    updateEntity(id, {
-      lastVisitedTimestamp: Date.now(),
-      updatedAt: Date.now()
-    });
+    write(id).set('lastVisitedTimestamp', Date.now());
   },
 
   linkFork: (sourceThreadId: EARS.EntityId, forkedThreadId: EARS.EntityId): void => {
@@ -641,8 +636,7 @@ export const chatCommands = {
     const messageTx = create(EARS.Entity.Message, { createdAt: timestamp })
       .set('text', text.trim())
       .set('timestamp', timestamp)
-      .set('sender', sender)
-      .set('updatedAt', timestamp);
+      .set('sender', sender);
 
     if (blocks) messageTx.set('blocks', blocks);
     if (forkable !== undefined) messageTx.set('forkable', forkable);
@@ -714,8 +708,7 @@ export const chatCommands = {
 
     write(messageId)
       .set('blockResponse', response)
-      .set('responseTimestamp', now)
-      .set('updatedAt', now);
+      .set('responseTimestamp', now);
 
     let updatedBlocks: BlockConfig[] | undefined;
     const storedBlocks = query.ids(messageId).pickOne(['blocks'])?.blocks;
@@ -738,7 +731,7 @@ export const chatCommands = {
 
       if (buttonToggled) {
         updatedBlocks = newBlocks;
-        write(messageId).set('blocks', newBlocks).set('updatedAt', now);
+        write(messageId).set('blocks', newBlocks);
       }
     }
 
@@ -766,8 +759,7 @@ export const chatCommands = {
     }
 
     const now = Date.now();
-    const updateData: Record<string, any> = { ...updates, updatedAt: now };
-    write(messageId).setMany(updateData);
+    write(messageId).setMany(updates);
 
     // When a message becomes queued, move it to the end of its thread's
     // CONTAINS relation so it always appears last — even after a reload.
@@ -809,8 +801,7 @@ export const chatCommands = {
     const markerTx = create(EARS.Entity.Message, { createdAt: timestamp })
       .set('text', text.trim())
       .set('timestamp', timestamp)
-      .set('sender', 'marker')
-      .set('updatedAt', timestamp);
+      .set('sender', 'marker');
 
     const markerId = markerTx.link(EARS.RelKind.CONTAINS, threadId).id();
     write(threadId).link(EARS.RelKind.CONTAINS, markerId);
@@ -950,7 +941,7 @@ export const chatCommands = {
     const txn = write(artifactId);
     if (patch.title !== undefined) txn.set('title', patch.title);
     if (patch.content !== undefined) txn.set('content', patch.content);
-    txn.set('updatedAt', Date.now()).id();
+    txn.id();
   },
 
   /**

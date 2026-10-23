@@ -264,7 +264,7 @@ it('permits replacement initialization while refusing unrelated pack writers', a
 });
 
 
-it.each([null, undefined, [], 'invalid'])('refuses a malformed stored row rather than treating %j as missing preferences', data => {
+it.each([null, [], 'invalid'])('refuses a malformed stored row rather than treating %j as missing preferences', data => {
   untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', data);
   const before = rowData();
   expect(() => store.getAll()).toThrow('Stored settings must be a JSON object');

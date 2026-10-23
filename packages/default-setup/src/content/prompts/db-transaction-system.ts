@@ -34,7 +34,6 @@ EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'con
 getRow(id)            { id, entityType, ...attributes } for a single entity, or undefined
 getRoles(id)          string[] — roles on an entity
 createEntityWithDefaults(type, attrs)   create with auto-generated fields
-updateEntity(id, attrs)                 update entity attributes
 removeRelationById(relationId)             remove one relation by its own id
 
 QUERY API (query) — use to find entities before mutating:
@@ -62,7 +61,9 @@ WRITE API (create / upsert / write):
     upsert(EARS.Entity.Thread, 'Thread-1')         get-or-create by id
     write('Thread-1')                              existing entity
 
-  The database writes id, entityType, createdAt, role, relationDetails and trashedAt itself: never set them.
+  The database writes id, entityType, createdAt, updatedAt, role, relationDetails and trashedAt itself: never set them.
+  Each attribute write stamps updatedAt; write(id, { touch: false }) writes without stamping it.
+  null is a stored value, undefined leaves a field alone in setMany, and .delete(key) removes a field.
   An attribute holds one value; a list is one array value.
 
   Attributes (chainable):
@@ -105,8 +106,7 @@ return { created: threadId };
 const threadId = query(EARS.Entity.Thread).first();
 if (!threadId) return { updated: null };
 write(threadId)
-  .set('status', 'resolved')
-  .set('updatedAt', Date.now());
+  .set('status', 'resolved');
 return query.ids(threadId).pickAll();
 
 // Create entity with relations

@@ -1,7 +1,7 @@
 import { write, findById, getAttr, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
-import { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
+import { createEntityWithDefaults } from '#generated/ears.ts';
 
 import { REFERENCES } from '../types.ts';
 import { resolveReferencesTo, syncReferences } from './link-utils.ts';
@@ -15,7 +15,7 @@ function removeParentLink(parentId: EARS.EntityId, id: EARS.EntityId): void {
     const documentPattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(document:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
     const newContent = parent.content.replace(documentPattern, '');
     if (newContent !== parent.content) {
-      updateEntity(parentId, { content: newContent });
+      write(parentId).setMany({ content: newContent });
     }
   }
 }
@@ -26,7 +26,7 @@ function appendParentLink(parentId: EARS.EntityId, id: EARS.EntityId, noteType: 
   if (parent && noteType !== 'task') {
     const title = findById<NoteEntity>(id)?.title ?? 'Untitled';
     const linkMarkdown = `\n\n[${title}](document://${id})`;
-    updateEntity(parentId, { content: (parent.content || '') + linkMarkdown });
+    write(parentId).setMany({ content: (parent.content || '') + linkMarkdown });
   }
 }
 
@@ -88,7 +88,7 @@ export const noteCommands = {
       for (const sid of siblingIds) {
         const sib = findById<NoteEntity>(sid as EARS.EntityId);
         if (sib && sib.displayOrder >= displayOrder) {
-          updateEntity(sib.id, { displayOrder: sib.displayOrder + 1 });
+          write(sib.id).setMany({ displayOrder: sib.displayOrder + 1 });
         }
       }
     }
@@ -144,7 +144,7 @@ export const noteCommands = {
     if (updates.content !== undefined) filteredUpdates.content = updates.content;
     if (updates.icon !== undefined) filteredUpdates.icon = updates.icon;
     if (updates.displayOrder !== undefined) filteredUpdates.displayOrder = updates.displayOrder;
-    if (updates.savedDisplayOrder !== undefined) filteredUpdates.savedDisplayOrder = updates.savedDisplayOrder === null ? undefined : updates.savedDisplayOrder;
+    if (updates.savedDisplayOrder !== undefined) filteredUpdates.savedDisplayOrder = updates.savedDisplayOrder;
     if (updates.lastSeen !== undefined) filteredUpdates.lastSeen = updates.lastSeen;
     if (updates.completed !== undefined) filteredUpdates.completed = updates.completed;
     if (updates.hideCompletedChildren !== undefined) filteredUpdates.hideCompletedChildren = updates.hideCompletedChildren;
@@ -152,7 +152,7 @@ export const noteCommands = {
     if (updates.noteType !== undefined) filteredUpdates.noteType = updates.noteType;
 
     if (Object.keys(filteredUpdates).length > 0) {
-      updateEntity(id, filteredUpdates, skipTimestamp);
+      write(id, { touch: !skipTimestamp }).setMany(filteredUpdates);
     }
 
     // Sync REFERENCES relations when content changes
@@ -214,7 +214,7 @@ export const noteCommands = {
     if (newParentId) {
       // Update displayOrder to end of new parent's children
       const newSiblings = query.ids(newParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-      updateEntity(id, { displayOrder: newSiblings.length - 1 });
+      write(id).setMany({ displayOrder: newSiblings.length - 1 });
     } else {
       // Moving to root: calculate root-level displayOrder
       const allNotes = query(EARS.Entity.Note).ids();
@@ -222,7 +222,7 @@ export const noteCommands = {
         const parents = query.ids(nid).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
         return parents.length === 0;
       }).length;
-      updateEntity(id, { displayOrder: rootCount - 1 });
+      write(id).setMany({ displayOrder: rootCount - 1 });
     }
 
     return { oldParentId };
@@ -269,7 +269,7 @@ export const noteCommands = {
     for (let i = 0; i < filteredSiblings.length; i++) {
       const sib = filteredSiblings[i];
       if (sib.displayOrder !== i) {
-        updateEntity(sib.id, { displayOrder: i });
+        write(sib.id).setMany({ displayOrder: i });
         affectedIds.push(sib.id);
       }
     }
@@ -284,7 +284,7 @@ export const noteCommands = {
       for (let i = 0; i < oldSiblings.length; i++) {
         const sib = oldSiblings[i];
         if (sib.displayOrder !== i) {
-          updateEntity(sib.id, { displayOrder: i });
+          write(sib.id).setMany({ displayOrder: i });
           if (!affectedIds.includes(sib.id)) affectedIds.push(sib.id);
         }
       }

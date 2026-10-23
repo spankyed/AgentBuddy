@@ -256,7 +256,10 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
       /** Without a hook, fields the record no longer sets are dropped */
       const update = (id: EARS.EntityId, record: ContentItem, context: ContentWriteContext, hooks?: ContentWriter) => {
         if (hooks?.update) hooks.update(id, record, context);
-        else ears().updateEntity(id, { ...fieldsOf(record), ...Object.fromEntries(context.clearedFields.map((field) => [field, null])) });
+        else {
+          const builder = untypedWrite(id).setMany(fieldsOf(record));
+          for (const field of context.clearedFields) builder.delete(field);
+        }
       };
 
       /** Hooks' repository commands may not store contentHash; the merge needs it, the parts and the key */

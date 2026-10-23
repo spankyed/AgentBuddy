@@ -14,10 +14,10 @@ import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
 import { contentPackId } from '../utils/apply.ts';
 
 /**
- * What a flow's parts are **not** over: an entity's own id, when it was written, and the two attributes the
+ * What a flow's parts are **not** over: an entity's own id, when it was written and last changed, and the two attributes the
  * apply stamps on it. Everything else a flow or one of its nodes holds is content.
  */
-const ROW_KEYS = new Set(['id', 'createdAt', 'contentHash', 'contentKey']);
+const ROW_KEYS = new Set(['id', 'createdAt', 'updatedAt', 'contentHash', 'contentKey']);
 
 /**
  * The relation kinds a flow's structure is made of. `flow-compiler.ts` emits these two and no others, which
@@ -29,7 +29,7 @@ export const GRAPH_REL_KINDS: readonly string[] = [EARS.RelKind.CONTAINS, EARS.R
 /** A flow's three parts as stored now: its own values, each node's, and its edges */
 type GraphState = [Array<[string, unknown]>, Array<[string, Array<[string, unknown]>]>, string[]];
 
-/** An entity's content as stored now: every attribute but the four that say which or when */
+/** An entity's content as stored now: every attribute but the five that say which or when */
 function contentOf(id: EARS.EntityId): Array<[string, unknown]> {
   const row = ears().query.withTrashed.ids(id).pickAll()[0] as Record<string, unknown> | undefined;
   return Object.entries(row ?? {}).filter(([field]) => !ROW_KEYS.has(field)).sort(([a], [b]) => (a < b ? -1 : 1));

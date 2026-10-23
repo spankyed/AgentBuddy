@@ -35,7 +35,6 @@ export const browserCommands = {
         displayOrder: tab.displayOrder,
         isMuted: tab.isMuted,
         groupId: tab.groupId ?? '',
-        updatedAt: Date.now(),
       });
     }
   },
@@ -51,7 +50,6 @@ export const browserCommands = {
         title: bm.title,
         favicon: bm.favicon,
         displayOrder: bm.displayOrder,
-        updatedAt: Date.now(),
       });
     }
   },

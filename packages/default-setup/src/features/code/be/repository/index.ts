@@ -42,8 +42,6 @@ export const terminalQueries = {
 
 export const terminalCommands = {
   create: (terminalInfo: Partial<TerminalInfo> & { id: EARS.EntityId }): EARS.EntityId => {
-    const now = Date.now()
-    
     // The terminal service created the entity when it took its id; this records what it started
     write(terminalInfo.id).setMany({
       title: terminalInfo.title,
@@ -52,8 +50,7 @@ export const terminalCommands = {
       cwd: terminalInfo.cwd,
       active: true,
       cols: terminalInfo.cols,
-      rows: terminalInfo.rows,
-      updatedAt: now
+      rows: terminalInfo.rows
     })
     
     return terminalInfo.id
@@ -68,8 +65,7 @@ export const terminalCommands = {
 
     write(id).setMany({
       cols,
-      rows,
-      updatedAt: Date.now()
+      rows
     })
   },
 
@@ -80,8 +76,7 @@ export const terminalCommands = {
     }
 
     write(id).setMany({
-      customTitle,
-      updatedAt: Date.now()
+      customTitle
     })
   },
 
@@ -92,8 +87,7 @@ export const terminalCommands = {
     }
 
     const updates: any = {
-      cwd,
-      updatedAt: Date.now()
+      cwd
     }
 
     // Update title if provided (when no customTitle is set)
@@ -111,8 +105,7 @@ export const terminalCommands = {
     }
     
     write(id).setMany({
-      pid,
-      updatedAt: Date.now()
+      pid
     })
   },
   
@@ -125,8 +118,7 @@ export const terminalCommands = {
     const now = Date.now()
     write(id).setMany({
       active: false,
-      closedAt: now,
-      updatedAt: now
+      closedAt: now
     })
   },
   
@@ -137,7 +129,7 @@ export const terminalCommands = {
     }
 
     // To the trash, inactive, rather than deleted
-    write(id).set('active', false).set('updatedAt', Date.now()).trash()
+    write(id).set('active', false).trash()
   }
 }
 

@@ -202,14 +202,13 @@ export const flowRepository = {
       label: flow?.label || generateLabelWithCount('New Flow', EARS.Entity.Flow),
       description: flow?.description || FLOW_DEFAULTS.DESCRIPTION,
       flowType: flow?.flowType || FLOW_DEFAULTS.TYPE,
-      updatedAt: ts,
     };
     const id = untypedCreate(EARS.Entity.Flow, { createdAt: ts }).setMany(fields).id();
-    return { id, entityType: EARS.Entity.Flow, createdAt: ts, ...fields };
+    return { id, entityType: EARS.Entity.Flow, createdAt: ts, updatedAt: ts, ...fields };
   },
 
   updateFlowLabel: (flowId: EARS.EntityId, label: string): void => {
-    untypedWrite(flowId).setMany({ label, updatedAt: getTimestamp() });
+    untypedWrite(flowId).set('label', label);
   },
 
   /** Deletes a flow with its nodes and their edges; the root flow only with `allowRoot` */
@@ -340,7 +339,7 @@ export const flowRepository = {
     };
     validateNode(row as FlowNode, accepted);
 
-    const { entityType: _type, createdAt: _created, ...fieldsToWrite } = row;
+    const { entityType: _type, createdAt: _created, updatedAt: _updated, ...fieldsToWrite } = row;
     const nodeId = untypedCreate(EARS.Entity.Node, { createdAt: ts }).setMany(fieldsToWrite).id();
     untypedWrite(flowId).link(EARS.RelKind.CONTAINS, nodeId);
     const relatedId = field && related[field];
@@ -375,9 +374,7 @@ export const flowRepository = {
       else untypedWrite(nodeId).delete(field);
     }
 
-    const node = untypedWrite(nodeId);
-    for (const [key, value] of Object.entries(changed)) node.set(key, value);
-    node.set('updatedAt', ts);
+    untypedWrite(nodeId).setMany(changed);
   },
 
   /** Deletes a node with its edges, its flow's link to it and its related entity's link */

@@ -27,9 +27,9 @@ const threadId = threads[0];
 const before = query.ids(threadId).pickOne(['status', 'updatedAt']);
 
 // Update the thread
+// Every attribute write stamps updatedAt
 write(threadId)
   .set('status', 'resolved')
-  .set('updatedAt', Date.now())
   .set('resolvedBy', 'admin');
 
 const after = query.ids(threadId).pickOne(['status', 'updatedAt', 'resolvedBy']);
@@ -107,11 +107,9 @@ const note = createEntityWithDefaults(EARS.Entity.Note, {
   content: 'AI-powered helper'
 });
 
-// Update with automatic timestamp
-updateEntity(note.id, {
-  noteType: 'document',
-  lastSeen: Date.now()
-});
+// Update several fields; { touch: false } writes without stamping updatedAt
+write(note.id).setMany({ noteType: 'document' });
+write(note.id, { touch: false }).set('lastSeen', Date.now());
 
 // Link it to a thread
 const threadId = query(EARS.Entity.Thread).first();

@@ -167,7 +167,7 @@ export const threadsSystem = setup({
     },
     updateThreadStatus: ({ event }) => {
       const { threadId, status } = threadsSpec.typeOf('UPDATE_THREAD_STATUS', event);
-      const updates = { status, updatedAt: Date.now() };
+      const updates = { status };
       try {
         repository.threadCommands.update(threadId as EARS.EntityId, updates);
       } catch (error) {

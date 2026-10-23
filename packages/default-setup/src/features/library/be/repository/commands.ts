@@ -101,7 +101,6 @@ const writers = {
       name,
       displayOrder,
       ...(contentHash && { contentHash }),
-      updatedAt: now,
     }
 
     if (description) {
@@ -136,12 +135,10 @@ const writers = {
     contentHash?: string,
   ): CollectionDTO {
     const collectionId = id
-    const now = Date.now()
 
     const attrs: Record<string, any> = {
       name,
       ...(contentHash && { contentHash }),
-      updatedAt: now,
     }
 
     if (description !== undefined) {
@@ -305,7 +302,6 @@ const writers = {
       name,
       symlinkPath,
       displayOrder,
-      updatedAt: now,
     })
 
     if (parentId) {
@@ -331,9 +327,7 @@ const writers = {
   updateSymlinkPath(collectionId: EARS.EntityId, newPath: string): CollectionDTO {
     const now = Date.now()
     const newName = path.basename(newPath) || 'Symlink'
-    write(collectionId).set('symlinkPath', newPath)
-    write(collectionId).set('name', newName)
-    write(collectionId).set('updatedAt', now)
+    write(collectionId).setMany({ symlinkPath: newPath, name: newName })
 
     const col = query.ids(collectionId).pickAll()[0]
     const colPath = collectionPath(collectionId)

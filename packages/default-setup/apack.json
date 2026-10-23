@@ -2359,7 +2359,6 @@
           "upsert": "typeof _dsl.upsert",
           "write": "typeof _dsl.write",
           "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults",
-          "updateEntity": "typeof _dsl.updateEntity",
           "removeRelationById": "typeof _dsl.removeRelationById"
         }
       }

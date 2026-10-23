@@ -13,7 +13,7 @@ import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  query, createEntity, findById, findAll, findWhere, createEntityWithDefaults, updateEntity, getAttr,
+  query, createEntity, findById, findAll, findWhere, createEntityWithDefaults, write, getAttr,
   type EntityShape,
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
@@ -85,12 +85,12 @@ describe('Type inference — typed EARS helpers', () => {
     createEntityWithDefaults(EARS.Entity.Action, { notAField: 1 });
   });
 
-  it('updateEntity accepts only declared fields', () => {
+  it('write checks the values of declared fields, and takes an options argument', () => {
     // Type-level only: never called, since no entity has this id
     const check = () => {
-      updateEntity(actionId, { label: 'renamed', description: null });
+      write(actionId, { touch: false }).setMany({ label: 'renamed' });
       // @ts-expect-error wrong type for a declared field
-      updateEntity(actionId, { label: 42 });
+      write(actionId).setMany({ label: 42 });
     };
     expectTypeOf(check).toBeFunction();
   });

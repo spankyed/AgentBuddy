@@ -253,7 +253,7 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 
 | Module | What |
 |---|---|
-| `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact`, `find*`, `createEntity*`, `updateEntity`, `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
+| `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact`, `find*`, `createEntity*`, `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
 | `#generated/repository` | `repository`, typed with your and your dependencies' repositories |
 | `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, relation, role, graph and blueprint operations, and `repository` |
 | `@apackdev/ears` | The engine itself: `createEarsEngine` for tests and tooling, `EarsError`, `RepositoryError`, `bp` blueprints, the core `EARS` types and `BaseEntity` |
@@ -326,11 +326,17 @@ What a write builder does:
 | `destroy({ keepStored? })` | Deletes the entity and its edges; `keepStored` takes it out of the engine and leaves what was persisted |
 | `id()` | The entity's id |
 
+`updatedAt` is the engine's too: `create` stamps it (`create(type, { createdAt, updatedAt })` keeps an import's own
+times), and every attribute write stamps it once per `write(id)`. A write that is no edit of the entity — when it was
+last viewed, a position kept for later — passes `{ touch: false }`: `write(id, { touch: false }).set('lastSeen', now)`.
+`null` is a value like any other; `setMany` leaves a field whose value is `undefined` alone, `set(k, undefined)`
+refuses, and `delete(k)` is the one way to remove a field.
+
 An attribute holds one value, and a list is one array value: a read gives back exactly what was written, a
 one-element list as a list. `add`, `deleteAt` and `deleteValue` work on that array and refuse a value that isn't one
 (`NOT_A_LIST`); `where(k, v)` matches a value equal to `v` or a list holding it.
 
-`id`, `entityType`, `createdAt`, `role` and `relationDetails` are the engine's: every attribute write refuses
+`id`, `entityType`, `createdAt`, `updatedAt`, `role`, `relationDetails` and `trashedAt` are the engine's: every attribute write refuses
 them. `create` stamps `entityType` and `createdAt`; pass `createdAt` to keep an original time (an import).
 
 The write builder from `#generated/ears` checks the values of declared fields when it knows the entity: started
@@ -527,7 +533,7 @@ To get typed attributes on entities, declare shapes in the manifest:
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
 `#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findAll`, `findWhere`, `createEntity`,
-`createEntityWithDefaults`, `updateEntity` and `getAttr`. `@apackdev/ears` exports the
+`createEntityWithDefaults` and `getAttr`. `@apackdev/ears` exports the
 writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out rows in the trash, as every query does. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's
 declared shapes), `PackShapes` (the SDK's, the dependencies' and this pack's), `EntityName`, and
@@ -549,7 +555,7 @@ narrows its fields to the relation's *target* entity type. Entity types **withou
 declared shape read as `BaseEntity & Record<string, unknown>`: every field is there, but
 you have to narrow a value before using it. An id carries its entity type when it comes
 from a typed helper (`createEntity(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookmark'>`),
-so builders written with it (`query.ids(id)`, `write(id)`, `findById(id)`, `updateEntity(id, …)`) are typed too;
+so builders written with it (`query.ids(id)`, `write(id)`, `findById(id)`) are typed too;
 unbranded ids (`EARS.EntityId`) and `query.all()` read as undeclared.
 
 ### Entity ids

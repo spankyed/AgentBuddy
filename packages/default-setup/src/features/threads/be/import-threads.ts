@@ -123,7 +123,6 @@ export function importThreads(importDir: string): ImportResult {
           .set('text', msg.text)
           .set('timestamp', msg.timestamp)
           .set('sender', msg.sender)
-          .set('updatedAt', msg.timestamp)
 
         if (msg.responseTimestamp) messageTx.set('responseTimestamp', msg.responseTimestamp)
         if (msg.blocks) messageTx.set('blocks', msg.blocks)

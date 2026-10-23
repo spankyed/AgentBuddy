@@ -25,7 +25,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - `PackShapes['Node']` is the pack's step node union: its own and its dependencies' `XNode extends NodeBase` types. It's `NodeBase` when no step defines one.
 
 **Field parameters.**
-- They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `linksPick`, `orderBy`, `distinct`, `groupBy`, `getAttr` and `updateEntity`. A list field's `where` also takes one of its elements, which the value index answers.
+- They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `linksPick`, `orderBy`, `distinct`, `groupBy` and `getAttr`. A list field's `where` also takes one of its elements, which the value index answers.
 - This form is what gives editors field-name completions and makes a typo's error list the valid fields.
 - For a union shape, such as `Node` rows, only the fields every member has are accepted.
 - A query whose fields vary by member, or are only known at runtime, uses `untypedQuery` from `@apackdev/ears` on purpose. The brain trigger queries in default-setup are the example. (It's the same untyped `query` an engine has, `createEarsEngine(...).query`.)
@@ -54,10 +54,9 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - `create`, `upsert` and `write` from `#generated/ears` check declared fields' values when they know the entity: started from a declared name or a tagged id.
 - Undeclared fields are accepted, and a plain id leaves every write unchecked.
 - So `set` and `add` take a field *name* of any string (`set<K extends string>`), and an undeclared one
-  gets `unknown` for its value. This is deliberate — EARS stores attributes a shape need not declare —
-  but it is inconsistent with `updateEntity`, which does check names against the shape. Writing through
-  `updateEntity` gets completions and a typo's error; writing through `write().set()` does not.
-- The engine's own attributes (`id`, `entityType`, `createdAt`, `role`, `relationDetails`) are refused by
+  gets `unknown` for its value. This is deliberate — EARS stores attributes a shape need not declare — so no
+  write checks a field's *name* against the shape, only a declared field's value.
+- The engine's own attributes (`id`, `entityType`, `createdAt`, `updatedAt`, `role`, `relationDetails`, `trashedAt`) are refused by
   every attribute write at runtime, not by the type.
 
 **Which `EARS` to import.**

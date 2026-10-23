@@ -148,7 +148,6 @@ const documentWrites = {
       tags: tags ?? [],
       ...(documentType !== undefined && { documentType }),
       ...(contentHash && { contentHash }),
-      updatedAt: now,
     });
     if (parentId) write(parentId).link(EARS.RelKind.CONTAINS, documentId);
     return (query.ids(documentId).pickAll() as unknown as DocumentEntity[])[0];
@@ -166,7 +165,6 @@ const documentWrites = {
       ...(tags && { tags }),
       ...(documentType !== undefined && { documentType }),
       ...(contentHash && { contentHash }),
-      updatedAt: Date.now(),
     });
     if (parentId === undefined) return;
     const current = collectionOfDocument(id);
@@ -229,7 +227,6 @@ export const collectionRepository = {
       ...(contentHash && { contentHash }),
       // A folder is named, not numbered: it has no shortCode, so an empty description is simply absent
       ...(description ? { description } : {}),
-      updatedAt: now,
     });
     if (parentId) write(parentId).link(EARS.RelKind.PARENT_OF, collectionId);
     return (query.ids(collectionId).pickAll() as unknown as CollectionEntity[])[0];
@@ -242,7 +239,6 @@ export const collectionRepository = {
       ...fields,
       ...(contentHash && { contentHash }),
       ...(description !== undefined && { description }),
-      updatedAt: Date.now(),
     });
   },
 

@@ -29,7 +29,7 @@ describe('the helpers console code sees', () => {
 
   it('gives a transaction the write helpers as well', async () => {
     expect([...WRITE_HELPER_NAMES].sort()).toEqual([
-      'create', 'createEntityWithDefaults', 'removeRelationById', 'updateEntity', 'upsert', 'write',
+      'create', 'createEntityWithDefaults', 'removeRelationById', 'upsert', 'write',
     ]);
     for (const name of [...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES]) {
       await expect(runTransactionCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
