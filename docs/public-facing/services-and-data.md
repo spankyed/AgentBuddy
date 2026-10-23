@@ -385,7 +385,7 @@ synchronous, and a unit inside another commits into it.
 
 ```typescript
 transact(() => {
-  const id = create(EARS.Entity.Bookmark).set('url', url).id();
+  const id = create(EARS.Entity.Bookmark, { url }).id();
   write(folderId).link(EARS.RelKind.CONTAINS, id, { acyclicIn: [EARS.RelKind.CONTAINS] });   // throws → nothing above stays
 });
 ```
@@ -535,7 +535,7 @@ const engine = createEarsEngine({
   isRelationKind: (name) => name === 'tagged_with',
   isRole: (name) => name === 'featured',
 });
-engine.create('Bookmark').set('url', 'https://example.com');   // an operation on the engine you hold
+engine.create('Bookmark', { url: 'https://example.com' });   // an operation on the engine you hold
 engine.query('Bookmark').count();                             // 1
 
 ```
