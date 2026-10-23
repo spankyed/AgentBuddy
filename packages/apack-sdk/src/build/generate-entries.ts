@@ -1223,7 +1223,7 @@ export type EntityName = ${entityNames.join(' | ')};
 
 export const {
   query, create, upsert, write, transact, findById, findAll, findWhere,
-  createEntity, createEntityWithDefaults, updateEntity, getAttr,
+  createEntity, createEntityWithDefaults, getAttr,
 } = /*#__PURE__*/ defineEars<PackShapes, EntityName>(boundEars);
 `;
   }

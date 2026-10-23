@@ -273,7 +273,7 @@ export async function createSearchIndex(
 
   // Save to EARS
   // The engine holds the id and creation time; the row is the rest
-  const { id: _id, createdAt: _createdAt, ...fields } = searchIndex
+  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...fields } = searchIndex
   builder.setMany({
     ...fields,
     type: 'SearchIndex',
@@ -335,7 +335,7 @@ export async function updateSearchIndex(
   }
   
   // Update in EARS
-  const { id: _id, createdAt: _createdAt, ...fields } = updatedIndex
+  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...fields } = updatedIndex
   write(indexId).setMany(fields)
   
   // If embedding model changed, we need to re-index everything

@@ -36,7 +36,7 @@ export const promptRepository = {
 
   update: (id: EARS.EntityId, updates: Partial<PromptInput>): void => {
     if (!promptRepository.byId(id)) throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-    ears().updateEntity(id, { ...updates });
+    ears().write(id).setMany({ ...updates });
   },
 
   /** Moves a prompt to the trash; it stays stored */

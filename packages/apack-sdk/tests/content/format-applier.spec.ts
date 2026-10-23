@@ -15,7 +15,7 @@ import type { EARS } from '../../src/types/entities.ts';
 type Memo = { id: EARS.EntityId; name: string; body: string; pinned?: boolean; mood?: string; contentHash?: string };
 const memos = (name: string) => ears().findWhere<Memo>('Memo' as EARS.Entity, 'name', name);
 const memo = (name: string) => memos(name)[0];
-const edit = (name: string, fields: Partial<Memo>) => ears().updateEntity(memo(name).id, fields);
+const edit = (name: string, fields: Partial<Memo>) => ears().write(memo(name).id).setMany(fields);
 
 /** Content writers the entity's owning pack registers */
 const registerHooks = (entity: string, hooks: ContentWriter<ContentItem>) => testPacks.contentWriters.set(entity, hooks as ContentWriter);
@@ -787,9 +787,9 @@ describe('an update hook that fails part way', () => {
     registerHooks('Memo', {
       create: (record) => ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: record.name, body: record.body, pinned: false }).id,
       update: (id, record) => {
-        ears().updateEntity(id, { body: record.body });
+        ears().write(id).setMany({ body: record.body });
         if (failing) throw new Error('disk full');
-        ears().updateEntity(id, { pinned: record.pinned });
+        ears().write(id).setMany({ pinned: record.pinned });
       },
     });
     const pinnedRecord = (version: string, pinned: boolean) => {
@@ -814,7 +814,7 @@ describe('an update hook that fails part way', () => {
   it("re-takes the item's entry over the fields it had: a field the record newly sets isn't recorded as ours", () => {
     registerHooks('Memo', {
       update: (id, record) => {
-        ears().updateEntity(id, { body: record.body });
+        ears().write(id).setMany({ body: record.body });
         throw new Error('disk full');
       },
     });
@@ -851,7 +851,7 @@ describe('a field a changed record no longer sets', () => {
     registerHooks('Memo', {
       update: (id, record, { clearedFields }) => {
         cleared.push(clearedFields);
-        ears().updateEntity(id, { body: record.body, ...(clearedFields.includes('pinned') && { pinned: false }) });
+        ears().write(id).setMany({ body: record.body, ...(clearedFields.includes('pinned') && { pinned: false }) });
       },
     });
     const first = applyRecord();
@@ -868,7 +868,7 @@ describe('a created row that fails before it is tracked', () => {
     registerHooks('Memo', {
       update: (id, record) => {
         if (failing) throw new Error('disk full');
-        ears().updateEntity(id, { body: record.body });
+        ears().write(id).setMany({ body: record.body });
       },
     });
     const mediaApplier = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], media: true });

@@ -100,7 +100,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     declarations();
     validation.validate(next, rawStored());
     const database = ears();
-    database.upsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', structuredClone(next)).set('updatedAt', Date.now());
+    database.upsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', structuredClone(next));
     revision++;
     tell('written');
   }

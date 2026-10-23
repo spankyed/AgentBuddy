@@ -35,7 +35,7 @@ export const actionRepository = {
 
   update: (id: EARS.EntityId, updates: Partial<ActionInput>): void => {
     if (!actionRepository.byId(id)) throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-    ears().updateEntity(id, { ...updates });
+    ears().write(id).setMany({ ...updates });
   },
 
   /** Moves an action to the trash; it stays stored */
