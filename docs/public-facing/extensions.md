@@ -125,9 +125,9 @@ export const getLabel: StepBuildFacet['getLabel'] = (step, index) => {
 
 ```typescript
 // runtime.ts
-import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 
-export async function handler(runNode: RunNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(input: StepInput, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const a = actor as { send(event: unknown): void };
   a.send({ type: 'COMPLETE', result: { ok: true } });
 }
@@ -143,7 +143,7 @@ brain reads them before it decides how to run the step; `sync` is the one that c
 
 | Member | Description |
 |---|---|
-| `handler(runNode, node, executionContext, actor)` | Runs the step. `runNode` is its run node, its record in the run history (`services.runHistory`), `node` the compiled entity, `executionContext` has `flowRunNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `servicesForAction(label)`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, runNodeId, … } })` (`@apackdev/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
+| `handler(input, node, executionContext, actor)` | Runs the step. `input` (`StepInput`) is what it runs on, whole: `settings`, the node's settings with its field mappings applied, `params`, its own params and the mapped ones, and `runNodeId`, its node in the run history (`services.runHistory`) to report against — which keeps only a bounded copy, so a step never reads its input back from there. `node` is the compiled entity, `executionContext` has `flowRunNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `servicesForAction(label)`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, runNodeId, … } })` (`@apackdev/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
 | `isAsync` | The handler returns a promise; a rejection is reported and sent as `ERROR` |
 | `sync` | The handler's module is imported with the pack entry rather than on the step's first run, so its sends land in the brain's own dispatch. For a handler whose sends have to be ordered with the transition that called it — `kill` ends the flow *and* completes itself, and a tick's delay leaves the step reading as still running. Exclusive with `isAsync` |
 | `spawnsSubflow` | The brain spawns a sub-flow machine for the node instead of a step machine (the `subflow` step) |

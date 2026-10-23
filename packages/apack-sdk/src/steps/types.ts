@@ -92,7 +92,7 @@ export interface StepBuildFacet {
 
 import type { AnyActorRef } from 'xstate';
 import type { EARS } from '../types/entities.ts';
-import type { RunNode } from '../services/run-history.ts';
+import type { RunNodeId } from '../services/run-history.ts';
 
 export type TimestampMs = number;
 export type RunNodeKind = 'flow' | 'event' | 'step';
@@ -128,6 +128,19 @@ export interface ExecutionContext {
   runtime: RuntimeServices;
 }
 
+/**
+ * What a step runs on, whole. Never the run history's record of it: the history keeps a bounded copy for display,
+ * and a step running on that copy runs on cut-off strings and truncation markers.
+ */
+export interface StepInput {
+  /** The step's node in the run history, to report against */
+  runNodeId: RunNodeId;
+  /** The node's settings — a prompt, a model, an event type — with its field mappings applied */
+  settings: Record<string, unknown>;
+  /** The params it runs on: the node's own, and those mapped from the event and earlier steps */
+  params: Record<string, unknown>;
+}
+
 export interface StepRuntimeError {
   errorId: string;
   message: string;
@@ -161,7 +174,7 @@ export interface StepRuntimeFacet {
    * - **Keep-alive**: never send COMPLETE → actor stays in executing state
    * - **Final**: set `final: true` on the compiled node → triggers flow completion
    */
-  handler?: (runNode: RunNode, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
+  handler?: (input: StepInput, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
   isAsync?: boolean;
   /** When true, the brain spawns a sub-flow machine instead of a step machine. */
   spawnsSubflow?: boolean;

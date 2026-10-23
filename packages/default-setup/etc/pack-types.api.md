@@ -16,7 +16,7 @@ import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@apackdev/sdk/mode
 import * as _apackdev_sdk_repositories from '@apackdev/sdk/repositories';
 import { FlowEdge } from '@apackdev/sdk/repositories';
 import { HostServices } from '@apackdev/sdk/services';
-import { ExecutionContext, FieldMapping, RunNode, RunNodeId, RunStatus, RunTree, StepRuntimeError } from '@apackdev/sdk/steps';
+import { ExecutionContext, FieldMapping, RunNode, RunNodeId, RunStatus, RunTree, StepInput, StepRuntimeError } from '@apackdev/sdk/steps';
 import { BinaryOperator } from '@apackdev/sdk/utils';
 import { z } from 'zod';
 
@@ -5798,10 +5798,12 @@ declare const brainCommands: {
     readonly createFlowRunNode: (flowStepId: EARS.EntityId, parentId?: RunNodeId, executionContext?: ExecutionContext) => {
         flowRunNode: RunNode;
         flowId: EARS.EntityId;
+        input: StepInput;
     };
     readonly createStepRunNode: (stepId: EARS.EntityId, parentId: RunNodeId, executionContext?: ExecutionContext) => {
         runNode: RunNode;
         step: NodeEntity;
+        input: StepInput;
     };
     /** A new session's root run: the root flow the brain starts with, under a new id each time it starts */
     readonly createRootFlowRunNode: () => {

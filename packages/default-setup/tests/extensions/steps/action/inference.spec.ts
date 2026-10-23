@@ -2,7 +2,7 @@
 // plain objects (ai's tool() returns its argument) and stopWhen as a function
 import { describe, expect, it } from 'vitest';
 import { mockInference } from '@apackdev/testing/harness';
-import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 import { servicesForAction } from '#generated/services.ts';
 import { handler } from '#extensions/steps/action/runtime.ts';
 
@@ -11,7 +11,7 @@ async function runAction(actionFn: string) {
   const sent: Array<{ type: string; result?: unknown; error?: { message?: string } }> = [];
   const node = { id: 'Node-action', label: 'Classify', nodeType: 'action', mode: 'code', actionFn };
   const ctx = { event: { type: 'issue.opened' }, steps: {}, runtime: { servicesForAction } } as unknown as ExecutionContext;
-  await handler({ id: 'RunNode-action', nodeAttributes: {} } as unknown as RunNode, node, ctx, { send: (event: (typeof sent)[number]) => sent.push(event) });
+  await handler({ runNodeId: 'RunNode-action', settings: {}, params: {} } satisfies StepInput, node, ctx, { send: (event: (typeof sent)[number]) => sent.push(event) });
   return sent;
 }
 

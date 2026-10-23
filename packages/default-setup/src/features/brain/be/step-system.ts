@@ -1,7 +1,7 @@
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup, assign, sendParent, enqueueActions, type AnyActorRef } from 'xstate';
 import { EARS } from '#generated/ears.ts';
-import type { ExecutionContext, RunNode, RunNodeId } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunNodeId, StepInput } from '@apackdev/sdk/steps';
 import type { NodeEntity } from '#generated/types.ts';
 import { executeNode } from './node-handlers/index.ts';
 import { repository } from '#generated/repository.ts';
@@ -10,7 +10,8 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 type StepMachineContext = {
   runNodeId?: RunNodeId;
-  runNode: RunNode;
+  /** What the step runs on, whole: its run node holds only a bounded copy */
+  input: StepInput;
   step: NodeEntity;
   eventRunNodeId?: RunNodeId;
   error?: any;
@@ -37,7 +38,7 @@ export function createStepNodeSystem(
   executionContext = {} as ExecutionContext,
   parentRunNodeId?: RunNodeId,
 ) {
-  const { runNode, step } = repository.brainCommands.createStepRunNode(stepId, parentRunNodeId ?? eventRunNodeId, executionContext);
+  const { runNode, step, input } = repository.brainCommands.createStepRunNode(stepId, parentRunNodeId ?? eventRunNodeId, executionContext);
   return {
     runNodeId: runNode.id,
     runNode: runNode,
@@ -54,8 +55,7 @@ export function createStepNodeSystem(
             //   `Executing step: ${context.step.label} (${context.step.nodeType})`,
             // );
 
-            // Delegate to step executor with RunNode
-            executeNode(context.runNode, context.step, executionContext, self);
+            executeNode(context.input, context.step, executionContext, self);
           } catch (error) {
             self.send({ type: 'ERROR', error: errorMessage(error) });
           }
@@ -124,7 +124,7 @@ export function createStepNodeSystem(
       initial: 'executing',
       context: () => ({
         runNodeId: runNode.id,
-        runNode: runNode,
+        input,
         step: step,
         eventRunNodeId: eventRunNodeId,
       }),

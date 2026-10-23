@@ -9,7 +9,7 @@ import { repository } from '#generated/repository.ts';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { createStepNodeSystem } from './step-system.ts';
 import { EARS } from '#generated/ears.ts';
-import type { ExecutionContext, RunNode, RunNodeId } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunNodeId, StepInput } from '@apackdev/sdk/steps';
 import { safeEvents } from '@apackdev/sdk/helpers';
 import { brainRuntime } from './system.ts';
 import { brainLogger } from './utils/brain-inspect.ts';
@@ -184,11 +184,11 @@ function spawnFlowChild(
  * the track starts with the parent track's steps and last step.
  */
 function subflowEntry(
-  flowRunNode: RunNode,
+  input: StepInput,
   parent: ExecutionContext | undefined,
 ): { data: Record<string, unknown>; steps: RunNodeFlowMachineContext['entrySteps'] } {
-  const mapped = flowRunNode.resolvedParams ?? {};
-  if (!parent || flowRunNode.nodeAttributes?.propagateCtx === false) {
+  const mapped = input.params;
+  if (!parent || input.settings.propagateCtx === false) {
     return { data: { ...mapped }, steps: { steps: [], lastStep: undefined } };
   }
   const parentData = parent.event?.data;
@@ -223,10 +223,11 @@ export function createFlowNodeSystem(
         actualFlowId: rootFlow.id,
         flowRunNodeId: rootFlowRunNode.id,
         flowRunNode: rootFlowRunNode,
+        input: undefined,
       };
     })()
     : (() => {
-      const { flowRunNode, flowId: referencedFlowId } = repository.brainCommands.createFlowRunNode(
+      const { flowRunNode, flowId: referencedFlowId, input } = repository.brainCommands.createFlowRunNode(
         flowId,
         parentRunNodeId ?? eventRunNodeId,
         executionContext
@@ -235,13 +236,15 @@ export function createFlowNodeSystem(
         actualFlowId: referencedFlowId,
         flowRunNodeId: flowRunNode.id,
         flowRunNode,
+        input,
       };
     })();
 
   const { actualFlowId, flowRunNodeId, flowRunNode } = result;
-  const entry = isRootFlow
-    ? { data: flowRunNode?.nodeAttributes, steps: { steps: [], lastStep: undefined } }
-    : subflowEntry(flowRunNode, executionContext);
+  // The root flow starts with no data; a subflow with its step's input, whole
+  const entry = result.input
+    ? subflowEntry(result.input, executionContext)
+    : { data: undefined, steps: { steps: [], lastStep: undefined } };
 
   // Query all registered trigger nodes (listeners, schedules, etc.)
   const rawTriggerNodes: FlowTriggerNode[] = [];

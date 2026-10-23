@@ -2,7 +2,7 @@
 // and its mapped fields, and completes with the returned value per its outputType
 import { describe, expect, it } from 'vitest';
 import { importFlows, startApp } from '@apackdev/testing/harness';
-import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 import { on, transform } from '#generated/flow-helpers.ts';
 import { handler } from '#extensions/steps/transform/runtime.ts';
 
@@ -11,9 +11,9 @@ type Sent = { type: string; result?: unknown; error?: { message?: string } };
 function run(node: Record<string, unknown>, lastResult?: unknown) {
   const sent: Sent[] = [];
   const actor = { send: (event: Sent) => sent.push(event) };
-  const runNode = { id: 'RunNode-transform', nodeAttributes: {} } as unknown as RunNode;
+  const input: StepInput = { runNodeId: 'RunNode-transform', settings: {}, params: {} };
   const ctx = { lastStep: { label: 'previous', result: lastResult } } as ExecutionContext;
-  return handler(runNode, { label: 'Shape', nodeType: 'transform', ...node }, ctx, actor).then(() => sent);
+  return handler(input, { label: 'Shape', nodeType: 'transform', ...node }, ctx, actor).then(() => sent);
 }
 
 describe('transform step', () => {
