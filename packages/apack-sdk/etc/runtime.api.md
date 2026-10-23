@@ -121,7 +121,6 @@ export interface PackExtensionsView {
 // @public
 export interface PackRegistryView extends PackExtensionsView {
     appliers(packId: string): readonly ContentApplier[];
-    commands(): PackCommand[];
     contentWriters(entity: string): ContentWriter | undefined;
     earsNames(): EarsNames;
     getRegisteredServices(): Record<string, unknown>;

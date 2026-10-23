@@ -6,6 +6,8 @@ import type { StepDefinition } from '../steps/types.ts';
 import type { PackContentPreviewItem } from './preview.ts';
 import { parseContentIndex } from './content-index.ts';
 import { importPackModule } from './module-loader.ts';
+import { EARS } from '../types/entities.ts';
+import { COMMANDS_DOCUMENT_TYPE } from '../commands/index.ts';
 import { SPECIALTY_COMPILERS } from './compilers/standard.ts';
 import { buildPackConfigFromManifest } from './manifest-bridge.ts';
 import { contentFile } from './manifest.ts';
@@ -174,6 +176,30 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
 
   for (const [key, source] of Object.entries(packConfig.sources)) {
     if (source.kind === 'applier') continue; // the pack's applier reads its own sources
+
+    /**
+     * The commands the manifest declares: one Document holding one field per command, compiled from the
+     * declaration with no source directory to read.
+     *
+     * **One document per pack**, named by `resolveContentSources` after the pack id. The name is what the
+     * user sees wherever documents are shown, and what the merge matches on, so it comes from the id
+     * rather than the display name — a display name can be changed, and the content key embeds whatever
+     * this is, so a rename would orphan the document and write a second one beside it.
+     */
+    if (source.kind === 'declared') {
+      const records = [{
+        entity: EARS.Entity.Document,
+        name: source.documentName,
+        documentType: COMMANDS_DOCUMENT_TYPE,
+        content: [{ type: 'field', fields: source.commands.map(({ name, placeholder }) => ({ key: name, value: placeholder })) }],
+      }];
+      compiled.push({
+        key,
+        output: { records },
+        index: { key, written: true, identity: ['name'], count: source.commands.length, items: source.commands.map(({ name, placeholder }) => ({ key: name, description: placeholder })) },
+      });
+      continue;
+    }
 
     const sourcePath = path.resolve(packDir, source.path);
     if (source.kind === 'specialty') {

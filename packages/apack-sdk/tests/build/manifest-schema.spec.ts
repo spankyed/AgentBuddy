@@ -292,26 +292,27 @@ describe('content.formats, content.sources and content.datasets', () => {
     expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
   });
 
-  // The commands are content and the role decides who serves them, so the provider is the role-holder's to
-  // declare. Neither half is the registry's to catch: it sees one provider per pack without knowing which
-  // feature declared it, so a feature declaring one beside the sibling that holds the role would be served
-  // in its place, and a second provider would lose to whichever the manifest listed first.
-  it('takes the command provider only from the feature playing the role, and refuses a second', () => {
-    const feature = (id: string, extra: Record<string, unknown> = {}) =>
-      ({ [id]: { description: `Exercise ${id} commands.`, ...extra } });
-    const provider = `src/library/be/commands.ts#commands`;
+  // The shorthand: names and placeholders in the manifest, desugared into ordinary content at build time.
+  // `list` is nested so `onUserEdit` has somewhere to sit that is not also a command name.
+  it('takes slash commands declared in the manifest, with an optional edit policy beside them', () => {
+    const commands = (value: unknown) => ({ ...pack, extensions: { commands: value } });
 
-    expect(messagesOf(parseManifest({ ...pack, features: { ...feature('library', { designation: 'commands', getCommands: provider }) } }))).toEqual([]);
+    expect(messagesOf(parseManifest(commands({ list: { 'pr2md': { placeholder: 'PR number' } } })))).toEqual([]);
+    expect(messagesOf(parseManifest(commands({ onUserEdit: 'theirs', list: { 'pr2md': { placeholder: 'PR number' } } })))).toEqual([]);
 
-    expect(messagesOf(parseManifest({ ...pack, features: { ...feature('library', { getCommands: provider }) } })))
-      .toEqual([expect.stringMatching(/"features\.library\.getCommands": Feature "library" declares a command provider without "designation": "commands"/)]);
+    expect(messagesOf(parseManifest(commands({ list: { 'PR2MD': { placeholder: 'x' } } }))))
+      .toEqual([expect.stringMatching(/A command name must be a lowercase letter/)]);
+    expect(messagesOf(parseManifest(commands({ list: { 'pr2md': { placeholder: '' } } }))).length).toBeGreaterThan(0);
+    expect(messagesOf(parseManifest(commands({ list: { 'pr2md': { placeholder: 'x', extra: 1 } } }))).length).toBeGreaterThan(0);
+    expect(messagesOf(parseManifest(commands({ list: {} })))).toEqual([expect.stringMatching(/declares no command/)]);
+    expect(messagesOf(parseManifest(commands({ onUserEdit: 'theirs' }))).length).toBeGreaterThan(0);
+  });
 
-    expect(messagesOf(parseManifest({ ...pack, features: {
-      ...feature('library', { designation: 'commands', getCommands: provider }), ...feature('notes', { getCommands: provider }),
-    } }))).toEqual([
-      expect.stringMatching(/"features\.notes\.getCommands": Two features declare a command provider: "library" and "notes"/),
-      expect.stringMatching(/"features\.notes\.getCommands": Feature "notes" declares a command provider without "designation"/),
-    ]);
+  // A pack used to name a function that served its slash commands. The app reads the stored documents
+  // itself now, so there is nothing to declare and the key is refused rather than quietly ignored.
+  it('refuses features[].getCommands as the unknown key it now is, in any pack', () => {
+    const features = { library: { description: 'Serves them.', getCommands: 'src/library/be/commands.ts#commands' } };
+    expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.library.*[Uu]nrecognized key/)]);
   });
 
   // Which surface opens first is an annotation on the surface, not a feature id at the root: an id there
@@ -428,21 +429,6 @@ describe('services', () => {
 
   it('rejects a service name that is not an identifier', () => {
     expect(messagesOf(parseManifest({ ...pack, extensions: { services: { 'my-cache': 'src/cache.ts#cacheService' } } }))).toEqual([expect.stringMatching(/Must be an identifier/)]);
-  });
-});
-
-describe('a feature\'s command provider', () => {
-  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-  // With the designation, since only the feature playing it may declare one
-  const withProvider = (getCommands: unknown) =>
-    ({ ...pack, features: { library: { description: 'Serves them.', designation: 'commands', getCommands } } });
-
-  it('accepts a path#export naming the function that serves them', () => {
-    expect(messagesOf(parseManifest(withProvider('src/features/library/be/commands.ts#commands')))).toEqual([]);
-  });
-
-  it('rejects a target that names no export', () => {
-    expect(messagesOf(parseManifest(withProvider('src/features/library/be/commands.ts'))).length).toBeGreaterThan(0);
   });
 });
 

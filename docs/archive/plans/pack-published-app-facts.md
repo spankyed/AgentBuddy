@@ -1,12 +1,20 @@
 # A pack contributes a published app-level fact
 
-Status: deferred at one instance. The shell holds one fact sourced from a pack — the chat's slash
-commands — and a mechanism for one instance is the thing that becomes twelve of them. **Revisit when a
-second pack-sourced fact wants the same treatment**; that is the condition, and the seam below is what
-makes the second one cheap enough to extract then rather than guess at now.
+Status: **closed, because the one instance stopped being one.** This plan deferred extracting a mechanism
+until a second pack-sourced app-level fact appeared. None did, and the first one went away instead: the
+chat's slash commands are now a derivation the app makes over its own rows, since `Document` is an SDK
+entity ([document-in-the-core](document-in-the-core.md)). No fact the shell holds comes from a pack any
+more, so there is nothing to generalize and no condition left to wait for.
+
+**Kept as the record of what the machinery was**, because the five pieces below were real and are now
+deleted — a reader asking why there is no way for a pack to publish an app-level fact should find that it
+was built, used once, and removed when its subject moved into the core rather than extended into a
+framework. The seam at the end is where a future one would go.
 
 Compiled 2026-10-22 on `session/commands-to-the-editor`, after
-[the commands goal](../../archive/goals/goal-commands-are-host-level.md) put the commands on the shell.
+[the commands goal](../goals/goal-commands-are-host-level.md) put the commands on the shell;
+closed the same day on `session/document-in-the-core`, which removed them from the shell's pack-sourced
+column.
 
 ## What an app-level fact is
 
@@ -17,10 +25,11 @@ window. The shell holds three, and the third is the one that is new:
 |---|---|---|
 | `surfaceVisibility` | `AppState`, the host's own row | the host `application` system, on `SEND_STATE` |
 | `PACK_RUNTIMES_UPDATED` | the registry's accepted runtimes | the same system, on the same event |
-| `commands` | **a pack's rows**, interpreted by the feature playing the `commands` designation | the same system, reading the registry |
+| `commands` | ~~**a pack's rows**, interpreted by the feature playing the `commands` designation~~ — now the SDK's `Document` rows, derived by the app | the same system, deriving it itself |
 
-The first two are the host describing itself. The third is the host asking a pack a question and
-publishing the answer, which is why it needed machinery the other two did not.
+The first two are the host describing itself. The third *was* the host asking a pack a question and
+publishing the answer, which is why it needed machinery the other two did not — and is now the host
+describing itself as well, which is why that machinery is gone.
 
 ## What that machinery is, concretely
 
@@ -66,3 +75,8 @@ Four files, and a second fact touches exactly these:
 
 Extract when the second fact has been wired through them by hand and the shape of both is visible. Not
 before: what the two have in common is the thing worth factoring out, and one of them cannot show it.
+
+**What actually happened, which is the lesson.** The first fact did not get a mechanism and did not get a
+second example — it got deleted, by moving the data it was derived from into the core so the app could
+read it directly. That is worth checking for before building the general version: a fact a pack has to
+publish because the app cannot see the data may be asking for the data to move, not for a channel.

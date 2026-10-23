@@ -246,12 +246,12 @@ export const ContentFormatSchema: z.ZodEffects<z.ZodObject<{
     media: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     entity?: string | string[] | undefined;
-    format?: "markdown-tree" | "json" | undefined;
     fields?: Record<string, {
         from: string;
         type?: "string" | undefined;
         default?: unknown;
     }> | undefined;
+    format?: "markdown-tree" | "json" | undefined;
     compiler?: string | undefined;
     identity?: string[] | undefined;
     tree?: {
@@ -262,12 +262,12 @@ export const ContentFormatSchema: z.ZodEffects<z.ZodObject<{
     media?: string | undefined;
 }, {
     entity?: string | string[] | undefined;
-    format?: "markdown-tree" | "json" | undefined;
     fields?: Record<string, {
         from: string;
         type?: "string" | undefined;
         default?: unknown;
     }> | undefined;
+    format?: "markdown-tree" | "json" | undefined;
     compiler?: string | undefined;
     identity?: string[] | undefined;
     tree?: {
@@ -278,12 +278,12 @@ export const ContentFormatSchema: z.ZodEffects<z.ZodObject<{
     media?: string | undefined;
 }>, {
     entity?: string | string[] | undefined;
-    format?: "markdown-tree" | "json" | undefined;
     fields?: Record<string, {
         from: string;
         type?: "string" | undefined;
         default?: unknown;
     }> | undefined;
+    format?: "markdown-tree" | "json" | undefined;
     compiler?: string | undefined;
     identity?: string[] | undefined;
     tree?: {
@@ -294,12 +294,12 @@ export const ContentFormatSchema: z.ZodEffects<z.ZodObject<{
     media?: string | undefined;
 }, {
     entity?: string | string[] | undefined;
-    format?: "markdown-tree" | "json" | undefined;
     fields?: Record<string, {
         from: string;
         type?: "string" | undefined;
         default?: unknown;
     }> | undefined;
+    format?: "markdown-tree" | "json" | undefined;
     compiler?: string | undefined;
     identity?: string[] | undefined;
     tree?: {
@@ -398,13 +398,13 @@ export const ContentSourceSchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     path?: string | undefined;
     format?: string | undefined;
-    applier?: string | undefined;
     onUserEdit?: "theirs" | "offer" | undefined;
+    applier?: string | undefined;
 }, {
     path?: string | undefined;
     format?: string | undefined;
-    applier?: string | undefined;
     onUserEdit?: "theirs" | "offer" | undefined;
+    applier?: string | undefined;
 }>;
 
 // @public (undocumented)
@@ -555,7 +555,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     surface: z.ZodOptional<z.ZodType<SurfaceDeclaration, z.ZodTypeDef, SurfaceDeclaration>>;
     services: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     repositories: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
-    getCommands: z.ZodOptional<z.ZodString>;
     references: z.ZodOptional<z.ZodType<ReferenceDeclarations, z.ZodTypeDef, ReferenceDeclarations>>;
 }, "strict", z.ZodTypeAny, {
     description: string;
@@ -581,7 +580,6 @@ export const FeatureEntrySchema: z.ZodObject<{
         } | undefined;
     } | undefined;
     repositories?: Record<string, string> | undefined;
-    getCommands?: string | undefined;
 }, {
     description: string;
     entities?: Record<string, string | null> | undefined;
@@ -599,7 +597,6 @@ export const FeatureEntrySchema: z.ZodObject<{
         } | undefined;
     } | undefined;
     repositories?: Record<string, string> | undefined;
-    getCommands?: string | undefined;
 }>;
 
 // @public
@@ -732,7 +729,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }>, z.ZodTypeDef, Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
@@ -750,7 +746,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }>>>;
     extensions: z.ZodOptional<z.ZodObject<{
         textEditor: z.ZodOptional<z.ZodType<Record<string, {
@@ -763,6 +758,34 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             isSuggestionActive?: string | undefined;
         }>>>;
         appExtensions: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
+        commands: z.ZodOptional<z.ZodEffects<z.ZodObject<{
+            list: z.ZodType<Record<string, {
+                placeholder: string;
+            }>, z.ZodTypeDef, Record<string, {
+                placeholder: string;
+            }>>;
+            onUserEdit: z.ZodOptional<z.ZodEnum<["theirs", "offer"]>>;
+        }, "strict", z.ZodTypeAny, {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        }, {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        }>, {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        }, {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        }>>;
         settings: z.ZodOptional<z.ZodType<Record<string, {
             defaults: Record<string, unknown>;
             schema: Record<string, unknown>;
@@ -903,6 +926,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        commands?: {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        } | undefined;
         services?: Record<string, string> | undefined;
         settings?: Record<string, {
             defaults: Record<string, unknown>;
@@ -982,6 +1011,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        commands?: {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        } | undefined;
         services?: Record<string, string> | undefined;
         settings?: Record<string, unknown> | undefined;
         help?: {
@@ -1061,53 +1096,53 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         sources: z.ZodOptional<z.ZodEffects<z.ZodType<Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }>, z.ZodTypeDef, Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }>>, Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }>, Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }>>>;
         datasets: z.ZodOptional<z.ZodEffects<z.ZodType<Record<string, {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }>, z.ZodTypeDef, Record<string, {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }>>, Record<string, {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }>, Record<string, {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }>>>;
         formats: z.ZodOptional<z.ZodType<Record<string, {
             entity?: string | string[] | undefined;
-            format?: "markdown-tree" | "json" | undefined;
             fields?: Record<string, {
                 from: string;
                 type?: "string" | undefined;
                 default?: unknown;
             }> | undefined;
+            format?: "markdown-tree" | "json" | undefined;
             compiler?: string | undefined;
             identity?: string[] | undefined;
             tree?: {
@@ -1118,12 +1153,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             media?: string | undefined;
         }>, z.ZodTypeDef, Record<string, {
             entity?: string | string[] | undefined;
-            format?: "markdown-tree" | "json" | undefined;
             fields?: Record<string, {
                 from: string;
                 type?: "string" | undefined;
                 default?: unknown;
             }> | undefined;
+            format?: "markdown-tree" | "json" | undefined;
             compiler?: string | undefined;
             identity?: string[] | undefined;
             tree?: {
@@ -1138,23 +1173,23 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         sources?: Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }> | undefined;
         datasets?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }> | undefined;
         formats?: Record<string, {
             entity?: string | string[] | undefined;
-            format?: "markdown-tree" | "json" | undefined;
             fields?: Record<string, {
                 from: string;
                 type?: "string" | undefined;
                 default?: unknown;
             }> | undefined;
+            format?: "markdown-tree" | "json" | undefined;
             compiler?: string | undefined;
             identity?: string[] | undefined;
             tree?: {
@@ -1169,23 +1204,23 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         sources?: Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }> | undefined;
         datasets?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
-            applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
         }> | undefined;
         formats?: Record<string, {
             entity?: string | string[] | undefined;
-            format?: "markdown-tree" | "json" | undefined;
             fields?: Record<string, {
                 from: string;
                 type?: "string" | undefined;
                 default?: unknown;
             }> | undefined;
+            format?: "markdown-tree" | "json" | undefined;
             compiler?: string | undefined;
             identity?: string[] | undefined;
             tree?: {
@@ -1284,9 +1319,40 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
+    content?: {
+        sources?: Record<string, string | {
+            path?: string | undefined;
+            format?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
+        }> | undefined;
+        datasets?: Record<string, {
+            path?: string | undefined;
+            format?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
+        }> | undefined;
+        formats?: Record<string, {
+            entity?: string | string[] | undefined;
+            fields?: Record<string, {
+                from: string;
+                type?: "string" | undefined;
+                default?: unknown;
+            }> | undefined;
+            format?: "markdown-tree" | "json" | undefined;
+            compiler?: string | undefined;
+            identity?: string[] | undefined;
+            tree?: {
+                branch?: string | undefined;
+                branchEntity?: string | undefined;
+                relKind?: string | undefined;
+            } | undefined;
+            media?: string | undefined;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     $schema?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
@@ -1301,6 +1367,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        commands?: {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        } | undefined;
         services?: Record<string, string> | undefined;
         settings?: Record<string, {
             defaults: Record<string, unknown>;
@@ -1377,38 +1449,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
-    content?: {
-        sources?: Record<string, string | {
-            path?: string | undefined;
-            format?: string | undefined;
-            applier?: string | undefined;
-            onUserEdit?: "theirs" | "offer" | undefined;
-        }> | undefined;
-        datasets?: Record<string, {
-            path?: string | undefined;
-            format?: string | undefined;
-            applier?: string | undefined;
-            onUserEdit?: "theirs" | "offer" | undefined;
-        }> | undefined;
-        formats?: Record<string, {
-            entity?: string | string[] | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            compiler?: string | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            media?: string | undefined;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     migrations?: {
         app?: Record<string, {
             description: string;
@@ -1451,9 +1491,40 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
+    content?: {
+        sources?: Record<string, string | {
+            path?: string | undefined;
+            format?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
+        }> | undefined;
+        datasets?: Record<string, {
+            path?: string | undefined;
+            format?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
+        }> | undefined;
+        formats?: Record<string, {
+            entity?: string | string[] | undefined;
+            fields?: Record<string, {
+                from: string;
+                type?: "string" | undefined;
+                default?: unknown;
+            }> | undefined;
+            format?: "markdown-tree" | "json" | undefined;
+            compiler?: string | undefined;
+            identity?: string[] | undefined;
+            tree?: {
+                branch?: string | undefined;
+                branchEntity?: string | undefined;
+                relKind?: string | undefined;
+            } | undefined;
+            media?: string | undefined;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     $schema?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
@@ -1468,6 +1539,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        commands?: {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        } | undefined;
         services?: Record<string, string> | undefined;
         settings?: Record<string, unknown> | undefined;
         help?: {
@@ -1537,38 +1614,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
-    content?: {
-        sources?: Record<string, string | {
-            path?: string | undefined;
-            format?: string | undefined;
-            applier?: string | undefined;
-            onUserEdit?: "theirs" | "offer" | undefined;
-        }> | undefined;
-        datasets?: Record<string, {
-            path?: string | undefined;
-            format?: string | undefined;
-            applier?: string | undefined;
-            onUserEdit?: "theirs" | "offer" | undefined;
-        }> | undefined;
-        formats?: Record<string, {
-            entity?: string | string[] | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            compiler?: string | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            media?: string | undefined;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     migrations?: {
         app?: Record<string, {
             description: string;
@@ -1618,9 +1663,40 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
+    content?: {
+        sources?: Record<string, string | {
+            path?: string | undefined;
+            format?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
+        }> | undefined;
+        datasets?: Record<string, {
+            path?: string | undefined;
+            format?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
+        }> | undefined;
+        formats?: Record<string, {
+            entity?: string | string[] | undefined;
+            fields?: Record<string, {
+                from: string;
+                type?: "string" | undefined;
+                default?: unknown;
+            }> | undefined;
+            format?: "markdown-tree" | "json" | undefined;
+            compiler?: string | undefined;
+            identity?: string[] | undefined;
+            tree?: {
+                branch?: string | undefined;
+                branchEntity?: string | undefined;
+                relKind?: string | undefined;
+            } | undefined;
+            media?: string | undefined;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     $schema?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
@@ -1635,6 +1711,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        commands?: {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        } | undefined;
         services?: Record<string, string> | undefined;
         settings?: Record<string, {
             defaults: Record<string, unknown>;
@@ -1711,38 +1793,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
-    content?: {
-        sources?: Record<string, string | {
-            path?: string | undefined;
-            format?: string | undefined;
-            applier?: string | undefined;
-            onUserEdit?: "theirs" | "offer" | undefined;
-        }> | undefined;
-        datasets?: Record<string, {
-            path?: string | undefined;
-            format?: string | undefined;
-            applier?: string | undefined;
-            onUserEdit?: "theirs" | "offer" | undefined;
-        }> | undefined;
-        formats?: Record<string, {
-            entity?: string | string[] | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            compiler?: string | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            media?: string | undefined;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     migrations?: {
         app?: Record<string, {
             description: string;
@@ -1785,9 +1835,40 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
+    content?: {
+        sources?: Record<string, string | {
+            path?: string | undefined;
+            format?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
+        }> | undefined;
+        datasets?: Record<string, {
+            path?: string | undefined;
+            format?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
+        }> | undefined;
+        formats?: Record<string, {
+            entity?: string | string[] | undefined;
+            fields?: Record<string, {
+                from: string;
+                type?: "string" | undefined;
+                default?: unknown;
+            }> | undefined;
+            format?: "markdown-tree" | "json" | undefined;
+            compiler?: string | undefined;
+            identity?: string[] | undefined;
+            tree?: {
+                branch?: string | undefined;
+                branchEntity?: string | undefined;
+                relKind?: string | undefined;
+            } | undefined;
+            media?: string | undefined;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     $schema?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
@@ -1802,6 +1883,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        commands?: {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        } | undefined;
         services?: Record<string, string> | undefined;
         settings?: Record<string, unknown> | undefined;
         help?: {
@@ -1871,38 +1958,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
-    content?: {
-        sources?: Record<string, string | {
-            path?: string | undefined;
-            format?: string | undefined;
-            applier?: string | undefined;
-            onUserEdit?: "theirs" | "offer" | undefined;
-        }> | undefined;
-        datasets?: Record<string, {
-            path?: string | undefined;
-            format?: string | undefined;
-            applier?: string | undefined;
-            onUserEdit?: "theirs" | "offer" | undefined;
-        }> | undefined;
-        formats?: Record<string, {
-            entity?: string | string[] | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            compiler?: string | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            media?: string | undefined;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     migrations?: {
         app?: Record<string, {
             description: string;
@@ -1952,9 +2007,40 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }> | undefined;
     description?: string | undefined;
+    content?: {
+        sources?: Record<string, string | {
+            path?: string | undefined;
+            format?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
+        }> | undefined;
+        datasets?: Record<string, {
+            path?: string | undefined;
+            format?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+            applier?: string | undefined;
+        }> | undefined;
+        formats?: Record<string, {
+            entity?: string | string[] | undefined;
+            fields?: Record<string, {
+                from: string;
+                type?: "string" | undefined;
+                default?: unknown;
+            }> | undefined;
+            format?: "markdown-tree" | "json" | undefined;
+            compiler?: string | undefined;
+            identity?: string[] | undefined;
+            tree?: {
+                branch?: string | undefined;
+                branchEntity?: string | undefined;
+                relKind?: string | undefined;
+            } | undefined;
+            media?: string | undefined;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     $schema?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
@@ -1969,6 +2055,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        commands?: {
+            list: Record<string, {
+                placeholder: string;
+            }>;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        } | undefined;
         services?: Record<string, string> | undefined;
         settings?: Record<string, {
             defaults: Record<string, unknown>;
@@ -2044,38 +2136,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     lifecycle?: {
         onInit?: string | undefined;
         onShutdown?: string | undefined;
-    } | undefined;
-    content?: {
-        sources?: Record<string, string | {
-            path?: string | undefined;
-            format?: string | undefined;
-            applier?: string | undefined;
-            onUserEdit?: "theirs" | "offer" | undefined;
-        }> | undefined;
-        datasets?: Record<string, {
-            path?: string | undefined;
-            format?: string | undefined;
-            applier?: string | undefined;
-            onUserEdit?: "theirs" | "offer" | undefined;
-        }> | undefined;
-        formats?: Record<string, {
-            entity?: string | string[] | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            compiler?: string | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            media?: string | undefined;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
     } | undefined;
     migrations?: {
         app?: Record<string, {
@@ -2432,7 +2492,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }>, z.ZodTypeDef, Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
@@ -2442,7 +2501,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }>>>;
 }, "strict", z.ZodTypeAny, {
     id: string;
@@ -2473,8 +2531,13 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }> | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -2551,12 +2614,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
-    content?: {
-        sources?: Record<string, {
-            applier: string;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     migrations?: {
         app?: Record<string, {
             description: string;
@@ -2600,8 +2657,13 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }> | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -2671,12 +2733,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
-    content?: {
-        sources?: Record<string, {
-            applier: string;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     migrations?: {
         app?: Record<string, {
             description: string;
@@ -2727,8 +2783,13 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }> | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -2805,12 +2866,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
-    content?: {
-        sources?: Record<string, {
-            applier: string;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     migrations?: {
         app?: Record<string, {
             description: string;
@@ -2854,8 +2909,13 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }> | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -2925,12 +2985,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
-    content?: {
-        sources?: Record<string, {
-            applier: string;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     migrations?: {
         app?: Record<string, {
             description: string;
@@ -2981,8 +3035,13 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
-        getCommands?: string | undefined;
     }> | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -3058,12 +3117,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     lifecycle?: {
         onInit?: string | undefined;
         onShutdown?: string | undefined;
-    } | undefined;
-    content?: {
-        sources?: Record<string, {
-            applier: string;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
     } | undefined;
     migrations?: {
         app?: Record<string, {
@@ -3389,6 +3442,19 @@ export function resolveContentSources(manifest: PackManifest, packDir: string, d
 export type ResolvedContentSource = {
     kind: 'specialty';
     path: string;
+    onUserEdit?: ContentEditPolicy;
+}
+/**
+* The commands a manifest declares, which have no path: the records come from the declaration itself.
+* Synthesized under `DECLARED_COMMANDS_KEY` — the pack writes no `content.sources` entry for it.
+*/
+| {
+    kind: 'declared';
+    documentName: string;
+    commands: Array<{
+        name: string;
+        placeholder: string;
+    }>;
     onUserEdit?: ContentEditPolicy;
 } | {
     kind: 'applier';

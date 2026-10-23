@@ -1,6 +1,7 @@
-import type { EARS } from '../types/entities.ts';
+import { EARS } from '../types/entities.ts';
 import type { ContentItem } from '../build/content/items.ts';
 import { boundHost } from '../runtime/host-runtime.ts';
+import { collectionContentWriter, documentContentWriter } from './document-writers.ts';
 
 /** Where a record sits: its parent row (for tree children) and its position among its siblings */
 export interface ContentWriteContext {
@@ -44,7 +45,25 @@ export interface ContentWriterRegistry {
   get(entity: string): ContentWriter | undefined;
 }
 
-/** @internal Appliers read the hooks of the bound app's registered packs (a pack's registration's `contentWriters`) */
+/**
+ * The SDK's writers for the SDK's own entities, which no pack may declare.
+ *
+ * A pack declares writers only for entity types it owns (the declaration schema refuses the rest), so an
+ * entity the SDK owns has no pack to speak for it — and `Document` and `Collection` need one, because the
+ * tree mechanics a generic write skips are what make a written document match one created in the app.
+ * Named here rather than registered anywhere: they are not a contribution, they are how these entities
+ * are written, so there is no order in which they can be missing.
+ */
+const sdkContentWriters: Record<string, ContentWriter> = {
+  [EARS.Entity.Document]: documentContentWriter as ContentWriter,
+  [EARS.Entity.Collection]: collectionContentWriter as ContentWriter,
+};
+
+/**
+ * @internal Appliers read the hooks of the bound app's registered packs (a pack's registration's
+ * `contentWriters`), and the SDK's own for the entities it owns. A pack's comes first, so a pack
+ * declaring an entity the SDK owns is reported by the schema rather than silently losing its writer.
+ */
 export const _contentWriterRegistry: ContentWriterRegistry = {
-  get: (entity) => boundHost().packs.contentWriters(entity),
+  get: (entity) => boundHost().packs.contentWriters(entity) ?? sdkContentWriters[entity],
 };

@@ -106,6 +106,37 @@ export interface AppSettings {
 }
 
 // @public (undocumented)
+export interface CodeContent {
+    // (undocumented)
+    language: string;
+    // (undocumented)
+    text: string;
+    // (undocumented)
+    type: 'code';
+}
+
+// @public
+export interface CollectionEntity extends BaseEntity {
+    contentHash?: string;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    displayOrder?: number;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Collection;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    symlinkPath?: string;
+}
+
+// @public
+export type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
+
+// @public (undocumented)
+export type ContentType = ContentSection['type'];
+
+// @public (undocumented)
 export interface CustomHotkey {
     // (undocumented)
     eventName: string;
@@ -119,6 +150,26 @@ export interface CustomHotkey {
     modifiers: string[];
 }
 
+// @public
+export interface DocumentEntity extends BaseEntity {
+    // (undocumented)
+    content: ContentSection[];
+    contentHash?: string;
+    // (undocumented)
+    displayOrder?: number;
+    documentType?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Document;
+    // (undocumented)
+    name: string;
+    shortCode: DocumentShortCode;
+    // (undocumented)
+    tags?: string[];
+}
+
+// @public
+export type DocumentShortCode = `DOC-${number}`;
+
 // @public (undocumented)
 export namespace EARS {
     const // (undocumented)
@@ -129,6 +180,8 @@ export namespace EARS {
         readonly TNode: "TNode";
         readonly Action: "Action";
         readonly Prompt: "Prompt";
+        readonly Document: "Document";
+        readonly Collection: "Collection";
     };
     // (undocumented)
     export type AttributePayloads = EARS_2.AttributePayloads;
@@ -142,6 +195,7 @@ export namespace EARS {
         readonly INSTANCE_OF: "instance_of";
         readonly SPAWNED: "spawned";
         readonly TRACKED: "tracked";
+        readonly PARENT_OF: "parent_of";
     };
     // (undocumented)
     export type AttributeType = EARS_2.AttributeType;
@@ -181,6 +235,17 @@ export namespace EARS {
 }
 
 // @public (undocumented)
+export interface FieldContent {
+    // (undocumented)
+    fields: Array<{
+        key: string;
+        value: string;
+    }>;
+    // (undocumented)
+    type: 'field';
+}
+
+// @public (undocumented)
 export interface FlowEntity extends BaseEntity {
     // (undocumented)
     contentHash?: string;
@@ -206,6 +271,22 @@ export interface KeyboardShortcut {
     key: string;
     // (undocumented)
     modifiers: string[];
+}
+
+// @public (undocumented)
+export interface ListContent {
+    // (undocumented)
+    items: string[];
+    // (undocumented)
+    type: 'list';
+}
+
+// @public (undocumented)
+export interface MarkdownContent {
+    // (undocumented)
+    text: string;
+    // (undocumented)
+    type: 'markdown';
 }
 
 // @public
@@ -275,6 +356,8 @@ export const SDK_ENTITIES: {
     readonly TNode: "TNode";
     readonly Action: "Action";
     readonly Prompt: "Prompt";
+    readonly Document: "Document";
+    readonly Collection: "Collection";
 };
 
 // @public
@@ -287,6 +370,7 @@ export const SDK_REL_KINDS: {
     readonly INSTANCE_OF: "instance_of";
     readonly SPAWNED: "spawned";
     readonly TRACKED: "tracked";
+    readonly PARENT_OF: "parent_of";
 };
 
 // @public
@@ -297,6 +381,8 @@ export type SdkEntityShapes = {
     TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
+    Document: DocumentEntity;
+    Collection: CollectionEntity;
 };
 
 // @public
@@ -442,6 +528,14 @@ export interface TemplateInput {
     required?: boolean;
     // (undocumented)
     type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+}
+
+// @public (undocumented)
+export interface TextContent {
+    // (undocumented)
+    text: string;
+    // (undocumented)
+    type: 'text';
 }
 
 // @public (undocumented)
