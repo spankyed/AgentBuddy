@@ -21,7 +21,7 @@ This document describes how apack executes flows at runtime. It covers the backe
 | `packages/default-setup/src/features/brain/be/system.ts` | Owns the brain system, starts/stops the root flow actor, routes incoming events, forwards run node updates to the frontend. |
 | `packages/default-setup/src/features/brain/be/flow-system.ts` | Builds one flow actor for a root flow or spawned subflow, registers listeners/schedules, spawns step and child-flow actors, handles completion. |
 | `packages/default-setup/src/features/brain/be/step-system.ts` | Builds one step actor, creates the step RunNode, calls the node handler, reports completion/failure to the parent flow actor. |
-| `packages/default-setup/src/features/brain/be/node-handlers/index.ts` | `executeNode`: runs the step type's registered runtime handler (`extensions/steps/<type>/runtime.ts` or its `index.ts`); a type without one completes with `{ executed: true }`. |
+| `packages/default-setup/src/features/brain/be/execute-step.ts` | `executeStep`: runs the step type's registered runtime handler on the step's `StepInput` (`extensions/steps/<type>/runtime.ts` or its `index.ts`); a type without one completes with `{ executed: true }`. |
 | `packages/default-setup/src/features/brain/be/flow-completion.ts` | Centralizes flow completion rules. |
 | `packages/default-setup/src/features/brain/be/services/scheduler.ts` | Owns active Croner jobs for schedule nodes. |
 | `packages/apack-sdk/src/events/index.ts` (`sendToSystem`) | Sends `TRIGGER_BRAIN_EVENT` to the system playing the brain role (`sendToSystem({ role: 'brain' }, …)`, and `services.emitter.sendToSystem` from actions). |
@@ -139,12 +139,12 @@ Each spawned child is either:
 A step actor:
 
 1. Creates a step RunNode under the event RunNode or previous step RunNode.
-2. Calls `executeNode()`.
+2. Calls `executeStep()`.
 3. The node handler performs the work and sends `COMPLETE` or `ERROR` to its actor.
 4. On completion, the step actor stores the result, marks the RunNode completed, emits `RUN_NODE_UPDATED`, and sends `CHILD_COMPLETED` to the parent flow actor.
 5. On failure, the step actor marks the RunNode failed and still sends `CHILD_COMPLETED` with an error result.
 
-`executeNode()` dispatches by node type. `schedule` nodes are safety-net completed if accidentally executed as steps, but schedules should only act as triggers.
+`executeStep()` dispatches by node type. `schedule` nodes are safety-net completed if accidentally executed as steps, but schedules should only act as triggers.
 
 ## Continuing A Track
 
