@@ -1,4 +1,4 @@
-import { findWhere, query } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '#generated/repository.ts';
@@ -23,7 +23,7 @@ interface ImportResult {
  * Find an existing note by title within a given parent (or at root level).
  */
 function findExistingNote(title: string, parentId: string | undefined): NoteEntity | undefined {
-  const candidates = findWhere(EARS.Entity.Note, 'title', title)
+  const candidates = query(EARS.Entity.Note).where('title', title).pickAll()
   return candidates.find(note => {
     const parents = query.ids(note.id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
     const noteParentId = parents.length > 0 ? parents[0] : undefined

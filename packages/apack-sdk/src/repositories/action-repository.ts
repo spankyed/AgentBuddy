@@ -2,6 +2,7 @@
 // appliers resolve actions by label
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { boundEars as ears } from '../ears/index.ts';
+import { sdkEntities } from '../ears/sdk-entities.ts';
 import { EARS } from '../types/entities.ts';
 import type { ActionEntity, ActionParameter } from '../types/sdk-entities.ts';
 
@@ -22,9 +23,9 @@ export const actionRepository = {
   byId: (id: EARS.EntityId): ActionEntity | undefined => ears().findById<ActionEntity>(id) ?? undefined,
 
   /** Every action that isn't in the trash */
-  all: (): ActionEntity[] => ears().findAll<ActionEntity>(EARS.Entity.Action),
+  all: (): ActionEntity[] => sdkEntities.query(EARS.Entity.Action).pickAll(),
 
-  byLabel: (label: string): ActionEntity | undefined => ears().findWhere<ActionEntity>(EARS.Entity.Action, 'label', label)[0],
+  byLabel: (label: string): ActionEntity | undefined => sdkEntities.query(EARS.Entity.Action).where('label', label).pickAll()[0],
 
   /** Creates an action; its label and function are required */
   create: (data: ActionInput): ActionEntity => {

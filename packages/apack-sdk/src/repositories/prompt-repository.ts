@@ -2,6 +2,7 @@
 // appliers resolve prompts by label
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { boundEars as ears } from '../ears/index.ts';
+import { sdkEntities } from '../ears/sdk-entities.ts';
 import { EARS } from '../types/entities.ts';
 import type { PromptEntity, TemplateInput } from '../types/sdk-entities.ts';
 
@@ -23,9 +24,9 @@ export const promptRepository = {
   byId: (id: EARS.EntityId): PromptEntity | undefined => ears().findById<PromptEntity>(id) ?? undefined,
 
   /** Every prompt that isn't in the trash */
-  all: (): PromptEntity[] => ears().findAll<PromptEntity>(EARS.Entity.Prompt),
+  all: (): PromptEntity[] => sdkEntities.query(EARS.Entity.Prompt).pickAll(),
 
-  byLabel: (label: string): PromptEntity | undefined => ears().findWhere<PromptEntity>(EARS.Entity.Prompt, 'label', label)[0],
+  byLabel: (label: string): PromptEntity | undefined => sdkEntities.query(EARS.Entity.Prompt).where('label', label).pickAll()[0],
 
   /** Creates a prompt; its label and template are required */
   create: (data: PromptInput): PromptEntity => {

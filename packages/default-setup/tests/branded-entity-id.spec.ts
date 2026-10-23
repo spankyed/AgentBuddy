@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
 import type { QueryBuilder } from '@apackdev/ears';
-import { EARS, newId, findAll, findById, query, type EntityShape, type PackShapes } from '#generated/ears.ts';
+import { EARS, newId, findById, query, type EntityShape, type PackShapes } from '#generated/ears.ts';
 
 // ─── EntityId<E> phantom brand ─────────────────────────────────────────
 
@@ -110,7 +110,7 @@ describe('Branded EntityId — integration with QueryBuilder', () => {
     const check = () => {
       const first = query(EARS.Entity.Note).first();
       if (first) expectTypeOf(findById(first)).toEqualTypeOf<EntityShape<'Note'> | undefined>();
-      const row = findAll(EARS.Entity.Note)[0];
+      const row = query(EARS.Entity.Note).pickAll()[0];
       if (row) expectTypeOf(row.id).toEqualTypeOf<EARS.EntityId<'Note'>>();
       const picked = query(EARS.Entity.Note).pickOne(['title']);
       if (picked) expectTypeOf(picked.id).toEqualTypeOf<EARS.EntityId<'Note'>>();

@@ -1,4 +1,4 @@
-import { EARS, findWhere } from '#generated/ears.ts';
+import { EARS, query } from '#generated/ears.ts';
 import { actionRepository } from '@apackdev/sdk/repositories';
 import type { ActionEntity } from '@apackdev/sdk';
 
@@ -13,7 +13,7 @@ export const actionQueries = {
   all: actionRepository.all,
   byLabel: actionRepository.byLabel,
 
-  byCategory: (category: string): ActionEntity[] => findWhere(EARS.Entity.Action, 'category', category),
+  byCategory: (category: string): ActionEntity[] => query(EARS.Entity.Action).where('category', category).pickAll(),
 
   // Simple pagination
   paginated: (page = 1, pageSize = 20) => {

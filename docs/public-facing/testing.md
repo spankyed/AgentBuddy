@@ -79,11 +79,11 @@ await setupPackTests({ contentRuntime, registration });
 
 ```typescript
 import { importContent } from '@apackdev/testing/harness';
-import { findAll } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 
 it('content notes', async () => {
   expect(await importContent({ keys: ['team-notes'] })).toEqual({ 'team-notes': { created: 1, updated: 0, skipped: 0 } });
-  expect(findAll('Note')[0].shortCode).toMatch(/^NOTE-/);
+  expect(query('Note').pickAll()).toHaveLength(1);
 });
 ```
 

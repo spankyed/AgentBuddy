@@ -541,8 +541,8 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
-`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findAll`, `findWhere`, `newId`
-and `getAttr`. `@apackdev/ears` exports the
+`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `newId` and `getAttr`.
+Rows of a type are `query(type).pickAll()`, and of a type with a field's value `query(type).where(field, value).pickAll()`. `@apackdev/ears` exports the
 writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out rows in the trash, as every query does. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's
 declared shapes), `PackShapes` (the SDK's, the dependencies' and this pack's), `EntityName`, and
@@ -615,17 +615,16 @@ an undeclared name isn't registered at runtime, so a query for it silently match
 (typed `string`) is accepted and reads as undeclared.
 
 ```ts
-import { EARS, findAll, type EntityName } from '#generated/ears.ts';
+import { EARS, query, type EntityName } from '#generated/ears.ts';
 
-findAll(EARS.Entity.Bookmark)          // ok
-findAll('Bookmark')                    // ok: declared
-findAll('Bookmrk')                     // compile error
-findAll(nameFromSettings)              // ok: a string, rows read as undeclared
-findAll<Bookmark>(nameFromSettings)    // ok: rows read as the shape you pass
+query(EARS.Entity.Bookmark)            // ok
+query('Bookmark')                      // ok: declared
+query('Bookmrk')                       // compile error
+query(nameFromSettings)                // ok: a string, rows read as undeclared
 
 // A generic helper constrains its entity type to EntityName
 function newestOf<E extends EntityName>(entityType: E) {
-  return findAll(entityType).sort((a, b) => b.createdAt - a.createdAt);  // fields every entity has
+  return query(entityType).pickAll().sort((a, b) => b.createdAt - a.createdAt);  // fields every entity has
 }
 newestOf(EARS.Entity.Bookmark)[0].title  // callers get the Bookmark shape
 ```

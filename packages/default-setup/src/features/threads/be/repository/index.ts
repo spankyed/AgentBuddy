@@ -1,6 +1,6 @@
 import { featureSettings } from '#generated/settings.ts';
 
-import { create, write, findById, findAll, query } from '#generated/ears.ts';
+import { create, write, findById, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
@@ -39,11 +39,11 @@ export const threadQueries = {
   byId: (id: EARS.EntityId) => 
     findById<ThreadEntity>(id),
   
-  all: () =>
-    findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived),
+  all: (): ThreadEntity[] =>
+    query(EARS.Entity.Thread).pickAll().filter(t => !t.archived),
 
-  allUnfiltered: () =>
-    findAll<ThreadEntity>(EARS.Entity.Thread),
+  allUnfiltered: (): ThreadEntity[] =>
+    query(EARS.Entity.Thread).pickAll(),
 
   /** The first thread holding the role, e.g. the onboarding birth thread */
   idByRole: (role: EARS.RoleKind): EARS.EntityId | null =>
@@ -96,7 +96,7 @@ export const threadQueries = {
   // Get connected data — sends only thread metadata (no messages/linkedThreads).
   // Messages are fetched on demand via VIEW_THREAD / OPEN_THREAD_CHAT.
   connectedData: (): ThreadConnectedData => {
-    const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
+    const threads = query(EARS.Entity.Thread).pickAll().filter(t => !t.archived);
     const extendedThreads = threads.map(thread => {
       // Compute parentId by finding threads that link to this one via 'parent_of' (reverse direction)
       const parentIds = query.ids(thread.id).in(EARS.RelKind.PARENT_OF, EARS.Entity.Thread).ids();
@@ -297,7 +297,7 @@ export const threadCommands = {
 
     // Also unlink any threads that link to this thread
     // Find threads that have this thread as a linked thread
-    const allThreads = findAll<ThreadEntity>(EARS.Entity.Thread);
+    const allThreads = query(EARS.Entity.Thread).pickAll();
     for (const thread of allThreads) {
       const linkedToThis = query.ids(thread.id).outEdges(ThreadRelations);
       for (const link of linkedToThis) {

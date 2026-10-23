@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@apackdev/testing/harness'
 import { startTestRuntime } from '@apackdev/sdk/testing'
 import { create, on, update } from '#generated/flow-helpers.ts'
-import { findAll, findById, type EARS } from '#generated/ears.ts'
+import { query, findById, type EARS } from '#generated/ears.ts'
 import { repository } from '#generated/repository.ts'
 import { noteRow } from '../../_support/rows.ts'
 import * as createCompiler from '#extensions/steps/create/build.ts'
@@ -57,13 +57,13 @@ describe('create step', () => {
   it("fails naming an entity type that isn't registered, and writes nothing", async () => {
     importFlows({ Notes: { root: true, tracks: [on('note', [[create('Nope', { label: 'add', params: { title: 'x' } })]])] } })
     const app = await startBrain()
-    const before = findAll('Note').length
+    const before = query('Note').pickAll().length
 
     const run = await app.runFlow('Notes', { event: 'note' })
 
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['add', 'failed']])
     expect(errorMessage(run.steps[0])).toMatch(/Step "add"[\s\S]*"Nope"/)
-    expect(findAll('Note').length).toBe(before)
+    expect(query('Note').pickAll().length).toBe(before)
   })
 })
 
@@ -111,10 +111,10 @@ describe('update step', () => {
     })
 
     it('completes without writing with ignore', async () => {
-      const before = findAll('Note').length
+      const before = query('Note').pickAll().length
       const run = await missing('ignore')
       expect(run.steps.map((s) => [s.status, result(s)])).toEqual([['completed', { updated: false }]])
-      expect(findAll('Note').length).toBe(before)
+      expect(query('Note').pickAll().length).toBe(before)
     })
 
     it('creates an entity of its entity type with create', async () => {

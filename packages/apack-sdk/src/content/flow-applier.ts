@@ -1,13 +1,14 @@
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { promptRepository } from '../repositories/prompt-repository.ts';
 import { findRelations, boundEars as ears, untypedWrite } from '../ears/index.ts';
+import { sdkEntities } from '../ears/sdk-entities.ts';
 import { loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { contentPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
 import { validate } from '../build/compilers/flow-dsl-validator.ts';
 import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
-import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
+import type { FlowEntity } from '../types/sdk-entities.ts';
 import type { ContentEditPolicy } from '../framework/declaration-schema.ts';
 import { childContentKey, defineKey, hashValues, recordApplied, CONTENT_KEY, contentKeyPrefix, CONTENT_HASH } from './format-applier.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
@@ -109,7 +110,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
       const packId = contentPackId(ctx.compiledDir);
 
       if (ctx.mode === 'wipe-and-replace') {
-        for (const flow of ears().findAll<FlowEntity>(EARS.Entity.Flow)) {
+        for (const flow of sdkEntities.query(EARS.Entity.Flow).pickAll()) {
           try { flowRepository.deleteFlow(flow.id); } catch {}
         }
         ctx.log('  flows wiped');
@@ -124,8 +125,8 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         return flows.find((flow) => ears().getAttr(flow.id, CONTENT_KEY) === contentKey)
           ?? flows.find((flow) => flow.label === name && ears().getAttr(flow.id, CONTENT_KEY) === null);
       };
-      const existingFlows = ears().findAll<FlowEntity>(EARS.Entity.Flow);
-      const actionMap = buildLabelMap(ears().findAll<ActionEntity>(EARS.Entity.Action));
+      const existingFlows = sdkEntities.query(EARS.Entity.Flow).pickAll();
+      const actionMap = buildLabelMap(sdkEntities.query(EARS.Entity.Action).pickAll());
       const promptMap = buildLabelMap(promptRepository.all());
 
       /**
@@ -250,7 +251,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
        * resolve by label.
        */
       const subflowTargets = (): Map<string, string> => {
-        const flows = ears().findAll<FlowEntity>(EARS.Entity.Flow);
+        const flows = sdkEntities.query(EARS.Entity.Flow).pickAll();
         const writtenIds = new Set<string>();
         const targets = new Map<string, string>();
         for (const name of Object.keys(flowsDSL)) {
@@ -278,7 +279,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         const prefix = `${contentKeyPrefix(packId)}flows/`;
         for (const itemKey of [...record.before.keys()].filter((k) => k.startsWith(prefix) && !record.defined.has(k))) {
           const item = record.before.get(itemKey)!;
-          const flow = ears().findAll<FlowEntity>(EARS.Entity.Flow).find((f) => ears().getAttr(f.id, CONTENT_KEY) === itemKey);
+          const flow = sdkEntities.query(EARS.Entity.Flow).pickAll().find((f) => ears().getAttr(f.id, CONTENT_KEY) === itemKey);
           const { resolution, parts, offer } = resolveRemoval({
             applied: item,
             ...(flow !== undefined && { live: { contentHash: flow.contentHash } as LiveEntity }),

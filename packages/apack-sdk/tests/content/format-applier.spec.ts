@@ -11,9 +11,13 @@ import type { ContentWriter } from '../../src/content/writers.ts';
 import { _getMediaPath, applyRecord, type ApplyRecord, type ImportMode } from '../../src/utils/index.ts';
 import type { ContentItem } from '../../src/build/content/items.ts';
 import type { EARS } from '../../src/types/entities.ts';
+import { defineEars } from '@apackdev/ears';
 
 type Memo = { id: EARS.EntityId; name: string; body: string; pinned?: boolean; mood?: string; contentHash?: string };
-const memos = (name: string) => ears().findWhere<Memo>('Memo' as EARS.Entity, 'name', name);
+type Folder = { id: EARS.EntityId; name: string; label?: string; contentKey?: string };
+/** The fixture's entities, typed by their shapes as a pack's facade types its own */
+const typed = defineEars<{ Memo: Memo; Folder: Folder }, 'Memo' | 'Folder'>(ears);
+const memos = (name: string) => typed.query('Memo').where('name', name).pickAll();
 const memo = (name: string) => memos(name)[0];
 const edit = (name: string, fields: Partial<Memo>) => ears().write(memo(name).id).setMany(fields);
 
@@ -528,8 +532,7 @@ describe("two packs' records with the same entry key and identity", () => {
 });
 
 describe("a folder another pack written", () => {
-  type Folder = { id: EARS.EntityId; name: string; label?: string; contentKey?: string };
-  const folders = () => ears().findWhere<Folder>('Folder' as EARS.Entity, 'name', 'internal');
+  const folders = () => typed.query('Folder').where('name', 'internal').pickAll();
   const contents = (folder: Folder) => ears().query.ids(folder.id).out('contains', 'Memo' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
 
   /** A pack's entry: one folder holding a memo per name, with the pack's own label on the folder */
