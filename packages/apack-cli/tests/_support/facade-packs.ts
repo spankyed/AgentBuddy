@@ -134,7 +134,7 @@ const APP_PACK = {
 
     features: { memos: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, surface: { label: 'Fixture', state: 'src/surface.ts' } } },
   }),
-  'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
+  'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean; note?: string }\n',
   'src/surface.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'memos' } as unknown as AnyStateMachine;\n",
   'src/system.contract.ts': [
     "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
@@ -370,7 +370,7 @@ async function buildPacks(published: boolean, dependencyStamp?: { format?: numbe
  * Incidents), so these positions are checked directly. `|name|` marks a position in the source.
  */
 const COMPLETIONS = `
-import { EARS, query, getAttr, findAll, createEntity, write } from '#generated/ears.ts';
+import { EARS, query, getAttr, findAll, findWhere, createEntity, write } from '#generated/ears.ts';
 import { sendToSystem } from '#generated/events.ts';
 declare const memoId: EARS.EntityId<'Memo'>;
 sendToSystem('|systemId|', { type: 'CLEAR_MEMOS' });
@@ -385,6 +385,7 @@ query('Memo').orderBy('|orderBy|');
 query('Memo').distinct('|distinct|');
 query('Memo').groupBy('|groupBy|');
 getAttr(memoId, '|getAttr|');
+findWhere('Memo', '|findWhere|', 'x');
 findAll('|findAll|');
 createEntity('|createEntity|');
 query.ids(memoId).out('related', '|out|');
@@ -398,9 +399,9 @@ write(memoId).delete('|delete|');
 write(memoId).deleteAt('|deleteAt|', 0);
 write(memoId).set('pinnd', true);
 `;
-const FIELD_POSITIONS = ['pick', 'pickOne', 'outPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr'];
+const FIELD_POSITIONS = ['pick', 'pickOne', 'outPick', 'where', 'findWhere', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr'];
 /** The fields a write may name: the declared ones, without the engine's own (`createdAt`, `updatedAt`, …) */
-const WRITE_POSITIONS = ['set', 'add', 'delete', 'deleteAt'];
+const WRITE_POSITIONS = ['set', 'add', 'deleteAt'];
 const NAME_POSITIONS = ['findAll', 'createEntity', 'out', 'in', 'ofType'];
 
 /** String completions at each marked position of COMPLETIONS, and the file's diagnostics */
@@ -531,6 +532,9 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
     expect(missing(WRITE_POSITIONS, ['text', 'pinned']), 'write positions without Memo field completions').toEqual([]);
     expect(at.where, 'a read offers the engine\'s fields').toContain('createdAt');
     expect(WRITE_POSITIONS.filter((position) => at[position]?.includes('createdAt')), 'write positions offering an engine field').toEqual([]);
+    // delete offers the optional fields alone: a required one is replaced with set
+    expect(at.delete, 'delete completions').toContain('note');
+    expect(at.delete, 'delete completions').not.toContain('text');
     // A typo's error lists the fields it could have been, for a read and a write
     expect(diagnostics.find((message) => message.includes('"txet"'))).toMatch(/"text"/);
     expect(diagnostics.find((message) => message.includes('"pinnd"'))).toMatch(/"pinned"/);

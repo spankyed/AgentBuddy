@@ -25,14 +25,14 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - `PackShapes['Node']` is the pack's step node union: its own and its dependencies' `XNode extends NodeBase` types. It's `NodeBase` when no step defines one.
 
 **Field parameters.**
-- They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `orderBy`, `distinct`, `groupBy` and `getAttr`. A list field's `where` also takes one of its elements, which the value index answers.
+- They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `findWhere`, `pick`, `pickOne`, `orderBy`, `distinct`, `groupBy` and `getAttr`. `where` and `findWhere` take one value type (`WhereValue`): the field's, one element of a list field, which the value index answers, or a predicate.
 - This form is what gives editors field-name completions and makes a typo's error list the valid fields.
 - For a union shape, such as `Node` rows, only the fields every member has are accepted.
 - A query whose fields vary by member, or are only known at runtime, uses `untypedQuery` from `@apackdev/ears` on purpose. The brain trigger queries in default-setup are the example. (It's the same untyped `query` an engine has, `createEarsEngine(...).query`.)
 
 **Entity names.**
 - A literal entity name must be one the pack, its dependencies or the SDK declares (`EntityName`). A name typed `string` passes unchecked (`EntityNameArg`).
-- The explicit-shape overloads (`findAll<T>(name)`) also accept a runtime name: supplying `T` leaves the
+- The explicit-shape overload (`findAll<T>(name)`) also accepts a runtime name: supplying `T` leaves the
   name's `E` at its `string` default, so `findAll<Shape>('Tpyo')` compiles by design. Without a type
   argument the same call is checked.
 - A generic helper constrains its name to `EntityName`, or opts out with `as string`.
@@ -56,6 +56,9 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   `set`, `add`, `merge`, `delete`, `deleteAt` and `deleteValue` take `K extends WritableField<S, E>`, which keeps
   field completions and makes a typo's error list the fields; `setMany` takes the declared fields as an object
   with no index signature, so a misspelled key is an excess property.
+- `delete` takes only an optional field (`OptionalField`): removing a required one would leave a row its shape
+  misdescribes, so a required field is replaced with `set`. `deleteAt` and `deleteValue` edit a list and remove
+  no field, so they take any writable one.
 - The engine's own attributes (`id`, `entityType`, `createdAt`, `updatedAt`, `role`, `relationDetails`, `trashedAt`) are not
   writable fields, so the type refuses them as the runtime does.
 - A plain id leaves every write unchecked. EARS stores attributes a shape need not declare; code writing one

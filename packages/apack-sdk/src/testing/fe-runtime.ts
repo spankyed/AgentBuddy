@@ -1,7 +1,8 @@
 // The frontend host a pack's unit tests run against. bindFeHost is the renderer's, bound once at boot
 // and never taken back; a test binds and unbinds per file, so that lifecycle lives here, next to
 // startTestRuntime, rather than a pack reaching for the host's own unbind.
-import { bindFeHost, unbindFeHost, type FeHostRuntime, type FePackRegistryView } from '../runtime/fe-host.ts';
+import { bindFeHost, unbindFeHost, type FeClient, type FeHostRuntime, type FePackRegistryView } from '../runtime/fe-host.ts';
+import type { SecretsClient } from '../fe/secrets-client.ts';
 import type { PackCatalogView } from '../framework/catalog-view.ts';
 import type { HostShell } from '../fe/shell.ts';
 import type { SettingsPort } from '../fe/settings.ts';
@@ -44,6 +45,14 @@ const noSettings = new Proxy({} as SettingsPort, {
   },
 });
 
+const noSecrets = new Proxy({} as SecretsClient, {
+  get: (_target, member) => { throw new Error(`This test has no secrets client (it reached for ${String(member)}): pass secrets to startFeTestRuntime`); },
+});
+
+const noClient = new Proxy({} as FeClient, {
+  get: (_target, member) => { throw new Error(`This test has no API client (it reached for ${String(member)}): pass client to startFeTestRuntime`); },
+});
+
 const noCatalog = new Proxy({} as PackCatalogView, {
   get: (_target, member) => { throw new Error(`This test has no declaration catalog (it reached for ${String(member)}): pass catalog to startFeTestRuntime`); },
 });
@@ -64,9 +73,9 @@ export function startFeTestRuntime(options: FeTestRuntimeOptions = {}): () => vo
   bindFeHost({
     catalog: options.catalog ?? noCatalog,
     application: options.application ?? noShell,
-    secrets: options.secrets ?? ({} as never),
+    secrets: options.secrets ?? noSecrets,
     settings: options.settings ?? noSettings,
-    client: options.client ?? ({} as never),
+    client: options.client ?? noClient,
     packs: options.packs ?? noFrontends,
   });
   return stopFeTestRuntime;
