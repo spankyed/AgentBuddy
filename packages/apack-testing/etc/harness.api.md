@@ -38,6 +38,7 @@ export interface FlowStepTrace {
     label: string;
     nodeAttributes: Record<string, unknown>;
     params: Record<string, unknown>;
+    result?: unknown;
     // (undocumented)
     status: string;
     // (undocumented)

@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity, FieldMapping } from '@apackdev/sdk/steps';
+import type { ExecutionContext, TNode, FieldMapping } from '@apackdev/sdk/steps';
 import type { EARS } from '@apackdev/sdk';
 import type { NodeEntity } from '#generated/types.ts';
 import { repository } from '#generated/repository.ts';
@@ -16,7 +16,7 @@ interface ActionNodeConfig {
 
 type ActionNode = NodeEntity & ActionNodeConfig;
 
-export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as ActionNode;
   const a = actor as { send: (event: any) => void };
   const nodeData = t.nodeAttributes || {};

@@ -1,5 +1,5 @@
 import type { SwitchNode, Condition, Predicate } from '#extensions/steps/switch/types.ts';
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
 import { BinaryOperator, BinaryOperator as Op } from '@apackdev/sdk/utils';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 import { extractValueByPath } from '@apackdev/sdk/utils';
@@ -166,7 +166,7 @@ function evaluateConditions(conditions: Condition[], context: ExecutionContext):
   return -1;
 }
 
-export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as SwitchNode;
   const a = actor as { send: (event: any) => void };
 

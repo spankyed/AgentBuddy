@@ -1,5 +1,5 @@
 import { sendToSystem } from '#generated/events.ts';
-import type { TNodeEntity, ExecutionContext } from '@apackdev/sdk/steps';
+import type { TNode, ExecutionContext } from '@apackdev/sdk/steps';
 import { extractValueByPath } from '@apackdev/sdk/utils';
 import type { FireNode } from './types.ts';
 
@@ -13,7 +13,7 @@ function resolvePayload(value: unknown, ctx: ExecutionContext): unknown {
   return value;
 }
 
-export function handler(tNode: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export function handler(tNode: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const a = actor as { send: (event: any) => void };
 
   const fireConfig = tNode.nodeAttributes || {};

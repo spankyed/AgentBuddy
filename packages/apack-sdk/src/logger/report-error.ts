@@ -5,8 +5,8 @@ import { getDesignated, hasDesignation } from '../designations/index.ts';
 import { randomId } from '../utils/random-id.ts';
 import { RepositoryError, RepositoryErrorCode } from '../repositories/repository-error.ts';
 import { redactSecrets, redactSecretText } from '../utils/redact.ts';
-import { tnodeRepository } from '../repositories/tnode-repository.ts';
-import type { EARS } from '../types/entities.ts';
+import { boundHost } from '../runtime/host-runtime.ts';
+import type { TNodeId } from '../services/run-history.ts';
 import type { StepRuntimeError } from '../steps/types.ts';
 import { createLogger } from './logger.ts';
 
@@ -169,7 +169,7 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
 
   if (runtimeError.tNodeId) {
     try {
-      tnodeRepository.updateTNodeResult(runtimeError.tNodeId as EARS.EntityId, {
+      boundHost().services.runHistory.update(runtimeError.tNodeId as TNodeId, { result: {
         error: {
           message: runtimeError.message,
           source: runtimeError.source,
@@ -177,9 +177,9 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
           errorId: runtimeError.errorId,
           stack: runtimeError.stack,
         },
-      });
+      } });
     } catch (err) {
-      logger.warn('Failed to persist runtime error on TNode', { tNodeId: runtimeError.tNodeId, error: err });
+      logger.warn('Failed to record the runtime error in the run history', { tNodeId: runtimeError.tNodeId, error: err });
     }
   }
 

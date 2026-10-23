@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { importFlows, mockService, startApp, takeSystemErrors, type TestApp } from '@apackdev/testing/harness'
 import { action, entry, on, keepAlive, schedule, subflow, transform } from '#generated/flow-helpers.ts'
 import { repository } from '#generated/repository.ts'
-import type { Services } from '#generated/services.ts'
+import { services, type Services } from '#generated/services.ts'
 import { isBrainPaused } from '#features/brain/be/utils/brain-pause.ts'
 
 const step = (label: string) => transform('return true', { label })
@@ -249,7 +249,10 @@ describe('schedule triggers', () => {
     await app.connect()
     await scheduled
 
-    expect([...ticks.keys()]).toEqual([expect.stringMatching(/^TNode-Root:/)])
+    // Keyed by the flow run that registered it: the session's root run
+    const root = services.runHistory.findRuns().find((run) => run.parentId === undefined && run.status === 'active')
+    expect(root).toBeDefined()
+    expect([...ticks.keys()]).toEqual([expect.stringMatching(new RegExp(`^${root!.id}:`))])
     expect(app.flowTrace('Nightly')).toEqual([])
 
     for (const tick of ticks.values()) tick()

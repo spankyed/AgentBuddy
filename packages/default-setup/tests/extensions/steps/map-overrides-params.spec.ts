@@ -72,7 +72,7 @@ describe('a fire step whose payload mapping resolves to nothing', () => {
     await app.runFlow('Outer', { event: 'go', data: { present: 'from the event' } })
     await app.settle()
     const step = app.flowTrace('Outer').find((s) => s.label === 'ping')
-    return (step?.nodeAttributes.result as { payload?: unknown } | undefined)?.payload
+    return (step?.result as { payload?: unknown } | undefined)?.payload
   }
 
   it('fires the payload set beside the mapping', async () => {

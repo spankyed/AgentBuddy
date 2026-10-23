@@ -9,7 +9,7 @@ import { repository } from '#generated/repository.ts';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { createStepNodeSystem } from './step-system.ts';
 import { EARS } from '#generated/ears.ts';
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, TNode, TNodeId } from '@apackdev/sdk/steps';
 import { safeEvents } from '@apackdev/sdk/helpers';
 import { brainRuntime } from './system.ts';
 import { brainLogger } from './utils/brain-inspect.ts';
@@ -77,7 +77,7 @@ type TNodeFlowMachineContext = {
   flowLabel: string;
   flowStepNodeId?: EARS.EntityId;  // The original flow step node ID (for completion tracking)
   flowStepLabel?: string;  // The flow step node label (for $.steps[label] references)
-  eventTNodeId?: EARS.EntityId;
+  eventTNodeId?: TNodeId;
   eventNodes: FlowTriggerNode[];
   // Map of event track execution contexts by eventTNodeId
   eventTrackContexts: Record<EARS.EntityId, ExecutionContext>;
@@ -102,9 +102,9 @@ type TNodeFlowMachineContext = {
   // Deferred next-steps when brain is paused
   pendingNextSteps: Array<{
     nextNode: NodeEntity;
-    eventTNodeId: EARS.EntityId;
+    eventTNodeId: TNodeId;
     executionContext: ExecutionContext;
-    parentTNodeId?: EARS.EntityId;
+    parentTNodeId?: TNodeId;
   }>;
   // Deferred events when brain is paused (replayed on resume)
   pendingEvents: Array<Record<string, any>>;
@@ -114,17 +114,17 @@ type ChildCompletedEvent =
   | {
     type: 'CHILD_COMPLETED';
     stepId?: EARS.EntityId;
-    tNodeId?: EARS.EntityId;
+    tNodeId?: TNodeId;
     stepLabel?: string;
     result?: any;
     failed?: boolean;
     final?: boolean;
-    eventTNodeId?: EARS.EntityId;
+    eventTNodeId?: TNodeId;
     isFlow?: boolean; // Simple flag to indicate if completing child was a flow
   }
   | { type: 'KILL_FLOW' }
   | { type: 'RESUME_FLOW' }
-  | { type: 'TNODE_UPDATED'; data: { tNodeId: EARS.EntityId; status: string; eventTNodeId?: EARS.EntityId } }
+  | { type: 'TNODE_UPDATED'; data: { tNodeId: TNodeId; status: string; eventTNodeId?: TNodeId } }
   | { type: 'FIRE_LOCAL_EVENT'; eventType: string; payload?: any };
 
 type TNodeFlowMachineInput = {};
@@ -141,9 +141,9 @@ const typeOf = safeEvents<ChildCompletedEvent>();
 function createChildNode(
   brain: AnyActorRef,
   stepOrFlowNode: NodeEntity,
-  eventTNodeId: EARS.EntityId,
+  eventTNodeId: TNodeId,
   executionContext?: ExecutionContext,
-  parentTNodeId?: EARS.EntityId,
+  parentTNodeId?: TNodeId,
 ) {
   if (!stepOrFlowNode?.id) {
     throw new Error(`Invalid node passed to createChildNode: ${JSON.stringify(stepOrFlowNode)}`);
@@ -184,7 +184,7 @@ function spawnFlowChild(
  * the track starts with the parent track's steps and last step.
  */
 function subflowEntry(
-  flowTNode: TNodeEntity,
+  flowTNode: TNode,
   parent: ExecutionContext | undefined,
 ): { data: Record<string, unknown>; steps: TNodeFlowMachineContext['entrySteps'] } {
   const mapped = flowTNode.resolvedParams ?? {};
@@ -207,10 +207,10 @@ function subflowEntry(
 export function createFlowNodeSystem(
   brain: AnyActorRef,
   flowId?: EARS.EntityId,
-  eventTNodeId?: EARS.EntityId,
+  eventTNodeId?: TNodeId,
   executionContext?: ExecutionContext,
   hasParent: boolean = false,
-  parentTNodeId?: EARS.EntityId,
+  parentTNodeId?: TNodeId,
 ) {
   const servicesForAction = executionContext ? executionContext.runtime.servicesForAction : ownServicesForAction;
   const isRootFlow = !flowId;
@@ -221,7 +221,7 @@ export function createFlowNodeSystem(
       const { rootFlow, rootFlowTNode } = repository.brainCommands.createRootFlowTNode();
       return {
         actualFlowId: rootFlow.id,
-        flowTNodeId: rootFlowTNode.id || 'TNode-Root',
+        flowTNodeId: rootFlowTNode.id,
         flowTNode: rootFlowTNode,
       };
     })()
@@ -666,7 +666,7 @@ export function createFlowNodeSystem(
       context: () => ({
         flowId: actualFlowId,
         flowLabel: flowTNode?.label || 'Unknown Flow',
-        flowStepNodeId: flowTNode?.blueprint?.nodeId,  // Store the original flow step node ID
+        flowStepNodeId: flowTNode?.nodeId,  // Store the original flow step node ID
         flowStepLabel: flowTNode?.label,  // Store the flow step node label for references
         eventTNodeId: eventTNodeId,
         eventNodes: allTriggerNodes,

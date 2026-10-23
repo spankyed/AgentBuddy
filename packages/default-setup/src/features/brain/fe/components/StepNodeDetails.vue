@@ -83,7 +83,7 @@
         </div>
 
         <!-- View Blueprint Button (positioned above Execution Info) -->
-        <div v-if="node.blueprint" class="flex justify-end px-2 pb-2">
+        <div v-if="node.revealIn" class="flex justify-end px-2 pb-2">
           <button
             @click="openBlueprint"
             class="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-400 transition-colors rounded hover:bg-neutral-700/50 hover:text-blue-300"
@@ -118,12 +118,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
-import type { TNodeEntity } from '@apackdev/sdk/steps';
+import type { TNode } from '@apackdev/sdk/steps';
+import type { EARS } from '@apackdev/sdk';
+type EntityId = EARS.EntityId;
 import DataRenderer from '@apackdev/ui/components/DataRenderer';
 import { openSurface } from '#generated/fe.ts';
 
 interface Props {
-  node?: TNodeEntity;
+  /** The run node, with where its blueprint is when it has one (the brain's TNODE_DETAILS) */
+  node?: TNode & { revealIn?: { flowId: EntityId; nodeId: EntityId } };
 }
 
 const props = defineProps<Props>();
@@ -132,9 +135,9 @@ const emit = defineEmits<{
 }>();
 
 const openBlueprint = () => {
-  const blueprint = props.node?.blueprint;
-  if (!blueprint) return;
-  openSurface('flows', { type: 'NODE.REVEAL', flowId: blueprint.flowId, nodeId: blueprint.nodeId });
+  const revealIn = props.node?.revealIn;
+  if (!revealIn) return;
+  openSurface('flows', { type: 'NODE.REVEAL', flowId: revealIn.flowId, nodeId: revealIn.nodeId });
   emit('close');
 };
 
@@ -146,31 +149,17 @@ const statusClasses = computed(() => {
       return 'text-blue-400';
     case 'failed':
       return 'text-red-400';
-    case 'paused':
+    case 'stopped':
       return 'text-yellow-400';
     default:
       return 'text-neutral-400';
   }
 });
 
-// Separate input params from output result
-const inputParams = computed(() => {
-  if (!props.node?.nodeAttributes) return {};
-  
-  const params: Record<string, any> = {};
-  for (const [key, value] of Object.entries(props.node.nodeAttributes)) {
-    // Exclude result as it's shown in output section
-    if (key !== 'result') {
-      params[key] = value;
-    }
-  }
-  
-  return params;
-});
+// What the step ran with; what it returned is its own field, shown in the output section
+const inputParams = computed(() => props.node?.nodeAttributes ?? {});
 
-const outputResult = computed(() => {
-  return props.node?.nodeAttributes?.result;
-});
+const outputResult = computed(() => props.node?.result);
 
 const runtimeError = computed(() => {
   const result = outputResult.value as any;

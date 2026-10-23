@@ -13,7 +13,7 @@
 // which is what lets the viewer place an answer by the page it is for instead of by where it has got to.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import type { TNodeEntity } from '@apackdev/sdk/steps';
+import type { RunTree } from '@apackdev/sdk/steps';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));
@@ -22,10 +22,10 @@ const { default: databaseState } = await import('#features/database/fe/state.ts'
 
 /**
  * A trace node as the viewer lists it: the two fields it reads, which is deliberately not a whole
- * `TNodeEntity`. **The cast stops here** — the events the cases send are checked, so a misspelled event
+ * `TNode`. **The cast stops here** — the events the cases send are checked, so a misspelled event
  * type is a compile error rather than a send the machine ignores while the case asserts nothing.
  */
-const anEvent = (id: string) => ({ id, label: id }) as unknown as TNodeEntity;
+const anEvent = (id: string) => ({ id, label: id, children: [] }) as unknown as RunTree;
 
 /** An answer, which says which page of which flow it is */
 const page = (flowId: string, offset: number, ids: string[], hasMore = false) =>

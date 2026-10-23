@@ -239,7 +239,7 @@ it('summarizes a note', async () => {
   const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
 
   expect(run.steps).toEqual([expect.objectContaining({ label: 'summarize', status: 'completed' })]);
-  expect(run.steps[0].nodeAttributes.result).toMatchObject({ text: 'Buy milk' });
+  expect(run.steps[0].result).toMatchObject({ text: 'Buy milk' });
 });
 ```
 
@@ -247,7 +247,7 @@ it('summarizes a note', async () => {
 - **`runFlow(label, { event?, data?, timeoutMs? })`** (default timeout 10 000 ms, covering its sends and settling) sends `event` with `data` as its payload, as a client sends an event to the brain, and waits for the flow labelled `label`, which must be running (the root flow or a subflow).
   - It resolves once every track of that flow the event triggered has finished: steps completed or failed, apart from steps that wait by design (keep-alive).
   - Without `event`, it resolves with the entry tracks the flow ran when it started.
-  - It returns a `FlowRun`: `eventTNodeIds`, the trace nodes of the tracks the event triggered, and `steps`, the steps those tracks ran in start order, each a `FlowStepTrace` (`tNodeId`, `label`, `tNodeType` (`step`, or `flow` for a subflow), `status`, `nodeAttributes` (with `result`) and `params` (the inputs resolved from the event and earlier steps)).
+  - It returns a `FlowRun`: `eventTNodeIds`, the run-history nodes of the tracks the event triggered, and `steps`, the steps those tracks ran in start order, each a `FlowStepTrace` (`tNodeId`, `label`, `tNodeType` (`step`, or `flow` for a subflow), `status`, `nodeAttributes`, `params` (the inputs resolved from the event and earlier steps) and `result`, what the step returned).
   - It never makes a flow the root flow or restarts the brain; it fails naming the running flows when `label` isn't one.
   - The result holds only the tracks `event` triggered. Tracks started by events those tracks send (a `fire` step, a `TRIGGER_BRAIN_EVENT` sent to the brain's role) aren't in it: `await app.settle()`, then read them with `flowTrace`.
   - It doesn't connect the app: flows run, and events from `fire` steps and schedule ticks reach the brain, without a client. Connect only to read what systems send to surfaces (`emitted`, `nextEmit`).

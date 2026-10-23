@@ -8,8 +8,8 @@ import { ComponentOptionsMixin } from 'vue';
 import { ComponentProvideOptions } from 'vue';
 import { DefineComponent } from 'vue';
 import { PublicProps } from 'vue';
-import type { TNodeEntity } from '@apackdev/sdk/steps';
-import type { TrackTree } from '@apackdev/sdk/steps';
+import type { RunTree } from '@apackdev/sdk/steps';
+import type { TNode } from '@apackdev/sdk/steps';
 
 // @public (undocumented)
 const _default: typeof __VLS_export;

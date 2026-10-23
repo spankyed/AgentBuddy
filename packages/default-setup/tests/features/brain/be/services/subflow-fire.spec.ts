@@ -115,7 +115,7 @@ describe('fire', () => {
 
     const labels = (flow: string) => app.flowTrace(flow).map((s) => s.label)
     expect(['A', 'B'].filter((flow) => labels(flow).includes(`${flow} heard`))).toEqual(heardBy)
-    const fired = app.flowTrace('A').find((s) => s.label === 'fire ping')?.nodeAttributes.result as { targetFlowId?: string }
+    const fired = app.flowTrace('A').find((s) => s.label === 'fire ping')?.result as { targetFlowId?: string }
     // A local event names the flow it was sent to, so a listener can tell it from a global one
     expect(heard).toEqual([{ type: 'ping', payload: undefined, targetFlowId: scope === 'local' ? expect.stringMatching(/^TNode/) : undefined }])
     expect(heard[0].targetFlowId).toBe(fired.targetFlowId)

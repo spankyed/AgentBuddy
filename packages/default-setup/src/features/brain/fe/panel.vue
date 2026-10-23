@@ -86,7 +86,7 @@ import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { BrainState } from '#features/brain/fe/state.ts'
 import TNodeListItem from '@apackdev/ui/components/TNodeListItem'
-import type { TrackTree } from '@apackdev/sdk/steps'
+import type { RunTree } from '@apackdev/sdk/steps'
 import { sendToSystem } from '#generated/events.ts'
 
 const brainActor: BrainState = useSurface();
@@ -104,18 +104,18 @@ watch(flowTNodeId, () => {
   displayCount.value = PAGE_SIZE;
 });
 
-// Convert normalized tree back to TrackTree[] format, reversed (newest first)
-const tNodeTree = computed((): TrackTree[] => {
+// Convert normalized tree back to RunTree[] format, reversed (newest first)
+const tNodeTree = computed((): RunTree[] => {
   if (!normalizedTree.value) return [];
 
-  function buildNode(id: string): TrackTree {
+  function buildNode(id: string): RunTree {
     const node = normalizedTree.value!.byId[id];
     const childIds = normalizedTree.value!.childrenById[id] || [];
 
     return {
       ...node,
       children: childIds.map(childId => buildNode(childId))
-    } as TrackTree;
+    } as RunTree;
   }
 
   return normalizedTree.value.rootIds.slice().reverse().map(id => buildNode(id));

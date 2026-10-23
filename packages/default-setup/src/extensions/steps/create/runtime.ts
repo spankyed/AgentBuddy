@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
 import { reportError, createLogger } from '@apackdev/sdk/logger';
 import { isEntityType } from '@apackdev/sdk/ears';
 import { EARS, create } from '#generated/ears.ts';
@@ -12,7 +12,7 @@ type StepActor = { send: (event: { type: 'COMPLETE'; result: unknown } | { type:
 const LABEL_SOURCES = ['title', 'name', 'topic'] as const;
 
 /** The step's fields: its literal params with its resolved mappings over them, without undefined values */
-export function stepFields(tNode: TNodeEntity): Record<string, unknown> {
+export function stepFields(tNode: TNode): Record<string, unknown> {
   return Object.fromEntries(Object.entries(tNode.resolvedParams ?? {}).filter(([, value]) => value !== undefined));
 }
 
@@ -35,7 +35,7 @@ export function createEntityRow(entityType: string, fields: Record<string, unkno
 }
 
 /** Reports a create or update step's error against its TNode */
-export function reportStepError(error: unknown, t: TNodeEntity, n: CreateNode | { id: string; label: string; nodeType: string }, ctx: ExecutionContext) {
+export function reportStepError(error: unknown, t: TNode, n: CreateNode | { id: string; label: string; nodeType: string }, ctx: ExecutionContext) {
   return reportError({
     error,
     source: `brain-${n.nodeType}`,
@@ -51,7 +51,7 @@ export function reportStepError(error: unknown, t: TNodeEntity, n: CreateNode | 
   });
 }
 
-export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as CreateNode;
   const a = actor as StepActor;
   try {

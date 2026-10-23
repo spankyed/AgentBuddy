@@ -7,6 +7,7 @@ import { defineSystem } from '@apackdev/sdk/framework';
 import { EARS } from '#generated/ears.ts';
 import type { Contract } from './contract.ts';
 import type { BrainContext, FlowTNodeData } from './types.ts';
+import type { TNodeId } from '@apackdev/sdk/steps';
 import { repository } from '#generated/repository.ts';
 import { createLogger, reportError, setDebugEnabled, isDebugEnabled } from '@apackdev/sdk/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system.ts';
@@ -47,7 +48,7 @@ function stopWithoutRootFlow({ clientConnected }: BrainContext): Partial<BrainCo
   if (!startError) logger.warn('No flow to run; start the brain once a flow exists');
   else if (clientConnected) reportStartError(startError);
   broadcastToSurface('brain', { type: 'BRAIN_KILLED', startError: startError?.message });
-  return { brainActor: undefined, runningRootFlowId: undefined, startError, startErrorReported: clientConnected };
+  return { brainActor: undefined, runningRootFlowId: undefined, rootRunId: undefined, startError, startErrorReported: clientConnected };
 }
 
 export const brainSystem = setup({
@@ -79,7 +80,7 @@ export const brainSystem = setup({
 
       // Start new brain and assign to context
       enqueue.assign(({ spawn, self }) => {
-        const { machine } = createFlowNodeSystem(self)
+        const { machine, tNodeId } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
           input: {}
         });
@@ -90,6 +91,7 @@ export const brainSystem = setup({
         return {
           brainActor: actor,
           runningRootFlowId: currentRootFlowId,
+          rootRunId: tNodeId,
           startError: undefined,
         };
       });
@@ -104,7 +106,7 @@ export const brainSystem = setup({
           });
         }
 
-        const data = repository.brainQueries.rootData();
+        const data = repository.brainQueries.rootData(context.rootRunId);
 
         broadcastToSurface('brain', {
           type: 'RECEIVE_SURFACE_DATA',
@@ -142,10 +144,10 @@ export const brainSystem = setup({
       if (context.brainActor) {
         setBrainPausedState(false);
         enqueue.stopChild(context.brainActor);
-        enqueue.assign({ brainActor: undefined, runningRootFlowId: undefined, eventQueue: [] });
+        enqueue.assign({ brainActor: undefined, runningRootFlowId: undefined, rootRunId: undefined, eventQueue: [] });
 
-        // Clear all volatile TNode data
-        repository.brainCommands.clearVolatileData();
+        // The runs it ended stay in the run history, stopped
+        repository.brainCommands.stopActive();
 
         // Clear all ad-hoc brain event listeners
         removeAllAdHocListeners();
@@ -163,7 +165,7 @@ export const brainSystem = setup({
             type: 'BRAIN_KILLED'
         });
         
-        logger.info('Brain flow machine killed and volatile data cleared');
+        logger.info('Brain flow machine killed and its runs stopped');
       }
     }),
     
@@ -180,8 +182,8 @@ export const brainSystem = setup({
         enqueue.stopChild(context.brainActor);
       }
 
-      // Clear all volatile TNode data
-      repository.brainCommands.clearVolatileData();
+      // The runs it ends stay in the run history, stopped
+      repository.brainCommands.stopActive();
 
       // Clear all ad-hoc brain event listeners
       removeAllAdHocListeners();
@@ -215,13 +217,13 @@ export const brainSystem = setup({
       
       // Start new brain and assign to context
       enqueue.assign(({ spawn, self }) => {
-        const { machine } = createFlowNodeSystem(self)
+        const { machine, tNodeId } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
           input: {}
         });
         
         // Send fresh data after starting new brain
-        const data = repository.brainQueries.rootData();
+        const data = repository.brainQueries.rootData(tNodeId);
         broadcastToSurface('brain', { 
           type: 'RECEIVE_SURFACE_DATA',
           data
@@ -238,6 +240,7 @@ export const brainSystem = setup({
         return {
           brainActor: actor,
           runningRootFlowId: currentRootFlowId,
+          rootRunId: tNodeId,
           startError: undefined,
         };
       });
@@ -246,16 +249,16 @@ export const brainSystem = setup({
     sendSurfaceData: ({ context, event, self }) => {
       // Use provided flowTNodeId or fall back to root
       const flowId = event.type === 'REQUEST_SURFACE_DATA' && event.flowTNodeId
-        ? event.flowTNodeId as EARS.EntityId<'TNode'>
+        ? event.flowTNodeId as TNodeId
         : undefined;
 
       let data: FlowTNodeData;
       try {
         data = flowId
           ? repository.brainQueries.extendedTNodeData(flowId)
-          : repository.brainQueries.rootData();
+          : repository.brainQueries.rootData(context.rootRunId);
       } catch {
-        // TNode was destroyed (e.g., volatile data cleared after brain kill)
+        // A run the history no longer holds (pruned, or the data replaced)
         data = { flowTNodeId: '' as EARS.EntityId, tNodeTree: [], possibleEvents: [], flowHierarchy: [] };
       }
 
@@ -293,7 +296,7 @@ export const brainSystem = setup({
     },
     openTNode: ({ event }) => {
       const ev = brainSpec.typeOf('OPEN_TNODE', event);
-      const tNodeId = ev.tNodeId as EARS.EntityId<'TNode'>;
+      const tNodeId = ev.tNodeId as TNodeId;
 
       // Check if this is a flow TNode before trying to get extended data
       const tNode = repository.brainQueries.tNodeById(tNodeId);
@@ -310,15 +313,13 @@ export const brainSystem = setup({
         data
       });
     },
-    goBackTNode: ({ event }) => {
-      const currentFlowTNodeId = brainSpec.typeOf('GO_BACK_TNODE', event).currentFlowTNodeId as EARS.EntityId<'TNode'> | undefined;
-      const parentFlowTNodeId = currentFlowTNodeId
-        ? repository.brainQueries.tNodeById(currentFlowTNodeId)?.nodeAttributes?._parentFlowTNodeId as EARS.EntityId<'TNode'> | undefined
-        : undefined;
+    goBackTNode: ({ context, event }) => {
+      const currentFlowTNodeId = brainSpec.typeOf('GO_BACK_TNODE', event).currentFlowTNodeId as TNodeId | undefined;
+      const parentFlow = currentFlowTNodeId ? repository.brainQueries.parentFlowOf(currentFlowTNodeId) : undefined;
 
-      const data = parentFlowTNodeId
-        ? repository.brainQueries.extendedTNodeData(parentFlowTNodeId)
-        : repository.brainQueries.rootData();
+      const data = parentFlow
+        ? repository.brainQueries.extendedTNodeData(parentFlow.id)
+        : repository.brainQueries.rootData(context.rootRunId);
 
       broadcastToSurface('brain', {
         type: 'TNODE_OPENED',
@@ -328,15 +329,16 @@ export const brainSystem = setup({
     },
     getTNodeDetails: ({ event }) => {
       const ev = brainSpec.typeOf('GET_TNODE_DETAILS', event);
-      const tNodeId = ev.tNodeId as EARS.EntityId<'TNode'>;
+      const tNodeId = ev.tNodeId as TNodeId;
       
       const tNode = repository.brainQueries.tNodeById(tNodeId);
+      const revealIn = repository.brainQueries.revealIn(tNodeId);
       
       broadcastToSurface('brain', {
         type: 'TNODE_DETAILS',
         tNodeId,
         // An event is JSON, where a missing TNode has to be said: null
-        details: tNode ?? null
+        details: tNode ? { ...tNode, ...(revealIn && { revealIn }) } : null
       });
     },
     toggleInspect: () => {

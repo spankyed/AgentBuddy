@@ -100,13 +100,23 @@ type Indexed = { runOf?: EARS.EntityId; isRoot?: true };
 
 const logger = createLogger('run-history');
 
-/** A node as the store holds it: values JSON can hold, and the fields it is found by */
+/**
+ * The values being written, made storable and bounded. Only those: a value stored earlier was bounded when it was
+ * written, and bounding it again would wrap its marker in another
+ */
+function bounded<T extends Partial<TNode>>(fields: T): T {
+  return {
+    ...fields,
+    ...(fields.nodeAttributes !== undefined && { nodeAttributes: truncateResult(fields.nodeAttributes) as Record<string, unknown> }),
+    ...(fields.resolvedParams !== undefined && { resolvedParams: truncateResult(fields.resolvedParams) as Record<string, unknown> }),
+    ...(fields.result !== undefined && { result: truncateResult(fields.result) }),
+  };
+}
+
+/** A node as the store holds it: with the fields it is found by */
 function stored(node: TNode): TNode & Indexed {
   return {
     ...node,
-    ...(node.nodeAttributes !== undefined && { nodeAttributes: truncateResult(node.nodeAttributes) as Record<string, unknown> }),
-    ...(node.resolvedParams !== undefined && { resolvedParams: truncateResult(node.resolvedParams) as Record<string, unknown> }),
-    ...(node.result !== undefined && { result: truncateResult(node.result) }),
     ...(node.tNodeType === 'flow' && node.flowId !== undefined && { runOf: node.flowId }),
     ...(node.parentId === undefined && { isRoot: true }),
   };
@@ -125,7 +135,7 @@ export function _createRunHistory(records: _RunHistoryRecords): RunHistory {
     newId: () => records.newId('TNode') as TNodeId,
     add(node) {
       if (node.parentId === undefined) {
-        records.put(stored({ ...node, rootId: node.id }));
+        records.put(stored({ ...bounded(node), rootId: node.id }));
         return;
       }
       const parent = read(records.get(node.parentId));
@@ -133,11 +143,11 @@ export function _createRunHistory(records: _RunHistoryRecords): RunHistory {
         logger.warn(`Dropped run node ${node.id}: its parent ${node.parentId} isn't in the run history`);
         return;
       }
-      records.put(stored({ ...node, rootId: parent.rootId }));
+      records.put(stored({ ...bounded(node), rootId: parent.rootId }));
     },
     update(id, patch) {
       const node = read(records.get(id));
-      if (node) records.put(stored({ ...node, ...patch }));
+      if (node) records.put(stored({ ...node, ...bounded(patch) }));
     },
     get: (id) => read(records.get(id)),
     findChildren: (id, page = {}) => nodes(records.findBy('parentId', id, page)),

@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
 import type { NodeEntity } from '#generated/types.ts';
 import { EARS } from '@apackdev/sdk';
 import { repository } from '#generated/repository.ts';
@@ -21,7 +21,7 @@ interface LLMNodeConfig {
 
 type LLMNode = NodeEntity & LLMNodeConfig;
 
-function generatePrompt(tNode: TNodeEntity, node: LLMNode): string {
+function generatePrompt(tNode: TNode, node: LLMNode): string {
   const nodeData = tNode.nodeAttributes || {};
 
   if (nodeData.prompt && typeof nodeData.prompt === 'string') {
@@ -55,7 +55,7 @@ function generatePrompt(tNode: TNodeEntity, node: LLMNode): string {
   return 'No prompt specified';
 }
 
-export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as LLMNode;
   const a = actor as { send: (event: any) => void };
   const nodeData = t.nodeAttributes || {};

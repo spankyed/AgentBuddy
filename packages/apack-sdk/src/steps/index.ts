@@ -28,10 +28,11 @@ export type {
   TNodeKind,
   TNodeEntity,
   SdkEntityShapes,
-  TrackTree,
   ExecutionEvent,
   StepRun,
   RuntimeServices,
   ExecutionContext,
   StepRuntimeError,
 } from './types.ts';
+// A step handler is handed its run node: the run history's record of this step
+export type { TNode, TNodeId, RunStatus, RunTree } from '../services/run-history.ts';

@@ -143,7 +143,7 @@ const tNodeTree = useSelector(actor, (state) => state.context.tNodeTree);
 const possibleEvents = useSelector(actor, (state) => state.context.possibleEvents);
 const flowTNodeId = useSelector(actor, (state) => state.context.flowTNodeId);
 const pulsingEventType = useSelector(actor, (state) => state.context.pulsingEventType);
-const canGoBack = useSelector(actor, (state) => state.context.flowTNodeId !== 'TNode-Root');
+const canGoBack = useSelector(actor, (state) => (state.context.flowHierarchy?.length ?? 0) > 1);
 const brainIsPaused = useSelector(actor, (state) => state.context.brainIsPaused);
 const brainIsDead = useSelector(actor, (state) => state.context.brainIsDead);
 const latestRuntimeError = useSelector(actor, (state) => state.context.latestRuntimeError);

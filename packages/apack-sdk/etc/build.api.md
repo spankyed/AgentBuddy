@@ -5,7 +5,6 @@
 ```ts
 
 import type { AnyActorRef } from 'xstate';
-import type { BaseEntity } from '@apackdev/ears';
 import { Ears } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
 import { z } from 'zod';

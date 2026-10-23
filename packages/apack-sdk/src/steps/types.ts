@@ -93,6 +93,7 @@ export interface StepBuildFacet {
 import type { AnyActorRef } from 'xstate';
 import type { BaseEntity } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
+import type { TNode } from '../services/run-history.ts';
 
 export type TimestampMs = number;
 export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
@@ -121,18 +122,6 @@ export interface TNodeEntity extends BaseEntity {
 // Kept here for packs whose built types import it from @apackdev/sdk/steps
 export type { SdkEntityShapes } from '../types/sdk-entities.ts';
 
-/**
- * One track's execution, as a tree: a persisted TNode with its SPAWNED children
- * hydrated in memory.
- *
- * Deliberately not named `TrackEntity` — `Track` is not a declared entity type,
- * and in this codebase an `XEntity` suffix means "shape of a persisted EARS
- * entity" (i.e. an entity in a pack's PackShapes). Not to be confused with `Track`
- * in build/compilers/flow-types.ts, which is the static DSL track definition.
- */
-export interface TrackTree extends TNodeEntity {
-  children: TrackTree[];
-}
 
 export interface ExecutionEvent {
   type: string;
@@ -194,7 +183,7 @@ export interface StepRuntimeFacet {
    * - **Keep-alive**: never send COMPLETE → actor stays in executing state
    * - **Final**: set `final: true` on the compiled node → triggers flow completion
    */
-  handler?: (tNode: TNodeEntity, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
+  handler?: (tNode: TNode, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
   isAsync?: boolean;
   /** When true, the brain spawns a sub-flow machine instead of a step machine. */
   spawnsSubflow?: boolean;

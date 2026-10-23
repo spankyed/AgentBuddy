@@ -85,6 +85,17 @@ describe.each(Object.keys(STORES))('the run history %s', (where) => {
     expect(history.get('TNode-missing')).toBeUndefined();
   });
 
+  it('bounds a long result once, however often the node is written after', () => {
+    const history = fresh();
+    const step = node(history, { tNodeType: 'flow' });
+    history.update(step, { result: { text: 'x'.repeat(20_000) } });
+    history.update(step, { status: 'completed' });
+    history.stopActive();
+    const text = (history.get(step)!.result as { text: { value: unknown; _truncated?: boolean } }).text;
+    expect(text._truncated).toBe(true);
+    expect(typeof text.value).toBe('string');
+  });
+
   it('stores what a step returned in a form the store can hold', () => {
     const history = fresh();
     const step = node(history, { tNodeType: 'flow' });

@@ -7,7 +7,6 @@
 import type { ActionArgs } from 'xstate';
 import type { AnyActorRef } from 'xstate';
 import type { AnyStateMachine } from 'xstate';
-import type { BaseEntity } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
 import type { EventObject } from 'xstate';
 import type { MachineContext } from 'xstate';

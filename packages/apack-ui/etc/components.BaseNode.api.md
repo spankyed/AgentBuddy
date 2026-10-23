@@ -19,7 +19,7 @@ export interface BaseNodeData {
     // (undocumented)
     nodeType?: string;
     // (undocumented)
-    status?: 'active' | 'paused' | 'completed' | 'failed';
+    status?: 'active' | 'stopped' | 'completed' | 'failed';
 }
 
 // @public (undocumented)
