@@ -73,11 +73,13 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - `create(type, row)` takes the whole row (`CreateFields & RowIdentity`): every field the shape requires
   (`RequiredField`), any optional one, and the `id`, `createdAt` and `updatedAt` an import keeps. The row argument
   is required exactly when the shape requires a field, so an incomplete row doesn't compile; `upsert(type, id, row)`
-  is held to the same row, and `createEntityWithDefaults` to it without the short code and label it generates.
-  The engine holds every write to the same rule at runtime: codegen reads each pack shape's required fields with the
-  TypeScript checker (`requiredFieldsOf`) into its registration (`PackEARS.requiredFields`), the SDK lists its own
-  (`SDK_REQUIRED_FIELDS`, compiler-checked against its shapes), and `create` refuses a row without one, `delete`
-  one of them (`REQUIRED_FIELD`) — the untyped twins, content writers and the console included.
+  is held to the same row. A `shortCode` the shape types as `ShortCode<prefix>` is a required field the row may
+  leave out (`NumberedField`), since `create` numbers it.
+  The engine holds every write to the same rules at runtime: codegen reads each pack shape's required fields and
+  short-code prefix with the TypeScript checker (`rowRulesOf`) into its registration (`PackEARS.rowRules`), the SDK
+  lists its own (`SDK_ROW_RULES`, compiler-checked against its shapes), and `create` numbers a short code a row
+  lacks, refuses a row without a required field and `delete` one of them (`REQUIRED_FIELD`) — the untyped twins,
+  content writers and the console included.
 - `delete` takes only an optional field (`OptionalField`): removing a required one would leave a row its shape
   misdescribes, so a required field is replaced with `set`. `deleteAt` and `deleteValue` edit a list and remove
   no field, so they take any writable one.

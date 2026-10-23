@@ -4,8 +4,7 @@
  */
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  findById, findAll, findWhere, query, write,
-  createEntityWithDefaults, getAttr,
+  findById, findAll, findWhere, query, write, create, getAttr,
 } from '#generated/ears.ts';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { EARS } from '#generated/ears.ts';
@@ -22,12 +21,8 @@ describe('Tier 1 — EARS delegates', () => {
     expect(label).toBe('test-action');
   });
 
-  it('createEntityWithDefaults produces a complete entity', () => {
-    const entity = createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'SDK Test', actionFn: 'noop()' } as any,
-      'ACT',
-    );
+  it('create numbers an Action with its short code', () => {
+    const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'SDK Test', actionFn: 'noop()' }).id())!;
     expect(entity.id).toMatch(/^Action-/);
     expect(entity.label).toBe('SDK Test');
     expect(entity.shortCode).toMatch(/^ACT-/);
@@ -35,11 +30,7 @@ describe('Tier 1 — EARS delegates', () => {
   });
 
   it('findById / findAll / findWhere round-trip', () => {
-    const entity = createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'Findable', actionFn: 'fn()', category: 'test' } as any,
-      'ACT',
-    );
+    const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'Findable', actionFn: 'fn()', category: 'test' }).id())!;
 
     expect(findById(entity.id)).toBeDefined();
     expect(findAll(EARS.Entity.Action as any).length).toBe(1);
@@ -47,11 +38,7 @@ describe('Tier 1 — EARS delegates', () => {
   });
 
   it('query.withTrashed reaches an entity in the trash, which findById does not', () => {
-    const entity = createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'ToDelete', actionFn: 'fn()' } as any,
-      'ACT',
-    );
+    const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'ToDelete', actionFn: 'fn()' }).id())!;
     write(entity.id).trash(5);
 
     expect(findById(entity.id)).toBeUndefined();
@@ -59,11 +46,7 @@ describe('Tier 1 — EARS delegates', () => {
   });
 
   it('query.ids(id).exists() answers for existing entities', () => {
-    const entity = createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { input: {}, label: 'Exists', actionFn: 'fn()' } as any,
-      'ACT',
-    );
+    const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'Exists', actionFn: 'fn()' }).id())!;
     expect(query.ids(entity.id).exists()).toBe(true);
     expect(query.ids('Action-nonexistent' as any).exists()).toBe(false);
   });

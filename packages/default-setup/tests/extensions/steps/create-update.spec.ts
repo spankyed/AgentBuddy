@@ -37,7 +37,9 @@ describe('create step', () => {
 
     const run = await app.runFlow('Notes', { event: 'note', data: 'Groceries' })
 
-    expect(result(run.steps[0]).label).toMatch(/^New Note/)
+    // Nothing invents one in its place: a Note has no label unless the flow maps one
+    expect(result(run.steps[0])).toMatchObject({ title: 'Groceries' })
+    expect(result(run.steps[0]).label).toBeUndefined()
   })
 
   it("creates an entity type the running app registered that this pack's own facade doesn't know (another pack's)", async () => {

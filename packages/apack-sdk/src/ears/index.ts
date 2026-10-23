@@ -77,7 +77,6 @@ export const getAllEntityTypes = onBound('getAllEntityTypes');
 export const getAllAttributeKinds = onBound('getAllAttributeKinds');
 export const getAllRelationKinds = onBound('getAllRelationKinds');
 export const getSchemaStats = onBound('getSchemaStats');
-export const generateShortCode = onBound('generateShortCode');
 export const generateLabelWithCount = onBound('generateLabelWithCount');
 export const descendants = onBound('descendants');
 export const ancestors = onBound('ancestors');

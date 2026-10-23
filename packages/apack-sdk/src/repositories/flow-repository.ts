@@ -2,7 +2,7 @@
 // The SDK declares these entities (sdk-entities.ts), so it owns their reads and writes; packs build
 // their views on top (default-setup's flows repository).
 import { getTimestamp, RepositoryError, RepositoryErrorCode, RESERVED_ATTRIBUTES } from '@apackdev/ears';
-import { findRelations, generateLabelWithCount, generateShortCode, getRow, getRoles, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
+import { findRelations, generateLabelWithCount, getRow, getRoles, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import type { FlowEntity, NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
@@ -196,13 +196,14 @@ export const flowRepository = {
   createFlow: (flow?: Partial<FlowEntity>): FlowEntity => {
     const ts = getTimestamp();
     const fields = {
-      shortCode: generateShortCode(EARS.Entity.Flow, 'F'),
+      // A subflow names its flow by label, so a default one must be unique
       label: flow?.label || generateLabelWithCount('New Flow', EARS.Entity.Flow),
       description: flow?.description || FLOW_DEFAULTS.DESCRIPTION,
       flowType: flow?.flowType || FLOW_DEFAULTS.TYPE,
     };
+    // `create` numbers its short code
     const id = untypedCreate(EARS.Entity.Flow, { ...fields, createdAt: ts }).id();
-    return { id, entityType: EARS.Entity.Flow, createdAt: ts, updatedAt: ts, ...fields };
+    return getRow(id) as unknown as FlowEntity;
   },
 
   updateFlowLabel: (flowId: EARS.EntityId, label: string): void => {

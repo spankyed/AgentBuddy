@@ -2,11 +2,11 @@ import type { SettingsAdmin } from '../services/settings.ts';
 // The runtime a pack's unit tests run against: the EARS engine in memory, without the app.
 // @apackdev/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
 // (its query, repository and content-writer registries) instead of a copy.
-import { createEarsEngine, type EarsEngine } from '@apackdev/ears';
+import { createEarsEngine, type EarsEngine, type RowRules } from '@apackdev/ears';
 import { _bindEars } from '../ears/index.ts';
 import type { ContentRuntime } from '../framework/content-runtime.ts';
 export { nativePackDeclarationFixture } from './pack-declaration.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS, SDK_REQUIRED_FIELDS, SDK_ROLES } from '../types/sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROW_RULES, SDK_ROLES } from '../types/sdk-entities.ts';
 import type { EARS } from '../types/entities.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { _isHostBound } from '../runtime/host-runtime.ts';
@@ -32,8 +32,8 @@ export interface TestRuntimeStartOptions {
   relationKinds?: readonly string[];
   /** Roles beyond the SDK's; later calls add theirs */
   roles?: readonly string[];
-  /** The fields each entity type's row must hold, beyond the SDK's; later calls add theirs */
-  requiredFields?: Readonly<Record<string, readonly string[]>>;
+  /** What each entity type's created row is held to, beyond the SDK's; later calls add theirs */
+  rowRules?: Readonly<Record<string, RowRules>>;
   /**
    * The registered packs the SDK's lookups read (the harness passes the registry it creates), under `testPacks`, which
    * tests fill directly; none by default. First call only
@@ -58,7 +58,7 @@ export interface TestRuntimeStartOptions {
 const entityTypes = new Set<string>(Object.values(SDK_ENTITIES));
 const relationKinds = new Set<string>(Object.values(SDK_REL_KINDS));
 const roles = new Set<string>(Object.values(SDK_ROLES));
-const requiredFields = new Map<string, readonly string[]>(Object.entries(SDK_REQUIRED_FIELDS));
+const rowRules = new Map<string, RowRules>(Object.entries(SDK_ROW_RULES));
 let started: Pick<TestRuntimeStartOptions, 'packs' | 'appVersion' | 'onboarding' | 'settings' | 'serviceOverrides'> | undefined;
 let engine: EarsEngine | undefined;
 
@@ -68,7 +68,7 @@ function installFreshEngine(repositories: Record<string, unknown> = {}): EarsEng
     isEntityType: (value: string) => entityTypes.has(value),
     isRelationKind: (value: string) => relationKinds.has(value),
     isRole: (value: string) => roles.has(value),
-    requiredFields: (type: string) => requiredFields.get(type) ?? [],
+    rowRules: (type: string) => rowRules.get(type),
   });
   for (const [name, repo] of Object.entries(repositories)) engine.registerRepository(name, repo);
   _bindEars(engine);
@@ -94,7 +94,7 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
   for (const type of options.entityTypes ?? []) entityTypes.add(type);
   for (const kind of options.relationKinds ?? []) relationKinds.add(kind);
   for (const role of options.roles ?? []) roles.add(role);
-  for (const [type, fields] of Object.entries(options.requiredFields ?? {})) requiredFields.set(type, fields);
+  for (const [type, rules] of Object.entries(options.rowRules ?? {})) rowRules.set(type, rules);
   if (started) {
     for (const key of ['packs', 'appVersion', 'onboarding', 'serviceOverrides'] as const) {
       if (options[key] !== undefined && options[key] !== started[key]) {
@@ -112,7 +112,7 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
 
 /** Registers a pack's content runtime: its entity types, its repositories (with the engine) and its content writers (in `testPacks`) */
 export function registerContentRuntime(runtime: ContentRuntime): void {
-  startTestRuntime({ entityTypes: Object.values(runtime.entities), relationKinds: Object.values(runtime.relKinds), roles: Object.values(runtime.roles), requiredFields: runtime.requiredFields });
+  startTestRuntime({ entityTypes: Object.values(runtime.entities), relationKinds: Object.values(runtime.relKinds), roles: Object.values(runtime.roles), rowRules: runtime.rowRules });
   for (const [name, repo] of Object.entries(runtime.repositories)) testEngine().registerRepository(name, repo);
   for (const [entity, hooks] of Object.entries(runtime.contentWriters)) testPacks.contentWriters.set(entity, hooks);
 }

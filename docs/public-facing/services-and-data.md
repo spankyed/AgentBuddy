@@ -294,13 +294,12 @@ lists them all. There is no escape from the pack's facade: an undeclared kind is
 EARS queries and writes are **synchronous** — do not `await` them.
 
 ```typescript
-import { EARS, query, create, upsert, write, transact, createEntityWithDefaults } from '#generated/ears.ts';
+import { EARS, query, create, upsert, write, transact } from '#generated/ears.ts';
 
 const bookmarks = query(EARS.Entity.Bookmark).pickAll();                 // typed with the Bookmark shape
 const id = create(EARS.Entity.Bookmark, { url, title }).id();          // EARS.EntityId<'Bookmark'>
 write(id).set('title', 'Docs');                                       // an entity that exists
 upsert(EARS.Entity.Bookmark, someId, { url, title });                 // created when no entity has someId
-const created = createEntityWithDefaults(EARS.Entity.Bookmark, { url, title }, 'BKM');
 ```
 
 **A created row is the whole row.** `create(type, row)` takes it in one object: every field the shape requires,
@@ -314,8 +313,7 @@ create(EARS.Entity.Bookmark, { id: givenId, createdAt: originalTime, url, title 
 A row missing a required field doesn't compile, and the engine refuses one at runtime too (`REQUIRED_FIELD`) —
 through the untyped writes, content and the Database console as well — so a row read back has what its shape says it
 has. Deleting a required field is refused the same way: `set` replaces it. `upsert` may
-create, so it takes the same row; `createEntityWithDefaults` takes it with the short code and label it generates left
-out. Code that needs an id before it can write the row — a terminal takes one before its process starts — mints it
+create, so it takes the same row. Code that needs an id before it can write the row — a terminal takes one before its process starts — mints it
 with `newId(type)` and creates the row once it knows it.
 
 Each entry point takes one kind of argument and refuses what it can't account for:
@@ -543,8 +541,8 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
-`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findAll`, `findWhere`, `newId`,
-`createEntityWithDefaults` and `getAttr`. `@apackdev/ears` exports the
+`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findAll`, `findWhere`, `newId`
+and `getAttr`. `@apackdev/ears` exports the
 writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out rows in the trash, as every query does. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's
 declared shapes), `PackShapes` (the SDK's, the dependencies' and this pack's), `EntityName`, and
@@ -568,6 +566,20 @@ you have to narrow a value before using it. An id carries its entity type when i
 from a typed helper (`newId(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookmark'>`),
 so builders written with it (`query.ids(id)`, `write(id)`, `findById(id)`) are typed too;
 unbranded ids (`EARS.EntityId`) and `query.all()` read as undeclared.
+
+**A short code is numbered by `create`.** A shape that types its `shortCode` as `ShortCode<prefix>` (from
+`@apackdev/ears`) has every created row numbered `<prefix>-<n>` when the row brings none, and a typed `create` may
+leave the field out. A number is never handed out twice for a type, a destroyed row's included, and a row that brings
+its own code keeps it:
+
+```typescript
+import type { ShortCode } from '@apackdev/ears';
+
+export interface BookmarkEntity extends BaseEntity {
+  shortCode: ShortCode<'BKM'>;   // BKM-1, BKM-2, …
+  url: string;
+}
+```
 
 ### Entity ids
 

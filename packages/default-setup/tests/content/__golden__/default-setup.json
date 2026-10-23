@@ -1739,10 +1739,8 @@
         "entityType": "Note",
         "hideCompletedChildren": false,
         "icon": "👋",
-        "label": "New Note 1",
         "lastSeen": 0,
         "noteType": "document",
-        "shortCode": "NOTE-1",
         "title": "welcome"
       },
       "Prompt:Commit Message": {
@@ -1770,7 +1768,7 @@
           }
         },
         "label": "Commit Message",
-        "shortCode": "PRO-1"
+        "shortCode": "PROMPT-1"
       },
       "Prompt:DB Query System": {
         "category": "database",
@@ -1791,7 +1789,7 @@
           }
         },
         "label": "DB Query System",
-        "shortCode": "PRO-2"
+        "shortCode": "PROMPT-2"
       },
       "Prompt:DB Transaction System": {
         "category": "database",
@@ -1812,7 +1810,7 @@
           }
         },
         "label": "DB Transaction System",
-        "shortCode": "PRO-3"
+        "shortCode": "PROMPT-3"
       },
       "Prompt:Edit Phase Tips System": {
         "category": "claude-code",
@@ -1820,7 +1818,7 @@
         "entityType": "Prompt",
         "inputs": {},
         "label": "Edit Phase Tips System",
-        "shortCode": "PRO-4"
+        "shortCode": "PROMPT-4"
       },
       "Prompt:Plan Phase Tips System": {
         "category": "claude-code",
@@ -1828,7 +1826,7 @@
         "entityType": "Prompt",
         "inputs": {},
         "label": "Plan Phase Tips System",
-        "shortCode": "PRO-5"
+        "shortCode": "PROMPT-5"
       },
       "Prompt:Recap System": {
         "category": "claude-code",
@@ -1836,7 +1834,7 @@
         "entityType": "Prompt",
         "inputs": {},
         "label": "Recap System",
-        "shortCode": "PRO-6"
+        "shortCode": "PROMPT-6"
       }
     },
     "relations": [

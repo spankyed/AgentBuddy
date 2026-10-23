@@ -26,7 +26,8 @@ ${topology}
 GLOBALS:
 
 query(...)               query builder (read-only, for finding entities before mutating)
-create(type, row)     create a new entity of a type with its row → write builder
+create(type, row)     create a new entity of a type with its row → write builder; a type with a
+                      numbered shortCode (Flow, Action, Prompt, Document, Thread) gets one when the row has none
 upsert(type, id, row) the entity with this id written with the row, or created as type with it → write builder
 write(id)             an existing entity → write builder (throws when no entity has the id)
 EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
@@ -34,7 +35,6 @@ EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'con
 EARS.RoleKind.*       role constants (e.g. EARS.RoleKind.ROOT_FLOW = 'root_flow'); a role not declared here is refused
 getRow(id)            { id, entityType, ...attributes } for a single entity, or undefined
 getRoles(id)          string[] — roles on an entity
-createEntityWithDefaults(type, attrs)   create with auto-generated fields
 
 QUERY API (query) — use to find entities before mutating:
 

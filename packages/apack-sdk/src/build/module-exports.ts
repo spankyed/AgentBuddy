@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
-import { RESERVED_ATTRIBUTES } from '@apackdev/ears';
+import { RESERVED_ATTRIBUTES, type RowRules } from '@apackdev/ears';
 import type { SurfaceInboxAudiences } from '../fe/surface.ts';
 
 /** What a module exports under a name, as the TypeScript compiler resolves it */
@@ -17,10 +17,12 @@ export interface ModuleExports {
   /** Whether this export resolves to a usable declared TypeScript type. */
   hasTypeExport(file: string, name: string): boolean;
   /**
-   * The fields an entity shape (the type `name` that `file` declares) requires — its non-optional properties but the
-   * engine's own — which the engine refuses a created row without, as `create`'s type does
+   * What an entity shape (the type `name` that `file` declares) holds a created row to: the fields it requires — its
+   * non-optional properties but the engine's own — which the engine refuses a created row without, as `create`'s
+   * type does; and, when it types `shortCode` as `ShortCode<prefix>` (`` `${prefix}-${number}` ``), the prefix the
+   * engine numbers that field with
    */
-  requiredFieldsOf(file: string, name: string): string[];
+  rowRulesOf(file: string, name: string): RowRules;
   /** The export `name` of `file` (an absolute path the reader was created with); undefined when it has none */
   exportOf(file: string, name: string): ModuleExport | undefined;
   /**
@@ -179,6 +181,16 @@ export function createModuleExports(packRoot: string, files: string[], sources: 
   }
 
   /** The type of property `name` of `type`, or undefined when it has none */
+  /** `prefix` for a field typed `` `${prefix}-${number}` `` (`ShortCode<prefix>`); undefined for any other type */
+  function shortCodePrefix(type: TS.Type | undefined): string | undefined {
+    const code = type && checker.getNonNullableType(type);
+    if (!code || !(code.flags & ts.TypeFlags.TemplateLiteral)) return undefined;
+    const { texts, types } = code as TS.TemplateLiteralType;
+    const numbered = texts.length === 2 && texts[1] === '' && texts[0].length > 1 && texts[0].endsWith('-')
+      && types.length === 1 && (types[0].flags & ts.TypeFlags.Number) !== 0;
+    return numbered ? texts[0].slice(0, -1) : undefined;
+  }
+
   function propertyType(type: TS.Type, name: string): TS.Type | undefined {
     const property = type.getProperty(name);
     const declaration = property && (property.valueDeclaration ?? property.declarations?.[0]);
@@ -226,13 +238,15 @@ export function createModuleExports(packRoot: string, files: string[], sources: 
 
   return {
     hasTypeExport: (file, name) => declaredTypeOf(file, name) !== undefined,
-    requiredFieldsOf(file, name) {
+    rowRulesOf(file, name) {
       const shape = declaredTypeOf(file, name);
       if (!shape) throw new Error(`${path.basename(file)} declares no type "${name}"`);
-      return checker.getPropertiesOfType(shape)
+      const required = checker.getPropertiesOfType(shape)
         .filter((property) => !(property.flags & ts.SymbolFlags.Optional) && !(RESERVED_ATTRIBUTES as readonly string[]).includes(property.name))
         .map((property) => property.name)
         .sort();
+      const shortCode = shortCodePrefix(propertyType(shape, 'shortCode'));
+      return { required, ...(shortCode !== undefined && { shortCode }) };
     },
     exportOf(file, name) {
       const exported = exportedSymbol(file, name);

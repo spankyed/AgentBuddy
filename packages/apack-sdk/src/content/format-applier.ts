@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
-import { findRelations, boundEars as ears, untypedWrite, untypedQuery as query } from '../ears/index.ts';
+import { findRelations, boundEars as ears, untypedCreate, untypedWrite, untypedQuery as query } from '../ears/index.ts';
 import type { QueryBuilder } from '@apackdev/ears';
 import { _getMediaPath, loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
@@ -248,9 +248,9 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 
       const create = (record: ContentItem, context: ContentWriteContext, hooks?: ContentWriter): EARS.EntityId => {
         if (hooks?.create) return hooks.create(record, context);
-        const row = ears().createEntityWithDefaults(record.entity as EARS.Entity, fieldsOf(record));
-        if (context.parentId) untypedWrite(context.parentId).link(relKind, row.id);
-        return row.id;
+        const id = untypedCreate(record.entity as EARS.Entity, fieldsOf(record)).id();
+        if (context.parentId) untypedWrite(context.parentId).link(relKind, id);
+        return id;
       };
 
       /** Without a hook, fields the record no longer sets are dropped */

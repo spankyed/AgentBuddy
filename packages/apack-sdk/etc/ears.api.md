@@ -35,9 +35,6 @@ export const findRelations: (match?: RelationMatch) => RelationRow[];
 export const generateLabelWithCount: (baseLabel: string, entityType: EARS.Entity) => string;
 
 // @public (undocumented)
-export const generateShortCode: (entityType: EARS.Entity, prefix: string) => string;
-
-// @public (undocumented)
 export const getAllAttributeKinds: () => EARS.AttrKind[];
 
 // @public (undocumented)

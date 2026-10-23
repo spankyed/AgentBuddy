@@ -7,7 +7,7 @@
 // so an entity that moved without them would sort differently depending on who wrote it. What stays with
 // the feature that draws the tree is everything a view wants: paths, counts, child shapes, the index,
 // search, symlink resolution. These return rows and ids; a DTO is the editor's.
-import { ancestors, boundEars as ears, findRelations, generateShortCode, untypedCreate, untypedQuery as query, untypedWrite as write } from '../ears/index.ts';
+import { ancestors, boundEars as ears, findRelations, untypedCreate, untypedQuery as query, untypedWrite as write } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import type { CollectionEntity, ContentSection, DocumentEntity } from '../types/sdk-entities.ts';
 
@@ -134,14 +134,12 @@ const documentWrites = {
   create: (data: DocumentInput): DocumentEntity => {
     const { parentId, id, tags, documentType, contentHash, ...fields } = data;
     const now = Date.now();
-    // Read before the row exists, which would then sort as its own sibling
-    const shortCode = generateShortCode(EARS.Entity.Document, 'DOC');
+    // Read before the row exists, which would then sort as its own sibling; `create` numbers its short code
     const displayOrder = nextDisplayOrder(parentId ?? null);
     const documentId = untypedCreate(EARS.Entity.Document, {
       ...(id && { id: id as EARS.EntityId }),
       createdAt: now,
       ...fields,
-      shortCode,
       displayOrder,
       tags: tags ?? [],
       ...(documentType !== undefined && { documentType }),

@@ -11,6 +11,7 @@ import type { EventObject } from 'xstate';
 import type { MachineContext } from 'xstate';
 import type { Mapper } from 'xstate';
 import type { ParameterizedObject } from 'xstate';
+import type { ShortCode } from '@apackdev/ears';
 
 // @public (undocumented)
 export interface ActionEntity extends BaseEntity {
@@ -31,7 +32,7 @@ export interface ActionEntity extends BaseEntity {
     label: string;
     // (undocumented)
     output?: unknown;
-    shortCode?: string;
+    shortCode: ShortCode<'ACT'>;
     // (undocumented)
     updatedAt: number;
 }
@@ -102,7 +103,7 @@ export interface DocumentEntity extends BaseEntity {
 }
 
 // @public
-export type DocumentShortCode = `DOC-${number}`;
+export type DocumentShortCode = ShortCode<'DOC'>;
 
 // @public (undocumented)
 export namespace EARS {
@@ -191,8 +192,7 @@ export interface FlowEntity extends BaseEntity {
     flowType: 'workflow' | 'integration';
     // (undocumented)
     label: string;
-    // (undocumented)
-    shortCode: string;
+    shortCode: ShortCode<'F'>;
 }
 
 // @public (undocumented)
@@ -249,7 +249,7 @@ export interface PromptEntity extends BaseEntity {
     // (undocumented)
     label: string;
     outputSchema?: unknown;
-    shortCode?: string;
+    shortCode: ShortCode<'PROMPT'>;
     templateFn: string;
     // (undocumented)
     updatedAt: number;

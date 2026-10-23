@@ -13,7 +13,7 @@ import { defineEars } from '@apackdev/ears';
 import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, getRow, getRoles, getRelationStats, findRelations, getSchemaStats } from '../ears/index.ts';
 import { errorMessage } from '../utils/shared.ts';
 
-const { getAttr, createEntityWithDefaults } = /*#__PURE__*/ defineEars(boundEars);
+const { getAttr } = /*#__PURE__*/ defineEars(boundEars);
 
 const readHelpers = {
   query: untypedQuery,
@@ -29,7 +29,6 @@ const writeHelpers = {
   create: untypedCreate,
   upsert: untypedUpsert,
   write: untypedWrite,
-  createEntityWithDefaults,
 };
 
 /**
