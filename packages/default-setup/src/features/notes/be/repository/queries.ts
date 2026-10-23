@@ -1,6 +1,5 @@
 import { query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import { ancestors } from '@apackdev/sdk/ears';
 
 import type { NoteDTO } from '../types.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
@@ -60,11 +59,7 @@ export const noteQueries = {
 
   /** The notes above this one, its root first */
   ancestorChain: (noteId: EARS.EntityId): NoteDTO[] =>
-    ancestors(noteId, EARS.RelKind.CONTAINS)
-      .reverse()
-      .map(id => query.ids(id).ofType(EARS.Entity.Note).pickOne())
-      .filter((n): n is NoteEntity => n !== undefined)
-      .map(toDTO),
+    query.ids(noteId).ancestors(EARS.RelKind.CONTAINS, EARS.Entity.Note).pickAll().reverse().map(toDTO),
 
   referencedBy: (noteId: EARS.EntityId): EARS.EntityId[] =>
     query.ids(noteId).in(EARS.RelKind.REFERENCES, EARS.Entity.Note).ids(),

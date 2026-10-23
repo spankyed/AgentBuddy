@@ -2,7 +2,6 @@ import { query } from '#generated/ears.ts';
 import * as fs from 'fs/promises'
 
 import { EARS } from '#generated/ears.ts'
-import { ancestors } from '@apackdev/sdk/ears'
 import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderItem, FolderContents, BreadcrumbItem } from '../types.ts'
 import { parentCollectionOf, collectionOfDocument, displayOrderOf, collectionPath } from '@apackdev/sdk/repositories'
 import { isRootCollection, formatFileSize, getContentLength } from './helpers.ts'
@@ -274,7 +273,7 @@ export const libraryQueries = {
     }
     
     // The folder and every folder above it, the root first
-    return [folderId, ...ancestors(folderId, EARS.RelKind.PARENT_OF)].reverse().flatMap((id): BreadcrumbItem[] => {
+    return [folderId, ...query.ids(folderId).ancestors(EARS.RelKind.PARENT_OF).ids()].reverse().flatMap((id): BreadcrumbItem[] => {
       const [collection] = query.ids(id).pickAll()
       return collection ? [{ id, name: collection.name as string, path: [] }] : []
     })
