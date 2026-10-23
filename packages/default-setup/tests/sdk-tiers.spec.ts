@@ -14,9 +14,7 @@ describe('Tier 1 — EARS delegates', () => {
   beforeEach(() => resetTestData());
 
   it('create creates and retrieves an entity', () => {
-    const id = untypedCreate(EARS.Entity.Action)
-      .set('label', 'test-action')
-      .id();
+    const id = untypedCreate(EARS.Entity.Action, { label: 'test-action', input: {}, actionFn: 'return 1' }).id();
     expect(id).toBeDefined();
     expect(id).toMatch(/^Action-/);
 
@@ -27,7 +25,7 @@ describe('Tier 1 — EARS delegates', () => {
   it('createEntityWithDefaults produces a complete entity', () => {
     const entity = createEntityWithDefaults(
       EARS.Entity.Action as any,
-      { label: 'SDK Test', actionFn: 'noop()' } as any,
+      { input: {}, label: 'SDK Test', actionFn: 'noop()' } as any,
       'ACT',
     );
     expect(entity.id).toMatch(/^Action-/);
@@ -39,7 +37,7 @@ describe('Tier 1 — EARS delegates', () => {
   it('findById / findAll / findWhere round-trip', () => {
     const entity = createEntityWithDefaults(
       EARS.Entity.Action as any,
-      { label: 'Findable', actionFn: 'fn()', category: 'test' } as any,
+      { input: {}, label: 'Findable', actionFn: 'fn()', category: 'test' } as any,
       'ACT',
     );
 
@@ -51,7 +49,7 @@ describe('Tier 1 — EARS delegates', () => {
   it('query.withTrashed reaches an entity in the trash, which findById does not', () => {
     const entity = createEntityWithDefaults(
       EARS.Entity.Action as any,
-      { label: 'ToDelete', actionFn: 'fn()' } as any,
+      { input: {}, label: 'ToDelete', actionFn: 'fn()' } as any,
       'ACT',
     );
     write(entity.id).trash(5);
@@ -63,7 +61,7 @@ describe('Tier 1 — EARS delegates', () => {
   it('query.ids(id).exists() answers for existing entities', () => {
     const entity = createEntityWithDefaults(
       EARS.Entity.Action as any,
-      { label: 'Exists', actionFn: 'fn()' } as any,
+      { input: {}, label: 'Exists', actionFn: 'fn()' } as any,
       'ACT',
     );
     expect(query.ids(entity.id).exists()).toBe(true);

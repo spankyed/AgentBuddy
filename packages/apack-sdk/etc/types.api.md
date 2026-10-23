@@ -367,6 +367,18 @@ export const SDK_REL_KINDS: {
 };
 
 // @public
+export const SDK_REQUIRED_FIELDS: {
+    readonly Relation: readonly [];
+    readonly Flow: readonly ["shortCode", "label", "flowType"];
+    readonly Node: readonly ["nodeType", "label"];
+    readonly TNode: readonly ["tNodeType", "label", "status", "startedAt"];
+    readonly Action: readonly ["label", "input", "actionFn"];
+    readonly Prompt: readonly ["label", "inputs", "templateFn"];
+    readonly Document: readonly ["name", "content", "shortCode"];
+    readonly Collection: readonly ["name"];
+};
+
+// @public
 export const SDK_ROLES: {
     readonly ROOT_FLOW: "root_flow";
     readonly ENTRY_EVENT: "entry_event";

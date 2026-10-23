@@ -49,7 +49,7 @@ describe('reportError', () => {
     const printed = vi.spyOn(console, 'error').mockImplementation(() => {});
     testPacks.designations.set('brain', 'default-setup/brain');
     // The step's TNode, holding what the step ran with
-    untypedCreate('TNode', { id: tNodeId }).set('nodeAttributes', { input: 'hello' });
+    untypedCreate('TNode', { id: tNodeId, tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0, nodeAttributes: { input: 'hello' } });
     let returned: ReturnType<typeof reportError>;
     const { logs, toSurfaces, outgoing } = capture(() => {
       returned = reportError({

@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import type { AppEnvironment } from '@apackdev/sdk/env';
 import { parseManifest, parseSnapshot, type PackManifest } from '@apackdev/sdk/build';
 import { readInstalledPacks } from '../packs/installed.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from '@apackdev/sdk/types';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_REQUIRED_FIELDS, SDK_ROLES } from '@apackdev/sdk/types';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { PACK_LAYOUT } from '../packs/layout.ts';
 import { readInstalledPackBuilds } from '../packs/discovery.ts';
@@ -19,6 +19,11 @@ export interface DatabaseSchema {
   getRegisteredRelationKinds(): ReadonlySet<string>;
   /** The SDK's roles and the packs' */
   getRegisteredRoles(): ReadonlySet<string>;
+  /**
+   * The fields an entity type's row must hold. The app's registry knows every registered pack's; a data dir read
+   * from its manifests knows the SDK's, a pack's shapes being types no manifest carries
+   */
+  getRequiredFields?(type: string): readonly string[];
 }
 
 /** The installed packs' schema, with the names a tool shows and the packs it was read from */
@@ -222,6 +227,7 @@ export function readInstalledSchema(context: SchemaContext, options: { schemaFro
     getRegisteredEntityTypes: () => entityTypes,
     getRegisteredRelationKinds: () => relationKinds,
     getRegisteredRoles: () => roleNames,
+    getRequiredFields: (type) => (SDK_REQUIRED_FIELDS as Record<string, readonly string[]>)[type] ?? [],
     ...(degraded !== undefined && { degraded }),
     notes,
   };

@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
+import { RESERVED_ATTRIBUTES } from '@apackdev/ears';
 import type { SurfaceInboxAudiences } from '../fe/surface.ts';
 
 /** What a module exports under a name, as the TypeScript compiler resolves it */
@@ -15,6 +16,11 @@ export interface ModuleExport {
 export interface ModuleExports {
   /** Whether this export resolves to a usable declared TypeScript type. */
   hasTypeExport(file: string, name: string): boolean;
+  /**
+   * The fields an entity shape (the type `name` that `file` declares) requires — its non-optional properties but the
+   * engine's own — which the engine refuses a created row without, as `create`'s type does
+   */
+  requiredFieldsOf(file: string, name: string): string[];
   /** The export `name` of `file` (an absolute path the reader was created with); undefined when it has none */
   exportOf(file: string, name: string): ModuleExport | undefined;
   /**
@@ -220,6 +226,14 @@ export function createModuleExports(packRoot: string, files: string[], sources: 
 
   return {
     hasTypeExport: (file, name) => declaredTypeOf(file, name) !== undefined,
+    requiredFieldsOf(file, name) {
+      const shape = declaredTypeOf(file, name);
+      if (!shape) throw new Error(`${path.basename(file)} declares no type "${name}"`);
+      return checker.getPropertiesOfType(shape)
+        .filter((property) => !(property.flags & ts.SymbolFlags.Optional) && !(RESERVED_ATTRIBUTES as readonly string[]).includes(property.name))
+        .map((property) => property.name)
+        .sort();
+    },
     exportOf(file, name) {
       const exported = exportedSymbol(file, name);
       const resolved = exported && followAliases(exported);

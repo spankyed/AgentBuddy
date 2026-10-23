@@ -150,6 +150,13 @@ describe('generated imports', () => {
 });
 
 describe('generated EARS facade', () => {
+  it("registers the fields each of its shaped entities requires, read off the shape, for the engine's runtime check", async () => {
+    write('src/memo.ts', 'export interface MemoEntity { text: string; pinned: boolean | null; note?: string; createdAt: number }\n');
+    const entry = (await generate({ data: { entities: { Memo: "src/memo.ts#MemoEntity", Tag: null } } }))['src/__generated__/pack-entry.ts'];
+    // Optional fields and the engine's own are not required; an unshaped entity requires nothing
+    expect(entry).toContain('requiredFields: {"Memo":["pinned","text"]}');
+  });
+
   it('names the declared entities and passes them to the typed helpers, with the writes', async () => {
     write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
     const ears = (await generate({ data: { entities: { Memo: "src/memo.ts#MemoEntity", Tag: null } }, }))['src/__generated__/ears.ts'];

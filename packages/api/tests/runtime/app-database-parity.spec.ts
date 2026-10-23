@@ -83,9 +83,9 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     // the volatile partition, which neither hydrates
     const first = await bootApi();
     startPacks(first.packs);
-    untypedCreate('Note', { id: 'Note-child' }).set('title', 'child');
-    untypedCreate('Note', { id: 'Note-parity' }).set('title', 'mine').grant('assistant_birth').link('parent_of', 'Note-child');
-    untypedCreate('TNode', { id: 'TNode-parity' }).set('status', 'done');
+    untypedCreate('Note', { id: 'Note-child', title: 'child', content: '', icon: null, noteType: 'document', completed: false, hideCompletedChildren: false, displayOrder: 0, lastSeen: 0 });
+    untypedCreate('Note', { id: 'Note-parity', title: 'mine', content: '', icon: null, noteType: 'document', completed: false, hideCompletedChildren: false, displayOrder: 0, lastSeen: 0 }).grant('assistant_birth').link('parent_of', 'Note-child');
+    untypedCreate('TNode', { id: 'TNode-parity', tNodeType: 'step', label: 'Step', status: 'done', startedAt: 0 });
     closeApi(first);
 
     const api = await bootApi();
@@ -119,7 +119,7 @@ describe('what the tool writes', () => {
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, log: () => {} });
     untypedCreate('Note', { id: 'Note-tool' }).set('title', 'from the tool').grant('assistant_birth');
-    untypedCreate('TNode', { id: 'TNode-tool' }).set('status', 'done');
+    untypedCreate('TNode', { id: 'TNode-tool', tNodeType: 'step', label: 'Step', status: 'done', startedAt: 0 });
     db.close();
 
     const api = await bootApi();

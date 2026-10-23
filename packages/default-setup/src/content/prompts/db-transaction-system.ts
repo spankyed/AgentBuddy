@@ -26,8 +26,8 @@ ${topology}
 GLOBALS:
 
 query(...)               query builder (read-only, for finding entities before mutating)
-create(type, opts?)   create a new entity of a type → write builder
-upsert(type, id)      the entity with this id, created as type when missing → write builder
+create(type, row)     create a new entity of a type with its row → write builder
+upsert(type, id, row) the entity with this id written with the row, or created as type with it → write builder
 write(id)             an existing entity → write builder (throws when no entity has the id)
 EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
 EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains'); a kind not declared here is refused
@@ -57,12 +57,15 @@ QUERY API (query) — use to find entities before mutating:
 WRITE API (create / upsert / write):
 
   Start:
-    create(EARS.Entity.Thread)                     new entity, new id
-    create(EARS.Entity.Thread, { id, createdAt })  new entity with a given id and/or creation time
-    upsert(EARS.Entity.Thread, 'Thread-1')         get-or-create by id
+    create(EARS.Entity.Thread, { topic, ... })     new entity, new id, with its row
+    create(EARS.Entity.Thread, { id, createdAt, topic, ... })   the same with a given id and/or creation time
+    upsert(EARS.Entity.Thread, 'Thread-1', { topic, ... })      written, or created when no entity has the id
     write('Thread-1')                              existing entity
 
-  The database writes id, entityType, createdAt, updatedAt, role, relationDetails and trashedAt itself: never set them.
+  A created row holds every field its entity type requires (a Thread: topic, instructions, status, timestamp); a row
+  missing one is refused, and so is deleting one. Read getSchemaStats() for the fields an entity type's rows hold.
+  The database writes id, entityType, createdAt, updatedAt, role, relationDetails and trashedAt itself: never set them
+  with set — a created row may bring its id, createdAt and updatedAt.
   Each attribute write stamps updatedAt; write(id, { touch: false }) writes without stamping it.
   null is a stored value, undefined leaves a field alone in setMany, and .delete(key) removes a field.
   An attribute holds one value; a list is one array value.
@@ -97,10 +100,12 @@ WRITE API (create / upsert / write):
 PATTERNS:
 
 // Create a new entity with attributes
-const threadId = create(EARS.Entity.Thread)
-  .set('topic', 'New Discussion')
-  .set('status', 'active')
-  .id();
+const threadId = create(EARS.Entity.Thread, {
+  topic: 'New Discussion',
+  instructions: '',
+  status: 'active',
+  timestamp: Date.now(),
+}).id();
 return { created: threadId };
 
 // Update an existing entity
@@ -111,12 +116,8 @@ write(threadId)
 return query.ids(threadId).pickAll();
 
 // Create entity with relations
-const flowId = create(EARS.Entity.Flow)
-  .setMany({ label: 'My Flow', description: 'A workflow' })
-  .id();
-const nodeId = create(EARS.Entity.Node)
-  .setMany({ type: 'action', label: 'Step 1' })
-  .id();
+const flowId = create(EARS.Entity.Flow, { shortCode: 'FLOW-9', label: 'My Flow', flowType: 'workflow', description: 'A workflow' }).id();
+const nodeId = create(EARS.Entity.Node, { nodeType: 'action', label: 'Step 1' }).id();
 write(flowId).link(EARS.RelKind.CONTAINS, nodeId);
 return { flowId, nodeId };
 

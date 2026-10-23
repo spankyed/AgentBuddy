@@ -311,7 +311,9 @@ create(EARS.Entity.Bookmark, { url, title });                                  /
 create(EARS.Entity.Bookmark, { id: givenId, createdAt: originalTime, url, title });   // an import keeping both
 ```
 
-A row missing a required field doesn't compile, so a row read back has what its shape says it has. `upsert` may
+A row missing a required field doesn't compile, and the engine refuses one at runtime too (`REQUIRED_FIELD`) —
+through the untyped writes, content and the Database console as well — so a row read back has what its shape says it
+has. Deleting a required field is refused the same way: `set` replaces it. `upsert` may
 create, so it takes the same row; `createEntityWithDefaults` takes it with the short code and label it generates left
 out. Code that needs an id before it can write the row — a terminal takes one before its process starts — mints it
 with `newId(type)` and creates the row once it knows it.

@@ -1061,6 +1061,7 @@ ${manifest.extensions?.settings ? `  settings: ${dataLiteral(manifest.extensions
     entities: ${dataLiteral(_packEntityTypes(manifest))},
     relKinds: ${dataLiteral(_packRelationTypes(manifest))},
     roles: ${dataLiteral(_packRoles(manifest))},
+    requiredFields: ${requiredFieldsLiteral()},
   },
 ${hookEntries.length ? `  lifecycle: { ${hookEntries.map(({ name, binding }) => `${propertyKey(name, name)}: ${binding}`).join(', ')} },\n` : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
 };
@@ -1798,6 +1799,7 @@ export const contentRuntime: ContentRuntime = {
   entities: ${dataLiteral(_packEntityTypes(manifest))},
   relKinds: ${dataLiteral(_packRelationTypes(manifest))},
   roles: ${dataLiteral(_packRoles(manifest))},
+  requiredFields: ${requiredFieldsLiteral()},
   repositories: { ${repositories.map(([name]) => `${propertyKey(name, name)}: __repo_${name}`).join(', ')} },
   contentWriters: { ${hooks.map(([entity], i) => `${propertyKey(entity)}: __contentWriter_${i}`).join(', ')} },
 };
@@ -2002,22 +2004,38 @@ export type { ImportMode } from '@apackdev/sdk/utils';
     });
   }
 
+  /**
+   * The fields each of this pack's own shaped entities requires, read off its shape: what the engine refuses a created
+   * row without. An entity with no shape requires nothing, and a dependency's register their own.
+   */
+  function requiredFieldsLiteral(): string {
+    return dataLiteral(Object.fromEntries(packShapes().map(({ entity, exportName, file }) =>
+      [entity, moduleReader().requiredFieldsOf(file, exportName)])));
+  }
+
+  /** This pack's own shaped entities, each shape checked to be a type its module exports */
+  function packShapes(): Array<{ entity: string; source: string; exportName: string; file: string }> {
+    return _packEntities(manifest).flatMap(({ name: entity, shape }) => {
+      if (shape === null) return [];
+      const { source, exportName, file } = exportTarget(`Entity shape "${entity}"`, shape, TYPE_MODULE_EXTENSIONS);
+      try {
+        if (!moduleReader().hasTypeExport(file, exportName)) {
+          throw new Error(`${source} doesn't export a type named "${exportName}"`);
+        }
+      } catch (error) {
+        throw new Error(`Entity shape "${entity}": ${error instanceof Error ? error.message : String(error)}`);
+      }
+      return [{ entity, source, exportName, file }];
+    });
+  }
+
   /** Imports and map entries for this pack's own entity shapes. Dependencies' come from their facade types. */
   function entityShapeEntries(): { imports: string[]; entries: string[] } {
     const imports: string[] = [];
     const entries: string[] = [];
-    for (const { name: entity, shape } of _packEntities(manifest)) {
-      if (shape === null) continue;
-      const { source, exportName: typeName, file } = exportTarget(`Entity shape "${entity}"`, shape, TYPE_MODULE_EXTENSIONS);
+    for (const { entity, source, exportName: typeName } of packShapes()) {
       if ((SDK_SHAPED_ENTITIES as readonly string[]).includes(entity)) {
         throw new Error(`Entity shape "${entity}": the SDK declares this entity's shape; remove its entity declaration`);
-      }
-      try {
-        if (!moduleReader().hasTypeExport(file, typeName)) {
-          throw new Error(`${source} doesn't export a type named "${typeName}"`);
-        }
-      } catch (error) {
-        throw new Error(`Entity shape "${entity}": ${error instanceof Error ? error.message : String(error)}`);
       }
       const alias = `__shape_${entity.replace(/[^A-Za-z0-9_$]/g, '_')}`;
       imports.push(`import type { ${typeName} as ${alias} } from '${toImportPath(root, source)}';`);

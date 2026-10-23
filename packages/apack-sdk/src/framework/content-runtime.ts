@@ -8,6 +8,8 @@ export interface ContentRuntime {
   entities: Record<string, string>;
   relKinds: Record<string, string>;
   roles: Record<string, string>;
+  /** The fields each of the pack's shaped entities requires; none when absent */
+  requiredFields?: Record<string, readonly string[]>;
   repositories: Record<string, unknown>;
   contentWriters: Record<string, ContentWriter>;
 }

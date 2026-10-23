@@ -95,18 +95,18 @@ describe('services.appData', () => {
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
     fs.writeFileSync(metadataPath, JSON.stringify({ ...metadata, databases: ['lmdb', 'unknownLmdb'] }));
     fs.mkdirSync(path.join(backup, 'unknownLmdb'));
-    untypedCreate('Prompt', { id: 'Prompt-kept' }).set('title', 'still here');
+    untypedCreate('Prompt', { id: 'Prompt-kept', label: 'still here', inputs: {}, templateFn: 'return ""' });
 
     // A partial restore of a backup a newer apack made would cost the user their data to learn that
     const refused = services.appData.importBackup(backup);
     await expect(refused).rejects.toThrow("The backup holds data this apack doesn't have: unknownLmdb");
     await expect(refused).rejects.toMatchObject({ name: 'UnknownBackupDatabasesError', databases: ['unknownLmdb'] });
-    expect(untypedQuery.ids('Prompt-kept').pickOne(['title'])).toMatchObject({ title: 'still here' });
+    expect(untypedQuery.ids('Prompt-kept').pickOne(['label'])).toMatchObject({ label: 'still here' });
 
     // The app asks the user first, and imports it without that store when they say to
     expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true }))
       .toEqual({ databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] });
-    expect(untypedQuery.ids('Prompt-kept').pickOne(['title'])).toBeNull();
+    expect(untypedQuery.ids('Prompt-kept').pickOne(['label'])).toBeNull();
   });
 
   it('restores a backup whose listed store it holds nothing for, and says which', async () => {

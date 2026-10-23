@@ -6,7 +6,7 @@ export type {
 } from './sdk-entities.ts';
 export type { TNodeEntity, TNodeKind } from '../steps/types.ts';
 // The SDK-owned entity types, relation kinds, roles and storage routing
-export { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES, SDK_EXCLUDED_ENTITY_TYPES } from './sdk-entities.ts';
+export { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES, SDK_REQUIRED_FIELDS, SDK_EXCLUDED_ENTITY_TYPES } from './sdk-entities.ts';
 export { _reservedEntries } from './reserved-names.ts';
 export type { AppSettings, AppAddress, AppPersonalInfo, AppProject, KeyboardShortcut, CustomHotkey, ApplicationHotkeys } from './app-settings.ts';
 export { settingsTargetPath } from './settings.ts';

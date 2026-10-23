@@ -899,11 +899,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
         }>>>;
         blocks: z.ZodOptional<z.ZodType<Record<string, {
-            kind?: "display" | "input" | undefined;
+            kind?: "input" | "display" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
         }>, z.ZodTypeDef, Record<string, {
-            kind?: "display" | "input" | undefined;
+            kind?: "input" | "display" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
         }>>>;
@@ -996,7 +996,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
         }> | undefined;
         blocks?: Record<string, {
-            kind?: "display" | "input" | undefined;
+            kind?: "input" | "display" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
@@ -1074,7 +1074,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
         }> | undefined;
         blocks?: Record<string, {
-            kind?: "display" | "input" | undefined;
+            kind?: "input" | "display" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
@@ -1295,35 +1295,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         relations?: string[] | undefined;
         roles?: string[] | undefined;
     } | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
-    features?: Record<string, {
-        description: string;
-        entities?: Record<string, string | null> | undefined;
-        references?: ReferenceDeclarations | undefined;
-        types?: string | undefined;
-        surface?: SurfaceDeclaration | undefined;
-        services?: Record<string, string> | undefined;
-        designation?: string | undefined;
-        settings?: {
-            defaults: Record<string, unknown>;
-            schema: Record<string, unknown>;
-            form?: string | undefined;
-            description?: string | undefined;
-            title?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        } | undefined;
-        system?: {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        } | undefined;
-        repositories?: Record<string, string> | undefined;
-    }> | undefined;
     description?: string | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1357,6 +1328,35 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    features?: Record<string, {
+        description: string;
+        entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
+        surface?: SurfaceDeclaration | undefined;
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: {
+            defaults: Record<string, unknown>;
+            schema: Record<string, unknown>;
+            form?: string | undefined;
+            description?: string | undefined;
+            title?: string | undefined;
+            access?: "owner" | "shared" | undefined;
+        } | undefined;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+    }> | undefined;
     $schema?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
@@ -1438,7 +1438,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
         }> | undefined;
         blocks?: Record<string, {
-            kind?: "display" | "input" | undefined;
+            kind?: "input" | "display" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
@@ -1475,28 +1475,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         relations?: string[] | undefined;
         roles?: string[] | undefined;
     } | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
-    features?: Record<string, {
-        description: string;
-        entities?: Record<string, string | null> | undefined;
-        references?: ReferenceDeclarations | undefined;
-        types?: string | undefined;
-        surface?: SurfaceDeclaration | undefined;
-        services?: Record<string, string> | undefined;
-        designation?: string | undefined;
-        settings?: unknown;
-        system?: {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        } | undefined;
-        repositories?: Record<string, string> | undefined;
-    }> | undefined;
     description?: string | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1530,6 +1508,28 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    features?: Record<string, {
+        description: string;
+        entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
+        surface?: SurfaceDeclaration | undefined;
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: unknown;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+    }> | undefined;
     $schema?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
@@ -1604,7 +1604,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
         }> | undefined;
         blocks?: Record<string, {
-            kind?: "display" | "input" | undefined;
+            kind?: "input" | "display" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
@@ -1641,35 +1641,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         relations?: string[] | undefined;
         roles?: string[] | undefined;
     } | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
-    features?: Record<string, {
-        description: string;
-        entities?: Record<string, string | null> | undefined;
-        references?: ReferenceDeclarations | undefined;
-        types?: string | undefined;
-        surface?: SurfaceDeclaration | undefined;
-        services?: Record<string, string> | undefined;
-        designation?: string | undefined;
-        settings?: {
-            defaults: Record<string, unknown>;
-            schema: Record<string, unknown>;
-            form?: string | undefined;
-            description?: string | undefined;
-            title?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        } | undefined;
-        system?: {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        } | undefined;
-        repositories?: Record<string, string> | undefined;
-    }> | undefined;
     description?: string | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1703,6 +1674,35 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    features?: Record<string, {
+        description: string;
+        entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
+        surface?: SurfaceDeclaration | undefined;
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: {
+            defaults: Record<string, unknown>;
+            schema: Record<string, unknown>;
+            form?: string | undefined;
+            description?: string | undefined;
+            title?: string | undefined;
+            access?: "owner" | "shared" | undefined;
+        } | undefined;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+    }> | undefined;
     $schema?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
@@ -1784,7 +1784,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
         }> | undefined;
         blocks?: Record<string, {
-            kind?: "display" | "input" | undefined;
+            kind?: "input" | "display" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
@@ -1821,28 +1821,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         relations?: string[] | undefined;
         roles?: string[] | undefined;
     } | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
-    features?: Record<string, {
-        description: string;
-        entities?: Record<string, string | null> | undefined;
-        references?: ReferenceDeclarations | undefined;
-        types?: string | undefined;
-        surface?: SurfaceDeclaration | undefined;
-        services?: Record<string, string> | undefined;
-        designation?: string | undefined;
-        settings?: unknown;
-        system?: {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        } | undefined;
-        repositories?: Record<string, string> | undefined;
-    }> | undefined;
     description?: string | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1876,6 +1854,28 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    features?: Record<string, {
+        description: string;
+        entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
+        surface?: SurfaceDeclaration | undefined;
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: unknown;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+    }> | undefined;
     $schema?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
@@ -1950,7 +1950,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
         }> | undefined;
         blocks?: Record<string, {
-            kind?: "display" | "input" | undefined;
+            kind?: "input" | "display" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
@@ -1987,35 +1987,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         relations?: string[] | undefined;
         roles?: string[] | undefined;
     } | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
-    features?: Record<string, {
-        description: string;
-        entities?: Record<string, string | null> | undefined;
-        references?: ReferenceDeclarations | undefined;
-        types?: string | undefined;
-        surface?: SurfaceDeclaration | undefined;
-        services?: Record<string, string> | undefined;
-        designation?: string | undefined;
-        settings?: {
-            defaults: Record<string, unknown>;
-            schema: Record<string, unknown>;
-            form?: string | undefined;
-            description?: string | undefined;
-            title?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        } | undefined;
-        system?: {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        } | undefined;
-        repositories?: Record<string, string> | undefined;
-    }> | undefined;
     description?: string | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -2049,6 +2020,35 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    features?: Record<string, {
+        description: string;
+        entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
+        surface?: SurfaceDeclaration | undefined;
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: {
+            defaults: Record<string, unknown>;
+            schema: Record<string, unknown>;
+            form?: string | undefined;
+            description?: string | undefined;
+            title?: string | undefined;
+            access?: "owner" | "shared" | undefined;
+        } | undefined;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+    }> | undefined;
     $schema?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
@@ -2130,7 +2130,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
         }> | undefined;
         blocks?: Record<string, {
-            kind?: "display" | "input" | undefined;
+            kind?: "input" | "display" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
@@ -2438,11 +2438,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
     }>>>>;
     blocks: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
-        kind?: "display" | "input" | undefined;
+        kind?: "input" | "display" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
     }>, z.ZodTypeDef, Record<string, {
-        kind?: "display" | "input" | undefined;
+        kind?: "input" | "display" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
     }>>>>;
@@ -2521,6 +2521,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         relations?: string[] | undefined;
         roles?: string[] | undefined;
     } | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -2545,12 +2551,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
-    content?: {
-        sources?: Record<string, {
-            applier: string;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -2613,7 +2613,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
     }> | undefined;
     blocks?: Record<string, {
-        kind?: "display" | "input" | undefined;
+        kind?: "input" | "display" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
@@ -2655,6 +2655,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         relations?: string[] | undefined;
         roles?: string[] | undefined;
     } | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -2672,12 +2678,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
-    content?: {
-        sources?: Record<string, {
-            applier: string;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -2733,7 +2733,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
     }> | undefined;
     blocks?: Record<string, {
-        kind?: "display" | "input" | undefined;
+        kind?: "input" | "display" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
@@ -2775,6 +2775,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         relations?: string[] | undefined;
         roles?: string[] | undefined;
     } | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -2799,12 +2805,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
-    content?: {
-        sources?: Record<string, {
-            applier: string;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -2867,7 +2867,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
     }> | undefined;
     blocks?: Record<string, {
-        kind?: "display" | "input" | undefined;
+        kind?: "input" | "display" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
@@ -2909,6 +2909,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         relations?: string[] | undefined;
         roles?: string[] | undefined;
     } | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -2926,12 +2932,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
-    content?: {
-        sources?: Record<string, {
-            applier: string;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -2987,7 +2987,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
     }> | undefined;
     blocks?: Record<string, {
-        kind?: "display" | "input" | undefined;
+        kind?: "input" | "display" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
@@ -3029,6 +3029,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         relations?: string[] | undefined;
         roles?: string[] | undefined;
     } | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -3053,12 +3059,6 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
-    content?: {
-        sources?: Record<string, {
-            applier: string;
-        }> | undefined;
-        writers?: Record<string, string> | undefined;
-    } | undefined;
     services?: Record<string, string> | undefined;
     version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -3121,7 +3121,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
     }> | undefined;
     blocks?: Record<string, {
-        kind?: "display" | "input" | undefined;
+        kind?: "input" | "display" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;

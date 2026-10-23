@@ -45,6 +45,7 @@ export function openDatabaseStore({ paths, schema, readOnly, log, onWriteFailure
     isEntityType: (name) => schema.getRegisteredEntityTypes().has(name),
     isRelationKind: (name) => schema.getRegisteredRelationKinds().has(name),
     isRole: (name) => schema.getRegisteredRoles().has(name),
+    requiredFields: (type) => schema.getRequiredFields?.(type) ?? [],
   });
   return { store, engine };
 }
@@ -115,7 +116,12 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   const rolesKnownToEngine = new Set(schema.getRegisteredRoles());
   const { store, engine } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
-    schema: { getRegisteredEntityTypes: () => knownToEngine, getRegisteredRelationKinds: () => kindsKnownToEngine, getRegisteredRoles: () => rolesKnownToEngine },
+    schema: {
+      getRegisteredEntityTypes: () => knownToEngine,
+      getRegisteredRelationKinds: () => kindsKnownToEngine,
+      getRegisteredRoles: () => rolesKnownToEngine,
+      ...(schema.getRequiredFields && { getRequiredFields: schema.getRequiredFields }),
+    },
     readOnly,
     log,
   });

@@ -22,7 +22,7 @@ describe('the API store across a restart', () => {
   it('hydrates what the previous run wrote', async () => {
     const first = openAppStore();
     expect(_getLmdbPath().startsWith(dataDir)).toBe(true);
-    untypedCreate('Prompt', { id: 'Prompt-restart' }).set('title', 'written before the restart');
+    untypedCreate('Prompt', { id: 'Prompt-restart', label: 'written before the restart', inputs: {}, templateFn: 'return ""' });
     await flushed();
     first.store.close();
     // A new process starts with nothing bound, and a new, empty engine
@@ -34,7 +34,7 @@ describe('the API store across a restart', () => {
       expect(untypedQuery.withTrashed('Prompt').ids()).toEqual([]);
       await second.store.hydrate();
       expect(untypedQuery.withTrashed('Prompt').ids()).toEqual(['Prompt-restart']);
-      expect(second.engine.getAttr('Prompt-restart', 'title')).toBe('written before the restart');
+      expect(second.engine.getAttr('Prompt-restart', 'label')).toBe('written before the restart');
     } finally {
       second.store.close();
     }

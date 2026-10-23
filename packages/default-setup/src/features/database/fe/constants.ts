@@ -44,11 +44,11 @@ return results.slice(0, 20);`
 
 export const transactionExampleQuery =
   `// Create a new note entity
-const noteId = create(EARS.Entity.Note)
-  .set('title', 'My Note')
-  .set('content', 'A helpful note')
-  .set('noteType', 'document')
-  .id();
+// A created row holds every field its type requires: a missing one is refused
+const noteId = create(EARS.Entity.Note, {
+  title: 'My Note', content: 'A helpful note', icon: null, noteType: 'document', completed: false,
+  hideCompletedChildren: false, displayOrder: 0, lastSeen: 0,
+}).id();
 
 // Update existing entity
 write(noteId)
@@ -56,8 +56,7 @@ write(noteId)
   .merge('tags', ['chat', 'analysis']);
 
 // Create relationships
-const threadId = create(EARS.Entity.Thread)
-  .set('title', 'New Conversation')
+const threadId = create(EARS.Entity.Thread, { topic: 'New Conversation', instructions: '', status: 'active', timestamp: Date.now() })
   .link(EARS.RelKind.CONTAINS, noteId)
   .id();
 
@@ -70,5 +69,5 @@ return {
 // Delete an entity: write(entityId).destroy();
 // Grant/revoke a declared role: write(entityId).grant(EARS.RoleKind.X).revoke(EARS.RoleKind.Y);
 // Set several attributes: write(id).setMany({ name: 'New Name', status: 'updated' });
-// Get or create by id: upsert(EARS.Entity.Note, id).set('title', 'Kept');
+// Write or create by id: upsert(EARS.Entity.Thread, id, { topic: 'Kept', instructions: '', status: 'active', timestamp: Date.now() });
 `

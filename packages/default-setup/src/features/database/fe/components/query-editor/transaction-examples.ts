@@ -56,21 +56,16 @@ return { previous: current, current: next, roles: getRoles(next) };`
     title: 'Create Entity with Relations',
     description: 'Create an entity with attributes, roles, and relations',
     query: `// Create the nodes
-const startId = create(EARS.Entity.Node)
-  .setMany({ type: 'start', label: 'Begin Onboarding' })
-  .id();
-const actionId = create(EARS.Entity.Node)
-  .setMany({ type: 'action', label: 'Collect Information' })
-  .id();
+const startId = create(EARS.Entity.Node, { nodeType: 'listener', label: 'Begin Onboarding' }).id();
+const actionId = create(EARS.Entity.Node, { nodeType: 'action', label: 'Collect Information' }).id();
 
-// Create a flow holding them
-const flowId = create(EARS.Entity.Flow)
-  .setMany({
-    name: 'Customer Onboarding',
-    description: 'Automated customer onboarding flow',
-    status: 'draft',
-    version: '1.0.0'
-  })
+// Create a flow holding them: a created row holds every field its type requires
+const flowId = create(EARS.Entity.Flow, {
+  shortCode: 'FLOW-ONB',
+  label: 'Customer Onboarding',
+  flowType: 'workflow',
+  description: 'Automated customer onboarding flow',
+})
   .link(EARS.RelKind.CONTAINS, startId)
   .link(EARS.RelKind.CONTAINS, actionId)
   .id();
@@ -85,12 +80,12 @@ return query.ids(flowId).pickAll();`
     description: 'Create entities with auto-generated fields',
     query: `// Create entity with defaults (auto-generates shortCode, label, etc.)
 const note = createEntityWithDefaults(EARS.Entity.Note, {
-  title: 'Smart Note',
-  content: 'AI-powered helper'
+  title: 'Smart Note', content: 'AI-powered helper', icon: null, noteType: 'document', completed: false,
+  hideCompletedChildren: false, displayOrder: 0, lastSeen: 0,
 });
 
 // Update several fields; { touch: false } writes without stamping updatedAt
-write(note.id).setMany({ noteType: 'document' });
+write(note.id).setMany({ favorite: true });
 write(note.id, { touch: false }).set('lastSeen', Date.now());
 
 // Link it to a thread
@@ -105,17 +100,10 @@ return query.ids(note.id).pickAll();`
     title: 'Safe Link Creation',
     description: 'Create relations with cycle prevention',
     query: `// Create a hierarchy
-const root = create(EARS.Entity.Thread)
-  .set('title', 'Root Thread')
-  .id();
-
-const child = create(EARS.Entity.Thread)
-  .set('title', 'Child Thread')
-  .id();
-
-const grandchild = create(EARS.Entity.Thread)
-  .set('title', 'Grandchild Thread')
-  .id();
+const thread = (topic) => create(EARS.Entity.Thread, { topic, instructions: '', status: 'active', timestamp: Date.now() }).id();
+const root = thread('Root Thread');
+const child = thread('Child Thread');
+const grandchild = thread('Grandchild Thread');
 
 // Link, refusing any link that would form a parent_of cycle
 const acyclicIn = [EARS.RelKind.PARENT_OF];

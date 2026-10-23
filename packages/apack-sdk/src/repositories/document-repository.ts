@@ -136,19 +136,19 @@ const documentWrites = {
   create: (data: DocumentInput): DocumentEntity => {
     const { parentId, id, tags, documentType, contentHash, ...fields } = data;
     const now = Date.now();
-    // Read before the row exists: creating the builder creates it, and it would then sort as its own sibling
+    // Read before the row exists, which would then sort as its own sibling
     const shortCode = generateShortCode(EARS.Entity.Document, 'DOC');
     const displayOrder = nextDisplayOrder(parentId ?? null);
-    const builder = untypedCreate(EARS.Entity.Document, { createdAt: now, ...(id && { id: id as EARS.EntityId }) });
-    const documentId = builder.id();
-    builder.setMany({
+    const documentId = untypedCreate(EARS.Entity.Document, {
+      ...(id && { id: id as EARS.EntityId }),
+      createdAt: now,
       ...fields,
       shortCode,
       displayOrder,
       tags: tags ?? [],
       ...(documentType !== undefined && { documentType }),
       ...(contentHash && { contentHash }),
-    });
+    }).id();
     if (parentId) write(parentId).link(EARS.RelKind.CONTAINS, documentId);
     return (query.ids(documentId).pickAll() as unknown as DocumentEntity[])[0];
   },
@@ -219,15 +219,15 @@ export const collectionRepository = {
     const now = Date.now();
     // Read before the row exists, which would otherwise sort as its own sibling
     const displayOrder = nextDisplayOrder(parentId ?? null);
-    const builder = untypedCreate(EARS.Entity.Collection, { createdAt: now, ...(id && { id: id as EARS.EntityId }) });
-    const collectionId = builder.id();
-    builder.setMany({
+    const collectionId = untypedCreate(EARS.Entity.Collection, {
+      ...(id && { id: id as EARS.EntityId }),
+      createdAt: now,
       ...fields,
       displayOrder,
       ...(contentHash && { contentHash }),
       // A folder is named, not numbered: it has no shortCode, so an empty description is simply absent
       ...(description ? { description } : {}),
-    });
+    }).id();
     if (parentId) write(parentId).link(EARS.RelKind.PARENT_OF, collectionId);
     return (query.ids(collectionId).pickAll() as unknown as CollectionEntity[])[0];
   },
