@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
 import { reportError, createLogger } from '@apackdev/sdk/logger';
 import { isModelId } from '@apackdev/sdk/models';
 import { services } from '#generated/services.ts';
@@ -25,7 +25,7 @@ function stripCodeFence(text: string): string {
   return text.trim().replace(/^```(?:typescript|ts|javascript|js)?\n?/, '').replace(/\n?```$/, '').trim();
 }
 
-export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as QueryNode;
   const a = actor as { send: (event: { type: string; result?: unknown; error?: unknown }) => void };
 

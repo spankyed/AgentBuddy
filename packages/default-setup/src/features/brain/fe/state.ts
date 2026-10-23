@@ -8,7 +8,7 @@ import type { BrainContext } from './contract.ts';
 import type { OutgoingBrainEvents } from '#features/brain/be/types.ts'
 import type { FlowTNodeData } from '#generated/types.ts';
 import { sendToSystem } from '#generated/events.ts';
-import type { StepRuntimeError, TNodeEntity, TrackTree } from '@apackdev/sdk/steps';
+import type { StepRuntimeError, TNode, RunTree } from '@apackdev/sdk/steps';
 import {
   applyTNodeSpawn,
   denormalizeTNodeTree,
@@ -21,7 +21,7 @@ export type BrainState = ActorRefFrom<typeof brainState>
 
 
 type SystemEvent = OutgoingBrainEvents
-  | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
+  | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNode | null }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: any }
   | { type: 'BRAIN_PAUSED' }
@@ -55,7 +55,7 @@ const typeOf = safeEvents<BrainEvents>()
 
 function normalizeFlowTNodeData(data: FlowTNodeData): {
   normalizedTree?: NormalizedTNodeTree;
-  tNodeTree?: TrackTree[];
+  tNodeTree?: RunTree[];
 } {
   if (!data.tNodeTree) {
     return { normalizedTree: undefined, tNodeTree: undefined };

@@ -8,7 +8,6 @@ import type { ActionArgs } from 'xstate';
 import type { AnyActorRef } from 'xstate';
 import type { AnyExtension } from '@tiptap/vue-3';
 import type { AnyStateMachine } from 'xstate';
-import type { BaseEntity } from '@apackdev/ears';
 import type { Component } from 'vue';
 import { ComponentOptionsMixin } from 'vue';
 import { ComponentProvideOptions } from 'vue';

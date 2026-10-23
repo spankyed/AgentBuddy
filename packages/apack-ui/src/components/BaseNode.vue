@@ -132,7 +132,7 @@ export type { HandleConfig } from './node-handles.ts'
 export interface BaseNodeData {
   label: string
   nodeType?: string
-  status?: 'active' | 'paused' | 'completed' | 'failed'
+  status?: 'active' | 'stopped' | 'completed' | 'failed'
   [key: string]: any
 }
 

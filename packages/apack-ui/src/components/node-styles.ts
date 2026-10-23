@@ -25,7 +25,7 @@ export interface NodeStyleOptions {
   includeRing?: boolean
 }
 
-export type NodeStatus = 'active' | 'paused' | 'completed' | 'failed'
+export type NodeStatus = 'active' | 'stopped' | 'completed' | 'failed'
 export type StatusVariant = 'simple' | 'detailed'
 
 const NODE_STYLE_CLASSES = {
@@ -97,7 +97,7 @@ const NODE_STYLE_CLASSES = {
 const STATUS_STYLE_CLASSES = {
   simple: {
     active: 'bg-blue-400 shadow-blue-400/50 shadow-sm',
-    paused: 'bg-yellow-400 shadow-yellow-400/50 shadow-sm',
+    stopped: 'bg-yellow-400 shadow-yellow-400/50 shadow-sm',
     completed: 'bg-green-500 shadow-green-500/70 shadow-md',
     failed: 'bg-red-400 shadow-red-400/50 shadow-sm',
     default: 'bg-neutral-400'
@@ -107,7 +107,7 @@ const STATUS_STYLE_CLASSES = {
       outer: 'ring-1 ring-emerald-500/50 shadow-lg shadow-emerald-500/30',
       inner: 'bg-gradient-to-br from-emerald-400 to-emerald-600'
     },
-    paused: {
+    stopped: {
       outer: 'ring-1 ring-amber-500/50 shadow-lg shadow-amber-500/30',
       inner: 'bg-gradient-to-br from-amber-400 to-amber-600'
     },

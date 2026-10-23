@@ -80,7 +80,7 @@ it('resumes existing progress after data replacement and explicit restart', asyn
   expect(initialized(app)).toHaveLength(1);
   await app.send('brain', { type: 'START_BRAIN' });
   await expect.poll(() => initialized(app).length).toBe(2);
-  expect(initialized(app)[1]?.nodeAttributes.result).toMatchObject({ created: false });
+  expect(initialized(app)[1]?.result).toMatchObject({ created: false });
   expect(thread()).toBe(first);
   expect(progress()).toEqual(state);
   await app.connect();
@@ -128,5 +128,5 @@ it('keeps delayed readiness bound to its root across consecutive restarts', asyn
   await expect.poll(() => initialized(app).length).toBe(2);
   expect(thread()).toBe(first);
   expect(getAllFlowActorIds()).toHaveLength(actors);
-  expect(initialized(app)[1]?.nodeAttributes.result).toMatchObject({ created: false });
+  expect(initialized(app)[1]?.result).toMatchObject({ created: false });
 });

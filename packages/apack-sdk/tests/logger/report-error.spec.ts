@@ -7,9 +7,8 @@
 import * as os from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLogger, reportError, setDebugEnabled, type LogEvent } from '../../src/logger/index.ts';
-import { startTestRuntime, takeSystemErrors, testPacks, testRootEvents } from '../../src/testing/index.ts';
+import { startTestRuntime, takeSystemErrors, testPacks, testRootEvents, testRunHistory } from '../../src/testing/index.ts';
 import { RepositoryError, RepositoryErrorCode } from '../../src/repositories/repository-error.ts';
-import { untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
 import type { Message } from '../../src/events/index.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
@@ -43,13 +42,13 @@ afterEach(() => {
 });
 
 describe('reportError', () => {
-  const tNodeId = 'TNode-1' as EARS.EntityId;
-
-  it("with step context logs the error, sends it to the surface playing the brain role and records it on the step's TNode", () => {
+  it("with step context logs the error, sends it to the surface playing the brain role and records it on the step's run node", () => {
     const printed = vi.spyOn(console, 'error').mockImplementation(() => {});
     testPacks.designations.set('brain', 'default-setup/brain');
-    // The step's TNode, holding what the step ran with
-    untypedCreate('TNode', { id: tNodeId, tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0, nodeAttributes: { input: 'hello' } });
+    // The step's run node, holding what the step ran with
+    const history = testRunHistory();
+    const tNodeId = history.newId();
+    history.add({ id: tNodeId, tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0, nodeAttributes: { input: 'hello' } });
     let returned: ReturnType<typeof reportError>;
     const { logs, toSurfaces, outgoing } = capture(() => {
       returned = reportError({
@@ -68,8 +67,8 @@ describe('reportError', () => {
     // so a drop names the step rather than nothing; there is no pack here to put in `from`.
     expect(toSurfaces).toEqual([{ to: 'default-setup/brain', call: expect.any(String), event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! }, via: 'brain-llm' }]);
     expect(outgoing).toEqual([]);
-    expect(untypedQuery.ids(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
-      input: 'hello',
+    expect(history.get(tNodeId)).toMatchObject({
+      nodeAttributes: { input: 'hello' },
       result: { error: { message: 'model failed', source: 'brain-llm', phase: 'llm.execute', errorId, stack } },
     });
     expect(takeSystemErrors()).toEqual([]);

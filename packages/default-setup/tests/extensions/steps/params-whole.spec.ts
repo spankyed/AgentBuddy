@@ -60,7 +60,7 @@ describe('the params a step runs on', () => {
 
     const big = app.flowTrace('Outer').find((step) => step.label === 'big')!
     // The trace keeps each oversized field as a `{ value, _truncated }` marker, so a run's trace stays bounded
-    const result = big.nodeAttributes.result as { text: { value: string; _truncated?: boolean } }
+    const result = big.result as { text: { value: string; _truncated?: boolean } }
     expect(result.text._truncated).toBe(true)
     expect(result.text.value.length).toBeLessThan(LONG_TEXT_LENGTH)
   })

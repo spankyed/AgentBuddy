@@ -91,7 +91,7 @@ export interface NodeConfig {
 }
 
 // @public (undocumented)
-export type NodeStatus = 'active' | 'paused' | 'completed' | 'failed';
+export type NodeStatus = 'active' | 'stopped' | 'completed' | 'failed';
 
 // @public (undocumented)
 export interface NodeStyleOptions {

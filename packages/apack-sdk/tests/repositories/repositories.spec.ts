@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, type PersistenceSink } from '@apackdev/ears';
 import { findRelations, _bindEars, boundEars, untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
-import { actionRepository, flowRepository, promptRepository, tnodeRepository } from '../../src/repositories/index.ts';
+import { actionRepository, flowRepository, promptRepository } from '../../src/repositories/index.ts';
 import { compile as compileFlowDSL } from '../../src/build/compilers/flow-compiler.ts';
 import { resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { EARS } from '../../src/types/entities.ts';
@@ -264,25 +264,6 @@ describe('flowRepository', () => {
       expect({ rows: rows(flowId), edges: edgeIds(flowId) }).toEqual(before);
       expect(untypedQuery(EARS.Entity.Node).count()).toBe(3);
     });
-  });
-});
-
-describe('tnodeRepository', () => {
-  it("records a step's result on its TNode, truncated, beside what's there", () => {
-    const tNodeId = 'TNode-1' as EARS.EntityId;
-    untypedCreate(EARS.Entity.TNode, { id: tNodeId, tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0, nodeAttributes: { input: 'hi' } });
-
-    tnodeRepository.updateTNodeResult(tNodeId, { text: 'x'.repeat(20000) });
-
-    expect(untypedQuery.ids(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
-      input: 'hi',
-      result: { text: expect.objectContaining({ _truncated: true, _type: 'string', _originalLength: 20000 }) },
-    });
-  });
-
-  it('leaves a TNode that does not exist alone', () => {
-    tnodeRepository.updateTNodeResult('TNode-missing' as EARS.EntityId, { ok: true });
-    expect(untypedQuery.ids(['TNode-missing' as EARS.EntityId]).count()).toBe(0);
   });
 });
 

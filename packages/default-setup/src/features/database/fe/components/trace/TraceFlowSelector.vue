@@ -82,7 +82,7 @@ import { useSurface } from '@apackdev/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import type { DatabaseState } from '../../state.ts'
 import { GitBranch, Loader2, ArrowLeft } from 'lucide-vue-next'
-import type { TNodeEntity } from '@apackdev/sdk/steps'
+import type { RunStatus } from '@apackdev/sdk/steps'
 
 const databaseActor: DatabaseState = useSurface()
 
@@ -157,14 +157,14 @@ import { defineComponent, h } from 'vue'
 export const StatusIndicator = defineComponent({
   props: {
     status: {
-      type: String as () => TNodeEntity['status'],
+      type: String as () => RunStatus,
       required: true
     }
   },
   setup(props) {
     const statusConfig = {
       active: { color: 'bg-yellow-500', pulse: true },
-      paused: { color: 'bg-gray-500', pulse: false },
+      stopped: { color: 'bg-gray-500', pulse: false },
       completed: { color: 'bg-green-500', pulse: false },
       failed: { color: 'bg-red-500', pulse: false },
     }

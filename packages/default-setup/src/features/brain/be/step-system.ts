@@ -1,17 +1,17 @@
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup, assign, sendParent, enqueueActions, type AnyActorRef } from 'xstate';
 import { EARS } from '#generated/ears.ts';
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, TNode, TNodeId } from '@apackdev/sdk/steps';
 import type { NodeEntity } from '#generated/types.ts';
 import { executeNode } from './node-handlers/index.ts';
 import { repository } from '#generated/repository.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 type StepMachineContext = {
-  tNodeId?: EARS.EntityId;
-  tNode: TNodeEntity;
+  tNodeId?: TNodeId;
+  tNode: TNode;
   step: NodeEntity;
-  eventTNodeId?: EARS.EntityId;
+  eventTNodeId?: TNodeId;
   error?: any;
 };
 
@@ -32,9 +32,9 @@ const handlers = defineHandlers<StepMachineContext, StepEvent>();
 export function createStepNodeSystem(
   brain: AnyActorRef,
   stepId: EARS.EntityId,
-  eventTNodeId: EARS.EntityId,
+  eventTNodeId: TNodeId,
   executionContext = {} as ExecutionContext,
-  parentTNodeId?: EARS.EntityId,
+  parentTNodeId?: TNodeId,
 ) {
   const { tNode, step } = repository.brainCommands.createStepTNode(stepId, parentTNodeId ?? eventTNodeId, executionContext);
   return {

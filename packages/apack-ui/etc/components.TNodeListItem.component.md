@@ -5,9 +5,9 @@
 ```ts
 props {
   depth?: number | undefined;
-  node: TNodeEntity | TrackTree;
-  nodeDetails?: TNodeEntity | undefined;
-  nodeDetailsMap?: Map<string, TNodeEntity> | undefined;
+  node: RunTree | TNode;
+  nodeDetails?: TNode | undefined;
+  nodeDetailsMap?: Map<string, TNode> | undefined;
   onOpen-flow?: ((tNodeId: string) => any) | undefined;
   onRequest-details?: ((nodeId: string) => any) | undefined;
   onToggle?: ((nodeId: string) => any) | undefined;

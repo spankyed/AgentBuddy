@@ -1,7 +1,7 @@
 import type { StepRuntimeError } from '@apackdev/sdk/steps';
 import type { EARS } from '#generated/ears.ts';
 
-import type { TrackTree, TNodeEntity, ExecutionContext } from '@apackdev/sdk/steps';
+import type { RunStatus, RunTree, TNode, TNodeId, ExecutionContext } from '@apackdev/sdk/steps';
 
 export type JsonPath = string;
 
@@ -18,15 +18,18 @@ export interface EventListenerEntity {
 
 export interface FlowTNodeData {
   flowTNodeId: EARS.EntityId;
-  tNodeTree: TrackTree[];
+  tNodeTree: RunTree[];
   possibleEvents: EventListenerEntity[];
   flowHierarchy: Array<{ flowTNodeId: EARS.EntityId; label: string }>;
 }
 
+/** A run node as the Brain surface shows it: with where its blueprint is, to reveal it in the Flows surface */
+export type TNodeDetails = TNode & { revealIn?: { flowId: EARS.EntityId; nodeId: EARS.EntityId } };
+
 export interface TNodeUpdate {
-  tNodeId: EARS.EntityId;
-  status: TNodeEntity['status'];
-  eventTNodeId?: EARS.EntityId;
+  tNodeId: TNodeId;
+  status: RunStatus;
+  eventTNodeId?: TNodeId;
 }
 
 /** ── Schema definition types ────────────────────────────────────────────── */
@@ -114,18 +117,18 @@ export type IncomingBrainEvents =
 // `HANDLE_BRAIN_EVENT` is not one of them despite being raised here too — the database system sends it
 // (`features/database/be/system.ts`), which makes it incoming.
 export type BrainInternalEvents =
-  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
+  | { type: 'TNODE_SPAWNED'; tNode: TNode; parentId?: EARS.EntityId; eventTNodeId?: TNodeId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
-  | { type: 'CHILD_COMPLETED'; stepId?: EARS.EntityId; tNodeId?: EARS.EntityId; stepLabel?: string; result?: any; final?: boolean; eventTNodeId?: EARS.EntityId; isFlow?: boolean }
+  | { type: 'CHILD_COMPLETED'; stepId?: EARS.EntityId; tNodeId?: TNodeId; stepLabel?: string; result?: any; final?: boolean; eventTNodeId?: TNodeId; isFlow?: boolean }
 
 export type OutgoingBrainEvents =
   | { type: 'RECEIVE_SURFACE_DATA'; data: FlowTNodeData }
   // | { type: 'BRAIN_CONNECTED'; data: FlowTNodeData }
   | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
-  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
+  | { type: 'TNODE_SPAWNED'; tNode: TNode; parentId?: EARS.EntityId; eventTNodeId?: TNodeId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'EVENT_PULSE'; eventType: string }
-  | { type: 'TNODE_DETAILS'; tNodeId: EARS.EntityId; details: TNodeEntity | null }
+  | { type: 'TNODE_DETAILS'; tNodeId: TNodeId; details: TNodeDetails | null }
   | { type: 'BRAIN_RUNTIME_ERROR'; error: StepRuntimeError }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   /** The brain stopped; `startError` says why it couldn't start, while it stays stopped for that reason */
@@ -146,4 +149,6 @@ export interface BrainContext {
   clientConnected: boolean;
   /** The root flow the running brain started with; undefined while it's stopped */
   runningRootFlowId?: EARS.EntityId;
+  /** This session's root run in the run history: a new one each time the brain starts */
+  rootRunId?: TNodeId;
 }

@@ -85,7 +85,7 @@ import {
 } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
-import type { TrackTree } from '@apackdev/sdk/steps';
+import type { RunTree } from '@apackdev/sdk/steps';
 import BaseNode from '@apackdev/ui/components/BaseNode';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport.ts';
@@ -95,7 +95,7 @@ import { useStepDeclarations } from '@apackdev/sdk/fe';
 const stepDeclarations = useStepDeclarations();
 
 interface Props {
-  tnodeTree?: TrackTree[];
+  tnodeTree?: RunTree[];
   flowTNodeId?: string;
   canGoBack: boolean;
   animationsEnabled?: boolean;
@@ -165,7 +165,7 @@ const clearStalePan = (event: MouseEvent) => {
 };
 
 // Helper functions
-const createVueFlowNode = (tnode: TrackTree, position: { x: number; y: number }): VueFlowNode => {
+const createVueFlowNode = (tnode: RunTree, position: { x: number; y: number }): VueFlowNode => {
   const isTrigger = stepDeclarations.value.some(entry => entry.type === tnode.triggerType && entry.declaration.kind === 'trigger');
   return {
     id: tnode.id,
@@ -182,16 +182,16 @@ const createVueFlowNode = (tnode: TrackTree, position: { x: number; y: number })
   };
 };
 
-const subtreeLeafCount = (tnode: TrackTree): number => {
+const subtreeLeafCount = (tnode: RunTree): number => {
   if (tnode.children.length === 0) return 1;
   return tnode.children.reduce((sum, child) => sum + subtreeLeafCount(child), 0);
 };
 
-const calculateNodePositions = (tracks: TrackTree[]): VueFlowNode[] => {
+const calculateNodePositions = (tracks: RunTree[]): VueFlowNode[] => {
   const nodes: VueFlowNode[] = [];
   let trackY = 0;
 
-  const traverseTrack = (tnode: TrackTree, x: number, y: number) => {
+  const traverseTrack = (tnode: RunTree, x: number, y: number) => {
     nodes.push(createVueFlowNode(tnode, { x, y }));
     const childX = x + LAYOUT.NODE_WIDTH + LAYOUT.HORIZONTAL_GAP;
 
@@ -247,7 +247,7 @@ const edges = computed<Edge[]>(() => {
   const result: Edge[] = [];
 
   // Helper to recursively build edges — every child connects to its parent
-  const buildEdges = (tnode: TrackTree) => {
+  const buildEdges = (tnode: RunTree) => {
     tnode.children.forEach((child) => {
       result.push({
         id: `${tnode.id}-to-${child.id}`,
@@ -308,7 +308,7 @@ const panToLatestTrack = () => {
   const positions = new Map(nodes.value.map(n => [n.id, n.position]));
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
 
-  const visit = (n: TrackTree) => {
+  const visit = (n: RunTree) => {
     const p = positions.get(n.id);
     if (p) {
       minX = Math.min(minX, p.x);

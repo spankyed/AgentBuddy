@@ -92,6 +92,8 @@ export const RUNTIME_ONLY_DEPS = new Map<string, string>([
   ['packages/main @app/renderer', "main loads the renderer's built output by path, or a dev-server URL"],
   ['packages/main @apackdev/cli', 'the packaged app ships the CLI, and the launcher runs it from '
     + 'Resources/app/packages rather than from node_modules'],
+  ['packages/apack-testing @apackdev/ears', 'the bundle inlines @apackdev/host, whose code imports @apackdev/ears, '
+    + 'which stays external as a shared instance: the published package needs it though its own source imports it nowhere'],
 ]);
 
 /**

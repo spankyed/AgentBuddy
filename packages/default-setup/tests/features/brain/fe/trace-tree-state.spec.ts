@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { applyTNodeSpawn, denormalizeTNodeTree, normalizeTNodeTree, type NormalizedTNodeTree } from '#features/brain/fe/trace-tree.ts';
-import type { TNodeEntity, TrackTree } from '@apackdev/sdk/steps';
+import type { TNode, RunTree } from '@apackdev/sdk/steps';
 
-function tNode(id: string, label = id): TNodeEntity {
+function tNode(id: string, label = id): TNode {
   return {
     id,
     entityType: 'tnode',
     tNodeType: 'step',
     label,
     status: 'running',
-  } as unknown as TNodeEntity;
+  } as unknown as TNode;
 }
 
 describe('brain trace tree state', () => {
@@ -17,7 +17,7 @@ describe('brain trace tree state', () => {
     const tree = [
       { ...tNode('event-1'), children: [tNode('step-1'), tNode('step-1')] },
       { ...tNode('event-1'), children: [tNode('step-1'), tNode('step-2')] },
-    ] as TrackTree[];
+    ] as RunTree[];
 
     const normalized = normalizeTNodeTree(tree);
 

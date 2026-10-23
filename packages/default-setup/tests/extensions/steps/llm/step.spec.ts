@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { mockInference, mockService } from '@apackdev/testing/harness';
 import { repository } from '#generated/repository.ts';
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
 import { handler } from '#extensions/steps/llm/runtime.ts';
 import { DEFAULT_MODEL } from '#extensions/steps/llm/model.ts';
 import { registration } from '#generated/pack-entry.ts';
@@ -14,7 +14,7 @@ const llmStepNode = registration.steps!.find(step => step.type === 'llm')!.node!
 function run(nodeAttributes: Record<string, unknown>) {
   const sent: Array<{ type: string; result?: { text?: string }; error?: { message?: string } }> = [];
   const actor = { send: (event: (typeof sent)[number]) => sent.push(event) };
-  const tNode = { id: 'TNode-llm', nodeAttributes } as unknown as TNodeEntity;
+  const tNode = { id: 'TNode-llm', nodeAttributes } as unknown as TNode;
   return handler(tNode, { label: 'Summarize' }, {} as ExecutionContext, actor).then(() => sent);
 }
 

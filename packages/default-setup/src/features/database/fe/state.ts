@@ -24,7 +24,7 @@ function emptyDatabaseResults() {
     pendingQueryCall: null, pendingTransactionCall: null, selectedSchemaItem: null,
     isAiQueryLoading: false, isRefreshing: false,
     traceFlows: [], currentFlowId: null, flowEvents: [], expandedNodes: new Set<string>(),
-    nodeDetails: new Map<string, import('@apackdev/sdk').TNodeEntity>(), isLoadingTrace: false,
+    nodeDetails: new Map<string, import('@apackdev/sdk/steps').TNode>(), isLoadingTrace: false,
     tracePagination: { offset: 0, limit: 50, hasMore: false },
   };
 }
@@ -330,20 +330,8 @@ const databaseState = setup({
 
     setTraceFlows: assign(({ event }) => {
       const ev = typeOf('TRACE_FLOWS_RESULT', event);
-
-      // Sort flows to ensure TNode-Root is always at the top
-      const sortedFlows = [...ev.flows].sort((a, b) => {
-        // Check if either flow is the root (TNode-Root or Run Agent Brain)
-        const aIsRoot = a.id === 'TNode-Root' || a.label === 'Run Agent Brain';
-        const bIsRoot = b.id === 'TNode-Root' || b.label === 'Run Agent Brain';
-
-        // If one is root and the other isn't, root comes first
-        if (aIsRoot && !bIsRoot) return -1;
-        if (!aIsRoot && bIsRoot) return 1;
-
-        // Otherwise maintain original order (already sorted by backend)
-        return 0;
-      });
+      // Newest first, as the run history lists them
+      const sortedFlows = ev.flows;
 
       // Auto-select first flow if we have flows and no current selection
       if (sortedFlows.length > 0) {

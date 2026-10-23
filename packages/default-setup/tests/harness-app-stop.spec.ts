@@ -43,7 +43,7 @@ describe('a real schedule', () => {
     await app.connect()
     return app
   }
-  const ranTick = (app: TestApp) => expect(app.flowTrace('Every Second')).toContainEqual(expect.objectContaining({ label: 'tick', status: 'completed', nodeAttributes: expect.objectContaining({ result: { ticked: true } }) }))
+  const ranTick = (app: TestApp) => expect(app.flowTrace('Every Second')).toContainEqual(expect.objectContaining({ label: 'tick', status: 'completed', result: { ticked: true } }))
 
   it("doesn't tick once its app stopped, as the harness stops it after each test", async () => {
     const app = await startEverySecond()

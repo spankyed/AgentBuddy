@@ -1,5 +1,5 @@
 import type { NodeEntity } from '#generated/types.ts';
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
 import { getStepBinding, stepRegistry } from '@apackdev/sdk/steps';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 
@@ -21,7 +21,7 @@ function failLater(actor: { send(event: { type: string; error?: unknown }): void
 }
 
 export function executeNode(
-  tNode: TNodeEntity,
+  tNode: TNode,
   node: NodeEntity,
   executionContext: ExecutionContext,
   actor: any

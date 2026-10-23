@@ -5,13 +5,14 @@ import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@apackdev/testing/harness'
 import { entry, keepAlive, on, transform } from '#generated/flow-helpers.ts'
 import { getFlowActor } from '#features/brain/be/flow-system.ts'
-
-const ROOT_FLOW_TNODE = 'TNode-Root'
+import { services } from '#generated/services.ts'
 const step = (label: string) => transform('return true', { label })
 
 /** The keys the root flow tracks its spawned children by */
 function childKeys(): string[] {
-  const actor = getFlowActor(ROOT_FLOW_TNODE)
+  // The session's root run: the root the brain started, still running
+  const root = services.runHistory.findRuns().find((run) => run.parentId === undefined && run.status === 'active')
+  const actor = root && getFlowActor(root.id)
   expect(actor, 'the root flow actor is running').toBeDefined()
   return Object.keys(actor.getSnapshot().children as Record<string, unknown>)
 }

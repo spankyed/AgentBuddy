@@ -118,7 +118,7 @@
       <!-- Children nested inside parent container -->
       <div v-if="isExpanded && hasChildren(node)" class="tnode-children">
         <TNodeListItem
-          v-for="child in (node as TrackTree).children"
+          v-for="child in (node as RunTree).children"
           :key="child.id"
           :node="child"
           :depth="depth + 1"
@@ -135,17 +135,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
-import type { TrackTree, TNodeEntity } from '@apackdev/sdk/steps';
+import type { RunTree, TNode } from '@apackdev/sdk/steps';
 import DataRenderer from './DataRenderer.vue';
 import { useNodeStyles } from './node-styles.ts'
 
 const { getNodeConfig, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getNodeStatusClasses } = useNodeStyles()
 
 interface Props {
-  node: TNodeEntity | TrackTree;
+  node: TNode | RunTree;
   depth?: number;
-  nodeDetails?: TNodeEntity;
-  nodeDetailsMap?: Map<string, TNodeEntity>;
+  nodeDetails?: TNode;
+  nodeDetailsMap?: Map<string, TNode>;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -160,7 +160,7 @@ const emit = defineEmits<{
 
 const isExpanded = ref(false);
 
-const hasChildren = (node: TNodeEntity | TrackTree): node is TrackTree => {
+const hasChildren = (node: TNode | RunTree): node is RunTree => {
   return 'children' in node && Array.isArray(node.children) && node.children.length > 0;
 };
 
@@ -172,8 +172,10 @@ const hasDetails = computed(() => {
          props.nodeDetails?.nodeAttributes;
 });
 
+// What the node ran with, and what it returned beside it
 const displayNodeAttributes = computed(() => {
-  return props.nodeDetails?.nodeAttributes || props.node.nodeAttributes;
+  const node = props.nodeDetails ?? props.node;
+  return node.result === undefined ? node.nodeAttributes : { ...node.nodeAttributes, result: node.result };
 });
 
 const effectiveNodeType = computed((): string => {
@@ -213,7 +215,7 @@ const statusClasses = computed(() => {
 const statusRingClasses = computed(() => {
   switch (props.node?.status) {
     case 'active': return 'ring-green-400/30';
-    case 'paused': return 'ring-yellow-400/30';
+    case 'stopped': return 'ring-yellow-400/30';
     case 'completed': return 'ring-blue-400/30';
     case 'failed': return 'ring-red-400/30';
     default: return 'ring-neutral-400/30';

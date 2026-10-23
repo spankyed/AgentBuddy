@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
 import { createLogger } from '@apackdev/sdk/logger';
 import { extractValueByPath } from '@apackdev/sdk/utils';
 import { query, write, type EARS } from '#generated/ears.ts';
@@ -14,7 +14,7 @@ function resolveTarget(target: string, ctx: ExecutionContext): unknown {
   return target.startsWith('$.') ? extractValueByPath(ctx, target) : target;
 }
 
-export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as UpdateNode;
   const a = actor as StepActor;
   try {

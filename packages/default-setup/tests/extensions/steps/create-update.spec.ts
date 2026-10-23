@@ -10,8 +10,8 @@ import * as createCompiler from '#extensions/steps/create/build.ts'
 import * as updateCompiler from '#extensions/steps/update/build.ts'
 
 const startBrain = () => startApp({ systems: ['brain'] })
-const result = (step: { nodeAttributes: Record<string, unknown> }) => step.nodeAttributes.result as Record<string, unknown>
-const errorMessage = (step: { nodeAttributes: Record<string, unknown> }) => (result(step).error as { message: string }).message
+const result = (step: { result?: unknown }) => step.result as Record<string, unknown>
+const errorMessage = (step: { result?: unknown }) => (result(step).error as { message: string }).message
 
 describe('create step', () => {
   it('creates an entity of its type with the mapped and literal fields, labelled from its title, and completes with the row', async () => {

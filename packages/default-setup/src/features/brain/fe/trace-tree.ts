@@ -1,21 +1,21 @@
-import type { TNodeEntity, TrackTree } from '@apackdev/sdk/steps'
+import type { TNode, RunTree } from '@apackdev/sdk/steps'
 
 export interface NormalizedTNodeTree {
-  byId: Record<string, TNodeEntity>;
+  byId: Record<string, TNode>;
   rootIds: string[];
   childrenById: Record<string, string[]>;
 }
 
-export function normalizeTNodeTree(tree: TrackTree[]): NormalizedTNodeTree {
+export function normalizeTNodeTree(tree: RunTree[]): NormalizedTNodeTree {
   const normalized: NormalizedTNodeTree = {
     byId: {},
     rootIds: [],
     childrenById: {}
   };
 
-  function processNode(node: TrackTree, isRoot = false) {
+  function processNode(node: RunTree, isRoot = false) {
     const { children, ...nodeWithoutChildren } = node;
-    normalized.byId[node.id] = nodeWithoutChildren as TNodeEntity;
+    normalized.byId[node.id] = nodeWithoutChildren as TNode;
 
     if (isRoot && !normalized.rootIds.includes(node.id)) {
       normalized.rootIds.push(node.id);
@@ -38,15 +38,15 @@ export function normalizeTNodeTree(tree: TrackTree[]): NormalizedTNodeTree {
   return normalized;
 }
 
-export function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackTree[] {
-  function buildNode(id: string): TrackTree {
+export function denormalizeTNodeTree(normalized: NormalizedTNodeTree): RunTree[] {
+  function buildNode(id: string): RunTree {
     const node = normalized.byId[id];
     const childIds = normalized.childrenById[id] || [];
 
     return {
       ...node,
       children: childIds.map(childId => buildNode(childId))
-    } as TrackTree;
+    } as RunTree;
   }
 
   return normalized.rootIds.map(id => buildNode(id));
@@ -58,7 +58,7 @@ function withoutId(ids: string[], id: string): string[] {
 
 export function applyTNodeSpawn(
   tree: NormalizedTNodeTree | undefined,
-  tNode: TNodeEntity,
+  tNode: TNode,
   parentId: string | undefined,
   currentFlowTNodeId: string | undefined,
 ): NormalizedTNodeTree {

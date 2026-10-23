@@ -4,19 +4,19 @@
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears`.
 // `apack.json` names it at `features[].surface.contract`.
 import type { EventListenerEntity } from '#generated/types.ts'
-import type { StepRuntimeError, TNodeEntity, TrackTree } from '@apackdev/sdk/steps'
+import type { StepRuntimeError, TNode, RunTree } from '@apackdev/sdk/steps'
 import type { NormalizedTNodeTree } from './trace-tree.ts'
 
 export interface BrainContext {
   flowTNodeId?: string;
-  tNodeTree?: TrackTree[];
+  tNodeTree?: RunTree[];
   normalizedTree?: NormalizedTNodeTree;
   possibleEvents: EventListenerEntity[];
   flowHierarchy: Array<{ flowTNodeId: string; label: string }>;
   pulsingEventType?: string;
   // UI state
   showLeftPanel: boolean;
-  selectedStepNode?: TNodeEntity;
+  selectedStepNode?: TNode;
   inspectEnabled: boolean;
   animationsEnabled: boolean;
   brainIsDead: boolean;

@@ -16,7 +16,7 @@
 // it; that is a line, and saying so is better than leaving the list looking derived.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import type { StepRuntimeError, TNodeEntity } from '@apackdev/sdk/steps';
+import type { StepRuntimeError, TNode } from '@apackdev/sdk/steps';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));
@@ -24,12 +24,12 @@ vi.mock('#generated/events.ts', () => ({ sendToSystem }));
 const { default: brainState } = await import('#features/brain/fe/state.ts');
 
 /**
- * A node's details as the panel reads them, which is deliberately not a whole `TNodeEntity`.
+ * A node's details as the panel reads them, which is deliberately not a whole `TNode`.
  *
  * **The cast stops at the fixture.** The events the cases send are checked, so a misspelled event type is
  * a compile error rather than a send the machine ignores while the case goes on asserting.
  */
-const details = (id: string) => ({ id, label: id }) as unknown as TNodeEntity;
+const details = (id: string) => ({ id, label: id }) as unknown as TNode;
 
 /**
  * A started surface in `ready`, which is where node clicks are handled.

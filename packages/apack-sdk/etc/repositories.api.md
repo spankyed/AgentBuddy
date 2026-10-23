@@ -201,11 +201,6 @@ export const RepositoryErrorCode: {
 // @public (undocumented)
 export type RepositoryErrorCode = typeof RepositoryErrorCode[keyof typeof RepositoryErrorCode];
 
-// @public
-export const tnodeRepository: {
-    updateTNodeResult: (tNodeId: EARS.EntityId, result: unknown) => void;
-};
-
 // (No @packageDocumentation comment for this package)
 
 ```
