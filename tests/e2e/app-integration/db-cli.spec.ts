@@ -21,7 +21,7 @@ test("reads the running app's data and refuses to change it", async ({ electronA
   await expect(appPage.getByText('Settings saved', { exact: true })).toBeVisible();
   const dataDir = await electronApp.evaluate(({ app: electron }) => electron.getPath('userData'));
 
-  const read = apackDb(['query', 'return [getEntitiesOfType(EARS.Entity.Settings).length > 0, query(EARS.Entity.Flow).count() > 0]', '--data-dir', dataDir, '-o', 'json']);
+  const read = apackDb(['query', 'return [query(EARS.Entity.Settings).exists(), query(EARS.Entity.Flow).count() > 0]', '--data-dir', dataDir, '-o', 'json']);
   expect(read.stderr).toContain(`Database: ${dataDir} (offline)`);
   expect(read.stderr).toMatch(/Warning: apack is running on it \(its process is running \(pid \d+\)\)/);
   expect(read.status, read.stderr).toBe(0);

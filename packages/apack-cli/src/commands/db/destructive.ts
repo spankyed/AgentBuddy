@@ -28,7 +28,7 @@ const backupLog = (io: DbIo): BackupLog => ({
 /** Entities per type in the hydrated database, for the types that have some */
 function entityCounts(db: AppDatabase): Array<[string, number]> {
   return [...db.schema.getRegisteredEntityTypes()].sort()
-    .map((type) => [type, db.ears.getEntitiesOfType(type as EARS.Entity).length] as [string, number])
+    .map((type) => [type, db.admin.getEntitiesOfType(type as EARS.Entity).length] as [string, number])
     .filter(([, count]) => count > 0);
 }
 
@@ -140,7 +140,7 @@ export async function dbClearSettings(args: string[], io: DbIo): Promise<void> {
   // Without --force nothing is destroyed, so the database opens read-only
   const db = await openTarget(target, { write: force, command: 'clear-settings' }, io);
   const done = await withDatabase(db, () => {
-    const rows = db.ears.getEntitiesOfType(SETTINGS_ENTITY as EARS.Entity).map((id) => describeSettingsRow(db, id));
+    const rows = db.admin.getEntitiesOfType(SETTINGS_ENTITY as EARS.Entity).map((id) => describeSettingsRow(db, id));
     if (rows.length === 0) {
       io.out('No Settings rows: nothing to destroy.');
       return null;

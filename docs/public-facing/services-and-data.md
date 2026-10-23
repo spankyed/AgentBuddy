@@ -382,8 +382,7 @@ A role is a string tag on an entity (`EARS.RoleKind` is a `string`; `EARS.RoleKi
 | `write(id).grant(role)` / `.revoke(role)` | `#generated/ears` | Adds / removes the role; no-op when already there / absent |
 | `write(id).grantExclusive(role, among)` | `#generated/ears` | Makes `id` the only holder among `among`: revokes the role from each of them, then grants it |
 | `query(type).withRole(role)` | `#generated/ears` | Narrows a query to holders |
-| `findWithRole(type, role)` / `findFirstWithRole(type, role)` | `#generated/ears` | Typed rows holding the role, rows in the trash left out |
-| `grantRole(id, role)` / `revokeRole(id, role)` | `@apackdev/sdk/ears` | Direct attribute writes; `grantRole` doesn't check for a duplicate |
+| `grantRole(id, role)` / `revokeRole(id, role)` | `@apackdev/sdk/ears` | The same as `write(id).grant(role)` / `.revoke(role)`: a role is held once |
 | `getRoles(id)` | `@apackdev/sdk/ears` | The entity's roles, `string[]` |
 
 ### Relation and entity helpers
@@ -392,13 +391,8 @@ From `@apackdev/sdk/ears` (untyped, on the app's engine):
 
 | Call | Does |
 |---|---|
-| `createRelation(sourceId, kind, targetId)` | Same as `write(sourceId).link(kind, targetId)` |
 | `updateRelation(relationId, { sourceEntity?, targetEntity?, info? })` | Moves a relation to new ends, or replaces its info, keeping its id |
-| `removeRelation(sourceId, kind, targetId?)` | Removes that relation; without `targetId`, every `kind` relation from the source |
 | `removeRelationById(relationId)` | Removes one relation by id (from `findRelations`) |
-| `destroyEntity(id)` | Hard-deletes the entity: its attributes and every relation to or from it |
-| `exists(id)` | Whether a row outside the trash has the id |
-| `countEntities(entityType)` | Rows of the type, rows in the trash left out |
 | `isEntityType(name)` | Whether the running app has registered the entity type: the SDK's and every registered pack's |
 
 ### Blueprints
@@ -539,8 +533,7 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
-`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findAll`, `findWhere`, `findFirst`,
-`findWithFields`, `findByIdWithFields`, `findWithRole`, `findFirstWithRole`, `createEntity`,
+`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findAll`, `findWhere`, `createEntity`,
 `createEntityWithDefaults`, `updateEntity` and `getAttr`. `@apackdev/ears` exports the
 writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out rows in the trash, as every query does. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's

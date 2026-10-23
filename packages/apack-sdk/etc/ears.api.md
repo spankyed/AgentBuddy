@@ -25,28 +25,7 @@ export function _bindEars(engine: Ears | undefined): Ears | undefined;
 export function boundEars(): Ears;
 
 // @public (undocumented)
-export const countEntities: (entityType: EARS.Entity) => number;
-
-// @public (undocumented)
-export const createRelation: (sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId) => void;
-
-// @public (undocumented)
 export const descendants: (start: EARS.EntityId, relKind: EARS.RelKind) => EARS.EntityId[];
-
-// @public (undocumented)
-export const destroyEntity: (id: EARS.EntityId, skipPersistence?: boolean) => void;
-
-// @public (undocumented)
-export const exists: (id: EARS.EntityId) => boolean;
-
-// @public (undocumented)
-export const findEntitiesByAttribute: (kind: EARS.AttrKind, value?: unknown) => EARS.EntityId[];
-
-// @public (undocumented)
-export const findEntitiesByRelationTo: (relKind: string, id: EARS.EntityId, asSource?: boolean) => EARS.EntityId[];
-
-// @public (undocumented)
-export const findEntitiesInRelationTo: (target: EARS.EntityId) => EARS.EntityId[];
 
 // @public (undocumented)
 export const findRelations: (match?: RelationMatch) => RelationRow[];
@@ -64,9 +43,6 @@ export const getAll: (id: EARS.EntityId) => Record<string, unknown>;
 export const getAllAttributeKinds: () => EARS.AttrKind[];
 
 // @public (undocumented)
-export const getAllEntities: () => EARS.EntityId[];
-
-// @public (undocumented)
 export const getAllEntityTypes: () => EARS.Entity[];
 
 // @public (undocumented)
@@ -77,9 +53,6 @@ export const getAttributeStats: (kind: EARS.AttrKind) => {
     entityCount: number;
     totalValues: number;
 };
-
-// @public (undocumented)
-export const getEntitiesOfType: (type: EARS.Entity) => EARS.EntityId[];
 
 // @public (undocumented)
 export const getRelationStats: (kind: EARS.RelKind) => RelationStats;
@@ -98,9 +71,6 @@ export const getSchemaStats: () => {
 export const grantRole: (id: EARS.EntityId, role: string) => void;
 
 // @public (undocumented)
-export const hasIdCollision: (providedId: string | undefined) => boolean;
-
-// @public (undocumented)
 export const isEntityType: (name: string) => boolean;
 
 // @public (undocumented)
@@ -117,9 +87,6 @@ export const NO_ENGINE_BOUND: string;
 
 // @public (undocumented)
 export const registerRepository: (name: string, value: unknown) => void;
-
-// @public (undocumented)
-export const removeRelation: (sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId) => void;
 
 // @public (undocumented)
 export const removeRelationById: (relId: EARS.EntityId) => void;

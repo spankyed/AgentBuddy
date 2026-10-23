@@ -44,7 +44,7 @@ export async function dbExport(args: string[], io: DbIo): Promise<void> {
     fs.mkdirSync(outDir, { recursive: true });
     const counts: Record<string, number> = {};
     for (const type of types) {
-      const ids = db.ears.getEntitiesOfType(type as EARS.Entity);
+      const ids = db.admin.getEntitiesOfType(type as EARS.Entity);
       if (ids.length === 0 && !requested) continue;
       const rows = ids.map((id) => ({ id, ...db.ears.getAll(id) }));
       fs.writeFileSync(path.join(outDir, `${type}.${format}`), format === 'csv' ? toCSV(rows) : `${toJSON(rows)}\n`);

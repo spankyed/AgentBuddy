@@ -111,7 +111,7 @@ export function resetTestData(): void {
 
 /** Every entity id in the in-memory database, relation rows included */
 export function entityIds(): EARS.EntityId[] {
-  return testEngine().getAllEntities();
+  return testEngine().admin.getAllEntities();
 }
 
 /** Removes an attribute from a row, as data written before the attribute existed would lack it */

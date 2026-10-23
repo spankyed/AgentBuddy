@@ -171,7 +171,7 @@ export function undeclaredEntityTypes(db: AppDatabase): Array<{ type: string; ro
   const declared = db.schema.getRegisteredEntityTypes();
   return db.ears.getAllEntityTypes()
     .filter((type) => !declared.has(type))
-    .map((type) => ({ type, rows: db.ears.getEntitiesOfType(type).length }))
+    .map((type) => ({ type, rows: db.admin.getEntitiesOfType(type).length }))
     .sort((left, right) => right.rows - left.rows || left.type.localeCompare(right.type));
 }
 

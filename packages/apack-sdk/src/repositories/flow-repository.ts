@@ -1,7 +1,7 @@
 // The flow model's repository: flows, their nodes and the edges between them, and the root flow role.
 // The SDK declares these entities (sdk-entities.ts), so it owns their reads and writes; packs build
 // their views on top (default-setup's flows repository).
-import { filterSystemFields, getTimestamp, RepositoryError, RepositoryErrorCode, RESERVED_ATTRIBUTES } from '@apackdev/ears';
+import { getTimestamp, RepositoryError, RepositoryErrorCode, RESERVED_ATTRIBUTES } from '@apackdev/ears';
 import { findRelations, generateLabelWithCount, generateShortCode, getAll, getRoles, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
@@ -361,7 +361,9 @@ export const flowRepository = {
 
     const field = owner.declaration.build?.relation?.field;
     const { related, fields } = splitRelation(updates, field);
-    const changed = filterSystemFields(fields);
+    // The fields a node's edit may write: none the engine owns, and none it leaves undefined
+    const changed = Object.fromEntries(Object.entries(fields)
+      .filter(([key, value]) => value !== undefined && !(RESERVED_ATTRIBUTES as readonly string[]).includes(key)));
     if (owner.declaration.trigger?.validate) {
       validateNode({ ...current, ...changed, updatedAt: ts } as FlowNode, requireStepBinding(current.nodeType));
     }

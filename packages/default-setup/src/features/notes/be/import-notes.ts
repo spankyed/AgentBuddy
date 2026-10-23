@@ -3,7 +3,10 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '#generated/repository.ts';
 import { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@apackdev/sdk/ears';
+import { untypedQuery } from '@apackdev/sdk/ears';
+
+/** Whether an entity has the id, in the trash or not */
+const idTaken = (id: string): boolean => untypedQuery.withTrashed.ids(id as never).exists();
 
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@apackdev/sdk/utils'
 import { toDisplayName } from '@apackdev/sdk/utils'
@@ -132,7 +135,7 @@ function importNoteNodes(
     }
 
     // Skip entity if its ID already exists in the database
-    if (node.id && hasIdCollision(node.id as EARS.EntityId)) {
+    if (node.id && idTaken(node.id as EARS.EntityId)) {
       result.errors.push(`Skipped note "${node.title}": entity ID already exists (${node.id})`)
       result.skipped++
       continue
@@ -279,7 +282,7 @@ function importMarkdownDir(
         }
 
         // Skip entity if its ID already exists in the database
-        if (oldId && hasIdCollision(oldId as EARS.EntityId)) {
+        if (oldId && idTaken(oldId as EARS.EntityId)) {
           result.errors.push(`Skipped note "${name}": entity ID already exists (${oldId})`)
           result.skipped++
           continue
@@ -329,7 +332,7 @@ function importMarkdownDir(
         name = parsed.title || name
 
         // Skip entity if its ID already exists in the database
-        if (parsed.id && hasIdCollision(parsed.id as EARS.EntityId)) {
+        if (parsed.id && idTaken(parsed.id as EARS.EntityId)) {
           result.errors.push(`Skipped note "${name}": entity ID already exists (${parsed.id})`)
           result.skipped++
           continue

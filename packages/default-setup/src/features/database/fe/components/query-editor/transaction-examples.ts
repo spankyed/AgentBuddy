@@ -113,9 +113,9 @@ updateEntity(note.id, {
   lastSeen: Date.now()
 });
 
-// Create relation with helper
+// Link it to a thread
 const threadId = query(EARS.Entity.Thread).first();
-if (threadId) createRelation(note.id, EARS.RelKind.SPAWNED, threadId);
+if (threadId) write(note.id).link(EARS.RelKind.SPAWNED, threadId);
 
 return query.ids(note.id).pickAll();`
   },

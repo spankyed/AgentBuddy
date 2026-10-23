@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
-import { destroyEntity, findRelations, boundEars as ears, untypedWrite, untypedQuery as query } from '../ears/index.ts';
+import { findRelations, boundEars as ears, untypedWrite, untypedQuery as query } from '../ears/index.ts';
 import type { QueryBuilder } from '@apackdev/ears';
 import { _getMediaPath, loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
@@ -152,7 +152,7 @@ export interface ContentEntity {
  */
 export function contentEntity(entityType: string | undefined, key: string): ContentEntity | undefined {
   if (!entityType) return undefined;
-  return (query.withTrashed(entityType as never) as QueryBuilder).where(CONTENT_KEY, key).pickAll()[0] as ContentEntity | undefined;
+  return (query.withTrashed(entityType) as QueryBuilder).where(CONTENT_KEY, key).pickAll()[0] as ContentEntity | undefined;
 }
 
 /**
@@ -317,7 +317,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
           stamp(id, record, contentKey);
         } catch (err) {
           if (hooks?.remove) hooks.remove(id);
-          else destroyEntity(id);
+          else untypedWrite(id).destroy();
           if (mediaDir) fs.rmSync(path.join(_getMediaPath(), id), { recursive: true, force: true });
           /**
            * The entity is gone, so the record must not name it: an entry with no entity is what a later apply
@@ -336,7 +336,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 
       const remove = (id: EARS.EntityId, hooks?: ContentWriter) => {
         if (hooks?.remove) hooks.remove(id);
-        else destroyEntity(id);
+        else untypedWrite(id).destroy();
       };
 
       /**
@@ -565,11 +565,11 @@ function wipe(entities: string[], records: ContentItem[]): void {
   for (const entity of types) {
     const hooks = _contentWriterRegistry.get(entity);
     // The trashed ones too: wiping is removing every entity of the types, whoever made it and wherever it is
-    for (const id of ears().query.withTrashed(entity as never).ids()) {
+    for (const id of ears().query.withTrashed(entity).ids()) {
       // Removing a parent may already have removed this row
       if (!ears().query.withTrashed.ids(id).exists()) continue;
       if (hooks?.remove) hooks.remove(id);
-      else destroyEntity(id);
+      else untypedWrite(id).destroy();
     }
   }
 }

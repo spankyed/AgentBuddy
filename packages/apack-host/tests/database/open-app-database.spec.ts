@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, type EARS } from '@apackdev/ears';
-import { getEntitiesOfType, _bindEars, boundEars, untypedQuery } from '@apackdev/sdk/ears';
+import { _bindEars, boundEars, untypedQuery } from '@apackdev/sdk/ears';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
@@ -183,7 +183,7 @@ describe('openAppDatabase', () => {
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
     expect(boundEars()).toBe(db.ears);
     expect(db.paths).toEqual(_appDataPaths(dir));
-    expect(getEntitiesOfType('Note').sort()).toEqual(['Note-1', 'Note-2']);
+    expect(untypedQuery.withTrashed('Note').ids().sort()).toEqual(['Note-1', 'Note-2']);
     expect(untypedQuery('Note').ids()).toHaveLength(2);
     expect(db.ears.getRoles(id('Note-1'))).toEqual(['pinned']);
     expect(db.ears.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);

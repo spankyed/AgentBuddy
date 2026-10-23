@@ -393,7 +393,7 @@ describe('the lock a change holds', () => {
 describe('the run history', () => {
   it('is left out until --volatile asks for it, in queries, exports and what a reset would delete', async () => {
     const dir = await appDataDir();
-    const counted = "return [getEntitiesOfType('TNode').length, getEntitiesOfType('Note').length]";
+    const counted = "return [query.withTrashed('TNode').count(), query.withTrashed('Note').count()]";
     expect(JSON.parse((await ok(['query', counted, '--data-dir', dir, '-o', 'json'])).out)).toEqual([0, 2]);
     expect(JSON.parse((await ok(['query', counted, '--data-dir', dir, '-o', 'json', '--volatile'])).out)).toEqual([1, 2]);
 
@@ -408,7 +408,7 @@ describe('the run history', () => {
   it('is deleted by a reset either way', async () => {
     const dir = await appDataDir();
     await ok(['reset', '--force', '--data-dir', dir]);
-    expect(JSON.parse((await ok(['query', "return getAllEntities()", '--data-dir', dir, '-o', 'json', '--volatile'])).out)).toEqual([]);
+    expect(JSON.parse((await ok(['query', "return query.withTrashed.all().ids()", '--data-dir', dir, '-o', 'json', '--volatile'])).out)).toEqual([]);
   });
 });
 
@@ -541,7 +541,7 @@ describe('apack db script', () => {
       'export default async ({ db, EARS, args, log }: any) => {',
       "  log(`renaming on ${typeof os.hostname()}`);",
       "  db.ears.write('Note-a').set('title', args[0]);",
-      '  return db.ears.getEntitiesOfType(EARS.Entity.Note).length;',
+      '  return db.ears.query(EARS.Entity.Note).count();',
       '};',
     ].join('\n'));
 
@@ -562,7 +562,7 @@ describe('apack db script', () => {
   it('runs a plain module too, and writes what it returns to a file', async () => {
     const dir = await appDataDir();
     const file = writeScript(dir, 'titles.mjs', [
-      'export default ({ db }) => db.ears.getEntitiesOfType("Note").map((id) => ({ id, title: db.ears.getAttr(id, "title") }));',
+      'export default ({ db }) => db.ears.query("Note").ids().map((id) => ({ id, title: db.ears.getAttr(id, "title") }));',
     ].join('\n'));
     const out = path.join(dir, 'titles.json');
     await ok(['script', file, '--data-dir', dir, '-o', 'json', '--out', out]);
@@ -574,7 +574,7 @@ describe('apack db script', () => {
     writeScript(dir, 'helper.ts', "export const titleOf = (db: any, id: string): string => db.ears.getAttr(id, 'title');");
     const file = writeScript(dir, 'report.ts', [
       "import { titleOf } from './helper';",
-      'export default ({ db, args }: any) => ({ title: titleOf(db, args[0]), notes: db.ears.getEntitiesOfType("Note").length });',
+      'export default ({ db, args }: any) => ({ title: titleOf(db, args[0]), notes: db.ears.query("Note").count() });',
     ].join('\n'));
 
     // In this process vitest compiles the script; the CLI has to do it itself, so drive the binary
@@ -827,18 +827,18 @@ describe('apack db clear-settings', () => {
     const dry = await ok(['clear-settings', '--data-dir', dir]);
     expect(dry.out).toMatch(/Would destroy 1 Settings row\(s\)/);
     expect(dry.out).toContain('Dry run: nothing was changed');
-    expect((await ok(['query', 'return getEntitiesOfType("Settings")', '--data-dir', dir, '-o', 'json'])).out).toContain('Settings-app');
+    expect((await ok(['query', 'return query.withTrashed("Settings").ids()', '--data-dir', dir, '-o', 'json'])).out).toContain('Settings-app');
 
     const forced = await ok(['clear-settings', '--force', '--data-dir', dir]);
     expect(forced.out).toContain('Destroyed 1 Settings row(s)');
-    expect(JSON.parse((await ok(['query', 'return getEntitiesOfType("Settings")', '--data-dir', dir, '-o', 'json'])).out)).toEqual([]);
+    expect(JSON.parse((await ok(['query', 'return query.withTrashed("Settings").ids()', '--data-dir', dir, '-o', 'json'])).out)).toEqual([]);
     expect((await ok(['clear-settings', '--force', '--data-dir', dir])).out).toBe('No Settings rows: nothing to destroy.');
   });
 
   // Only the Settings rows: the command is for settings a user can't get past, not for their data
   it('leaves every other entity, its roles and its relations where they were', async () => {
     const dir = await appDataDir();
-    const rows = () => ok(['query', 'return getAllEntities().sort()', '--data-dir', dir, '-o', 'json']);
+    const rows = () => ok(['query', 'return query.withTrashed.all().ids().sort()', '--data-dir', dir, '-o', 'json']);
     const before = JSON.parse((await rows()).out) as string[];
 
     await ok(['clear-settings', '--force', '--data-dir', dir]);
@@ -912,7 +912,7 @@ describe('apack db reset', () => {
     const forced = await ok(['reset', '--force', '--data-dir', dir]);
     expect(forced.out).toContain('Reset.');
     expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toEqual([]);
-    const after = await ok(['query', 'return getAllEntities()', '--data-dir', dir, '-o', 'json']);
+    const after = await ok(['query', 'return query.withTrashed.all().ids()', '--data-dir', dir, '-o', 'json']);
     expect(JSON.parse(after.out)).toEqual([]);
     expect((await ok(['reset', '--data-dir', dir])).out).toContain('Would delete 0 stored API key(s)');
   });
@@ -928,14 +928,14 @@ describe('apack db reset', () => {
 
     await ok(['reset', '--keep-keys', '--force', '--data-dir', dir]);
     expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toHaveLength(1);
-    expect(JSON.parse((await ok(['query', 'return getAllEntities()', '--data-dir', dir, '-o', 'json'])).out)).toEqual([]);
+    expect(JSON.parse((await ok(['query', 'return query.withTrashed.all().ids()', '--data-dir', dir, '-o', 'json'])).out)).toEqual([]);
   });
 
   it('refuses while an app runs on the data dir', async () => {
     const dir = await appDataDir();
     publishApi(dir);
     expect((await run(['reset', '--force', '--data-dir', dir])).error?.message).toMatch(/quit it first/);
-    expect((await ok(['query', 'return getEntitiesOfType("Note").length', '--data-dir', dir])).out).toBe('2');
+    expect((await ok(['query', 'return query.withTrashed("Note").count()', '--data-dir', dir])).out).toBe('2');
   });
 });
 
@@ -957,7 +957,7 @@ describe('apack db import', () => {
     expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
 
     await ok(['import', backup, '--force', '--data-dir', dir]);
-    expect((await ok(['query', "return [getAttr('Note-a', 'title'), getEntitiesOfType('Note').length]", '--data-dir', dir, '-o', 'json'])).out)
+    expect((await ok(['query', "return [getAttr('Note-a', 'title'), query.withTrashed('Note').count()]", '--data-dir', dir, '-o', 'json'])).out)
       .toBe(JSON.stringify(['From the backup', 1], null, 2));
     expect(fs.readFileSync(path.join(_appDataPaths(dir).media, 'image.png'), 'utf-8')).toBe('png');
   });

@@ -1,7 +1,6 @@
 import { write, findById, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
-import { createRelation, removeRelation } from '@apackdev/sdk/ears';
 import { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
 import { trash } from '@apackdev/sdk/repositories';
 
@@ -35,13 +34,13 @@ function appendParentLink(parentId: EARS.EntityId, id: EARS.EntityId, noteType: 
 function reparent(id: EARS.EntityId, oldParentId: string | null, newParentId: EARS.EntityId | null, noteType: string): void {
   // Remove old CONTAINS relation and strip sub-document link from old parent content
   if (oldParentId) {
-    removeRelation(oldParentId as EARS.EntityId, EARS.RelKind.CONTAINS, id);
+    write(oldParentId as EARS.EntityId).unlink(EARS.RelKind.CONTAINS, id);
     removeParentLink(oldParentId as EARS.EntityId, id);
   }
 
   // Create new CONTAINS relation and append sub-document link to new parent content
   if (newParentId) {
-    createRelation(newParentId, EARS.RelKind.CONTAINS, id);
+    write(newParentId).link(EARS.RelKind.CONTAINS, id);
     appendParentLink(newParentId, id, noteType);
   }
 }
@@ -112,11 +111,7 @@ export const noteCommands = {
 
     // Create parent-child relationship
     if (input.parentId) {
-      createRelation(
-        input.parentId as EARS.EntityId,
-        EARS.RelKind.CONTAINS,
-        note.id
-      );
+      write(input.parentId as EARS.EntityId).link(EARS.RelKind.CONTAINS, note.id);
     }
 
     // Index the links this note's text makes, and the links other notes already made to it
@@ -189,7 +184,7 @@ export const noteCommands = {
     // If parent is still in the trash, detach so note restores at root
     const parentIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
     if (parentIds.length > 0 && trash.isTrashed(parentIds[0])) {
-      removeRelation(parentIds[0], EARS.RelKind.CONTAINS, id);
+      write(parentIds[0]).unlink(EARS.RelKind.CONTAINS, id);
     }
     const childIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const childId of childIds) {
@@ -309,7 +304,7 @@ export const noteCommands = {
     // Remove parent relationship (if any)
     const parentIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
     for (const parentId of parentIds) {
-      removeRelation(parentId, EARS.RelKind.CONTAINS, id);
+      write(parentId).unlink(EARS.RelKind.CONTAINS, id);
     }
 
     // Remove CONTAINS relationships to children (already deleted)
@@ -321,7 +316,7 @@ export const noteCommands = {
     // Clean up incoming REFERENCES (other notes pointing to this one)
     const referencingIds = query.withTrashed.ids(id).linksTo(REFERENCES, EARS.Entity.Note, false).ids();
     for (const refId of referencingIds) {
-      removeRelation(refId, REFERENCES, id);
+      write(refId).unlink(REFERENCES, id);
     }
 
     // Destroy the entity
