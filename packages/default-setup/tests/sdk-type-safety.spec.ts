@@ -85,12 +85,23 @@ describe('Type inference — typed EARS helpers', () => {
     createEntityWithDefaults(EARS.Entity.Action, { notAField: 1 });
   });
 
-  it('write checks the values of declared fields, and takes an options argument', () => {
+  it('write names only declared fields, checks their values, and takes an options argument', () => {
     // Type-level only: never called, since no entity has this id
     const check = () => {
       write(actionId, { touch: false }).setMany({ label: 'renamed' });
+      write(actionId).set('label', 'renamed').delete('description');
       // @ts-expect-error wrong type for a declared field
       write(actionId).setMany({ label: 42 });
+      // @ts-expect-error not a field of Action
+      write(actionId).setMany({ labl: 'renamed' });
+      // @ts-expect-error not a field of Action
+      write(actionId).set('labl', 'renamed');
+      // @ts-expect-error not a field of Action
+      write(actionId).delete('labl');
+      // @ts-expect-error the engine writes updatedAt
+      write(actionId).set('updatedAt', 1);
+      // A plain id names no entity type, so its writes are unchecked
+      write('Action-x' as EARS.EntityId).set('anything', 1);
     };
     expectTypeOf(check).toBeFunction();
   });

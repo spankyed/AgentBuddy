@@ -271,10 +271,16 @@ const uniqueById = <T extends { id?: EARS.EntityId }>(nodes: T[]): T[] => nodes;
 const linkedMemos = uniqueById(query.ids(memoId).out('related', ['Memo']).pick(['text']));
 export type ContextualLinkPick = Expect<Equal<(typeof linkedMemos)[number]['text'], string>>;
 
-// Writes check the values of declared fields when they know the entity; other fields are free
-write(memoId).set('text', 'x').set('pinned', true).set('undeclared', 42);
+// Writes that know the entity name only its declared fields and store their declared types
+write(memoId).set('text', 'x').set('pinned', true);
 write(firstMemo).set('pinned', false);
+create('Memo').setMany({ text: 'x' });
+// @ts-expect-error an undeclared field
+write(memoId).set('undeclared', 42);
+// @ts-expect-error in batch writes too
 create('Memo').setMany({ text: 'x', extra: 1 });
+// @ts-expect-error the engine writes updatedAt
+write(memoId).set('updatedAt', 1);
 upsert('Memo', plainId).set('text', 'x');
 const createdMemo = create('Memo').id();
 export type CreateIdTagged = Expect<Equal<typeof createdMemo, EARS.EntityId<'Memo'>>>;
@@ -364,7 +370,7 @@ async function buildPacks(published: boolean, dependencyStamp?: { format?: numbe
  * Incidents), so these positions are checked directly. `|name|` marks a position in the source.
  */
 const COMPLETIONS = `
-import { EARS, query, getAttr, findAll, createEntity } from '#generated/ears.ts';
+import { EARS, query, getAttr, findAll, createEntity, write } from '#generated/ears.ts';
 import { sendToSystem } from '#generated/events.ts';
 declare const memoId: EARS.EntityId<'Memo'>;
 sendToSystem('|systemId|', { type: 'CLEAR_MEMOS' });
@@ -386,8 +392,15 @@ query.ids(memoId).in('related', '|in|');
 query.all().ofType('|ofType|');
 query('|query|');
 query('Memo').has('txet');
+write(memoId).set('|set|', true);
+write(memoId).add('|add|', true);
+write(memoId).delete('|delete|');
+write(memoId).deleteAt('|deleteAt|', 0);
+write(memoId).set('pinnd', true);
 `;
 const FIELD_POSITIONS = ['pick', 'pickOne', 'outPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr'];
+/** The fields a write may name: the declared ones, without the engine's own (`createdAt`, `updatedAt`, …) */
+const WRITE_POSITIONS = ['set', 'add', 'delete', 'deleteAt'];
 const NAME_POSITIONS = ['findAll', 'createEntity', 'out', 'in', 'ofType'];
 
 /** String completions at each marked position of COMPLETIONS, and the file's diagnostics */
@@ -515,8 +528,12 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
       positions.filter((position) => !expected.every((name) => at[position]?.includes(name)));
     expect(missing(FIELD_POSITIONS, ['text', 'pinned']), 'positions without Memo field completions').toEqual([]);
     expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation', 'Prompt']), 'positions without entity-name completions').toEqual([]);
-    // A typo's error lists the fields it could have been
+    expect(missing(WRITE_POSITIONS, ['text', 'pinned']), 'write positions without Memo field completions').toEqual([]);
+    expect(at.where, 'a read offers the engine\'s fields').toContain('createdAt');
+    expect(WRITE_POSITIONS.filter((position) => at[position]?.includes('createdAt')), 'write positions offering an engine field').toEqual([]);
+    // A typo's error lists the fields it could have been, for a read and a write
     expect(diagnostics.find((message) => message.includes('"txet"'))).toMatch(/"text"/);
+    expect(diagnostics.find((message) => message.includes('"pinnd"'))).toMatch(/"pinned"/);
   });
 
   it.each(['bundler', 'node16'] as const)('offers system-id and event-type completions for sendToSystem under moduleResolution %s', (moduleResolution) => {
