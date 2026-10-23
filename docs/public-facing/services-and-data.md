@@ -487,7 +487,8 @@ reaches it, so `write(id).restore()` takes it out. Two entry points read the tra
 ```typescript
 query.withTrashed('Bookmark').ids();             // every bookmark, trashed ones included (also .ids, .all)
 query.withTrashed.ids(id).out('contains');   // a trashed entity's children, themselves trashed or not
-query.trashed('Bookmark').pickAll();             // only the trashed ones, each with its trashedAt
+query.trashed('Bookmark').pickAll();             // only the trashed ones, each with its trashedAt (also .ids, .all)
+query.trashed.ids(id).exists();                  // whether this entity is in the trash
 ```
 
 The entities trashed more than a week ago, say, are a query over `trashedAt`:
