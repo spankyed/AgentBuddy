@@ -445,7 +445,7 @@ and goes only where the query could reach, so a trashed entity ends it unless th
 |---|---|
 | `query.ids(id).descendants(kind, type?)` | Every entity reachable by following `kind` out of `id`, `id` excluded: its subtree |
 | `query.ids(id).ancestors(kind, type?)` | Every entity reachable by following `kind` into `id`, `id` excluded: in a tree, its parent first and its root last |
-| `wouldCreateCycle(src, tgt, kinds)` | `true` when `tgt` already reaches `src`, or is `src`, so linking `src → tgt` would close a cycle |
+| `wouldCreateCycle(source, target, kinds)` | `true` when `target` already reaches `source`, or is `source`, so linking `source → target` would close a cycle |
 
 `type` keeps the reached entities of that type and walks through the rest. Check `wouldCreateCycle` before moving an
 entity under a new parent, or link with `{ acyclicIn: [kind] }` to have the link refused instead. A path to the root
