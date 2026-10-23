@@ -33,7 +33,7 @@ for (const entityId of allEntities) {
   if (targets.length > 0) {
     results.push({
       ...getRow(entityId),
-      relationType: '${value}',
+      kind: '${value}',
       targets: targets.slice(0, 5),
       targetCount: targets.length,
     });

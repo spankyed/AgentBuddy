@@ -106,7 +106,7 @@ export const brainQueries = {
   eventAllSteps: (eventNodeId: EARS.EntityId): NodeEntity[] => {
     const nodes = query.ids(eventNodeId)
       .outEdges(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])
-      .map(link => query.ids(link.id).pickAll()[0] as unknown as NodeEntity)
+      .map(link => query.ids(link.target).pickAll()[0] as unknown as NodeEntity)
       .filter(node => node && node.id);
 
     return uniqueNodesById(nodes);
@@ -118,7 +118,7 @@ export const brainQueries = {
       .outEdges(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
 
     return nextLinks.map(link => {
-      const result = query.ids(link.id).pickAll();
+      const result = query.ids(link.target).pickAll();
       return result[0] as unknown as NodeEntity;
     }).filter(node => node && node.id)[0];
   },
@@ -127,8 +127,8 @@ export const brainQueries = {
   nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string): NodeEntity | undefined => {
     // Get all TRANSITIONS_TO edges from this node
     const edges = findRelations({
-      sourceEntity: nodeId,
-      relationType: EARS.RelKind.TRANSITIONS_TO,
+      source: nodeId,
+      kind: EARS.RelKind.TRANSITIONS_TO,
     });
 
     // Find edge matching sourceHandle
@@ -144,7 +144,7 @@ export const brainQueries = {
     if (!edge) return undefined;
 
     // Get the target node
-    const result = query.ids(edge.targetEntity).pickAll();
+    const result = query.ids(edge.target).pickAll();
     return result[0] as unknown as NodeEntity | undefined;
   },
   
@@ -184,7 +184,7 @@ export const brainQueries = {
       );
     }
 
-    const flowId = flowLinks[0].id;
+    const flowId = flowLinks[0].target;
 
     // All triggers (listeners, schedules, etc.) via registry
     const events: EventListenerEntity[] = [];
@@ -341,8 +341,8 @@ export const brainCommands = {
     
     for (const flowId of allFlows) {
       const nodeIds = query.ids(flowId)
-        .outEdges(EARS.RelKind.CONTAINS, EARS.Entity.Node)
-        .map(({ id }) => id);
+        .out(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+        .ids();
       if (nodeIds.includes(flowStepId)) {
         parentFlowId = flowId;
         break;
@@ -419,8 +419,8 @@ export const brainCommands = {
     
     for (const fid of allFlows) {
       const nodeIds = query.ids(fid)
-        .outEdges(EARS.RelKind.CONTAINS, EARS.Entity.Node)
-        .map(({ id }) => id);
+        .out(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+        .ids();
       if (nodeIds.includes(stepId)) {
         flowId = fid;
         break;

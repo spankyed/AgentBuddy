@@ -47,8 +47,8 @@ export function buildQueryContext(): { schema: string; topology: string } {
 
   // Build topology: relation counts by source type, kind and target type
   const edges = new Map<string, number>();
-  for (const { sourceEntity, relationType, targetEntity } of findRelations()) {
-    const edgeKey = `${sourceEntity.split('-')[0]} --${relationType}--> ${targetEntity.split('-')[0]}`;
+  for (const { source, kind, target } of findRelations()) {
+    const edgeKey = `${source.split('-')[0]} --${kind}--> ${target.split('-')[0]}`;
     edges.set(edgeKey, (edges.get(edgeKey) ?? 0) + 1);
   }
 

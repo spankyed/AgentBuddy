@@ -53,11 +53,11 @@ describe('services.traceStore', () => {
     expect(traces.entities().filter((e) => e.id.startsWith('TNode-trace-')).map((e) => e.id).sort()).toEqual(Object.values(ids).sort());
     expect(traces.getEntityMeta(ids.flow)).toEqual({ type: 'TNode', createdAt: 1 });
     expect(traces.getAttr(ids.flow, 'label')).toBe('Run');
-    expect(traces.relations({ kind: 'tracked', src: ids.flow })).toEqual([
-      { id: 'Relation-trace-1', rel: { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 } },
-      { id: 'Relation-trace-2', rel: { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 } },
+    expect(traces.relations({ kind: 'tracked', source: ids.flow })).toEqual([
+      { id: 'Relation-trace-1', kind: 'tracked', source: ids.flow, target: ids.event, createdAt: 5 },
+      { id: 'Relation-trace-2', kind: 'tracked', source: ids.flow, target: ids.later, createdAt: 6 },
     ]);
-    expect(traces.relations({ kind: 'tracked', src: ids.flow, limit: 1 })).toHaveLength(1);
+    expect(traces.relations({ kind: 'tracked', source: ids.flow, limit: 1 })).toHaveLength(1);
   });
 });
 

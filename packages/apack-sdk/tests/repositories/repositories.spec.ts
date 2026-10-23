@@ -81,7 +81,7 @@ describe('flowRepository', () => {
     expect(flowRepository.rootFlow()).toBeUndefined();
     expect(untypedQuery(EARS.Entity.Flow).ids()).toEqual([]);
     for (const id of nodeIds) expect(untypedQuery.ids([id]).count()).toBe(0);
-    expect(findRelations({ sourceEntity: flowId })).toEqual([]);
+    expect(findRelations({ source: flowId })).toEqual([]);
   });
 
   it('moves the root role to the flow granted it', () => {
@@ -104,7 +104,7 @@ describe('flowRepository', () => {
     expect(() => flowRepository.createEdge(step.id, other.id, { sourceHandle: 'case-0' })).toThrow('Edge already exists');
 
     flowRepository.reindexHandles(step.id, 'case', 0, 1);
-    expect(findRelations({ sourceEntity: step.id, relationType: EARS.RelKind.TRANSITIONS_TO }).map((rel) => (rel.info as { sourceHandle: string }).sourceHandle)).toEqual(['case-1']);
+    expect(findRelations({ source: step.id, kind: EARS.RelKind.TRANSITIONS_TO }).map((rel) => (rel.info as { sourceHandle: string }).sourceHandle)).toEqual(['case-1']);
 
     flowRepository.deleteNode(other.id);
     expect(flowRepository.flowEdges(flow.id)).toEqual([]);
@@ -119,8 +119,8 @@ describe('flowRepository', () => {
     const c = flowRepository.createNode(flow.id, { nodeType: 'action' });
     const { relId } = flowRepository.createEdge(a.id, b.id, { sourceHandle: 'case-0' });
     flowRepository.createEdge(a.id, c.id, { sourceHandle: 'case-1' });
-    const edges = () => findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO })
-      .map((rel) => ({ id: rel.id, target: rel.targetEntity, sourceHandle: (rel.info as { sourceHandle?: string }).sourceHandle }));
+    const edges = () => findRelations({ source: a.id, kind: EARS.RelKind.TRANSITIONS_TO })
+      .map((rel) => ({ id: rel.id, target: rel.target, sourceHandle: (rel.info as { sourceHandle?: string }).sourceHandle }));
 
     // Onto another handle and target: the same edge, its own handle not counted as busy
     flowRepository.updateEdge(relId, { source: a.id, target: c.id, sourceHandle: 'case-2' });
@@ -158,9 +158,9 @@ describe('flowRepository', () => {
         { source: a.id, target: b.id, sourceHandle: 'case-1' },
       ]);
 
-    const handleEdges = findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO }).map((rel) => rel.id);
+    const handleEdges = findRelations({ source: a.id, kind: EARS.RelKind.TRANSITIONS_TO }).map((rel) => rel.id);
     flowRepository.deleteNode(b.id);
-    expect(findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO })).toEqual([]);
+    expect(findRelations({ source: a.id, kind: EARS.RelKind.TRANSITIONS_TO })).toEqual([]);
     // Both reach persistence: an edge is stored in its nodes' partition, which a node's deletion empties of its links
     expect(removed).toEqual(expect.arrayContaining(handleEdges));
     expect(flowRepository.flowEdges(flow.id)).toEqual([]);
@@ -193,10 +193,10 @@ describe('flowRepository', () => {
 
     it('changes nothing when the file is the same', () => {
       const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
-      const before = { rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ sourceEntity: flowId }).map((r) => r.id) };
+      const before = { rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ source: flowId }).map((r) => r.id) };
 
       expect(flowRepository.importFromDSL(demo(['Greet', 'Wave'])).flowIds).toEqual([flowId]);
-      expect({ rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ sourceEntity: flowId }).map((r) => r.id) }).toEqual(before);
+      expect({ rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ source: flowId }).map((r) => r.id) }).toEqual(before);
     });
 
     it('removes a dropped node with its edges, and keeps the ids of what stays', () => {
@@ -223,7 +223,7 @@ describe('flowRepository', () => {
       boundEars().write(flowId).set('contentKey', 'pack:flows/Demo').set('description', 'mine');
 
       flowRepository.importFromDSL(demo(['Greet']));
-      expect(findRelations({ sourceEntity: run }).map((r) => [r.relationType, r.targetEntity]).sort()).toEqual(
+      expect(findRelations({ source: run }).map((r) => [r.kind, r.target]).sort()).toEqual(
         [[EARS.RelKind.INSTANCE_OF, flowId], [EARS.RelKind.TRACKED, greetNode.id]].sort(),
       );
       expect(boundEars().getRow(flowId)).toMatchObject({ contentKey: 'pack:flows/Demo', description: 'mine', label: 'Demo' });

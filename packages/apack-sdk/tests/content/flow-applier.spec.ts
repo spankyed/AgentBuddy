@@ -96,7 +96,7 @@ describe('flow applier', () => {
     const [[, item]] = [...record.written];
     const flowId = flows('Demo Flow')[0].id as never;
 
-    const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
+    const nodeId = findRelations({ source: flowId, kind: 'contains' as never })[0].target;
     untypedWrite(flowId).link('transitions_to' as never, nodeId as never, { info: { sourceHandle: 'branch-9' } });
 
     expect(driftedGraphParts(item, flowId)).toEqual(['edges']);
@@ -113,7 +113,7 @@ describe('flow applier', () => {
     apply(compiledFlows('Demo Flow'), record);
     const [[, item]] = [...record.written];
     const flowId = flows('Demo Flow')[0].id as never;
-    const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
+    const nodeId = findRelations({ source: flowId, kind: 'contains' as never })[0].target;
 
     const added = boundEars().create('Node' as never, { label: 'mine' }).id();
     untypedWrite(flowId).link('contains' as never, added as never);

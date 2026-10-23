@@ -32,7 +32,7 @@ function snapshot(ears: Ears) {
   return {
     entities: ids.map((id) => ({ id, attributes: ears.getRow(id), roles: [...ears.getRoles(id)].sort() })),
     relations: ears.findRelations()
-      .map(({ id, relationType, sourceEntity, targetEntity, info }) => ({ id, relationType, sourceEntity, targetEntity, info }))
+      .map(({ id, kind, source, target, info }) => ({ id, kind, source, target, info }))
       .sort((a, b) => a.id.localeCompare(b.id)),
   };
 }

@@ -297,9 +297,9 @@ upsert('Memo', { id: plainId, text: 'x', pinned: 'yes' });
 // @ts-expect-error Tag.name is a string
 write(tags[0]!.id).set('name', 1);
 // Relation is the SDK's: available and shaped though neither pack declares it
-const relationType: 'Relation' = PackEARS.Entity.Relation;
-const relation = query(relationType).pickAll()[0]!;
-export type RelationShape = Expect<Equal<typeof relation.relationDetails.sourceEntity, EARS.EntityId>>;
+const kind: 'Relation' = PackEARS.Entity.Relation;
+const relation = query(kind).pickAll()[0]!;
+export type RelationShape = Expect<Equal<typeof relation.relationDetails.source, EARS.EntityId>>;
 // So is the flow model, without depending on default-setup
 const action = query('Action').pickAll()[0]!;
 export type ActionShape = Expect<Equal<typeof action.actionFn, string>>;

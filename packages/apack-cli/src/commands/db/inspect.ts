@@ -35,16 +35,16 @@ const entityType = (id: string) => id.split('-')[0];
 /** The ids an entity's relations in one direction reach, by relation kind */
 function relatedByKind(ears: Ears, entityId: EARS.EntityId, direction: Direction): Map<string, string[]> {
   const relations = direction === 'outgoing'
-    ? ears.findRelations({ sourceEntity: entityId })
-    : ears.findRelations({ targetEntity: entityId });
+    ? ears.findRelations({ source: entityId })
+    : ears.findRelations({ target: entityId });
   const byKind = new Map<string, string[]>();
   for (const relation of relations) {
-    const other = direction === 'outgoing' ? relation.targetEntity : relation.sourceEntity;
+    const other = direction === 'outgoing' ? relation.target : relation.source;
     // Pushed onto the kind's own array: an entity with thousands of relations of one kind is common (a thread's
     // messages), and rebuilding the array for each of them is quadratic
-    const kind = byKind.get(relation.relationType);
+    const kind = byKind.get(relation.kind);
     if (kind) kind.push(other);
-    else byKind.set(relation.relationType, [other]);
+    else byKind.set(relation.kind, [other]);
   }
   return byKind;
 }
@@ -87,7 +87,7 @@ export function relationStatsLines(ears: Ears, entityTypes: Iterable<string>): s
     // The registered types, the trash included: what the data dir holds of each
     const ids = ears.query.withTrashed(type).ids();
     if (ids.length === 0) return [];
-    const relations = ids.reduce((sum, id) => sum + ears.findRelations({ sourceEntity: id }).length, 0);
+    const relations = ids.reduce((sum, id) => sum + ears.findRelations({ source: id }).length, 0);
     return [[type, String(ids.length), String(relations), (relations / ids.length).toFixed(1)]];
   });
   const header = ['Entity type', 'Entities', 'Relations', 'Per entity'];

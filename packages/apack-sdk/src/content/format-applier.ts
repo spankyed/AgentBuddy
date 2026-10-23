@@ -466,8 +466,8 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
        * remove.
        */
       const holdsOthers = (id: EARS.EntityId, prefix: string): boolean =>
-        findRelations({ sourceEntity: id }).some((relation) => {
-          const childKey = contentKeyOf(relation.targetEntity as EARS.EntityId);
+        findRelations({ source: id }).some((relation) => {
+          const childKey = contentKeyOf(relation.target as EARS.EntityId);
           return childKey === undefined || !childKey.startsWith(prefix);
         });
 

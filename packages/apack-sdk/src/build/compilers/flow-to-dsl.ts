@@ -30,8 +30,8 @@ export interface ExportFlowsOptions {
 
 function getFlowNodes({ query }: Ears, steps: StepLookup, flowId: string): any[] {
   const nodeIds = query.ids(flowId as EARS.EntityId)
-    .outEdges(EARS.RelKind.CONTAINS, EARS.Entity.Node)
-    .map(({ id }: any) => id);
+    .out(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+    .ids();
 
   const nodes = query.ids(nodeIds as EARS.EntityId[]).pickAll();
 
@@ -39,8 +39,7 @@ function getFlowNodes({ query }: Ears, steps: StepLookup, flowId: string): any[]
     const rel = steps.getBuild(node.nodeType)?.relation;
     if (!rel) return node;
     const linkedId = query.ids(node.id as EARS.EntityId)
-      .outEdges(EARS.RelKind.INSTANCE_OF)
-      .map(({ id }: any) => id)[0];
+      .outEdges(EARS.RelKind.INSTANCE_OF)[0]?.target;
     return linkedId ? { ...node, [rel.field]: linkedId } : node;
   });
 }
@@ -50,32 +49,11 @@ function getFlowEdges(engine: Ears, steps: StepLookup, flowId: string): any[] {
   const nodes = getFlowNodes(engine, steps, flowId);
   const nodeIds = nodes.map((n: any) => n.id).filter(Boolean);
 
-  const seen = new Set<string>();
   const edges: any[] = [];
-
   for (const source of nodeIds) {
-    query.ids(source as EARS.EntityId)
-      .outEdges([EARS.RelKind.TRANSITIONS_TO], [EARS.Entity.Node])
-      .filter(({ id: targetId }: any) => nodeIds.includes(targetId))
-      .forEach(({ kind, id: target }: any) => {
-        const relDetails = engine.findRelations({
-          sourceEntity: source,
-          relationType: kind,
-          targetEntity: target,
-        })[0];
-        const relId = relDetails?.id;
-
-        if (!relId || seen.has(relId)) return;
-        seen.add(relId);
-
-        edges.push({
-          id: relId,
-          kind,
-          source,
-          target,
-          info: (relDetails?.info as Record<string, unknown>) || {},
-        });
-      });
+    for (const edge of query.ids(source as EARS.EntityId).outEdges([EARS.RelKind.TRANSITIONS_TO], [EARS.Entity.Node])) {
+      if (nodeIds.includes(edge.target)) edges.push({ ...edge, info: (edge.info as Record<string, unknown>) || {} });
+    }
   }
 
   return edges;

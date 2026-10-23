@@ -322,7 +322,7 @@ export const libraryQueries = {
       // Find collection that contains this document
       const collectionLinks = query.ids(doc.id as EARS.EntityId)
         .inEdges(EARS.RelKind.CONTAINS, EARS.Entity.Collection)
-      const collection = collectionLinks.length > 0 ? query.ids(collectionLinks[0].id).pickAll()[0] : null
+      const collection = collectionLinks.length > 0 ? query.ids(collectionLinks[0].source).pickAll()[0] : null
 
       const path = collection ? collectionPath(collection.id as EARS.EntityId) : []
 

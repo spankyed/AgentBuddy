@@ -92,8 +92,8 @@ function assertEdgeAllowed(sourceId: EARS.EntityId, targetId: EARS.EntityId, han
     throw new RepositoryError('Trigger nodes cannot receive incoming connections', RepositoryErrorCode.VALIDATION_ERROR);
   }
 
-  const existing = findRelations({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO }).filter((rel) => rel.id !== except);
-  if (existing.some((rel) => rel.targetEntity === targetId && handlesMatch(rel.info, handles))) {
+  const existing = findRelations({ source: sourceId, kind: EARS.RelKind.TRANSITIONS_TO }).filter((rel) => rel.id !== except);
+  if (existing.some((rel) => rel.target === targetId && handlesMatch(rel.info, handles))) {
     throw new RepositoryError('Edge already exists', RepositoryErrorCode.VALIDATION_ERROR);
   }
   if (!isTrigger(sourceId)) {
@@ -145,12 +145,12 @@ function splitRelation(input: FlowNodeInput, field: string | undefined): { relat
 function withRelation(node: FlowNode): FlowNode {
   const field = relationField(node.nodeType);
   if (!field) return node;
-  const [linkedId] = query.ids(node.id).outEdges(EARS.RelKind.INSTANCE_OF).map(({ id }) => id);
+  const linkedId = query.ids(node.id).out(EARS.RelKind.INSTANCE_OF).first();
   return linkedId ? { ...node, [field]: linkedId } : node;
 }
 
 const flowNodeIds = (flowId: EARS.EntityId): EARS.EntityId[] =>
-  query.ids(flowId).outEdges(EARS.RelKind.CONTAINS, EARS.Entity.Node).map(({ id }) => id);
+  query.ids(flowId).out(EARS.RelKind.CONTAINS, EARS.Entity.Node).ids();
 
 /** Reads and writes of flows, their nodes and edges, and the root flow role */
 export const flowRepository = {
@@ -161,7 +161,7 @@ export const flowRepository = {
 
   /** The action an action node runs */
   getNodeActionId: (nodeId: EARS.EntityId): EARS.EntityId | undefined =>
-    query.ids(nodeId).outEdges(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action).map(({ id }) => id)[0],
+    query.ids(nodeId).out(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action).first(),
 
   /** A node with all its fields, and its related entity's id */
   node: (nodeId: EARS.EntityId): FlowNode | undefined => {
@@ -179,11 +179,11 @@ export const flowRepository = {
     const edges: FlowEdge[] = [];
     // Each relation once, so two edges between the same nodes on different handles are two edges
     for (const source of nodeIds) {
-      for (const details of findRelations({ sourceEntity: source })) {
-        if (!EDGE_KINDS.includes(details.relationType) || !nodeIds.includes(details.targetEntity)) continue;
+      for (const details of findRelations({ source })) {
+        if (!EDGE_KINDS.includes(details.kind) || !nodeIds.includes(details.target)) continue;
         const handles = details.info as Handles | undefined;
         edges.push({
-          id: details.id, kind: details.relationType, source, target: details.targetEntity,
+          id: details.id, kind: details.kind, source, target: details.target,
           sourceHandle: handles?.sourceHandle, targetHandle: handles?.targetHandle, info: {},
         });
       }
@@ -282,9 +282,9 @@ export const flowRepository = {
     const owned = new Set([...INTERIOR_KINDS, ...compiled.relation.map((r) => r.kind)]);
     const wanted = new Set(compiled.relation.map((r) => relationKey(r.source, r.kind, r.target, r.info)));
     for (const id of rows.keys()) {
-      for (const details of findRelations({ sourceEntity: id })) {
-        const key = relationKey(details.sourceEntity, details.relationType, details.targetEntity, details.info);
-        if (owned.has(details.relationType) && !wanted.has(key)) untypedWrite(details.id).destroy();
+      for (const details of findRelations({ source: id })) {
+        const key = relationKey(details.source, details.kind, details.target, details.info);
+        if (owned.has(details.kind) && !wanted.has(key)) untypedWrite(details.id).destroy();
       }
     }
     for (const relation of compiled.relation) {
@@ -390,7 +390,7 @@ export const flowRepository = {
     assertEdgeAllowed(sourceId, targetId, options);
     untypedWrite(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId, { info: handleInfo(options) });
 
-    const relId = findRelations({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: targetId })
+    const relId = findRelations({ source: sourceId, kind: EARS.RelKind.TRANSITIONS_TO, target: targetId })
       .find((rel) => handlesMatch(rel.info, options))?.id;
     if (!relId) throw new RepositoryError('Failed to retrieve created edge ID', RepositoryErrorCode.OPERATION_FAILED);
     return { relId };
@@ -403,7 +403,7 @@ export const flowRepository = {
   /** Moves an edge to new ends and handles, keeping its id; throws, leaving it as it was, when that edge isn't allowed */
   updateEdge: (edgeId: EARS.EntityId, next: { source: EARS.EntityId; target: EARS.EntityId } & Handles): void => {
     assertEdgeAllowed(next.source, next.target, next, edgeId);
-    updateRelation(edgeId, { sourceEntity: next.source, targetEntity: next.target, info: handleInfo(next) ?? {} });
+    updateRelation(edgeId, { source: next.source, target: next.target, info: handleInfo(next) ?? {} });
   },
 
   /**
@@ -413,7 +413,7 @@ export const flowRepository = {
   reindexHandles: (nodeId: EARS.EntityId, prefix: string, pivotIndex: number, direction: 1 | -1): void => {
     const pattern = new RegExp(`^${prefix}-(\\d+)$`);
     const threshold = direction === 1 ? pivotIndex : pivotIndex + 1;
-    for (const rel of findRelations({ sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO })) {
+    for (const rel of findRelations({ source: nodeId, kind: EARS.RelKind.TRANSITIONS_TO })) {
       const info = rel.info as { sourceHandle?: string } | undefined;
       const match = info?.sourceHandle?.match(pattern);
       if (!match) continue;

@@ -333,18 +333,20 @@ export interface TraceEntityMeta {
     type: string;
 }
 
-// @public (undocumented)
+// @public
 export interface TraceRelation {
     // (undocumented)
     createdAt: number;
+    // (undocumented)
+    id: EARS.EntityId;
     // (undocumented)
     info?: unknown;
     // (undocumented)
     kind: string;
     // (undocumented)
-    src: EARS.EntityId;
+    source: EARS.EntityId;
     // (undocumented)
-    tgt: EARS.EntityId;
+    target: EARS.EntityId;
 }
 
 // @public
@@ -358,13 +360,10 @@ export interface TraceStore {
     getEntityMeta(id: EARS.EntityId): TraceEntityMeta | null;
     relations(filter?: {
         kind?: string;
-        src?: EARS.EntityId;
-        tgt?: EARS.EntityId;
+        source?: EARS.EntityId;
+        target?: EARS.EntityId;
         limit?: number;
-    }): Array<{
-        id: string;
-        rel: TraceRelation;
-    }>;
+    }): TraceRelation[];
 }
 
 // @public

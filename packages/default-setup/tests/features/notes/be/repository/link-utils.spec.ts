@@ -11,7 +11,7 @@ import { noteRow } from '../../../../_support/rows.ts';
 beforeEach(() => resetTestData());
 
 const link = (id: string) => `[see](apack-ref://note/${id})`;
-const references = (id: EARS.EntityId) => findRelations({ sourceEntity: id, relationType: EARS.RelKind.REFERENCES }).map((r) => r.targetEntity).sort();
+const references = (id: EARS.EntityId) => findRelations({ source: id, kind: EARS.RelKind.REFERENCES }).map((r) => r.target).sort();
 const note = (title: string, content = '', id?: string) => repository.noteCommands.create({ title, content, ...(id && { id }) }).id as EARS.EntityId;
 
 it('indexes the notes a note links to that exist, and not one that does not', () => {

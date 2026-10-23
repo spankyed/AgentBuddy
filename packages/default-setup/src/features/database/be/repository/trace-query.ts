@@ -22,11 +22,11 @@ function getDescendants(
     const nodeId = stack.pop()!;
     const relations = [...query.relations({
       kind: relKind,
-      src: nodeId as EARS.EntityId,
+      source: nodeId as EARS.EntityId,
     })];
     
-    for (const { rel } of relations) {
-      const childId = rel.tgt;
+    for (const rel of relations) {
+      const childId = rel.target;
       if (!seen.has(childId)) {
         seen.add(childId);
         stack.push(childId);
@@ -176,12 +176,12 @@ export function getFlowEvents(
     // Find all TRACKED relations from this flow (flow TNode -> event TNodes)
     const relations = [...query.relations({ 
       kind: EARS.RelKind.TRACKED,
-      src: flowId as EARS.EntityId,
+      source: flowId as EARS.EntityId,
     })];
     
     // Build event tracks with their child steps
-    for (const { rel } of relations) {
-      const eventId = rel.tgt;
+    for (const rel of relations) {
+      const eventId = rel.target;
       const eventMeta = query.getEntityMeta(eventId);
       const eventTrack = buildTNodeEntity(query, eventId, eventMeta, true) as TrackTree;
       

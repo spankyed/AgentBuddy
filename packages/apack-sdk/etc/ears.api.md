@@ -87,8 +87,8 @@ export const untypedWrite: Write;
 
 // @public (undocumented)
 export const updateRelation: (relId: EARS.EntityId, patch: {
-    sourceEntity?: EARS.EntityId;
-    targetEntity?: EARS.EntityId;
+    source?: EARS.EntityId;
+    target?: EARS.EntityId;
     info?: unknown;
 }) => void;
 

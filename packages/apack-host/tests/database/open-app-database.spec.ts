@@ -186,7 +186,7 @@ describe('openAppDatabase', () => {
     expect(untypedQuery.withTrashed('Note').ids().sort()).toEqual(['Note-1', 'Note-2']);
     expect(untypedQuery('Note').ids()).toHaveLength(2);
     expect(db.ears.getRoles(id('Note-1'))).toEqual(['pinned']);
-    expect(db.ears.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);
+    expect(db.ears.findRelations({ source: id('Note-1') })).toHaveLength(1);
     // The volatile partition isn't hydrated, as in the app
     expect(db.ears.getRow(id('TNode-1'))?.step).toBeUndefined();
     db.close();
