@@ -72,11 +72,11 @@ WRITE API (create / upsert / write):
   Attributes (chainable):
     .set(key, value)                               set attribute (replaces existing)
     .setMany({ key1: val1, key2: val2 })           set several attributes
-    .add(key, value)                               append an element to a list attribute
+    .append(key, value)                            append an element to a list attribute
     .merge(key, value)                             merge into existing object
-    .delete(key)                                   remove attribute
-    .deleteAt(key, index)                          remove a list's element by index
-    .deleteValue(key, value)                       remove a list's first element equal to value
+    .delete(key)                                   remove the field
+    .removeAt(key, index)                          remove a list's element by index
+    .removeValue(key, value)                       remove a list's first element equal to value
 
   Relations (chainable):
     .link(EARS.RelKind.CONTAINS, targetId)         add relation

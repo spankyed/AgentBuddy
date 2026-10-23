@@ -65,7 +65,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 **Writes.**
 - `create`, `upsert` and `write` from `#generated/ears` check a write when they know the entity: started from a declared name or a tagged id.
 - Such a write names only the shape's declared fields (`WritableField`), and stores each one's declared type.
-  `set`, `add`, `merge`, `delete`, `deleteAt` and `deleteValue` take `K extends WritableField<S, E>`, which keeps
+  `set`, `append`, `merge`, `delete`, `removeAt` and `removeValue` take `K extends WritableField<S, E>`, which keeps
   field completions and makes a typo's error list the fields; `setMany` takes the declared fields as an object
   with no index signature, so a misspelled key is an excess property.
 - `create(type, row)` takes the whole row (`CreateFields & RowIdentity`): every field the shape requires
@@ -79,7 +79,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   lacks, refuses a row without a required field and `delete` one of them (`REQUIRED_FIELD`) — the untyped twins,
   content writers and the console included.
 - `delete` takes only an optional field (`OptionalField`): removing a required one would leave a row its shape
-  misdescribes, so a required field is replaced with `set`. `deleteAt` and `deleteValue` edit a list and remove
+  misdescribes, so a required field is replaced with `set`. `removeAt` and `removeValue` edit a list and remove
   no field, so they take any writable one.
 - The engine's own attributes (`id`, `entityType`, `createdAt`, `updatedAt`, `role`, `relationDetails`, `trashedAt`) are not
   writable fields, so the type refuses them as the runtime does.

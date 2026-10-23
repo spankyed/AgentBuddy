@@ -338,9 +338,10 @@ What a write builder does:
 | Member | Does |
 |---|---|
 | `set(k, v)` / `setMany({ ... })` | Replaces the attribute's value |
-| `add(k, v)` | Appends `v` to the attribute's list, starting one when there is none |
+| `append(k, v)` | Appends `v` to the attribute's list, starting one when there is none |
 | `merge(k, partial)` | Merges into the attribute's object |
-| `delete(k)` / `deleteAt(k, index)` / `deleteValue(k, v)` | Removes the attribute / the list's element at `index` / the list's first element equal to `v` |
+| `delete(k)` | Removes the field |
+| `removeAt(k, index)` / `removeValue(k, v)` | Removes the list's element at `index` / the list's first element equal to `v` |
 | `link(kind, target, { info?, replace?, acyclicIn? })` | Links to `target`. The same edge (kind, target and `info`) again changes nothing; `replace` leaves this as the only edge of the kind to `target`; `acyclicIn` refuses a cycle through those kinds |
 | `unlink(kind, target?)` / `unlinkAll()` | Removes edges of the kind (to `target` only, when given) / every edge from the entity |
 | `grant(role)` / `revoke(role)` / `grantExclusive(role, among)` | See *Roles* |
@@ -356,7 +357,7 @@ So a read answers `undefined` for nothing there — `pickOne`, `first` and `last
 unset — and `null` only ever for a stored `null`.
 
 An attribute holds one value, and a list is one array value: a read gives back exactly what was written, a
-one-element list as a list. `add`, `deleteAt` and `deleteValue` work on that array and refuse a value that isn't one
+one-element list as a list. `append`, `removeAt` and `removeValue` work on that array and refuse a value that isn't one
 (`NOT_A_LIST`); `where(k, v)` matches a value equal to `v` or a list holding it.
 
 `id`, `entityType`, `createdAt`, `updatedAt`, `role`, `relationDetails` and `trashedAt` are the engine's: every attribute write refuses
