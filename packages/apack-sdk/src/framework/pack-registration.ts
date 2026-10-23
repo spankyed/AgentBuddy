@@ -46,6 +46,8 @@ export interface PackEARS {
   entities: Record<string, string>;
   relKinds: Record<string, string>;
   roles: Record<string, string>;
+  /** The fields each of the pack's shaped entities requires, which the engine refuses a created row without; none when absent */
+  requiredFields?: Record<string, readonly string[]>;
 }
 
 /** A feature's backend system, which the app runs at the feature's ref, `<packId>/<featureId>` */

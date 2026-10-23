@@ -319,11 +319,11 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
         throw new Error(`Dependency "${depId}" has no ${CONTENT_RUNTIME_FILE}; rebuild it, or update apack for built-in packs, then run \`apack pack build\` again`);
       }
       const { contentRuntime } = await import(pathToFileURL(file).href) as { contentRuntime: ContentRuntime };
-      startTestRuntime({ entityTypes: Object.values(contentRuntime.entities), relationKinds: Object.values(contentRuntime.relKinds), roles: Object.values(contentRuntime.roles) });
+      startTestRuntime({ entityTypes: Object.values(contentRuntime.entities), relationKinds: Object.values(contentRuntime.relKinds), roles: Object.values(contentRuntime.roles), requiredFields: contentRuntime.requiredFields });
       registry.registerContentRuntime(contentRuntime, originOf(dependency.manifest, dependency.dir));
       declareFeatures(dependency.manifest);
     }
-    startTestRuntime({ entityTypes: Object.values(options.contentRuntime.entities), relationKinds: Object.values(options.contentRuntime.relKinds), roles: Object.values(options.contentRuntime.roles) });
+    startTestRuntime({ entityTypes: Object.values(options.contentRuntime.entities), relationKinds: Object.values(options.contentRuntime.relKinds), roles: Object.values(options.contentRuntime.roles), requiredFields: options.contentRuntime.requiredFields });
     registry.registerContentRuntime(options.contentRuntime, originOf(manifest, packDir), options.appliers);
     declareFeatures(manifest);
     setAppPacks(registry, manifest.id);
@@ -388,10 +388,10 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
     }
     const contentDir = path.join(dependency.dir, 'runtime', 'content');
     const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(contentDir) ? contentDir : undefined);
-    startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}), relationKinds: Object.values(runtime.registration.ears?.relKinds ?? {}), roles: Object.values(runtime.registration.ears?.roles ?? {}) });
+    startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}), relationKinds: Object.values(runtime.registration.ears?.relKinds ?? {}), roles: Object.values(runtime.registration.ears?.roles ?? {}), requiredFields: runtime.registration.ears?.requiredFields });
     registry.registerPack(runtime.registration, originOf(dependency.manifest, dependency.dir, dependency.snapshot.eventContracts));
   }
-  startTestRuntime({ entityTypes: Object.values(registration.ears?.entities ?? {}), relationKinds: Object.values(registration.ears?.relKinds ?? {}), roles: Object.values(registration.ears?.roles ?? {}) });
+  startTestRuntime({ entityTypes: Object.values(registration.ears?.entities ?? {}), relationKinds: Object.values(registration.ears?.relKinds ?? {}), roles: Object.values(registration.ears?.roles ?? {}), requiredFields: registration.ears?.requiredFields });
   registry.registerPack(registration, originOf(manifest, packDir, eventContracts));
   setAppPacks(registry, manifest.id);
 }

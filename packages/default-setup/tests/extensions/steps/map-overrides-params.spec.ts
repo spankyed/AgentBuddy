@@ -8,7 +8,7 @@ import { importFlows, startApp } from '@apackdev/testing/harness'
 import { entry, fire, keepAlive, on } from '#generated/flow-helpers.ts'
 import { untypedQuery } from '@apackdev/sdk/ears'
 
-const notes = () => untypedQuery('Note').pickAll() as Array<Record<string, unknown>>
+const notes = () => untypedQuery('SearchIndex').pickAll() as Array<Record<string, unknown>>
 
 /** A create step that sets `content` literally *and* maps it, so the two overlap on one field */
 async function runWithBoth(map: Record<string, unknown>) {
@@ -18,7 +18,7 @@ async function runWithBoth(map: Record<string, unknown>) {
       tracks: [
         entry([keepAlive()]),
         on('go', [[
-          { type: 'create', entity: 'Note', label: 'mk', params: { content: 'the literal' }, map },
+          { type: 'create', entity: 'SearchIndex', label: 'mk', params: { content: 'the literal' }, map },
         ]]),
       ],
     },

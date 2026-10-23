@@ -6,7 +6,7 @@
  *
  * The shapes here are part of the typed EARS contract (packages/apack-sdk/TYPED-EARS.md).
  */
-import type { BaseEntity } from '@apackdev/ears';
+import type { BaseEntity, RequiredField } from '@apackdev/ears';
 import type { EARS } from './entities.ts';
 import type { TNodeEntity } from '../steps/types.ts';
 
@@ -208,3 +208,25 @@ export const SDK_SHAPED_ENTITIES = [
 type SameKeys<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 const shapedEntitiesMatchShapes: SameKeys<(typeof SDK_SHAPED_ENTITIES)[number], keyof SdkEntityShapes> = true;
 void shapedEntitiesMatchShapes;
+
+/**
+ * The fields each SDK entity's row must hold: what `create` refuses a row without at runtime, as its type refuses one
+ * at compile time. The list is the shapes' own — it fails to compile naming the field when it misses or adds one.
+ * Relation has none a row carries, its details being the engine's to write.
+ */
+export const SDK_REQUIRED_FIELDS = {
+  Relation: [],
+  Flow: ['shortCode', 'label', 'flowType'],
+  Node: ['nodeType', 'label'],
+  TNode: ['tNodeType', 'label', 'status', 'startedAt'],
+  Action: ['label', 'input', 'actionFn'],
+  Prompt: ['label', 'inputs', 'templateFn'],
+  Document: ['name', 'content', 'shortCode'],
+  Collection: ['name'],
+} as const satisfies { [E in keyof SdkEntityShapes]: readonly RequiredField<SdkEntityShapes, E>[] };
+
+type UnlistedRequired = {
+  [E in keyof SdkEntityShapes]: Exclude<RequiredField<SdkEntityShapes, E>, (typeof SDK_REQUIRED_FIELDS)[E][number]>
+}[keyof SdkEntityShapes];
+const requiredFieldsListed: [UnlistedRequired] extends [never] ? true : UnlistedRequired = true;
+void requiredFieldsListed;

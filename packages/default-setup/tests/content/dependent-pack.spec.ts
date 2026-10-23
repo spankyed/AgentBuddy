@@ -16,6 +16,7 @@ import { createFormatApplier } from '@apackdev/sdk/content';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import type { EARS } from '#generated/ears.ts';
 import { PACK_DIR, resetDatabase, snapshot } from './harness.ts';
+import { noteRow } from '../_support/rows.ts';
 
 const FIXTURE = path.join(PACK_DIR, 'tests/_support/fixtures/dependent-pack');
 const manifest = JSON.parse(fs.readFileSync(path.join(FIXTURE, 'apack.json'), 'utf-8')) as PackManifest;
@@ -62,7 +63,7 @@ describe('a pack depending on default-setup content with its formats', () => {
     resetDatabase();
     // The note the handbook links to: a content note's id is made when it is written, so a link by id reaches a note
     // that is already there, and a reference is indexed only to a note that exists
-    untypedCreate('Note', { id: 'Note-roadmap-plan' as EARS.EntityId }).set('title', 'Plan');
+    untypedCreate('Note', { id: 'Note-roadmap-plan' as EARS.EntityId, ...noteRow({ title: 'Plan' }) });
     const counts = importAll(await compile(FIXTURE, manifest, dependencies), manifest, FIXTURE, dependencies);
     expect(counts).toEqual({
       'team-notes': { created: 4, updated: 0, skipped: 0 },

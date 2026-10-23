@@ -85,6 +85,7 @@ export interface ContentRuntime {
     relKinds: Record<string, string>;
     // (undocumented)
     repositories: Record<string, unknown>;
+    requiredFields?: Record<string, readonly string[]>;
     // (undocumented)
     roles: Record<string, string>;
 }
@@ -406,6 +407,7 @@ export interface PackEARS {
     entities: Record<string, string>;
     // (undocumented)
     relKinds: Record<string, string>;
+    requiredFields?: Record<string, readonly string[]>;
     // (undocumented)
     roles: Record<string, string>;
 }

@@ -30,7 +30,7 @@ import { assertPackServiceRequirements, packServiceDeclaration, type PackService
 import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
-import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES, _reservedEntries } from '@apackdev/sdk/types';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_REQUIRED_FIELDS, SDK_ROLES, _reservedEntries } from '@apackdev/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { boundEars } from '@apackdev/sdk/ears';
@@ -256,6 +256,8 @@ export interface PackRegistry extends PackRegistryView {
   getRegisteredRelationKinds(): ReadonlySet<string>;
   /** The SDK's roles and the registered packs' */
   getRegisteredRoles(): ReadonlySet<string>;
+  /** The fields an entity type's row must hold, by its shape: the SDK's and the registered packs' */
+  getRequiredFields(type: string): readonly string[];
   /** Lifecycle hooks of the currently registered packs, in registration order. */
   getLifecycleHooks(): PackLifecycleHooks[];
   /** A registered pack's registration, as it was registered */
@@ -530,7 +532,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       settings: manifest.extensions?.settings,
       features: Object.fromEntries(Object.entries(manifest.features ?? {})
         .filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, { settings: feature.settings }])),
-      ears: { entities: runtime.entities, relKinds: runtime.relKinds, roles: runtime.roles },
+      ears: { entities: runtime.entities, relKinds: runtime.relKinds, roles: runtime.roles, ...(runtime.requiredFields && { requiredFields: runtime.requiredFields }) },
       repositories: runtime.repositories, contentWriters: runtime.contentWriters, appliers,
     }, origin, manifest => contentBindingProblem(manifest, runtime, appliers)));
   }
@@ -778,6 +780,10 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     ...Object.values(SDK_ROLES),
     ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.roles ?? {})),
   ]));
+  const requiredFields = derived((): ReadonlyMap<string, readonly string[]> => new Map<string, readonly string[]>([
+    ...Object.entries(SDK_REQUIRED_FIELDS),
+    ...[...registrations.values()].flatMap((reg) => Object.entries(reg.ears?.requiredFields ?? {})),
+  ]));
   const services = derived((): Record<string, unknown> =>
     Object.fromEntries([...admitted.values()].flatMap(pack => [...pack.services])));
 
@@ -851,6 +857,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     getRegisteredEntityTypes: entityTypes,
     getRegisteredRelationKinds: relationKinds,
     getRegisteredRoles: roles,
+    getRequiredFields: (type) => requiredFields().get(type) ?? [],
     getRegisteredServices: services,
 
     getLifecycleHooks: () => [...registrations.values()].flatMap((reg) => (reg.lifecycle ? [reg.lifecycle] : [])),

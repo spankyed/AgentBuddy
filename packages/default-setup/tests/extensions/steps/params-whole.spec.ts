@@ -11,7 +11,7 @@ import { untypedQuery } from '@apackdev/sdk/ears'
 const LONG_TEXT_LENGTH = 20_000
 const LONG_LIST_LENGTH = 150
 
-const noteRows = () => untypedQuery('Note').pickAll() as Array<Record<string, unknown>>
+const noteRows = () => untypedQuery('SearchIndex').pickAll() as Array<Record<string, unknown>>
 
 /** A flow whose first step returns oversized data, mapped into a create step's fields */
 async function runCreateWithBigFields() {
@@ -26,7 +26,7 @@ async function runCreateWithBigFields() {
         entry([keepAlive()]),
         on('go', [[
           action('Big', { label: 'big' }),
-          { type: 'create', entity: 'Note', label: 'mk', map: { content: '$.lastStep.result.text', tags: '$.lastStep.result.items' } },
+          { type: 'create', entity: 'SearchIndex', label: 'mk', map: { content: '$.lastStep.result.text', tags: '$.lastStep.result.items' } },
         ]]),
       ],
     },

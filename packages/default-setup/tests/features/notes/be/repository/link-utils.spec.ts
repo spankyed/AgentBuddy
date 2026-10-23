@@ -6,6 +6,7 @@ import { resetTestData } from '@apackdev/sdk/testing';
 import { repository } from '#generated/repository.ts';
 import { EARS } from '#generated/ears.ts';
 import { syncReferences } from '../../../../../src/features/notes/be/repository/link-utils.ts';
+import { noteRow } from '../../../../_support/rows.ts';
 
 beforeEach(() => resetTestData());
 
@@ -70,7 +71,7 @@ it('indexes a link from a note in the trash, and to one', () => {
 
 it('derives the targets of a note written before it recorded any', () => {
   const target = note('Target');
-  const old = untypedCreate('Note').setMany({ title: 'Old', content: link(target) }).id();
+  const old = untypedCreate('Note', noteRow({ title: 'Old', content: link(target) })).id();
   syncReferences(old, link(target));
   expect(linkTargets(old)).toEqual([target]);
   expect(references(old)).toEqual([target]);

@@ -177,7 +177,7 @@ describe('openAppDatabase', () => {
     await writeData(dir, () => {
       untypedCreate('Note', { id: id('Note-2') }).set('title', 'other');
       untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept').grant('pinned').link('mentions', id('Note-2'));
-      untypedCreate('TNode', { id: id('TNode-1') }).set('step', 'volatile');
+      untypedCreate('TNode', { id: id('TNode-1'), tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0, step: 'volatile' });
     });
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });

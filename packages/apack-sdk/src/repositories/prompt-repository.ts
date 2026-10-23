@@ -31,7 +31,7 @@ export const promptRepository = {
   create: (data: PromptInput): PromptEntity => {
     if (!data.label?.trim()) throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
     if (!data.templateFn?.trim()) throw new RepositoryError('Template is required', RepositoryErrorCode.VALIDATION_ERROR);
-    return ears().createEntityWithDefaults(EARS.Entity.Prompt, { ...data }, 'PROMPT') as unknown as PromptEntity;
+    return ears().createEntityWithDefaults(EARS.Entity.Prompt, { ...data, inputs: data.inputs || {} }, 'PROMPT') as unknown as PromptEntity;
   },
 
   update: (id: EARS.EntityId, updates: Partial<PromptInput>): void => {

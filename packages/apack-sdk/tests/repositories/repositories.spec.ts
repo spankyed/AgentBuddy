@@ -218,7 +218,7 @@ describe('flowRepository', () => {
       const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
       const greetNode = flowRepository.flowNodes(flowId).find((node) => node.actionId === ids.get('Greet'))!;
       // A run of the flow, and another flow's node naming it
-      const run = untypedCreate(EARS.Entity.TNode).link(EARS.RelKind.INSTANCE_OF, flowId).link(EARS.RelKind.TRACKED, greetNode.id).id();
+      const run = untypedCreate(EARS.Entity.TNode, { tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0 }).link(EARS.RelKind.INSTANCE_OF, flowId).link(EARS.RelKind.TRACKED, greetNode.id).id();
       boundEars().write(flowId).set('contentKey', 'pack:flows/Demo').set('description', 'mine');
 
       flowRepository.importFromDSL(demo(['Greet']));
@@ -269,7 +269,7 @@ describe('flowRepository', () => {
 describe('tnodeRepository', () => {
   it("records a step's result on its TNode, truncated, beside what's there", () => {
     const tNodeId = 'TNode-1' as EARS.EntityId;
-    untypedCreate(EARS.Entity.TNode, { id: tNodeId }).set('nodeAttributes', { input: 'hi' });
+    untypedCreate(EARS.Entity.TNode, { id: tNodeId, tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0, nodeAttributes: { input: 'hi' } });
 
     tnodeRepository.updateTNodeResult(tNodeId, { text: 'x'.repeat(20000) });
 

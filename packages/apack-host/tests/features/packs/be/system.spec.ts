@@ -1046,7 +1046,7 @@ describe('a user answering for one of a pack’s content items', () => {
       { key: 'pack-prompts', written: true, count: 1, identity: ['label'], items: [{ key: 'Greet' }] },
     ] }));
     fs.writeFileSync(path.join(content, 'actions.content.json'), JSON.stringify({
-      records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, contentHash: `echo-${version}` }],
+      records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, input: {}, actionFn: 'return params', contentHash: `echo-${version}` }],
     }));
     fs.writeFileSync(path.join(content, 'pack-prompts.content.json'), JSON.stringify({
       records: [{ entity: 'PackPrompt', label: 'Greet', description: `theirs ${version}`, contentHash: `greet-${version}` }],

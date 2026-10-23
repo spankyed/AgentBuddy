@@ -11,7 +11,7 @@ import { importFlows, startApp } from '@apackdev/testing/harness'
 import { entry, keepAlive, on } from '#generated/flow-helpers.ts'
 import { untypedQuery } from '@apackdev/sdk/ears'
 
-const notes = () => untypedQuery('Note').pickAll() as Array<Record<string, unknown>>
+const notes = () => untypedQuery('SearchIndex').pickAll() as Array<Record<string, unknown>>
 
 /** One create step, whose `content` is mapped from `source` with `fallback` to fall back on */
 async function runWithMapping(source: string, fallback?: unknown) {
@@ -23,7 +23,7 @@ async function runWithMapping(source: string, fallback?: unknown) {
         on('go', [[
           {
             type: 'create',
-            entity: 'Note',
+            entity: 'SearchIndex',
             label: 'mk',
             map: { content: fallback === undefined ? source : { source, default: fallback } },
           },

@@ -5,6 +5,7 @@ import { startTestRuntime } from '@apackdev/sdk/testing'
 import { create, on, update } from '#generated/flow-helpers.ts'
 import { findAll, findById, type EARS } from '#generated/ears.ts'
 import { repository } from '#generated/repository.ts'
+import { noteRow } from '../../_support/rows.ts'
 import * as createCompiler from '#extensions/steps/create/build.ts'
 import * as updateCompiler from '#extensions/steps/update/build.ts'
 
@@ -17,7 +18,7 @@ describe('create step', () => {
     importFlows({
       Notes: {
         root: true,
-        tracks: [on('note', [[create('Note', { label: 'add', map: { title: '$.event.data.payload.title' }, params: { content: 'body', favorite: false } })]])],
+        tracks: [on('note', [[create('Note', { label: 'add', map: { title: '$.event.data.payload.title' }, params: noteRow({ content: 'body', favorite: false }) })]])],
       },
     })
     const app = await startBrain()
@@ -31,7 +32,7 @@ describe('create step', () => {
   })
 
   it("doesn't label the entity from its title when inferLabel is false", async () => {
-    importFlows({ Notes: { root: true, tracks: [on('note', [[create('Note', { label: 'add', map: { title: '$.event.data.payload' }, inferLabel: false })]])] } })
+    importFlows({ Notes: { root: true, tracks: [on('note', [[create('Note', { label: 'add', map: { title: '$.event.data.payload' }, params: noteRow(), inferLabel: false })]])] } })
     const app = await startBrain()
 
     const run = await app.runFlow('Notes', { event: 'note', data: 'Groceries' })
@@ -70,7 +71,7 @@ describe('update step', () => {
       Notes: {
         root: true,
         tracks: [on('note', [[
-          create('Note', { label: 'add', map: { title: '$.event.data.payload' } }),
+          create('Note', { label: 'add', map: { title: '$.event.data.payload' }, params: noteRow() }),
           update('$.lastStep.result.id', { label: 'change', map: { content: '$.steps[label=add].result.title' }, params: { favorite: true } }),
         ]])],
       },
@@ -115,7 +116,7 @@ describe('update step', () => {
     })
 
     it('creates an entity of its entity type with create', async () => {
-      const run = await missing('create', { entity: 'Note' })
+      const run = await missing('create', { entity: 'Note', params: noteRow({ title: 'Made' }) })
       expect(run.steps.map((s) => s.status)).toEqual(['completed'])
       const row = result(run.steps[0])
       expect(row).toMatchObject({ entityType: 'Note', title: 'Made', updated: false, created: true })
