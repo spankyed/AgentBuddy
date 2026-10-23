@@ -6,7 +6,7 @@ import type { FlowRunNodeData, EventListenerEntity } from '../types.ts';
 import type { NodeEntity } from '#generated/types.ts';
 import type { FlowNode } from '#extensions/steps/subflow/types.ts';
 import { stepRegistry } from '@apackdev/sdk/steps';
-import { prepareStepInput } from './node-attribute-mappers.ts';
+import { prepareStepInput } from '../step-input.ts';
 import { brainLogger } from '../utils/brain-inspect.ts';
 import type { ExecutionContext, RunTree, RunNode, RunNodeId, StepInput } from '@apackdev/sdk/steps';
 import type { FlowEntity } from '@apackdev/sdk';

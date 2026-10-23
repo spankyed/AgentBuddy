@@ -3,7 +3,7 @@ import { setup, assign, sendParent, enqueueActions, type AnyActorRef } from 'xst
 import { EARS } from '#generated/ears.ts';
 import type { ExecutionContext, RunNodeId, StepInput } from '@apackdev/sdk/steps';
 import type { NodeEntity } from '#generated/types.ts';
-import { executeNode } from './node-handlers/index.ts';
+import { executeStep } from './execute-step.ts';
 import { repository } from '#generated/repository.ts';
 import { services } from '#generated/services.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
@@ -55,7 +55,7 @@ export function createStepNodeSystem(
             //   `Executing step: ${context.step.label} (${context.step.nodeType})`,
             // );
 
-            executeNode(context.input, context.step, executionContext, self);
+            executeStep(context.input, context.step, executionContext, self);
           } catch (error) {
             self.send({ type: 'ERROR', error: errorMessage(error) });
           }

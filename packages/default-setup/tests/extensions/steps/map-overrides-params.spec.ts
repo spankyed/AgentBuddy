@@ -1,4 +1,4 @@
-// What a step runs on is `{ ...params, ...mapped }` (`node-attribute-mappers.ts`), so the two can name the same
+// What a step runs on is `{ ...params, ...mapped }` (`step-input.ts`), so the two can name the same
 // field and the mapping wins. These pin what happens when the mapping's source resolves to nothing — the case
 // where "the mapping wins" is a question rather than an answer, since there is no mapped value to win with.
 //
