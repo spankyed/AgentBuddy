@@ -12,6 +12,11 @@ import type { ExecutionContext, RunTree, RunNode, RunNodeId, StepInput } from '@
 import type { FlowEntity } from '@apackdev/sdk';
 // Brain Repository - the flows the brain runs, and their runs in the run history
 
+/** What a node's run node records of its input: its settings, with the params it resolved under `params` */
+function recordedInput({ settings, params }: Omit<StepInput, 'runNodeId'>): Record<string, unknown> {
+  return { ...settings, params };
+}
+
 /** What a node runs on, whole, when it runs in a track; a node started outside one has neither settings nor params */
 function inputOf(node: Partial<NodeEntity>, executionContext?: ExecutionContext): Omit<StepInput, 'runNodeId'> {
   return executionContext && node.nodeType
@@ -191,14 +196,14 @@ export const brainCommands = {
   createEventRunNode: (
     eventNode: { id?: string; label?: string; eventType?: string; triggerType?: string; cronExpression?: string },
     flowRunNodeId: RunNodeId,
-    payload: Record<string, unknown>,
+    payload: unknown,
   ): RunNode => history().start({
     kind: 'event',
     label: eventNode.label || '',
     eventType: eventNode.eventType!,
     triggerType: eventNode.triggerType || 'listener',
     ...(eventNode.cronExpression && { cronExpression: eventNode.cronExpression }),
-    nodeAttributes: payload,
+    payload,
     parentId: flowRunNodeId,
     // The trigger node it heard, in the flow its parent runs
     ...(eventNode.id && { nodeId: eventNode.id as EARS.EntityId }),
@@ -245,8 +250,7 @@ export const brainCommands = {
       // The subflow step it ran, and the flow that step runs
       nodeId: flowStepId,
       flowId: flowStepNode.flowRef as EARS.EntityId,
-      nodeAttributes: input.settings,
-      resolvedParams: input.params,
+      input: recordedInput(input),
       // Preserve the flow node's final status
       ...(flowStepNode.final && { final: true }),
     });
@@ -280,13 +284,12 @@ export const brainCommands = {
     const runNode = history().start({
       kind: 'step',
       label: step.label ?? '',
-      stepNodeType: step.nodeType,
+      stepNodeType: step.nodeType ?? '',
       parentId,
       nodeId: stepId,
       ...(flowId && { flowId }),
       ...(step.final && { final: true }),
-      nodeAttributes: input.settings,
-      resolvedParams: input.params,
+      input: recordedInput(input),
     });
 
     // The run history keeps a bounded copy of the input; the step runs on it whole

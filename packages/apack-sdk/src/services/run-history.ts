@@ -1,6 +1,5 @@
 import type { RecordIndexes, RecordStore } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
-import type { RunNodeKind } from '../steps/types.ts';
 import { truncateResult } from '../steps/result-truncator.ts';
 import { createLogger } from '../logger/logger.ts';
 
@@ -10,14 +9,9 @@ export type RunNodeId = `RunNode-${string}`;
 /** Where a run node is: running, finished, failed, or stopped by a kill, a restart or the app closing first */
 export type RunStatus = 'active' | 'completed' | 'failed' | 'stopped';
 
-/**
- * One node of a flow run's record: a flow, an event it heard, or a step it ran. A run is a tree of them under the
- * session's root, linked by `parentId`. It is a record in the run history (`services.runHistory`), not an entity:
- * the engine never holds one.
- */
-export interface RunNode {
+/** What every run node has, whatever it ran */
+export interface RunNodeBase {
   id: RunNodeId;
-  kind: RunNodeKind;
   label: string;
   status: RunStatus;
   startedAt: number;
@@ -30,27 +24,68 @@ export interface RunNode {
   flowId?: EARS.EntityId;
   /** The step, trigger or subflow node this one ran */
   nodeId?: EARS.EntityId;
-  eventType?: string;
-  triggerType?: string;
-  cronExpression?: string;
-  stepNodeType?: string;
   final?: boolean;
-  nodeAttributes?: Record<string, unknown>;
-  resolvedParams?: Record<string, unknown>;
+}
+
+/** A flow run: a session's root, or a subflow a step started */
+export interface FlowRunNode extends RunNodeBase {
+  kind: 'flow';
+  /** `subflow` for a flow a step started */
+  stepNodeType?: string;
+  /** What the subflow step was given (its settings, with its mappings applied), as recorded: bounded */
+  input?: Record<string, unknown>;
+  /** What the flow ended with */
+  result?: unknown;
+  eventType?: never; triggerType?: never; cronExpression?: never; payload?: never;
+}
+
+/** An event a flow run heard, which a track ran under */
+export interface EventRunNode extends RunNodeBase {
+  kind: 'event';
+  eventType: string;
+  /** The trigger that heard it: `listener`, `schedule`, ... */
+  triggerType: string;
+  cronExpression?: string;
+  /** What the event carried, as recorded: bounded */
+  payload?: unknown;
+  stepNodeType?: never; input?: never; result?: never;
+}
+
+/** A step a track ran */
+export interface StepRunNode extends RunNodeBase {
+  kind: 'step';
+  stepNodeType: string;
+  /** What the step was given (its settings, with its mappings applied), as recorded: bounded */
+  input?: Record<string, unknown>;
   /** What the step returned, or `{ error }` when it failed */
+  result?: unknown;
+  eventType?: never; triggerType?: never; cronExpression?: never; payload?: never;
+}
+
+/**
+ * One node of a flow run's record: a flow, an event it heard, or a step it ran, told apart by `kind`. A run is a
+ * tree of them under the session's root, linked by `parentId`. It is a record in the run history
+ * (`services.runHistory`), not an entity — the engine never holds one — and what it records is bounded for display:
+ * nothing runs on it.
+ */
+export type RunNode = FlowRunNode | EventRunNode | StepRunNode;
+
+/** A node as it starts: the run history gives it its id, its root, `active` and its start time */
+export type RunNodeStart =
+  | Omit<FlowRunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>
+  | Omit<EventRunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>
+  | Omit<StepRunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>;
+
+/** What a running node's record may take: its details. Its identity and place are fixed when it starts, and `finish` ends it */
+export interface RunNodePatch {
+  label?: string;
+  input?: Record<string, unknown>;
+  payload?: unknown;
   result?: unknown;
 }
 
-/** A node as it starts: the run history gives it its id, its root, `active` and its start time */
-export type RunNodeStart = Omit<RunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>;
-
-/** What a running node's record may take: its details. Its identity and place are fixed when it starts, and `finish` ends it */
-export type RunNodePatch = Partial<Pick<RunNode, 'label' | 'nodeAttributes' | 'result'>>;
-
 /** A node with its children, each with theirs: one node's whole subtree */
-export interface RunTree extends RunNode {
-  children: RunTree[];
-}
+export type RunTree = RunNode & { children: RunTree[] };
 
 /** How a list of nodes is paged: oldest first unless `reverse`, resuming after `cursor` */
 export interface RunPage {
@@ -107,11 +142,11 @@ const logger = createLogger('run-history');
  * The values being written, made storable and bounded. Only those: a value stored earlier was bounded when it was
  * written, and bounding it again would wrap its marker in another
  */
-function bounded<T extends Partial<RunNode>>(fields: T): T {
+function bounded<T extends RunNodePatch>(fields: T): T {
   return {
     ...fields,
-    ...(fields.nodeAttributes !== undefined && { nodeAttributes: truncateResult(fields.nodeAttributes) as Record<string, unknown> }),
-    ...(fields.resolvedParams !== undefined && { resolvedParams: truncateResult(fields.resolvedParams) as Record<string, unknown> }),
+    ...(fields.input !== undefined && { input: truncateResult(fields.input) as Record<string, unknown> }),
+    ...(fields.payload !== undefined && { payload: truncateResult(fields.payload) }),
     ...(fields.result !== undefined && { result: truncateResult(fields.result) }),
   };
 }
@@ -122,7 +157,7 @@ export function _createRunHistory(records: RecordStore<RunNode>): RunHistory {
     start(fields) {
       const id = records.newId('RunNode') as RunNodeId;
       const parent = fields.parentId === undefined ? undefined : records.get(fields.parentId);
-      const node: RunNode = { ...fields, id, rootId: parent?.rootId ?? id, status: 'active', startedAt: Date.now() };
+      const node = { ...fields, id, rootId: parent?.rootId ?? id, status: 'active', startedAt: Date.now() } as RunNode;
       if (fields.parentId !== undefined && !parent) {
         logger.warn(`Dropped run node ${id}: its parent ${fields.parentId} isn't in the run history`);
       } else {
@@ -136,7 +171,7 @@ export function _createRunHistory(records: RecordStore<RunNode>): RunHistory {
     },
     update(id, patch) {
       const node = records.get(id);
-      if (node) records.put({ ...node, ...bounded(patch) });
+      if (node) records.put({ ...node, ...bounded(patch) } as RunNode);
     },
     get: (id) => records.get(id),
     findChildren: (id, page = {}) => records.findBy('parentId', id, page),

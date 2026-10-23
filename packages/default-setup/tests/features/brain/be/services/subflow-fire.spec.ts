@@ -32,7 +32,7 @@ describe('subflow context', () => {
     await app.settle()
     const [read] = app.flowSteps('Inner')
     expect(read).toMatchObject({ label: 'read', status: 'completed' })
-    return read.params
+    return read.input.params
   }
 
   it("starts the child's entry track with the parent's event data and steps when it inherits (the default)", async () => {
@@ -74,7 +74,7 @@ describe('fire', () => {
     await app.settle()
 
     const heard = app.flowSteps('Outer').find((s) => s.label === 'heard')
-    expect(heard?.params.payload).toEqual({ color: 'red', nested: ['hi', { step: { color: 'red' } }], literal: 'plain', count: 2 })
+    expect((heard?.input.params as { payload?: unknown } | undefined)?.payload).toEqual({ color: 'red', nested: ['hi', { step: { color: 'red' } }], literal: 'plain', count: 2 })
   })
 
   it('sends a payload that is a single mapping as its value', async () => {
@@ -94,7 +94,8 @@ describe('fire', () => {
     await app.runFlow('Outer', { event: 'go' })
     await app.settle()
 
-    expect(app.flowSteps('Outer').find((s) => s.label === 'heard')?.params.payload).toEqual({ color: 'red' })
+    const heard = app.flowSteps('Outer').find((s) => s.label === 'heard')
+    expect((heard?.input.params as { payload?: unknown } | undefined)?.payload).toEqual({ color: 'red' })
   })
 
   it.each([

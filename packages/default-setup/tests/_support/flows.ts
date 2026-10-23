@@ -11,6 +11,6 @@ export function writeDefaultFlows(): void {
 
 /** The label of the action an action step ran */
 export function actionLabel(step: FlowRunStep): string | undefined {
-  const actionId = step.nodeAttributes.actionId as string | undefined;
+  const actionId = step.input.actionId as string | undefined;
   return actionId === undefined ? undefined : repository.actionQueries.all().find((a: { id: string }) => a.id === actionId)?.label;
 }

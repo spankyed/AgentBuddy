@@ -92,10 +92,11 @@ export interface StepBuildFacet {
 
 import type { AnyActorRef } from 'xstate';
 import type { EARS } from '../types/entities.ts';
-import type { RunNodeId } from '../services/run-history.ts';
+import type { RunNode, RunNodeId } from '../services/run-history.ts';
 
 export type TimestampMs = number;
-export type RunNodeKind = 'flow' | 'event' | 'step';
+/** What a run node ran: a flow, an event it heard, or a step */
+export type RunNodeKind = RunNode['kind'];
 
 // Kept here for packs whose built types import it from @apackdev/sdk/steps
 export type { SdkEntityShapes } from '../types/sdk-entities.ts';

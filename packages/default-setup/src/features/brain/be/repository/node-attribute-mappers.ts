@@ -77,7 +77,7 @@ function mapTemplateFields(
       let value = extractValue(context, mapping.source);
       if (value === undefined && mapping.default !== undefined) value = mapping.default;
 
-      // A mapping that resolved to nothing writes nothing. `resolvedParams` is `{ ...params, ...mapped }`, and
+      // A mapping that resolved to nothing writes nothing. A step's params are `{ ...params, ...mapped }`, and
       // an own property set to `undefined` overrides in a spread — so writing the target unconditionally erased
       // the literal the author had set beside the mapping. A mapping that should win even when its source is
       // missing says so with a `default`.

@@ -88,6 +88,6 @@ describe('the params a step runs on', () => {
     expect(call.messages[0].text).toHaveLength(LONG_TEXT_LENGTH)
     // What the run node records of it is the bounded copy, marked
     const ask = app.flowSteps('Outer').find((step) => step.label === 'ask')!
-    expect((ask.nodeAttributes.prompt as { _truncated?: boolean })._truncated).toBe(true)
+    expect((ask.input.prompt as { _truncated?: boolean })._truncated).toBe(true)
   })
 })

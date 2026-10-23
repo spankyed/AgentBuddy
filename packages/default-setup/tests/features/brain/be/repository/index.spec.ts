@@ -15,7 +15,7 @@ describe('brainCommands starting run nodes', () => {
 
     expect(services.runHistory.get(event.id)).toMatchObject({
       kind: 'event', status: 'active', parentId: flowRun.id, rootId: flowRun.id,
-      nodeId: 'Node-trigger', flowId: 'Flow-root', triggerType: 'listener', nodeAttributes: { text: 'hello' },
+      nodeId: 'Node-trigger', flowId: 'Flow-root', triggerType: 'listener', payload: { text: 'hello' },
     })
   })
 })

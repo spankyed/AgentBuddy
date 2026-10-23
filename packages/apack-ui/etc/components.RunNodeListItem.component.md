@@ -5,8 +5,8 @@
 ```ts
 props {
   depth?: number | undefined;
-  node: RunNode | RunTree;
-  nodeDetails?: RunNode | undefined;
+  node: import("../../../apack-sdk/dist/services/run-history").EventRunNode | import("../../../apack-sdk/dist/services/run-history").EventRunNode & { children: RunTree[]; } | import("../../../apack-sdk/dist/services/run-history").FlowRunNode | import("../../../apack-sdk/dist/services/run-history").FlowRunNode & { children: RunTree[]; } | import("../../../apack-sdk/dist/services/run-history").StepRunNode | import("../../../apack-sdk/dist/services/run-history").StepRunNode & { children: RunTree[]; };
+  nodeDetails?: import("../../../apack-sdk/dist/services/run-history").EventRunNode | import("../../../apack-sdk/dist/services/run-history").FlowRunNode | import("../../../apack-sdk/dist/services/run-history").StepRunNode | undefined;
   nodeDetailsMap?: Map<string, RunNode> | undefined;
   onOpen-flow?: ((runNodeId: string) => any) | undefined;
   onRequest-details?: ((nodeId: string) => any) | undefined;

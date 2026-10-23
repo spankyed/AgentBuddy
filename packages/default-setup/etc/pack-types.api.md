@@ -5794,7 +5794,7 @@ declare const brainCommands: {
         eventType?: string;
         triggerType?: string;
         cronExpression?: string;
-    }, flowRunNodeId: RunNodeId, payload: Record<string, unknown>) => RunNode;
+    }, flowRunNodeId: RunNodeId, payload: unknown) => RunNode;
     readonly createFlowRunNode: (flowStepId: EARS.EntityId, parentId?: RunNodeId, executionContext?: ExecutionContext) => {
         flowRunNode: RunNode;
         flowId: EARS.EntityId;
@@ -6544,9 +6544,9 @@ declare const threadQueries: {
         id: `${string}-${string}` & {
             readonly __entity?: "Thread" | undefined;
         };
+        shortCode: ThreadTypeShortCode;
         topic: string;
         status: string;
-        shortCode: ThreadTypeShortCode;
         timestamp: number;
         relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
     }[];

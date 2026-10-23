@@ -38,10 +38,11 @@ export interface FlowRunStep {
   /** `step` or `flow` (a subflow) */
   kind: string;
   status: string;
-  /** The step's configuration */
-  nodeAttributes: Record<string, unknown>;
-  /** The inputs the step resolved from the flow's event and earlier steps */
-  params: Record<string, unknown>;
+  /**
+   * What the step was given — its settings, with what it mapped from the event and earlier steps — as its run node
+   * records it: bounded, so a long value is a `{ value, _truncated }` marker
+   */
+  input: Record<string, unknown>;
   /** What the step returned, once it ran, or `{ error }` when it failed */
   result?: unknown;
 }
@@ -247,8 +248,7 @@ function runStep(spawned: RunNodeSpawned): FlowRunStep {
     label: String(node?.label ?? spawned.runNode.label ?? ''),
     kind: String(node?.kind ?? spawned.runNode.kind ?? ''),
     status: String(node?.status ?? ''),
-    nodeAttributes: node?.nodeAttributes ?? {},
-    params: node?.resolvedParams ?? {},
+    input: node?.input ?? {},
     ...(node?.result !== undefined && { result: node.result }),
   };
 }

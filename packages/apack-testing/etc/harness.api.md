@@ -34,11 +34,10 @@ export interface FlowRun {
 
 // @public
 export interface FlowRunStep {
+    input: Record<string, unknown>;
     kind: string;
     // (undocumented)
     label: string;
-    nodeAttributes: Record<string, unknown>;
-    params: Record<string, unknown>;
     result?: unknown;
     // (undocumented)
     runNodeId: string;

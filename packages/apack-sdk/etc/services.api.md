@@ -100,6 +100,24 @@ export function _createPackServices(): {
 export function _createRunHistory(records: RecordStore<RunNode>): RunHistory;
 
 // @public
+export interface EventRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: string;
+    // (undocumented)
+    eventType: string;
+    // (undocumented)
+    input?: never;
+    // (undocumented)
+    kind: 'event';
+    payload?: unknown;
+    // (undocumented)
+    result?: never;
+    // (undocumented)
+    stepNodeType?: never;
+    triggerType: string;
+}
+
+// @public
 export interface FileEntry {
     // (undocumented)
     isDirectory: boolean;
@@ -126,6 +144,23 @@ export interface FilesystemService {
     rename(oldPath: string, newPath: string): Promise<void>;
     stat(filePath: string): Promise<FileStat>;
     writeFile(filePath: string, content: string): Promise<void>;
+}
+
+// @public
+export interface FlowRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: never;
+    // (undocumented)
+    eventType?: never;
+    input?: Record<string, unknown>;
+    // (undocumented)
+    kind: 'flow';
+    // (undocumented)
+    payload?: never;
+    result?: unknown;
+    stepNodeType?: string;
+    // (undocumented)
+    triggerType?: never;
 }
 
 // @public
@@ -248,48 +283,45 @@ export interface RunHistory {
 }
 
 // @public
-export interface RunNode {
+export type RunNode = FlowRunNode | EventRunNode | StepRunNode;
+
+// @public
+export interface RunNodeBase {
     // (undocumented)
     completedAt?: number;
-    // (undocumented)
-    cronExpression?: string;
-    // (undocumented)
-    eventType?: string;
     // (undocumented)
     final?: boolean;
     flowId?: EARS.EntityId;
     // (undocumented)
     id: RunNodeId;
     // (undocumented)
-    kind: RunNodeKind;
-    // (undocumented)
     label: string;
-    // (undocumented)
-    nodeAttributes?: Record<string, unknown>;
     nodeId?: EARS.EntityId;
     parentId?: RunNodeId;
-    // (undocumented)
-    resolvedParams?: Record<string, unknown>;
-    result?: unknown;
     rootId: RunNodeId;
     // (undocumented)
     startedAt: number;
     // (undocumented)
     status: RunStatus;
-    // (undocumented)
-    stepNodeType?: string;
-    // (undocumented)
-    triggerType?: string;
 }
 
 // @public
 export type RunNodeId = `RunNode-${string}`;
 
 // @public
-export type RunNodePatch = Partial<Pick<RunNode, 'label' | 'nodeAttributes' | 'result'>>;
+export interface RunNodePatch {
+    // (undocumented)
+    input?: Record<string, unknown>;
+    // (undocumented)
+    label?: string;
+    // (undocumented)
+    payload?: unknown;
+    // (undocumented)
+    result?: unknown;
+}
 
 // @public
-export type RunNodeStart = Omit<RunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>;
+export type RunNodeStart = Omit<FlowRunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'> | Omit<EventRunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'> | Omit<StepRunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>;
 
 // @public
 export interface RunPage {
@@ -305,10 +337,9 @@ export interface RunPage {
 export type RunStatus = 'active' | 'completed' | 'failed' | 'stopped';
 
 // @public
-export interface RunTree extends RunNode {
-    // (undocumented)
+export type RunTree = RunNode & {
     children: RunTree[];
-}
+};
 
 // @public
 export interface SecretMetadata {
@@ -414,6 +445,24 @@ export interface SettingsService {
     reset(target: SettingsTarget): void;
     // (undocumented)
     set(target: SettingsTarget, path: readonly string[], value: unknown, condition?: SettingsWriteCondition): void;
+}
+
+// @public
+export interface StepRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: never;
+    // (undocumented)
+    eventType?: never;
+    input?: Record<string, unknown>;
+    // (undocumented)
+    kind: 'step';
+    // (undocumented)
+    payload?: never;
+    result?: unknown;
+    // (undocumented)
+    stepNodeType: string;
+    // (undocumented)
+    triggerType?: never;
 }
 
 // @internal
