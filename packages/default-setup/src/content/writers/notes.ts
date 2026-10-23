@@ -30,7 +30,7 @@ export const noteWriter: ContentWriter<NoteItem> = {
   /** A note with the record's title under the same parent (or at the root) */
   find(record, { parentId }) {
     const match = findWhere(EARS.Entity.Note, 'title', record.title).find((note) => {
-      const parents = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+      const parents = query.ids(note.id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
       return (parents[0] as string | undefined) === parentId;
     });
     return match && { id: match.id, contentHash: match.contentHash };

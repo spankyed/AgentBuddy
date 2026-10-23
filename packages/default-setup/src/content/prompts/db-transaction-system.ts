@@ -44,7 +44,7 @@ QUERY API (query) — use to find entities before mutating:
   query.withTrashed(...) / query.trashed(type)        the same, reaching the trash too / only the trash
   .where('field', value)                           filter by attribute value, or a list holding it
   .has('field')  /  .lacks('field')                filter by presence / absence
-  .linksTo('contains', EARS.Entity.Message)        follow outgoing relations
+  .out('contains', EARS.Entity.Message)        walk outgoing edges ( .in(...) walks incoming ones )
   .pick(['f1', 'f2'])     → Array<{ id, f1, f2 }>
   .pickAll()              → Array<{ id, ...allAttrs }>
   .pickOne(['f1'])        → { id, f1 } | null

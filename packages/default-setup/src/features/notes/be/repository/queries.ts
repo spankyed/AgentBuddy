@@ -7,11 +7,11 @@ import type { NoteEntity } from '#features/notes/be/types.ts';
 
 function toDTO(note: NoteEntity): NoteDTO {
   // Find parent: who CONTAINS this note?
-  const parents = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+  const parents = query.ids(note.id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
   const parentId = parents.length > 0 ? parents[0] : null;
 
   // Count children: what does this note CONTAIN?
-  const childCount = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().length;
+  const childCount = query.ids(note.id).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().length;
 
   return {
     id: note.id,
@@ -51,7 +51,7 @@ export const noteQueries = {
   },
 
   children: (parentId: EARS.EntityId): NoteDTO[] => {
-    const childIds = query.ids(parentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    const childIds = query.ids(parentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     return childIds
       .map(id => findById<NoteEntity>(id))
       .filter((n): n is NoteEntity => n !== undefined)
@@ -63,7 +63,7 @@ export const noteQueries = {
     let currentId: EARS.EntityId | null = noteId;
 
     while (currentId) {
-      const parents = query.ids(currentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+      const parents = query.ids(currentId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
       if (parents.length === 0) break;
       currentId = parents[0];
       const note = findById<NoteEntity>(currentId);
@@ -78,7 +78,7 @@ export const noteQueries = {
   },
 
   referencedBy: (noteId: EARS.EntityId): EARS.EntityId[] =>
-    query.ids(noteId).linksTo(REFERENCES, EARS.Entity.Note, false).ids(),
+    query.ids(noteId).in(REFERENCES, EARS.Entity.Note).ids(),
 
   trashedDTOs: (): NoteDTO[] => (query.trashed(EARS.Entity.Note).pickAll() as NoteEntity[]).map(toDTO),
 

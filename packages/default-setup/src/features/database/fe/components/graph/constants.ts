@@ -22,7 +22,7 @@ const sources = [];
 const allIds = query.all().ids();
 
 for (const sourceId of allIds) {
-  const targets = query.ids(sourceId).linksTo('${value}').ids();
+  const targets = query.ids(sourceId).out('${value}').ids();
   if (targets.length > 0) {
     sources.push({
       ...getRow(sourceId),

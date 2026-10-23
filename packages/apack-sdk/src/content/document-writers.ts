@@ -27,7 +27,7 @@ export interface CollectionItem extends ContentItem {
 
 /** The folder a row sits in, or undefined at the root */
 function folderOf(id: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId | undefined {
-  return query.ids(id).linksTo(relKind, EARS.Entity.Collection, false).ids()[0];
+  return query.ids(id).in(relKind, EARS.Entity.Collection).ids()[0];
 }
 
 /**

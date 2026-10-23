@@ -33,7 +33,7 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 const logger = createLogger('notes');
 
 function isDescendantOf(noteId: EARS.EntityId, ancestorId: EARS.EntityId): boolean {
-  const childIds = query.ids(ancestorId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+  const childIds = query.ids(ancestorId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
   for (const childId of childIds) {
     if (childId === noteId) return true;
     if (isDescendantOf(noteId, childId)) return true;
@@ -122,7 +122,7 @@ export const notesSystem = setup({
       // When uncompleting: restore saved position
       // A cleared position is stored as null
       if (ev.completed === false && noteBeforeUpdate.savedDisplayOrder != null) {
-        const parentIds = query.ids(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const parentIds = query.ids(noteId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
         const parentId = parentIds.length > 0 ? parentIds[0] : null;
         const { affectedIds } = repository.noteCommands.reorder(
           noteId,
@@ -202,7 +202,7 @@ export const notesSystem = setup({
       const noteEntity = repository.noteQueries.byId(ev.id as EARS.EntityId);
       if (!noteEntity) {
         // The note is in the trash: its parent is found through its relations, which the trash keeps
-        const parentIds = query.withTrashed.ids(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const parentIds = query.withTrashed.ids(ev.id as EARS.EntityId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
         if (parentIds.length > 0) {
           const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
           if (parentDTO) {
@@ -230,7 +230,7 @@ export const notesSystem = setup({
       }
 
       // Update parent's childCount
-      const parentIds = query.ids(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+      const parentIds = query.ids(ev.id as EARS.EntityId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
       if (parentIds.length > 0) {
         const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
         if (parentDTO) {
@@ -270,7 +270,7 @@ export const notesSystem = setup({
         if (newParentId && isDescendantOf(newParentId, id)) continue;
 
         // Find current parent to skip same-parent no-op
-        const currentParentIds = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const currentParentIds = query.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
         const currentParentId = currentParentIds.length > 0 ? currentParentIds[0] : null;
         if (currentParentId === newParentId) continue;
 

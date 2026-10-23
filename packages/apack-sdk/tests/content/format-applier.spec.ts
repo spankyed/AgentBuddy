@@ -530,7 +530,7 @@ describe("two packs' records with the same entry key and identity", () => {
 describe("a folder another pack written", () => {
   type Folder = { id: EARS.EntityId; name: string; label?: string; contentKey?: string };
   const folders = () => ears().findWhere<Folder>('Folder' as EARS.Entity, 'name', 'internal');
-  const contents = (folder: Folder) => ears().query.ids(folder.id).linksTo('contains', 'Memo' as EARS.Entity, true).pick(['name']).map((row) => row.name as string).sort();
+  const contents = (folder: Folder) => ears().query.ids(folder.id).out('contains', 'Memo' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
 
   /** A pack's entry: one folder holding a memo per name, with the pack's own label on the folder */
   function tree(packId: string, memoNames: string[], entryKey = 'memos'): string {

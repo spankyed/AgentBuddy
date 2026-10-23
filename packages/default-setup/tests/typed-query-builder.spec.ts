@@ -109,8 +109,8 @@ describe('Typed QueryBuilder — fluent chaining preserves type', () => {
     expectTypeOf<Result>().toEqualTypeOf<QueryBuilder<'Action', PackShapes>>();
   });
 
-  it('inIds() preserves entity type', () => {
-    type Result = ReturnType<QueryBuilder<'Thread', PackShapes>['inIds']>;
+  it('within() preserves entity type', () => {
+    type Result = ReturnType<QueryBuilder<'Thread', PackShapes>['within']>;
     expectTypeOf<Result>().toEqualTypeOf<QueryBuilder<'Thread', PackShapes>>();
   });
 
@@ -119,15 +119,18 @@ describe('Typed QueryBuilder — fluent chaining preserves type', () => {
     expectTypeOf<Result>().toEqualTypeOf<QueryBuilder<'Action', PackShapes>>();
   });
 
-  it('relatedTo() preserves entity type', () => {
-    type Result = ReturnType<QueryBuilder<'Message', PackShapes>['relatedTo']>;
-    expectTypeOf<Result>().toEqualTypeOf<QueryBuilder<'Message', PackShapes>>();
+  it('linkedWith(), linkedTo() and linkedFrom() preserve entity type', () => {
+    expectTypeOf<ReturnType<QueryBuilder<'Message', PackShapes>['linkedWith']>>().toEqualTypeOf<QueryBuilder<'Message', PackShapes>>();
+    expectTypeOf<ReturnType<QueryBuilder<'Message', PackShapes>['linkedTo']>>().toEqualTypeOf<QueryBuilder<'Message', PackShapes>>();
+    expectTypeOf<ReturnType<QueryBuilder<'Message', PackShapes>['linkedFrom']>>().toEqualTypeOf<QueryBuilder<'Message', PackShapes>>();
   });
 
-  // linksTo navigates to related entities (relatedTo/related filter in place),
+  // out and in walk to the entities at an edge's far end (the linked* steps filter in place),
   // so the result holds the TARGET type, not the type being queried from.
-  it('linksTo() narrows to the target entity type', () => {
-    expectTypeOf<ReturnType<typeof threadBuilder.linksTo<'Message'>>>()
+  it('out() and in() narrow to the target entity type', () => {
+    expectTypeOf<ReturnType<typeof threadBuilder.out<'Message'>>>()
+      .toEqualTypeOf<QueryBuilder<'Message', PackShapes>>();
+    expectTypeOf<ReturnType<typeof threadBuilder.in<'Message'>>>()
       .toEqualTypeOf<QueryBuilder<'Message', PackShapes>>();
   });
 
@@ -152,11 +155,6 @@ describe('Typed QueryBuilder — terminal methods', () => {
   it('ids() returns ids tagged with the entity type', () => {
     type Result = ReturnType<QueryBuilder<'Action', PackShapes>['ids']>;
     expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'>[]>();
-  });
-
-  it('id() returns a tagged id | null', () => {
-    type Result = ReturnType<QueryBuilder<'Action', PackShapes>['id']>;
-    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'> | null>();
   });
 
   it('count() returns number', () => {

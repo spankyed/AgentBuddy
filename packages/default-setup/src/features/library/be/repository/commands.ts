@@ -149,11 +149,11 @@ const writers = {
     const collections = query.ids(collectionId).pickAll()
     const collection = collections[0]
     const documentCount = (query.ids(collectionId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+      .out(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pickAll()).length
 
     const childCollections = query.ids(collectionId)
-      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+      .out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
     const path = collectionPath(collectionId)
@@ -164,8 +164,8 @@ const writers = {
         name: child.name as string,
         description: child.description as string | undefined,
         path: collectionPath(child.id as EARS.EntityId),
-        documentCount: query.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
-        childCollections: buildChildren(query.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
+        documentCount: query.ids(child.id as EARS.EntityId).out(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
+        childCollections: buildChildren(query.ids(child.id as EARS.EntityId).out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
         displayOrder: displayOrderOf(child),
         createdAt: new Date(child.createdAt as number).toISOString(),
         updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),

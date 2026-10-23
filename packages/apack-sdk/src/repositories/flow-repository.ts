@@ -147,12 +147,12 @@ function splitRelation(input: FlowNodeInput, field: string | undefined): { relat
 function withRelation(node: FlowNode): FlowNode {
   const field = relationField(node.nodeType);
   if (!field) return node;
-  const [linkedId] = query.ids(node.id).links(EARS.RelKind.INSTANCE_OF).map(({ id }) => id);
+  const [linkedId] = query.ids(node.id).outEdges(EARS.RelKind.INSTANCE_OF).map(({ id }) => id);
   return linkedId ? { ...node, [field]: linkedId } : node;
 }
 
 const flowNodeIds = (flowId: EARS.EntityId): EARS.EntityId[] =>
-  query.ids(flowId).links(EARS.RelKind.CONTAINS, EARS.Entity.Node).map(({ id }) => id);
+  query.ids(flowId).outEdges(EARS.RelKind.CONTAINS, EARS.Entity.Node).map(({ id }) => id);
 
 /** Reads and writes of flows, their nodes and edges, and the root flow role */
 export const flowRepository = {
@@ -163,7 +163,7 @@ export const flowRepository = {
 
   /** The action an action node runs */
   getNodeActionId: (nodeId: EARS.EntityId): EARS.EntityId | undefined =>
-    query.ids(nodeId).links(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action).map(({ id }) => id)[0],
+    query.ids(nodeId).outEdges(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action).map(({ id }) => id)[0],
 
   /** A node with all its fields, and its related entity's id */
   node: (nodeId: EARS.EntityId): FlowNode | undefined => {

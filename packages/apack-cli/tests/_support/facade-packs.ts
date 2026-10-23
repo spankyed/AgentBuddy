@@ -230,7 +230,7 @@ declare const runtimeName: string;
 const other = findAll(runtimeName)[0]!;
 // @ts-expect-error unknown field can't be used without narrowing
 other.anything.length;
-query('Memo').linksTo('contains', runtimeName).pickAll();
+query('Memo').out('contains', runtimeName).pickAll();
 findAll<{ title: string }>('Item');
 // An explicit shape reads rows of an entity named only at runtime
 const shaped = findAll<{ title: string }>(runtimeName);
@@ -249,7 +249,7 @@ query('Nope');
 // @ts-expect-error undeclared entity name in an apply list
 query(['Memo', 'Nope']);
 // @ts-expect-error undeclared relation target
-query('Memo').linksTo('contains', 'Nope');
+query('Memo').out('contains', 'Nope');
 // @ts-expect-error undeclared entity name
 createEntity('Nope');
 
@@ -268,7 +268,7 @@ openMemo(plainId);
 openMemo(tags[0]!.id);
 // A tagged link result passed straight to a generic function still infers the target's shape
 const uniqueById = <T extends { id?: EARS.EntityId }>(nodes: T[]): T[] => nodes;
-const linkedMemos = uniqueById(query.ids(memoId).linksPick('related', ['text'], ['Memo']));
+const linkedMemos = uniqueById(query.ids(memoId).out('related', ['Memo']).pick(['text']));
 export type ContextualLinkPick = Expect<Equal<(typeof linkedMemos)[number]['text'], string>>;
 
 // Writes check the values of declared fields when they know the entity; other fields are free
@@ -304,7 +304,7 @@ findAll('Settings');
 findAll('AppState');
 // API keys aren't graph data: the host keeps them, packs see services.secrets
 // Library and notes entities belong to default-setup, not the SDK
-const tNodes = query(PackEARS.Entity.TNode).linksTo(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
+const tNodes = query(PackEARS.Entity.TNode).out(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
 export type TNodeShape = Expect<Equal<(typeof tNodes)[number]['tNodeType'], 'flow' | 'event' | 'step'>>;
 // Node rows are the dependency's step node types (app-pack defines none), a hand-written one that doesn't
 // narrow nodeType, and adds no required field, included
@@ -371,7 +371,7 @@ sendToSystem('|systemId|', { type: 'CLEAR_MEMOS' });
 sendToSystem('memos', { type: '|eventType|' });
 query('Memo').pick(['|pick|']);
 query('Memo').pickOne(['|pickOne|']);
-query.ids(memoId).linksPick('related', ['|linksPick|'], 'Memo');
+query.ids(memoId).out('related', 'Memo').pick(['|outPick|']);
 query('Memo').where('|where|');
 query('Memo').has('|has|');
 query('Memo').lacks('|lacks|');
@@ -381,13 +381,14 @@ query('Memo').groupBy('|groupBy|');
 getAttr(memoId, '|getAttr|');
 findAll('|findAll|');
 createEntity('|createEntity|');
-query.ids(memoId).linksTo('related', '|linksTo|');
+query.ids(memoId).out('related', '|out|');
+query.ids(memoId).in('related', '|in|');
 query.all().ofType('|ofType|');
 query('|query|');
 query('Memo').has('txet');
 `;
-const FIELD_POSITIONS = ['pick', 'pickOne', 'linksPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr'];
-const NAME_POSITIONS = ['findAll', 'createEntity', 'linksTo', 'ofType'];
+const FIELD_POSITIONS = ['pick', 'pickOne', 'outPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr'];
+const NAME_POSITIONS = ['findAll', 'createEntity', 'out', 'in', 'ofType'];
 
 /** String completions at each marked position of COMPLETIONS, and the file's diagnostics */
 function completionsIn(app: string, tsconfig: string): { at: Record<string, string[]>; diagnostics: string[] } {

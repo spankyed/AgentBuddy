@@ -30,7 +30,7 @@ export interface ExportFlowsOptions {
 
 function getFlowNodes({ query }: Ears, steps: StepLookup, flowId: string): any[] {
   const nodeIds = query.ids(flowId as EARS.EntityId)
-    .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+    .outEdges(EARS.RelKind.CONTAINS, EARS.Entity.Node)
     .map(({ id }: any) => id);
 
   const nodes = query.ids(nodeIds as EARS.EntityId[]).pickAll();
@@ -39,7 +39,7 @@ function getFlowNodes({ query }: Ears, steps: StepLookup, flowId: string): any[]
     const rel = steps.getBuild(node.nodeType)?.relation;
     if (!rel) return node;
     const linkedId = query.ids(node.id as EARS.EntityId)
-      .links(EARS.RelKind.INSTANCE_OF)
+      .outEdges(EARS.RelKind.INSTANCE_OF)
       .map(({ id }: any) => id)[0];
     return linkedId ? { ...node, [rel.field]: linkedId } : node;
   });
@@ -55,12 +55,12 @@ function getFlowEdges(engine: Ears, steps: StepLookup, flowId: string): any[] {
 
   for (const source of nodeIds) {
     query.ids(source as EARS.EntityId)
-      .links([EARS.RelKind.TRANSITIONS_TO], [EARS.Entity.Node])
+      .outEdges([EARS.RelKind.TRANSITIONS_TO], [EARS.Entity.Node])
       .filter(({ id: targetId }: any) => nodeIds.includes(targetId))
-      .forEach(({ relation, id: target }: any) => {
+      .forEach(({ kind, id: target }: any) => {
         const relDetails = engine.findRelations({
           sourceEntity: source,
-          relationType: relation,
+          relationType: kind,
           targetEntity: target,
         })[0];
         const relId = relDetails?.id;
@@ -70,7 +70,7 @@ function getFlowEdges(engine: Ears, steps: StepLookup, flowId: string): any[] {
 
         edges.push({
           id: relId,
-          kind: relation,
+          kind,
           source,
           target,
           info: (relDetails?.info as Record<string, unknown>) || {},

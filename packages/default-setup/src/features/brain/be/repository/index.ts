@@ -56,13 +56,13 @@ const TNODE_COLUMNS = [
  * `link(RelKind.SPAWNED, …)` sites below), so the resulting ids are TNode ids.
  * `.ids()` deliberately drops the brand, hence the assertion.
  *
- * Deliberately NOT passing a tgtType to `linksTo`: that is a runtime filter, and
+ * Deliberately NOT passing a target type to `out`: that is a runtime filter, and
  * narrowing the query would silently drop any edge that ever pointed elsewhere.
  * The invariant is asserted here, not enforced by the query.
  */
 function spawnedChildIds(id: EARS.EntityId): EARS.EntityId<'TNode'>[] {
   return uniqueEntityIds(
-    query.ids(id).linksTo(EARS.RelKind.SPAWNED).ids(),
+    query.ids(id).out(EARS.RelKind.SPAWNED).ids(),
   ) as EARS.EntityId<'TNode'>[];
 }
 
@@ -104,7 +104,7 @@ export const brainQueries = {
 
   eventAllSteps: (eventNodeId: EARS.EntityId): NodeEntity[] => {
     const nodes = query.ids(eventNodeId)
-      .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])
+      .outEdges(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])
       .map(link => query.ids(link.id).pickAll()[0] as unknown as NodeEntity)
       .filter(node => node && node.id);
 
@@ -114,7 +114,7 @@ export const brainQueries = {
   // Get next nodes via TRANSITIONS_TO relation
   nextNodeInFlowTrack: (nodeId: EARS.EntityId): NodeEntity => {
     const nextLinks = query.ids(nodeId)
-      .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
+      .outEdges(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
 
     return nextLinks.map(link => {
       const result = query.ids(link.id).pickAll();
@@ -158,7 +158,7 @@ export const brainQueries = {
     // Get all event TNodes tracked by this flow
     const eventTNodes = uniqueNodesById(
       query.ids(flowTNodeId)
-        .linksPick(EARS.RelKind.TRACKED, TNODE_COLUMNS, [EARS.Entity.TNode])
+        .out(EARS.RelKind.TRACKED, [EARS.Entity.TNode]).pick(TNODE_COLUMNS)
     );
     
     // For each event, build a hierarchical tree of spawned children
@@ -174,7 +174,7 @@ export const brainQueries = {
   possibleEvents: (flowTNodeId: EARS.EntityId): EventListenerEntity[] => {
     // Get the flow blueprint this TNode is an instance of
     const flowLinks = query.ids(flowTNodeId)
-      .links(EARS.RelKind.INSTANCE_OF, [EARS.Entity.Flow]);
+      .outEdges(EARS.RelKind.INSTANCE_OF, [EARS.Entity.Flow]);
 
     if (flowLinks.length === 0) {
       throw new Error(
@@ -191,7 +191,7 @@ export const brainQueries = {
       const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
       // Untyped: each trigger names its own fields, which only some step node types have
       const triggerNodes = untypedQuery.ids(flowId)
-        .linksPick(EARS.RelKind.CONTAINS, fields, [EARS.Entity.Node])
+        .out(EARS.RelKind.CONTAINS, [EARS.Entity.Node]).pick(fields)
         .filter((n: any) => n.nodeType === def.type);
       for (const n of triggerNodes as any[]) {
         events.push({
@@ -341,7 +341,7 @@ export const brainCommands = {
     
     for (const flowId of allFlows) {
       const nodeIds = query.ids(flowId)
-        .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+        .outEdges(EARS.RelKind.CONTAINS, EARS.Entity.Node)
         .map(({ id }) => id);
       if (nodeIds.includes(flowStepId)) {
         parentFlowId = flowId;
@@ -420,7 +420,7 @@ export const brainCommands = {
     
     for (const fid of allFlows) {
       const nodeIds = query.ids(fid)
-        .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+        .outEdges(EARS.RelKind.CONTAINS, EARS.Entity.Node)
         .map(({ id }) => id);
       if (nodeIds.includes(stepId)) {
         flowId = fid;

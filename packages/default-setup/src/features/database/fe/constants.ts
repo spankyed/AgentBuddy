@@ -7,8 +7,8 @@ return query(EARS.Entity.Thread).limit(10).pickAll();
 // return query.all().has('label').limit(20).pick(['label']);
 // return query(EARS.Entity.Flow).orderBy('label').pick(['label', 'description']);
 // return query(EARS.Entity.Message).reverse().limit(10).pick(['text', 'sender', 'timestamp']);
-// return query.ids('Thread-1').linksTo('contains', EARS.Entity.Message).pick(['text', 'sender']);
-// return query.ids('Thread-1').linksPick('contains', ['text', 'sender'], EARS.Entity.Message);
+// return query.ids('Thread-1').out('contains', EARS.Entity.Message).pick(['text', 'sender']);
+// return query.ids('Message-1').in('contains', EARS.Entity.Thread).pickOne(['topic']);
 
 // IMPORTANT: Chain methods in this order:
 // 1. Filters/Shaping: ofType(), where(), has(), lacks(), withRole(), orderBy(), limit(), distinct(), reverse()
@@ -28,7 +28,7 @@ const results = [];
 const allEntities = query.all().ids();
 
 for (const entityId of allEntities) {
-  const targets = query.ids(entityId).linksTo('${value}').ids();
+  const targets = query.ids(entityId).out('${value}').ids();
 
   if (targets.length > 0) {
     results.push({
