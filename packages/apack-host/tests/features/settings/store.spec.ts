@@ -40,7 +40,7 @@ describe('definitions and explicit choices', () => {
     expect(store.get(app)).toMatchObject({ projects: [], personal: {} });
     expect(store.get(assistant)).toEqual({ name: '' });
     expect(store.get(feature)).toEqual({ limit: 10, sort: 'newest' });
-    expect(untypedQuery.ids(SETTINGS_ID).pickOne(['data'])).toBeNull();
+    expect(untypedQuery.ids(SETTINGS_ID).pickOne(['data'])).toBeUndefined();
   });
 
   it('keeps an explicit default-equal value until reset while following untouched defaults', () => {

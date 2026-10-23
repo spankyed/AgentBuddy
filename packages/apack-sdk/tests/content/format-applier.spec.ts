@@ -209,8 +209,8 @@ describe('the applied content a run records', () => {
     });
 
     expect(counts).toEqual({ created: 0, updated: 1, skipped: 0 });
-    expect(ears().getAttr(id, 'trashedAt' as never), 'out of the trash').toBeFalsy();
-    expect(ears().getAttr(id, 'body' as never)).toBe('Hello again');
+    expect(ears().getRow(id)?.['trashedAt' as never], 'out of the trash').toBeFalsy();
+    expect(ears().getRow(id)?.['body' as never]).toBe('Hello again');
   });
 
   /**

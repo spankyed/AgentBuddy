@@ -1,4 +1,4 @@
-import { create, write, query, getAttr } from '#generated/ears.ts';
+import { create, write, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 
@@ -176,12 +176,12 @@ export const noteCommands = {
 
   /** Takes a note and its trashed sub-notes out of the trash; returns the ids restored */
   restore: (id: EARS.EntityId): string[] => {
-    if (getAttr(id, 'trashedAt') === null) return [];
+    if (query.withTrashed.ids(id).pickOne(['trashedAt'])?.trashedAt === undefined) return [];
     write(id).restore();
     const restoredIds: string[] = [id];
     // If parent is still in the trash, detach so note restores at root
     const parentIds = query.withTrashed.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-    if (parentIds.length > 0 && getAttr(parentIds[0], 'trashedAt') !== null) {
+    if (parentIds.length > 0 && query.withTrashed.ids(parentIds[0]).pickOne(['trashedAt'])?.trashedAt !== undefined) {
       write(parentIds[0]).unlink(EARS.RelKind.CONTAINS, id);
     }
     const childIds = query.withTrashed.ids(id).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();

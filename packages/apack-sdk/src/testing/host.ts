@@ -7,7 +7,7 @@ import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { testPacksView } from './packs.ts';
 import type { RootEvents } from '../runtime/root-events.ts';
 import type { Message } from '../events/index.ts';
-import type { EarsEngine } from '@apackdev/ears';
+import type { EarsEngine, EntityRow } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
 import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
 import type { TraceStore } from '../services/trace-store.ts';
@@ -125,13 +125,11 @@ const unsupported = (name: string) => () => Promise.reject(new Error(`appData.${
 
 /** Reads the in-memory database: unit tests keep flow execution records (TNodes) there */
 function memoryTraceStore(engine: () => EarsEngine): TraceStore {
-  const getAttr = (id: EARS.EntityId, kind: string) => engine().getAttr(id, kind as EARS.AttrKind);
-  const entityMeta = (id: EARS.EntityId) =>
-    ({ type: String(getAttr(id, 'entityType') ?? id.slice(0, id.indexOf('-'))), createdAt: Number(getAttr(id, 'createdAt') ?? 0) });
+  const entityMeta = (row: EntityRow) => ({ type: row.entityType, createdAt: Number(row.createdAt ?? 0) });
   return {
-    entities: () => engine().admin.getAllEntities().map((id) => ({ id, meta: entityMeta(id) })),
-    getEntityMeta: (id) => (getAttr(id, 'entityType') === null ? null : entityMeta(id)),
-    getAttr: (kind, id) => getAttr(id, kind) ?? undefined,
+    entities: () => engine().admin.getAllEntities().map((id) => ({ id, meta: entityMeta(engine().getRow(id)!) })),
+    getEntityMeta: (id) => { const row = engine().getRow(id); return row ? entityMeta(row) : null; },
+    getAttr: (id, kind) => engine().getRow(id)?.[kind],
     relations: (filter = {}) => engine().findRelations({
       ...(filter.kind && { relationType: filter.kind as EARS.RelKind }),
       ...(filter.src && { sourceEntity: filter.src }),

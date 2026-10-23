@@ -14,7 +14,7 @@ const usage = (command: 'query' | 'exec') => [
   `Usage: apack db ${command} <code> | --file <path> [options]`,
   '',
   command === 'query'
-    ? 'Runs read-only query code with the Database console\'s read helpers (query, getAttr, findRelations, getSchemaStats, ...).'
+    ? 'Runs read-only query code with the Database console\'s read helpers (query, getRow, findRelations, getSchemaStats, ...).'
     : 'Runs transaction code with the Database console\'s read and write helpers (create, upsert, write, ...).',
   'The code is a function body: return the result (`return query(EARS.Entity.Note).pickAll()`).',
   '',

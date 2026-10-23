@@ -161,7 +161,7 @@ describe('createHostRuntime', () => {
       'onShutdown', 'engine cleared', 'store reset', 'onInit (0 keys)',
       'migrations', 'pack migrations (reset-pack)', 'pack content (reset-pack,written-pack)',
     ]);
-    expect(engine.getAttr(id, 'title')).toBeNull();
+    expect(engine.getRow(id)?.title).toBeUndefined();
   });
 });
 

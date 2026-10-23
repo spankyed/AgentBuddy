@@ -46,7 +46,7 @@ export const threadQueries = {
     query(EARS.Entity.Thread).pickAll(),
 
   /** The first thread holding the role, e.g. the onboarding birth thread */
-  idByRole: (role: EARS.RoleKind): EARS.EntityId | null =>
+  idByRole: (role: EARS.RoleKind): EARS.EntityId | undefined =>
     query.all().withRole(role).first(),
 
   // Get thread messages

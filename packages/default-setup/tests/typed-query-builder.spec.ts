@@ -170,14 +170,14 @@ describe('Typed QueryBuilder — terminal methods', () => {
     expectTypeOf<Result>().toBeBoolean();
   });
 
-  it('first() returns a tagged id | null', () => {
+  it('first() returns a tagged id | undefined', () => {
     type Result = ReturnType<PackQuery<'Action'>['first']>;
-    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'> | null>();
+    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'> | undefined>();
   });
 
-  it('last() returns a tagged id | null', () => {
+  it('last() returns a tagged id | undefined', () => {
     type Result = ReturnType<PackQuery<'Action'>['last']>;
-    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'> | null>();
+    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'> | undefined>();
   });
 
   it('ids() of an untyped builder stay plain', () => {

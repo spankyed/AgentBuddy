@@ -34,7 +34,7 @@ describe('the API store across a restart', () => {
       expect(untypedQuery.withTrashed('Prompt').ids()).toEqual([]);
       await second.store.hydrate();
       expect(untypedQuery.withTrashed('Prompt').ids()).toEqual(['Prompt-restart']);
-      expect(second.engine.getAttr('Prompt-restart', 'label')).toBe('written before the restart');
+      expect(second.engine.getRow('Prompt-restart')?.label).toBe('written before the restart');
     } finally {
       second.store.close();
     }

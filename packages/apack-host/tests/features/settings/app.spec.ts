@@ -21,7 +21,7 @@ it('derives the public SDK types from the host definition', async () => {
 it('provides and resets app preferences without default-setup and owns returned values', () => {
   const settings = store();
   expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
-  expect(untypedQuery.ids(id).pickOne(['data'])).toBeNull();
+  expect(untypedQuery.ids(id).pickOne(['data'])).toBeUndefined();
   const first = settings.get<{ hotkeys: { switchSurfaceUp: { modifiers: string[] } } }>({ kind: 'app' });
   first.hotkeys.switchSurfaceUp.modifiers.push('changed');
   expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);

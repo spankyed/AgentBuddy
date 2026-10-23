@@ -20,7 +20,7 @@ describe('the helpers console code sees', () => {
   // `apack db query`/`exec` all rest on what a query can and cannot reach
   it('gives a query these, and nothing that writes', async () => {
     expect([...READ_HELPER_NAMES].sort()).toEqual([
-      'findRelations', 'getAttr', 'getRelationStats', 'getRoles', 'getRow', 'getSchemaStats', 'query',
+      'findRelations', 'getRelationStats', 'getRoles', 'getRow', 'getSchemaStats', 'query',
     ]);
     for (const name of READ_HELPER_NAMES) {
       await expect(runQueryCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -41,7 +41,7 @@ describe('runQueryCode', () => {
   it('returns what the code returns, reading the installed engine and the EARS it is given', async () => {
     untypedCreate('Flow', { id: 'Flow-1', shortCode: 'FLOW-1', label: 'Main', flowType: 'workflow' });
     await expect(runQueryCode("return query(EARS.Entity.Flow).pickAll().map((f) => f.label)", scope)).resolves.toEqual(['Main']);
-    await expect(runQueryCode('return getAttr("Flow-1", "label")', scope)).resolves.toBe('Main');
+    await expect(runQueryCode('return getRow("Flow-1")?.label', scope)).resolves.toBe('Main');
     await expect(runQueryCode('return getSchemaStats().entities', scope)).resolves.toEqual({ Flow: 1 });
   });
 
@@ -63,7 +63,7 @@ describe('runQueryCode', () => {
 
 describe('runTransactionCode', () => {
   it('writes with the write helpers and reads with the read helpers', async () => {
-    const id = await runTransactionCode("const id = create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'New', flowType: 'workflow' }).id(); return getAttr(id, 'label')", scope);
+    const id = await runTransactionCode("const id = create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'New', flowType: 'workflow' }).id(); return getRow(id)?.label", scope);
     expect(id).toBe('New');
     expect(untypedQuery('Flow').ids()).toHaveLength(1);
   });

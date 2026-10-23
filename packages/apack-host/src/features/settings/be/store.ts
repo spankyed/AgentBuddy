@@ -48,7 +48,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
   function defaults(): SettingsDocument { declarations(); return validation.defaults; }
   function rawStored(): unknown {
     const row = ears().query.ids(SETTINGS_ID).pickOne(['data']);
-    if (row === null) return {};
+    if (row === undefined) return {};
     return structuredClone(row.data);
   }
   function stored(): SettingsOverrides {

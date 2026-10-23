@@ -52,7 +52,7 @@ describe('services.traceStore', () => {
     const traces = services.traceStore;
     expect(traces.entities().filter((e) => e.id.startsWith('TNode-trace-')).map((e) => e.id).sort()).toEqual(Object.values(ids).sort());
     expect(traces.getEntityMeta(ids.flow)).toEqual({ type: 'TNode', createdAt: 1 });
-    expect(traces.getAttr('label', ids.flow)).toBe('Run');
+    expect(traces.getAttr(ids.flow, 'label')).toBe('Run');
     expect(traces.relations({ kind: 'tracked', src: ids.flow })).toEqual([
       { id: 'Relation-trace-1', rel: { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 } },
       { id: 'Relation-trace-2', rel: { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 } },
@@ -106,7 +106,7 @@ describe('services.appData', () => {
     // The app asks the user first, and imports it without that store when they say to
     expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true }))
       .toEqual({ databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] });
-    expect(untypedQuery.ids('Prompt-kept').pickOne(['label'])).toBeNull();
+    expect(untypedQuery.ids('Prompt-kept').pickOne(['label'])).toBeUndefined();
   });
 
   it('restores a backup whose listed store it holds nothing for, and says which', async () => {

@@ -125,11 +125,11 @@ describe('what the tool writes', () => {
     const api = await bootApi();
     try {
       // The note is in the data the API hydrates, with its role
-      expect(api.engine.getAttr('Note-tool', 'title')).toBe('from the tool');
+      expect(api.engine.getRow('Note-tool')?.title).toBe('from the tool');
       expect([...api.engine.getRoles('Note-tool')]).toEqual(['assistant_birth']);
       // The run history isn't hydrated, and is in the partition the app keeps it in
-      expect(api.engine.getAttr('TNode-tool', 'status')).toBeNull();
-      expect(api.store.read('volatileBackup').getAttr('status', 'TNode-tool')).toBe('done');
+      expect(api.engine.getRow('TNode-tool')?.status).toBeUndefined();
+      expect(api.store.read('volatileBackup').getAttr('TNode-tool', 'status')).toBe('done');
     } finally {
       closeApi(api);
     }

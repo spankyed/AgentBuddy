@@ -30,7 +30,6 @@ EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
 EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains'); a kind not declared here is refused
 EARS.RoleKind.*       role constants (e.g. EARS.RoleKind.ROOT_FLOW = 'root_flow'); a role not declared here is refused
 getRow(id)            { id, entityType, ...attributes } for a single entity, or undefined
-getAttr(id, EARS.AttrKind.Custom('fieldName'))   single attribute value
 getRoles(id)          string[] — roles on an entity
 getSchemaStats()      { entities, attributes, relations } with counts
 

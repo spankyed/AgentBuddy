@@ -117,7 +117,7 @@ Every pack receives `logger`, `emitter`, `repository` and caller-bound `settings
 |---|---|
 | `services.appData` | `reset()` resets the whole app as a fresh boot leaves it: deletes all stored data and API keys, then runs `onInit`, app-line migrations, pack-line migrations and content application in dependency order. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `readBackupSummary(path)` reads a backup's metadata, or `null`. |
 | `services.onboarding` | `isComplete()` reads completion and `complete()` records it. Preferences reset leaves this lifecycle state intact; resetting the app starts onboarding again. This service exposes no reset, import or export operations. |
-| `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, limit? })`. |
+| `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(id, kind)`, `relations({ kind?, src?, tgt?, limit? })`. |
 | `services.secrets` | The user's API keys, without their values: `list()` (each key's `id`, `provider`, `label`, whether it's `selected`, timestamps), `select(id)`, `rename(id, label)`, `delete(id)` and `status()` (how keys are protected). Keys are added, and their values replaced, only in Settings → Secrets. A key's `provider` (`SecretProvider`) is a model provider or `'custom'`, for keys the app's own integrations name. |
 | `services.filesystem` | Files and folders on the user's disk, as UTF-8 text: `readFile(path)`, `writeFile(path, content)` (creating missing parent folders), `exists(path)`, `mkdir(path)` (with its parents), `readDir(path)` (`{ name, isDirectory }` entries), `stat(path)` (`size`, `mtime`, `isFile`, `isDirectory`), `rename(from, to)` and `remove(path)` (a folder with its contents; a missing path isn't an error). In unit tests it fails until the test mocks it with `mockService('filesystem', …)`. |
 | `services.logger` | `debug`, `info`, `warn`, `error` (any arguments), sent to the app as redacted log events. In an action it's named `action:<label>`. `createLogger(source)` from `@apackdev/sdk/logger` gives a logger tagged with your own source. |
@@ -253,7 +253,7 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 
 | Module | What |
 |---|---|
-| `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact`, `find*`, `newId*`, `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
+| `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact` and `newId` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
 | `#generated/repository` | `repository`, typed with your and your dependencies' repositories |
 | `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, relation, role, graph and blueprint operations, and `repository` |
 | `@apackdev/ears` | The engine itself: `createEarsEngine` for tests and tooling, `EarsError`, `RepositoryError`, `bp` blueprints, the core `EARS` types and `BaseEntity` |
@@ -352,6 +352,8 @@ times), and every attribute write stamps it once per `write(id)`. A write that i
 last viewed, a position kept for later — passes `{ touch: false }`: `write(id, { touch: false }).set('lastSeen', now)`.
 `null` is a value like any other; `setMany` leaves a field whose value is `undefined` alone, `set(k, undefined)`
 refuses, and `delete(k)` is the one way to remove a field.
+So a read answers `undefined` for nothing there — `pickOne`, `first` and `last` with no entity, a field `pick` finds
+unset — and `null` only ever for a stored `null`.
 
 An attribute holds one value, and a list is one array value: a read gives back exactly what was written, a
 one-element list as a list. `add`, `deleteAt` and `deleteValue` work on that array and refuse a value that isn't one
@@ -541,7 +543,7 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
-`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `newId` and `getAttr`.
+`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact` and `newId`.
 Rows are a query's: the row with an id is `query.ids(id).pickOne()`, rows of a type `query(type).pickAll()`, and of a type
 with a field's value `query(type).where(field, value).pickAll()`; a write reads its entity back with `row()`. `@apackdev/ears` exports the
 writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out rows in the trash, as every query does. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
@@ -589,7 +591,7 @@ from typed queries (`ids()`, `first()`, `pick` and a row's `id`). The next call 
 without naming the shape:
 
 ```ts
-const first = query(EARS.Entity.Bookmark).first();   // EARS.EntityId<'Bookmark'> | null
+const first = query(EARS.Entity.Bookmark).first();   // EARS.EntityId<'Bookmark'> | undefined
 if (first) query.ids(first).pickOne()?.title;      // typed with the Bookmark shape
 ```
 

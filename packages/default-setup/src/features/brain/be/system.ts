@@ -335,7 +335,8 @@ export const brainSystem = setup({
       broadcastToSurface('brain', {
         type: 'TNODE_DETAILS',
         tNodeId,
-        details: tNode
+        // An event is JSON, where a missing TNode has to be said: null
+        details: tNode ?? null
       });
     },
     toggleInspect: () => {

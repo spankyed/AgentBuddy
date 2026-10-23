@@ -3,7 +3,7 @@ import type { LmdbStore } from '@apackdev/ears/lmdb';
 import { storedSettings } from '../../src/database/settings.ts';
 
 it.each([
-  { entity: null, value: null, expected: {} },
+  { entity: null, value: undefined, expected: {} },
   { entity: { type: 'Settings' }, value: null, expected: null },
   { entity: null, value: { app: { projects: 'invalid' } }, expected: { app: { projects: 'invalid' } } },
 ])('distinguishes absent preferences from malformed stored data before hydration: %j', ({ entity, value, expected }) => {

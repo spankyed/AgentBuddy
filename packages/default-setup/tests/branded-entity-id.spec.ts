@@ -72,12 +72,12 @@ describe('Branded EntityId — newId overloads', () => {
 describe('Branded EntityId — the row with an id', () => {
   it("pickOne() on a branded id returns that entity's shape", () => {
     const row = (id: EARS.EntityId<'Action'>) => query.ids(id).pickOne();
-    expectTypeOf(row).returns.toEqualTypeOf<EntityShape<'Action'> | null>();
+    expectTypeOf(row).returns.toEqualTypeOf<EntityShape<'Action'> | undefined>();
   });
 
   it('an unbranded id is typed by ofType, which checks the entity rather than asserting its shape', () => {
     const row = (id: EARS.EntityId) => query.ids(id).ofType(EARS.Entity.Thread).pickOne();
-    expectTypeOf(row).returns.toEqualTypeOf<EntityShape<'Thread'> | null>();
+    expectTypeOf(row).returns.toEqualTypeOf<EntityShape<'Thread'> | undefined>();
   });
 });
 
@@ -93,7 +93,7 @@ describe('Branded EntityId — integration with QueryBuilder', () => {
     // Type-level only: never called, since the EARS runtime isn't initialized here
     const check = () => {
       const first = query(EARS.Entity.Note).first();
-      if (first) expectTypeOf(query.ids(first).pickOne()).toEqualTypeOf<EntityShape<'Note'> | null>();
+      if (first) expectTypeOf(query.ids(first).pickOne()).toEqualTypeOf<EntityShape<'Note'> | undefined>();
       const row = query(EARS.Entity.Note).pickAll()[0];
       if (row) expectTypeOf(row.id).toEqualTypeOf<EARS.EntityId<'Note'>>();
       const picked = query(EARS.Entity.Note).pickOne(['title']);

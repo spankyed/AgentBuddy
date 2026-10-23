@@ -4,7 +4,7 @@
  */
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  query, write, create, getAttr
+  query, write, create
 } from '#generated/ears.ts';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { EARS } from '#generated/ears.ts';
@@ -17,7 +17,7 @@ describe('Tier 1 — EARS delegates', () => {
     expect(id).toBeDefined();
     expect(id).toMatch(/^Action-/);
 
-    const label = getAttr(id, 'label');
+    const label = query.ids(id).pickOne(['label'])?.label;
     expect(label).toBe('test-action');
   });
 
@@ -41,7 +41,7 @@ describe('Tier 1 — EARS delegates', () => {
     const entity = create(EARS.Entity.Action, { input: {}, label: 'ToDelete', actionFn: 'fn()' }).row();
     write(entity.id).trash(5);
 
-    expect(query.ids(entity.id).pickOne()).toBeNull();
+    expect(query.ids(entity.id).pickOne()).toBeUndefined();
     expect(query.withTrashed.ids(entity.id).pickOne(['trashedAt'])?.trashedAt).toBe(5);
   });
 
