@@ -51,13 +51,15 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   below has why the type alone could not fix it).
 
 **Writes.**
-- `create`, `upsert` and `write` from `#generated/ears` check declared fields' values when they know the entity: started from a declared name or a tagged id.
-- Undeclared fields are accepted, and a plain id leaves every write unchecked.
-- So `set` and `add` take a field *name* of any string (`set<K extends string>`), and an undeclared one
-  gets `unknown` for its value. This is deliberate — EARS stores attributes a shape need not declare — so no
-  write checks a field's *name* against the shape, only a declared field's value.
-- The engine's own attributes (`id`, `entityType`, `createdAt`, `updatedAt`, `role`, `relationDetails`, `trashedAt`) are refused by
-  every attribute write at runtime, not by the type.
+- `create`, `upsert` and `write` from `#generated/ears` check a write when they know the entity: started from a declared name or a tagged id.
+- Such a write names only the shape's declared fields (`WritableField`), and stores each one's declared type.
+  `set`, `add`, `merge`, `delete`, `deleteAt` and `deleteValue` take `K extends WritableField<S, E>`, which keeps
+  field completions and makes a typo's error list the fields; `setMany` takes the declared fields as an object
+  with no index signature, so a misspelled key is an excess property.
+- The engine's own attributes (`id`, `entityType`, `createdAt`, `updatedAt`, `role`, `relationDetails`, `trashedAt`) are not
+  writable fields, so the type refuses them as the runtime does.
+- A plain id leaves every write unchecked. EARS stores attributes a shape need not declare; code writing one
+  says so with `untypedWrite`/`untypedCreate`/`untypedUpsert` (`@apackdev/sdk/ears`), or declares the field.
 
 **Which `EARS` to import.**
 - Pack code imports `EARS` from its `#generated/ears` by default.

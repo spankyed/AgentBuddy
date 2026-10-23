@@ -339,14 +339,15 @@ one-element list as a list. `add`, `deleteAt` and `deleteValue` work on that arr
 `id`, `entityType`, `createdAt`, `updatedAt`, `role`, `relationDetails` and `trashedAt` are the engine's: every attribute write refuses
 them. `create` stamps `entityType` and `createdAt`; pass `createdAt` to keep an original time (an import).
 
-The write builder from `#generated/ears` checks the values of declared fields when it knows the entity: started
-with an entity type, or with an id that carries one (see *Entity ids* below). Fields the shape doesn't declare
-are still accepted, and a plain id leaves every write unchecked.
+The write builder from `#generated/ears` checks a write when it knows the entity: started with an entity type,
+or with an id that carries one (see *Entity ids* below). It names only the fields the shape declares, without the
+engine's own, and stores each one's declared type. A plain id leaves every write unchecked, and so do the
+`untyped*` writes from `@apackdev/sdk/ears`, for a field the shape doesn't declare.
 
 ```typescript
 write(id).set('title', 'Docs')        // ok
 write(id).set('title', 42)            // compile error: title is a string
-write(id).set('clickCount', 3)        // ok: not declared, not checked
+write(id).set('clickCount', 3)        // compile error: the shape declares no clickCount
 write(plainId).set('title', 42)       // ok: a plain id doesn't say which entity it is
 ```
 
