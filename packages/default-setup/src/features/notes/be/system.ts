@@ -176,12 +176,12 @@ export const notesSystem = setup({
       }
     },
 
+    // Every note's links, in the trash or not, derived again from its text: data written before a note recorded
+    // its link targets gets them here, and data replaced wholesale is indexed afresh
     bootstrapReferences: () => {
-      const allNotes = repository.noteQueries.all();
+      const allNotes = query.withTrashed(EARS.Entity.Note).pick(['content']);
       for (const note of allNotes) {
-        if (note.content) {
-          syncReferences(note.id as EARS.EntityId, note.content);
-        }
+        syncReferences(note.id as EARS.EntityId, (note.content as string | undefined) ?? '');
       }
       logger.info(`Bootstrapped REFERENCES relations for ${allNotes.length} notes`);
     },
