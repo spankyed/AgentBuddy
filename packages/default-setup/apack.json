@@ -2368,8 +2368,7 @@
           "create": "typeof _dsl.create",
           "upsert": "typeof _dsl.upsert",
           "write": "typeof _dsl.write",
-          "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults",
-          "removeRelationById": "typeof _dsl.removeRelationById"
+          "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults"
         }
       }
     },

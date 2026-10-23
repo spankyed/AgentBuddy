@@ -393,11 +393,11 @@ transact(() => {
 `query.ids(id).out(kinds)` walks to the entities an entity links to and `in(kinds)` to those linking to it; `outEdges(kinds)` and `inEdges(kinds)` return each edge as `{ kind, id }`. To read the relations themselves (their ids and `info`, such as a flow edge's handles) use `findRelations`; `getRelationStats(kind)` counts them:
 
 ```typescript
-import { findRelations, getRelationStats, removeRelationById } from '@apackdev/sdk/ears';
+import { findRelations, getRelationStats } from '@apackdev/sdk/ears';
 
 const [edge] = findRelations({ sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO });
 edge.info;                         // { sourceHandle: 'yes' }
-removeRelationById(edge.id);
+write(edge.id).destroy();                  // that one edge, leaving any other between the same nodes
 getRelationStats(EARS.RelKind.CONTAINS);   // { total, uniqueSources, uniqueTargets }
 ```
 
@@ -427,7 +427,6 @@ From `@apackdev/sdk/ears` (untyped, on the app's engine):
 | Call | Does |
 |---|---|
 | `updateRelation(relationId, { sourceEntity?, targetEntity?, info? })` | Moves a relation to new ends, or replaces its info, keeping its id |
-| `removeRelationById(relationId)` | Removes one relation by id (from `findRelations`) |
 | `isEntityType(name)` | Whether the running app has registered the entity type: the SDK's and every registered pack's |
 
 ### Hierarchies

@@ -35,7 +35,6 @@ EARS.RoleKind.*       role constants (e.g. EARS.RoleKind.ROOT_FLOW = 'root_flow'
 getRow(id)            { id, entityType, ...attributes } for a single entity, or undefined
 getRoles(id)          string[] — roles on an entity
 createEntityWithDefaults(type, attrs)   create with auto-generated fields
-removeRelationById(relationId)             remove one relation by its own id
 
 QUERY API (query) — use to find entities before mutating:
 
@@ -94,7 +93,8 @@ WRITE API (create / upsert / write):
 
   Lifecycle:
     .trash() / .restore()                          move to / out of the trash (queries skip trashed entities)
-    .destroy()                                     delete entity (not chainable)
+    .destroy()                                     delete entity (not chainable); on a relation's id (from
+                                                   findRelations), remove that one relation
     .id()                                          get entity ID (terminal)
 
 PATTERNS:
