@@ -5,6 +5,7 @@ import type { ExecutionContext, TNode, TNodeId } from '@apackdev/sdk/steps';
 import type { NodeEntity } from '#generated/types.ts';
 import { executeNode } from './node-handlers/index.ts';
 import { repository } from '#generated/repository.ts';
+import { services } from '#generated/services.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 type StepMachineContext = {
@@ -61,14 +62,13 @@ export function createStepNodeSystem(
         },
         storeResult: ({ context, event }) => {
           if (context.tNodeId && event.type === 'COMPLETE' && event.result !== undefined) {
-            // Result truncation is handled in updateTNodeResult to prevent memory overflow
-            repository.brainCommands.updateTNodeResult(context.tNodeId, event.result);
+            // The run history bounds what it stores
+            services.runHistory.update(context.tNodeId, { result: event.result });
           }
         },
         markCompleted: enqueueActions(({ context, enqueue }) => {
           if (context.tNodeId) {
-            // Update status
-            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'completed');
+            services.runHistory.finish(context.tNodeId, 'completed');
             
             // Straight to the brain, as flows send theirs: a parent flow finishing on this step's completion
             // stops before a forwarded update would reach it
@@ -81,7 +81,7 @@ export function createStepNodeSystem(
         }),
         markFailed: enqueueActions(({ context, enqueue }) => {
           if (context.tNodeId) {
-            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'failed');
+            services.runHistory.finish(context.tNodeId, 'failed');
             
             // Straight to the brain, as flows send theirs: a parent flow finishing on this step's completion
             // stops before a forwarded update would reach it
@@ -94,9 +94,7 @@ export function createStepNodeSystem(
         }),
         storeErrorResult: ({ context }) => {
           if (context.tNodeId && context.error !== undefined) {
-            repository.brainCommands.updateTNodeResult(context.tNodeId, {
-              error: context.error,
-            });
+            services.runHistory.update(context.tNodeId, { result: { error: context.error } });
           }
         },
         notifyComplete: sendParent(({ context, event }) => ({

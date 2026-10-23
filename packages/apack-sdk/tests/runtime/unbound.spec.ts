@@ -40,7 +40,7 @@ const runtime: HostRuntime = {
   services: {
     onboarding: { isComplete: unused, complete: unused },
     appData: { reset: unused, exportBackup: unused, importBackup: unused, readBackupSummary: unused },
-    runHistory: { newId: unused, add: unused, update: unused, get: unused, findChildren: unused, tree: unused, findRuns: unused, stopActive: unused, prune: unused },
+    runHistory: { start: unused, finish: unused, update: unused, get: unused, findChildren: unused, tree: unused, findRuns: unused, stopActive: unused, prune: unused },
     inference: {
       generateText: unused, streamText: unused, createAgent: unused, embed: unused, embedMany: unused,
       generateImage: unused, generateSpeech: unused, transcribe: unused, rerank: unused,

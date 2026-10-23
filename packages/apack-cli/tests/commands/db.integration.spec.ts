@@ -13,7 +13,6 @@ import { exportDatabase } from '@apackdev/host/backup';
 import { closeEnv, openEnvAt, LMDB_FORMAT_VERSION } from '@apackdev/ears/lmdb';
 import { createSecretsStore, memoryKeyVault } from '@apackdev/host/secrets';
 import { _appDataPaths } from '@apackdev/sdk/utils';
-import { _createRunHistory } from '@apackdev/sdk/services';
 import { _appDirOf, appDataDirFor, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { db } from '../../src/commands/db';
 import { parseDbArgs } from '../../src/commands/db/target';
@@ -87,11 +86,11 @@ async function appDataDir(): Promise<string> {
     untypedCreate('Note', { id: id('Note-b') }).set('title', 'Beta, "quoted"');
     alpha.link('parent_of', id('Note-b'));
   });
-  // A run the app recorded, in the run history's own store: a session's root and the event it heard
+  // A run the app recorded, in the run history's own store: a session's root and the event it heard, as a run on
+  // 2026-10-01 left them
   const store = openRunHistoryStore(_appDataPaths(dir).runHistory);
-  const history = _createRunHistory(store);
-  history.add({ id: 'TNode-1', tNodeType: 'flow', label: 'Root', status: 'completed', startedAt: Date.UTC(2026, 9, 1), flowId: 'Flow-root' });
-  history.add({ id: 'TNode-2', tNodeType: 'event', label: 'go', status: 'completed', startedAt: Date.UTC(2026, 9, 1, 0, 1), parentId: 'TNode-1' });
+  store.put({ id: 'TNode-1', rootId: 'TNode-1', tNodeType: 'flow', label: 'Root', status: 'completed', startedAt: Date.UTC(2026, 9, 1), flowId: 'Flow-root' });
+  store.put({ id: 'TNode-2', rootId: 'TNode-1', tNodeType: 'event', label: 'go', status: 'completed', startedAt: Date.UTC(2026, 9, 1, 0, 1), parentId: 'TNode-1' });
   store.close();
   return dir;
 }

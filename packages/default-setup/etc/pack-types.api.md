@@ -5787,13 +5787,14 @@ declare function addMessagesToThread(params: {
 }): void;
 
 declare const brainCommands: {
+    /** An event a flow run heard, with its payload as the node's attributes */
     readonly createEventTNode: (eventNode: {
         id?: string;
         label?: string;
         eventType?: string;
         triggerType?: string;
         cronExpression?: string;
-    }, flowTNodeId: TNodeId) => TNode;
+    }, flowTNodeId: TNodeId, payload: Record<string, unknown>) => TNode;
     readonly createFlowTNode: (flowStepId: EARS.EntityId, parentId?: TNodeId, executionContext?: ExecutionContext) => {
         flowTNode: TNode;
         flowId: EARS.EntityId;
@@ -5807,13 +5808,6 @@ declare const brainCommands: {
         rootFlow: Pick<FlowEntity, "createdAt" | "flowType" | "id" | "label">;
         rootFlowTNode: TNode;
     };
-    readonly updateTNodeStatus: (tNodeId: TNodeId, status: RunStatus) => void;
-    /** Records what a step returned (made storable by the run history) */
-    readonly updateTNodeResult: (tNodeId: TNodeId, result: unknown) => void;
-    /** An event's payload, which its node keeps as its attributes */
-    readonly updateTNodeAttributes: (tNodeId: TNodeId, attributes: Record<string, unknown>) => void;
-    /** What a kill, a restart or the pack stopping left running: marked stopped, never deleted */
-    readonly stopActive: () => void;
 };
 
 declare const brainQueries: {

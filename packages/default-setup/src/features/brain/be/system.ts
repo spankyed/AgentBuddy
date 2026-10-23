@@ -147,7 +147,7 @@ export const brainSystem = setup({
         enqueue.assign({ brainActor: undefined, runningRootFlowId: undefined, rootRunId: undefined, eventQueue: [] });
 
         // The runs it ended stay in the run history, stopped
-        repository.brainCommands.stopActive();
+        services.runHistory.stopActive();
 
         // Clear all ad-hoc brain event listeners
         removeAllAdHocListeners();
@@ -183,7 +183,7 @@ export const brainSystem = setup({
       }
 
       // The runs it ends stay in the run history, stopped
-      repository.brainCommands.stopActive();
+      services.runHistory.stopActive();
 
       // Clear all ad-hoc brain event listeners
       removeAllAdHocListeners();

@@ -8,8 +8,7 @@ import type { FlowNode } from '#extensions/steps/subflow/types.ts';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers.ts';
 import { brainLogger } from '../utils/brain-inspect.ts';
-import type { ExecutionContext, RunStatus, RunTree, TNode, TNodeId } from '@apackdev/sdk/steps';
-import type { TNodeInput } from '@apackdev/sdk/services';
+import type { ExecutionContext, RunTree, TNode, TNodeId } from '@apackdev/sdk/steps';
 import type { FlowEntity } from '@apackdev/sdk';
 // Brain Repository - the flows the brain runs, and their runs in the run history
 
@@ -27,15 +26,6 @@ function resolveNodeAttributes(
 
 /** The run history: every flow run's nodes, recorded as the brain runs them */
 const history = () => services.runHistory;
-
-/**
- * Records a run node and returns it as given, its root filled in. Not as stored: the history bounds what it stores,
- * and a step runs on its params whole
- */
-function record(node: TNodeInput): TNode {
-  history().add(node);
-  return { ...node, rootId: (node.parentId && history().get(node.parentId)?.rootId) || node.id };
-}
 
 /** The flow node a node ran under: the nearest flow above it, or undefined for a session's root */
 function parentFlowOf(id: TNodeId): TNode | undefined {
@@ -204,18 +194,18 @@ export const brainQueries = {
 
 // Commands
 export const brainCommands = {
+  /** An event a flow run heard, with its payload as the node's attributes */
   createEventTNode: (
     eventNode: { id?: string; label?: string; eventType?: string; triggerType?: string; cronExpression?: string },
     flowTNodeId: TNodeId,
-  ): TNode => record({
-    id: history().newId(),
+    payload: Record<string, unknown>,
+  ): TNode => history().start({
     tNodeType: 'event',
     label: eventNode.label || '',
     eventType: eventNode.eventType!,
     triggerType: eventNode.triggerType || 'listener',
     ...(eventNode.cronExpression && { cronExpression: eventNode.cronExpression }),
-    status: 'active',
-    startedAt: Date.now(),
+    nodeAttributes: payload,
     parentId: flowTNodeId,
     // The trigger node it heard, in the flow its parent runs
     ...(eventNode.id && { nodeId: eventNode.id as EARS.EntityId }),
@@ -254,12 +244,9 @@ export const brainCommands = {
     }
 
     const prepared = resolveNodeAttributes(flowStepNode, executionContext);
-    const flowTNode = record({
-      id: history().newId(),
+    const flowTNode = history().start({
       tNodeType: 'flow',
       label: flowStepNode.label || flow.label!,
-      status: 'active',
-      startedAt: Date.now(),
       stepNodeType: 'subflow',
       ...(parentId && { parentId }),
       // The subflow step it ran, and the flow that step runs
@@ -297,12 +284,9 @@ export const brainCommands = {
     // The flow holding this step
     const flowId = query.ids(stepId).in(EARS.RelKind.CONTAINS, EARS.Entity.Flow).first();
     const prepared = resolveNodeAttributes(step, executionContext);
-    const tNode = record({
-      id: history().newId(),
+    const tNode = history().start({
       tNodeType: 'step',
       label: step.label ?? '',
-      status: 'active',
-      startedAt: Date.now(),
       stepNodeType: step.nodeType,
       parentId,
       nodeId: stepId,
@@ -332,33 +316,11 @@ export const brainCommands = {
       );
     }
 
-    const rootFlowTNode = record({
-      id: history().newId(),
+    const rootFlowTNode = history().start({
       tNodeType: 'flow',
       label: rootFlow.label,
-      status: 'active',
-      startedAt: Date.now(),
       flowId: rootFlow.id,
     });
     return { rootFlow, rootFlowTNode };
-  },
-  
-  updateTNodeStatus: (tNodeId: TNodeId, status: RunStatus): void => {
-    history().update(tNodeId, { status, ...(status !== 'active' && { completedAt: Date.now() }) });
-  },
-  
-  /** Records what a step returned (made storable by the run history) */
-  updateTNodeResult: (tNodeId: TNodeId, result: unknown): void => {
-    history().update(tNodeId, { result });
-  },
-  
-  /** An event's payload, which its node keeps as its attributes */
-  updateTNodeAttributes: (tNodeId: TNodeId, attributes: Record<string, unknown>): void => {
-    history().update(tNodeId, { nodeAttributes: attributes });
-  },
-  
-  /** What a kill, a restart or the pack stopping left running: marked stopped, never deleted */
-  stopActive: (): void => {
-    history().stopActive();
   },
 } as const;
