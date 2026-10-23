@@ -177,7 +177,13 @@ export function _createRunHistory(records: RecordStore<RunNode>): RunHistory {
     tree(id) {
       const node = records.get(id);
       if (!node) return undefined;
-      // One read: the whole run, in the order its nodes began, then grown from `id`
+      // A session's root is its whole session, read at once by the root every node files under. Any other node is
+      // a part of one, read child by child: a session lasts as long as the brain, and reading all of it to show a
+      // subflow or a page of events costs what the session holds, not what is shown
+      if (node.id !== node.rootId) {
+        const grow = (parent: RunNode): RunTree => ({ ...parent, children: history.findChildren(parent.id).map(grow) });
+        return grow(node);
+      }
       const childrenOf = new Map<string, RunNode[]>();
       for (const each of records.findBy('rootId', node.rootId)) {
         if (each.parentId === undefined) continue;
