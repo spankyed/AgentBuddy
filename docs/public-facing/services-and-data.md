@@ -353,7 +353,7 @@ write(plainId).set('title', 42)       // ok: a plain id doesn't say which entity
 `untypedCreate`, `untypedUpsert` and `untypedWrite` from `@apackdev/sdk/ears` are the same functions on the app's engine, unchecked.
 
 The query builder narrows with `where(k, v)` (a value, or a function tested against each value), `has(k)` and
-`lacks(k)`, `withRole`, `ofType`, `related`/`relatedTo`, and navigates with `linksTo`.
+`lacks(k)`, `withRole`, `ofType`, `within`, `linkedTo`/`linkedFrom`/`linkedWith`, and walks edges with `out` and `in`.
 
 **A unit of writes.** `transact(fn)` runs `fn` as one unit: if it throws, every write it made is undone and none
 is persisted; if it returns, its writes are persisted together. Reads inside it see its own writes. `fn` must be
@@ -366,7 +366,7 @@ transact(() => {
 });
 ```
 
-`query(id).links(kinds)` returns the ids an entity links to. To read the relations themselves (their ids and `info`, such as a flow edge's handles) use `findRelations`; `getRelationStats(kind)` counts them:
+`query.ids(id).out(kinds)` walks to the entities an entity links to and `in(kinds)` to those linking to it; `outEdges(kinds)` and `inEdges(kinds)` return each edge as `{ kind, id }`. To read the relations themselves (their ids and `info`, such as a flow edge's handles) use `findRelations`; `getRelationStats(kind)` counts them:
 
 ```typescript
 import { findRelations, getRelationStats, removeRelationById } from '@apackdev/sdk/ears';
@@ -474,12 +474,12 @@ repository.bookmarkCommands.create({ url, title });
 
 The engine has a trash. `write(id).trash()` puts an entity in it: it stays stored, with its edges, marked with when
 it was trashed (`trashedAt`, an attribute only the engine writes), and **no query reaches it** — not `query(type)`,
-`query.ids`, `query.all`, a link's far end (`linksTo`, `links`, `linksPick`) or the `find*` helpers. A write still
+`query.ids`, `query.all`, an edge's far end (`out`, `in`, `outEdges`, `inEdges`) or the `find*` helpers. A write still
 reaches it, so `write(id).restore()` takes it out. Two entry points read the trash:
 
 ```typescript
 query.withTrashed('Bookmark').ids();             // every bookmark, trashed ones included (also .ids, .all)
-query.withTrashed.ids(id).linksTo('contains');   // a trashed entity's children, themselves trashed or not
+query.withTrashed.ids(id).out('contains');   // a trashed entity's children, themselves trashed or not
 query.trashed('Bookmark').pickAll();             // only the trashed ones, each with its trashedAt
 ```
 
@@ -550,8 +550,8 @@ query(EARS.Entity.Bookmark).orderBy('createdAt') // BaseEntity fields are includ
 ```
 
 `where`, `orderBy`, `distinct`, `groupBy`, `pickAll`, `pick` and `pickOne` all narrow this way
-(`pick`/`pickOne` take only declared fields and return exactly those), and `linksPick`
-narrows its fields to the relation's *target* entity type. Entity types **without** a
+(`pick`/`pickOne` take only declared fields and return exactly those), and `out(kind, type)` and
+`in(kind, type)` narrow to the *target* entity type, so a `pick` after them checks the target's fields. Entity types **without** a
 declared shape read as `BaseEntity & Record<string, unknown>`: every field is there, but
 you have to narrow a value before using it. An id carries its entity type when it comes
 from a typed helper (`createEntity(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookmark'>`),

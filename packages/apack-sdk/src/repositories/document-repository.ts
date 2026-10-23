@@ -80,8 +80,8 @@ export function nextDisplayOrder(parentId: EARS.EntityId | null): number {
         .filter((row) => collectionOfDocument(row.id as EARS.EntityId) === null),
     ]
     : [
-      ...(query.ids(parentId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll() as Array<Record<string, unknown>>),
-      ...(query.ids(parentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll() as Array<Record<string, unknown>>),
+      ...(query.ids(parentId).out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll() as Array<Record<string, unknown>>),
+      ...(query.ids(parentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll() as Array<Record<string, unknown>>),
     ];
   return Math.max(0, ...siblings.map(displayOrderOf)) + ORDER_GAP;
 }
@@ -208,11 +208,11 @@ export const collectionRepository = {
   /** The folders directly inside `parentId`, or the root ones */
   children: (parentId: EARS.EntityId | null): CollectionEntity[] => (parentId === null
     ? collectionRepository.all().filter((row) => parentCollectionOf(row.id as EARS.EntityId) === null)
-    : query.ids(parentId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll() as unknown as CollectionEntity[]),
+    : query.ids(parentId).out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll() as unknown as CollectionEntity[]),
 
   /** The documents directly inside `parentId` */
   documents: (parentId: EARS.EntityId): DocumentEntity[] =>
-    query.ids(parentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll() as unknown as DocumentEntity[],
+    query.ids(parentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll() as unknown as DocumentEntity[],
 
   create: (data: CollectionInput): CollectionEntity => {
     const { parentId, id, description, contentHash, ...fields } = data;

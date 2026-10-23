@@ -241,7 +241,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
         const candidates = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>(record.entity as EARS.Entity, first, record[first])
           .filter((row) => rest.every((name) => row[name] === record[name]));
         const match = identity.includes('parent')
-          ? candidates.find((row) => query.ids(row.id).linksTo(relKind, undefined, false).ids()[0] === context.parentId)
+          ? candidates.find((row) => query.ids(row.id).in(relKind).ids()[0] === context.parentId)
           : candidates[0];
         return match && { id: match.id, contentHash: match.contentHash };
       };

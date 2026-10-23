@@ -6504,16 +6504,16 @@ declare const threadQueries: {
             readonly __entity?: "Message" | undefined;
         };
     }, "compacted" | "isCommand" | "sender" | "text" | "timestamp">)[];
-    readonly linkedThreads: (threadId: EARS.EntityId) => ({
+    readonly linkedThreads: (threadId: EARS.EntityId) => {
         id: `${string}-${string}` & {
             readonly __entity?: "Thread" | undefined;
         };
+        topic: string;
+        status: string;
+        shortCode?: string | undefined;
+        timestamp: number;
         relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
-    } & Pick<ThreadEntity & _apackdev_ears.BaseEntity & {
-        id: `${string}-${string}` & {
-            readonly __entity?: "Thread" | undefined;
-        };
-    }, "shortCode" | "status" | "timestamp" | "topic">)[];
+    }[];
     readonly extendedData: (threadId: EARS.EntityId, include?: keyof ThreadExtendedData | (keyof ThreadExtendedData)[]) => ThreadExtendedData;
     readonly archivedThreads: () => Partial<ThreadEntity>[];
     readonly connectedData: () => ThreadConnectedData;

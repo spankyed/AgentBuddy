@@ -603,7 +603,7 @@ async function getChildCollectionsRecursive(
   collectionId: EARS.EntityId
 ): Promise<EARS.EntityId[]> {
   const children = query.ids(collectionId)
-    .linksTo(EARS.RelKind.PARENT_OF, 'Collection' as any)
+    .out(EARS.RelKind.PARENT_OF, 'Collection' as any)
     .ids()
   
   const allChildren = [...children]

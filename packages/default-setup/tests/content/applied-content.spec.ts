@@ -154,7 +154,7 @@ describe('the applied content over this pack’s real content', () => {
     for (const [key, item] of flows) {
       const id = contentEntity(item.entityType, key)!.id;
       const nodes = Object.keys(item.parts).filter((part) => part.startsWith('node:'));
-      const live = query.ids(id).linksTo('contains' as string, 'Node' as EARS.Entity, true).ids();
+      const live = query.ids(id).out('contains' as string, 'Node' as EARS.Entity).ids();
       expect(nodes.map((part) => part.slice('node:'.length)).sort(), `${key}'s node parts`).toEqual([...live].sort());
       expect(item.parts.fields, `${key} records its own fields`).toBeDefined();
       expect(item.parts.edges, `${key} records its wiring`).toBeDefined();

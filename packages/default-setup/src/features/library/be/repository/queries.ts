@@ -14,7 +14,7 @@ export const libraryQueries = {
 
     if (collectionId) {
       const documentsInCollection = query.ids(collectionId as EARS.EntityId)
-        .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+        .out(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
 
       const documentIds = documentsInCollection.map((doc) => doc.id)
@@ -65,7 +65,7 @@ export const libraryQueries = {
     const tags = document.tags || []
 
     const collection = query(EARS.Entity.Collection).pickAll().find(col => 
-      query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
+      query.ids(col.id as EARS.EntityId).out(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
     )
 
     const path = collection
@@ -125,8 +125,8 @@ export const libraryQueries = {
         name: col.name as string,
         description: col.description as string | undefined,
         path: collectionPath(col.id as EARS.EntityId),
-        documentCount: query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().length,
-        childCollections: buildTree(query.ids(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])),
+        documentCount: query.ids(col.id as EARS.EntityId).out(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().length,
+        childCollections: buildTree(query.ids(col.id as EARS.EntityId).out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])),
         displayOrder: displayOrderOf(col),
         createdAt: new Date(col.createdAt as number).toISOString(),
         updatedAt: new Date(col.updatedAt as number || col.createdAt as number).toISOString(),
@@ -161,7 +161,7 @@ export const libraryQueries = {
     } else {
       // Get child collections of this folder
       folders = query.ids(folderId)
-        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+        .out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .pickAll()
     }
     
@@ -169,10 +169,10 @@ export const libraryQueries = {
     for (const folder of folders) {
       const itemId = folder.id
       const childCollections = query.ids(itemId as EARS.EntityId)
-        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+        .out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .pickAll()
       const documents = query.ids(itemId as EARS.EntityId)
-        .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+        .out(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
       const childCount = childCollections.length + documents.length
       const folderSymlinkPath = folder.symlinkPath as string | undefined
@@ -213,7 +213,7 @@ export const libraryQueries = {
     } else {
       // Get documents in this collection
       documents = query.ids(folderId)
-        .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+        .out(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
     }
     
@@ -301,7 +301,7 @@ export const libraryQueries = {
 
   getDocumentsInCollection(collectionId: EARS.EntityId): DocumentDTO[] {
     const documentIds = query.ids(collectionId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+      .out(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .ids()
     
     if (documentIds.length === 0) {
@@ -335,7 +335,7 @@ export const libraryQueries = {
 
       // Find collection that contains this document
       const collectionLinks = query.ids(doc.id as EARS.EntityId)
-        .links(EARS.RelKind.CONTAINS, EARS.Entity.Collection, false)
+        .inEdges(EARS.RelKind.CONTAINS, EARS.Entity.Collection)
       const collection = collectionLinks.length > 0 ? query.ids(collectionLinks[0].id).pickAll()[0] : null
 
       const path = collection ? collectionPath(collection.id as EARS.EntityId) : []

@@ -64,14 +64,14 @@ export const noteCommands = {
     if (displayOrder == null) {
       if (input.parentId) {
         const siblings = query.ids(input.parentId as EARS.EntityId)
-          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note)
+          .out(EARS.RelKind.CONTAINS, EARS.Entity.Note)
           .ids();
         displayOrder = siblings.length;
       } else {
         // Count root notes (notes with no parent)
         const allNotes = query(EARS.Entity.Note).ids();
         const rootCount = allNotes.filter(id => {
-          const parents = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+          const parents = query.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
           return parents.length === 0;
         }).length;
         displayOrder = rootCount;
@@ -79,9 +79,9 @@ export const noteCommands = {
     } else {
       // Explicit displayOrder: shift existing siblings at/after this index up by 1
       const siblingIds = input.parentId
-        ? query.ids(input.parentId as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
+        ? query.ids(input.parentId as EARS.EntityId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
         : query(EARS.Entity.Note).ids().filter(nid => {
-            const parents = query.ids(nid as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+            const parents = query.ids(nid as EARS.EntityId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
             return parents.length === 0;
           });
 
@@ -161,7 +161,7 @@ export const noteCommands = {
     }
 
     // A task has no sub-document link in its parent's content; a note that stops being one gets it
-    const parentId = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()[0];
+    const parentId = query.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()[0];
     if (parentId && updates.noteType !== undefined && (updates.noteType === 'task') !== (existing.noteType === 'task')) {
       if (updates.noteType === 'task') removeParentLink(parentId, id);
       else appendParentLink(parentId, id, updates.noteType);
@@ -172,7 +172,7 @@ export const noteCommands = {
   softDelete: (id: EARS.EntityId): string[] => {
     if (!findById<NoteEntity>(id)) return [];
     const subtree = (noteId: EARS.EntityId): EARS.EntityId[] =>
-      [noteId, ...query.ids(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().flatMap(subtree)];
+      [noteId, ...query.ids(noteId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().flatMap(subtree)];
     // A note in the trash takes its sub-notes with it; any already there keep when they went
     const ids = subtree(id);
     for (const noteId of ids) write(noteId).trash();
@@ -185,11 +185,11 @@ export const noteCommands = {
     write(id).restore();
     const restoredIds: string[] = [id];
     // If parent is still in the trash, detach so note restores at root
-    const parentIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const parentIds = query.withTrashed.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     if (parentIds.length > 0 && getAttr(parentIds[0], 'trashedAt') !== null) {
       write(parentIds[0]).unlink(EARS.RelKind.CONTAINS, id);
     }
-    const childIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    const childIds = query.withTrashed.ids(id).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const childId of childIds) {
       restoredIds.push(...noteCommands.restore(childId));
     }
@@ -203,7 +203,7 @@ export const noteCommands = {
     }
 
     // Find current parent
-    const parentIds = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const parentIds = query.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     const oldParentId = parentIds.length > 0 ? parentIds[0] : null;
 
     // Early return if already has this parent
@@ -213,13 +213,13 @@ export const noteCommands = {
 
     if (newParentId) {
       // Update displayOrder to end of new parent's children
-      const newSiblings = query.ids(newParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+      const newSiblings = query.ids(newParentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
       write(id).setMany({ displayOrder: newSiblings.length - 1 });
     } else {
       // Moving to root: calculate root-level displayOrder
       const allNotes = query(EARS.Entity.Note).ids();
       const rootCount = allNotes.filter(nid => {
-        const parents = query.ids(nid).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const parents = query.ids(nid).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
         return parents.length === 0;
       }).length;
       write(id).setMany({ displayOrder: rootCount - 1 });
@@ -235,7 +235,7 @@ export const noteCommands = {
     }
 
     // Find current parent
-    const parentIds = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const parentIds = query.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     const oldParentId = parentIds.length > 0 ? parentIds[0] : null;
     const parentChanged = oldParentId !== newParentId;
     const affectedIds: string[] = [];
@@ -247,9 +247,9 @@ export const noteCommands = {
 
     // Get siblings under new parent, sorted by displayOrder
     const siblingIds = newParentId
-      ? query.ids(newParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
+      ? query.ids(newParentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
       : query(EARS.Entity.Note).ids().filter(nid => {
-          const parents = query.ids(nid as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+          const parents = query.ids(nid as EARS.EntityId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
           return parents.length === 0;
         });
 
@@ -276,7 +276,7 @@ export const noteCommands = {
 
     // If parent changed, also re-index old parent's remaining children
     if (parentChanged && oldParentId) {
-      const oldSiblingIds = query.ids(oldParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+      const oldSiblingIds = query.ids(oldParentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
       const oldSiblings = oldSiblingIds
         .map(sid => findById<NoteEntity>(sid as EARS.EntityId))
         .filter((n): n is NoteEntity => n !== undefined)
@@ -299,13 +299,13 @@ export const noteCommands = {
     }
 
     // Recursively delete children first; a note being deleted, and its family, are often in the trash
-    const childIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    const childIds = query.withTrashed.ids(id).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const childId of childIds) {
       noteCommands.delete(childId);
     }
 
     // Remove parent relationship (if any)
-    const parentIds = query.withTrashed.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const parentIds = query.withTrashed.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const parentId of parentIds) {
       write(parentId).unlink(EARS.RelKind.CONTAINS, id);
     }
@@ -317,7 +317,7 @@ export const noteCommands = {
     write(id).unlink(REFERENCES);
 
     // Clean up incoming REFERENCES (other notes pointing to this one)
-    const referencingIds = query.withTrashed.ids(id).linksTo(REFERENCES, EARS.Entity.Note, false).ids();
+    const referencingIds = query.withTrashed.ids(id).in(REFERENCES, EARS.Entity.Note).ids();
     for (const refId of referencingIds) {
       write(refId).unlink(REFERENCES, id);
     }
