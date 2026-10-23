@@ -98,15 +98,13 @@ export const brainQueries = {
     return result[0] as unknown as NodeEntity | undefined;
   },
   
-  /** The event tracks a flow node heard, each with the nodes it ran under it */
+  /** The event tracks a flow node heard, each with the nodes it ran under it: a flow node's children are its events */
   eventTracks: (flowTNodeId: TNodeId): RunTree[] => {
-    const flowTNode = history().get(flowTNodeId);
-    if (flowTNode?.tNodeType !== 'flow') {
-      throw new Error(`TNode ${flowTNodeId} is not a flow type (found: ${flowTNode?.tNodeType || 'none'})`);
+    const tree = history().tree(flowTNodeId);
+    if (tree?.tNodeType !== 'flow') {
+      throw new Error(`TNode ${flowTNodeId} is not a flow type (found: ${tree?.tNodeType || 'none'})`);
     }
-    return history().findChildren(flowTNodeId)
-      .filter(child => child.tNodeType === 'event')
-      .map(event => history().tree(event.id)!);
+    return tree.children;
   },
   
   possibleEvents: (flowTNodeId: TNodeId): EventListenerEntity[] => {
