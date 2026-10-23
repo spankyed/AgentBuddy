@@ -320,7 +320,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
           // Read back off the entities a moment after writing them, which is what makes this and
           // `driftedGraphParts` two reads of one question rather than two accounts of it
           const parts = graphParts(graphState(flowId));
-          const contentHash = ears().getRow(flowId)?.[CONTENT_HASH];
+          const contentHash = ears().getAttr(flowId, CONTENT_HASH);
           recordApplied(ctx, contentKey, {
             entityType: EARS.Entity.Flow,
             ...(typeof contentHash === 'string' && { contentHash }),

@@ -61,7 +61,7 @@ function fieldParts(id: EARS.EntityId, fields: string[]): Record<string, string>
 }
 
 /** The content key an entity was written under — read through the trash, as a row is — or undefined when none was */
-export const contentKeyOf = (id: EARS.EntityId): string | undefined => ears().getRow(id)?.[CONTENT_KEY] as string | undefined;
+export const contentKeyOf = (id: EARS.EntityId): string | undefined => ears().getAttr(id, CONTENT_KEY) as string | undefined;
 
 /**
  * The parts of a recorded item whose value in the database is no longer what we wrote.
@@ -268,7 +268,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 
       /** Hooks' repository commands may not store contentHash; the merge needs it, the parts and the key */
       const stamp = (id: EARS.EntityId, record: ContentItem, contentKey: string) => {
-        if (record.contentHash && ears().getRow(id)?.[CONTENT_HASH] !== record.contentHash) untypedWrite(id).set(CONTENT_HASH, record.contentHash);
+        if (record.contentHash && ears().getAttr(id, CONTENT_HASH) !== record.contentHash) untypedWrite(id).set(CONTENT_HASH, record.contentHash);
         untypedWrite(id).set(CONTENT_KEY, contentKey);
         // The one place the entity, the record and the fields just written are all in hand, so the one place
         // a per-part record of them can be taken

@@ -6523,7 +6523,7 @@ declare const threadQueries: {
     readonly all: () => ThreadEntity[];
     readonly allUnfiltered: () => ThreadEntity[];
     /** The first thread holding the role, e.g. the onboarding birth thread */
-    readonly idByRole: (role: EARS.RoleKind) => EARS.EntityId | null;
+    readonly idByRole: (role: EARS.RoleKind) => EARS.EntityId | undefined;
     readonly messages: (threadId: EARS.EntityId) => ({
         id: `${string}-${string}` & {
             readonly __entity?: "Message" | undefined;
