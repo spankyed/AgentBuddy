@@ -134,7 +134,7 @@ describe('services.appData', () => {
       features: { 'removed/feature': { retained: true } },
     };
     appState.update({ hasOnboarded: true, version: '0.4.0' });
-    untypedUpsert('Settings', 'Settings-app').set('data', settings);
+    untypedUpsert('Settings', { id: 'Settings-app', data: settings });
     await new Promise((resolve) => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'current', ['lmdb']);
 
@@ -193,7 +193,7 @@ describe('services.appData', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-invalid-settings-'));
     dirs.push(dir);
     const settingsId = 'Settings-app';
-    untypedUpsert('Settings', settingsId).set('data', data);
+    untypedUpsert('Settings', { id: settingsId, data });
     await new Promise(resolve => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'invalid', ['lmdb']);
     // The fixture wrote an invalid row directly to create the candidate; seed valid live data independently.

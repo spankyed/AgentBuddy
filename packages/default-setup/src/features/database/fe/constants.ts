@@ -69,5 +69,5 @@ return {
 // Delete an entity: write(entityId).destroy();
 // Grant/revoke a declared role: write(entityId).grant(EARS.RoleKind.X).revoke(EARS.RoleKind.Y);
 // Set several attributes: write(id).setMany({ name: 'New Name', status: 'updated' });
-// Write or create by id: upsert(EARS.Entity.Thread, id, { topic: 'Kept', instructions: '', status: 'active', timestamp: Date.now() });
+// Write or create by id: upsert(EARS.Entity.Thread, { id, topic: 'Kept', instructions: '', status: 'active', timestamp: Date.now() });
 `

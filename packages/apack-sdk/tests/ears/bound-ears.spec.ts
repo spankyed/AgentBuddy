@@ -19,7 +19,7 @@ describe('with no engine bound', () => {
       ['untypedQuery.ids', () => untypedQuery.ids('Note-1' as EARS.EntityId)],
       ['untypedQuery.all', () => untypedQuery.all()],
       ['untypedCreate', () => untypedCreate('Note')],
-      ['untypedUpsert', () => untypedUpsert('Note', 'Note-1' as EARS.EntityId)],
+      ['untypedUpsert', () => untypedUpsert('Note', { id: 'Note-1' as EARS.EntityId })],
       ['untypedWrite', () => untypedWrite('Note-1' as EARS.EntityId)],
       ['transact', () => transact(() => 1)],
       ['findRelations', () => findRelations()],

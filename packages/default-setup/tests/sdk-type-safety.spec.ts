@@ -105,7 +105,7 @@ describe('Type inference — typed EARS helpers', () => {
     const check = (givenId: EARS.EntityId<'Action'>) => {
       create(EARS.Entity.Action, { label: 'a', input: {}, actionFn: 'fn()' });
       create(EARS.Entity.Action, { id: givenId, createdAt: 1, label: 'a', input: {}, actionFn: 'fn()', category: 'c' });
-      upsert(EARS.Entity.Action, givenId, { label: 'a', input: {}, actionFn: 'fn()' });
+      upsert(EARS.Entity.Action, { id: givenId, label: 'a', input: {}, actionFn: 'fn()' });
       // @ts-expect-error actionFn is required
       create(EARS.Entity.Action, { label: 'a', input: {} });
       // @ts-expect-error a row is required where the shape requires fields
@@ -115,7 +115,9 @@ describe('Type inference — typed EARS helpers', () => {
       // @ts-expect-error the type argument is the row's entity type; a row never carries its own
       create(EARS.Entity.Action, { label: 'a', input: {}, actionFn: 'fn()', entityType: 'Action' });
       // @ts-expect-error upsert may create, so it is held to the same row
-      upsert(EARS.Entity.Action, givenId, { label: 'a' });
+      upsert(EARS.Entity.Action, { id: givenId, label: 'a' });
+      // @ts-expect-error upsert's row always names the id it is written under
+      upsert(EARS.Entity.Action, { label: 'a', input: {}, actionFn: 'fn()' });
     };
     expectTypeOf(check).toBeFunction();
   });

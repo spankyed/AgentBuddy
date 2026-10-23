@@ -284,7 +284,7 @@ write(memoId).set('undeclared', 42);
 create('Memo', { text: 'x', pinned: false, extra: 1 });
 // @ts-expect-error the engine writes updatedAt
 write(memoId).set('updatedAt', 1);
-upsert('Memo', plainId, { text: 'x', pinned: false });
+upsert('Memo', { id: plainId, text: 'x', pinned: false });
 const createdMemo = create('Memo', { text: 'x', pinned: false }).id();
 export type CreateIdTagged = Expect<Equal<typeof createdMemo, EARS.EntityId<'Memo'>>>;
 // @ts-expect-error a declared field's value is checked
@@ -292,7 +292,7 @@ write(memoId).set('text', 42);
 // @ts-expect-error in a created row too
 create('Memo', { text: 'x', pinned: 'yes' });
 // @ts-expect-error and through upsert, which names the type
-upsert('Memo', plainId, { text: 'x', pinned: 'yes' });
+upsert('Memo', { id: plainId, text: 'x', pinned: 'yes' });
 // A dependency's entity is checked the same way
 // @ts-expect-error Tag.name is a string
 write(tags[0]!.id).set('name', 1);
@@ -324,7 +324,7 @@ write(plainId).set('text', 42);
 // @ts-expect-error undeclared entity name
 create('Nope');
 // @ts-expect-error undeclared entity name
-upsert('Nope', plainId);
+upsert('Nope', { id: plainId });
 `;
 
 /** The two packs, built, in a temp dir; node_modules link the workspace or the packed packages */

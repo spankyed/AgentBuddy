@@ -299,7 +299,7 @@ import { EARS, query, create, upsert, write, transact } from '#generated/ears.ts
 const bookmarks = query(EARS.Entity.Bookmark).pickAll();                 // typed with the Bookmark shape
 const id = create(EARS.Entity.Bookmark, { url, title }).id();          // EARS.EntityId<'Bookmark'>
 write(id).set('title', 'Docs');                                       // an entity that exists
-upsert(EARS.Entity.Bookmark, someId, { url, title });                 // created when no entity has someId
+upsert(EARS.Entity.Bookmark, { id: someId, url, title });            // created when no entity has someId
 ```
 
 **A created row is the whole row.** `create(type, row)` takes it in one object: every field the shape requires,
@@ -325,7 +325,7 @@ Each entry point takes one kind of argument and refuses what it can't account fo
 | `query.all()` | every entity but the relations (`findRelations` reads those) | — |
 | `create(type, row)` | a new entity: the row's fields, and its `id`, `createdAt` and `updatedAt` when given | an unregistered type; an id already in use; any other of the engine's own fields |
 | `write(id)` | the entity with the id | an id no entity has |
-| `upsert(type, id, row)` | the entity with the id, written with the row, or created as `type` with it when there is none | an unregistered type; an entity of another type |
+| `upsert(type, { id, ...row })` | the entity with the row's `id`, written with the row, or created as `type` with it when there is none | an unregistered type; an entity of another type |
 
 A refusal is an `EarsError` with a `code` (`UNKNOWN_ENTITY_TYPE`, `NO_SUCH_ENTITY`, `ID_IN_USE`,
 `TYPE_MISMATCH`, `RESERVED_ATTRIBUTE`, `NO_VALUE`, `NOT_A_LIST`). So a query for a type whose pack isn't installed throws
