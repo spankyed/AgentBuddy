@@ -6,7 +6,7 @@ import { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
 import { trash } from '@apackdev/sdk/repositories';
 
 import { REFERENCES } from '../types.ts';
-import { syncReferences } from './link-utils.ts';
+import { resolveReferencesTo, syncReferences } from './link-utils.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
 
 /** Strips the sub-document link to a note from its parent's content */
@@ -119,10 +119,11 @@ export const noteCommands = {
       );
     }
 
-    // Sync REFERENCES relations from content links
+    // Index the links this note's text makes, and the links other notes already made to it
     if (input.content) {
       syncReferences(note.id, input.content);
     }
+    resolveReferencesTo(note.id);
 
     return note;
   },

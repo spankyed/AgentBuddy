@@ -7,6 +7,7 @@ import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { trash } from '@apackdev/sdk/repositories';
 import { updateEntity } from '#generated/ears.ts';
 import { wouldCreateCycle } from '@apackdev/sdk/ears';
+import { createLogger } from '@apackdev/sdk/logger';
 import { b64Encode, b64Decode } from '@apackdev/ears';
 import type {
   ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,
@@ -146,6 +147,19 @@ export const threadQueries = {
 } as const;
 
 // Commands
+const logger = createLogger('threads-repository');
+
+/**
+ * Links a thread to the threads it names, skipping one that no longer exists: the list comes from a form that
+ * may have been open while that thread was deleted, and a save shouldn't fail for it.
+ */
+function linkThreads(id: EARS.EntityId, linked: ReadonlyArray<{ relation: string; id: EARS.EntityId }>): void {
+  for (const rel of linked) {
+    if (query.ids(rel.id).exists()) write(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
+    else logger.warn('Skipped a link to a thread that no longer exists', { threadId: id, linked: rel.id, relation: rel.relation });
+  }
+}
+
 export const threadCommands = {
   /** `id` and `createdAt` keep an imported thread's own; a new thread gets fresh ones */
   create: (input: ThreadCreateData & { id?: string; createdAt?: number }): { id: EARS.EntityId; shortCode: string; timestamp: number, status: string } => {
@@ -182,9 +196,7 @@ export const threadCommands = {
     }
 
     // Create relationships for linked threads only
-    for (const rel of input.linkedThreads ?? []) {
-      write(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
-    }
+    linkThreads(id, input.linkedThreads ?? []);
 
     return { id, shortCode, timestamp: ts, status };
   },
@@ -222,9 +234,7 @@ export const threadCommands = {
       }
 
       // Add new relations
-      for (const rel of linkedThreads) {
-        write(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
-      }
+      linkThreads(id, linkedThreads);
     }
   },
 

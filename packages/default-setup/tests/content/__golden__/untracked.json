@@ -241,8 +241,7 @@
       "Note:Projects --contains--> Note:Projects/Archive",
       "Note:Projects --contains--> Note:Projects/Task Two",
       "Note:Projects --contains--> Note:Projects/task one",
-      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task",
-      "Note:Welcome --references--> Note-external-plan"
+      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task"
     ],
     "media": [
       "Document:Getting Started/pic.png=PNGDATA"

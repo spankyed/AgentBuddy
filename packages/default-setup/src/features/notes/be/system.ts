@@ -627,6 +627,10 @@ export const notesSystem = setup({
         SEND_STATE: {
           actions: 'sendNotesConnectedData',
         },
+        // References are an index derived from note text, so data restored or reset is indexed again from its text
+        DATA_REPLACED: {
+          actions: 'bootstrapReferences',
+        },
       },
     },
   },
