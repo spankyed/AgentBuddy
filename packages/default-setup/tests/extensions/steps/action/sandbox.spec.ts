@@ -1,7 +1,7 @@
 // Action code runs in one sandbox (runActionCode) whether a flow's action step or services.action runs it:
 // `params`, `services` with a logger and an emitter named after the action, `z`, and `flowId` from a flow step
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
 import type { LogEvent } from '@apackdev/sdk/logger';
 import type { ActionEntity } from '@apackdev/sdk';
 import { servicesForAction } from '#generated/services.ts';
@@ -48,12 +48,12 @@ afterEach(() => {
 describe('the action sandbox', () => {
   it("runs a flow's inline action with z, the flow id and a logger named after the step", async () => {
     const sent: Array<{ type: string; result?: unknown }> = [];
-    const tNode = { id: 'TNode-action', nodeAttributes: {} } as unknown as TNode;
-    const ctx = { flowTNodeId: 'TNode-flow', event: { type: 'go', name: 'from-event' }, runtime: { servicesForAction } } as unknown as ExecutionContext;
+    const runNode = { id: 'RunNode-action', nodeAttributes: {} } as unknown as RunNode;
+    const ctx = { flowRunNodeId: 'RunNode-flow', event: { type: 'go', name: 'from-event' }, runtime: { servicesForAction } } as unknown as ExecutionContext;
 
-    await handler(tNode, { id: 'Node-1', label: 'Greet', nodeType: 'action', mode: 'code', actionFn: ACTION.replace('params.name', 'params.event.name') }, ctx, { send: (event: { type: string }) => sent.push(event) });
+    await handler(runNode, { id: 'Node-1', label: 'Greet', nodeType: 'action', mode: 'code', actionFn: ACTION.replace('params.name', 'params.event.name') }, ctx, { send: (event: { type: string }) => sent.push(event) });
 
-    const reached = { z: true, flowId: 'TNode-flow', repository: 'function', param: 'from-event' };
+    const reached = { z: true, flowId: 'RunNode-flow', repository: 'function', param: 'from-event' };
     expect(sent).toEqual([{ type: 'COMPLETE', result: reached }]);
     expect(logs).toContainEqual({ level: 'info', message: 'ran', source: 'action:Greet', meta: reached });
   });

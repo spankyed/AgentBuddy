@@ -23,7 +23,7 @@ const UNREADABLE = '[Unreadable]';
  * An estimate rather than the output, which is why it may cut corners the walk below does not: it counts a
  * BigInt as its digits and a repeated object once. **It must not throw.** `JSON.stringify` does on a BigInt or
  * a loop, and measuring with a bare one is what used to discard the whole result and persist
- * `_error: 'serialization_failed'` to the TNode in place of the row.
+ * `_error: 'serialization_failed'` to the RunNode in place of the row.
  */
 /** A replacer that counts a BigInt as its digits and a repeated object once. Stateful, so one per pass. */
 function sizeReplacer(): (key: string, value: unknown) => unknown {

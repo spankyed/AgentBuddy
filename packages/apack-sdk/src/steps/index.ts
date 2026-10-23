@@ -24,7 +24,7 @@ export type {
   TriggerRuntimeNode,
   TriggerRuntimeContext,
   TimestampMs,
-  TNodeKind,
+  RunNodeKind,
   SdkEntityShapes,
   ExecutionEvent,
   StepRun,
@@ -33,4 +33,4 @@ export type {
   StepRuntimeError,
 } from './types.ts';
 // A step handler is handed its run node: the run history's record of this step
-export type { TNode, TNodeId, RunStatus, RunTree } from '../services/run-history.ts';
+export type { RunNode, RunNodeId, RunStatus, RunTree } from '../services/run-history.ts';

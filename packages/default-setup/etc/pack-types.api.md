@@ -16,7 +16,7 @@ import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@apackdev/sdk/mode
 import * as _apackdev_sdk_repositories from '@apackdev/sdk/repositories';
 import { FlowEdge } from '@apackdev/sdk/repositories';
 import { HostServices } from '@apackdev/sdk/services';
-import { ExecutionContext, FieldMapping, RunStatus, RunTree, StepRuntimeError, TNode, TNodeId } from '@apackdev/sdk/steps';
+import { ExecutionContext, FieldMapping, RunNode, RunNodeId, RunStatus, RunTree, StepRuntimeError } from '@apackdev/sdk/steps';
 import { BinaryOperator } from '@apackdev/sdk/utils';
 import { z } from 'zod';
 
@@ -391,17 +391,17 @@ interface Bookmark {
 }
 
 interface BrainContext {
-    flowTNodeId?: string;
-    tNodeTree?: RunTree[];
-    normalizedTree?: NormalizedTNodeTree;
+    flowRunNodeId?: string;
+    runNodeTree?: RunTree[];
+    normalizedTree?: NormalizedRunNodeTree;
     possibleEvents: EventListenerEntity[];
     flowHierarchy: Array<{
-        flowTNodeId: string;
+        flowRunNodeId: string;
         label: string;
     }>;
     pulsingEventType?: string;
     showLeftPanel: boolean;
-    selectedStepNode?: TNode;
+    selectedStepNode?: RunNode;
     inspectEnabled: boolean;
     animationsEnabled: boolean;
     brainIsDead: boolean;
@@ -431,7 +431,7 @@ interface BrainContext$1 {
     /** The root flow the running brain started with; undefined while it's stopped */
     runningRootFlowId?: EARS.EntityId;
     /** This session's root run in the run history: a new one each time the brain starts */
-    rootRunId?: TNodeId;
+    rootRunId?: RunNodeId;
 }
 
 type BrainEventCallback = (event: BrainEventPayload) => void | Promise<void>;
@@ -443,22 +443,22 @@ interface BrainEventPayload {
 }
 
 type BrainInternalEvents = {
-    type: 'TNODE_SPAWNED';
-    tNode: TNode;
+    type: 'RUN_NODE_SPAWNED';
+    runNode: RunNode;
     parentId?: EARS.EntityId;
-    eventTNodeId?: TNodeId;
-    flowTNodeId: EARS.EntityId;
+    eventRunNodeId?: RunNodeId;
+    flowRunNodeId: EARS.EntityId;
 } | {
-    type: 'TNODE_UPDATED';
-    data: TNodeUpdate;
+    type: 'RUN_NODE_UPDATED';
+    data: RunNodeUpdate;
 } | {
     type: 'CHILD_COMPLETED';
     stepId?: EARS.EntityId;
-    tNodeId?: TNodeId;
+    runNodeId?: RunNodeId;
     stepLabel?: string;
     result?: any;
     final?: boolean;
-    eventTNodeId?: TNodeId;
+    eventRunNodeId?: RunNodeId;
     isFlow?: boolean;
 };
 
@@ -1153,11 +1153,11 @@ interface DatabaseContext {
     isRefreshing: boolean;
     settings: DatabaseSettings | null;
     viewMode: 'database' | 'trace';
-    traceFlows: TNode[];
+    traceFlows: RunNode[];
     currentFlowId: string | null;
     flowEvents: RunTree[];
     expandedNodes: Set<string>;
-    nodeDetails: Map<string, TNode>;
+    nodeDetails: Map<string, RunNode>;
     isLoadingTrace: boolean;
     tracePagination: {
         offset: number;
@@ -1477,12 +1477,12 @@ interface FlowNode extends NodeBase {
     fieldMappings?: FieldMapping[];
 }
 
-interface FlowTNodeData {
-    flowTNodeId: EARS.EntityId;
-    tNodeTree: RunTree[];
+interface FlowRunNodeData {
+    flowRunNodeId: EARS.EntityId;
+    runNodeTree: RunTree[];
     possibleEvents: EventListenerEntity[];
     flowHierarchy: Array<{
-        flowTNodeId: EARS.EntityId;
+        flowRunNodeId: EARS.EntityId;
         label: string;
     }>;
 }
@@ -1900,17 +1900,17 @@ type IncomingActionsEvents = {
 };
 
 type IncomingBrainEvents = {
-    type: 'OPEN_TNODE';
-    tNodeId: string;
+    type: 'OPEN_RUN_NODE';
+    runNodeId: string;
 } | {
-    type: 'GO_BACK_TNODE';
-    currentFlowTNodeId?: string;
+    type: 'GO_BACK_RUN_NODE';
+    currentFlowRunNodeId?: string;
 } | {
     type: 'REQUEST_SURFACE_DATA';
-    flowTNodeId?: string;
+    flowRunNodeId?: string;
 } | {
-    type: 'GET_TNODE_DETAILS';
-    tNodeId: string;
+    type: 'GET_RUN_NODE_DETAILS';
+    runNodeId: string;
 } | {
     type: 'TOGGLE_INSPECT';
 } | {
@@ -2932,8 +2932,8 @@ type NodeCreateInput = Partial<NodeEntity> & {
 /** Discriminated union (on `nodeType`) of this pack's step node entities. */
 type NodeEntity = ActionNode | LLMNode | FireNode | FlowNode | QueryNode | CreateNode | UpdateNode | TransformNode | KeepAliveNode | KillNode | SwitchNode | ScheduleNode | ListenerNode;
 
-interface NormalizedTNodeTree {
-    byId: Record<string, TNode>;
+interface NormalizedRunNodeTree {
+    byId: Record<string, RunNode>;
     rootIds: string[];
     childrenById: Record<string, string[]>;
 }
@@ -3115,27 +3115,27 @@ type OutgoingActionsEvents = {
 
 type OutgoingBrainEvents = {
     type: 'RECEIVE_SURFACE_DATA';
-    data: FlowTNodeData;
+    data: FlowRunNodeData;
 } | {
-    type: 'TNODE_OPENED';
-    tNodeId: EARS.EntityId;
-    data: FlowTNodeData;
+    type: 'RUN_NODE_OPENED';
+    runNodeId: EARS.EntityId;
+    data: FlowRunNodeData;
 } | {
-    type: 'TNODE_SPAWNED';
-    tNode: TNode;
+    type: 'RUN_NODE_SPAWNED';
+    runNode: RunNode;
     parentId?: EARS.EntityId;
-    eventTNodeId?: TNodeId;
-    flowTNodeId: EARS.EntityId;
+    eventRunNodeId?: RunNodeId;
+    flowRunNodeId: EARS.EntityId;
 } | {
-    type: 'TNODE_UPDATED';
-    data: TNodeUpdate;
+    type: 'RUN_NODE_UPDATED';
+    data: RunNodeUpdate;
 } | {
     type: 'EVENT_PULSE';
     eventType: string;
 } | {
-    type: 'TNODE_DETAILS';
-    tNodeId: TNodeId;
-    details: TNodeDetails | null;
+    type: 'RUN_NODE_DETAILS';
+    runNodeId: RunNodeId;
+    details: RunNodeDetails | null;
 } | {
     type: 'BRAIN_RUNTIME_ERROR';
     error: StepRuntimeError;
@@ -3352,7 +3352,7 @@ type OutgoingDatabaseEvents = {
     error: string;
 } | {
     type: 'TRACE_FLOWS_RESULT';
-    flows: TNode[];
+    flows: RunNode[];
 }
 /**
  * `offset` is which page these events are, which is what tells two pages of one flow apart — the flow id
@@ -3367,7 +3367,7 @@ type OutgoingDatabaseEvents = {
 } | {
     type: 'NODE_DETAILS_RESULT';
     nodeId: string;
-    details: TNode | null;
+    details: RunNode | null;
 } | {
     type: 'EXPORT_DATABASE_SUCCESS';
     path: string;
@@ -4757,6 +4757,20 @@ declare const ResultLineSchema: z.ZodObject<{
     errors: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
 }, z.ZodTypeAny, "passthrough">>;
 
+/** A run node as the Brain surface shows it: with where its blueprint is, to reveal it in the Flows surface */
+type RunNodeDetails = RunNode & {
+    revealIn?: {
+        flowId: EARS.EntityId;
+        nodeId: EARS.EntityId;
+    };
+};
+
+interface RunNodeUpdate {
+    runNodeId: RunNodeId;
+    status: RunStatus;
+    eventRunNodeId?: RunNodeId;
+}
+
 interface SavedBookmark {
     url: string;
     title: string;
@@ -4994,20 +5008,6 @@ declare const SystemLineSchema: z.ZodObject<{
     type: z.ZodLiteral<"system">;
     subtype: z.ZodString;
 }, z.ZodTypeAny, "passthrough">>;
-
-/** A run node as the Brain surface shows it: with where its blueprint is, to reveal it in the Flows surface */
-type TNodeDetails = TNode & {
-    revealIn?: {
-        flowId: EARS.EntityId;
-        nodeId: EARS.EntityId;
-    };
-};
-
-interface TNodeUpdate {
-    tNodeId: TNodeId;
-    status: RunStatus;
-    eventTNodeId?: TNodeId;
-}
 
 interface Tab {
     id: string;
@@ -5788,57 +5788,57 @@ declare function addMessagesToThread(params: {
 
 declare const brainCommands: {
     /** An event a flow run heard, with its payload as the node's attributes */
-    readonly createEventTNode: (eventNode: {
+    readonly createEventRunNode: (eventNode: {
         id?: string;
         label?: string;
         eventType?: string;
         triggerType?: string;
         cronExpression?: string;
-    }, flowTNodeId: TNodeId, payload: Record<string, unknown>) => TNode;
-    readonly createFlowTNode: (flowStepId: EARS.EntityId, parentId?: TNodeId, executionContext?: ExecutionContext) => {
-        flowTNode: TNode;
+    }, flowRunNodeId: RunNodeId, payload: Record<string, unknown>) => RunNode;
+    readonly createFlowRunNode: (flowStepId: EARS.EntityId, parentId?: RunNodeId, executionContext?: ExecutionContext) => {
+        flowRunNode: RunNode;
         flowId: EARS.EntityId;
     };
-    readonly createStepTNode: (stepId: EARS.EntityId, parentId: TNodeId, executionContext?: ExecutionContext) => {
-        tNode: TNode;
+    readonly createStepRunNode: (stepId: EARS.EntityId, parentId: RunNodeId, executionContext?: ExecutionContext) => {
+        runNode: RunNode;
         step: NodeEntity;
     };
     /** A new session's root run: the root flow the brain starts with, under a new id each time it starts */
-    readonly createRootFlowTNode: () => {
+    readonly createRootFlowRunNode: () => {
         rootFlow: Pick<FlowEntity, "createdAt" | "flowType" | "id" | "label">;
-        rootFlowTNode: TNode;
+        rootFlowRunNode: RunNode;
     };
 };
 
 declare const brainQueries: {
-    readonly tNodeById: (id: TNodeId) => TNode | undefined;
+    readonly runNodeById: (id: RunNodeId) => RunNode | undefined;
     readonly eventAllSteps: (eventNodeId: EARS.EntityId) => NodeEntity[];
     readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
     readonly nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string) => NodeEntity | undefined;
     /** The event tracks a flow node heard, each with the nodes it ran under it: a flow node's children are its events */
-    readonly eventTracks: (flowTNodeId: TNodeId) => RunTree[];
-    readonly possibleEvents: (flowTNodeId: TNodeId) => EventListenerEntity[];
+    readonly eventTracks: (flowRunNodeId: RunNodeId) => RunTree[];
+    readonly possibleEvents: (flowRunNodeId: RunNodeId) => EventListenerEntity[];
     /** The flow node a node ran under: the nearest flow above it, or undefined for a session's root */
     readonly parentFlowOf: typeof parentFlowOf;
     /**
      * Builds flow hierarchy from current flow back to root
      * Returns array ordered from root → current flow
      */
-    readonly buildFlowHierarchy: (flowTNodeId: TNodeId) => Array<{
-        flowTNodeId: EARS.EntityId;
+    readonly buildFlowHierarchy: (flowRunNodeId: RunNodeId) => Array<{
+        flowRunNodeId: EARS.EntityId;
         label: string;
     }>;
     /**
      * Where a run node's blueprint is, for revealing it in the Flows surface: the node it ran and the flow holding
      * it. A subflow's node sits in the flow its parent runs, not in the flow it runs itself.
      */
-    readonly revealIn: (id: TNodeId) => {
+    readonly revealIn: (id: RunNodeId) => {
         flowId: EARS.EntityId;
         nodeId: EARS.EntityId;
     } | undefined;
-    readonly extendedTNodeData: (tNodeId: TNodeId) => FlowTNodeData;
+    readonly extendedRunNodeData: (runNodeId: RunNodeId) => FlowRunNodeData;
     /** The session's root run, or nothing to show when the brain runs none */
-    readonly rootData: (rootRunId: TNodeId | undefined) => FlowTNodeData;
+    readonly rootData: (rootRunId: RunNodeId | undefined) => FlowRunNodeData;
 };
 
 declare const browserCommands: {
@@ -6343,7 +6343,7 @@ declare function paginatedMessages(threadId: EARS.EntityId, cursor?: string | nu
 };
 
 /** The flow node a node ran under: the nearest flow above it, or undefined for a session's root */
-declare function parentFlowOf(id: TNodeId): TNode | undefined;
+declare function parentFlowOf(id: RunNodeId): RunNode | undefined;
 
 declare const promptCommands: {
     create: (data: _apackdev_sdk_repositories.PromptInput) => _apackdev_sdk.PromptEntity;
@@ -6542,9 +6542,9 @@ declare const threadQueries: {
         id: `${string}-${string}` & {
             readonly __entity?: "Thread" | undefined;
         };
+        shortCode: ThreadTypeShortCode;
         topic: string;
         status: string;
-        shortCode: ThreadTypeShortCode;
         timestamp: number;
         relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
     }[];

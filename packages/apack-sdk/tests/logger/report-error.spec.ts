@@ -1,5 +1,5 @@
 // reportError and createLogger on the test host: what a system or step reports reaches the log, the
-// user and, for a step, its TNode.
+// user and, for a step, its RunNode.
 //
 // Its sends carry `via` and no `from`. A report is made on behalf of whoever called `reportError`, and what it is
 // told about that caller is a source (`'brain-llm'`, `'notes'`) — the same string its logger is named, and never a
@@ -47,18 +47,18 @@ describe('reportError', () => {
     testPacks.designations.set('brain', 'default-setup/brain');
     // The step's run node, holding what the step ran with
     const history = testRunHistory();
-    const tNodeId = history.start({ tNodeType: 'step', label: 'Step', nodeAttributes: { input: 'hello' } }).id;
+    const runNodeId = history.start({ kind: 'step', label: 'Step', nodeAttributes: { input: 'hello' } }).id;
     let returned: ReturnType<typeof reportError>;
     const { logs, toSurfaces, outgoing } = capture(() => {
       returned = reportError({
         error: new Error('model failed'),
         source: 'brain-llm',
-        step: { phase: 'llm.execute', tNodeId, nodeId: 'Node-1' as EARS.EntityId, nodeType: 'llm', eventType: 'user.message' },
+        step: { phase: 'llm.execute', runNodeId, nodeId: 'Node-1' as EARS.EntityId, nodeType: 'llm', eventType: 'user.message' },
       });
     });
 
     const { errorId, stack } = returned!;
-    expect(returned!).toMatchObject({ source: 'brain-llm', phase: 'llm.execute', tNodeId, message: 'model failed' });
+    expect(returned!).toMatchObject({ source: 'brain-llm', phase: 'llm.execute', runNodeId, message: 'model failed' });
     expect(logs).toEqual([expect.objectContaining({ level: 'error', source: 'step-runtime', message: 'model failed', stack })]);
     // A log event, printed once as every log event is; the flow shows it, so there's no system error
     expect(printed).toHaveBeenCalledTimes(1);
@@ -66,7 +66,7 @@ describe('reportError', () => {
     // so a drop names the step rather than nothing; there is no pack here to put in `from`.
     expect(toSurfaces).toEqual([{ to: 'default-setup/brain', call: expect.any(String), event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! }, via: 'brain-llm' }]);
     expect(outgoing).toEqual([]);
-    expect(history.get(tNodeId)).toMatchObject({
+    expect(history.get(runNodeId)).toMatchObject({
       nodeAttributes: { input: 'hello' },
       result: { error: { message: 'model failed', source: 'brain-llm', phase: 'llm.execute', errorId, stack } },
     });

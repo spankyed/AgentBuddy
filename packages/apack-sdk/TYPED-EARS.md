@@ -133,7 +133,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
     entity name containing a dash fails the name check and lands on the id overload.
   - **Four things depend on that one shape**, which is why it looks fixable and isn't: the dash
     discriminates name from id; the *optional* brand is what lets `E` infer from a tagged id; the
-    looseness is what lets real literal ids be written (`id === 'TNode-Root'`, `'Settings-app' as
+    looseness is what lets real literal ids be written (`id === 'RunNode-Root'`, `'Settings-app' as
     EntityId<'Settings'>`); and a plain `string` is *already* rejected, which is why `as EARS.EntityId`
     casts are everywhere. The hole and the ergonomics are the same property.
   - **Attempt 1 — check the literal's prefix in the overload** (`Id & IdArg<N, Id>`, where `IdArg` maps a
@@ -144,11 +144,11 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   - **Attempt 2 — make the id marker required** (`& { readonly __earsId: true }`, entity tag left
     optional). Passes every documented property in isolation — `E` still infers, a plain id still goes
     where a tagged one is expected, casts still work, `'user-note'` is rejected. **17 type errors** in the
-    repo: `id === 'TNode-Root'` comparisons (`database/be/repository/trace-query.ts`,
+    repo: `id === 'RunNode-Root'` comparisons (`database/be/repository/trace-query.ts`,
     `database/fe/state.ts`), literal ids passed in `browser/be/repository/commands.ts`, and an array cast
     in `apack-ears/tests/engine/persistence.spec.ts`. All correct code.
   - **Conclusion: there is no type-level fix that leaves current behaviour unchanged.** Anything that
-    stops `'user-note'` being an id also stops `'TNode-Root'` being one.
+    stops `'user-note'` being an id also stops `'RunNode-Root'` being one.
   - **The design that gets both properties** is to stop overloading, and that is what landed
     ([`ears-public-api.md`](../../docs/archive/plans/ears-public-api.md)): `query(type)` beside `query.ids(id)`, and
     `create(type)` beside `write(id)`. The `EntityId` template stays, so literal ids still compile.

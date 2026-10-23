@@ -54,15 +54,15 @@
       "types": "./dist/components/KeyboardShortcutInput.d.ts",
       "default": "./dist/components/KeyboardShortcutInput.js"
     },
+    "./components/RunNodeListItem": {
+      "@apackdev/source": "./src/components/RunNodeListItem.ts",
+      "types": "./dist/components/RunNodeListItem.d.ts",
+      "default": "./dist/components/RunNodeListItem.js"
+    },
     "./components/SimpleMonacoEditor": {
       "@apackdev/source": "./src/components/SimpleMonacoEditor.ts",
       "types": "./dist/components/SimpleMonacoEditor.d.ts",
       "default": "./dist/components/SimpleMonacoEditor.js"
-    },
-    "./components/TNodeListItem": {
-      "@apackdev/source": "./src/components/TNodeListItem.ts",
-      "types": "./dist/components/TNodeListItem.d.ts",
-      "default": "./dist/components/TNodeListItem.js"
     },
     "./components/TipSection": {
       "@apackdev/source": "./src/components/TipSection.ts",

@@ -5,16 +5,16 @@ import type { EARS } from '#generated/ears.ts'
 
 describe('brainCommands starting run nodes', () => {
   it('starts an event node under the flow run that heard it, with its payload, its trigger and the flow it walks', () => {
-    const flowRun = services.runHistory.start({ tNodeType: 'flow', label: 'Root', flowId: 'Flow-root' as EARS.EntityId })
+    const flowRun = services.runHistory.start({ kind: 'flow', label: 'Root', flowId: 'Flow-root' as EARS.EntityId })
 
-    const event = repository.brainCommands.createEventTNode(
+    const event = repository.brainCommands.createEventRunNode(
       { id: 'Node-trigger', label: 'go', eventType: 'go' },
       flowRun.id,
       { text: 'hello' },
     )
 
     expect(services.runHistory.get(event.id)).toMatchObject({
-      tNodeType: 'event', status: 'active', parentId: flowRun.id, rootId: flowRun.id,
+      kind: 'event', status: 'active', parentId: flowRun.id, rootId: flowRun.id,
       nodeId: 'Node-trigger', flowId: 'Flow-root', triggerType: 'listener', nodeAttributes: { text: 'hello' },
     })
   })

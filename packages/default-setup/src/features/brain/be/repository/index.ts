@@ -2,13 +2,13 @@ import { query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { services } from '#generated/services.ts';
 import { findRelations, untypedQuery } from '@apackdev/sdk/ears';
-import type { FlowTNodeData, EventListenerEntity } from '../types.ts';
+import type { FlowRunNodeData, EventListenerEntity } from '../types.ts';
 import type { NodeEntity } from '#generated/types.ts';
 import type { FlowNode } from '#extensions/steps/subflow/types.ts';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers.ts';
 import { brainLogger } from '../utils/brain-inspect.ts';
-import type { ExecutionContext, RunTree, TNode, TNodeId } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunTree, RunNode, RunNodeId } from '@apackdev/sdk/steps';
 import type { FlowEntity } from '@apackdev/sdk';
 // Brain Repository - the flows the brain runs, and their runs in the run history
 
@@ -28,11 +28,11 @@ function resolveNodeAttributes(
 const history = () => services.runHistory;
 
 /** The flow node a node ran under: the nearest flow above it, or undefined for a session's root */
-function parentFlowOf(id: TNodeId): TNode | undefined {
+function parentFlowOf(id: RunNodeId): RunNode | undefined {
   let parentId = history().get(id)?.parentId;
   while (parentId) {
     const parent = history().get(parentId);
-    if (!parent || parent.tNodeType === 'flow') return parent;
+    if (!parent || parent.kind === 'flow') return parent;
     parentId = parent.parentId;
   }
   return undefined;
@@ -47,11 +47,11 @@ function uniqueNodesById<T extends { id?: EARS.EntityId }>(nodes: T[]): T[] {
   });
 }
 
-const EMPTY_FLOW_DATA: FlowTNodeData = { flowTNodeId: '' as EARS.EntityId, tNodeTree: [], possibleEvents: [], flowHierarchy: [] };
+const EMPTY_FLOW_DATA: FlowRunNodeData = { flowRunNodeId: '' as EARS.EntityId, runNodeTree: [], possibleEvents: [], flowHierarchy: [] };
 
 // Queries
 export const brainQueries = {
-  tNodeById: (id: TNodeId): TNode | undefined => history().get(id),
+  runNodeById: (id: RunNodeId): RunNode | undefined => history().get(id),
 
   eventAllSteps: (eventNodeId: EARS.EntityId): NodeEntity[] => {
     const nodes = query.ids(eventNodeId)
@@ -99,19 +99,19 @@ export const brainQueries = {
   },
   
   /** The event tracks a flow node heard, each with the nodes it ran under it: a flow node's children are its events */
-  eventTracks: (flowTNodeId: TNodeId): RunTree[] => {
-    const tree = history().tree(flowTNodeId);
-    if (tree?.tNodeType !== 'flow') {
-      throw new Error(`TNode ${flowTNodeId} is not a flow type (found: ${tree?.tNodeType || 'none'})`);
+  eventTracks: (flowRunNodeId: RunNodeId): RunTree[] => {
+    const tree = history().tree(flowRunNodeId);
+    if (tree?.kind !== 'flow') {
+      throw new Error(`RunNode ${flowRunNodeId} is not a flow type (found: ${tree?.kind || 'none'})`);
     }
     return tree.children;
   },
   
-  possibleEvents: (flowTNodeId: TNodeId): EventListenerEntity[] => {
+  possibleEvents: (flowRunNodeId: RunNodeId): EventListenerEntity[] => {
     // The flow this run walks
-    const flowId = history().get(flowTNodeId)?.flowId;
+    const flowId = history().get(flowRunNodeId)?.flowId;
     if (!flowId) {
-      throw new Error(`Flow TNode ${flowTNodeId} names no flow it runs. This usually means the TNode was not properly initialized.`);
+      throw new Error(`Flow RunNode ${flowRunNodeId} names no flow it runs. This usually means the RunNode was not properly initialized.`);
     }
 
     // All triggers (listeners, schedules, etc.) via registry
@@ -147,11 +147,11 @@ export const brainQueries = {
    * Builds flow hierarchy from current flow back to root
    * Returns array ordered from root → current flow
    */
-  buildFlowHierarchy: (flowTNodeId: TNodeId): Array<{ flowTNodeId: EARS.EntityId; label: string }> => {
-    const hierarchy: Array<{ flowTNodeId: EARS.EntityId; label: string }> = [];
-    let current = history().get(flowTNodeId);
+  buildFlowHierarchy: (flowRunNodeId: RunNodeId): Array<{ flowRunNodeId: EARS.EntityId; label: string }> => {
+    const hierarchy: Array<{ flowRunNodeId: EARS.EntityId; label: string }> = [];
+    let current = history().get(flowRunNodeId);
     while (current) {
-      hierarchy.unshift({ flowTNodeId: current.id, label: current.label || 'Unknown Flow' });
+      hierarchy.unshift({ flowRunNodeId: current.id, label: current.label || 'Unknown Flow' });
       current = parentFlowOf(current.id);
     }
     return hierarchy;
@@ -161,73 +161,73 @@ export const brainQueries = {
    * Where a run node's blueprint is, for revealing it in the Flows surface: the node it ran and the flow holding
    * it. A subflow's node sits in the flow its parent runs, not in the flow it runs itself.
    */
-  revealIn: (id: TNodeId): { flowId: EARS.EntityId; nodeId: EARS.EntityId } | undefined => {
+  revealIn: (id: RunNodeId): { flowId: EARS.EntityId; nodeId: EARS.EntityId } | undefined => {
     const node = history().get(id);
-    const flowId = node?.tNodeType === 'flow' ? parentFlowOf(id)?.flowId : node?.flowId;
+    const flowId = node?.kind === 'flow' ? parentFlowOf(id)?.flowId : node?.flowId;
     return node?.nodeId && flowId ? { flowId, nodeId: node.nodeId } : undefined;
   },
 
-  extendedTNodeData: (tNodeId: TNodeId): FlowTNodeData => {
-    const tNode = history().get(tNodeId);
+  extendedRunNodeData: (runNodeId: RunNodeId): FlowRunNodeData => {
+    const runNode = history().get(runNodeId);
 
-    if (tNode?.tNodeType !== 'flow') {
+    if (runNode?.kind !== 'flow') {
       throw new Error(
-        `Cannot get extended data for TNode ${tNodeId}: ` +
-        `Expected flow type but found ${tNode?.tNodeType || 'none'}`
+        `Cannot get extended data for RunNode ${runNodeId}: ` +
+        `Expected flow type but found ${runNode?.kind || 'none'}`
       );
     }
 
     return {
-      flowTNodeId: tNodeId,
-      tNodeTree: brainQueries.eventTracks(tNodeId),
-      possibleEvents: brainQueries.possibleEvents(tNodeId),
-      flowHierarchy: brainQueries.buildFlowHierarchy(tNodeId),
+      flowRunNodeId: runNodeId,
+      runNodeTree: brainQueries.eventTracks(runNodeId),
+      possibleEvents: brainQueries.possibleEvents(runNodeId),
+      flowHierarchy: brainQueries.buildFlowHierarchy(runNodeId),
     };
   },
   
   /** The session's root run, or nothing to show when the brain runs none */
-  rootData: (rootRunId: TNodeId | undefined): FlowTNodeData =>
-    rootRunId && history().get(rootRunId) ? brainQueries.extendedTNodeData(rootRunId) : EMPTY_FLOW_DATA,
+  rootData: (rootRunId: RunNodeId | undefined): FlowRunNodeData =>
+    rootRunId && history().get(rootRunId) ? brainQueries.extendedRunNodeData(rootRunId) : EMPTY_FLOW_DATA,
 } as const;
 
 // Commands
 export const brainCommands = {
   /** An event a flow run heard, with its payload as the node's attributes */
-  createEventTNode: (
+  createEventRunNode: (
     eventNode: { id?: string; label?: string; eventType?: string; triggerType?: string; cronExpression?: string },
-    flowTNodeId: TNodeId,
+    flowRunNodeId: RunNodeId,
     payload: Record<string, unknown>,
-  ): TNode => history().start({
-    tNodeType: 'event',
+  ): RunNode => history().start({
+    kind: 'event',
     label: eventNode.label || '',
     eventType: eventNode.eventType!,
     triggerType: eventNode.triggerType || 'listener',
     ...(eventNode.cronExpression && { cronExpression: eventNode.cronExpression }),
     nodeAttributes: payload,
-    parentId: flowTNodeId,
+    parentId: flowRunNodeId,
     // The trigger node it heard, in the flow its parent runs
     ...(eventNode.id && { nodeId: eventNode.id as EARS.EntityId }),
-    ...(history().get(flowTNodeId)?.flowId && { flowId: history().get(flowTNodeId)!.flowId }),
+    ...(history().get(flowRunNodeId)?.flowId && { flowId: history().get(flowRunNodeId)!.flowId }),
   }),
   
-  createFlowTNode: (
+  createFlowRunNode: (
     flowStepId: EARS.EntityId,
-    parentId?: TNodeId,
+    parentId?: RunNodeId,
     executionContext?: ExecutionContext
-  ): { flowTNode: TNode; flowId: EARS.EntityId } => {
+  ): { flowRunNode: RunNode; flowId: EARS.EntityId } => {
     // Get the flow reference from the flow node (get all fields for attributes)
     const flowStepNode = query.ids(flowStepId)
       .pickAll()[0] as Partial<FlowNode> | undefined;
 
     if (!flowStepNode || flowStepNode.nodeType !== 'subflow') {
       throw new Error(
-        `Cannot create flow TNode: Node ${flowStepId} is ${flowStepNode?.nodeType || 'missing'}, expected 'subflow' type`
+        `Cannot create flow RunNode: Node ${flowStepId} is ${flowStepNode?.nodeType || 'missing'}, expected 'subflow' type`
       );
     }
 
     if (!flowStepNode.flowRef || typeof flowStepNode.flowRef !== 'string') {
       throw new Error(
-        `Cannot create flow TNode: Node ${flowStepId} has invalid flowRef: ${JSON.stringify(flowStepNode.flowRef)}`
+        `Cannot create flow RunNode: Node ${flowStepId} has invalid flowRef: ${JSON.stringify(flowStepNode.flowRef)}`
       );
     }
 
@@ -237,13 +237,13 @@ export const brainCommands = {
 
     if (!flow) {
       throw new Error(
-        `Cannot create flow TNode: Referenced flow ${flowStepNode.flowRef} not found in database`
+        `Cannot create flow RunNode: Referenced flow ${flowStepNode.flowRef} not found in database`
       );
     }
 
     const prepared = resolveNodeAttributes(flowStepNode, executionContext);
-    const flowTNode = history().start({
-      tNodeType: 'flow',
+    const flowRunNode = history().start({
+      kind: 'flow',
       label: flowStepNode.label || flow.label!,
       stepNodeType: 'subflow',
       ...(parentId && { parentId }),
@@ -256,17 +256,17 @@ export const brainCommands = {
       ...(flowStepNode.final && { final: true }),
     });
 
-    return { flowTNode, flowId: flowStepNode.flowRef as EARS.EntityId };
+    return { flowRunNode, flowId: flowStepNode.flowRef as EARS.EntityId };
   },
   
-  createStepTNode: (
+  createStepRunNode: (
     stepId: EARS.EntityId,
-    parentId: TNodeId,
+    parentId: RunNodeId,
     executionContext?: ExecutionContext
-  ): { tNode: TNode; step: NodeEntity } => {
+  ): { runNode: RunNode; step: NodeEntity } => {
     if (!stepId) {
       throw new Error(
-        'Cannot create step TNode: Step ID is required'
+        'Cannot create step RunNode: Step ID is required'
       );
     }
 
@@ -275,15 +275,15 @@ export const brainCommands = {
 
     if (!step || !step.id) {
       throw new Error(
-        `Cannot create step TNode: Node ${stepId} not found in flow blueprint`
+        `Cannot create step RunNode: Node ${stepId} not found in flow blueprint`
       );
     }
 
     // The flow holding this step
     const flowId = query.ids(stepId).in(EARS.RelKind.CONTAINS, EARS.Entity.Flow).first();
     const prepared = resolveNodeAttributes(step, executionContext);
-    const tNode = history().start({
-      tNodeType: 'step',
+    const runNode = history().start({
+      kind: 'step',
       label: step.label ?? '',
       stepNodeType: step.nodeType,
       parentId,
@@ -294,14 +294,14 @@ export const brainCommands = {
       ...(prepared && { resolvedParams: prepared.resolvedParams }),
     });
 
-    return { tNode, step: step as NodeEntity };
+    return { runNode, step: step as NodeEntity };
   },
   
   /** A new session's root run: the root flow the brain starts with, under a new id each time it starts */
-  createRootFlowTNode: (): {
+  createRootFlowRunNode: (): {
     // Only the fields the pick below actually selects — consumers read id/label.
     rootFlow: Pick<FlowEntity, 'id' | 'label' | 'flowType' | 'createdAt'>;
-    rootFlowTNode: TNode;
+    rootFlowRunNode: RunNode;
   } => {
     const rootFlow = query(EARS.Entity.Flow)
       .withRole(EARS.RoleKind.ROOT_FLOW)
@@ -309,16 +309,16 @@ export const brainCommands = {
 
     if (!rootFlow) {
       throw new Error(
-        "Cannot create root flow TNode: No flow with 'root_flow' role found. " +
+        "Cannot create root flow RunNode: No flow with 'root_flow' role found. " +
         "Ensure the database is properly initialized."
       );
     }
 
-    const rootFlowTNode = history().start({
-      tNodeType: 'flow',
+    const rootFlowRunNode = history().start({
+      kind: 'flow',
       label: rootFlow.label,
       flowId: rootFlow.id,
     });
-    return { rootFlow, rootFlowTNode };
+    return { rootFlow, rootFlowRunNode };
   },
 } as const;

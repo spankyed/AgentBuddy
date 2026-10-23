@@ -258,6 +258,9 @@ export interface RelationEntity extends BaseEntity {
     relationDetails: EARS.RelationDetail;
 }
 
+// @public (undocumented)
+export type RunNodeKind = 'flow' | 'event' | 'step';
+
 // @public
 export function safeEvents<TEvent extends {
     type: string;
@@ -375,9 +378,6 @@ export interface TextContent {
     // (undocumented)
     type: 'text';
 }
-
-// @public (undocumented)
-export type TNodeKind = 'flow' | 'event' | 'step';
 
 // (No @packageDocumentation comment for this package)
 

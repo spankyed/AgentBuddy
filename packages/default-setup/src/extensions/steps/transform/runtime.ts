@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
 import { reportError, createLogger } from '@apackdev/sdk/logger';
 import { services } from '#generated/services.ts';
 import type { TransformNode, TransformOutputType } from './types.ts';
@@ -28,7 +28,7 @@ function toOutput(value: unknown, outputType: TransformOutputType): unknown {
   }
 }
 
-export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as TransformNode;
   const a = actor as { send: (event: { type: string; result?: unknown; error?: unknown }) => void };
 
@@ -67,8 +67,8 @@ export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, ac
       source: 'brain-transform',
       step: {
         phase: 'transform.execute',
-        flowTNodeId: ctx.flowTNodeId,
-        tNodeId: t.id,
+        flowRunNodeId: ctx.flowRunNodeId,
+        runNodeId: t.id,
         nodeId: n.id,
         nodeLabel: n.label,
         nodeType: n.nodeType,

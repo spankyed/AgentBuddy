@@ -31,10 +31,10 @@ be/
 ## How a flow runs
 
 1. The brain system runs the flow with the root role (`repository.flowsQueries.rootFlow()`). With flows but no root flow it stays stopped and reports why.
-2. `createFlowNodeSystem()` creates the flow's TNode and a machine that listens for the event types of the flow's trigger nodes. Running flow actors are kept by flow TNode id (`getFlowActor`, `clearFlowActorRegistry`, which the pack's `onShutdown` calls).
-3. An event spawns a track: `createStepNodeSystem()` for each step, and a nested flow machine for a subflow. The brain sends `TNODE_SPAWNED` and `TNODE_UPDATED` to the brain surface as TNodes start and change status.
+2. `createFlowNodeSystem()` creates the flow's RunNode and a machine that listens for the event types of the flow's trigger nodes. Running flow actors are kept by flow RunNode id (`getFlowActor`, `clearFlowActorRegistry`, which the pack's `onShutdown` calls).
+3. An event spawns a track: `createStepNodeSystem()` for each step, and a nested flow machine for a subflow. The brain sends `RUN_NODE_SPAWNED` and `RUN_NODE_UPDATED` to the brain surface as RunNodes start and change status.
 4. A step machine calls `executeNode()`, which looks up `stepRegistry.get(node.nodeType).runtime.handler`. Trigger nodes and types without a handler complete with no work. An async handler's rejection is reported with `reportError` (with `step` context) and fails the step.
-5. Step results and TNode attributes pass through `truncateResult` before they're stored (`updateTNodeResult`, `updateTNodeAttributes`).
+5. Step results and run node attributes pass through `truncateResult` as the run history stores them (`services.runHistory`'s `start` and `update`).
 
 ## Adding a node type
 

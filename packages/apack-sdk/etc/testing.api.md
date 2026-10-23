@@ -145,7 +145,7 @@ export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {
 }
 
 // @internal
-export function _memoryRunHistoryStore(): RecordStore<TNode>;
+export function _memoryRunHistoryStore(): RecordStore<RunNode>;
 
 // @public
 export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): NativePackDeclaration;

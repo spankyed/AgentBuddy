@@ -20,7 +20,7 @@ it('creates an importable backup with media and run history, and refuses overwri
     primary.entities.putSync('Note-a', { type: 'Note' });
     closeEnv(primary, () => {});
     const history = openRunHistoryStore(paths.runHistory);
-    history.put({ id: 'TNode-a', rootId: 'TNode-a', tNodeType: 'flow', label: 'Run', status: 'completed', startedAt: 0 });
+    history.put({ id: 'RunNode-a', rootId: 'RunNode-a', kind: 'flow', label: 'Run', status: 'completed', startedAt: 0 });
     history.close();
     fs.mkdirSync(paths.media, { recursive: true });
     fs.writeFileSync(path.join(paths.media, 'asset.txt'), 'media');
@@ -43,7 +43,7 @@ it('creates an importable backup with media and run history, and refuses overwri
     try {
       await importDatabase({ lmdb: store, runHistory }, out, restored.media, { log: { info: () => {}, warn: () => {} } });
       expect(store.env.entities.get('Note-a')).toEqual({ type: 'Note' });
-      expect(runHistory.get('TNode-a')).toMatchObject({ id: 'TNode-a', status: 'completed' });
+      expect(runHistory.get('RunNode-a')).toMatchObject({ id: 'RunNode-a', status: 'completed' });
       expect(fs.readFileSync(path.join(restored.media, 'asset.txt'), 'utf8')).toBe('media');
     } finally { store.close(); runHistory.close(); }
     const running = publishRunningApp(source);

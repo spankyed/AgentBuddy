@@ -89,8 +89,8 @@ async function appDataDir(): Promise<string> {
   // A run the app recorded, in the run history's own store: a session's root and the event it heard, as a run on
   // 2026-10-01 left them
   const store = openRunHistoryStore(_appDataPaths(dir).runHistory);
-  store.put({ id: 'TNode-1', rootId: 'TNode-1', tNodeType: 'flow', label: 'Root', status: 'completed', startedAt: Date.UTC(2026, 9, 1), flowId: 'Flow-root' });
-  store.put({ id: 'TNode-2', rootId: 'TNode-1', tNodeType: 'event', label: 'go', status: 'completed', startedAt: Date.UTC(2026, 9, 1, 0, 1), parentId: 'TNode-1' });
+  store.put({ id: 'RunNode-1', rootId: 'RunNode-1', kind: 'flow', label: 'Root', status: 'completed', startedAt: Date.UTC(2026, 9, 1), flowId: 'Flow-root' });
+  store.put({ id: 'RunNode-2', rootId: 'RunNode-1', kind: 'event', label: 'go', status: 'completed', startedAt: Date.UTC(2026, 9, 1, 0, 1), parentId: 'RunNode-1' });
   store.close();
   return dir;
 }
@@ -401,13 +401,13 @@ describe('apack db runs', () => {
     const dir = await appDataDir();
     const { out, err } = await ok(['runs', '--data-dir', dir]);
     expect(err).toContain(`Run history: ${_appDataPaths(dir).runHistory}`);
-    expect(out).toBe('TNode-1  completed  2026-10-01T00:00:00.000Z  Root  (Flow-root)');
-    expect(JSON.parse((await ok(['runs', '--data-dir', dir, '--json'])).out)).toEqual([expect.objectContaining({ id: 'TNode-1', label: 'Root' })]);
+    expect(out).toBe('RunNode-1  completed  2026-10-01T00:00:00.000Z  Root  (Flow-root)');
+    expect(JSON.parse((await ok(['runs', '--data-dir', dir, '--json'])).out)).toEqual([expect.objectContaining({ id: 'RunNode-1', label: 'Root' })]);
     expect((await ok(['runs', '--flow', 'Flow-other', '--data-dir', dir])).out).toBe('No runs');
 
-    const tree = JSON.parse((await ok(['runs', '--run', 'TNode-1', '--data-dir', dir])).out);
-    expect(tree).toMatchObject({ id: 'TNode-1', children: [{ id: 'TNode-2', label: 'go', children: [] }] });
-    expect((await run(['runs', '--run', 'TNode-missing', '--data-dir', dir])).error?.message).toBe('No run node TNode-missing in the run history');
+    const tree = JSON.parse((await ok(['runs', '--run', 'RunNode-1', '--data-dir', dir])).out);
+    expect(tree).toMatchObject({ id: 'RunNode-1', children: [{ id: 'RunNode-2', label: 'go', children: [] }] });
+    expect((await run(['runs', '--run', 'RunNode-missing', '--data-dir', dir])).error?.message).toBe('No run node RunNode-missing in the run history');
   });
 
   it('says when a data dir has no run history, and leaves it without one', async () => {
@@ -1012,13 +1012,13 @@ describe('apack db import', () => {
     const backup = await backupWith('From the backup', { databases: ['lmdb', 'runHistory'] });
     const history = () => openRunHistoryStore(_appDataPaths(dir).runHistory);
     const before = history();
-    before.delete('TNode-1');
+    before.delete('RunNode-1');
     before.close();
 
     await ok(['import', backup, '--force', '--data-dir', dir]);
 
     const after = history();
-    try { expect(after.get('TNode-1')).toMatchObject({ status: 'completed' }); } finally { after.close(); }
+    try { expect(after.get('RunNode-1')).toMatchObject({ status: 'completed' }); } finally { after.close(); }
   });
 
   it("restores a backup whose metadata claims a format its databases aren't in", async () => {

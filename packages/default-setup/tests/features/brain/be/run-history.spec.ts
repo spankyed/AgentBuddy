@@ -48,12 +48,12 @@ describe('the brain in the run history', () => {
     const app = await startApp({ systems: ['brain'] })
     await app.connect()
     await app.runFlow('Outer', { event: 'go' })
-    const inner = services.runHistory.findRuns().find((run) => run.parentId !== undefined && run.tNodeType === 'flow')!
+    const inner = services.runHistory.findRuns().find((run) => run.parentId !== undefined && run.kind === 'flow')!
 
-    await app.send('brain', { type: 'GO_BACK_TNODE', currentFlowTNodeId: inner.id })
+    await app.send('brain', { type: 'GO_BACK_RUN_NODE', currentFlowRunNodeId: inner.id })
 
-    const opened = await app.nextEmit('brain', 'TNODE_OPENED') as unknown as { tNodeId: string; data: { flowHierarchy: unknown[] } }
-    expect(opened.tNodeId).toBe(sessionRoot()!.id)
+    const opened = await app.nextEmit('brain', 'RUN_NODE_OPENED') as unknown as { runNodeId: string; data: { flowHierarchy: unknown[] } }
+    expect(opened.runNodeId).toBe(sessionRoot()!.id)
     expect(opened.data.flowHierarchy).toHaveLength(1)
   })
 })

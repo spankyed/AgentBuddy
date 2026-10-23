@@ -6,13 +6,13 @@ import { randomId } from '../utils/random-id.ts';
 import { RepositoryError, RepositoryErrorCode } from '../repositories/repository-error.ts';
 import { redactSecrets, redactSecretText } from '../utils/redact.ts';
 import { boundHost } from '../runtime/host-runtime.ts';
-import type { TNodeId } from '../services/run-history.ts';
+import type { RunNodeId } from '../services/run-history.ts';
 import type { StepRuntimeError } from '../steps/types.ts';
 import { createLogger } from './logger.ts';
 
 const logger = createLogger('step-runtime');
 
-/** Where in a flow run an error happened: the step's phase and the TNode, node, flow and event it belongs to */
+/** Where in a flow run an error happened: the step's phase and the RunNode, node, flow and event it belongs to */
 export type StepErrorContext = Omit<StepRuntimeError, 'errorId' | 'message' | 'stack' | 'timestamp' | 'source'>;
 
 /** How loudly a system error is shown: an error page, a toast, or neither */
@@ -55,7 +55,7 @@ export interface ReportErrorInput {
   severity?: SystemErrorSeverity;
   /** Shown to the user instead of the error's own message */
   userMessage?: string;
-  /** The step run the error came from: the error is recorded on its TNode and shown in the flow instead of as a toast */
+  /** The step run the error came from: the error is recorded on its RunNode and shown in the flow instead of as a toast */
   step?: StepErrorContext;
 }
 
@@ -80,7 +80,7 @@ export type SystemErrorEvent = {
 
 /**
  * Reports an error: logs it and shows it to the user. Without `step` the app shows it as a system error.
- * With `step` it's a flow step's error: it's also recorded on the step's TNode, sent to the surface playing the
+ * With `step` it's a flow step's error: it's also recorded on the step's RunNode, sent to the surface playing the
  * `brain` role (`BRAIN_RUNTIME_ERROR`) and returned.
  */
 export function reportError(input: ReportErrorInput & { step: StepErrorContext }): StepRuntimeError;
@@ -167,9 +167,9 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
     meta: { ...runtimeError, error: redactSecrets(input.error) },
   });
 
-  if (runtimeError.tNodeId) {
+  if (runtimeError.runNodeId) {
     try {
-      boundHost().services.runHistory.update(runtimeError.tNodeId as TNodeId, { result: {
+      boundHost().services.runHistory.update(runtimeError.runNodeId as RunNodeId, { result: {
         error: {
           message: runtimeError.message,
           source: runtimeError.source,
@@ -179,7 +179,7 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
         },
       } });
     } catch (err) {
-      logger.warn('Failed to record the runtime error in the run history', { tNodeId: runtimeError.tNodeId, error: err });
+      logger.warn('Failed to record the runtime error in the run history', { runNodeId: runtimeError.runNodeId, error: err });
     }
   }
 

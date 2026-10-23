@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNode } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunNode } from '@apackdev/sdk/steps';
 import type { NodeEntity } from '#generated/types.ts';
 import { EARS } from '@apackdev/sdk';
 import { repository } from '#generated/repository.ts';
@@ -21,8 +21,8 @@ interface LLMNodeConfig {
 
 type LLMNode = NodeEntity & LLMNodeConfig;
 
-function generatePrompt(tNode: TNode, node: LLMNode): string {
-  const nodeData = tNode.nodeAttributes || {};
+function generatePrompt(runNode: RunNode, node: LLMNode): string {
+  const nodeData = runNode.nodeAttributes || {};
 
   if (nodeData.prompt && typeof nodeData.prompt === 'string') {
     return nodeData.prompt;
@@ -36,7 +36,7 @@ function generatePrompt(tNode: TNode, node: LLMNode): string {
         return 'Error: Prompt template not found';
       }
 
-      const templateParams: Record<string, any> = (tNode.resolvedParams as Record<string, any>) || {};
+      const templateParams: Record<string, any> = (runNode.resolvedParams as Record<string, any>) || {};
 
       brainLogger.debug(`Using resolved params for ${node.label}:`, templateParams);
 
@@ -55,7 +55,7 @@ function generatePrompt(tNode: TNode, node: LLMNode): string {
   return 'No prompt specified';
 }
 
-export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(t: RunNode, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as LLMNode;
   const a = actor as { send: (event: any) => void };
   const nodeData = t.nodeAttributes || {};
@@ -106,8 +106,8 @@ export async function handler(t: TNode, node: unknown, ctx: ExecutionContext, ac
       source: 'brain-llm',
       step: {
         phase: 'llm.execute',
-        flowTNodeId: ctx.flowTNodeId,
-        tNodeId: t.id,
+        flowRunNodeId: ctx.flowRunNodeId,
+        runNodeId: t.id,
         nodeId: n.id,
         nodeLabel: n.label,
         nodeType: n.nodeType,

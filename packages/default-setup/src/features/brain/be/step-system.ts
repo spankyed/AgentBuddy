@@ -1,7 +1,7 @@
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup, assign, sendParent, enqueueActions, type AnyActorRef } from 'xstate';
 import { EARS } from '#generated/ears.ts';
-import type { ExecutionContext, TNode, TNodeId } from '@apackdev/sdk/steps';
+import type { ExecutionContext, RunNode, RunNodeId } from '@apackdev/sdk/steps';
 import type { NodeEntity } from '#generated/types.ts';
 import { executeNode } from './node-handlers/index.ts';
 import { repository } from '#generated/repository.ts';
@@ -9,10 +9,10 @@ import { services } from '#generated/services.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 type StepMachineContext = {
-  tNodeId?: TNodeId;
-  tNode: TNode;
+  runNodeId?: RunNodeId;
+  runNode: RunNode;
   step: NodeEntity;
-  eventTNodeId?: TNodeId;
+  eventRunNodeId?: RunNodeId;
   error?: any;
 };
 
@@ -33,14 +33,14 @@ const handlers = defineHandlers<StepMachineContext, StepEvent>();
 export function createStepNodeSystem(
   brain: AnyActorRef,
   stepId: EARS.EntityId,
-  eventTNodeId: TNodeId,
+  eventRunNodeId: RunNodeId,
   executionContext = {} as ExecutionContext,
-  parentTNodeId?: TNodeId,
+  parentRunNodeId?: RunNodeId,
 ) {
-  const { tNode, step } = repository.brainCommands.createStepTNode(stepId, parentTNodeId ?? eventTNodeId, executionContext);
+  const { runNode, step } = repository.brainCommands.createStepRunNode(stepId, parentRunNodeId ?? eventRunNodeId, executionContext);
   return {
-    tNodeId: tNode.id,
-    tNode: tNode,
+    runNodeId: runNode.id,
+    runNode: runNode,
     machine: setup({
       types: {
         context: {} as StepMachineContext,
@@ -54,68 +54,68 @@ export function createStepNodeSystem(
             //   `Executing step: ${context.step.label} (${context.step.nodeType})`,
             // );
 
-            // Delegate to step executor with TNode
-            executeNode(context.tNode, context.step, executionContext, self);
+            // Delegate to step executor with RunNode
+            executeNode(context.runNode, context.step, executionContext, self);
           } catch (error) {
             self.send({ type: 'ERROR', error: errorMessage(error) });
           }
         },
         storeResult: ({ context, event }) => {
-          if (context.tNodeId && event.type === 'COMPLETE' && event.result !== undefined) {
+          if (context.runNodeId && event.type === 'COMPLETE' && event.result !== undefined) {
             // The run history bounds what it stores
-            services.runHistory.update(context.tNodeId, { result: event.result });
+            services.runHistory.update(context.runNodeId, { result: event.result });
           }
         },
         markCompleted: enqueueActions(({ context, enqueue }) => {
-          if (context.tNodeId) {
-            services.runHistory.finish(context.tNodeId, 'completed');
+          if (context.runNodeId) {
+            services.runHistory.finish(context.runNodeId, 'completed');
             
             // Straight to the brain, as flows send theirs: a parent flow finishing on this step's completion
             // stops before a forwarded update would reach it
-            const tNodeId = context.tNodeId;
-            const eventTNodeId = context.eventTNodeId;
+            const runNodeId = context.runNodeId;
+            const eventRunNodeId = context.eventRunNodeId;
             enqueue(() => {
-              brain.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'completed', eventTNodeId } });
+              brain.send({ type: 'RUN_NODE_UPDATED', data: { runNodeId, status: 'completed', eventRunNodeId } });
             });
           }
         }),
         markFailed: enqueueActions(({ context, enqueue }) => {
-          if (context.tNodeId) {
-            services.runHistory.finish(context.tNodeId, 'failed');
+          if (context.runNodeId) {
+            services.runHistory.finish(context.runNodeId, 'failed');
             
             // Straight to the brain, as flows send theirs: a parent flow finishing on this step's completion
             // stops before a forwarded update would reach it
-            const tNodeId = context.tNodeId;
-            const eventTNodeId = context.eventTNodeId;
+            const runNodeId = context.runNodeId;
+            const eventRunNodeId = context.eventRunNodeId;
             enqueue(() => {
-              brain.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'failed', eventTNodeId } });
+              brain.send({ type: 'RUN_NODE_UPDATED', data: { runNodeId, status: 'failed', eventRunNodeId } });
             });
           }
         }),
         storeErrorResult: ({ context }) => {
-          if (context.tNodeId && context.error !== undefined) {
-            services.runHistory.update(context.tNodeId, { result: { error: context.error } });
+          if (context.runNodeId && context.error !== undefined) {
+            services.runHistory.update(context.runNodeId, { result: { error: context.error } });
           }
         },
         notifyComplete: sendParent(({ context, event }) => ({
           type: 'CHILD_COMPLETED',
           stepId: context.step.id,
           stepLabel: context.step.label,
-          tNodeId: context.tNodeId,
+          runNodeId: context.runNodeId,
           result: event.result,
           final: context.step.final || false,
-          eventTNodeId: context.eventTNodeId,
+          eventRunNodeId: context.eventRunNodeId,
           isFlow: false,
         })),
         notifyFailed: sendParent(({ context }) => ({
           type: 'CHILD_COMPLETED',
           stepId: context.step.id,
           stepLabel: context.step.label,
-          tNodeId: context.tNodeId,
+          runNodeId: context.runNodeId,
           result: { error: context.error },
           failed: true,
           final: false,
-          eventTNodeId: context.eventTNodeId,
+          eventRunNodeId: context.eventRunNodeId,
           isFlow: false,
         })),
       }),
@@ -123,10 +123,10 @@ export function createStepNodeSystem(
       id: `step-machine`,
       initial: 'executing',
       context: () => ({
-        tNodeId: tNode.id,
-        tNode: tNode,
+        runNodeId: runNode.id,
+        runNode: runNode,
         step: step,
-        eventTNodeId: eventTNodeId,
+        eventRunNodeId: eventRunNodeId,
       }),
       states: {
         executing: {

@@ -1,4 +1,4 @@
-import type { RunTree, TNode } from '@apackdev/sdk/steps';
+import type { RunTree, RunNode } from '@apackdev/sdk/steps';
 
 import { EARS } from '#generated/ears.ts';
 
@@ -81,13 +81,13 @@ export type OutgoingDatabaseEvents =
    * and one event cannot be both.
    */
   | { type: 'AI_QUERY_ERROR'; error: string }
-  | { type: 'TRACE_FLOWS_RESULT'; flows: TNode[] }
+  | { type: 'TRACE_FLOWS_RESULT'; flows: RunNode[] }
   /**
    * `offset` is which page these events are, which is what tells two pages of one flow apart — the flow id
    * alone cannot, so a viewer correlating on it places a late page by wherever it has since got to.
    */
   | { type: 'FLOW_EVENTS_RESULT'; flowId: string; events: RunTree[]; hasMore: boolean; offset: number }
-  | { type: 'NODE_DETAILS_RESULT'; nodeId: string; details: TNode | null }
+  | { type: 'NODE_DETAILS_RESULT'; nodeId: string; details: RunNode | null }
   | { type: 'EXPORT_DATABASE_SUCCESS'; path: string }
   | { type: 'EXPORT_DATABASE_ERROR'; error: string }
   | { type: 'IMPORT_DATABASE_SUCCESS'; message?: string }

@@ -92,10 +92,10 @@ export interface StepBuildFacet {
 
 import type { AnyActorRef } from 'xstate';
 import type { EARS } from '../types/entities.ts';
-import type { TNode } from '../services/run-history.ts';
+import type { RunNode } from '../services/run-history.ts';
 
 export type TimestampMs = number;
-export type TNodeKind = 'flow' | 'event' | 'step';
+export type RunNodeKind = 'flow' | 'event' | 'step';
 
 // Kept here for packs whose built types import it from @apackdev/sdk/steps
 export type { SdkEntityShapes } from '../types/sdk-entities.ts';
@@ -116,12 +116,12 @@ export interface StepRun {
 }
 
 export interface RuntimeServices {
-  getFlowActor: (flowTNodeId: EARS.EntityId) => AnyActorRef | undefined;
+  getFlowActor: (flowRunNodeId: EARS.EntityId) => AnyActorRef | undefined;
   servicesForAction: import('../services/index.ts').PackServiceAccess['servicesForAction'];
 }
 
 export interface ExecutionContext {
-  flowTNodeId: EARS.EntityId;
+  flowRunNodeId: EARS.EntityId;
   event: ExecutionEvent;
   steps: StepRun[];
   lastStep?: Omit<StepRun, 'timestamp'>;
@@ -134,9 +134,9 @@ export interface StepRuntimeError {
   stack?: string;
   source: string;
   phase: string;
-  flowTNodeId?: EARS.EntityId;
-  eventTNodeId?: EARS.EntityId;
-  tNodeId?: EARS.EntityId;
+  flowRunNodeId?: EARS.EntityId;
+  eventRunNodeId?: EARS.EntityId;
+  runNodeId?: EARS.EntityId;
   nodeId?: EARS.EntityId;
   nodeLabel?: string;
   nodeType?: string;
@@ -157,11 +157,11 @@ export interface StepRuntimeFacet {
    * Generic conventions the brain honours from handler results:
    * - **Branching**: `{ sourceHandle: 'branch-N' }` → routes to named branch
    * - **No-match**: `{ noMatch: true }` → terminates the current chain
-   * - **Kill**: send `KILL_FLOW` to `ctx.runtime.getFlowActor(flowTNodeId)`
+   * - **Kill**: send `KILL_FLOW` to `ctx.runtime.getFlowActor(flowRunNodeId)`
    * - **Keep-alive**: never send COMPLETE → actor stays in executing state
    * - **Final**: set `final: true` on the compiled node → triggers flow completion
    */
-  handler?: (tNode: TNode, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
+  handler?: (runNode: RunNode, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
   isAsync?: boolean;
   /** When true, the brain spawns a sub-flow machine instead of a step machine. */
   spawnsSubflow?: boolean;
@@ -250,7 +250,7 @@ export interface TriggerRuntimeNode {
 }
 
 export interface TriggerRuntimeContext {
-  flowTNodeId: EARS.EntityId;
+  flowRunNodeId: EARS.EntityId;
   /** Fires a flow event at the brain: `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType, … })` */
   sendToSystem: (target: { role: string }, event: { type: string; [key: string]: unknown }, options?: CallOptions) => string;
 }

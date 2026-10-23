@@ -1,6 +1,6 @@
 import { nativePackDeclarationFixture } from '../../src/testing/index.ts';
 // The repositories of the SDK's entities, on the in-memory runtime: imported flows with their root role,
-// nodes and edges, step results on TNodes, and actions and prompts
+// nodes and edges, step results on RunNodes, and actions and prompts
 import * as os from 'node:os';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, type PersistenceSink } from '@apackdev/ears';

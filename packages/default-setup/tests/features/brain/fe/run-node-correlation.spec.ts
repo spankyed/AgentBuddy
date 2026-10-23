@@ -16,7 +16,7 @@
 // it; that is a line, and saying so is better than leaving the list looking derived.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import type { StepRuntimeError, TNode } from '@apackdev/sdk/steps';
+import type { StepRuntimeError, RunNode } from '@apackdev/sdk/steps';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));
@@ -24,18 +24,18 @@ vi.mock('#generated/events.ts', () => ({ sendToSystem }));
 const { default: brainState } = await import('#features/brain/fe/state.ts');
 
 /**
- * A node's details as the panel reads them, which is deliberately not a whole `TNode`.
+ * A node's details as the panel reads them, which is deliberately not a whole `RunNode`.
  *
  * **The cast stops at the fixture.** The events the cases send are checked, so a misspelled event type is
  * a compile error rather than a send the machine ignores while the case goes on asserting.
  */
-const details = (id: string) => ({ id, label: id }) as unknown as TNode;
+const details = (id: string) => ({ id, label: id }) as unknown as RunNode;
 
 /**
  * A started surface in `ready`, which is where node clicks are handled.
  *
- * `RECEIVE_SURFACE_DATA` is what moves it there, and `normalizeFlowTNodeData` tolerates a missing
- * `tNodeTree`, so nothing here has to build a tree to ask about correlation.
+ * `RECEIVE_SURFACE_DATA` is what moves it there, and `normalizeFlowRunNodeData` tolerates a missing
+ * `runNodeTree`, so nothing here has to build a tree to ask about correlation.
  */
 function ready() {
   const actor = createActor(brainState).start();
@@ -43,7 +43,7 @@ function ready() {
     type: 'RECEIVE_SURFACE_DATA',
     // The fields the machine reads to reach `ready`; the rest of that payload is not this file's subject,
     // and the cast sits on it rather than on the event so the type above stays checked
-    data: { flowTNodeId: 'TNode-f1', possibleEvents: [], flowHierarchy: [] } as never,
+    data: { flowRunNodeId: 'RunNode-f1', possibleEvents: [], flowHierarchy: [] } as never,
   });
   return actor;
 }
@@ -60,8 +60,8 @@ it('shows the node last clicked, not the answer that arrived last', () => {
   expect(actor.getSnapshot().context.selectedStepNode?.id, 'the click sets it at once').toBe('n2');
 
   // n2 answers, then n1's older answer turns up
-  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n2', details: details('n2') });
-  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n1', details: details('n1') });
+  actor.send({ type: 'RUN_NODE_DETAILS', runNodeId: 'n2', details: details('n2') });
+  actor.send({ type: 'RUN_NODE_DETAILS', runNodeId: 'n1', details: details('n1') });
 
   expect(actor.getSnapshot().context.selectedStepNode?.id).toBe('n2');
 });
@@ -70,19 +70,19 @@ it('takes the details for the node it is waiting on', () => {
   const actor = ready();
   actor.send({ type: 'NODE.CLICK', nodeId: 'n1' });
 
-  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n1', details: details('n1') });
+  actor.send({ type: 'RUN_NODE_DETAILS', runNodeId: 'n1', details: details('n1') });
   expect(actor.getSnapshot().context.selectedStepNode).toMatchObject({ id: 'n1', label: 'n1' });
 });
 
 /** The nodes details were asked about, in order — read off the send so a case need not restate them */
 const askedAbout = () => sendToSystem.mock.calls
-  .map(([, event]) => event as { type: string; tNodeId?: string })
-  .filter((event) => event.type === 'GET_TNODE_DETAILS')
-  .map((event) => event.tNodeId);
+  .map(([, event]) => event as { type: string; runNodeId?: string })
+  .filter((event) => event.type === 'GET_RUN_NODE_DETAILS')
+  .map((event) => event.runNodeId);
 
-const runtimeError = (tNodeId?: string) => ({
+const runtimeError = (runNodeId?: string) => ({
   type: 'BRAIN_RUNTIME_ERROR' as const,
-  error: { errorId: 'e1', message: 'it broke', source: 'step', phase: 'run', ...(tNodeId && { tNodeId }) } as StepRuntimeError,
+  error: { errorId: 'e1', message: 'it broke', source: 'step', phase: 'run', ...(runNodeId && { runNodeId }) } as StepRuntimeError,
 });
 
 /**
@@ -97,7 +97,7 @@ it("opens the failing node's details when a step errors", () => {
   actor.send(runtimeError('n-broke'));
   expect(askedAbout(), 'it asks about the node that failed').toEqual(['n-broke']);
 
-  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n-broke', details: details('n-broke') });
+  actor.send({ type: 'RUN_NODE_DETAILS', runNodeId: 'n-broke', details: details('n-broke') });
 
   expect(actor.getSnapshot().context.selectedStepNode).toMatchObject({ id: 'n-broke', label: 'n-broke' });
 });
@@ -106,7 +106,7 @@ it("opens the failing node's details when a step errors", () => {
 it('leaves the selection alone for an error that names no node', () => {
   const actor = ready();
   actor.send({ type: 'NODE.CLICK', nodeId: 'n1' });
-  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n1', details: details('n1') });
+  actor.send({ type: 'RUN_NODE_DETAILS', runNodeId: 'n1', details: details('n1') });
 
   actor.send(runtimeError());
 
@@ -115,7 +115,7 @@ it('leaves the selection alone for an error that names no node', () => {
 });
 
 /**
- * The invariant, asked of each action that sends a `GET_TNODE_DETAILS` and selects as it does.
+ * The invariant, asked of each action that sends a `GET_RUN_NODE_DETAILS` and selects as it does.
  *
  * `refreshNodeDetailsIfSelected` is deliberately absent: it asks only about the node already selected, so
  * the invariant holds there by construction rather than by assignment. `selectAndShowFirstNode` is absent

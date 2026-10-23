@@ -1,5 +1,5 @@
 // services.appData: reset, back up and restore the app's stored data
-import type { AppDataService, BackupDatabase, RunHistory, SettingsAdmin, TNode } from '@apackdev/sdk/services';
+import type { AppDataService, BackupDatabase, RunHistory, SettingsAdmin, RunNode } from '@apackdev/sdk/services';
 import type { EarsAdmin } from '@apackdev/ears';
 import type { RecordStore } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
@@ -20,7 +20,7 @@ import { createSettingsBackupValidator } from '../features/settings/be/backup.ts
 export function createAppData({ store, history, engine, registry, settings, onReplaced }: {
   store: LmdbStore;
   /** The run history and its record store, which a backup copies and a reset empties with the database */
-  history: { service: RunHistory; store: RecordStore<TNode> };
+  history: { service: RunHistory; store: RecordStore<RunNode> };
   engine: EarsAdmin; registry: PackRegistry; settings: SettingsAdmin; onReplaced: () => void;
 }): AppDataService {
   const stores: BackupStores = { lmdb: store, runHistory: history.store };

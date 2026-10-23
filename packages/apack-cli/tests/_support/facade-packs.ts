@@ -314,8 +314,8 @@ query('AppState');
 // API keys aren't graph data: the host keeps them, packs see services.secrets
 // Library and notes entities belong to default-setup, not the SDK
 // A flow run is a record in the run history (services.runHistory), not an entity
-// @ts-expect-error TNode isn't an entity type
-query('TNode');
+// @ts-expect-error RunNode isn't an entity type
+query('RunNode');
 // Node rows are the dependency's step node types (app-pack defines none), a hand-written one that doesn't
 // narrow nodeType, and adds no required field, included
 const node = query('Node').pickAll()[0]!;
