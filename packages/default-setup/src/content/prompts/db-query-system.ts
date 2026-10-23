@@ -52,6 +52,8 @@ Chainable (return query, keep chaining):
   .within([...ids])                                filter to specific IDs
   .linkedTo('contains', otherId)                   filter: has a 'contains' edge to otherId
   .linkedFrom('contains', otherId)                 filter: otherId has a 'contains' edge to it
+  .linkedTo('contains') / .linkedFrom('contains')  filter: has any such edge out / in
+  .unlinkedTo(...) / .unlinkedFrom(...)            the negations: .unlinkedFrom('parent_of') is a tree's roots
   .linkedWith(otherId)                             filter: any edge, either way, with otherId
   .out('contains', EARS.Entity.Message)            walk outgoing edges → a new query of the targets
   .in('contains', EARS.Entity.X)                   walk incoming edges → a new query of the sources

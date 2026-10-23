@@ -73,10 +73,8 @@ export function collectionPath(collectionId: EARS.EntityId): string[] {
 export function nextDisplayOrder(parentId: EARS.EntityId | null): number {
   const siblings = parentId === null
     ? [
-      ...(query(EARS.Entity.Collection).pickAll() as Array<Record<string, unknown>>)
-        .filter((row) => parentCollectionOf(row.id as EARS.EntityId) === null),
-      ...(query(EARS.Entity.Document).pickAll() as Array<Record<string, unknown>>)
-        .filter((row) => collectionOfDocument(row.id as EARS.EntityId) === null),
+      ...(query(EARS.Entity.Collection).unlinkedFrom(EARS.RelKind.PARENT_OF).pickAll() as Array<Record<string, unknown>>),
+      ...(query(EARS.Entity.Document).unlinkedFrom(EARS.RelKind.CONTAINS).pickAll() as Array<Record<string, unknown>>),
     ]
     : [
       ...(query.ids(parentId).out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll() as Array<Record<string, unknown>>),
@@ -204,7 +202,7 @@ export const collectionRepository = {
 
   /** The folders directly inside `parentId`, or the root ones */
   children: (parentId: EARS.EntityId | null): CollectionEntity[] => (parentId === null
-    ? collectionRepository.all().filter((row) => parentCollectionOf(row.id as EARS.EntityId) === null)
+    ? sdkEntities.query(EARS.Entity.Collection).unlinkedFrom(EARS.RelKind.PARENT_OF).pickAll()
     : query.ids(parentId).out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll() as unknown as CollectionEntity[]),
 
   /** The documents directly inside `parentId` */

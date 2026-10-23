@@ -283,7 +283,7 @@ EARS.RelKind.TAGGED_WITH  // "tagged_with"
 
 **A relation kind is declared before anything links with it.** `EARS.RelKind` is the closed union of the pack's
 kinds, its dependencies' and the SDK's, so every place that names a kind — `link`, `unlink`, `out`, `in`,
-`outEdges`, `inEdges`, `linkedTo`, `linkedFrom` — completes the declared ones and refuses a misspelled one at
+`outEdges`, `inEdges`, `linkedTo`, `linkedFrom`, `unlinkedTo`, `unlinkedFrom` — completes the declared ones and refuses a misspelled one at
 compile time. The engine refuses an undeclared kind at runtime too (`UNKNOWN_RELATION_KIND`), on a read as well as
 a write, since a read naming a kind nothing declared would answer as if no entity had such a link. A kind that
 arrives as data (an event's field, an imported file) is narrowed with `EARS.isRelKind(value)`; `EARS.RELATION_KINDS`
@@ -378,7 +378,9 @@ write(plainId).set('title', 42)       // ok: a plain id doesn't say which entity
 `untypedCreate`, `untypedUpsert` and `untypedWrite` from `@apackdev/sdk/ears` are the same functions on the app's engine, unchecked.
 
 The query builder narrows with `where(k, v)` (a value, or a function tested against each value), `has(k)` and
-`lacks(k)`, `withRole`, `ofType`, `within`, `linkedTo`/`linkedFrom`/`linkedWith`, and walks edges with `out` and `in`.
+`lacks(k)`, `withRole`, `ofType`, `within`, `linkedTo`/`linkedFrom` (to or from an entity, or with none named any
+entity at all) and their negations `unlinkedTo`/`unlinkedFrom`, and `linkedWith`, and walks edges with `out` and `in`.
+A tree's roots are `query(type).unlinkedFrom(parentKind)`.
 
 **A unit of writes.** `transact(fn)` runs `fn` as one unit: if it throws, every write it made is undone and none
 is persisted; if it returns, its writes are persisted together. Reads inside it see its own writes. `fn` must be
