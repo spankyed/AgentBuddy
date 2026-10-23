@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type EARS } from '@apackdev/ears';
 import { _bindEars, boundEars, untypedCreate, untypedWrite } from '@apackdev/sdk/ears';
-import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@apackdev/host/database';
+import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, openRunHistoryStore, readInstalledSchema } from '@apackdev/host/database';
 import { exportDatabase } from '@apackdev/host/backup';
 import { closeEnv, openEnvAt, LMDB_FORMAT_VERSION } from '@apackdev/ears/lmdb';
 import { createSecretsStore, memoryKeyVault } from '@apackdev/host/secrets';
@@ -86,11 +86,15 @@ async function appDataDir(): Promise<string> {
     untypedCreate('Note', { id: id('Note-b') }).set('title', 'Beta, "quoted"');
     alpha.link('parent_of', id('Note-b'));
   });
+  // A run the app recorded, in the run history's own store
+  const history = openRunHistoryStore(_appDataPaths(dir).runHistory);
+  history.put({ id: 'TNode-1', tNodeType: 'flow', status: 'completed' });
+  history.close();
   return dir;
 }
 
 /** A backup of a data dir, as the app exports it */
-async function backupOf(userDataDir: string, { withMedia = false, databases }: { withMedia?: boolean; databases?: Array<'lmdb'> } = {}): Promise<string> {
+async function backupOf(userDataDir: string, { withMedia = false, databases }: { withMedia?: boolean; databases?: Array<'lmdb' | 'runHistory'> } = {}): Promise<string> {
   const paths = _appDataPaths(userDataDir);
   if (withMedia) {
     fs.mkdirSync(paths.media, { recursive: true });
@@ -105,10 +109,12 @@ async function backupOf(userDataDir: string, { withMedia = false, databases }: {
     readOnly: true,
     log: () => {},
   });
+  const runHistory = fs.existsSync(paths.runHistory) ? openRunHistoryStore(paths.runHistory, { readOnly: true }) : undefined;
   try {
-    return await exportDatabase(store, tempDir('backup-'), { name: 'backup', mediaPath: paths.media, appVersion: '0.3.14', log, ...(databases && { databases }) });
+    return await exportDatabase({ lmdb: store, ...(runHistory && { runHistory }) }, tempDir('backup-'), { name: 'backup', mediaPath: paths.media, appVersion: '0.3.14', log, ...(databases && { databases }) });
   } finally {
     store.close();
+    runHistory?.close();
   }
 }
 
@@ -883,12 +889,14 @@ describe('apack db reset', () => {
     expect(dry.out).toContain('Would delete the database');
     expect(dry.out).toContain('  Note: 2');
     expect(dry.out).toMatch(/Would delete 1 stored API key\(s\)[\s\S]*Anthropic — Work/);
+    expect(dry.out).toContain(`Would delete the run history (${_appDataPaths(dir).runHistory})`);
     expect(dry.out).toContain('Dry run: nothing was changed');
     expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toHaveLength(1);
 
     const forced = await ok(['reset', '--force', '--data-dir', dir]);
     expect(forced.out).toContain('Reset.');
     expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toEqual([]);
+    expect(fs.existsSync(_appDataPaths(dir).runHistory)).toBe(false);
     const after = await ok(['query', 'return query.withTrashed.all().ids()', '--data-dir', dir, '-o', 'json']);
     expect(JSON.parse(after.out)).toEqual([]);
     expect((await ok(['reset', '--data-dir', dir])).out).toContain('Would delete 0 stored API key(s)');
@@ -917,7 +925,7 @@ describe('apack db reset', () => {
 });
 
 describe('apack db import', () => {
-  const backupWith = async (title: string, options: { databases?: Array<'lmdb'> } = {}) => {
+  const backupWith = async (title: string, options: { databases?: Array<'lmdb' | 'runHistory'> } = {}) => {
     const source = await appDataDir();
     await write(source, () => { untypedWrite(id('Note-a')).set('title', title); untypedWrite(id('Note-b')).destroy(); });
     return backupOf(source, { withMedia: true, ...options });
@@ -943,8 +951,8 @@ describe('apack db import', () => {
     const dir = await appDataDir();
     const backup = await backupWith('From the backup');
     const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
-    expect(metadata).toMatchObject({ appVersion: '0.3.14', storageFormat: expect.any(Number) });
-    expect(Object.keys(metadata).sort()).toEqual(['appVersion', 'databases', 'includesMedia', 'storageFormat', 'timestamp']);
+    expect(metadata).toMatchObject({ appVersion: '0.3.14', storageFormats: { lmdb: LMDB_FORMAT_VERSION } });
+    expect(Object.keys(metadata).sort()).toEqual(['appVersion', 'databases', 'includesMedia', 'storageFormats', 'timestamp']);
 
     const listed = await ok(['import', backup, '--data-dir', dir]);
     expect(listed.out).toMatch(/made .* by apack 0\.3\.14/);
@@ -957,6 +965,38 @@ describe('apack db import', () => {
     expect((await ok(['query', "return getRow('Note-a')?.title", '--data-dir', dir])).out).toBe('Alpha');
   });
 
+  // Every database the import would put in place, not only the main one: finding it afterwards would leave the
+  // rollback to put the user's data back
+  it('refuses a backup whose run history this version cannot read, before replacing anything', async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the backup', { databases: ['lmdb', 'runHistory'] });
+    expect(fs.existsSync(path.join(backup, 'runHistory'))).toBe(true);
+    // Files that aren't a run history at all: an EARS database where the record store should be
+    fs.rmSync(path.join(backup, 'runHistory'), { recursive: true });
+    fs.cpSync(path.join(backup, 'lmdb'), path.join(backup, 'runHistory'), { recursive: true });
+
+    const refused = await run(['import', backup, '--force', '--data-dir', dir]);
+
+    expect(refused.error?.message).toMatch(/are an EARS database, not a record store/);
+    // Nothing was put in place: the import says so for each database it replaces
+    expect(refused.err).not.toContain('Imported ');
+    expect((await ok(['query', "return getRow('Note-a')?.title", '--data-dir', dir])).out).toBe('Alpha');
+  });
+
+  it('brings back the run history the backup holds', async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the backup', { databases: ['lmdb', 'runHistory'] });
+    const history = () => openRunHistoryStore(_appDataPaths(dir).runHistory);
+    const before = history();
+    before.delete('TNode-1');
+    before.close();
+
+    await ok(['import', backup, '--force', '--data-dir', dir]);
+
+    const after = history();
+    try { expect(after.get('TNode-1')).toMatchObject({ status: 'completed' }); } finally { after.close(); }
+  });
+
   it("restores a backup whose metadata claims a format its databases aren't in", async () => {
     const dir = await appDataDir();
     const backup = await backupWith('From the backup');
@@ -964,7 +1004,7 @@ describe('apack db import', () => {
     const metadata = JSON.parse(fs.readFileSync(metadataFile, 'utf-8'));
     // The files are what says whether a backup restores: a metadata.json claiming otherwise doesn't cost the
     // user a backup that opens and reads
-    fs.writeFileSync(metadataFile, JSON.stringify({ ...metadata, storageFormat: 99 }));
+    fs.writeFileSync(metadataFile, JSON.stringify({ ...metadata, storageFormats: { lmdb: 99 } }));
 
     await ok(['import', backup, '--force', '--data-dir', dir]);
     expect((await ok(['query', "return getRow('Note-a')?.title", '--data-dir', dir])).out).toBe('From the backup');
@@ -974,7 +1014,7 @@ describe('apack db import', () => {
     const dir = await appDataDir();
     const backup = await backupWith('From the old backup');
     const metadataFile = path.join(backup, 'metadata.json');
-    const { appVersion: _appVersion, storageFormat: _storageFormat, ...older } = JSON.parse(fs.readFileSync(metadataFile, 'utf-8'));
+    const { appVersion: _appVersion, storageFormats: _storageFormats, ...older } = JSON.parse(fs.readFileSync(metadataFile, 'utf-8'));
     fs.writeFileSync(metadataFile, JSON.stringify(older));
 
     const listed = await ok(['import', backup, '--data-dir', dir]);
@@ -1005,6 +1045,20 @@ describe('apack db import', () => {
     expect((await run(['import', missing, '--force', '--data-dir', dir])).error?.message).toMatch(/lmdb folder is missing/);
 
     expect((await ok(['query', "return getRow('Note-a')?.title", '--data-dir', dir])).out).toBe('Alpha');
+  });
+
+  it('says when the backup lists a store it holds nothing for, rather than dropping it quietly', async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the backup');
+    const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
+    // Listed, but the folder isn't there: empty when the backup was made, or lost since
+    fs.writeFileSync(path.join(backup, 'metadata.json'), JSON.stringify({ ...metadata, databases: ['lmdb', 'runHistory'] }));
+
+    const listed = await ok(['import', backup, '--data-dir', dir]);
+    expect(listed.out).toContain('lists runHistory but holds nothing for it, so it comes back empty');
+
+    await ok(['import', backup, '--force', '--data-dir', dir]);
+    expect((await ok(['query', "return getRow('Note-a')?.title", '--data-dir', dir])).out).toBe('From the backup');
   });
 
   it('says when the backup holds rows of a type no installed pack declares, and keeps them', async () => {

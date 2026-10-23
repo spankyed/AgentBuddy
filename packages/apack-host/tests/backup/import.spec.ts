@@ -91,7 +91,7 @@ it('refuses invalid settings before entering replacement or closing the live dat
   const { backup, store, media } = await fixture({ app: { projects: 'invalid' } });
   const replace = vi.fn();
   const close = vi.spyOn(store, 'close');
-  await expect(importDatabase(store, backup, media, { validate, log, withReplacement: replace })).rejects.toThrow();
+  await expect(importDatabase({ lmdb: store }, backup, media, { validate, log, withReplacement: replace })).rejects.toThrow();
   expect(replace).not.toHaveBeenCalled();
   expect(close).not.toHaveBeenCalled();
   expect(store.env.entities.get('Note-current')).toEqual({ type: 'Note' });
@@ -99,7 +99,7 @@ it('refuses invalid settings before entering replacement or closing the live dat
 
 it('installs the validated copy even when the original backup is removed after preflight', async () => {
   const { backup, store, media } = await fixture();
-  await importDatabase(store, backup, media, { validate, log, withReplacement: async replace => {
+  await importDatabase({ lmdb: store }, backup, media, { validate, log, withReplacement: async replace => {
     fs.rmSync(backup, { recursive: true });
     return replace();
   } });
@@ -111,7 +111,7 @@ it('installs the validated copy even when the original backup is removed after p
 it('restores live data and absence of media when reopening the imported database fails', async () => {
   const { backup, store, media } = await fixture();
   vi.spyOn(store, 'reopen').mockImplementationOnce(() => { throw new Error('open failed'); });
-  await expect(importDatabase(store, backup, media, { validate, log })).rejects.toThrow('open failed');
+  await expect(importDatabase({ lmdb: store }, backup, media, { validate, log })).rejects.toThrow('open failed');
   expect(store.env.entities.get('Note-current')).toEqual({ type: 'Note' });
   expect(store.env.entities.get('Note-candidate')).toBeUndefined();
   expect(fs.existsSync(media)).toBe(false);
@@ -121,7 +121,7 @@ it('retains a readable rollback snapshot when restoration also fails', async () 
   const { backup, store, media } = await fixture();
   const reopen = vi.spyOn(store, 'reopen').mockImplementation(() => { throw new Error('open failed'); });
   let failure: unknown;
-  try { await importDatabase(store, backup, media, { validate, log }); } catch (error) { failure = error; }
+  try { await importDatabase({ lmdb: store }, backup, media, { validate, log }); } catch (error) { failure = error; }
   expect(failure).toBeInstanceOf(AggregateError);
   const rollback = (failure as AggregateError).message.split('retained at ')[1];
   retained.push(path.dirname(rollback));

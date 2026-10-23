@@ -45,7 +45,7 @@ export type IncomingDatabaseEvents =
   | { type: 'GET_TRACE_FLOWS' }
   | { type: 'GET_FLOW_EVENTS'; flowId: string; offset?: number; limit?: number }
   | { type: 'GET_NODE_DETAILS'; nodeId: string }
-  | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: 'lmdb'[] }
+  | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'runHistory')[] }
   | { type: 'IMPORT_DATABASE'; path: string; skipUnknownDatabases?: boolean }
   | { type: 'GET_BACKUP_INFO'; path: string }
   | { type: 'RESET_DATABASE' };

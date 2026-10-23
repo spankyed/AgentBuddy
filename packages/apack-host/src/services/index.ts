@@ -4,7 +4,7 @@ import { compileSettingsCatalog } from '../features/settings/validation.ts';
 import { secretRedaction } from '../secrets/redaction.ts';
 import type { HostRuntime, RootEvents } from '@apackdev/sdk/runtime';
 import type { EarsEngine } from '@apackdev/ears';
-import type { LmdbStore } from '@apackdev/ears/lmdb';
+import type { LmdbStore, RecordStore } from '@apackdev/ears/lmdb';
 import type { _RunHistoryRecords } from '@apackdev/sdk/services';
 import type { PackRegistry } from '../packs/registry.ts';
 import { createAppData } from './app-data.ts';
@@ -21,8 +21,11 @@ import { createRunHistory } from './run-history.ts';
 export interface HostRuntimeOptions {
   /** The app's LMDB store, which appData works on */
   store: LmdbStore;
-  /** The run history's store (`openRunHistoryStore`; a test's `_memoryRecords()`), which runHistory works on */
-  runHistory: _RunHistoryRecords;
+  /**
+   * The run history's store (`openRunHistoryStore`), which runHistory works on and appData backs up and resets with
+   * the database; or a test's records in memory (`_memoryRecords()`), which it only works on
+   */
+  runHistory: RecordStore | _RunHistoryRecords;
   /** The app's engine: packs get its operations, the services its `admin` too */
   engine: EarsEngine;
   /** The app's event bus */
@@ -40,6 +43,7 @@ export function createHostRuntime({ transport, appVersion, store, runHistory, en
     onCatalogChanged: packs.onCatalogChanged,
   }));
   packs.catalog.setSettingsAdmission(candidate => compileSettingsCatalog(candidate).validate(settings.getOverrides()));
+  const runHistoryService = createRunHistory(runHistory);
   return {
     transport,
     ears: engine,
@@ -49,10 +53,11 @@ export function createHostRuntime({ transport, appVersion, store, runHistory, en
     services: {
       onboarding: createOnboarding(engine),
       // The service replaces the data; naming what the app is told about it belongs here, with the wiring
-      appData: createAppData({ store, engine: engine.admin, registry: packs, settings,
+      appData: createAppData({ store, history: { service: runHistoryService, ...('copyTo' in runHistory && { store: runHistory }) },
+        engine: engine.admin, registry: packs, settings,
         onReplaced: () => transport.rootEvents.emitIncoming({ to: HOST.bus, event: { type: 'DATA_REPLACED' } }),
       }),
-      runHistory: createRunHistory(runHistory),
+      runHistory: runHistoryService,
       inference,
       secrets,
       filesystem,

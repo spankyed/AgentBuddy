@@ -56,7 +56,7 @@ type UIEvent =
   | { type: 'ENTITY.DELETE'; entityId: string }
   | DatabaseInboxEvent
   | { type: 'BACK_TO_EXPLORER' }
-  | { type: 'BACKUP.EXPORT'; path: string; name?: string; databases: Array<'lmdb'> }
+  | { type: 'BACKUP.EXPORT'; path: string; name?: string; databases: Array<'lmdb' | 'runHistory'> }
   | { type: 'BACKUP.IMPORT'; path: string; skipUnknownDatabases?: boolean }
   | TrailClickEvent
 

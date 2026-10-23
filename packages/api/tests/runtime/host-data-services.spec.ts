@@ -17,7 +17,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-host-data-services-')
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('../../src/runtime/index.ts');
-const { store, engine, packs } = openAppStore();
+const { store, runHistory, engine, packs } = openAppStore();
 const { untypedQuery, untypedCreate, untypedUpsert, untypedWrite } = await import('@apackdev/sdk/ears');
 const { boundHost } = await import('@apackdev/sdk/runtime/internals');
 const { services } = boundHost();
@@ -25,6 +25,7 @@ const settingsAdmin = () => boundHost().services.settings;
 
 afterAll(() => {
   store.close();
+  runHistory.close();
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
@@ -48,7 +49,7 @@ describe('services.appData', () => {
         timestamp: expect.any(Number), databases: ['lmdb'], size: expect.any(Number), hasMedia: false, appVersion: '0.4.1',
       });
       const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
-      expect(metadata).toMatchObject({ appVersion: '0.4.1', storageFormat: expect.any(Number) });
+      expect(metadata).toMatchObject({ appVersion: '0.4.1', storageFormats: { lmdb: expect.any(Number) } });
     } finally {
       version.current = undefined;
     }
@@ -164,9 +165,43 @@ describe('services.appData', () => {
     } finally { off(); }
   });
 
+  it('restores a backup whose listed store it holds nothing for, and says which', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-empty-db-backup-'));
+    dirs.push(dir);
+    const backup = await services.appData.exportBackup(dir, 'sparse', ['lmdb', 'runHistory']);
+    fs.rmSync(path.join(backup, 'runHistory'), { recursive: true, force: true });
+
+    // Reported, so the app can tell the user that store came back empty rather than dropping it silently
+    expect(await services.appData.importBackup(backup)).toMatchObject({ databases: ['lmdb'], missingDatabases: ['runHistory'] });
+  });
+
+  it('brings back the run history a backup holds, with what was running then stopped', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-history-backup-'));
+    dirs.push(dir);
+    const id = services.runHistory.newId();
+    services.runHistory.add({ id, tNodeType: 'flow', label: 'Running at the backup', status: 'active', startedAt: 1 });
+    const backup = await services.appData.exportBackup(dir, 'history', ['lmdb', 'runHistory']);
+    services.runHistory.update(id, { label: 'Changed since' });
+
+    await services.appData.importBackup(backup);
+
+    expect(services.runHistory.get(id)).toMatchObject({ label: 'Running at the backup', status: 'stopped' });
+  });
+
   it('rejects an import of a directory that is not a backup', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-not-backup-'));
     dirs.push(dir);
     await expect(services.appData.importBackup(dir)).rejects.toThrow(`${dir} isn't a backup: it has no metadata.json`);
+  });
+});
+
+describe('a reset', () => {
+  it('empties the run history with the database', async () => {
+    const id = services.runHistory.newId();
+    services.runHistory.add({ id, tNodeType: 'flow', label: 'Before the reset', status: 'completed', startedAt: 1 });
+
+    await services.appData.reset();
+
+    expect(services.runHistory.get(id)).toBeUndefined();
   });
 });

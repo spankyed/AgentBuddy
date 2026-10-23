@@ -7,7 +7,7 @@ import { readInstalledContributionCatalog, disabledPackIds } from '@apackdev/hos
 import { createSettingsBackupValidator } from '@apackdev/host/settings';
 import type { EARS } from '@apackdev/ears';
 import { importDatabase, readBackup, type BackupLog } from '@apackdev/host/backup';
-import type { AppDatabase } from '@apackdev/host/database';
+import { openRunHistoryStore, type AppDatabase } from '@apackdev/host/database';
 import { createSecretsStore } from '@apackdev/host/secrets';
 import { _secretProviderLabel } from '@apackdev/sdk/services';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
@@ -81,6 +81,8 @@ export async function dbReset(args: string[], io: DbIo): Promise<void> {
     const keys = fs.existsSync(db.paths.secretsFile) ? keyLines(secrets) : [];
     io.out(`${force ? 'Deleting' : 'Would delete'} the database (${db.paths.lmdb}):`);
     countLines(entityCounts(db)).forEach((line) => io.out(line));
+    const hasHistory = fs.existsSync(db.paths.runHistory);
+    if (hasHistory) io.out(`${force ? 'Deleting' : 'Would delete'} the run history (${db.paths.runHistory})`);
     if (keepKeys) {
       io.out(`Keeping ${keys.length} stored API key(s) (--keep-keys)`);
     } else {
@@ -94,6 +96,8 @@ export async function dbReset(args: string[], io: DbIo): Promise<void> {
     }
     db.admin.clear();
     await db.store.reset();
+    // The write lock is held and no app runs on the data dir, so nothing has the run history open
+    if (hasHistory) fs.rmSync(db.paths.runHistory, { recursive: true, force: true });
     if (!keepKeys) secrets.clearAll();
     return '\nReset. apack creates its default data on its next start.';
   });
@@ -214,7 +218,12 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
     }
     // Its progress lines go to stderr with everything else that isn't the result, so `apack db import > file` holds
     // only what the command was asked for
-    await importDatabase(db.store, backupDir, db.paths.media, { skipUnknownDatabases: skipUnknown, log: backupLog(io), validate });
+    const runHistory = openRunHistoryStore(db.paths.runHistory);
+    try {
+      await importDatabase({ lmdb: db.store, runHistory }, backupDir, db.paths.media, { skipUnknownDatabases: skipUnknown, log: backupLog(io), validate });
+    } finally {
+      runHistory.close();
+    }
     return '\nImported.';
   });
   if (done) io.out(done);
