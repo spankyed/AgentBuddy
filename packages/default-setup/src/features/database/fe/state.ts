@@ -383,8 +383,10 @@ const databaseState = setup({
         // only the page being awaited — so no case can tell the two readings apart, and none pretends to.
         // It is the event's to say: loosen that guard to accept a range and reading the context goes wrong
         // silently, which is the edit that would make this line matter.
+        // A later page of a live run repeats what an event arriving since shifted onto it: pages are newest first
+        // by offset, so a new event moves every one down. Only the ones not listed yet are added
         flowEvents: ev.offset > 0
-          ? [...context.flowEvents, ...ev.events]
+          ? [...context.flowEvents, ...ev.events.filter((event) => !context.flowEvents.some((listed) => listed.id === event.id))]
           : ev.events,
         runPagination: {
           ...context.runPagination,
