@@ -47,7 +47,7 @@ describe('reportError', () => {
     testPacks.designations.set('brain', 'default-setup/brain');
     // The step's run node, holding what the step ran with
     const history = testRunHistory();
-    const runNodeId = history.start({ kind: 'step', label: 'Step', nodeAttributes: { input: 'hello' } }).id;
+    const runNodeId = history.start({ kind: 'step', label: 'Step', stepNodeType: 'llm', input: { prompt: 'hello' } }).id;
     let returned: ReturnType<typeof reportError>;
     const { logs, toSurfaces, outgoing } = capture(() => {
       returned = reportError({
@@ -67,7 +67,7 @@ describe('reportError', () => {
     expect(toSurfaces).toEqual([{ to: 'default-setup/brain', call: expect.any(String), event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! }, via: 'brain-llm' }]);
     expect(outgoing).toEqual([]);
     expect(history.get(runNodeId)).toMatchObject({
-      nodeAttributes: { input: 'hello' },
+      input: { prompt: 'hello' },
       result: { error: { message: 'model failed', source: 'brain-llm', phase: 'llm.execute', errorId, stack } },
     });
     expect(takeSystemErrors()).toEqual([]);

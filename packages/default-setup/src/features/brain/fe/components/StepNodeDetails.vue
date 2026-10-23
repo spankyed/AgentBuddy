@@ -156,8 +156,13 @@ const statusClasses = computed(() => {
   }
 });
 
-// What the step ran with; what it returned is its own field, shown in the output section
-const inputParams = computed(() => props.node?.nodeAttributes ?? {});
+// What the node was given, as recorded — an event's payload, a flow's or a step's input; what it returned is its
+// own field, shown in the output section
+const inputParams = computed(() => {
+  const recorded = props.node?.kind === 'event' ? props.node.payload : props.node?.input;
+  if (recorded === undefined || recorded === null) return {};
+  return typeof recorded === 'object' ? recorded : { payload: recorded };
+});
 
 const outputResult = computed(() => props.node?.result);
 

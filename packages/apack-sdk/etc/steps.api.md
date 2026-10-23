@@ -13,6 +13,24 @@ import { z } from 'zod';
 // @public
 export function collapseRecord(entries: FieldMapping[] | undefined): Record<string, MapEntry> | undefined;
 
+// @public
+export interface EventRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: string;
+    // (undocumented)
+    eventType: string;
+    // (undocumented)
+    input?: never;
+    // (undocumented)
+    kind: 'event';
+    payload?: unknown;
+    // (undocumented)
+    result?: never;
+    // (undocumented)
+    stepNodeType?: never;
+    triggerType: string;
+}
+
 // @public (undocumented)
 export interface ExecutionContext {
     // (undocumented)
@@ -53,6 +71,23 @@ export interface FieldMapping {
 }
 
 // @public
+export interface FlowRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: never;
+    // (undocumented)
+    eventType?: never;
+    input?: Record<string, unknown>;
+    // (undocumented)
+    kind: 'flow';
+    // (undocumented)
+    payload?: never;
+    result?: unknown;
+    stepNodeType?: string;
+    // (undocumented)
+    triggerType?: never;
+}
+
+// @public
 export function getStepBinding(type: string): StepBackendBinding | undefined;
 
 // @public (undocumented)
@@ -80,45 +115,33 @@ export function mapProblems(map: unknown, path: string): Array<{
 export function _mergeStepDefinitions(existing: StepDefinition, def: StepDefinition): StepDefinition;
 
 // @public
-export interface RunNode {
+export type RunNode = FlowRunNode | EventRunNode | StepRunNode;
+
+// @public
+export interface RunNodeBase {
     // (undocumented)
     completedAt?: number;
-    // (undocumented)
-    cronExpression?: string;
-    // (undocumented)
-    eventType?: string;
     // (undocumented)
     final?: boolean;
     flowId?: EARS.EntityId;
     // (undocumented)
     id: RunNodeId;
     // (undocumented)
-    kind: RunNodeKind;
-    // (undocumented)
     label: string;
-    // (undocumented)
-    nodeAttributes?: Record<string, unknown>;
     nodeId?: EARS.EntityId;
     parentId?: RunNodeId;
-    // (undocumented)
-    resolvedParams?: Record<string, unknown>;
-    result?: unknown;
     rootId: RunNodeId;
     // (undocumented)
     startedAt: number;
     // (undocumented)
     status: RunStatus;
-    // (undocumented)
-    stepNodeType?: string;
-    // (undocumented)
-    triggerType?: string;
 }
 
 // @public
 export type RunNodeId = `RunNode-${string}`;
 
-// @public (undocumented)
-export type RunNodeKind = 'flow' | 'event' | 'step';
+// @public
+export type RunNodeKind = RunNode['kind'];
 
 // @public
 export type RunStatus = 'active' | 'completed' | 'failed' | 'stopped';
@@ -132,10 +155,9 @@ export interface RuntimeServices {
 }
 
 // @public
-export interface RunTree extends RunNode {
-    // (undocumented)
+export type RunTree = RunNode & {
     children: RunTree[];
-}
+};
 
 // @public
 export type SdkEntityShapes = {
@@ -329,6 +351,24 @@ export interface StepRun {
     result: unknown;
     // (undocumented)
     timestamp: TimestampMs;
+}
+
+// @public
+export interface StepRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: never;
+    // (undocumented)
+    eventType?: never;
+    input?: Record<string, unknown>;
+    // (undocumented)
+    kind: 'step';
+    // (undocumented)
+    payload?: never;
+    result?: unknown;
+    // (undocumented)
+    stepNodeType: string;
+    // (undocumented)
+    triggerType?: never;
 }
 
 // @public (undocumented)

@@ -22,14 +22,14 @@ describe('codex flow routing', () => {
     const run = await app.runFlow('Codex', { event: 'user.thread.pause', data: { threadId: 'Thread-1' } })
 
     expect(actions(run)).toEqual(['CDX: Pause Turn'])
-    expect(step(run, 'CDX: Pause Turn')?.params).toEqual({ threadId: 'Thread-1' })
+    expect(step(run, 'CDX: Pause Turn')?.input.params).toEqual({ threadId: 'Thread-1' })
   })
 
   it('unqueues without requiring a mode payload', async () => {
     const run = await app.runFlow('Codex', { event: 'user.thread.unqueue', data: { threadId: 'Thread-1', messageId: 'Message-1' } })
 
     expect(actions(run)).toEqual(['CDX: Unqueue Message'])
-    expect(step(run, 'CDX: Unqueue Message')?.params).toMatchObject({ messageId: 'Message-1' })
+    expect(step(run, 'CDX: Unqueue Message')?.input.params).toMatchObject({ messageId: 'Message-1' })
   })
 
   it.each([
@@ -43,7 +43,7 @@ describe('codex flow routing', () => {
     })
 
     expect(actions(run)).toEqual(['CDX: Pause Turn', handler])
-    expect(step(run, handler)?.params).toMatchObject({ threadId: 'Thread-1', messageId: 'Message-1' })
+    expect(step(run, handler)?.input.params).toMatchObject({ threadId: 'Thread-1', messageId: 'Message-1' })
   })
 
   it("doesn't handle a revert of a thread without a Codex agent", async () => {
@@ -55,6 +55,6 @@ describe('codex flow routing', () => {
     const run = await app.runFlow('Codex', { event: 'thread.fork', data: { newThreadId: 'Thread-2', sourceUserMessagesAfterFork: 2 } })
 
     expect(actions(run)).toEqual(['CDX: Handle Fork'])
-    expect(step(run, 'CDX: Handle Fork')?.params).toMatchObject({ newThreadId: 'Thread-2', sourceUserMessagesAfterFork: 2 })
+    expect(step(run, 'CDX: Handle Fork')?.input.params).toMatchObject({ newThreadId: 'Thread-2', sourceUserMessagesAfterFork: 2 })
   })
 })

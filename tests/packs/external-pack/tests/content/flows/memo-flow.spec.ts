@@ -13,7 +13,7 @@ describe('memo flow', () => {
 
     const run = await app.runFlow('Memo Flow', { event: 'memo.requested', data: { text: 'from a flow' } });
 
-    expect(run.steps).toEqual([expect.objectContaining({ label: 'add-memo', status: 'completed', params: { text: 'from a flow' } })]);
+    expect(run.steps).toEqual([expect.objectContaining({ label: 'add-memo', status: 'completed', input: expect.objectContaining({ params: { text: 'from a flow' } }) })]);
     expect(repository.memoQueries.all().map((memo) => memo.text)).toEqual(['from a flow']);
   });
 });

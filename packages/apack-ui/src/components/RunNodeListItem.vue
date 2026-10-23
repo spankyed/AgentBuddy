@@ -69,14 +69,14 @@
       <div v-if="isExpanded && hasDetails" class="run-node-details">
         <div class="mx-3 mb-3 px-4 py-3 bg-neutral-900/80 rounded-b-lg border-t border-neutral-800/50">
           <!-- Node Attributes (lazy loaded or from node itself) -->
-          <div v-if="displayNodeAttributes && Object.keys(displayNodeAttributes).length > 0" class="mb-3">
+          <div v-if="recordedDetails && Object.keys(recordedDetails).length > 0" class="mb-3">
             <div class="text-xs font-medium text-neutral-400 mb-2">Node Attributes</div>
-            <DataRenderer :data="displayNodeAttributes" :default-expanded="false" :compact="true" />
+            <DataRenderer :data="recordedDetails" :default-expanded="false" :compact="true" />
           </div>
 
           <!-- All info inline at the bottom with responsive breakpoints -->
           <div class="flex flex-wrap items-start gap-2 text-xs overflow-hidden"
-               :class="displayNodeAttributes && Object.keys(displayNodeAttributes).length > 0 ? 'pt-3 border-t border-neutral-800/30' : ''">
+               :class="recordedDetails && Object.keys(recordedDetails).length > 0 ? 'pt-3 border-t border-neutral-800/30' : ''">
             <!-- Left side: Step/Event/Flow Type and Entity ID -->
             <div class="flex items-center gap-x-3 min-w-[150px] mr-auto">
               <!-- Step/Event/Flow Type -->
@@ -164,18 +164,17 @@ const hasChildren = (node: RunNode | RunTree): node is RunTree => {
   return 'children' in node && Array.isArray(node.children) && node.children.length > 0;
 };
 
-const hasDetails = computed(() => {
-  return props.node.kind === 'flow' ||
-         props.node.kind === 'step' ||
-         props.node.kind === 'event' ||
-         props.node.nodeAttributes ||
-         props.nodeDetails?.nodeAttributes;
-});
+const hasDetails = computed(() => ['flow', 'step', 'event'].includes(props.node.kind));
+
+/** What a node recorded of what it was given: an event's payload, a flow's or a step's input */
+const recordedOf = (node: RunNode) => (node.kind === 'event' ? node.payload : node.input);
 
 // What the node ran with, and what it returned beside it
-const displayNodeAttributes = computed(() => {
+const recordedDetails = computed(() => {
   const node = props.nodeDetails ?? props.node;
-  return node.result === undefined ? node.nodeAttributes : { ...node.nodeAttributes, result: node.result };
+  const recorded = recordedOf(node);
+  if (node.result === undefined) return recorded;
+  return recorded !== null && typeof recorded === 'object' ? { ...recorded, result: node.result } : { input: recorded, result: node.result };
 });
 
 const effectiveNodeType = computed((): string => {
@@ -261,7 +260,7 @@ const handleClick = () => {
   if (hasChildren(props.node) || hasDetails.value) {
     isExpanded.value = !isExpanded.value;
 
-    if (isExpanded.value && hasDetails.value && !props.nodeDetails && !props.node.nodeAttributes) {
+    if (isExpanded.value && hasDetails.value && !props.nodeDetails && recordedOf(props.node) === undefined) {
       emit('request-details', props.node.id);
     }
 

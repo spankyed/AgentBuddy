@@ -25,15 +25,15 @@ const STORES: Record<string, () => RunHistory> = {
 };
 
 /** Starts a node and returns its id */
-function node(history: RunHistory, fields: Partial<RunNodeStart> & Pick<RunNodeStart, 'kind'>): RunNodeId {
-  return history.start({ label: fields.kind, ...fields }).id;
+function node(history: RunHistory, fields: { kind: RunNode['kind'] } & Record<string, unknown>): RunNodeId {
+  return history.start({ label: fields.kind, ...fields } as RunNodeStart).id;
 }
 
 /** A node as a run long ago left it, written to the store directly: times a running app would never give it */
-function recorded(store: RecordStore<RunNode>, fields: Partial<RunNode> & Pick<RunNode, 'kind' | 'startedAt'>): RunNodeId {
+function recorded(store: RecordStore<RunNode>, fields: { kind: RunNode['kind']; startedAt: number; parentId?: RunNodeId } & Record<string, unknown>): RunNodeId {
   const id = store.newId('RunNode') as RunNodeId;
   const parent = fields.parentId === undefined ? undefined : store.get(fields.parentId);
-  store.put({ label: fields.kind, status: 'completed', ...fields, id, rootId: parent?.rootId ?? id });
+  store.put({ label: fields.kind, status: 'completed', ...fields, id, rootId: parent?.rootId ?? id } as RunNode);
   return id;
 }
 
@@ -96,9 +96,9 @@ describe.each(Object.keys(STORES))('the run history %s', (where) => {
   it('starts a node now and active, under its parent\'s root, and ends it now with its status', () => {
     const history = fresh();
     const session = history.start({ kind: 'flow', label: 'Session' });
-    const step = history.start({ kind: 'step', label: 'Step', parentId: session.id, resolvedParams: { text: 'x'.repeat(20_000) } });
+    const step = history.start({ kind: 'step', label: 'Step', stepNodeType: 'llm', parentId: session.id, input: { text: 'x'.repeat(20_000) } });
     // Returned as given, not as stored: a step runs on its params whole
-    expect(step).toMatchObject({ status: 'active', rootId: session.id, startedAt: expect.any(Number), resolvedParams: { text: 'x'.repeat(20_000) } });
+    expect(step).toMatchObject({ status: 'active', rootId: session.id, startedAt: expect.any(Number), input: { text: 'x'.repeat(20_000) } });
     history.finish(step.id, 'failed');
     expect(history.get(step.id)).toMatchObject({ status: 'failed', completedAt: expect.any(Number) });
   });

@@ -90,7 +90,7 @@ async function appDataDir(): Promise<string> {
   // 2026-10-01 left them
   const store = openRunHistoryStore(_appDataPaths(dir).runHistory);
   store.put({ id: 'RunNode-1', rootId: 'RunNode-1', kind: 'flow', label: 'Root', status: 'completed', startedAt: Date.UTC(2026, 9, 1), flowId: 'Flow-root' });
-  store.put({ id: 'RunNode-2', rootId: 'RunNode-1', kind: 'event', label: 'go', status: 'completed', startedAt: Date.UTC(2026, 9, 1, 0, 1), parentId: 'RunNode-1' });
+  store.put({ id: 'RunNode-2', rootId: 'RunNode-1', kind: 'event', label: 'go', eventType: 'go', triggerType: 'listener', status: 'completed', startedAt: Date.UTC(2026, 9, 1, 0, 1), parentId: 'RunNode-1' });
   store.close();
   return dir;
 }

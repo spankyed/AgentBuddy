@@ -258,8 +258,8 @@ export interface RelationEntity extends BaseEntity {
     relationDetails: EARS.RelationDetail;
 }
 
-// @public (undocumented)
-export type RunNodeKind = 'flow' | 'event' | 'step';
+// @public
+export type RunNodeKind = RunNode['kind'];
 
 // @public
 export function safeEvents<TEvent extends {
