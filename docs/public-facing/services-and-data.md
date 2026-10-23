@@ -255,8 +255,9 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 |---|---|
 | `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact`, `newId` and `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
 | `#generated/repository` | `repository`, typed with your and your dependencies' repositories |
-| `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, relation, role, graph and blueprint operations |
-| `@apackdev/ears` | The engine itself: `createEarsEngine` for tests and tooling, `EarsError`, `RepositoryError`, `bp` blueprints, the core `EARS` types and `BaseEntity` |
+| `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, and the relation and role reads |
+| `@apackdev/ears` | The engine itself: `createEarsEngine` for tests and tooling, `EarsError`, the core `EARS` types and `BaseEntity` |
+| `@apackdev/sdk/repositories` | The SDK entities' repositories, and `RepositoryError` (`NOT_FOUND`, `VALIDATION_ERROR`, `OPERATION_FAILED`), which a repository throws to refuse |
 | `@apackdev/sdk/types` | What the SDK adds to the engine's types: its `EARS` (with the SDK's entities and relation kinds) and the SDK entity shapes |
 | `@apackdev/sdk/repositories` | The SDK entities' repositories |
 

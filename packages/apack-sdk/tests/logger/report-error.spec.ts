@@ -8,7 +8,7 @@ import * as os from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLogger, reportError, setDebugEnabled, type LogEvent } from '../../src/logger/index.ts';
 import { startTestRuntime, takeSystemErrors, testPacks, testRootEvents } from '../../src/testing/index.ts';
-import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
+import { RepositoryError, RepositoryErrorCode } from '../../src/repositories/repository-error.ts';
 import { untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
 import type { Message } from '../../src/events/index.ts';
 import type { EARS } from '../../src/types/entities.ts';
