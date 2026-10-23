@@ -1,5 +1,5 @@
-// A step's resolved params are what it runs on and writes, so they reach it whole. The trace copy
-// (nodeAttributes) is truncated to bound the trace's size; truncating the params too made a create or
+// A step's resolved params are what it runs on and writes, so they reach it whole. The run node's copy
+// (nodeAttributes) is truncated to bound its size; truncating the params too made a create or
 // update step persist a cut-off string, or a `{ value, _truncated }` wrapper in place of a long array.
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@apackdev/testing/harness'
@@ -7,7 +7,7 @@ import { action, entry, keepAlive, on } from '#generated/flow-helpers.ts'
 import { repository } from '#generated/repository.ts'
 import { untypedQuery } from '@apackdev/sdk/ears'
 
-/** Past MAX_STRING_LENGTH (10 KB) and MAX_ARRAY_ITEMS (100) in the trace truncator */
+/** Past MAX_STRING_LENGTH (10 KB) and MAX_ARRAY_ITEMS (100) in the result truncator */
 const LONG_TEXT_LENGTH = 20_000
 const LONG_LIST_LENGTH = 150
 
@@ -38,7 +38,7 @@ async function runCreateWithBigFields() {
 }
 
 describe('the params a step runs on', () => {
-  it('write a long string whole, not cut off at the trace limit', async () => {
+  it('write a long string whole, not cut off at the run node limit', async () => {
     await runCreateWithBigFields()
 
     const note = noteRows().at(-1)!
@@ -55,11 +55,11 @@ describe('the params a step runs on', () => {
     expect(note.tags as unknown[]).toHaveLength(LONG_LIST_LENGTH)
   })
 
-  it('still bound the trace copy the UI reads', async () => {
+  it('still bound the run node copy the UI reads', async () => {
     const app = await runCreateWithBigFields()
 
-    const big = app.flowTrace('Outer').find((step) => step.label === 'big')!
-    // The trace keeps each oversized field as a `{ value, _truncated }` marker, so a run's trace stays bounded
+    const big = app.flowSteps('Outer').find((step) => step.label === 'big')!
+    // The run node keeps each oversized field as a `{ value, _truncated }` marker, so a run node stays bounded
     const result = big.result as { text: { value: string; _truncated?: boolean } }
     expect(result.text._truncated).toBe(true)
     expect(result.text.value.length).toBeLessThan(LONG_TEXT_LENGTH)

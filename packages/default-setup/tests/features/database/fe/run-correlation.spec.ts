@@ -1,4 +1,4 @@
-// The trace viewer's flow events: a reply that names which page of which flow it is, against a view that
+// The run history viewer's flow events: a reply that names which page of which flow it is, against a view that
 // has moved on.
 //
 // Every `GET_FLOW_EVENTS` assigns `currentFlowId` and the offset it asked for before it sends — both the
@@ -21,7 +21,7 @@ vi.mock('#generated/events.ts', () => ({ sendToSystem }));
 const { default: databaseState } = await import('#features/database/fe/state.ts');
 
 /**
- * A trace node as the viewer lists it: the two fields it reads, which is deliberately not a whole
+ * A run node as the viewer lists it: the two fields it reads, which is deliberately not a whole
  * `RunNode`. **The cast stops here** — the events the cases send are checked, so a misspelled event
  * type is a compile error rather than a send the machine ignores while the case asserts nothing.
  */
@@ -31,7 +31,7 @@ const anEvent = (id: string) => ({ id, label: id, children: [] }) as unknown as 
 const page = (flowId: string, offset: number, ids: string[], hasMore = false) =>
   ({ type: 'FLOW_EVENTS_RESULT' as const, flowId, offset, hasMore, events: ids.map(anEvent) });
 
-/** The trace viewer, which is where flow selection is handled */
+/** The run history viewer, which is where flow selection is handled */
 function tracing() {
   const actor = createActor(databaseState).start();
   actor.send({ type: 'VIEW_MODE.TOGGLE' });
@@ -53,8 +53,8 @@ beforeEach(() => {
 it('shows the flow last selected, not the answer that arrived last', () => {
   const actor = tracing();
 
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f2' });
+  actor.send({ type: 'RUNS.SELECT_FLOW', flowId: 'f1' });
+  actor.send({ type: 'RUNS.SELECT_FLOW', flowId: 'f2' });
   expect(actor.getSnapshot().context.currentFlowId, 'the selection assigns it at once').toBe('f2');
 
   // f1's answer turns up after the viewer has moved on
@@ -68,11 +68,11 @@ it('shows the flow last selected, not the answer that arrived last', () => {
 it('clears the previous flow\'s events when a new one is selected', () => {
   const actor = tracing();
 
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+  actor.send({ type: 'RUNS.SELECT_FLOW', flowId: 'f1' });
   actor.send(page('f1', 0, ['from-f1']));
   expect(flowEvents(actor)).toEqual(['from-f1']);
 
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f2' });
+  actor.send({ type: 'RUNS.SELECT_FLOW', flowId: 'f2' });
   expect(flowEvents(actor), 'the view does not show one flow under another while loading').toEqual([]);
 });
 
@@ -85,14 +85,14 @@ it('clears the previous flow\'s events when a new one is selected', () => {
  */
 it('drops a page the viewer has paged away from, in the same flow', () => {
   const actor = tracing();
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+  actor.send({ type: 'RUNS.SELECT_FLOW', flowId: 'f1' });
   actor.send(page('f1', 0, ['one'], true));
 
-  actor.send({ type: 'TRACE.LOAD_MORE' });
+  actor.send({ type: 'RUNS.LOAD_MORE' });
   expect(askedOffsets(), 'the second page was asked for').toEqual([0, 50]);
 
   // Back to page one while that page is still coming
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+  actor.send({ type: 'RUNS.SELECT_FLOW', flowId: 'f1' });
   actor.send(page('f1', 50, ['two']));
 
   expect(flowEvents(actor), 'page two is not the flow').toEqual([]);
@@ -101,12 +101,12 @@ it('drops a page the viewer has paged away from, in the same flow', () => {
 // A page is placed by the offset it is for: page one replaces, a later page appends
 it('appends a later page and replaces on the first', () => {
   const actor = tracing();
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+  actor.send({ type: 'RUNS.SELECT_FLOW', flowId: 'f1' });
 
   actor.send(page('f1', 0, ['one'], true));
   expect(flowEvents(actor)).toEqual(['one']);
 
-  actor.send({ type: 'TRACE.LOAD_MORE' });
+  actor.send({ type: 'RUNS.LOAD_MORE' });
   actor.send(page('f1', 50, ['two']));
   expect(flowEvents(actor), 'the later page adds to the list').toEqual(['one', 'two']);
 });
@@ -117,11 +117,11 @@ it('appends a later page and replaces on the first', () => {
  */
 it('asks for one page at a time', () => {
   const actor = tracing();
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+  actor.send({ type: 'RUNS.SELECT_FLOW', flowId: 'f1' });
   actor.send(page('f1', 0, ['one'], true));
 
-  actor.send({ type: 'TRACE.LOAD_MORE' });
-  actor.send({ type: 'TRACE.LOAD_MORE' });
+  actor.send({ type: 'RUNS.LOAD_MORE' });
+  actor.send({ type: 'RUNS.LOAD_MORE' });
 
   expect(askedOffsets(), 'the second click waits for the first page').toEqual([0, 50]);
 });

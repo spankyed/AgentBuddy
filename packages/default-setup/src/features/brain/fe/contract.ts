@@ -5,7 +5,7 @@
 // `apack.json` names it at `features[].surface.contract`.
 import type { EventListenerEntity } from '#generated/types.ts'
 import type { StepRuntimeError, RunNode, RunTree } from '@apackdev/sdk/steps'
-import type { NormalizedRunNodeTree } from './trace-tree.ts'
+import type { NormalizedRunNodeTree } from './run-tree.ts'
 
 export interface BrainContext {
   flowRunNodeId?: string;

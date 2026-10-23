@@ -29,11 +29,11 @@ export { ContentRuntime }
 // @public (undocumented)
 export interface FlowRun {
     eventRunNodeIds: string[];
-    steps: FlowStepTrace[];
+    steps: FlowRunStep[];
 }
 
 // @public
-export interface FlowStepTrace {
+export interface FlowRunStep {
     kind: string;
     // (undocumented)
     label: string;
@@ -122,7 +122,7 @@ export { takeSystemErrors }
 export interface TestApp {
     connect(): Promise<void>;
     emitted(surface: string): SurfaceEvent[];
-    flowTrace(label: string): FlowStepTrace[];
+    flowSteps(label: string): FlowRunStep[];
     nextEmit(surface: string, type: string, options?: {
         timeoutMs?: number;
         answering?: string;

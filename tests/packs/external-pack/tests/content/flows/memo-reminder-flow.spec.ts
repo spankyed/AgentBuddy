@@ -26,7 +26,7 @@ describe('memo reminder flow', () => {
     tick();
     await app.settle();
 
-    expect(app.flowTrace('Memo Reminder Flow').map((step) => [step.label, step.status])).toEqual([
+    expect(app.flowSteps('Memo Reminder Flow').map((step) => [step.label, step.status])).toEqual([
       ['add-reminder', 'completed'],
       ['Added?', 'completed'],
       ['reminded', 'completed'],

@@ -23,7 +23,7 @@
     <div v-else-if="brainIsDead" class="run-node-tree">
       <div class="px-4 pt-4 pb-3 border-b border-neutral-800 bg-neutral-900/30">
         <div class="flex items-center justify-between">
-          <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Event Trace</h3>
+          <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Run Events</h3>
           <span class="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded bg-neutral-700/50 text-neutral-400">Stopped</span>
         </div>
       </div>
@@ -42,7 +42,7 @@
     <div v-else-if="runNodeTree && runNodeTree.length > 0" class="run-node-tree">
       <div class="px-4 pt-4 pb-3 border-b border-neutral-800 bg-neutral-900/30">
         <div class="flex items-center justify-between">
-          <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Event Trace</h3>
+          <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Run Events</h3>
           <span class="text-xs text-neutral-500">
             <template v-if="displayedNodes.length < runNodeTree.length">
               {{ displayedNodes.length }} of {{ runNodeTree.length }} event{{ runNodeTree.length !== 1 ? 's' : '' }}
@@ -73,7 +73,7 @@
           </svg>
         </div>
         <p class="text-sm font-medium text-neutral-400">No event data</p>
-        <p class="mt-1 text-xs text-neutral-500">Run a flow to see an event trace</p>
+        <p class="mt-1 text-xs text-neutral-500">Run a flow to see its events</p>
       </div>
     </div>
   </div>

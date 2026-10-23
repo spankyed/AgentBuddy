@@ -172,7 +172,7 @@ function truncateAll(obj: Record<string, any>): Record<string, any> {
  *─────────────────────────────────────────────────────────────*/
 
 export interface PreparedAttributes {
-  /** All attributes (config + user data) for UI display, truncated to bound the trace's size. */
+  /** All attributes (config + user data) for UI display, truncated to bound the run node's size. */
   nodeAttributes: Record<string, any>;
   /**
    * Only user-provided params (direct + mapped), whole: this is what the step runs on and writes, so it

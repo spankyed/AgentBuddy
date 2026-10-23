@@ -1152,14 +1152,14 @@ interface DatabaseContext {
     isAiQueryLoading: boolean;
     isRefreshing: boolean;
     settings: DatabaseSettings | null;
-    viewMode: 'database' | 'trace';
-    traceFlows: RunNode[];
+    viewMode: 'database' | 'runs';
+    flowRuns: RunNode[];
     currentFlowId: string | null;
     flowEvents: RunTree[];
     expandedNodes: Set<string>;
     nodeDetails: Map<string, RunNode>;
-    isLoadingTrace: boolean;
-    tracePagination: {
+    isLoadingRuns: boolean;
+    runPagination: {
         offset: number;
         limit: number;
         hasMore: boolean;
@@ -2052,7 +2052,7 @@ type IncomingDatabaseEvents = {
 } | {
     type: 'REFRESH_SCHEMA';
 } | {
-    type: 'GET_TRACE_FLOWS';
+    type: 'GET_FLOW_RUNS';
 } | {
     type: 'GET_FLOW_EVENTS';
     flowId: string;
@@ -3351,7 +3351,7 @@ type OutgoingDatabaseEvents = {
     type: 'AI_QUERY_ERROR';
     error: string;
 } | {
-    type: 'TRACE_FLOWS_RESULT';
+    type: 'FLOW_RUNS_RESULT';
     flows: RunNode[];
 }
 /**
@@ -6542,9 +6542,9 @@ declare const threadQueries: {
         id: `${string}-${string}` & {
             readonly __entity?: "Thread" | undefined;
         };
-        shortCode: ThreadTypeShortCode;
         topic: string;
         status: string;
+        shortCode: ThreadTypeShortCode;
         timestamp: number;
         relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
     }[];

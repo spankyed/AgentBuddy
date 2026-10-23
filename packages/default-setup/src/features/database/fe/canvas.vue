@@ -1,8 +1,8 @@
 <template>
   <!-- Show Backup/Restore UI when in backup state -->
   <BackupRestore v-if="isInBackupState" />
-  <!-- Show Trace Viewer or Database UI based on viewMode -->
-  <TraceHistoryViewer v-else-if="viewMode === 'trace'" />
+  <!-- The run history viewer or the database, by viewMode -->
+  <RunHistoryViewer v-else-if="viewMode === 'runs'" />
   <div v-else class="flex w-full h-full overflow-hidden bg-neutral-800">
     <!-- Schema Panel -->
     <div 
@@ -59,7 +59,7 @@ import type { DatabaseState } from './state.ts'
 import SimpleTable from './components/simple-table/SimpleTable.vue'
 import SchemaPanel from './components/SchemaPanel.vue'
 import QueryEditor from './components/QueryEditor.vue'
-import TraceHistoryViewer from './components/trace/TraceHistoryViewer.vue'
+import RunHistoryViewer from './components/runs/RunHistoryViewer.vue'
 import BackupRestore from './components/BackupRestore.vue'
 
 const databaseActor: DatabaseState = useSurface()

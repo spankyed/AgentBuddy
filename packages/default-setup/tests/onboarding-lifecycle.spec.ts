@@ -6,7 +6,7 @@ import { packSettings } from '#generated/settings.ts';
 import { services } from '#generated/services.ts';
 import { getAllFlowActorIds } from '#features/brain/be/flow-system.ts';
 
-const initialized = (app: TestApp) => app.flowTrace('Onboarding Flow').filter(step => step.label === 'setup onboarding' && step.status === 'completed');
+const initialized = (app: TestApp) => app.flowSteps('Onboarding Flow').filter(step => step.label === 'setup onboarding' && step.status === 'completed');
 const thread = () => repository.threadQueries.idByRole('assistant_birth');
 const progress = () => {
   const id = thread();

@@ -34,15 +34,15 @@ export interface DatabaseContext {
   isAiQueryLoading: boolean;
   isRefreshing: boolean;
   settings: DatabaseSettings | null;
-  // Trace viewer fields
-  viewMode: 'database' | 'trace';
-  traceFlows: RunNode[];
+  // Run history viewer fields
+  viewMode: 'database' | 'runs';
+  flowRuns: RunNode[];
   currentFlowId: string | null;
   flowEvents: RunTree[];
   expandedNodes: Set<string>;
   nodeDetails: Map<string, RunNode>;
-  isLoadingTrace: boolean;
-  tracePagination: {
+  isLoadingRuns: boolean;
+  runPagination: {
     offset: number;
     limit: number;
     hasMore: boolean;

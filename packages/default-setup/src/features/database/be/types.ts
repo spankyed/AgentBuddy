@@ -42,7 +42,7 @@ export type IncomingDatabaseEvents =
   | { type: 'EXECUTE_TRANSACTION'; code: string }
   | { type: 'GENERATE_AI_QUERY'; prompt: string; mode?: 'query' | 'transaction' }
   | { type: 'REFRESH_SCHEMA' }
-  | { type: 'GET_TRACE_FLOWS' }
+  | { type: 'GET_FLOW_RUNS' }
   | { type: 'GET_FLOW_EVENTS'; flowId: string; offset?: number; limit?: number }
   | { type: 'GET_NODE_DETAILS'; nodeId: string }
   | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'runHistory')[] }
@@ -81,7 +81,7 @@ export type OutgoingDatabaseEvents =
    * and one event cannot be both.
    */
   | { type: 'AI_QUERY_ERROR'; error: string }
-  | { type: 'TRACE_FLOWS_RESULT'; flows: RunNode[] }
+  | { type: 'FLOW_RUNS_RESULT'; flows: RunNode[] }
   /**
    * `offset` is which page these events are, which is what tells two pages of one flow apart — the flow id
    * alone cannot, so a viewer correlating on it places a late page by wherever it has since got to.

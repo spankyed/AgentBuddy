@@ -85,7 +85,7 @@ export interface StepBuildFacet {
 /*─────────────────────────────────────────────────────────────────
  * Brain Runtime Types
  *
- * Shared types for execution context, trace nodes, and runtime
+ * Shared types for execution context, run nodes, and runtime
  * services. These live in the SDK so step handlers and external
  * packs get real types instead of `unknown` casts.
  *─────────────────────────────────────────────────────────────────*/

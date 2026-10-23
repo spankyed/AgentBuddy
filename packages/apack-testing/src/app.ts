@@ -32,7 +32,7 @@ export interface StartAppOptions {
 }
 
 /** A step a flow ran: its node in the run history (`services.runHistory`) */
-export interface FlowStepTrace {
+export interface FlowRunStep {
   runNodeId: string;
   label: string;
   /** `step` or `flow` (a subflow) */
@@ -55,10 +55,10 @@ export interface RunFlowOptions {
 }
 
 export interface FlowRun {
-  /** The trace nodes of the flow's tracks the event triggered */
+  /** The run nodes of the flow's tracks the event triggered */
   eventRunNodeIds: string[];
   /** The steps those tracks ran, in the order they started */
-  steps: FlowStepTrace[];
+  steps: FlowRunStep[];
 }
 
 export interface TestApp {
@@ -117,12 +117,12 @@ export interface TestApp {
    * left only waiting. Without `event`, resolves with the entry tracks the flow ran when it started.
    *
    * It returns the tracks the event itself triggered. Tracks started by events those tracks send (a `fire` step,
-   * a `TRIGGER_BRAIN_EVENT` sent to the brain's role) aren't in the result: `settle()` after it, then read them with `flowTrace`. It doesn't
+   * a `TRIGGER_BRAIN_EVENT` sent to the brain's role) aren't in the result: `settle()` after it, then read them with `flowSteps`. It doesn't
    * connect the app: flows run and report without a client, as they do in the app.
    */
   runFlow(label: string, options?: RunFlowOptions): Promise<FlowRun>;
   /** The steps a flow (the root flow or a subflow, by label) has run so far in this app. Readable after `stop` */
-  flowTrace(label: string): FlowStepTrace[];
+  flowSteps(label: string): FlowRunStep[];
   /** A running system's actor */
   system(systemId: string): AnyActorRef;
   /**
@@ -240,7 +240,7 @@ const flowLabelOf = (flowRunNodeId: string): string | undefined => {
   return flowId === undefined ? undefined : String((untypedQuery.ids(flowId).pickAll() as Array<{ label?: string }>)[0]?.label ?? flowId);
 };
 
-function stepTrace(spawned: RunNodeSpawned): FlowStepTrace {
+function runStep(spawned: RunNodeSpawned): FlowRunStep {
   const node = readRunNode(spawned.runNode.id);
   return {
     runNodeId: spawned.runNode.id,
@@ -263,10 +263,10 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
 
   const emitted: Message[] = [];
   const taken = new Set<number>();
-  /** Pending waits for emitted events or trace reports: each checks again on every event, and ends when the app stops */
+  /** Pending waits for emitted events or run reports: each checks again on every event, and ends when the app stops */
   const waits = new Set<{ attempt(): boolean; end(error: Error): void }>();
   const wakeWaits = () => { for (const wait of waits) wait.attempt(); };
-  /** The brain's trace reports (RUN_NODE_SPAWNED, RUN_NODE_UPDATED), from its start: recorded before a client connects too */
+  /** The brain's run reports (RUN_NODE_SPAWNED, RUN_NODE_UPDATED), from its start: recorded before a client connects too */
   const reports: Array<RunNodeSpawned | RunNodeUpdated> = [];
   /** The label of the flow each reported node ran in, and of the flow each flow node runs (`flow:<id>`) */
   const flowLabels = new Map<string, string>();
@@ -297,7 +297,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     const brain = brainId === undefined ? undefined : bus.system.get(brainId);
     return (brain?.getSnapshot() as { matches(state: string): boolean } | undefined)?.matches('running') === true;
   };
-  /** The running flows' trace nodes and labels: the root flow's, and each subflow's not yet finished */
+  /** The running flows' run nodes and labels: the root flow's, and each subflow's not yet finished */
   /** The brain's session root: the newest root run still active */
   const rootRun = () => testRunHistory().findRuns().find((run) => run.parentId === undefined && run.status === 'active');
   const runningFlows = (): Array<{ runNodeId: string; label: string }> => [
@@ -476,7 +476,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       // An event's tracks are the ones it triggers from here; entry tracks ran when the flow started
       const cursor = event === undefined ? 0 : reports.length;
       const since = () => reports.slice(cursor);
-      const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.runNode.kind !== 'event' && flowRunNodeIds.includes(e.flowRunNodeId)).map((e) => `${e.runNode.label} (${stepTrace(e).status})`).join(', ') || 'none'}.`;
+      const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.runNode.kind !== 'event' && flowRunNodeIds.includes(e.flowRunNodeId)).map((e) => `${e.runNode.label} (${runStep(e).status})`).join(', ') || 'none'}.`;
       if (event !== undefined) {
         testRootEvents.emitIncoming({ to: brainId, event: { type: 'TRIGGER_BRAIN_EVENT', eventType: event, payload: data } });
         await settle(deadline, timedOut);
@@ -515,13 +515,13 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const tracks = new Set(eventRunNodeIds);
       return {
         eventRunNodeIds,
-        steps: since().filter(isSpawn).filter((e) => e.runNode.kind !== 'event' && e.eventRunNodeId !== undefined && tracks.has(e.eventRunNodeId)).map((e) => stepTrace(e)),
+        steps: since().filter(isSpawn).filter((e) => e.runNode.kind !== 'event' && e.eventRunNodeId !== undefined && tracks.has(e.eventRunNodeId)).map((e) => runStep(e)),
       };
     }),
-    flowTrace(label) {
+    flowSteps(label) {
       return reports.filter(isSpawn)
         .filter((e) => e.runNode.kind !== 'event' && flowLabels.get(e.runNode.id) === label)
-        .map((e) => stepTrace(e));
+        .map((e) => runStep(e));
     },
     system(systemId) {
       if (stopped) throw stoppedError();
