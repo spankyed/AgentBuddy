@@ -68,7 +68,7 @@ function assertIncumbent(f: ReturnType<typeof fixture>) {
   expect(f.registry.designation('before')).toBe('incumbent/widget');
   expect(f.registry.designation('after')).toBeUndefined();
   expect(f.registry.getRegisteredServices().value).toBe('old');
-  expect(engine.repository.records).toBe(f.records);
+  expect(f.registry.repository('records')).toBe(f.records);
   expect(f.handle.get()).toEqual({ value: 1 });
   for (const notify of f.listeners) notify();
   expect(f.heard).toHaveBeenCalled();
@@ -97,13 +97,12 @@ describe('accepted pack replacement', () => {
     declareRepositories(f.registry, [name]);
     declareCandidateRole(f.registry);
     f.registry.replacePack(f.next);
-    expect(engine.repository[name]).toBe(f.next.repositories[name]);
-    expect(Object.hasOwn(engine.admin.repositories(), name)).toBe(true);
-    expect(() => engine.repository.owner).toThrow('is not registered');
+    expect(f.registry.repository(name)).toBe(f.next.repositories[name]);
+    expect(f.registry.repository('records')).toBeUndefined();
+    expect(f.registry.repository('owner')).toBeUndefined();
     f.registry.unregisterPack('incumbent');
-    expect(engine.admin.repositories()).toEqual({});
-    expect(() => engine.repository[name]).toThrow('is not registered');
-    expect(() => engine.repository.owner).toThrow('is not registered');
+    expect(f.registry.repository(name)).toBeUndefined();
+    expect(f.registry.repository('owner')).toBeUndefined();
   });
 
   it('retains the same incumbent handle and subscription when candidate binding refuses', () => {
@@ -140,25 +139,6 @@ describe('accepted pack replacement', () => {
     expect(f.fresh.settingsHandle(target).get()).toEqual({ value: 1 });
   });
 
-  it('rolls back failed repository publication and disposes only the provisional binding', () => {
-    const f = fixture();
-    const provisional = f.fresh.settingsHandle(target);
-    f.next.repositories = { ...f.next.repositories, added: {} };
-    declareRepositories(f.registry, ['records', 'added']);
-    const publish = engine.registerRepository;
-    const register = vi.spyOn(engine, 'registerRepository').mockImplementation((name, value) => {
-      if (name === 'added') throw new Error('publication refused');
-      publish(name, value);
-    });
-    declareCandidateRole(f.registry);
-    expect(() => f.registry.replacePack(f.next)).toThrow('publication refused');
-    expect(register).toHaveBeenCalledTimes(3); // First entry, failed second entry, restored first entry.
-    expect(engine.admin.repositories()).toEqual({ records: f.records });
-    expect(() => provisional.get()).toThrow('revoked');
-    assertIncumbent(f);
-    expect(f.listeners.size).toBe(1);
-  });
-
   it('publishes new contributions before retiring the old binding, without removing its repositories', () => {
     const f = fixture();
     declareCandidateRole(f.registry);
@@ -167,13 +147,13 @@ describe('accepted pack replacement', () => {
     expect(f.registry.designation('before')).toBeUndefined();
     expect(f.registry.designation('after')).toBe('incumbent/widget');
     expect(f.registry.getRegisteredServices().value).toBe('new');
-    expect(engine.repository.records).toBe(f.next.repositories!.records);
+    expect(f.registry.repository('records')).toBe(f.next.repositories!.records);
     expect(() => f.handle.get()).toThrow('revoked');
     expect(f.listeners.size).toBe(0);
     expect(f.fresh.settingsHandle(target).get()).toEqual({ value: 1 });
     f.registry.unregisterPack('incumbent');
     expect(() => f.fresh.settingsHandle(target).get()).toThrow('until the host accepts');
-    expect(engine.admin.repositories()).toEqual({});
+    expect(f.registry.repository('records')).toBeUndefined();
   });
 
   it('reports old cleanup failure as committed replacement and never restores the disposed runtime', () => {
@@ -215,10 +195,10 @@ describe('accepted pack replacement', () => {
     f.registration.services = { unrelated: 'mutated' };
     f.registry.registerPack({ id: 'peer' });
     expect(f.registry.getRegisteredServices()).toEqual({ value: 'old' });
-    expect(engine.repository.records).toBe(f.records);
-    engine.registerRepository('foreign', 'unowned');
+    expect(f.registry.repository('records')).toBe(f.records);
+    expect(f.registry.repository('foreign')).toBeUndefined();
     f.registry.unregisterPack('incumbent');
-    expect(engine.admin.repositories()).toEqual({ foreign: 'unowned' });
+    expect(f.registry.repository('records')).toBeUndefined();
   });
 
   it('retires all accepted state on unload even when binding cleanup throws', () => {
@@ -234,7 +214,7 @@ describe('accepted pack replacement', () => {
     expect(() => f.registry.unregisterPack('incumbent')).toThrow('unload cleanup refused');
     expect(f.registry.getPackRegistration('incumbent')).toBeNull();
     expect(f.registry.designation('after')).toBeUndefined();
-    expect(engine.admin.repositories()).toEqual({});
+    expect(f.registry.repository('records')).toBeUndefined();
     expect(() => current.get()).toThrow('revoked');
   });
 

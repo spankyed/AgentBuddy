@@ -1,4 +1,3 @@
-import type { repository } from '../ears/index.ts';
 import { boundHost, _boundHostGeneration, type HostRuntimeServices } from '../runtime/host-runtime.ts';
 import { createSends, untypedBroadcastToSurface, untypedSendToWindow, untypedSendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';
@@ -26,6 +25,18 @@ export { _secretRules, _secretProviderLabel, _toSecretMetadata } from './secrets
 export type { ModelId, ProviderName } from './models.ts';
 
 const logger = createLogger('log-service');
+
+/** The bound app's registered packs' repositories, by name; reading one no pack declares throws */
+export const repository: Record<string, unknown> = new Proxy({}, {
+  get(_target, name) {
+    if (typeof name !== 'string') return undefined;
+    const value = boundHost().packs.repository(name);
+    if (value === undefined) {
+      throw new Error(`[repository] "${name}" is not registered: a pack declares its repositories in apack.json (features[].repositories)`);
+    }
+    return value;
+  },
+});
 
 /**
  * Supported host APIs. Generated Services selects the baseline and explicitly consumed members;
@@ -138,7 +149,7 @@ export function _captureHostServices() {
     get(name: string): unknown {
       if (name === 'logger') return logger;
       if (name === 'emitter') return emitter;
-      if (name === 'repository') return runtime.ears.repository;
+      if (name === 'repository') return repository;
       return runtime.services[name as keyof HostRuntimeServices];
     },
   };

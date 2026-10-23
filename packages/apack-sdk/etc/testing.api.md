@@ -186,6 +186,7 @@ export interface TestPacks {
     readonly earsRoles: Map<string, string>;
     // (undocumented)
     readonly help: Map<string, HelpArticle[]>;
+    readonly repositories: Map<string, unknown>;
     readonly services: Map<string, unknown>;
     readonly stepDeclarations: Map<string, StepCatalogEntry>;
     readonly steps: Map<string, StepDefinition>;

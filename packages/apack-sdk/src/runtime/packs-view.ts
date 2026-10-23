@@ -42,6 +42,8 @@ export interface PackRegistryView extends PackExtensionsView {
   stepBindings(): ReadonlyMap<string, StepBackendBinding>;
   /** Every registered pack's services, by name */
   getRegisteredServices(): Record<string, unknown>;
+  /** The repository a registered pack declares under `name`, or undefined */
+  repository(name: string): unknown;
   /** The refs of every registered system, the host's included */
   systemIds(): readonly FeatureRef[];
   /** The refs of every registered surface, the host's included */

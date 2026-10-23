@@ -3,7 +3,8 @@ import { _createPackServices } from '@apackdev/sdk/services';
 import { createSettingsStore, createSettingsService } from '../../src/features/settings/be/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine } from '@apackdev/ears';
-import { _bindEars, boundEars, repository } from '@apackdev/sdk/ears';
+import { _bindEars, boundEars } from '@apackdev/sdk/ears';
+import { repository } from '@apackdev/sdk/services';
 import { getSettingsCatalog, type PackFeatureSystem, type PackRegistration } from '@apackdev/sdk/framework';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
@@ -60,51 +61,41 @@ describe('registerPack services', () => {
 });
 
 describe('registerPack repositories', () => {
-  const testEngine = boundEars();
-  afterEach(() => { _bindEars(testEngine); });
-
-  it("registers a pack's repositories with the installed engine (the app's), where repository and services read them", () => {
-    const engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: () => false });
-    _bindEars(engine);
+  it("holds a pack's repositories, where repository and services read them", () => {
     const noteQueries = { all: () => [] };
     registerPack({ id: 'repo-pack', repositories: { noteQueries } });
     registered.push('repo-pack');
-    expect(engine.repository.noteQueries).toBe(noteQueries);
+    expect(registry.repository('noteQueries')).toBe(noteQueries);
     expect(repository.noteQueries).toBe(noteQueries);
-    expect(engine.admin.repositories()).toEqual({ noteQueries });
   });
 
   it('removes them when the pack is unregistered', () => {
-    const engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: () => false });
-    _bindEars(engine);
     registerPack({ id: 'repo-pack', repositories: { noteQueries: {} } });
 
     unregisterPack('repo-pack');
 
-    expect(engine.admin.repositories()).toEqual({});
+    expect(registry.repository('noteQueries')).toBeUndefined();
+    expect(() => repository.noteQueries).toThrow('"noteQueries" is not registered');
   });
 
   it('rejects a repository name another pack registered, keeping that pack\'s', () => {
-    const engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: () => false });
-    _bindEars(engine);
     const theirs = { name: 'theirs' };
     registerPack({ id: 'first-pack', repositories: { settingsQueries: theirs } });
     registered.push('first-pack');
 
     expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {}, settingsQueries: {} } }))
       .toThrow(/"settingsQueries"[\s\S]*"second-pack"[\s\S]*"first-pack"/);
-    expect(engine.admin.repositories()).toEqual({ settingsQueries: theirs });
+    expect(registry.repository('settingsQueries')).toBe(theirs);
+    expect(registry.repository('memoQueries')).toBeUndefined();
   });
 
-  it("removes a pack's repositories when a later part of its registration is refused", () => {
-    const engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: () => false });
-    _bindEars(engine);
+  it("holds none of a pack's repositories when a later part of its registration is refused", () => {
     registerPack({ id: 'first-pack', features: { chat: { designation: 'standup' } } } as unknown as PackRegistration);
     registered.push('first-pack');
 
     expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {} }, features: { chat: { designation: 'standup' } } } as unknown as PackRegistration))
       .toThrow('Designation collision');
-    expect(engine.admin.repositories()).toEqual({});
+    expect(registry.repository('memoQueries')).toBeUndefined();
   });
 });
 

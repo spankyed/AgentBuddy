@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, defineEars, type EARS } from '@apackdev/ears';
 import {
-  _bindEars, boundEars, findRelations, isEntityType, registerRepository, repository, transact, wouldCreateCycle,
+  _bindEars, boundEars, findRelations, isEntityType, transact, wouldCreateCycle,
   untypedCreate, untypedQuery, untypedUpsert, untypedWrite,
 } from '../../src/ears/index.ts';
 
@@ -25,8 +25,6 @@ describe('with no engine bound', () => {
       ['findRelations', () => findRelations()],
       ['isEntityType', () => isEntityType('Note')],
       ['wouldCreateCycle', () => wouldCreateCycle('Note-1' as EARS.EntityId, 'Note-2' as EARS.EntityId, ['contains'])],
-      ['registerRepository', () => registerRepository('noteQueries', {})],
-      ['repository', () => repository.noteQueries],
       ['a typed facade', () => typed.query('Note')],
       ['boundEars', () => boundEars()],
     ];
@@ -50,14 +48,5 @@ describe('_bindEars', () => {
     _bindEars(first);
     expect(defineEars<{ Note: { title: string } }, 'Note'>(boundEars).query('Note').pickAll().map((row) => row.title)).toEqual(['first']);
     expect(first.query.ids(id).pickOne()).toMatchObject({ title: 'first' });
-  });
-
-  it('reads the bound engine\'s repositories through repository', () => {
-    const engine = engineWith(new Set());
-    _bindEars(engine);
-    const noteQueries = { name: 'notes' };
-    registerRepository('noteQueries', noteQueries);
-    expect(repository.noteQueries).toBe(noteQueries);
-    expect(() => repository.missing).toThrow('"missing" is not registered');
   });
 });

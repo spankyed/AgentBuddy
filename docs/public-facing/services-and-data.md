@@ -255,7 +255,7 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 |---|---|
 | `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact`, `newId` and `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
 | `#generated/repository` | `repository`, typed with your and your dependencies' repositories |
-| `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, relation, role, graph and blueprint operations, and `repository` |
+| `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, relation, role, graph and blueprint operations |
 | `@apackdev/ears` | The engine itself: `createEarsEngine` for tests and tooling, `EarsError`, `RepositoryError`, `bp` blueprints, the core `EARS` types and `BaseEntity` |
 | `@apackdev/sdk/types` | What the SDK adds to the engine's types: its `EARS` (with the SDK's entities and relation kinds) and the SDK entity shapes |
 | `@apackdev/sdk/repositories` | The SDK entities' repositories |
@@ -477,7 +477,7 @@ Declare them in the feature's `repositories` (name → `path#exportName`):
 }
 ```
 
-The generated pack entry carries them in its registration, and the app registers them with its engine before any system starts. Repository names are the app's, not the feature's: `apack pack build` fails on a name two of your features declare, or one a dependency declares, naming both, since the app refuses to register two packs that share a repository name. Use them through `repository` from `#generated/repository`, typed with your repositories and your dependencies':
+The generated pack entry carries them in its registration, and the app holds them with the pack's other contributions before any system starts. Repository names are the app's, not the feature's: `apack pack build` fails on a name two of your features declare, or one a dependency declares, naming both, since the app refuses to register two packs that share a repository name. Use them through `repository` from `#generated/repository`, typed with your repositories and your dependencies':
 
 ```typescript
 import { repository } from '#generated/repository.ts';
@@ -509,7 +509,7 @@ What trashing means beyond the mark stays with your feature: trashing an entity'
 
 ### Engine instances
 
-Each app has one EARS engine, which the app creates at startup. Everything above (`query`, `create`, `write`, `repository`, the helpers from `#generated/ears` and `@apackdev/sdk/ears`) acts on the engine the app *bound*; a pack never creates or replaces it in the app.
+Each app has one EARS engine, which the app creates at startup. Everything above (`query`, `create`, `write`, the helpers from `#generated/ears` and `@apackdev/sdk/ears`) acts on the engine the app *bound*; a pack never creates or replaces it in the app.
 
 Unit tests and tooling create their own with `createEarsEngine` from `@apackdev/ears`. A new engine is empty, and shares nothing with the app's or with other engines:
 
@@ -526,7 +526,7 @@ engine.query('Bookmark').count();                             // 1
 
 ```
 
-- The engine's members are its operations: `query`, `create`, `upsert`, `write`, `transact`, relation reads, the hierarchy walks and its repository registry, untyped.
+- The engine's members are its operations: `query`, `create`, `upsert`, `write`, `transact` and relation reads, untyped.
 - `engine.admin`, beside them, is for the code that created the engine: bulk loading, clearing (`admin.clear()`), direct attribute and relation writes. Pack code never gets it.
 - `isEntityType` says which names are entity types: `create('Bookmark')` and `query('Bookmark')` refuse `'Bookmark'` unless it returns true for it. `isRelationKind` says which are relation kinds, which a link and every read or walk over links refuse otherwise, and `isRole` which are roles.
 - An engine you create is the one you hold: nothing acts on it but what you call on it. The functions in `@apackdev/sdk/ears` act on the app's, and with none bound (a script, a test without the harness) they throw, naming how to bind one.

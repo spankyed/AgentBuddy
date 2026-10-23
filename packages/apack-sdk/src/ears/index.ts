@@ -81,10 +81,3 @@ export const getRoles = onBound('getRoles');
 export const getSchemaStats = onBound('getSchemaStats');
 export const nextLabel = onBound('nextLabel');
 export const wouldCreateCycle = onBound('wouldCreateCycle');
-export const registerRepository = onBound('registerRepository');
-export const unregisterRepository = onBound('unregisterRepository');
-
-/** The bound engine's registered repositories; reading one that isn't registered throws */
-export const repository: Record<string, unknown> = new Proxy({}, {
-  get: (_target, name) => (typeof name === 'string' ? boundEars().repository[name] : undefined),
-});
