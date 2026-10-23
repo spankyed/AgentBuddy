@@ -227,6 +227,9 @@ Things that waste the most time, in order:
 Rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.**
+- **Measure the build that ships, not source run through a dev loader.** A loader compiles with its own
+  options — `tsx` sets esbuild's `keepNames` — and those can be most of what you timed
+  ([pipeline-lessons.md](docs/archive/references/pipeline-lessons.md#rules-that-pay-for-themselves-the-evidence)).
 - **Attribute a concurrent pipeline's cost with a CPU profile, not by timing its stages.** Per-stage wall
   clock double-counts overlap; use `node --cpu-prof` with self time per package.
 - **Start a process asynchronously in an integration or native spec.** A synchronous one blocks the worker, so

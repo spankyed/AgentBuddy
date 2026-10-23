@@ -461,6 +461,13 @@ The condition is the machine, which is a fact a run can check.
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals here were
   rejected by one command each, both having been argued for at length first.
+- **Measure the build that ships, not source run through a dev loader.** On 2026-10-23 a read through the EARS
+  query builder (`query.ids(id).pickOne([f])`) measured 7.7µs under `tsx` against 49ns for `getAttr`, and an
+  optimisation was planned to close the gap. A CPU profile put 84% of the time in esbuild's `__name` helper:
+  `tsx` compiles with `keepNames`, so every closure a query builder creates gets a `defineProperty` on each
+  query. The published `dist` (tsc) and the app's API bundle (tsup) carry none, and the same read there is
+  321ns — the planned work was sized 24x too large and was dropped. The script was the same both times; only
+  the import changed, from `src/index.ts` to `dist/index.js`.
 - **Attribute a concurrent pipeline's cost with a CPU profile, not by timing its stages.** Wall clock
   summed per stage double-counts everything that overlaps, and the result reads as a table with a plausible
   winner rather than as an error: the pack frontend bundle's surface hooks totalled 120s inside an 11.5s
