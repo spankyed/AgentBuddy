@@ -7,6 +7,7 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { population } from '@apackdev/sdk/testing';
 import { RUNTIME_ONLY_DEPS, workspaceDeps } from '../../../scripts/lib/workspace-deps.ts';
+import { filesUnder } from '../../../scripts/lib/import-populations.ts';
 
 
 /** scripts/check-import-specifiers.ts, over a temp tree holding the modules the checks resolve against */
@@ -458,6 +459,23 @@ describe('findUnimportedDependencies', () => {
 
   it('holds for the repo', () => {
     expect(findUnimportedDependencies()).toEqual([]);
+  });
+});
+
+describe('filesUnder', () => {
+  // A build stages its output under the pack's `.apack/`, and a test run writes `results/`, while other steps read
+  // the tree: neither is source, and walking them reads files that can vanish between the listing and the read
+  it('lists a package\'s source and not what tools write beside it', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'files-under-'));
+    try {
+      for (const file of ['pkg/src/a.ts', 'pkg/.apack/staged/b.ts', 'pkg/results/c.ts', 'pkg/dist/d.js']) {
+        fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+        fs.writeFileSync(path.join(root, file), 'export {};\n');
+      }
+      expect(filesUnder(['pkg'], root).map((file) => path.relative(root, file))).toEqual([path.join('pkg', 'src', 'a.ts')]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 
