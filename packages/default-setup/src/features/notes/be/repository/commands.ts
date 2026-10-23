@@ -67,21 +67,14 @@ export const noteCommands = {
         displayOrder = siblings.length;
       } else {
         // Count root notes (notes with no parent)
-        const allNotes = query(EARS.Entity.Note).ids();
-        const rootCount = allNotes.filter(id => {
-          const parents = query.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-          return parents.length === 0;
-        }).length;
+        const rootCount = query(EARS.Entity.Note).unlinkedFrom(EARS.RelKind.CONTAINS).count();
         displayOrder = rootCount;
       }
     } else {
       // Explicit displayOrder: shift existing siblings at/after this index up by 1
       const siblingIds = input.parentId
         ? query.ids(input.parentId as EARS.EntityId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
-        : query(EARS.Entity.Note).ids().filter(nid => {
-            const parents = query.ids(nid as EARS.EntityId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-            return parents.length === 0;
-          });
+        : query(EARS.Entity.Note).unlinkedFrom(EARS.RelKind.CONTAINS).ids();
 
       for (const sid of siblingIds) {
         const sib = query.ids(sid as EARS.EntityId).ofType(EARS.Entity.Note).pickOne();
@@ -212,11 +205,7 @@ export const noteCommands = {
       write(id).setMany({ displayOrder: newSiblings.length - 1 });
     } else {
       // Moving to root: calculate root-level displayOrder
-      const allNotes = query(EARS.Entity.Note).ids();
-      const rootCount = allNotes.filter(nid => {
-        const parents = query.ids(nid).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-        return parents.length === 0;
-      }).length;
+      const rootCount = query(EARS.Entity.Note).unlinkedFrom(EARS.RelKind.CONTAINS).count();
       write(id).setMany({ displayOrder: rootCount - 1 });
     }
 
@@ -243,10 +232,7 @@ export const noteCommands = {
     // Get siblings under new parent, sorted by displayOrder
     const siblingIds = newParentId
       ? query.ids(newParentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
-      : query(EARS.Entity.Note).ids().filter(nid => {
-          const parents = query.ids(nid as EARS.EntityId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-          return parents.length === 0;
-        });
+      : query(EARS.Entity.Note).unlinkedFrom(EARS.RelKind.CONTAINS).ids();
 
     const siblings = siblingIds
       .map(sid => query.ids(sid as EARS.EntityId).ofType(EARS.Entity.Note).pickOne())
