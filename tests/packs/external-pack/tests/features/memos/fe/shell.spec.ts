@@ -70,7 +70,7 @@ it('refuses a second frontend host in one test, naming what to do', async () => 
 });
 
 it('opens an existing entity through compiled destinations and the real shell', async () => {
-  const id = untypedCreate('Memo').set('text', 'Opened by canonical ID').id();
+  const id = untypedCreate('Memo', { text: 'Opened by canonical ID' }).id();
   const shell = await startShell({ surfaces: { notes: { state: notesState }, memos: { state: memosState } } });
   expect(shell.opened()).toBe('e2e-fixture/notes');
   openEntity(id);
