@@ -132,15 +132,16 @@ export const databaseSystem = setup({
       const { flowId, offset = 0, limit = 50 } = databaseSpec.typeOf('GET_FLOW_EVENTS', event);
       
       try {
-        // The events a flow run heard are its children, each with what it ran; newest first, a page at a time
-        const all = (services.runHistory.tree(flowId as RunNodeId)?.children ?? []).reverse();
-        const events = all.slice(offset, offset + limit);
+        // The events a flow run heard are its children: a page of them, newest first, each with what it ran. The
+        // index is asked for no more than the page and one beyond it, which says whether there is more
+        const heard = services.runHistory.findChildren(flowId as RunNodeId, { reverse: true, limit: offset + limit + 1 });
+        const events = heard.slice(offset, offset + limit).map((node) => services.runHistory.tree(node.id)!);
         logger.info('Retrieved events for flow', { count: events.length, flowId });
         broadcastToSurface('database', { 
           type: 'FLOW_EVENTS_RESULT',
           flowId,
           events,
-          hasMore: offset + limit < all.length,
+          hasMore: heard.length > offset + limit,
           offset
         });
       } catch (error: unknown) {
