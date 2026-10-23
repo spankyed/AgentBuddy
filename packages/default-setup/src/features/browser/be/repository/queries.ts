@@ -1,5 +1,5 @@
 
-import { findAll } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import type { BrowserTabEntity, SavedTab, BrowserBookmarkEntity, SavedBookmark } from '../types.ts';
 import { normalizeSavedTabs } from './normalize-tabs.ts';
@@ -31,7 +31,7 @@ function bookmarkToDTO(entity: BrowserBookmarkEntity): SavedBookmark {
 
 export const browserQueries = {
   allTabs: (): SavedTab[] => {
-    const entities = findAll<BrowserTabEntity>(EARS.Entity.BrowserTab);
+    const entities = query(EARS.Entity.BrowserTab).pickAll();
     const rawTabs = entities
       .sort((a, b) => a.displayOrder - b.displayOrder)
       .map(tabToDTO);
@@ -50,7 +50,7 @@ export const browserQueries = {
     return normalized.tabs;
   },
   allBookmarks: (): SavedBookmark[] => {
-    const entities = findAll<BrowserBookmarkEntity>(EARS.Entity.BrowserBookmark);
+    const entities = query(EARS.Entity.BrowserBookmark).pickAll();
     return entities
       .sort((a, b) => a.displayOrder - b.displayOrder)
       .map(bookmarkToDTO);

@@ -13,8 +13,7 @@ import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  query, create, upsert, newId, findById, findAll, findWhere, write, getAttr,
-  type EntityShape,
+  query, create, upsert, newId, findById, write, getAttr, type EntityShape
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
 import { resetTestData } from '@apackdev/sdk/testing';
@@ -71,15 +70,15 @@ describe('Type inference — typed EARS helpers', () => {
     expectTypeOf(() => findById(actionId)!.actionFn).returns.toEqualTypeOf<string>();
   });
 
-  it('findAll and findWhere read the declared shape', () => {
+  it('a query by type, and by a field, reads the declared shape', () => {
     // Wrapped in functions: only their types are checked
-    expectTypeOf(() => findAll(EARS.Entity.Prompt)[0].templateFn).returns.toEqualTypeOf<string>();
-    expectTypeOf(() => findWhere(EARS.Entity.Thread, 'status', 'active')[0].topic).returns.toEqualTypeOf<string>();
+    expectTypeOf(() => query(EARS.Entity.Prompt).pickAll()[0].templateFn).returns.toEqualTypeOf<string>();
+    expectTypeOf(() => query(EARS.Entity.Thread).where('status', 'active').pickAll()[0].topic).returns.toEqualTypeOf<string>();
     const check = () => {
       // @ts-expect-error not a field of Thread
-      findWhere(EARS.Entity.Thread, 'statsu', 'active');
+      query(EARS.Entity.Thread).where('statsu', 'active').pickAll();
       // @ts-expect-error a field's value is checked as where checks it
-      findWhere(EARS.Entity.Thread, 'topic', 42);
+      query(EARS.Entity.Thread).where('topic', 42).pickAll();
     };
     expectTypeOf(check).toBeFunction();
   });
@@ -297,30 +296,28 @@ describe('Generic flow — runtime verification', () => {
     expect(found!.category).toBe('test');
   });
 
-  it('findAll<T> returns typed array', () => {
-    type ActionEntity = { input: {}, label: string; actionFn: string };
+  it('a query by type returns every row of it', () => {
+    create(EARS.Entity.Action, { input: {}, label: 'A1', actionFn: 'fn1()' });
+    create(EARS.Entity.Action, { input: {}, label: 'A2', actionFn: 'fn2()' });
 
-    findById(create(EARS.Entity.Action, { input: {}, label: 'A1', actionFn: 'fn1()' }).id())!;
-    findById(create(EARS.Entity.Action, { input: {}, label: 'A2', actionFn: 'fn2()' }).id())!;
-
-    const all = findAll<ActionEntity>(EARS.Entity.Action as any);
+    const all = query(EARS.Entity.Action).pickAll();
     expect(all).toHaveLength(2);
     expect(all[0].label).toBeDefined();
     expect(all[0].actionFn).toBeDefined();
   });
 
-  it('findWhere returns the declared shape', () => {
-    findById(create(EARS.Entity.Action, { input: {}, label: 'CatA', actionFn: 'fn()', category: 'alpha' }).id())!;
-    findById(create(EARS.Entity.Action, { input: {}, label: 'CatB', actionFn: 'fn()', category: 'beta' }).id())!;
+  it('a query by a field returns the declared shape', () => {
+    create(EARS.Entity.Action, { input: {}, label: 'CatA', actionFn: 'fn()', category: 'alpha' });
+    create(EARS.Entity.Action, { input: {}, label: 'CatB', actionFn: 'fn()', category: 'beta' });
 
-    const results = findWhere(EARS.Entity.Action, 'category', 'alpha');
+    const results = query(EARS.Entity.Action).where('category', 'alpha').pickAll();
     expect(results).toHaveLength(1);
     expect(results[0].label).toBe('CatA');
     expect(results[0].category).toBe('alpha');
   });
 
   it('query() fluent chain produces typed results', () => {
-    findById(create(EARS.Entity.Action, { input: {}, label: 'Chain', actionFn: 'fn()' }).id())!;
+    create(EARS.Entity.Action, { input: {}, label: 'Chain', actionFn: 'fn()' });
 
     const ids = query(EARS.Entity.Action as any).ids();
     expect(Array.isArray(ids)).toBe(true);
@@ -337,7 +334,7 @@ describe('Generic flow — runtime verification', () => {
 
   it('query().map() returns correctly typed array', () => {
     // The row map() then walks
-    findById(create(EARS.Entity.Action, { input: {}, label: 'MapTest', actionFn: 'fn()' }).id())!;
+    create(EARS.Entity.Action, { input: {}, label: 'MapTest', actionFn: 'fn()' });
 
     const labels = query(EARS.Entity.Action as any).map(
       (entityId) => `prefix-${entityId}`

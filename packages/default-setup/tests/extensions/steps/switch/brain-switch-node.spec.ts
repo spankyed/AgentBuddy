@@ -11,7 +11,7 @@ import { importFlows, startApp, type FlowRun } from '@apackdev/testing/harness'
 import { on, transform } from '#generated/flow-helpers.ts'
 import { branch } from '#extensions/steps/switch/helpers.ts'
 import { repository } from '#generated/repository.ts'
-import { EARS, findWhere } from '#generated/ears.ts'
+import { EARS, query } from '#generated/ears.ts'
 import type { DSLStepNode } from '@apackdev/sdk/build'
 import type { Condition } from '#extensions/steps/switch/types.ts'
 
@@ -35,7 +35,7 @@ const ranAfterSwitch = (run: FlowRun) => run.steps.filter((s) => s.label !== 'Sw
 
 /** Replaces the flow's switch conditions, as the flow editor can (code-mode predicates, none at all) */
 function setConditions(flowLabel: string, conditions: Condition[]): void {
-  const flowId = findWhere(EARS.Entity.Flow, 'label', flowLabel)[0].id
+  const flowId = query(EARS.Entity.Flow).where('label', flowLabel).pickAll()[0].id
   const node = repository.flowsQueries.flowNodes(flowId).find((n: { nodeType: string }) => n.nodeType === 'switch')!
   repository.flowsCommands.updateNode(node.id, { conditions })
 }

@@ -4,7 +4,7 @@
  */
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  findById, findAll, findWhere, query, write, create, getAttr,
+  findById, query, write, create, getAttr
 } from '#generated/ears.ts';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { EARS } from '#generated/ears.ts';
@@ -29,12 +29,12 @@ describe('Tier 1 — EARS delegates', () => {
     expect(entity.createdAt).toBeTypeOf('number');
   });
 
-  it('findById / findAll / findWhere round-trip', () => {
+  it('findById and queries by type and by a field read the row back', () => {
     const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'Findable', actionFn: 'fn()', category: 'test' }).id())!;
 
     expect(findById(entity.id)).toBeDefined();
-    expect(findAll(EARS.Entity.Action as any).length).toBe(1);
-    expect(findWhere(EARS.Entity.Action as any, 'category', 'test').length).toBe(1);
+    expect(query(EARS.Entity.Action as any).pickAll().length).toBe(1);
+    expect(query(EARS.Entity.Action as any).where('category', 'test').pickAll().length).toBe(1);
   });
 
   it('query.withTrashed reaches an entity in the trash, which findById does not', () => {

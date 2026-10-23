@@ -1239,8 +1239,7 @@ export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
 export type EntityName = ${entityNames.join(' | ')};
 
 export const {
-  query, create, upsert, write, transact, findById, findAll, findWhere,
-  newId, getAttr,
+  query, create, upsert, write, transact, findById, newId, getAttr,
 } = /*#__PURE__*/ defineEars<PackShapes, EntityName, EARS.RelKind, EARS.RoleKind>(boundEars);
 `;
   }

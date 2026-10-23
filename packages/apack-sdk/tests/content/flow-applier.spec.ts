@@ -50,7 +50,7 @@ describe('flow applier', () => {
 
   /** The Flow entities with this label, through the installed engine's finder as the writer reads them */
   const flows = (label: string) =>
-    boundEars().findWhere<{ id: string; label: string }>('Flow' as never, 'label', label);
+    (boundEars().query('Flow' as never).where('label', label).pickAll() as Array<{ id: string; label: string }>);
 
   /**
    * One apply, with the record `applyPacks` builds; with none it is an import.

@@ -238,7 +238,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
         const fields = identity.filter((name) => name !== 'parent');
         if (fields.length === 0) throw new Error(`Content "${key}": entity "${record.entity}" has no find hook, so the entry needs "identity"`);
         const [first, ...rest] = fields;
-        const candidates = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>(record.entity as EARS.Entity, first, record[first])
+        const candidates = (query(record.entity as EARS.Entity).where(first, record[first]).pickAll() as Array<Record<string, unknown> & { id: EARS.EntityId }>)
           .filter((row) => rest.every((name) => row[name] === record[name]));
         const match = identity.includes('parent')
           ? candidates.find((row) => query.ids(row.id).in(relKind).ids()[0] === context.parentId)

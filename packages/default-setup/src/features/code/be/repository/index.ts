@@ -1,4 +1,4 @@
-import { create, write, findById, findAll, query } from '#generated/ears.ts';
+import { create, write, findById, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts'
 
@@ -29,12 +29,12 @@ export const terminalQueries = {
   },
 
   all: (): TerminalEntity[] => {
-    return findAll<TerminalEntity>(EARS.Entity.Terminal)
+    return query(EARS.Entity.Terminal).pickAll()
   },
 
   active: (): TerminalEntity[] => {
-    // findAll already filters soft-deleted, just filter for active=true
-    const all = findAll<TerminalEntity>(EARS.Entity.Terminal)
+    // A query already leaves out the trash; keep the active ones
+    const all = query(EARS.Entity.Terminal).pickAll()
     return all.filter(t => t.active === true)
   },
 }

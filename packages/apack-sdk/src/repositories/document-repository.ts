@@ -8,6 +8,7 @@
 // the feature that draws the tree is everything a view wants: paths, counts, child shapes, the index,
 // search, symlink resolution. These return rows and ids; a DTO is the editor's.
 import { ancestors, boundEars as ears, findRelations, untypedCreate, untypedQuery as query, untypedWrite as write } from '../ears/index.ts';
+import { sdkEntities } from '../ears/sdk-entities.ts';
 import { EARS } from '../types/entities.ts';
 import type { CollectionEntity, ContentSection, DocumentEntity } from '../types/sdk-entities.ts';
 
@@ -88,7 +89,7 @@ export function nextDisplayOrder(parentId: EARS.EntityId | null): number {
 const documentReads = {
   byId: (id: EARS.EntityId): DocumentEntity | undefined => ears().findById<DocumentEntity>(id) ?? undefined,
 
-  all: (): DocumentEntity[] => ears().findAll<DocumentEntity>(EARS.Entity.Document),
+  all: (): DocumentEntity[] => sdkEntities.query(EARS.Entity.Document).pickAll(),
 
   /**
    * Every document of `documentType`, in the order the tree shows them: display order, then name.
@@ -199,7 +200,7 @@ export const documentRepository = {
 export const collectionRepository = {
   byId: (id: EARS.EntityId): CollectionEntity | undefined => ears().findById<CollectionEntity>(id) ?? undefined,
 
-  all: (): CollectionEntity[] => ears().findAll<CollectionEntity>(EARS.Entity.Collection),
+  all: (): CollectionEntity[] => sdkEntities.query(EARS.Entity.Collection).pickAll(),
 
   /** The folders directly inside `parentId`, or the root ones */
   children: (parentId: EARS.EntityId | null): CollectionEntity[] => (parentId === null

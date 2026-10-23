@@ -159,7 +159,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     fs.writeFileSync(path.join(packDir, 'src', 'ears.ts'), [
       "export namespace EARS { export namespace Entity { export const Memo = 'Memo'; } }",
       "import { defineEars } from '@apackdev/ears';",
-      "export const { query, findById, findAll } = /*#__PURE__*/ defineEars<{ Memo: { text: string } }>();",
+      "export const { query, findById, newId } = /*#__PURE__*/ defineEars<{ Memo: { text: string } }>();",
     ].join('\n'));
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });

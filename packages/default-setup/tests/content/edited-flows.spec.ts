@@ -9,7 +9,7 @@ import { CONTENT_INDEX_FILE, contentFile } from '@apackdev/sdk/build';
 import { createFlowApplier, createFormatApplier } from '@apackdev/sdk/content';
 import { importCompiledContent, type ApplyRecord } from '@apackdev/sdk/utils';
 import { registerPack, unregisterPack } from '@apackdev/testing/harness';
-import { findWhere } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { dropAttribute } from '@apackdev/sdk/testing';
 import { findRelations, untypedWrite } from '@apackdev/sdk/ears';
 import { repository } from '#generated/repository.ts';
@@ -17,7 +17,7 @@ import { PACK_DIR, applyAfter, resetDatabase } from './harness.ts';
 import type { EARS } from '@apackdev/ears';
 
 type FlowRow = { id: EARS.EntityId; label: string; contentHash?: string };
-const flow = (label: string) => findWhere('Flow', 'label', label) as FlowRow[];
+const flow = (label: string) => query('Flow').where('label', label).pickAll() as FlowRow[];
 const nodesOf = (label: string) => repository.flowsQueries.flowNodes(flow(label)[0].id);
 
 const dirs: string[] = [];

@@ -1,4 +1,4 @@
-import { findById, findAll, query } from '#generated/ears.ts';
+import { findById, query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { ancestors } from '@apackdev/sdk/ears';
 
@@ -42,11 +42,11 @@ export const noteQueries = {
     return note ? toDTO(note) : undefined;
   },
 
-  all: () =>
-    findAll<NoteEntity>(EARS.Entity.Note),
+  all: (): NoteEntity[] =>
+    query(EARS.Entity.Note).pickAll(),
 
   allDTOs: (): NoteDTO[] => {
-    const notes = findAll<NoteEntity>(EARS.Entity.Note);
+    const notes = query(EARS.Entity.Note).pickAll();
     return notes.map(toDTO);
   },
 

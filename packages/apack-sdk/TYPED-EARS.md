@@ -25,16 +25,13 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - `PackShapes['Node']` is the pack's step node union: its own and its dependencies' `XNode extends NodeBase` types. It's `NodeBase` when no step defines one.
 
 **Field parameters.**
-- They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `findWhere`, `pick`, `pickOne`, `orderBy`, `distinct`, `groupBy` and `getAttr`. `where` and `findWhere` take one value type (`WhereValue`): the field's, one element of a list field, which the value index answers, or a predicate.
+- They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `orderBy`, `distinct`, `groupBy` and `getAttr`. `where` takes one value type (`WhereValue`): the field's, one element of a list field, which the value index answers, or a predicate.
 - This form is what gives editors field-name completions and makes a typo's error list the valid fields.
 - For a union shape, such as `Node` rows, only the fields every member has are accepted.
 - A query whose fields vary by member, or are only known at runtime, uses `untypedQuery` from `@apackdev/ears` on purpose. The brain trigger queries in default-setup are the example. (It's the same untyped `query` an engine has, `createEarsEngine(...).query`.)
 
 **Entity names.**
 - A literal entity name must be one the pack, its dependencies or the SDK declares (`EntityName`). A name typed `string` passes unchecked (`EntityNameArg`).
-- The explicit-shape overload (`findAll<T>(name)`) also accepts a runtime name: supplying `T` leaves the
-  name's `E` at its `string` default, so `findAll<Shape>('Tpyo')` compiles by design. Without a type
-  argument the same call is checked.
 - A generic helper constrains its name to `EntityName`, or opts out with `as string`.
 - A name and an id go to different functions: `query(type)`/`create(type)`/`upsert(type, id)` take a name,
   `query.ids(id)`/`write(id)` an id. An id passed where a name is meant is a compile error (it is no declared
@@ -101,10 +98,9 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 
 ## Before changing any of these types
 
-0. **Check Incidents first.** Two of the things most often reported as bugs here — `query('user-note')`
-   compiling, and `findAll<T>('Tpyo')` skipping the name check — have been investigated and measured. The
-   first has two failed fix attempts recorded with their blast radius; the second is the contract. Do not
-   re-derive them.
+0. **Check Incidents first.** The thing most often reported as a bug here — `query('user-note')` compiling — has
+   been investigated and measured, with two failed fix attempts recorded with their blast radius. Do not
+   re-derive it.
 1. **Treat it as a design change.** Get agreement on the new behavior first. If a call site doesn't fit the contract, change the call site instead:
    - an explicit shape
    - an `EntityName` constraint
@@ -116,7 +112,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 3. **Mutation-check every rule you touch.** Break it on purpose and confirm a test fails.
 4. **Check editor completions and error messages.** `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` in `@apackdev/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.
    - Field positions should list the entity's fields: `query(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')` and `getAttr(id, '|')`.
-   - Entity-name positions should list entity names: `query('|')`, `findAll('|')`, `newId('|')`, `.out(kind, '|')`, `.ofType('|')`.
+   - Entity-name positions should list entity names: `query('|')`, `newId('|')`, `.out(kind, '|')`, `.ofType('|')`.
    - Relation-kind positions should list the pack's, its dependencies' and the SDK's kinds: `.out('|')`, `.link('|', id)`, `.linkedTo('|', id)`.
    - Role positions should list the pack's, its dependencies' and the SDK's roles: `.grant('|')`, `.withRole('|')`.
    - A created row should list the shape's fields and the identity it may bring, never the engine's other fields: `create(type, { | })`.

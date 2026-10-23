@@ -48,7 +48,7 @@ describe('_bindEars', () => {
     expect(boundEars()).toBe(second);
 
     _bindEars(first);
-    expect(defineEars<{ Note: { title: string } }, 'Note'>(boundEars).findAll('Note').map((row) => row.title)).toEqual(['first']);
+    expect(defineEars<{ Note: { title: string } }, 'Note'>(boundEars).query('Note').pickAll().map((row) => row.title)).toEqual(['first']);
     expect(first.findById(id)).toMatchObject({ title: 'first' });
   });
 
