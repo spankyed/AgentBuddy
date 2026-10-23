@@ -395,9 +395,9 @@ query.all().ofType('|ofType|');
 query('|query|');
 query('Memo').has('txet');
 write(memoId).set('|set|', true);
-write(memoId).add('|add|', true);
+write(memoId).append('|append|', true);
 write(memoId).delete('|delete|');
-write(memoId).deleteAt('|deleteAt|', 0);
+write(memoId).removeAt('|removeAt|', 0);
 write(memoId).set('pinnd', true);
 query.ids(memoId).out('|outKind|');
 write(memoId).link('|linkKind|', memoId);
@@ -410,7 +410,7 @@ create('Memo', { |createRow| });
 `;
 const FIELD_POSITIONS = ['pick', 'pickOne', 'outPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr'];
 /** The fields a write may name: the declared ones, without the engine's own (`createdAt`, `updatedAt`, …) */
-const WRITE_POSITIONS = ['set', 'add', 'deleteAt'];
+const WRITE_POSITIONS = ['set', 'append', 'removeAt'];
 /** Relation kinds: the pack's own, its dependency's and the SDK's */
 const KIND_POSITIONS = ['outKind', 'linkKind', 'linkedToKind'];
 /** Roles: the pack's own, its dependency's and the SDK's */
