@@ -1,14 +1,14 @@
 export const exampleQuery =
   `// Query all threads with their data
-return qx(EARS.Entity.Thread).limit(10).pickAll();
+return query(EARS.Entity.Thread).limit(10).pickAll();
 
 // Or try these examples:
-// return qx(EARS.Entity.Thread).where('status', 'active').pickAll();
-// return qx.all().has('label').limit(20).pick(['label']);
-// return qx(EARS.Entity.Flow).orderBy('label').pick(['label', 'description']);
-// return qx(EARS.Entity.Message).reverse().limit(10).pick(['text', 'sender', 'timestamp']);
-// return qx.ids('Thread-1').linksTo('contains', EARS.Entity.Message).pick(['text', 'sender']);
-// return qx.ids('Thread-1').linksPick('contains', ['text', 'sender'], EARS.Entity.Message);
+// return query(EARS.Entity.Thread).where('status', 'active').pickAll();
+// return query.all().has('label').limit(20).pick(['label']);
+// return query(EARS.Entity.Flow).orderBy('label').pick(['label', 'description']);
+// return query(EARS.Entity.Message).reverse().limit(10).pick(['text', 'sender', 'timestamp']);
+// return query.ids('Thread-1').linksTo('contains', EARS.Entity.Message).pick(['text', 'sender']);
+// return query.ids('Thread-1').linksPick('contains', ['text', 'sender'], EARS.Entity.Message);
 
 // IMPORTANT: Chain methods in this order:
 // 1. Filters/Shaping: ofType(), where(), has(), lacks(), withRole(), orderBy(), limit(), distinct(), reverse()
@@ -17,10 +17,10 @@ return qx(EARS.Entity.Thread).limit(10).pickAll();
 
 
 export const entityQueryTemplate = (value: string) =>
-  `return qx(EARS.Entity.${value}).limit(20).pickAll();`
+  `return query(EARS.Entity.${value}).limit(20).pickAll();`
 
 export const attributeQueryTemplate = (value: string) =>
-  `return qx.all().has('${value}').limit(20).pick(['${value}']);`
+  `return query.all().has('${value}').limit(20).pick(['${value}']);`
 
 export const relationQueryTemplate = (value: string) =>
   `// Query entities with ${value} relations
@@ -28,7 +28,7 @@ const results = [];
 const allEntities = getAllEntities();
 
 for (const entityId of allEntities) {
-  const targets = qx.ids(entityId).linksTo('${value}').ids();
+  const targets = query.ids(entityId).linksTo('${value}').ids();
 
   if (targets.length > 0) {
     const allData = getAll(entityId);

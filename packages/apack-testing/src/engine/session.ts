@@ -76,7 +76,7 @@ export interface SessionPage {
    * Reloads the window and returns when it is usable again, onboarding included.
    *
    * It is the only thing that makes every surface re-read its data: a surface's state is what its system sent
-   * it, so a write made outside that system — `/tx`, the database console, `apack db exec` — is invisible
+   * it, so a write made outside that system — `/transact`, the database console, `apack db exec` — is invisible
    * to the view until something asks again. Navigating between surfaces does not, because the actor
    * survives; a new connection does, because the bus sends every system `CLIENT_CONNECTED` and each one
    * answers with its startup data.
@@ -253,8 +253,8 @@ export interface EngineSession {
   evaluate: (body: string) => Promise<EngineResult>;
   send: (event: Record<string, unknown>) => Promise<EngineResult>;
   system: (to: string, event: Record<string, unknown>) => Promise<EngineResult>;
-  qx: (code: string) => Promise<EngineResult>;
-  tx: (code: string) => Promise<EngineResult>;
+  query: (code: string) => Promise<EngineResult>;
+  transact: (code: string) => Promise<EngineResult>;
   state: () => Promise<EngineResult>;
   wait: (target: WaitTarget, timeoutMs?: number) => Promise<EngineResult>;
   navigate: (surfaceId: string) => Promise<EngineResult>;
@@ -336,7 +336,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
    * Waits for the answer to *this* ask, matched by the call the ask was sent under.
    *
    * Addressing says which connection an answer came to; only the call says which ask it answers, so three
-   * concurrent `/qx` calls can be told apart. An orphan matches nobody — an ask that timed out and then
+   * concurrent `/query` calls can be told apart. An orphan matches nobody — an ask that timed out and then
    * finished, or an answer to someone querying in the Database surface while a session drives.
    *
    * The call is the envelope's, so this session asks and matches the way the app's own features do: nothing
@@ -390,7 +390,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
    * `sender` is the load-bearing field: the bus turns it into the delivery's `replyTo`, which is the only thing
    * that lets the system's `reply` come back here instead of to every window. Going direct is also why a send
    * to an unknown system comes back as a refusal rather than being dropped silently in the renderer, and why
-   * `/qx` works while the window's own subscription is broken.
+   * `/query` works while the window's own subscription is broken.
    */
   const sendToSystem = (to: string, event: Record<string, unknown>, call?: string): Promise<unknown> =>
     api.send({ to, event, sender: DRIVE_REF, ...(call === undefined ? {} : { call }) }).then(() => null);
@@ -426,10 +426,10 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
   };
 
   /** What the database answers with, which is the one round-trip shape used twice */
-  const runCode = (kind: 'qx' | 'tx', type: string, code: string): Promise<unknown> =>
+  const runCode = (kind: 'query' | 'transact', type: string, code: string): Promise<unknown> =>
     roundTrip(DATABASE_SYSTEM, { type, code },
-      kind === 'qx' ? 'QUERY_RESULT' : 'TRANSACTION_RESULT',
-      kind === 'qx' ? 'QUERY_ERROR' : 'TRANSACTION_ERROR');
+      kind === 'query' ? 'QUERY_RESULT' : 'TRANSACTION_RESULT',
+      kind === 'query' ? 'QUERY_ERROR' : 'TRANSACTION_ERROR');
 
   /**
    * Hooks the app's actor inspection up to `BRIDGE_FUNCTION`, which is a callback into this process rather
@@ -539,8 +539,8 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
     // match one against. A system that replies to it answers a call nobody is holding, which the bus drops
     system: (to, event) => attempt('system', () => sendToSystem(to, event)),
 
-    qx: (code) => attempt('qx', () => runCode('qx', 'EXECUTE_QUERY', code)),
-    tx: (code) => attempt('tx', () => runCode('tx', 'EXECUTE_TRANSACTION', code)),
+    query: (code) => attempt('query', () => runCode('query', 'EXECUTE_QUERY', code)),
+    transact: (code) => attempt('transact', () => runCode('transact', 'EXECUTE_TRANSACTION', code)),
 
     state: () => attempt('state', () => page.evaluateExpression(`(() => {
       const snap = window.applicationState?.getSnapshot();

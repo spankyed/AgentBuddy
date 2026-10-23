@@ -5829,7 +5829,7 @@ declare const browserQueries: {
  * Database Service
  *
  * `services.database`: live-data context for AI query generation. Actions read and write
- * entities through `services.repository`; pack code imports `qx`/`create`/`write` from `#generated/ears`.
+ * entities through `services.repository`; pack code imports `query`/`create`/`write` from `#generated/ears`.
  */
 /**
  * Build a query context from live data for AI query generation.

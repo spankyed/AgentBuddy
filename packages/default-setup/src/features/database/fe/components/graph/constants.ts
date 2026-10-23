@@ -2,18 +2,18 @@ export const exampleQuery =
 `// Example queries - modify and run to explore the database
 
 // Query all threads with their data
-return qx(EARS.Entity.Thread).pick(['id', 'topic', 'status', 'timestamp']).limit(10);
+return query(EARS.Entity.Thread).pick(['id', 'topic', 'status', 'timestamp']).limit(10);
 
 // Or try these examples:
-// return qx(EARS.Entity.Note).where('archived', false).pickAll();
-// return qx.all().has('label').pick(['id', 'label']).limit(20);
-// return qx(EARS.Entity.Tag).pick(['id', 'name', 'color']).orderBy('name');`
+// return query(EARS.Entity.Note).where('archived', false).pickAll();
+// return query.all().has('label').pick(['id', 'label']).limit(20);
+// return query(EARS.Entity.Tag).pick(['id', 'name', 'color']).orderBy('name');`
 
 export const entityQueryTemplate = (value: string) =>
-  `// Query all ${value} entities\nreturn qx(EARS.Entity.${value}).pickAll().limit(20);`
+  `// Query all ${value} entities\nreturn query(EARS.Entity.${value}).pickAll().limit(20);`
 
 export const attributeQueryTemplate = (value: string) =>
-  `// Query entities with ${value} attribute\nreturn qx.all().has('${value}').pick(['id', '${value}']).limit(20);`
+  `// Query entities with ${value} attribute\nreturn query.all().has('${value}').pick(['id', '${value}']).limit(20);`
 
 export const relationQueryTemplate = (value: string) =>
 `// Query entities with ${value} relations
@@ -22,7 +22,7 @@ const sources = [];
 const allIds = getAllEntities();
 
 for (const sourceId of allIds) {
-  const targets = qx.ids(sourceId).related('${value}', sourceId, true).ids();
+  const targets = query.ids(sourceId).related('${value}', sourceId, true).ids();
   if (targets.length > 0) {
     const sourceData = getAll(sourceId);
     sources.push({

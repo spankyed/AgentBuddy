@@ -59,7 +59,7 @@ if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$APP_DATA"' EXIT; fi
 
 step "9. apack db on the data the app written (the packed CLI, offline)"
 # The demo pack's entity type comes from its installed manifest
-"$APACK" db query "return qx(EARS.Entity.DemoPack).pickAll().map((row) => row.term)" --data-dir "$APP_DATA" -o json > "$WORK/db-query.json" 2> "$WORK/db-query.err" \
+"$APACK" db query "return query(EARS.Entity.DemoPack).pickAll().map((row) => row.term)" --data-dir "$APP_DATA" -o json > "$WORK/db-query.json" 2> "$WORK/db-query.err" \
   || { cat "$WORK/db-query.err"; fail "apack db query failed"; }
 grep -q "Database: $APP_DATA (offline)" "$WORK/db-query.err" || fail "apack db query didn't print its data dir"
 node -e '

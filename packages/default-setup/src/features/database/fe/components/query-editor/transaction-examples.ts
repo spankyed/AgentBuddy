@@ -9,7 +9,7 @@ export const transactionExamples: TransactionExample[] = [
   {
     title: 'Reset Settings',
     description: 'Reset all settings by destroying all entries in the Settings collection',
-    query: `return qx('Settings').ids().forEach(id => write(id).destroy());`
+    query: `return query('Settings').ids().forEach(id => write(id).destroy());`
   },
 
 
@@ -18,13 +18,13 @@ export const transactionExamples: TransactionExample[] = [
     title: 'Update Entity Attributes',
     description: 'Update existing entity attributes',
     query: `// Find an entity to update
-const threads = qx(EARS.Entity.Thread).limit(1).ids();
+const threads = query(EARS.Entity.Thread).limit(1).ids();
 if (threads.length === 0) {
   return { error: 'No threads found to update' };
 }
 
 const threadId = threads[0];
-const before = qx.ids(threadId).pickOne(['status', 'updatedAt']);
+const before = query.ids(threadId).pickOne(['status', 'updatedAt']);
 
 // Update the thread
 write(threadId)
@@ -32,7 +32,7 @@ write(threadId)
   .set('updatedAt', Date.now())
   .set('resolvedBy', 'admin');
 
-const after = qx.ids(threadId).pickOne(['status', 'updatedAt', 'resolvedBy']);
+const after = query.ids(threadId).pickOne(['status', 'updatedAt', 'resolvedBy']);
 
 return { threadId, before, after };`
   },
@@ -56,7 +56,7 @@ write(noteId)
   .grant('supervisor');
 
 // Make this the only note with the 'primary' role
-write(noteId).grantExclusive('primary', qx(EARS.Entity.Note).ids());
+write(noteId).grantExclusive('primary', query(EARS.Entity.Note).ids());
 
 const finalRoles = getRoles(noteId);
 
@@ -93,7 +93,7 @@ const flowId = create(EARS.Entity.Flow)
   .link(EARS.RelKind.CONTAINS, actionId)
   .id();
 
-return qx.ids(flowId).pickAll();`
+return query.ids(flowId).pickAll();`
   },
 
 
@@ -114,10 +114,10 @@ updateEntity(note.id, {
 });
 
 // Create relation with helper
-const threadId = qx(EARS.Entity.Thread).first();
+const threadId = query(EARS.Entity.Thread).first();
 if (threadId) createRelation(note.id, EARS.RelKind.SPAWNED, threadId);
 
-return qx.ids(note.id).pickAll();`
+return query.ids(note.id).pickAll();`
   },
 
   // Safe Operations

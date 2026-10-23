@@ -328,7 +328,7 @@ describe('findUpwardImports', () => {
 
   it.each([
     ['ears', 'src/query.ts', "import { EARS } from '@apackdev/sdk';", 'layers/ears/src/query.ts:1: @apackdev/sdk'],
-    ['ears', 'tests/query.spec.ts', "const { tx } = await import('@apackdev/sdk/testing');", 'layers/ears/tests/query.spec.ts:1: @apackdev/sdk/testing'],
+    ['ears', 'tests/query.spec.ts', "const { startTestRuntime } = await import('@apackdev/sdk/testing');", 'layers/ears/tests/query.spec.ts:1: @apackdev/sdk/testing'],
     ['sdk', 'src/services/app.ts', "import { createHostRuntime } from '@apackdev/host/services';", 'layers/sdk/src/services/app.ts:1: @apackdev/host/services'],
     ['sdk', 'src/fe/ui.ts', "export type { Button } from '@apackdev/ui/design/button';", 'layers/sdk/src/fe/ui.ts:1: @apackdev/ui/design/button'],
     ['host', 'src/bus/app.ts', "import { rootEvents } from '@app/api/core/router/bus-emitter';", 'layers/host/src/bus/app.ts:1: @app/api/core/router/bus-emitter'],

@@ -20,7 +20,7 @@ import { createTraceStore } from './trace-store.ts';
 export interface HostRuntimeOptions {
   /** The app's LMDB store, which appData and traceStore work on */
   store: LmdbStore;
-  /** The app's engine: packs get its query face, the services its admin face */
+  /** The app's engine: packs get its operations, the services its `admin` too */
   engine: EarsEngine;
   /** The app's event bus */
   transport: { rootEvents: RootEvents };

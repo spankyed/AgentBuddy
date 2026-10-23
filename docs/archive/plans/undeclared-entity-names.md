@@ -33,7 +33,7 @@ investigating it says that is the wrong thing to fix, and that something worse i
 
 **The repeatability gap is about packs that do not exist.** `default-setup` is the only `builtIn: true`
 manifest in the tree, and this repo deliberately *notes* where to look when a second arrives
-([`goal-pack-apply-order-and-retry.md:117-119`](../archive/goals/goal-pack-apply-order-and-retry.md), and
+([`goal-pack-apply-order-and-retry.md:117-119`](../../archive/goals/goal-pack-apply-order-and-retry.md), and
 `resolveFromRemoteRegistry` for third-party packs) rather than designing for it. A plan that treats a
 hypothetical second built-in pack as a constraint should say so out loud so the claim can be checked; this
 one says it is not a constraint.

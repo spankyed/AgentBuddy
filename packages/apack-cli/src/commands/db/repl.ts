@@ -12,7 +12,7 @@ export const REPL_USAGE = [
   'Usage: apack db repl [--write] [options]',
   '',
   'Runs each line you enter as query code (with --write, as transaction code) and prints its result. A line is a',
-  'function body: `return qx(EARS.Entity.Note).count()`. .exit (or Ctrl+D) closes the database and exits.',
+  'function body: `return query(EARS.Entity.Note).count()`. .exit (or Ctrl+D) closes the database and exits.',
   '',
   'Options:',
   '  --write                Transaction code: the write helpers too, and the changes are saved on exit',

@@ -14,7 +14,7 @@ export function template(params: Record<string, any>) {
   const { schema, topology } = params;
 
   return `You are an EARS database transaction generator. Output ONLY executable TypeScript code. No markdown, no explanations, no comments.
-MUST include a return statement. qx, create, upsert and write are all synchronous — never use await.
+MUST include a return statement. query, create, upsert and write are all synchronous — never use await.
 
 SCHEMA:
 
@@ -25,7 +25,7 @@ ${topology}
 
 GLOBALS:
 
-qx(...)               query builder (read-only, for finding entities before mutating)
+query(...)               query builder (read-only, for finding entities before mutating)
 create(type, opts?)   create a new entity of a type → write builder
 upsert(type, id)      the entity with this id, created as type when missing → write builder
 write(id)             an existing entity → write builder (throws when no entity has the id)
@@ -41,11 +41,11 @@ createRelation(sourceId, kind, targetId)   create a relation
 removeRelation(sourceId, kind, targetId?)  remove matching relation(s)
 removeRelationById(relationId)             remove one relation by its own id
 
-QUERY API (qx) — use to find entities before mutating:
+QUERY API (query) — use to find entities before mutating:
 
-  qx(EARS.Entity.Thread)                          all of a type (a type name only, never an id)
-  qx.ids('Thread-1')  /  qx.ids([id1, id2])        entities by id (absent ids are dropped)
-  qx.all()                                         every entity
+  query(EARS.Entity.Thread)                          all of a type (a type name only, never an id)
+  query.ids('Thread-1')  /  query.ids([id1, id2])        entities by id (absent ids are dropped)
+  query.all()                                         every entity
   .where('field', value)                           filter by attribute value
   .has('field')  /  .lacks('field')                filter by presence / absence
   .linksTo('contains', EARS.Entity.Message)        follow outgoing relations
@@ -103,12 +103,12 @@ const threadId = create(EARS.Entity.Thread)
 return { created: threadId };
 
 // Update an existing entity
-const threadId = qx(EARS.Entity.Thread).first();
+const threadId = query(EARS.Entity.Thread).first();
 if (!threadId) return { updated: null };
 write(threadId)
   .set('status', 'resolved')
   .set('updatedAt', Date.now());
-return qx.ids(threadId).pickAll();
+return query.ids(threadId).pickAll();
 
 // Create entity with relations
 const flowId = create(EARS.Entity.Flow)
@@ -121,7 +121,7 @@ write(flowId).link(EARS.RelKind.CONTAINS, nodeId);
 return { flowId, nodeId };
 
 // Bulk delete entities
-const ids = qx(EARS.Entity.Thread)
+const ids = query(EARS.Entity.Thread)
   .where('status', 'archived')
   .limit(10)
   .ids();
@@ -129,7 +129,7 @@ ids.forEach(id => write(id).destroy());
 return { deleted: ids.length };
 
 // Grant/revoke roles
-const noteId = qx(EARS.Entity.Note).first();
+const noteId = query(EARS.Entity.Note).first();
 if (!noteId) return { noteId: null };
 write(noteId).grant('primary').revoke('inactive');
 return { noteId, roles: getRoles(noteId) };`;

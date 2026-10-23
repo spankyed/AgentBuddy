@@ -29,7 +29,7 @@ describe('query step', () => {
   });
 
   it("runs the model's query and completes with the query and its rows under `as`", async () => {
-    const query = "return qx(EARS.Entity.Action).pick(['label']).map((a) => a.label).sort();";
+    const query = "return query(EARS.Entity.Action).pick(['label']).map((a) => a.label).sort();";
     const inference = mockInference('```ts\n' + query + '\n```');
 
     const sent = await run({ resultKey: 'labels', model: 'openai:gpt-4o-mini' });
@@ -41,11 +41,11 @@ describe('query step', () => {
   });
 
   it('stores the rows under `rows` with the default model when the node names neither', async () => {
-    const inference = mockInference("return qx(EARS.Entity.Action).count();");
+    const inference = mockInference("return query(EARS.Entity.Action).count();");
 
     const sent = await run({});
 
-    expect(sent).toEqual([{ type: 'COMPLETE', result: { query: 'return qx(EARS.Entity.Action).count();', rows: 2 } }]);
+    expect(sent).toEqual([{ type: 'COMPLETE', result: { query: 'return query(EARS.Entity.Action).count();', rows: 2 } }]);
     expect(inference.calls[0].model).toBe(DEFAULT_MODEL);
   });
 
@@ -60,7 +60,7 @@ describe('query step', () => {
   });
 
   it('fails with the error of a query that does not run', async () => {
-    mockInference('return qx(EARS.Entity.Action).pick([');
+    mockInference('return query(EARS.Entity.Action).pick([');
 
     expect(errorMessage(await run({}))).toContain('Query step "Find actions" generated a query that failed:');
   });

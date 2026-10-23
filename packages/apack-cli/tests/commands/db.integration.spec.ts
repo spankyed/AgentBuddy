@@ -155,7 +155,7 @@ function publishApi(dir: string): void {
 describe('apack db query', () => {
   it('prints the result, after the data dir it targets', async () => {
     const dir = await appDataDir();
-    const { out, err } = await ok(['query', "return qx(EARS.Entity.Note).pickAll(['title']).map((n) => n.title).sort()", '--data-dir', dir, '-o', 'json']);
+    const { out, err } = await ok(['query', "return query(EARS.Entity.Note).pickAll(['title']).map((n) => n.title).sort()", '--data-dir', dir, '-o', 'json']);
     expect(JSON.parse(out)).toEqual(['Alpha', 'Beta, "quoted"']);
     expect(err).toContain(`Database: ${dir} (offline)`);
     // The engine is closed and uninstalled
@@ -165,7 +165,7 @@ describe('apack db query', () => {
   it('reads code from a file, and writes CSV to a file', async () => {
     const dir = await appDataDir();
     const code = path.join(dir, 'query.js');
-    fs.writeFileSync(code, "return qx(EARS.Entity.Note).pickAll().map(({ id, title }) => ({ id, title })).sort((a, b) => a.id.localeCompare(b.id))");
+    fs.writeFileSync(code, "return query(EARS.Entity.Note).pickAll().map(({ id, title }) => ({ id, title })).sort((a, b) => a.id.localeCompare(b.id))");
     const csv = path.join(dir, 'out', 'notes.csv');
     const { out, err } = await ok(['query', '--file', code, '--data-dir', dir, '--output', 'csv', '--out', csv]);
     expect(out).toBe('');
@@ -417,7 +417,7 @@ describe('apack db exec', () => {
     const dir = await appDataDir();
     const { out } = await ok(['exec', "write('Note-a').set('title', 'Changed'); return create(EARS.Entity.Note).set('title', 'New').id()", '--data-dir', dir]);
     expect(out).toMatch(/^Note-/);
-    const titles = await ok(['query', "return qx(EARS.Entity.Note).pickAll(['title']).map((n) => n.title).sort()", '--data-dir', dir, '-o', 'json']);
+    const titles = await ok(['query', "return query(EARS.Entity.Note).pickAll(['title']).map((n) => n.title).sort()", '--data-dir', dir, '-o', 'json']);
     expect(JSON.parse(titles.out)).toEqual(['Beta, "quoted"', 'Changed', 'New']);
   });
 
@@ -1140,8 +1140,8 @@ describe('a data dir whose packs are gone', () => {
 
   it('answers a query that names an undeclared type with that type, not with everything', async () => {
     const { dir } = await withoutItsPack();
-    const everything = await ok(['query', 'return qx.all().ids().length', '--data-dir', dir]);
-    const notes = await ok(['query', 'return qx(EARS.Entity.Note).ids().sort()', '--data-dir', dir, '-o', 'json']);
+    const everything = await ok(['query', 'return query.all().ids().length', '--data-dir', dir]);
+    const notes = await ok(['query', 'return query(EARS.Entity.Note).ids().sort()', '--data-dir', dir, '-o', 'json']);
 
     expect(JSON.parse(notes.out)).toEqual(['Note-a', 'Note-b']);
     // The assertion only means something while the two differ: the bug answered a query for Notes with this
@@ -1170,7 +1170,7 @@ describe('a data dir whose packs are gone', () => {
 
   it('declares them again when --schema-from names the pack, and stops warning', async () => {
     const { dir, packDir } = await withoutItsPack();
-    const { out, err } = await ok(['query', 'return qx(EARS.Entity.Note).ids().length', '--data-dir', dir, '--schema-from', packDir]);
+    const { out, err } = await ok(['query', 'return query(EARS.Entity.Note).ids().length', '--data-dir', dir, '--schema-from', packDir]);
 
     expect(out).toBe('2');
     expect(err).not.toContain('no installed pack declares');

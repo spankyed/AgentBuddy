@@ -2348,7 +2348,7 @@
         "prefix": "database:",
         "globals": {
           "EARS": "typeof _dsl.EARS",
-          "qx": "typeof _dsl.qx",
+          "query": "typeof _dsl.query",
           "getAllEntities": "typeof _dsl.getAllEntities",
           "getAll": "typeof _dsl.getAll",
           "findEntitiesByRelationTo": "typeof _dsl.findEntitiesByRelationTo",

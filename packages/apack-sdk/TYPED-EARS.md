@@ -8,7 +8,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 
 
 - `packages/apack-ears/src/entities.ts`: the core `EARS` namespace (`EARS.EntityId`), `BaseEntity`, `ShapeOf`, `EntityNameArg`
-- `packages/apack-ears/src/runtime.ts`: `QueryBuilder`, `TransactionBuilder`, `FieldValue`, `FieldValues`
+- `packages/apack-ears/src/runtime.ts`: `QueryBuilder`, `WriteBuilder`, `FieldValue`, `FieldValues`
 - `packages/apack-ears/src/typed.ts`: `defineEars` and the `Typed*` helper signatures behind `#generated/ears` (the functions it returns act on the engine its getter returns, `boundEars` for a pack; `src/engine.ts`'s `Ears` is untyped)
 - `packages/apack-sdk/src/types/entities.ts`: the SDK's `EARS`, aliasing the engine's types and adding the SDK's entity types and relation kinds
 - `packages/apack-sdk/src/types/sdk-entities.ts`: `SdkEntityShapes` and the SDK-owned entity shapes (Relation and the flow model: Flow, Node, TNode, Action, Prompt). Preferences use the host settings contract, without a pack-owned `Settings` entity; the host's `AppState` isn't in any pack's `EntityName`
@@ -66,7 +66,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - The one hazard is the SDK's `EARS.Entity` as a type. It's open (any string), so a value annotated with it passes the entity-name check unchecked, reads with the generic shape, and compiles with a typo. Use it only when an open name is intended, as in default-setup's create step (`entityTypeTarget`, any entity type a flow names); otherwise annotate with the generated `EARS.Entity` or `EntityName`, which are closed.
 
 **Defaults.**
-- `QueryBuilder<E = string, S = {}, N = string>` and `TransactionBuilder<E = string, S = {}>` keep the helpers from `@apackdev/ears` (and an engine's `query` face) unchecked.
+- `QueryBuilder<E = string, S = {}, N = string>` and `WriteBuilder<E = string, S = {}>` keep the untyped operations (`untypedQuery`, `untypedWrite`, … from `@apackdev/sdk/ears`, and an engine's own) unchecked.
 
 **Compatibility.**
 - `@apackdev/ears` and `@apackdev/sdk` support TypeScript 5.7 and later (`packages/typescript-floor`). These types keep their `NoInferType` workaround from when the floor was 5.3.
@@ -122,6 +122,6 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   - **Conclusion: there is no type-level fix that leaves current behaviour unchanged.** Anything that
     stops `'user-note'` being an id also stops `'TNode-Root'` being one.
   - **The design that gets both properties** is to stop overloading, and that is what landed
-    ([`ears-public-api.md`](../../docs/plans/ears-public-api.md)): `qx(type)` beside `qx.ids(id)`, and
+    ([`ears-public-api.md`](../../docs/archive/plans/ears-public-api.md)): `qx(type)` beside `qx.ids(id)`, and
     `create(type)` beside `write(id)`. The `EntityId` template stays, so literal ids still compile.
 - **No entity names in `qx('…')` (found 2026-09-14).** `qx`'s id overloads came before its name overloads, so editors offered no names there. Fixed by putting the name overloads first, and moot since ids moved to `qx.ids`; the completions test still guards the position.

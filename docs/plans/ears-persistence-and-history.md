@@ -74,7 +74,7 @@ and does not justify introducing persistent component indexes or archetypes here
 
 ## Persistence contract
 
-Keep `qx()` and the mutation builder synchronous. Add a host-owned persistence boundary for logical
+Keep `query()` and the write builder synchronous. Add a host-owned persistence boundary for logical
 repository commands that require atomic storage, with asynchronous commit acknowledgment at the
 service boundary where durable completion is promised.
 

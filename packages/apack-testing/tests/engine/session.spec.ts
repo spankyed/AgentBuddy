@@ -267,7 +267,7 @@ describe('the in-page bridge', () => {
     await session.ready();
 
     for (let n = 0; n < MAX_SEEN_EVENTS; n += 1) emit({ type: `E${n}`, event: {} });
-    const pending = session.qx('return 1');
+    const pending = session.query('return 1');
     await settle();
     // Through the bridge, so the call is on the delivered event where a window's door put it — `answerTo`
     // builds exactly that, which is why the session reads both places into one field
@@ -278,7 +278,7 @@ describe('the in-page bridge', () => {
 });
 
 /**
- * `/qx` and `/tx` go to the system that already runs code against the live engine, and each reply names
+ * `/query` and `/transact` go to the system that already runs code against the live engine, and each reply names
  * the request it answers — so the engine takes its own and leaves everything else alone.
  *
  * It used to run one round-trip at a time instead, because the reply named nothing and the next one of
@@ -561,7 +561,7 @@ describe('a bus round-trip', () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
 
-    const pending = session.qx('return 42');
+    const pending = session.query('return 42');
     await settle();
     const sent = lastSend(send);
     expect(sent.to).toBe(DATABASE_SYSTEM);
@@ -581,18 +581,18 @@ describe('a bus round-trip', () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
 
-    const pending = session.qx('return boom');
+    const pending = session.query('return boom');
     await settle();
     answer({ type: 'QUERY_ERROR', error: 'boom is not defined' }, { answering: sentCall(send) });
 
-    await expect(pending).resolves.toEqual({ ok: false, error: 'qx: boom is not defined' });
+    await expect(pending).resolves.toEqual({ ok: false, error: 'query: boom is not defined' });
   });
 
-  it('uses the transaction events for tx, not the query ones', async () => {
+  it('uses the transaction events for transact, not the query ones', async () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
 
-    const pending = session.tx('return write(...)');
+    const pending = session.transact('return write(...)');
     await settle();
     expect(lastSend(send).event).toMatchObject({ type: 'EXECUTE_TRANSACTION', code: 'return write(...)' });
 
@@ -615,7 +615,7 @@ describe('a bus round-trip', () => {
     const { session, emit, send } = sessionWith();
     await session.ready();
 
-    const pending = session.qx('return 1');
+    const pending = session.query('return 1');
     await settle();
     emit({ type: 'QUERY_RESULT', event: answerTo(sentCall(send), { type: 'QUERY_RESULT', result: 'through the bridge' }) });
 
@@ -634,7 +634,7 @@ describe('a bus round-trip', () => {
     const { session, finish } = sessionWith();
     await session.ready();
 
-    const pending = session.qx('return 1');
+    const pending = session.query('return 1');
     await settle();
     finish('the app closed the connection');
 
@@ -650,7 +650,7 @@ describe('a bus round-trip', () => {
     await session.ready();
     fail('the app closed the connection');
 
-    await expect(session.qx('return 1')).resolves.toMatchObject({
+    await expect(session.query('return 1')).resolves.toMatchObject({
       ok: false,
       error: expect.stringContaining('restart the session'),
     });
@@ -661,7 +661,7 @@ describe('a bus round-trip', () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
 
-    const pending = session.qx('return mine');
+    const pending = session.query('return mine');
     await settle();
     answer({ type: 'QUERY_RESULT', result: 'someone else' }, { answering: 'c-elsewhere' });
     await settle();
@@ -683,13 +683,13 @@ describe('a bus round-trip', () => {
       const { session, send, answer } = sessionWith();
       await session.ready();
 
-      const abandoned = session.qx('return slow');
+      const abandoned = session.query('return slow');
       await vi.advanceTimersByTimeAsync(0);
       const orphan = sentCall(send);
       await vi.advanceTimersByTimeAsync(REPLY_TIMEOUT_MS + 10);
       await expect(abandoned).resolves.toMatchObject({ ok: false });
 
-      const next = session.qx('return quick');
+      const next = session.query('return quick');
       await vi.advanceTimersByTimeAsync(0);
       // The slow query finishes at last, with nobody waiting for it
       answer({ type: 'QUERY_RESULT', result: 'the abandoned one' }, { answering: orphan });
@@ -714,7 +714,7 @@ describe('a bus round-trip', () => {
     try {
       const { session, send } = sessionWith();
       await session.ready();
-      const pending = session.qx('return 1');
+      const pending = session.query('return 1');
       // Advanced rather than `settle()`, which is `setImmediate` and so is itself faked here
       await vi.advanceTimersByTimeAsync(1);
       // The ask's own call, so the message is held to naming *that* one rather than to looking like an id
@@ -748,7 +748,7 @@ describe('a bus round-trip', () => {
     try {
       const { session, fail } = sessionWith();
       await session.ready();
-      const pending = session.qx('return 1');
+      const pending = session.query('return 1');
       fail('the app ended the event subscription');
       await vi.advanceTimersByTimeAsync(REPLY_TIMEOUT_MS + 10);
 
@@ -765,12 +765,12 @@ describe('a bus round-trip', () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
 
-    const bad = session.qx('return boom');
+    const bad = session.query('return boom');
     await settle();
     answer({ type: 'QUERY_ERROR', error: 'nope' }, { answering: sentCall(send) });
     await expect(bad).resolves.toMatchObject({ ok: false });
 
-    const good = session.qx('return 1');
+    const good = session.query('return 1');
     await settle();
     answer({ type: 'QUERY_RESULT', result: 'still here' }, { answering: sentCall(send) });
     await expect(good).resolves.toEqual({ ok: true, value: 'still here' });

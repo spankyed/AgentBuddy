@@ -13,7 +13,7 @@ import type { FilesystemService } from '../services/filesystem.ts';
 import type { SettingsAdmin } from '../services/settings.ts';
 import type { PackRegistryView } from './packs-view.ts';
 
-/** The app's EARS engine, as packs query it: its query face (`createEarsEngine` from `@apackdev/ears`) */
+/** The app's EARS engine as a program is handed it: its operations, without `admin` (`createEarsEngine` from `@apackdev/ears`) */
 export type { Ears } from '@apackdev/ears';
 
 /** What the app implements and packs call through `services` */
@@ -47,7 +47,7 @@ export interface SecretRedaction {
 export interface HostRuntime {
   /** The app's event bus */
   transport: { rootEvents: RootEvents };
-  /** The app's engine, its query face: binding installs it for `@apackdev/ears`'s free functions */
+  /** The app's engine, without `admin`: binding makes it the one `@apackdev/sdk/ears`'s operations act on */
   ears: Ears;
   /** The registered packs, read-only: their services and everything else they registered */
   packs: PackRegistryView;

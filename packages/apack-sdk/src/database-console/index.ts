@@ -39,7 +39,7 @@ export function getSchemaStats(): SchemaStats {
 const { getAttr, getAttrs, createEntityWithDefaults, updateEntity } = /*#__PURE__*/ defineEars(boundEars);
 
 const readHelpers = {
-  qx: untypedQuery,
+  query: untypedQuery,
   getAllEntities,
   getAll,
   findEntitiesByRelationTo,
@@ -90,7 +90,7 @@ export interface ConsoleScope {
  * A name the database cannot account for is an error, not a number.
  *
  * A namespace that read `undefined` for a name nothing declares would pass that on as though it were a type.
- * The engine refuses `qx(undefined)` too, but only as an unknown type with no name in it; the namespace is the
+ * The engine refuses `query(undefined)` too, but only as an unknown type with no name in it; the namespace is the
  * one layer that knows which name was asked for, so it is where the error can name it, list what is known and
  * carry the caller's `hint` (the CLI's `--schema-from`).
  *

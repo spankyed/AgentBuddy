@@ -88,6 +88,12 @@ exactly one place — the SDK's pack-facing surface — instead of shadowing eve
 
 ### Terseness is carried by the console's scope
 
+> **Superseded (2026-10-22):** the console takes `query` too. Keeping `qx` there saved three characters and cost
+> a second name for one operation, an alias (`query as qx`) to keep it alive, and console code that read
+> unlike pack code — while everything around it (`apack db query`, the `query` step, `runQueryCode`) already
+> said `query`. The console's injected names are the library's now, and `query-vocabulary.spec.ts` checks
+> `READ_HELPER_NAMES` so the exception can't return. What follows is the reasoning as it was.
+
 `qx` is short for a real reason: people type it by hand in `db repl`, `db query` and the Database surface.
 That is a genuine requirement and it should not name the library. The console already injects a deliberate,
 enumerated vocabulary (`readHelpers`/`READ_HELPER_NAMES`, `apack-sdk/src/database-console/index.ts:46`), so

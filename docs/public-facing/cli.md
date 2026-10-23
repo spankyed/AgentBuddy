@@ -278,7 +278,7 @@ that app published — one process per question, no session to stand up and noth
 apack pack dev                                   # one terminal: holds the app
 apack pack drive --state                         # another: 0.9s
 apack pack drive --eval 'return window.appVersion'
-apack pack drive --query 'return qx(EARS.Entity.Note).count()'
+apack pack drive --query 'return query(EARS.Entity.Note).count()'
 ```
 
 With no app running it exits 3 and says so. `--spawn` starts one and keeps it, so a cold checkout costs
@@ -697,7 +697,7 @@ app afterwards.
 `apack db` reads and changes the app's database (EARS on LMDB) from the command line: to look at data, repair it when the app can't start, or move it between machines.
 
 ```bash
-apack db query "return qx(EARS.Entity.Note).count()"
+apack db query "return query(EARS.Entity.Note).count()"
 apack db inspect Flow-123 --depth 2
 apack db export --out ./export
 apack db import ./apack-backup-2026-09-17 --profile production --force
@@ -723,10 +723,10 @@ While a command changes the database it holds a lock on the data dir (`db-write.
 
 #### `apack db query <code> | --file <path> [-o pretty|json|csv] [--out <file>]`
 
-Run query code with the Database console's read helpers: `qx`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `findEntitiesByAttribute`, `findEntitiesByRelationTo`, `findEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`apack db script`) can.
+Run query code with the Database console's read helpers: `query`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `findEntitiesByAttribute`, `findEntitiesByRelationTo`, `findEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`apack db script`) can.
 
 ```bash
-apack db query "return qx(EARS.Entity.Settings).pickAll()" -o json --out settings.json
+apack db query "return query(EARS.Entity.Settings).pickAll()" -o json --out settings.json
 apack db query --file ./report.js -o csv
 ```
 
@@ -762,7 +762,7 @@ apack db script ./cleanup.ts --profile development -- --older-than 30
 
 | It receives | |
 |---|---|
-| `db` | the open database: `query` (`qx`, `create`, `upsert`, `write`, the finders), `admin`, `store`, `schema`, `paths`, `userDataDir` |
+| `db` | the open database: `query` (`query`, `create`, `upsert`, `write`, the finders), `admin`, `store`, `schema`, `paths`, `userDataDir` |
 | `EARS` | the entity types and relation kinds of the packs installed in that data dir |
 | `args` | whatever follows `--` |
 | `log` | prints a line, like the script's own output |
@@ -791,7 +791,7 @@ No backup holds the secrets — `export` and the Database settings' backups copy
 
 Destroy every Settings row (the user's changes to the default settings); the app recreates the defaults on its next start. Without `--force` it lists each row and the settings it stores.
 
-In the apack repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return qx.all().count()"`.
+In the apack repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return query.all().count()"`.
 
 ### Cleanup
 

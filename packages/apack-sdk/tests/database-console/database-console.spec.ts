@@ -22,7 +22,7 @@ describe('the helpers console code sees', () => {
     expect([...READ_HELPER_NAMES].sort()).toEqual([
       'findEntitiesByAttribute', 'findEntitiesByRelationTo', 'findEntitiesInRelationTo', 'findRelations', 'getAll',
       'getAllEntities', 'getAttr', 'getAttrs', 'getEntitiesOfType', 'getRelationStats', 'getRoles', 'getSchemaStats',
-      'qx',
+      'query',
     ]);
     for (const name of READ_HELPER_NAMES) {
       await expect(runQueryCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -43,7 +43,7 @@ describe('the helpers console code sees', () => {
 describe('runQueryCode', () => {
   it('returns what the code returns, reading the installed engine and the EARS it is given', async () => {
     untypedCreate('Flow', { id: 'Flow-1' }).set('label', 'Main');
-    await expect(runQueryCode("return qx(EARS.Entity.Flow).pickAll().map((f) => f.label)", scope)).resolves.toEqual(['Main']);
+    await expect(runQueryCode("return query(EARS.Entity.Flow).pickAll().map((f) => f.label)", scope)).resolves.toEqual(['Main']);
     await expect(runQueryCode('return getAttr("Flow-1", "label")', scope)).resolves.toBe('Main');
     await expect(runQueryCode('return getSchemaStats().entities', scope)).resolves.toEqual({ Flow: 1 });
   });
@@ -118,12 +118,12 @@ describe('the EARS console code sees', () => {
     untypedCreate('Note', { id: 'Note-1' as EARS.EntityId }).set('title', 'ours');
 
     await expect(runQueryCode('return EARS.Entity.Memo', { EARS: installedEars() })).resolves.toBe('Memo');
-    await expect(runQueryCode('return qx(EARS.Entity.Memo).ids()', { EARS: installedEars() }))
+    await expect(runQueryCode('return query(EARS.Entity.Memo).ids()', { EARS: installedEars() }))
       .resolves.toEqual(['Memo-1']);
 
-    // `Note` has rows and no pack declares it. Reading it as `undefined` made `qx` answer with the whole
+    // `Note` has rows and no pack declares it. Reading it as `undefined` made `query` answer with the whole
     // database — both entities here, where one was asked for — so the namespace refuses the name instead.
-    await expect(runQueryCode('return qx(EARS.Entity.Note).ids()', { EARS: installedEars() }))
+    await expect(runQueryCode('return query(EARS.Entity.Note).ids()', { EARS: installedEars() }))
       .rejects.toThrow('"Note" is not an entity type this database can account for');
   });
 });
@@ -140,7 +140,7 @@ describe('a name the database cannot account for', () => {
   it('says what is known, and what would supply the rest', () => {
     expect(() => ears().Entity.Bookmark).toThrow(/^"Bookmark" is not an entity type this database can account for\./);
     expect(() => ears().Entity.Bookmark).toThrow(/Known: .*\bMemo\b/);
-    expect(() => ears().RelKind.PARENT_OF).toThrow('"PARENT_OF" is not a relation kind this database can account for');
+    expect(() => ears().RelKind.REFERENCES).toThrow('"REFERENCES" is not a relation kind this database can account for');
 
     const withHint = consoleEars({ entities: { Memo: 'Memo' }, relKinds: {} }, { hint: 'Try --schema-from.' }) as Record<string, Record<string, string>>;
     expect(() => withHint.Entity.Bookmark).toThrow('Try --schema-from.');
