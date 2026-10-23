@@ -35,7 +35,7 @@ Finished when:
   npm run test:unit; npm run content-golden:check -w @app/default-setup.
 - npm run build, npm test (E2E), npm run test:external-pack and npm run test:packaged-authoring, since
   codegen output, the pack manifest schema and the scaffolded test template all change.
-- `grep -rn "importContent\|QxStart\|importCompiledContent"` finds nothing outside docs/archive/.
+- `grep -rn "importContent\|QueryStart\|importCompiledContent"` finds nothing outside docs/archive/.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
 Commit as you go:
@@ -131,8 +131,8 @@ built-in only and `externalContentDeps` is external only, neither of which its n
   CLI scaffolds a call to it into every new pack (`apack-cli/src/commands/init.ts:259,269`) and
   `docs/public-facing/testing.md` uses it seven times.
 - **A homonym in another package.** `@apackdev/ears` uses `content` for the starting set of a query chain:
-  `QxStart` (`src/query.ts:26`, published in `etc/index.api.md:602`), the parameter in
-  `untypedQx(content?: QxStart)`, and "Written …" in the doc comments of `query.ts:280`, `runtime.ts:166`
+  `QueryStart` (`src/query.ts:26`, published in `etc/index.api.md:602`), the parameter in
+  `untypedQuery(content?: QueryStart)`, and "Written …" in the doc comments of `query.ts:280`, `runtime.ts:166`
   and `typed.ts:37`. Unrelated to pack content data, in a layer that has no such concept — but it is the
   second meaning a grep for `content` returns.
 
@@ -224,10 +224,10 @@ This is also the distinction the docs in Decision 6 have to draw. Re-recording t
 test expectation and changes no user data; what changes user data is a new `sourceHash`, from compile.
 
 **8. The `@apackdev/ears` homonym goes too.**
-`QxStart` names the starting set of a query — a real and separate meaning, in a package that sits below
+`QueryStart` names the starting set of a query — a real and separate meaning, in a package that sits below
 the SDK and has no pack-content concept. "It is a different package" is exactly the reasoning that let
 `content` mean four things, so it is not a reason to keep a second meaning after this goal. Rename to
-`QxStart`, which says what it is; the parameter `untypedQx(content?)` becomes `start`, and the three
+`QueryStart`, which says what it is; the parameter `untypedQuery(content?)` becomes `start`, and the three
 "Written …" doc comments follow. `runtime.ts` and `typed.ts` are change-controlled
 (`packages/apack-sdk/TYPED-EARS.md`), but these are comment-only edits there.
 
@@ -310,15 +310,15 @@ content-parity:check -w @app/default-setup` runs and `grep -rn content-golden` f
 
 ### Phase 5 — The query content in `@apackdev/ears`
 
-- Per Decision 8: `QxStart` → `QxStart` (`src/query.ts:26`), exported from `src/index.ts:11`; the
-  parameter of `untypedQx(content?: QxStart)` becomes `start`; the "Written …" doc comments in
+- Per Decision 8: the start type is `QueryStart` (`src/query.ts:26`), exported from `src/index.ts:11`; the
+  parameter of `untypedQuery(content?: QueryStart)` becomes `start`; the "Written …" doc comments in
   `query.ts:280`, `runtime.ts:166` and `typed.ts:37` say "Starting from …".
 - `npm run api:update -w @apackdev/ears` and commit `etc/index.api.md`.
 
 Lands independently of Phases 1–4: it is a different package and shares no file with them.
 
 **Done when:** `npm run typecheck:ears`; `npm test -w @apackdev/ears`; `npm run api:check -w @apackdev/ears`
-clean; `grep -rn QxStart` finds nothing outside `docs/archive/`; the typed-EARS completions checklist in
+clean; `grep -rn QueryStart` finds nothing outside `docs/archive/`; the typed-EARS completions checklist in
 `packages/apack-sdk/TYPED-EARS.md` is run, since `runtime.ts` and `typed.ts` were touched.
 
 ## Outcome (2026-09-24)
@@ -337,7 +337,7 @@ rewritten mid-plan to do that rename and Phase 4 did it — so it was removed ra
 | 2 — make the split checkable | done `27573c9e9` | `apack-sdk/tests/utils/import-is-the-verb.spec.ts`; finds 5 importers; both mutations fail it |
 | 3 — name the axis in `AppState` | done `bfe2a34e1` | four fields renamed, move added to `migrations/app/0.4.0.ts`; 39 migration specs; idempotence mutation-checked |
 | 4 — write the stages down | done `847fa0799` | "The four stages" in `content.md`; the split in `apack-sdk/CLAUDE.md` and the root table; `content-parity:check`/`:update` |
-| 5 — the query content in `@apackdev/ears` | done `74654df72`, `5a7717ff2` | `QxStart` → `QxStart`, `qx(start)`; TYPED-EARS checklist run |
+| 5 — the query content in `@apackdev/ears` | done `74654df72`, `5a7717ff2` | `QueryStart`, `query(start)`; TYPED-EARS checklist run |
 
 ### Conventional choices
 
@@ -378,7 +378,7 @@ that made the old shape wrong.
 - **Codegen names the applier method on both sides.** The emitted `{ key, apply: … }` literal and the matching
   `import { apply as __applier_x }` are written in different places in `generate-entries.ts`; changing one alone fails
   `compile` with an esbuild "No matching export" error.
-- **`untypedTx(...).drop(k)` clears an attribute rather than removing the key** — it reads back as `null`, not
+- **`untypedWrite(...).drop(k)` clears an attribute rather than removing the key** — it reads back as `null`, not
   `undefined`. The migration's "already moved" check is `== null` for that reason, and getting it wrong made the
   migration non-idempotent.
 
@@ -388,7 +388,7 @@ that made the old shape wrong.
 across 8 suites ✅ · `content-parity:check` ✅ · `build` ✅ · `npm test` (E2E) 21 ✅ · `test:external-pack` ✅ ·
 `test:packaged-authoring` ✅
 
-`contentData`, `applyPack`, `applyPackContent`, `shouldWriteAll`, `ContentCounts`, `ContentApplierContext`, `writingPackId`, `QxStart` and
+`contentData`, `applyPack`, `applyPackContent`, `shouldWriteAll`, `ContentCounts`, `ContentApplierContext`, `writingPackId`, `QueryStart` and
 `Applier.content` appear nowhere outside `docs/archive/` and `CHANGELOG.md`, which is release-owned history.
 
 ## Deferred

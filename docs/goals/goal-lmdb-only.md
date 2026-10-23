@@ -73,12 +73,12 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
 
 - **Read APIs.** `E` = `packages/apack-ears/src`.
   - `query.ts` builds whole id arrays at the apply, then filters in JS: `where` (`===` only), `withRole`, `ofType`, `linksTo`. `orderBy` called `getAttr` inside the sort comparator. `limit`/`page` slice after the full set is built.
-  - `qx()` with no apply lists every entity. Callers:
+  - `query()` with no apply lists every entity. Callers:
     - `ensure(role)` with no scope (`E/transaction.ts:89`)
     - `spawn` with `uniqueRoles`
     - `graph.leaves` with no type
     - root-flow and threads lookups (`packages/apack-sdk/src/repositories/flow-repository.ts:116,205`, `default-setup/src/features/threads/be/repository/index.ts:53`)
-  - `query-helpers.ts`: finders are `qx(...).pickAll()`, and `countEntities` lists the whole type.
+  - `query-helpers.ts`: finders are `query(...).pickAll()`, and `countEntities` lists the whole type.
   - `entity-utils.ts`: `createEntityWithDefaults` counts the type twice on every create (short code and label).
   - `getAll(id)` loops over every attribute kind. `findRelations()` with no match returns every relation.
 - **Read-your-writes inside one synchronous block.**
@@ -88,13 +88,13 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
   - `appState.update` then `get`
   - `linkOne` (unlink, then add) and `ensure` (revoke, then grant)
   - the appliers' re-read after import
-  - `tx(type)` writes `createdAt` first, so the entity exists mid-transaction.
-- **Callers that must stay synchronous.** `qx`/`tx` are called inside xstate `assign`/`enqueueActions`:
+  - `create(type)` writes `createdAt` first, so the entity exists mid-transaction.
+- **Callers that must stay synchronous.** `query`/`create`/`write` are called inside xstate `assign`/`enqueueActions`:
   - logs, threads and brain flow systems
   - machine `context` factories
 - **Trace session semantics.** TNodes look session-scoped only because they aren't hydrated.
-  - The brain reads TNodes with `qx` (`default-setup/src/features/brain/be/repository/index.ts:101,154-176`).
-  - `clearVolatileData` (`:559`) calls `tx(tNode).destroy(true)`, meaning "forget in memory, keep on disk". Its relations are still deleted on disk, which loses the TRACKED/SPAWNED links, probably a bug.
+  - The brain reads TNodes with `query` (`default-setup/src/features/brain/be/repository/index.ts:101,154-176`).
+  - `clearVolatileData` (`:559`) calls `write(tNode).destroy(true)`, meaning "forget in memory, keep on disk". Its relations are still deleted on disk, which loses the TRACKED/SPAWNED links, probably a bug.
 - **Data quirks.**
   - A trace relation's `relationDetails` attribute and `Relation` entity row land in `primary`, because they're routed by the relation id.
   - The adapter writes entity rows for both ends of every relation, in both stores.
@@ -163,14 +163,14 @@ Two throwaway worktrees. They may have been removed by the time this goal is pic
   | Case | Memory | Disk | Disk, no fsync | No fsync, no value index |
   |---|---|---|---|---|
   | bulk load | 215 | 1291 | 1271 | 1117 |
-  | `qx(type).where().pickAll()` | 19.5 | 48.3 | 47.4 | 53.5 |
-  | 1,000 `qx(id)` | 0.21 | 0.45 | 0.49 | 0.44 |
+  | `query(type).where().pickAll()` | 19.5 | 48.3 | 47.4 | 53.5 |
+  | 1,000 `query.ids(id)` | 0.21 | 0.45 | 0.49 | 0.44 |
   | 3 chained steps (`orderBy`) | 7.7 | 31.8 | 31.8 | 30.2 |
   | relation traversal | 0.0027 | 0.0177 | 0.0174 | 0.0264 |
   | `findById` ×1,000 | 1.33 | 2.82 | 2.75 | 2.44 |
-  | `qx().withRole` over 50k | 5.6 | 50.9 | 48.7 | 96.0 |
+  | `query().withRole` over 50k | 5.6 | 50.9 | 48.7 | 96.0 |
   | 1,000 creates, a commit per write | 3.4 | 13,550 | 115 | 75.5 |
-  | 1,000 creates, a commit per tx chain | 3.5 | 4,772 | 79.6 | 49.1 |
+  | 1,000 creates, a commit per write chain | 3.5 | 4,772 | 79.6 | 49.1 |
   | 1,000 creates, one commit | 3.8 | 24.5 | 15.0 | 9.7 |
   | `updateEntity` ×1,000, one commit | 0.37 | 15.4 | 3.75 | 3.8 |
 
@@ -219,12 +219,12 @@ These are the ones settled by the spikes. The ones below them need the user.
    - A write is committed, and visible to every reader, when the call returns, and it survives an app crash.
    - A background `root.sync()` runs on an interval, on idle and on close, and bounds what an OS crash can lose.
    - The engine API gains `transaction(fn)`: its writes commit atomically in one `transactionSync`, and reads inside it see them. Nested calls join the outer one; track the depth in storage, since the spike found nested `transactionSync` plus `close()` could hang.
-   - The whole write is one transaction: a `tx` chain's writes inside a `transaction` commit together, and outside one each storage call commits on its own.
+   - The whole write is one transaction: a write chain's writes inside a `transaction` commit together, and outside one each storage call commits on its own.
 4. **Partitions live in the storage.** One env per partition (`ears-db`, `ears-trace`). Each write picks its env by the policy. Reads that can involve a trace type read both envs: type content for trace types, relation lookups on trace entities, `findRelations`. Keep the history-link rule from 2026-09-17: a delete doesn't remove a trace relation that belongs to the other end.
 5. **Values are copies.** Reads decode fresh values. The storage does read-modify-write where the memory engine mutated lists in place. `updateRelation` writes the new details instead of mutating them.
 6. **Query planner.**
    - A query with no apply whose first step is `where(k, v)` or `withRole` content from the value index.
-   - `qx(type).where(k, v)` walks the index set in insertion order.
+   - `query(type).where(k, v)` walks the index set in insertion order.
    - `limit`/`page` apply before `pickAll`/`pick`.
    - Optionally, add a sorted index `['o', kind, value, seq]` for `orderBy` + `limit`.
 7. **Store format migration.** At store open, before packs register, a store with no `['m', 'format']` key is migrated:
@@ -341,7 +341,7 @@ assumptions: settle the sequencing before either Phase 3.
 - The contract suite passes on disk.
 - A child process killed right after a write returns (SIGKILL) reopens with the write present. The write spike's probe shows how.
 - A read right after a write, and inside a `transaction`, sees it.
-- Mutations fail specs: skipping the count key, committing a `tx` chain outside its `transaction`, dropping the index diff on update.
+- Mutations fail specs: skipping the count key, committing a write chain outside its `transaction`, dropping the index diff on update.
 
 ### Phase 3 — Query planner
 - Decision 6.

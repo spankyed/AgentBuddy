@@ -266,17 +266,16 @@ Final.
 
    | typed, `#generated/*` | untyped, `@apackdev/sdk` |
    |---|---|
-   | `qx` | `untypedQx` |
-   | `tx` | `untypedTx` |
+   | `query` | `untypedQuery` |
+   | `write` | `untypedWrite` |
    | `navigateToSurface` | `openSurface` |
 
-   `tx`/`untypedTx` is the most recent and was applied for this reason: the untyped write had been exported
-   under the same name as the typed one, so `import { tx, untypedQx } from '@apackdev/ears'` read as a matched
-   pair when only one half was qualified. The one exception is instructive — the Database console keeps `tx`
-   as its REPL global (`database-console/index.ts`, `defs/database.ts`), because that name is a different,
-   user-facing API and the two lists must agree.
+   `write`/`untypedWrite` is the most recent and was applied for this reason: the untyped write had been exported
+   under the same name as the typed one, so `import { write, untypedQuery } from '@apackdev/ears'` read as a matched
+   pair when only one half was qualified. The Database console's globals (`database-console/index.ts`,
+   `defs/database.ts`) use the same names as the library, so the two lists agree.
 
-   `untypedQx` is the closer analogue: what changes is only what the compiler knows, since a dependency's
+   `untypedQuery` is the closer analogue: what changes is only what the compiler knows, since a dependency's
    `SurfaceName` *is* its ref string. So the qualifier goes on the reader that gives the types up, and the two
    never collide under one name. The churn is small and already scheduled — the callers are the `fe/public.ts`
    selectors and the three `references.ts` files, every one of which Phase 3 rewrites or deletes.
@@ -368,7 +367,7 @@ After Phases 1 and 2.
 
 **Done when:** the full chain passes; no `fe/public.ts` remains; `git grep -w useSurfaceState` finds it only in
 `#generated/fe` and its generator, and `git grep -w useUntypedSurfaceState` only in `@apackdev/sdk/fe` and its
-specs. **Grep the four forms a static-import sweep misses**, all four of which bit the `tx`/`untypedTx` rename
+specs. **Grep the four forms a static-import sweep misses**, all four of which bit the `write`/`untypedWrite` rename
 that landed this convention: a multi-line `import {` block, a module that *re-exports* the name (its consumers
 then import it from there, not from the SDK), `await import('@apackdev/sdk/fe')` destructuring, and the name
 inside a string or a test label. The third is the one to take seriously — **`npm run typecheck` did not catch
@@ -416,7 +415,7 @@ recorded below. Phases 1–4 went in as `3d79fed34`, with `5a3442700` fixing a r
   names a `path#Export` rather than the surface entry.
 - **`useSurfaceState` kept its name; the SDK's untyped pair was renamed.** The plan left the collision open. The
   generated readers are what pack code should reach for, so they keep the plain name and the SDK's became
-  `useUntypedSurfaceState`/`readUntypedSurfaceState`, matching `untypedQx`/`untypedTx` in `@apackdev/ears`.
+  `useUntypedSurfaceState`/`readUntypedSurfaceState`, matching `untypedQuery`/`untypedWrite` in `@apackdev/ears`.
 
 ### Open items
 Neither `Deferred` item is still open; both were settled after this was archived.

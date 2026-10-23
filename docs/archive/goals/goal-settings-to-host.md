@@ -125,9 +125,9 @@ from. Settings adds a third feature beside `application` and `packs`.
 
 **`document.ts` depends only on `@apackdev/sdk/ids` and `@apackdev/sdk/utils/pure`** — it moves as-is.
 
-**The store depends on** `@/__generated__/ears` (`tx`, `qx`, `EARS`), `../types`, `../defaults`,
+**The store depends on** `@/__generated__/ears` (`create`, `write`, `query`, `EARS`), `../types`, `../defaults`,
 `@apackdev/sdk/utils/pure`, `@apackdev/sdk/ids` and `@apackdev/sdk/framework`'s `getFeaturesWithSettings`. The
-host's equivalent of the first is `import { tx, untypedQx } from '@apackdev/ears'`, as
+host's equivalent of the first is `import { write, untypedQuery } from '@apackdev/ears'`, as
 `packages/apack-host/src/app-state/index.ts` does.
 
 ### The settings system is four jobs, not one
@@ -328,7 +328,7 @@ the spec.
 ### Phase 2 — The store and the entity
 
 - `packages/apack-host/src/features/settings/be/store.ts` from `be/repository/index.ts` (170 lines), with
-  `import { tx, untypedQx } from '@apackdev/ears'` in place of the pack's generated EARS, and the sections
+  `import { write, untypedQuery } from '@apackdev/ears'` in place of the pack's generated EARS, and the sections
   of Decision 2.
 - `Settings` into `HOST_ENTITY_TYPES` (`app-state/index.ts` or a sibling), out of default-setup's
   `apack.json` (Decision 6).

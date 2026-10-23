@@ -99,9 +99,9 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   - What happened: to make brain's trigger queries compile against the new `Node` union, the field parameters were rewritten as conditional and mapped types (`FieldArg`, `FieldsArg`, `PickedOf`). That added runtime field names and union-member fields to every field-keyed API.
   - Why tests missed it: everything compiled and every type test passed. But field completions disappeared from `pick`, `pickOne`, `linksPick`, `getAttr` and `findWithFields`, and typo errors became "not assignable to type 'never'".
   - Resolution: reverted, and the two queries use the untyped `untypedQuery` (`@apackdev/ears`). The completions test in `facade-typing.integration.spec.ts` now guards these positions.
-- **`qx('user-note')` compiled: the dash heuristic (investigated 2026-09-18; resolved by the split below).**
-  - What it was: `EntityId<E>` is `` `${string}-${string}` `` with an *optional* `__entity` brand. `qx` and
-    `tx` took a name *or* an id, and the dash was the only thing telling those apart. So a misspelled
+- **`query('user-note')` compiled: the dash heuristic (investigated 2026-09-18; resolved by the split below).**
+  - What it was: `EntityId<E>` is `` `${string}-${string}` `` with an *optional* `__entity` brand. The query and
+    write entry points each took a name *or* an id, and the dash was the only thing telling those apart. So a misspelled
     entity name containing a dash fails the name check and lands on the id overload.
   - **Four things depend on that one shape**, which is why it looks fixable and isn't: the dash
     discriminates name from id; the *optional* brand is what lets `E` infer from a tagged id; the
@@ -122,6 +122,6 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   - **Conclusion: there is no type-level fix that leaves current behaviour unchanged.** Anything that
     stops `'user-note'` being an id also stops `'TNode-Root'` being one.
   - **The design that gets both properties** is to stop overloading, and that is what landed
-    ([`ears-public-api.md`](../../docs/archive/plans/ears-public-api.md)): `qx(type)` beside `qx.ids(id)`, and
+    ([`ears-public-api.md`](../../docs/archive/plans/ears-public-api.md)): `query(type)` beside `query.ids(id)`, and
     `create(type)` beside `write(id)`. The `EntityId` template stays, so literal ids still compile.
-- **No entity names in `qx('…')` (found 2026-09-14).** `qx`'s id overloads came before its name overloads, so editors offered no names there. Fixed by putting the name overloads first, and moot since ids moved to `qx.ids`; the completions test still guards the position.
+- **No entity names in `query('…')` (found 2026-09-14).** `query`'s id overloads came before its name overloads, so editors offered no names there. Fixed by putting the name overloads first, and moot since ids moved to `query.ids`; the completions test still guards the position.
