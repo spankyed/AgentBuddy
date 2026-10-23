@@ -120,10 +120,7 @@ export function importThreads(importDir: string): ImportResult {
       // Create messages with full fields
       let lastMessageTimestamp = 0
       for (const msg of thread.messages) {
-        const messageTx = create(EARS.Entity.Message, { createdAt: msg.timestamp })
-          .set('text', msg.text)
-          .set('timestamp', msg.timestamp)
-          .set('sender', msg.sender)
+        const messageTx = create(EARS.Entity.Message, { text: msg.text, timestamp: msg.timestamp, sender: msg.sender, createdAt: msg.timestamp })
 
         if (msg.responseTimestamp) messageTx.set('responseTimestamp', msg.responseTimestamp)
         if (msg.blocks) messageTx.set('blocks', msg.blocks)

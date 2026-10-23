@@ -70,6 +70,10 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   `set`, `add`, `merge`, `delete`, `deleteAt` and `deleteValue` take `K extends WritableField<S, E>`, which keeps
   field completions and makes a typo's error list the fields; `setMany` takes the declared fields as an object
   with no index signature, so a misspelled key is an excess property.
+- `create(type, row)` takes the whole row (`CreateFields & RowIdentity`): every field the shape requires
+  (`RequiredField`), any optional one, and the `id`, `createdAt` and `updatedAt` an import keeps. The row argument
+  is required exactly when the shape requires a field, so an incomplete row doesn't compile; `upsert(type, id, row)`
+  is held to the same row, and `createEntityWithDefaults` to it without the short code and label it generates.
 - `delete` takes only an optional field (`OptionalField`): removing a required one would leave a row its shape
   misdescribes, so a required field is replaced with `set`. `deleteAt` and `deleteValue` edit a list and remove
   no field, so they take any writable one.
@@ -106,9 +110,10 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 3. **Mutation-check every rule you touch.** Break it on purpose and confirm a test fails.
 4. **Check editor completions and error messages.** `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` in `@apackdev/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.
    - Field positions should list the entity's fields: `query(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')` and `getAttr(id, '|')`.
-   - Entity-name positions should list entity names: `query('|')`, `findAll('|')`, `createEntity('|')`, `.out(kind, '|')`, `.ofType('|')`.
+   - Entity-name positions should list entity names: `query('|')`, `findAll('|')`, `newId('|')`, `.out(kind, '|')`, `.ofType('|')`.
    - Relation-kind positions should list the pack's, its dependencies' and the SDK's kinds: `.out('|')`, `.link('|', id)`, `.linkedTo('|', id)`.
    - Role positions should list the pack's, its dependencies' and the SDK's roles: `.grant('|')`, `.withRole('|')`.
+   - A created row should list the shape's fields and the identity it may bring, never the engine's other fields: `create(type, { | })`.
    - A typo (`where('titel')`) should produce an error that lists the valid fields.
    - Compare against the previous version with the TypeScript language service (`getCompletionsAtPosition`), not just by compiling.
 5. **Update the API reports** (`npm run api:update` in `packages/apack-ears` and `packages/apack-sdk`) and review the `apack-ears/etc/index.api.md` and `apack-sdk/etc/types.api.md` diffs as part of the change.

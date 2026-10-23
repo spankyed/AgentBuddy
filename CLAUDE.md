@@ -509,7 +509,7 @@ Custom entity-attribute-relation graph database (`@apackdev/ears`) backed by LMD
 
 - `createEarsEngine()` — an engine instance (the app creates one at boot; tests and tooling create their own)
 - `query(type)`, `query.ids(ids)`, `query.all()` — queries (synchronous, do NOT await); `query` refuses a name that isn't a registered type
-- `create(type)`, `upsert(type, id)`, `write(id)` — writes (synchronous); `write` refuses an id no entity has, and every attribute write refuses the engine's own (`id`, `entityType`, `createdAt`, `role`, `relationDetails`)
+- `create(type, row)`, `upsert(type, id, row)`, `write(id)` — writes (synchronous); a created row is the whole row (its fields, and its `id`/`createdAt`/`updatedAt` when it brings them), and a typed one must hold every field its shape requires; `write` refuses an id no entity has, and every attribute write refuses the engine's own (`id`, `entityType`, `createdAt`, `role`, `relationDetails`)
 - `transact(fn)` — runs `fn` as one unit: undone in memory and never persisted when it throws
 - Repository pattern: a feature's `be/repository/index.ts` exports `<name>Queries`/`<name>Commands` objects (usually from `queries.ts`/`commands.ts`), declared in `apack.json` `features.<id>.repositories` as `"path#export"`; code reaches them through `repository` from `#generated/repository`
 - A pack's repository can expose another package's repository methods (default-setup's `actionQueries.byId` is the SDK's `actionRepository.byId`), so its code reaches its data through `repository` alone. It takes them by reference (`byId: actionRepository.byId`), never wrapped in a function that re-declares the signature, and adds its own views beside them

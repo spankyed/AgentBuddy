@@ -1240,7 +1240,7 @@ export type EntityName = ${entityNames.join(' | ')};
 
 export const {
   query, create, upsert, write, transact, findById, findAll, findWhere,
-  createEntity, createEntityWithDefaults, getAttr,
+  newId, createEntityWithDefaults, getAttr,
 } = /*#__PURE__*/ defineEars<PackShapes, EntityName, EARS.RelKind, EARS.RoleKind>(boundEars);
 `;
   }

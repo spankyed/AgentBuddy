@@ -6463,8 +6463,9 @@ declare function sendSystemMessage(options: {
 declare function storeHandle(key: string, handle: CodexTurnHandle): void;
 
 declare const terminalCommands: {
-    create: (terminalInfo: Partial<TerminalInfo> & {
-        id: EARS.EntityId;
+    /** Records a terminal the service started, under the id it took for it (`newId`) */
+    create: (terminal: Pick<TerminalEntity, "cols" | "cwd" | "pid" | "rows" | "shell" | "title"> & {
+        id: EARS.EntityId<"Terminal">;
     }) => EARS.EntityId;
     resize: (id: EARS.EntityId, cols: number, rows: number) => void;
     rename: (id: EARS.EntityId, customTitle: string) => void;
