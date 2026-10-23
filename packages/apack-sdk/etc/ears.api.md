@@ -26,9 +26,6 @@ export function boundEars(): Ears;
 export const findRelations: (match?: RelationMatch) => RelationRow[];
 
 // @public (undocumented)
-export const generateLabelWithCount: (baseLabel: string, entityType: EARS.Entity) => string;
-
-// @public (undocumented)
 export const getAllAttributeKinds: () => EARS.AttrKind[];
 
 // @public (undocumented)
@@ -51,6 +48,9 @@ export const getSchemaStats: () => SchemaStats;
 
 // @public (undocumented)
 export const isEntityType: (name: string) => boolean;
+
+// @public (undocumented)
+export const nextLabel: (type: EARS.Entity, base: string) => string;
 
 // @public
 export const NO_ENGINE_BOUND: string;
@@ -87,6 +87,6 @@ export const updateRelation: (relId: EARS.EntityId, patch: {
 }) => void;
 
 // @public (undocumented)
-export const wouldCreateCycle: (src: EARS.EntityId, tgt: EARS.EntityId, kinds: readonly EARS.RelKind[]) => boolean;
+export const wouldCreateCycle: (source: EARS.EntityId, target: EARS.EntityId, kinds: readonly EARS.RelKind[]) => boolean;
 
 ```
