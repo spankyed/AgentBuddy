@@ -101,9 +101,8 @@ export interface RunPage {
  */
 export interface RunHistory {
   /**
-   * Records a node starting now, under a new id that sorts after every one before, and returns it as given — not as
-   * stored, since the history bounds what it stores and a step runs on its params whole. One whose parent isn't in
-   * the history is returned but not recorded, and logged: a tree has no orphans.
+   * Records a node starting now, under a new id that sorts after every one before, and returns it as stored. One
+   * whose parent isn't in the history is returned but not recorded, and logged: a tree has no orphans.
    */
   start(node: RunNodeStart): RunNode;
   /** Ends a node now, completed or failed; an id with no node is ignored */
@@ -157,11 +156,11 @@ export function _createRunHistory(records: RecordStore<RunNode>): RunHistory {
     start(fields) {
       const id = records.newId('RunNode') as RunNodeId;
       const parent = fields.parentId === undefined ? undefined : records.get(fields.parentId);
-      const node = { ...fields, id, rootId: parent?.rootId ?? id, status: 'active', startedAt: Date.now() } as RunNode;
+      const node = bounded({ ...fields, id, rootId: parent?.rootId ?? id, status: 'active', startedAt: Date.now() } as RunNode);
       if (fields.parentId !== undefined && !parent) {
         logger.warn(`Dropped run node ${id}: its parent ${fields.parentId} isn't in the run history`);
       } else {
-        records.put(bounded(node));
+        records.put(node);
       }
       return node;
     },
