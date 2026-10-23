@@ -391,6 +391,8 @@ getAttr(memoId, '|getAttr|');
 newId('|newId|');
 query.ids(memoId).out('related', '|out|');
 query.ids(memoId).in('related', '|in|');
+query.ids(memoId).ancestors('related', '|ancestors|');
+query.ids(memoId).descendants('related', '|descendants|');
 query.all().ofType('|ofType|');
 query('|query|');
 query('Memo').has('txet');
@@ -400,6 +402,8 @@ write(memoId).delete('|delete|');
 write(memoId).removeAt('|removeAt|', 0);
 write(memoId).set('pinnd', true);
 query.ids(memoId).out('|outKind|');
+query.ids(memoId).ancestors('|ancestorsKind|');
+query.ids(memoId).descendants('|descendantsKind|');
 write(memoId).link('|linkKind|', memoId);
 query('Memo').linkedTo('|linkedToKind|', memoId);
 write(memoId).link('relatd', memoId);
@@ -412,10 +416,10 @@ const FIELD_POSITIONS = ['pick', 'pickOne', 'outPick', 'where', 'has', 'lacks', 
 /** The fields a write may name: the declared ones, without the engine's own (`createdAt`, `updatedAt`, …) */
 const WRITE_POSITIONS = ['set', 'append', 'removeAt'];
 /** Relation kinds: the pack's own, its dependency's and the SDK's */
-const KIND_POSITIONS = ['outKind', 'linkKind', 'linkedToKind'];
+const KIND_POSITIONS = ['outKind', 'linkKind', 'linkedToKind', 'ancestorsKind', 'descendantsKind'];
 /** Roles: the pack's own, its dependency's and the SDK's */
 const ROLE_POSITIONS = ['grantRole', 'withRole'];
-const NAME_POSITIONS = ['query', 'newId', 'out', 'in', 'ofType'];
+const NAME_POSITIONS = ['query', 'newId', 'out', 'in', 'ancestors', 'descendants', 'ofType'];
 
 /** String completions at each marked position of COMPLETIONS, and the file's diagnostics */
 function completionsIn(app: string, tsconfig: string): { at: Record<string, string[]>; diagnostics: string[] } {

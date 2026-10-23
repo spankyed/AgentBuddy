@@ -16,17 +16,11 @@ import { SchemaStats } from '@apackdev/ears';
 import type { Upsert } from '@apackdev/ears';
 import type { Write } from '@apackdev/ears';
 
-// @public (undocumented)
-export const ancestors: (start: EARS.EntityId, relKind: EARS.RelKind) => EARS.EntityId[];
-
 // @internal
 export function _bindEars(engine: Ears | undefined): Ears | undefined;
 
 // @public
 export function boundEars(): Ears;
-
-// @public (undocumented)
-export const descendants: (start: EARS.EntityId, relKind: EARS.RelKind) => EARS.EntityId[];
 
 // @public (undocumented)
 export const findRelations: (match?: RelationMatch) => RelationRow[];

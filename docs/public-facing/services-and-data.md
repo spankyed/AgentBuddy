@@ -436,17 +436,20 @@ From `@apackdev/sdk/ears` (untyped, on the app's engine):
 
 ### Hierarchies
 
-A tree — folders, nested notes, threads — is entities linked by one relation kind, parent to child. From
-`@apackdev/sdk/ears`, each walk visits every entity once, so a cycle already in the data ends it:
+A tree — folders, nested notes, threads — is entities linked by one relation kind, parent to child. Two query
+steps walk one any number deep, nearest first; each visits an entity once, so a cycle already in the data ends it,
+and goes only where the query could reach, so a trashed entity ends it unless the query started from
+`query.withTrashed`:
 
 | Call | Returns |
 |---|---|
-| `descendants(start, kind)` | Every entity reachable by following `kind` out of `start`, `start` excluded: its subtree |
-| `ancestors(start, kind)` | Every entity reachable by following `kind` into `start`, `start` excluded: in a tree, its parent first and its root last |
+| `query.ids(id).descendants(kind, type?)` | Every entity reachable by following `kind` out of `id`, `id` excluded: its subtree |
+| `query.ids(id).ancestors(kind, type?)` | Every entity reachable by following `kind` into `id`, `id` excluded: in a tree, its parent first and its root last |
 | `wouldCreateCycle(src, tgt, kinds)` | `true` when `tgt` already reaches `src`, or is `src`, so linking `src → tgt` would close a cycle |
 
-Check `wouldCreateCycle` before moving an entity under a new parent, or link with `{ acyclicIn: [kind] }` to have
-the link refused instead. A path to the root is `ancestors(id, kind).reverse()`.
+`type` keeps the reached entities of that type and walks through the rest. Check `wouldCreateCycle` before moving an
+entity under a new parent, or link with `{ acyclicIn: [kind] }` to have the link refused instead. A path to the root
+is `query.ids(id).ancestors(kind).ids().reverse()`.
 
 ### Repository pattern
 
