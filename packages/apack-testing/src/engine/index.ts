@@ -187,6 +187,9 @@ export async function attachedSession(options: AttachedSessionOptions): Promise<
     // Read per call, as the launched session does: the app writes to it for as long as it is up
     readLog: () => (options.logPath !== undefined && fs.existsSync(options.logPath) ? fs.readFileSync(options.logPath, 'utf-8') : ''),
   });
+  // `ready` is what listens on the session's connection, where every addressed answer arrives. The serving
+  // session runs it before its first verb; a one-off question gets its session from here, so it runs here too
+  await _closingOnFailure(async () => { api.close(); await detach(); }, () => session.ready());
 
   return {
     session,
