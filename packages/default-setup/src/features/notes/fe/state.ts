@@ -124,7 +124,7 @@ const notesState = setup({
     }),
 
     selectNote: assign(({ event, context }) => {
-      const noteId = event.type === 'OPEN_ENTITY' ? event.id : typeOf('NOTE.OPEN', event).noteId
+      const noteId = typeOf(['NOTE.SELECT', 'NOTE.LINK_CLICKED'], event).noteId
       const note = context.notes.find(n => n.id === noteId) || null
       const isHistoryNav = '_historyNav' in event
 
