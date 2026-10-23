@@ -141,9 +141,17 @@ export function _createRunHistory(records: RecordStore<TNode>): RunHistory {
     get: (id) => records.get(id),
     findChildren: (id, page = {}) => records.findBy('parentId', id, page),
     tree(id) {
-      const node = history.get(id);
+      const node = records.get(id);
       if (!node) return undefined;
-      const grow = (parent: TNode): RunTree => ({ ...parent, children: history.findChildren(parent.id).map(grow) });
+      // One read: the whole run, in the order its nodes began, then grown from `id`
+      const childrenOf = new Map<string, TNode[]>();
+      for (const each of records.findBy('rootId', node.rootId)) {
+        if (each.parentId === undefined) continue;
+        const siblings = childrenOf.get(each.parentId);
+        if (siblings) siblings.push(each);
+        else childrenOf.set(each.parentId, [each]);
+      }
+      const grow = (parent: TNode): RunTree => ({ ...parent, children: (childrenOf.get(parent.id) ?? []).map(grow) });
       return grow(node);
     },
     findRuns: ({ flowId, limit, cursor } = {}) => (flowId === undefined

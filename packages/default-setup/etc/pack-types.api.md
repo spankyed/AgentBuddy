@@ -5815,7 +5815,7 @@ declare const brainQueries: {
     readonly eventAllSteps: (eventNodeId: EARS.EntityId) => NodeEntity[];
     readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
     readonly nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string) => NodeEntity | undefined;
-    /** The event tracks a flow node heard, each with the nodes it ran under it */
+    /** The event tracks a flow node heard, each with the nodes it ran under it: a flow node's children are its events */
     readonly eventTracks: (flowTNodeId: TNodeId) => RunTree[];
     readonly possibleEvents: (flowTNodeId: TNodeId) => EventListenerEntity[];
     /** The flow node a node ran under: the nearest flow above it, or undefined for a session's root */

@@ -11,7 +11,7 @@ import type { Contract } from './contract.ts';
 import { executeQuery } from './execute/query.ts';
 import { executeTransaction } from './execute/transaction.ts';
 import { generateSchemaInfo } from './repository/schema.ts';
-import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query.ts';
+import type { TNodeId } from '@apackdev/sdk/steps';
 import { createLogger } from '@apackdev/sdk/logger';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
@@ -113,7 +113,8 @@ export const databaseSystem = setup({
     },
     getTraceFlows: () => {
       try {
-        const flows = getTraceFlows(100);
+        // A session's root and every subflow it ran, newest first
+        const flows = services.runHistory.findRuns({ limit: 100 });
         logger.info('Retrieved trace flows', { count: flows.length });
         broadcastToSurface('database', { 
           type: 'TRACE_FLOWS_RESULT',
@@ -131,13 +132,15 @@ export const databaseSystem = setup({
       const { flowId, offset = 0, limit = 50 } = databaseSpec.typeOf('GET_FLOW_EVENTS', event);
       
       try {
-        const result = getFlowEvents(flowId, offset, limit);
-        logger.info('Retrieved events for flow', { count: result.events.length, flowId });
+        // The events a flow run heard are its children, each with what it ran; newest first, a page at a time
+        const all = (services.runHistory.tree(flowId as TNodeId)?.children ?? []).reverse();
+        const events = all.slice(offset, offset + limit);
+        logger.info('Retrieved events for flow', { count: events.length, flowId });
         broadcastToSurface('database', { 
           type: 'FLOW_EVENTS_RESULT',
           flowId,
-          events: result.events,
-          hasMore: result.hasMore,
+          events,
+          hasMore: offset + limit < all.length,
           offset
         });
       } catch (error: unknown) {
@@ -155,7 +158,7 @@ export const databaseSystem = setup({
       const { nodeId } = databaseSpec.typeOf('GET_NODE_DETAILS', event);
       
       try {
-        const details = getNodeDetails(nodeId);
+        const details = services.runHistory.get(nodeId as TNodeId) ?? null;
         logger.info('Retrieved node details', { nodeId });
         broadcastToSurface('database', { 
           type: 'NODE_DETAILS_RESULT',
