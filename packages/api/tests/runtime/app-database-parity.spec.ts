@@ -128,7 +128,7 @@ describe('what the tool writes', () => {
       expect([...api.engine.getRoles('Note-tool')]).toEqual(['pinned']);
       // The run history isn't hydrated, and is in the partition the app keeps it in
       expect(api.engine.getAttr('TNode-tool', 'status')).toBeNull();
-      expect(api.store.read('volatileBackup').getFirstAttr('status', 'TNode-tool')).toBe('done');
+      expect(api.store.read('volatileBackup').getAttr('status', 'TNode-tool')).toBe('done');
     } finally {
       closeApi(api);
     }

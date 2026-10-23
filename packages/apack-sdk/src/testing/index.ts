@@ -116,7 +116,7 @@ export function entityIds(): EARS.EntityId[] {
 
 /** Removes an attribute from a row, as data written before the attribute existed would lack it */
 export function dropAttribute(id: EARS.EntityId, kind: string): void {
-  testEngine().admin.dropAttr(id, kind as EARS.AttrKind);
+  testEngine().admin.deleteAttr(id, kind as EARS.AttrKind);
 }
 
 /** The subject a check asserted over, confirmed to be there — see its own doc comment for the rule */

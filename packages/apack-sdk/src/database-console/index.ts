@@ -36,7 +36,7 @@ export function getSchemaStats(): SchemaStats {
   return stats;
 }
 
-const { getAttr, getAttrs, createEntityWithDefaults, updateEntity } = /*#__PURE__*/ defineEars(boundEars);
+const { getAttr, createEntityWithDefaults, updateEntity } = /*#__PURE__*/ defineEars(boundEars);
 
 const readHelpers = {
   query: untypedQuery,
@@ -44,7 +44,6 @@ const readHelpers = {
   getAll,
   findEntitiesByRelationTo,
   getAttr,
-  getAttrs,
   getRoles,
   getEntitiesOfType,
   findEntitiesByAttribute,

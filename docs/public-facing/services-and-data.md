@@ -307,7 +307,7 @@ Each entry point takes one kind of argument and refuses what it can't account fo
 | `upsert(type, id)` | the entity with the id, created as `type` when there is none | an unregistered type; an entity of another type |
 
 A refusal is an `EarsError` with a `code` (`UNKNOWN_ENTITY_TYPE`, `NO_SUCH_ENTITY`, `ID_IN_USE`,
-`TYPE_MISMATCH`, `RESERVED_ATTRIBUTE`, `NO_VALUE`). So a query for a type whose pack isn't installed throws
+`TYPE_MISMATCH`, `RESERVED_ATTRIBUTE`, `NO_VALUE`, `NOT_A_LIST`). So a query for a type whose pack isn't installed throws
 rather than answering with nothing, and a write to an id that was deleted throws rather than bringing back
 attributes with no entity behind them. `#generated/ears` rejects an entity name your pack and its dependencies
 don't declare at compile time, and an id passed where a type is meant.
@@ -316,15 +316,19 @@ What a write builder does:
 
 | Member | Does |
 |---|---|
-| `set(k, v)` / `setMany({ ... })` | Replaces the attribute's values |
-| `add(k, v)` | Appends a value |
-| `merge(k, partial, index?)` | Merges into the object at `index` (the first by default) |
-| `delete(k)` / `deleteAt(k, index)` / `deleteValue(k, v)` | Removes every value / the one at `index` / the first equal to `v` |
+| `set(k, v)` / `setMany({ ... })` | Replaces the attribute's value |
+| `add(k, v)` | Appends `v` to the attribute's list, starting one when there is none |
+| `merge(k, partial)` | Merges into the attribute's object |
+| `delete(k)` / `deleteAt(k, index)` / `deleteValue(k, v)` | Removes the attribute / the list's element at `index` / the list's first element equal to `v` |
 | `link(kind, target, { info?, replace?, acyclicIn?, symmetric? })` | Links to `target`. The same edge (kind, target and `info`) again changes nothing; `replace` leaves this as the only edge of the kind to `target`; `acyclicIn` refuses a cycle through those kinds |
 | `unlink(kind, target?)` / `unlinkAll()` | Removes edges of the kind (to `target` only, when given) / every edge from the entity |
 | `grant(role)` / `revoke(role)` / `grantExclusive(role, among)` | See *Roles* |
 | `destroy({ keepStored? })` | Deletes the entity and its edges; `keepStored` takes it out of the engine and leaves what was persisted |
 | `id()` | The entity's id |
+
+An attribute holds one value, and a list is one array value: a read gives back exactly what was written, a
+one-element list as a list. `add`, `deleteAt` and `deleteValue` work on that array and refuse a value that isn't one
+(`NOT_A_LIST`); `where(k, v)` matches a value equal to `v` or a list holding it.
 
 `id`, `entityType`, `createdAt`, `role` and `relationDetails` are the engine's: every attribute write refuses
 them. `create` stamps `entityType` and `createdAt`; pass `createdAt` to keep an original time (an import).
@@ -526,7 +530,7 @@ To get typed attributes on entities, declare shapes in the manifest:
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
 `#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `findByIdRaw`, `findAll`, `findWhere`, `findFirst`,
 `findWithFields`, `findByIdWithFields`, `findWithRole`, `findFirstWithRole`, `createEntity`,
-`createEntityWithDefaults`, `updateEntity`, `getAttr` and `getAttrs`. `@apackdev/ears` exports the
+`createEntityWithDefaults`, `updateEntity` and `getAttr`. `@apackdev/ears` exports the
 writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out soft-deleted rows (`deleted: true`), except
 `findByIdRaw`. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's

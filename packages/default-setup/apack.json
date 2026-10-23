@@ -2353,7 +2353,6 @@
           "getAll": "typeof _dsl.getAll",
           "findEntitiesByRelationTo": "typeof _dsl.findEntitiesByRelationTo",
           "getAttr": "typeof _dsl.getAttr",
-          "getAttrs": "typeof _dsl.getAttrs",
           "getRoles": "typeof _dsl.getRoles",
           "getEntitiesOfType": "typeof _dsl.getEntitiesOfType",
           "findEntitiesByAttribute": "typeof _dsl.findEntitiesByAttribute",

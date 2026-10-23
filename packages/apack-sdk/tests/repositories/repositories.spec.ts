@@ -140,7 +140,7 @@ describe('flowRepository', () => {
   it('lists two edges between the same two nodes on different handles, and deletes both with the node', () => {
     const unlinked: string[] = [];
     const sink: PersistenceSink = {
-      onCreateEntity() {}, onDestroyEntity() {}, onDropAttr() {}, onPutAttrArray() {}, onAddRelation() {},
+      onCreateEntity() {}, onDestroyEntity() {}, onDropAttr() {}, onPutAttr() {}, onAddRelation() {},
       onUpdateRelation() {}, onUnitStart() {}, onUnitEnd() {},
       onRemoveRelation(relId, destroyed) { if (!destroyed) unlinked.push(relId); },
     };
