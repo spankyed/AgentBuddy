@@ -198,6 +198,9 @@
         "icon": "👋",
         "label": "New Note 7",
         "lastSeen": 0,
+        "linkTargets": [
+          "Note-external-plan"
+        ],
         "noteType": "document",
         "shortCode": "NOTE-7",
         "title": "Welcome"

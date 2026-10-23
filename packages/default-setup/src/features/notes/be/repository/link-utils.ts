@@ -22,12 +22,21 @@ export function parseNoteLinks(content: string): EARS.EntityId[] {
 }
 
 /**
- * A note's REFERENCES are an index derived from its text: one relation per note its links name that exists. They
- * are never the only record of a link — the text is — so rebuilding them from the text loses nothing, and a link
- * to a note that doesn't exist (yet) is simply not indexed until it does (`resolveReferencesTo`).
+ * A note's links, derived from its text, in two forms: `linkTargets`, every note id its links name, which the value
+ * index answers "who links to this note?" from (`resolveReferencesTo`); and its REFERENCES, one relation per named
+ * note that exists, in the trash or not. Neither is ever the only record of a link — the text is — so rebuilding
+ * both from the text loses nothing, and a link to a note that doesn't exist (yet) is a target until it does.
  */
 export function syncReferences(sourceId: EARS.EntityId, content: string): void {
-  const wanted = new Set(parseNoteLinks(content).filter((id) => id !== sourceId && query.ids(id).exists()));
+  const targets = parseNoteLinks(content).filter((id) => id !== sourceId);
+  const stored = (query.withTrashed.ids(sourceId).pickOne(['linkTargets'])?.linkTargets ?? []) as string[];
+  if (targets.length === 0) {
+    if (stored.length > 0) write(sourceId).delete('linkTargets');
+  } else if (targets.length !== stored.length || targets.some((id, i) => id !== stored[i])) {
+    write(sourceId).set('linkTargets', targets);
+  }
+
+  const wanted = new Set(targets.filter((id) => query.withTrashed.ids(id).exists()));
   // Every REFERENCES relation the note has, one to a note that is gone included, so a stale one is removed too
   const current = new Set(findRelations({ sourceEntity: sourceId, relationType: REFERENCES }).map((r) => r.targetEntity as EARS.EntityId));
 
@@ -39,9 +48,9 @@ export function syncReferences(sourceId: EARS.EntityId, content: string): void {
   }
 }
 
-/** Indexes the links other notes' text already makes to a note that has just been created */
+/** Indexes the links other notes' text already makes to a note that has just been created, found through the value index */
 export function resolveReferencesTo(noteId: EARS.EntityId): void {
-  for (const note of query(EARS.Entity.Note).where('content', (content: unknown) => typeof content === 'string' && content.includes(noteId)).pick(['content'])) {
+  for (const note of query.withTrashed(EARS.Entity.Note).where('linkTargets', noteId).pick(['content'])) {
     syncReferences(note.id as EARS.EntityId, note.content as string);
   }
 }

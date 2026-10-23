@@ -23,6 +23,8 @@ export interface NoteEntity extends BaseEntity {
   label?: string;
   /** Hash of the content source at the last apply. Absent on user-created notes. */
   contentHash?: string;
+  /** Every note id the content's links name, derived from it (`syncReferences`); absent when it links to none */
+  linkTargets?: string[];
 }
 
 export interface NoteDTO {
