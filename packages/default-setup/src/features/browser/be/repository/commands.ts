@@ -28,7 +28,8 @@ export const browserCommands = {
     }
 
     for (const tab of normalized.tabs) {
-      upsert(EARS.Entity.BrowserTab, tab.id, {
+      upsert(EARS.Entity.BrowserTab, {
+        id: tab.id,
         url: tab.url,
         title: tab.title,
         favicon: tab.favicon,

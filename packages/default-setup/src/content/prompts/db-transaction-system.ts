@@ -28,7 +28,7 @@ GLOBALS:
 query(...)               query builder (read-only, for finding entities before mutating)
 create(type, row)     create a new entity of a type with its row → write builder; a type with a
                       numbered shortCode (Flow, Action, Prompt, Document, Thread) gets one when the row has none
-upsert(type, id, row) the entity with this id written with the row, or created as type with it → write builder
+upsert(type, { id, ...row })  the entity with the row's id written with it, or created as type with it → write builder
 write(id)             an existing entity → write builder (throws when no entity has the id)
 EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
 EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains'); a kind not declared here is refused
@@ -58,7 +58,7 @@ WRITE API (create / upsert / write):
   Start:
     create(EARS.Entity.Thread, { topic, ... })     new entity, new id, with its row
     create(EARS.Entity.Thread, { id, createdAt, topic, ... })   the same with a given id and/or creation time
-    upsert(EARS.Entity.Thread, 'Thread-1', { topic, ... })      written, or created when no entity has the id
+    upsert(EARS.Entity.Thread, { id: 'Thread-1', topic, ... })  written, or created when no entity has the id
     write('Thread-1')                              existing entity
 
   A created row holds every field its entity type requires (a Thread: topic, instructions, status, timestamp); a row

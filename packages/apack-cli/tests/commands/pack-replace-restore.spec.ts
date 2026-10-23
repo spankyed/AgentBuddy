@@ -72,7 +72,7 @@ it('replaces deliberately, survives boot refresh, then restores a removed defaul
   const previousEngine = _bindEars(engine);
   try {
     await store.hydrate();
-    untypedUpsert('Settings', settingsId).set('data', choices);
+    untypedUpsert('Settings', { id: settingsId, data: choices });
   } finally {
     _bindEars(previousEngine);
     expect(store.close().errorCount).toBe(0);

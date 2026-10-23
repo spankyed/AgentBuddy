@@ -34,7 +34,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 **Entity names.**
 - A literal entity name must be one the pack, its dependencies or the SDK declares (`EntityName`). A name typed `string` passes unchecked (`EntityNameArg`).
 - A generic helper constrains its name to `EntityName`, or opts out with `as string`.
-- A name and an id go to different functions: `query(type)`/`create(type)`/`upsert(type, id)` take a name,
+- A name and an id go to different functions: `query(type)`/`create(type)`/`upsert(type, { id })` take a name,
   `query.ids(id)`/`write(id)` an id. An id passed where a name is meant is a compile error (it is no declared
   name), and in the untyped twins too, whose name parameters are `TypeName<E>`: a dashed literal or an
   `EntityId`-typed value becomes `never`. A name typed `string` passes, and the runtime refuses it when it
@@ -70,8 +70,8 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   with no index signature, so a misspelled key is an excess property.
 - `create(type, row)` takes the whole row (`CreateFields & RowIdentity`): every field the shape requires
   (`RequiredField`), any optional one, and the `id`, `createdAt` and `updatedAt` an import keeps. The row argument
-  is required exactly when the shape requires a field, so an incomplete row doesn't compile; `upsert(type, id, row)`
-  is held to the same row. A `shortCode` the shape types as `ShortCode<prefix>` is a required field the row may
+  is required exactly when the shape requires a field, so an incomplete row doesn't compile; `upsert(type, { id, ...row })`
+  is held to the same row, its id always given. A `shortCode` the shape types as `ShortCode<prefix>` is a required field the row may
   leave out (`NumberedField`), since `create` numbers it.
   The engine holds every write to the same rules at runtime: codegen reads each pack shape's required fields and
   short-code prefix with the TypeScript checker (`rowRulesOf`) into its registration (`PackEARS.rowRules`), the SDK
