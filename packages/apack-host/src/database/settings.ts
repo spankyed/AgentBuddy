@@ -18,7 +18,7 @@ export function readSettingsOverrides(userDataDir: string): unknown {
   findAppDataPaths(userDataDir);
   const { store } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
-    schema: { getRegisteredEntityTypes: () => new Set(['Settings']), getRegisteredRelationKinds: () => new Set() }, readOnly: true, log: () => {},
+    schema: { getRegisteredEntityTypes: () => new Set(['Settings']), getRegisteredRelationKinds: () => new Set(), getRegisteredRoles: () => new Set() }, readOnly: true, log: () => {},
   });
   try { return storedSettings(store); }
   finally { store.close(); }

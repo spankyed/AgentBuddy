@@ -390,7 +390,13 @@ getRelationStats(EARS.RelKind.CONTAINS);   // { total, uniqueSources, uniqueTarg
 
 ### Roles
 
-A role is a string tag on an entity (`EARS.RoleKind` is a `string`; `EARS.RoleKind.Custom('pinned')` brands one). Roles are stored as attributes, so they persist with the entity.
+A role is a name an entity holds, stored as an attribute, so it persists with the entity. Like a relation kind, a role
+is declared before anything grants it — `data.roles` in `apack.json`, beside `data.relations` — and its uppercase name
+becomes a constant (`entry_event` → `EARS.RoleKind.ENTRY_EVENT`). `EARS.RoleKind` is closed over the pack's roles, its
+dependencies' and the SDK's (`ROOT_FLOW`, the flow the app starts with, and `ENTRY_EVENT`, a flow's entry listener), so
+`grant`, `revoke`, `grantExclusive` and `withRole` complete them and refuse a misspelled one at compile time; the engine
+refuses an undeclared role at runtime (`UNKNOWN_ROLE`). A role that arrives as data is narrowed with
+`EARS.isRole(value)`, and `EARS.ROLES` lists them all.
 
 | Call | From | Does |
 |---|---|---|
@@ -512,6 +518,7 @@ import { createEarsEngine } from '@apackdev/ears';
 const engine = createEarsEngine({
   isEntityType: (name) => ['Bookmark', 'Tag'].includes(name),
   isRelationKind: (name) => name === 'tagged_with',
+  isRole: (name) => name === 'featured',
 });
 engine.create('Bookmark').set('url', 'https://example.com');   // an operation on the engine you hold
 engine.query('Bookmark').count();                             // 1
@@ -520,10 +527,10 @@ engine.query('Bookmark').count();                             // 1
 
 - The engine's members are its operations: `query`, `create`, `upsert`, `write`, `transact`, the finders, relation reads, graph helpers and its repository registry, untyped.
 - `engine.admin`, beside them, is for the code that created the engine: bulk loading, clearing (`admin.clear()`), direct attribute and relation writes. Pack code never gets it.
-- `isEntityType` says which names are entity types: `create('Bookmark')` and `query('Bookmark')` refuse `'Bookmark'` unless it returns true for it. `isRelationKind` says which are relation kinds, which a link and every read or walk over links refuse otherwise.
+- `isEntityType` says which names are entity types: `create('Bookmark')` and `query('Bookmark')` refuse `'Bookmark'` unless it returns true for it. `isRelationKind` says which are relation kinds, which a link and every read or walk over links refuse otherwise, and `isRole` which are roles.
 - An engine you create is the one you hold: nothing acts on it but what you call on it. The functions in `@apackdev/sdk/ears` act on the app's, and with none bound (a script, a test without the harness) they throw, naming how to bind one.
 
-In a pack's unit tests you don't need any of this: `setupPackTests` from `@apackdev/testing/harness` installs an engine with your pack's and its dependencies' entity types and relation kinds, and gives each test a fresh one ([Testing](testing.md)).
+In a pack's unit tests you don't need any of this: `setupPackTests` from `@apackdev/testing/harness` installs an engine with your pack's and its dependencies' entity types, relation kinds and roles, and gives each test a fresh one ([Testing](testing.md)).
 
 ### Entity shapes
 

@@ -8,7 +8,7 @@ import {
 } from '../../src/ears/index.ts';
 import { bp } from '@apackdev/ears';
 
-const engineWith = (types: ReadonlySet<string>) => createEarsEngine({ isRelationKind: () => true, isEntityType: (name) => types.has(name) });
+const engineWith = (types: ReadonlySet<string>) => createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => types.has(name) });
 
 afterEach(() => { _bindEars(undefined); });
 

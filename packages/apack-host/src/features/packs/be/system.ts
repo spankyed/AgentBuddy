@@ -1,4 +1,4 @@
-import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes, _packRoles } from '@apackdev/sdk/framework';
 import type { Contract } from './contract.ts';
 import * as path from 'path';
 import { setup } from 'xstate';
@@ -98,7 +98,7 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
       features, systems: features.filter(feature => feature.hasSystem).map(feature => resolveName(feature.id, manifest.id)),
       services: [...Object.keys(extensions?.services ?? {}), ...features.flatMap(feature => feature.services)],
       steps: Object.keys(extensions?.steps ?? {}), artifacts: Object.keys(extensions?.artifacts ?? {}),
-      blocks: Object.keys(extensions?.blocks ?? {}), relKinds: { ..._packRelationTypes(manifest) },
+      blocks: Object.keys(extensions?.blocks ?? {}), relKinds: { ..._packRelationTypes(manifest) }, roles: { ..._packRoles(manifest) },
       migrationCount: Object.values(manifest.migrations ?? {}).reduce((count, line) => count + Object.keys(line).length, 0),
       lifecycleHooks: Object.keys(manifest.lifecycle ?? {}),
     };
@@ -109,7 +109,7 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
     packs.push({
       ...base(problem.id, problem.dir, problem.enabled), name: problem.id,
       entities: {}, entityCount: 0, hasFrontend: false, permissions: [],
-      systems: [], services: [], steps: [], artifacts: [], blocks: [], relKinds: {},
+      systems: [], services: [], steps: [], artifacts: [], blocks: [], relKinds: {}, roles: {},
       migrationCount: 0, lifecycleHooks: [], features: [],
     });
   }

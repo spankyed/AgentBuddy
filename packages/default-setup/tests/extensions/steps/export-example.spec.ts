@@ -17,7 +17,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { exportFlowsToDSL } from '@apackdev/sdk/build'
-import { ROOT_FLOW_ROLE } from '@apackdev/sdk'
+import { EARS } from '#generated/ears.ts'
 import { importFlows } from '@apackdev/testing/harness'
 import { population } from '@apackdev/sdk/testing'
 import { startTestRuntime } from '@apackdev/sdk/testing'
@@ -36,7 +36,7 @@ afterAll(() => { for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: t
 function exported(): unknown {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'export-example-'))
   dirs.push(dir)
-  const { filePath, flowCount } = exportFlowsToDSL(dir, { rootFlowRole: ROOT_FLOW_ROLE }, false)
+  const { filePath, flowCount } = exportFlowsToDSL(dir, { rootFlowRole: EARS.RoleKind.ROOT_FLOW }, false)
   expect(flowCount, 'nothing was exported, so the golden would record an empty file').toBeGreaterThan(0)
   return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
 }

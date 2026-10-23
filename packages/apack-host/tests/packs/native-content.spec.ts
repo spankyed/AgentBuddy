@@ -15,7 +15,7 @@ const declaration: NativePackDeclaration = {
 };
 
 function binding() {
-  return { id: declaration.id, ears: { entities: { Memo: 'Memo' }, relKinds: {} },
+  return { id: declaration.id, ears: { entities: { Memo: 'Memo' }, relKinds: {}, roles: {} },
     contentWriters: { Memo: { find: vi.fn(() => undefined) } },
     appliers: [{ key: 'memos', apply: vi.fn(() => ({ created: 1, updated: 0, skipped: 0 })) }],
   };

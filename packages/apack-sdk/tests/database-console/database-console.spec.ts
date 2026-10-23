@@ -105,7 +105,7 @@ describe('getSchemaStats', () => {
 // console: the Database surface and `apack db` read the same names
 describe('the EARS console code sees', () => {
   it("adds the packs' entity types and relation kinds to the SDK's, keeping the SDK's own", () => {
-    const ears = consoleEars({ entities: { Memo: 'Memo' }, relKinds: { mentions: 'mentions' } }) as
+    const ears = consoleEars({ entities: { Memo: 'Memo' }, relKinds: { mentions: 'mentions' }, roles: {} }) as
       { Entity: Record<string, string>; RelKind: Record<string, string> };
 
     expect(ears.Entity).toMatchObject({ Memo: 'Memo', Flow: 'Flow' });
@@ -147,7 +147,7 @@ describe('a name the database cannot account for', () => {
     expect(() => ears().Entity.Bookmark).toThrow(/Known: .*\bMemo\b/);
     expect(() => ears().RelKind.REFERENCES).toThrow('"REFERENCES" is not a relation kind this database can account for');
 
-    const withHint = consoleEars({ entities: { Memo: 'Memo' }, relKinds: {} }, { hint: 'Try --schema-from.' }) as Record<string, Record<string, string>>;
+    const withHint = consoleEars({ entities: { Memo: 'Memo' }, relKinds: {}, roles: {} }, { hint: 'Try --schema-from.' }) as Record<string, Record<string, string>>;
     expect(() => withHint.Entity.Bookmark).toThrow('Try --schema-from.');
   });
 

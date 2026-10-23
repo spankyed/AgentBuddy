@@ -45,6 +45,7 @@ export interface PackLifecycleHooks {
 export interface PackEARS {
   entities: Record<string, string>;
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
 }
 
 /** A feature's backend system, which the app runs at the feature's ref, `<packId>/<featureId>` */

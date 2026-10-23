@@ -12,7 +12,7 @@ const target = { kind: 'app' } as const;
 let previousEngine: ReturnType<typeof _bindEars>;
 let engine: ReturnType<typeof createEarsEngine>;
 beforeEach(() => {
-  engine = createEarsEngine({ isRelationKind: () => true, isEntityType: () => false });
+  engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: () => false });
   previousEngine = _bindEars(engine);
 });
 afterEach(() => { _bindEars(previousEngine); vi.restoreAllMocks(); });

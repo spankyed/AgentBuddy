@@ -184,9 +184,6 @@ export const promptRepository: {
 };
 
 // @public
-export const ROOT_FLOW: "root_flow";
-
-// @public
 export const tnodeRepository: {
     updateTNodeResult: (tNodeId: EARS.EntityId, result: unknown) => void;
 };

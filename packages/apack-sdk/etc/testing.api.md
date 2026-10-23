@@ -182,6 +182,7 @@ export interface TestPacks {
     readonly designations: Map<string, string>;
     readonly earsEntities: Map<string, string>;
     readonly earsRelKinds: Map<string, string>;
+    readonly earsRoles: Map<string, string>;
     // (undocumented)
     readonly help: Map<string, HelpArticle[]>;
     readonly services: Map<string, unknown>;
@@ -212,6 +213,7 @@ export interface TestRuntimeStartOptions {
     onboarding?: OnboardingService;
     packs?: PackRegistryView;
     relationKinds?: readonly string[];
+    roles?: readonly string[];
     serviceOverrides?: ReadonlyMap<string, unknown>;
     settings?: SettingsAdmin;
 }

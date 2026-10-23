@@ -89,7 +89,7 @@ describe('flowRepository', () => {
     const second = flowRepository.createFlow({ label: 'Second' });
     flowRepository.grantRootFlowRole(first.id);
     flowRepository.grantRootFlowRole(second.id);
-    expect(untypedQuery.all().withRole(EARS.RoleKind.Custom('root_flow')).ids()).toEqual([second.id]);
+    expect(untypedQuery.all().withRole(EARS.RoleKind.ROOT_FLOW).ids()).toEqual([second.id]);
   });
 
   it("connects nodes, refusing a trigger target and a busy handle, and renumbers a node's handles", () => {
@@ -145,7 +145,7 @@ describe('flowRepository', () => {
       onRemoveRelation(relId, destroyed) { if (!destroyed) unlinked.push(relId); },
     };
     const sdkTypes = new Set<string>(Object.values(EARS.Entity));
-    _bindEars(createEarsEngine({ isRelationKind: () => true, persistence: sink, isEntityType: (name) => sdkTypes.has(name) }));
+    _bindEars(createEarsEngine({ isRelationKind: () => true, isRole: () => true, persistence: sink, isEntityType: (name) => sdkTypes.has(name) }));
     const flow = flowRepository.createFlow();
     const a = flowRepository.createNode(flow.id, { nodeType: 'action' });
     const b = flowRepository.createNode(flow.id, { nodeType: 'action' });

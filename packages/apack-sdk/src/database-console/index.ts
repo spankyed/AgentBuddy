@@ -94,6 +94,7 @@ export function consoleEars(names: EarsNames, { hint }: { hint?: string } = {}):
     ...EARS_NAMES,
     Entity: accountedFor('an entity type', { ...EARS_NAMES.Entity, ...names.entities }, hint),
     RelKind: accountedFor('a relation kind', { ...EARS_NAMES.RelKind, ...names.relKinds }, hint),
+    RoleKind: accountedFor('a role', { ...EARS_NAMES.RoleKind, ...names.roles }, hint),
   };
 }
 

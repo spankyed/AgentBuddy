@@ -1,5 +1,5 @@
 import { type DeclarationData, type NativePackDeclaration, _stepBackendParts } from '@apackdev/sdk/framework';
-import { _packEntityTypes, _packRelationTypes, declaredContentKeys } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes, _packRoles, declaredContentKeys } from '@apackdev/sdk/framework';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import type { PackManifest, StepEntry } from '@apackdev/sdk/build';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
@@ -36,6 +36,7 @@ export function contentBindingProblem(manifest: PackManifest, runtime: unknown, 
   if (!isPlainObject(runtime)) return problem('registration');
   if (!isDeepStrictEqual(runtime.entities, _packEntityTypes(manifest))) return problem('entities');
   if (!isDeepStrictEqual(runtime.relKinds, _packRelationTypes(manifest))) return problem('relKinds');
+  if (!isDeepStrictEqual(runtime.roles, _packRoles(manifest))) return problem('roles');
   const repositories = Object.values(manifest.features ?? {}).flatMap(feature => Object.keys(feature.repositories ?? {}));
   if (!sameKeys(runtime.repositories, repositories)) return problem('repositories');
   if (!sameKeys(runtime.contentWriters, Object.keys(manifest.content?.writers ?? {}))) return problem('contentWriters');
@@ -73,6 +74,7 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
   if (!isPlainObject(ears)) return problem('ears');
   if (!isDeepStrictEqual(ears.entities === undefined ? {} : ears.entities, _packEntityTypes(manifest))) return problem('ears.entities');
   if (!isDeepStrictEqual(ears.relKinds === undefined ? {} : ears.relKinds, _packRelationTypes(manifest))) return problem('ears.relKinds');
+  if (!isDeepStrictEqual(ears.roles === undefined ? {} : ears.roles, _packRoles(manifest))) return problem('ears.roles');
   const contentProblem = backendContentBindingProblem(manifest, registration);
   if (contentProblem) return problem(contentProblem);
 

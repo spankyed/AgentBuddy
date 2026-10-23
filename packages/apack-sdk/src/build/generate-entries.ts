@@ -4,7 +4,7 @@ import { dataLiteral, propertyKey } from './code-literals.ts';
 import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
 import { resolveTypeModule } from './type-module.ts';
 import { _packModuleTargets, _moduleTargetSource } from './module-targets.ts';
-import { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations } from '../framework/data-declaration.ts';
+import { _packEntities, _packEntityTypes, _packRelationTypes, _packRoles, type PackDataDeclarations } from '../framework/data-declaration.ts';
 import { _parseModuleReference } from '../framework/module-reference.ts';
 import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
@@ -13,7 +13,7 @@ import { HOST_SURFACE_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/ind
 import { extname, join, relative, resolve } from 'path';
 import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackDependencySnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { MIGRATION_LINES, StepEntrySchema } from '../framework/declaration-schema.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './content/items.ts';
 import { resolveContentSources, type ResolvedContentSource } from './content/resolve.ts';
@@ -52,12 +52,19 @@ export function mergeRegistries(
    */
   depProvenance: Map<string, PackProvenance> = new Map(),
 ) {
-  function merge(own: Record<string, string> = {}, kind: string) {
-    // The SDK's own entities and relation kinds are in every pack, and no pack declares them
-    const sdkOwned: Record<string, string> = kind === 'entity' ? SDK_ENTITIES : SDK_REL_KINDS;
+  /** What each kind of declared name reads from: the SDK's own, a dependency's snapshot field and its provenance */
+  const KINDS = {
+    entity: { sdkOwned: SDK_ENTITIES, fromDep: (dep: PackTypeManifest) => dep.entities, provenance: 'entities' },
+    relKind: { sdkOwned: SDK_REL_KINDS, fromDep: (dep: PackTypeManifest) => dep.relKinds, provenance: 'relKinds' },
+    role: { sdkOwned: SDK_ROLES, fromDep: (dep: PackTypeManifest) => dep.roles, provenance: 'roles' },
+  } as const satisfies Record<string, { sdkOwned: Record<string, string>; fromDep: (dep: PackTypeManifest) => Record<string, string>; provenance: ProvenanceKind }>;
+
+  function merge(own: Record<string, string> = {}, kind: keyof typeof KINDS) {
+    // The SDK's own entities, relation kinds and roles are in every pack, and no pack declares them
+    const { sdkOwned, fromDep, provenance: provenanceKind } = KINDS[kind];
     const errors = _reservedEntries(own, sdkOwned).map((entry) => `${kind} ${entry} is defined by the SDK; remove it from apack.json`);
     for (const [depId, dep] of depManifests) {
-      const depEntries = kind === 'entity' ? dep.entities : dep.relKinds;
+      const depEntries = fromDep(dep);
       for (const entry of _reservedEntries(depEntries, sdkOwned)) {
         errors.push(`${kind} ${entry} from "${depId}" is defined by the SDK: rebuild "${depId}" with the current apack CLI`);
       }
@@ -68,13 +75,12 @@ export function mergeRegistries(
     // Each name and each value has one source
     const valueSources = new Map<string, string>();
     const sources: Array<[string, Record<string, string>]> = [[ownId, own]];
-    for (const [depId, dep] of depManifests) sources.push([depId, kind === 'entity' ? dep.entities : dep.relKinds]);
+    for (const [depId, dep] of depManifests) sources.push([depId, fromDep(dep)]);
     /**
      * Who declares a name, rather than which dependency handed it over. A dependency surfaces its own
      * dependencies' names too, so the same ancestor name arrives through every path that reaches it;
      * attributing it to the dependency it came through makes a diamond look like a collision.
      */
-    const provenanceKind: ProvenanceKind = kind === 'entity' ? 'entities' : 'relKinds';
     /**
      * `hasOwnProperty` rather than indexing, because these records come off a snapshot read from disk
      * and are indexed by names a manifest chose. `entities`/`relKinds` are unrestricted strings, so a
@@ -108,6 +114,7 @@ export function mergeRegistries(
   return {
     entities: merge(_packEntityTypes(manifest), 'entity'),
     relKinds: merge(_packRelationTypes(manifest), 'relKind'),
+    roles: merge(_packRoles(manifest), 'role'),
   };
 }
 
@@ -156,13 +163,15 @@ function prototypeExport(namespace: string, registry: Map<string, RegistryEntry>
 export function emitEARS(ownId: string, registry: ReturnType<typeof mergeRegistries>): string {
   const entityMembers = emitNamespaceMembers(ownId, registry.entities);
   const relKindMembers = emitNamespaceMembers(ownId, registry.relKinds);
+  const roleMembers = emitNamespaceMembers(ownId, registry.roles);
 
   // A pack with no entities of its own or its dependencies' keeps an open Entity type; the SDK's
   // Relation alone doesn't close it
   const declaresEntities = [...registry.entities.values()].some(({ source }) => source !== SDK_SOURCE);
   const entityUnion = declaresEntities ? [...registry.entities.keys()].map(k => `Entity.${k}`).join(' | ') : 'string';
-  // Closed: the SDK's kinds are in every pack, so the list is never empty
+  // Closed: the SDK's kinds and roles are in every pack, so neither list is ever empty
   const relKindList = [...registry.relKinds.keys()].map(k => `RelKind.${k}`).join(', ');
+  const roleList = [...registry.roles.keys()].map(k => `RoleKind.${k}`).join(', ');
 
   // A namespace without members has no runtime value, and EARS.Entity is read at runtime
   const entityValue = entityMembers.length > 0
@@ -187,9 +196,13 @@ ${relKindMembers.join('\n')}
   export const isRelKind = (value: unknown): value is RelKind => (RELATION_KINDS as readonly unknown[]).includes(value);
 
   export namespace RoleKind {
-    export const Custom = <T extends string>(k: T) => k as T & RoleKind;
+${roleMembers.join('\n')}
   }
-  export type RoleKind = import('@apackdev/ears').EARS.RoleKind;
+  /** Every role this pack may grant: its own, its dependencies' and the SDK's */
+  export const ROLES = [${roleList}] as const;
+  export type RoleKind = (typeof ROLES)[number];
+  /** Whether a role that arrived as data is one of them */
+  export const isRole = (value: unknown): value is RoleKind => (ROLES as readonly unknown[]).includes(value);
 
   export const AttrKindValues = { Role: 'role', RelationDetails: 'relationDetails' } as const;
   export namespace AttrKind {
@@ -1047,6 +1060,7 @@ ${manifest.extensions?.settings ? `  settings: ${dataLiteral(manifest.extensions
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${dataLiteral(_packEntityTypes(manifest))},
     relKinds: ${dataLiteral(_packRelationTypes(manifest))},
+    roles: ${dataLiteral(_packRoles(manifest))},
   },
 ${hookEntries.length ? `  lifecycle: { ${hookEntries.map(({ name, binding }) => `${propertyKey(name, name)}: ${binding}`).join(', ')} },\n` : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
 };
@@ -1227,7 +1241,7 @@ export type EntityName = ${entityNames.join(' | ')};
 export const {
   query, create, upsert, write, transact, findById, findAll, findWhere,
   createEntity, createEntityWithDefaults, getAttr,
-} = /*#__PURE__*/ defineEars<PackShapes, EntityName, EARS.RelKind>(boundEars);
+} = /*#__PURE__*/ defineEars<PackShapes, EntityName, EARS.RelKind, EARS.RoleKind>(boundEars);
 `;
   }
 
@@ -1783,6 +1797,7 @@ export const contentRuntime: ContentRuntime = {
   declarationRevision: ${dataLiteral(_declarationRevision(manifest))},
   entities: ${dataLiteral(_packEntityTypes(manifest))},
   relKinds: ${dataLiteral(_packRelationTypes(manifest))},
+  roles: ${dataLiteral(_packRoles(manifest))},
   repositories: { ${repositories.map(([name]) => `${propertyKey(name, name)}: __repo_${name}`).join(', ')} },
   contentWriters: { ${hooks.map(([entity], i) => `${propertyKey(entity)}: __contentWriter_${i}`).join(', ')} },
 };

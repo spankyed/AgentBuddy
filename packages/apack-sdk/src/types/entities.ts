@@ -1,6 +1,6 @@
 /*───────────────────────────────────────────────────────────────────────────
- * The SDK's EARS namespace: the engine's (@apackdev/ears) with the entity types
- * and relation kinds the SDK owns (sdk-entities.ts). Packs add theirs in their
+ * The SDK's EARS namespace: the engine's (@apackdev/ears) with the entity types,
+ * relation kinds and roles the SDK owns (sdk-entities.ts). Packs add theirs in their
  * generated EARS.
  *
  * CHANGE CONTROL: these types are a specified contract, and editor completions and error messages
@@ -8,7 +8,7 @@
  * Read packages/apack-sdk/TYPED-EARS.md (the contract and the pre-change checklist) first.
  *───────────────────────────────────────────────────────────────────────────*/
 import { EARS as Core } from '@apackdev/ears';
-import { SDK_ENTITIES, SDK_REL_KINDS } from './sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from './sdk-entities.ts';
 
 export namespace EARS {
   // ─── Entity ────────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ export namespace EARS {
   // ─── Shared engine types ───────────────────────────────────────────────
   export type RelationDetail = Core.RelationDetail;
 
-  export const RoleKind = Core.RoleKind;
+  export const RoleKind = SDK_ROLES;
   export type RoleKind = Core.RoleKind;
 
   export const AttrKindValues = Core.AttrKindValues;

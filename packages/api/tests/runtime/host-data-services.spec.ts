@@ -163,7 +163,7 @@ describe('services.appData', () => {
     packs.catalog.setNative([...packs.catalog.getSnapshot().native, { id: 'bookmarks', data: { entities: { Bookmark: null, Tag: null } } }, { id: 'tags', data: { entities: { Tag: null } } }]);
     packs.registerPack({
       id: 'bookmarks',
-      ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {} },
+      ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {}, roles: {} },
     });
     const bookmark = untypedCreate('Bookmark').set('url', 'https://example.com').id();
     untypedCreate('Tag').set('name', 'reading');
@@ -171,7 +171,7 @@ describe('services.appData', () => {
     const backup = await services.appData.exportBackup(dir, 'with-pack', ['lmdb']);
     packs.unregisterPack('bookmarks');
     // Still installed, so its rows are not reported: only what nothing declares is
-    packs.registerPack({ id: 'tags', ears: { entities: { Tag: 'Tag' }, relKinds: {} } });
+    packs.registerPack({ id: 'tags', ears: { entities: { Tag: 'Tag' }, relKinds: {}, roles: {} } });
 
     try {
       // Restored without the other pack: the rows come back, and the app is told so it can say why nothing shows them

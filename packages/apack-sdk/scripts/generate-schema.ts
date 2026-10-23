@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { zodToJsonSchema, parseDef, ignoreOverride } from 'zod-to-json-schema';
 import { ManifestSchema } from '../src/framework/declaration-schema.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS } from '../src/types/sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from '../src/types/sdk-entities.ts';
 
 const jsonSchema = zodToJsonSchema(ManifestSchema, {
   $refStrategy: 'none',
@@ -28,13 +28,17 @@ const step = extensions.steps.additionalProperties as { properties: { node: { pr
 for (const defaults of [settingsDefinition.properties.defaults, feature.properties.settings.properties.defaults, step.properties.node.properties.defaults]) {
   Object.assign(defaults, { type: 'object', additionalProperties: {} });
 }
-const data = properties.data.properties as { entities: Record<string, unknown>; relations: Record<string, unknown> };
+const data = properties.data.properties as { entities: Record<string, unknown>; relations: Record<string, unknown>; roles: Record<string, unknown> };
 for (const entities of [data.entities, feature.properties.entities]) {
   Object.assign(entities, { propertyNames: { minLength: 1, not: { enum: Object.keys(SDK_ENTITIES) } } });
 }
 Object.assign(data.relations, {
   uniqueItems: true,
   items: { ...(data.relations.items as object), not: { enum: Object.values(SDK_REL_KINDS) } },
+});
+Object.assign(data.roles, {
+  uniqueItems: true,
+  items: { ...(data.roles.items as object), not: { enum: Object.values(SDK_ROLES) } },
 });
 
 Object.assign(jsonSchema, {

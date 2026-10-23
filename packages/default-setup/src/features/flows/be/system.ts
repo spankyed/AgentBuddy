@@ -9,7 +9,6 @@ import { defineSystem } from '@apackdev/sdk/framework';
 import { EARS } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 import type { Contract } from './contract.ts';
-import { FLOW_ROLES } from './repository/index.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 import type { ActionEntity, PromptEntity } from '@apackdev/sdk';
 import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@apackdev/sdk/build';
@@ -347,7 +346,7 @@ export const flowsSystem = setup({
 
       try {
         const { filePath, flowCount, skipped } = exportFlowsToDSL(directory, {
-          rootFlowRole: FLOW_ROLES.ROOT_FLOW,
+          rootFlowRole: EARS.RoleKind.ROOT_FLOW,
           flowIds: flowId ? [flowId] : undefined,
         });
 

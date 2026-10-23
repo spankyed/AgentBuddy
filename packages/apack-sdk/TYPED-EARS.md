@@ -51,6 +51,12 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - A kind that arrives as data is narrowed with the generated `EARS.isRelKind`; the untyped twins and an engine's
   own operations take any string (`R` defaults to `string`), and the engine refuses an undeclared one at runtime.
 
+**Roles.**
+- The same as relation kinds: the generated `EARS.RoleKind` is `(typeof ROLES)[number]`, closed over the pack's
+  roles (`data.roles`), its dependencies' and the SDK's, with no `Custom`. `defineEars`' fourth parameter (`O`)
+  carries it to `grant`, `revoke`, `grantExclusive` and `withRole`; `EARS.isRole` narrows a role that arrives as data,
+  and the engine refuses an undeclared role at runtime.
+
 **Ids.**
 - Typed queries return ids tagged with their entity type (`ids()`, `first()`, `pick`'s `id`, a row's `id`).
 - A plain `EARS.EntityId` carries no tag and is accepted wherever a tagged id is, including `includes` and `Set.has`. Only an id tagged with a different entity type is rejected.
@@ -102,6 +108,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
    - Field positions should list the entity's fields: `query(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')` and `getAttr(id, '|')`.
    - Entity-name positions should list entity names: `query('|')`, `findAll('|')`, `createEntity('|')`, `.out(kind, '|')`, `.ofType('|')`.
    - Relation-kind positions should list the pack's, its dependencies' and the SDK's kinds: `.out('|')`, `.link('|', id)`, `.linkedTo('|', id)`.
+   - Role positions should list the pack's, its dependencies' and the SDK's roles: `.grant('|')`, `.withRole('|')`.
    - A typo (`where('titel')`) should produce an error that lists the valid fields.
    - Compare against the previous version with the TypeScript language service (`getCompletionsAtPosition`), not just by compiling.
 5. **Update the API reports** (`npm run api:update` in `packages/apack-ears` and `packages/apack-sdk`) and review the `apack-ears/etc/index.api.md` and `apack-sdk/etc/types.api.md` diffs as part of the change.

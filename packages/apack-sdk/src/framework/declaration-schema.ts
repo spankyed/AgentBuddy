@@ -5,12 +5,12 @@ import { hasOwn } from '../utils/shared.ts';
 import { _eventContractsProblem } from './event-contracts.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 export { LIFECYCLE_HOOK_NAMES } from './lifecycle-declaration.ts';
-import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN, type PackDataDeclarations } from './data-declaration.ts';
+import { _packEntities, _packEntityTypes, _packRelationTypes, _packRoles, _WIRE_NAME_PATTERN, type PackDataDeclarations } from './data-declaration.ts';
 import { _MODULE_REFERENCE_PATTERN, _MODULE_PATH_PATTERN } from './module-reference.ts';
 import { z } from 'zod';
 import { _PACK_VERSION_PATTERN, _validPackVersion, _validPackRange, parsePackDependency } from './dependency-source.ts';
 import { PackChecksSchema } from './pack-checks.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { HOST_PACK_ID } from '../ids/refs.ts';
 import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/refs.ts';
@@ -67,12 +67,17 @@ const ExportTargetSchema = z.string().regex(_MODULE_REFERENCE_PATTERN, 'Must be 
 
 const EntitiesSchema = declarationRecord(z.string().min(1), ExportTargetSchema.nullable())
   .describe('Entity wire names mapped to pack-root-relative TypeScript shape exports (path#exportName), or null for untyped entities.');
-const RelationsSchema = z.array(z.string().regex(_RELATION_WIRE_PATTERN, 'Must be a snake_case relation wire name'))
+const RelationsSchema = z.array(z.string().regex(_WIRE_NAME_PATTERN, 'Must be a snake_case relation wire name'))
   .superRefine((relations, ctx) => {
     try { notSdkOwned(SDK_REL_KINDS)(_packRelationTypes({ data: { relations } }), ctx); }
     catch (error) { ctx.addIssue({ code: 'custom', message: error instanceof Error ? error.message : String(error) }); }
   }).describe('Pack-level relation wire names; generated EARS constants are their uppercase names. Do not repeat or redeclare SDK-owned wires.');
-const DataSchema = z.object({ entities: EntitiesSchema.optional(), relations: RelationsSchema.optional() }).strict()
+const RolesSchema = z.array(z.string().regex(_WIRE_NAME_PATTERN, 'Must be a snake_case role name'))
+  .superRefine((roles, ctx) => {
+    try { notSdkOwned(SDK_ROLES)(_packRoles({ data: { roles } }), ctx); }
+    catch (error) { ctx.addIssue({ code: 'custom', message: error instanceof Error ? error.message : String(error) }); }
+  }).describe('Pack-level role names; generated EARS constants are their uppercase names. Do not repeat or redeclare SDK-owned roles.');
+const DataSchema = z.object({ entities: EntitiesSchema.optional(), relations: RelationsSchema.optional(), roles: RolesSchema.optional() }).strict()
   .describe('Pack-level data declarations without a feature owner.');
 
 const FeatureDescriptionSchema = z.string().regex(/\S/, 'Feature description must not be blank')

@@ -38,6 +38,7 @@ export function nativePackDeclarationFixture(fixture: PackRegistration, metadata
     ...(fixture.ears && { data: {
       entities: Object.fromEntries(Object.keys(fixture.ears.entities ?? {}).map(name => [name, null])),
       relations: Object.values(fixture.ears.relKinds ?? {}),
+      roles: Object.values(fixture.ears.roles ?? {}),
     } }),
     ...(fixture.steps !== undefined && { steps: Object.fromEntries(fixture.steps.map(step => {
       const prefix = `fixtures/steps.ts#${step.type.replace(/[^A-Za-z0-9_$]/g, '_')}`;

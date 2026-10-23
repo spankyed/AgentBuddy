@@ -12,10 +12,11 @@ import type { ContentApplier } from '../utils/apply.ts';
 import type { SettingsCatalog } from '../framework/pack-settings.ts';
 import type { HelpCatalog } from '../framework/pack-help.ts';
 
-/** Entity types and relation kinds by the name they're declared under (`apack.json` `entities`, `relKinds`) */
+/** Entity types, relation kinds and roles by the name they're declared under (their EARS constants) */
 export interface EarsNames {
   entities: Record<string, string>;
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
 }
 import { _isHostBound, boundHost } from './host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from './fe-host.ts';

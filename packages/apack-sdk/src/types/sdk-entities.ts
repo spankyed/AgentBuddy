@@ -38,8 +38,13 @@ export const SDK_REL_KINDS = {
   PARENT_OF: 'parent_of',
 } as const;
 
-/** The role of the flow that starts when the app boots */
-export const ROOT_FLOW_ROLE = 'root_flow';
+/** The roles the SDK's flow model grants, which every pack has and none declares */
+export const SDK_ROLES = {
+  /** The flow that starts when the app boots */
+  ROOT_FLOW: 'root_flow',
+  /** A flow's entry listener: the node a flow's entry track starts from */
+  ENTRY_EVENT: 'entry_event',
+} as const;
 
 /** Entity types kept out of persistence */
 export const SDK_EXCLUDED_ENTITY_TYPES: readonly string[] = [SDK_ENTITIES.TNode];

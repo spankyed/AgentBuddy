@@ -16,7 +16,7 @@ const group: SettingsDefinition = { schema: { type: 'object', properties: { name
 
 function source(id: string, enabled = true) {
   const manifest: PackManifest = { id, name: id, version: '1.0.0', extensions: { settings: { assistant: structuredClone(group) } } };
-  return { dir: `/packs/${id}`, enabled, snapshot: { format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} } };
+  return { dir: `/packs/${id}`, enabled, snapshot: { format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {} } };
 }
 
 describe('contribution catalog data', () => {
@@ -56,7 +56,7 @@ describe('contribution catalog data', () => {
           artifacts: { cold: { icon: 'FileText', fe: 'src/unavailable.vue' } },
           blocks: { cold: { kind: 'input', fe: 'src/unavailable.vue', be: 'src/unavailable.ts#backend' } }, help: { path: 'help' }, ...frontend } };
       const snapshot = { declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
-        manifest, eventContracts: eventContractsFixture(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: { Action: 'notes' }, facades: {},
+        manifest, eventContracts: eventContractsFixture(manifest), types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: { Action: 'notes' }, facades: {},
         dslDefinitions: { cold: 'declare module "@app/defs/cold" { export interface Cold {} }' },
         help: [{ id: 'start', title: 'Start', body: 'Available without activation', features: ['notes'] }] };
       fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
@@ -415,6 +415,6 @@ it('preserves own entity names and declaration identity across native, source an
   expect(Object.keys(catalog.getSnapshot().native[0].data!.entities!)).toEqual(['__proto__']);
   catalog.setNative([]);
   catalog.replace([{ dir: '/installed/owned', enabled: false, snapshot: { format: PACK_SNAPSHOT_FORMAT,
-    declarationRevision: revision, manifest, types: { entities: Object.fromEntries([['__proto__', '__proto__']]), relKinds: {} }, entityDestinations: {}, facades: {} } }]);
+    declarationRevision: revision, manifest, types: { entities: Object.fromEntries([['__proto__', '__proto__']]), relKinds: {}, roles: {} }, entityDestinations: {}, facades: {} } }]);
   expect(Object.keys(catalog.get('owned')!.snapshot.manifest.data!.entities!)).toEqual(['__proto__']);
 });

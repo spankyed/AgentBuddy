@@ -4,7 +4,7 @@
 import { getTimestamp, RepositoryError, RepositoryErrorCode, RESERVED_ATTRIBUTES } from '@apackdev/ears';
 import { findRelations, generateLabelWithCount, generateShortCode, getRow, getRoles, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
-import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
+import type { FlowEntity, NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
 import { stepRegistry } from '../steps/registry.ts';
 import { getStepBinding, getStepDeclaration, type StepBackendBinding } from '../steps/catalog.ts';
@@ -61,8 +61,6 @@ function writeDeclared(row: { id: EARS.EntityId; entityType: string } & Record<s
   if (Object.keys(changed).length > 0) untypedWrite(id).setMany(changed);
 }
 
-/** The role of the flow the brain runs when the app starts */
-export const ROOT_FLOW = EARS.RoleKind.Custom(ROOT_FLOW_ROLE);
 
 const EDGE_KINDS: readonly string[] = [EARS.RelKind.TRANSITIONS_TO];
 
@@ -159,7 +157,7 @@ export const flowRepository = {
   // ── Queries ──────────────────────────────────────────────────────────
 
   /** The flow with the root role */
-  rootFlow: (): EARS.EntityId | undefined => query.all().withRole(ROOT_FLOW).first() ?? undefined,
+  rootFlow: (): EARS.EntityId | undefined => query.all().withRole(EARS.RoleKind.ROOT_FLOW).first() ?? undefined,
 
   /** The action an action node runs */
   getNodeActionId: (nodeId: EARS.EntityId): EARS.EntityId | undefined =>
@@ -213,11 +211,11 @@ export const flowRepository = {
 
   /** Deletes a flow with its nodes and their edges; the root flow only with `allowRoot` */
   deleteFlow: (flowId: EARS.EntityId, options?: { allowRoot?: boolean }): void => {
-    const isRoot = query.ids(flowId).withRole(ROOT_FLOW).first();
+    const isRoot = query.ids(flowId).withRole(EARS.RoleKind.ROOT_FLOW).first();
     if (isRoot && !options?.allowRoot) {
       throw new RepositoryError('Cannot delete the root flow', RepositoryErrorCode.OPERATION_FAILED);
     }
-    if (isRoot) untypedWrite(flowId).revoke(ROOT_FLOW);
+    if (isRoot) untypedWrite(flowId).revoke(EARS.RoleKind.ROOT_FLOW);
 
     const nodeIds = flowNodeIds(flowId);
     for (const nodeId of nodeIds) {
@@ -240,11 +238,11 @@ export const flowRepository = {
 
   /** Makes a flow the root flow, taking the role from the previous one */
   grantRootFlowRole: (flowId: EARS.EntityId): void => {
-    untypedWrite(flowId).grantExclusive(ROOT_FLOW, query.all().withRole(ROOT_FLOW).ids());
+    untypedWrite(flowId).grantExclusive(EARS.RoleKind.ROOT_FLOW, query.all().withRole(EARS.RoleKind.ROOT_FLOW).ids());
   },
 
   revokeRootFlowRole: (flowId: EARS.EntityId): void => {
-    untypedWrite(flowId).revoke(ROOT_FLOW);
+    untypedWrite(flowId).revoke(EARS.RoleKind.ROOT_FLOW);
   },
 
   /**
@@ -305,7 +303,7 @@ export const flowRepository = {
       for (const role of getRoles(row.id)) if (!keep.includes(role)) untypedWrite(row.id).revoke(role);
     }
     for (const role of compiled.role) {
-      if (role.role === ROOT_FLOW) flowRepository.grantRootFlowRole(role.entityId as EARS.EntityId);
+      if (role.role === EARS.RoleKind.ROOT_FLOW) flowRepository.grantRootFlowRole(role.entityId as EARS.EntityId);
       else untypedWrite(role.entityId as EARS.EntityId).grant(role.role);
     }
     logger.info('Imported DSL flows', {

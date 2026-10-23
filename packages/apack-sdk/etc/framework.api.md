@@ -85,6 +85,8 @@ export interface ContentRuntime {
     relKinds: Record<string, string>;
     // (undocumented)
     repositories: Record<string, unknown>;
+    // (undocumented)
+    roles: Record<string, string>;
 }
 
 // @public
@@ -386,6 +388,7 @@ export interface PackDataDeclarations {
     data?: {
         entities?: Readonly<Record<string, string | null>>;
         relations?: readonly string[];
+        roles?: readonly string[];
     };
     // (undocumented)
     features?: Readonly<Record<string, object>>;
@@ -403,6 +406,8 @@ export interface PackEARS {
     entities: Record<string, string>;
     // (undocumented)
     relKinds: Record<string, string>;
+    // (undocumented)
+    roles: Record<string, string>;
 }
 
 // @internal
@@ -499,6 +504,9 @@ export interface PackRegistration {
 
 // @internal
 export function _packRelationTypes(declaration: PackDataDeclarations): Record<string, string>;
+
+// @internal
+export function _packRoles(declaration: PackDataDeclarations): Record<string, string>;
 
 // @internal
 export interface _PackServiceDeclaration {

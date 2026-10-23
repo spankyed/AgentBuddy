@@ -5,7 +5,7 @@ import type { DeclarationData } from '@apackdev/sdk/framework';
 import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
-import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes, _packRoles } from '@apackdev/sdk/framework';
 import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
 import { eventBindingProblem } from './event-binding.ts';
 import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
@@ -30,7 +30,7 @@ import { assertPackServiceRequirements, packServiceDeclaration, type PackService
 import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
-import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apackdev/sdk/types';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES, _reservedEntries } from '@apackdev/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { boundEars } from '@apackdev/sdk/ears';
@@ -54,6 +54,7 @@ const RESERVED_ENTITIES: readonly string[] = [...Object.values(SDK_ENTITIES), ..
 const appEARS = (): PackEARS => ({
   entities: { ...SDK_ENTITIES, ...Object.fromEntries(HOST_ENTITY_TYPES.map((type) => [type, type])) },
   relKinds: SDK_REL_KINDS,
+  roles: SDK_ROLES,
 });
 
 /** A registration's features, each with the ref it runs at, `<packId>/<featureId>` */
@@ -94,6 +95,7 @@ export interface PackExtensions {
   artifacts: string[];
   blocks: string[];
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
   migrationCount: number;
   lifecycleHooks: string[];
   features: PackFeatureSummary[];
@@ -122,6 +124,7 @@ export interface InstalledPackSummary extends PackExtensions {
   description?: string;
   entities: Record<string, string>;
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
   permissions: string[];
   dir?: string;
   installedAt?: string;
@@ -251,6 +254,8 @@ export interface PackRegistry extends PackRegistryView {
   getRegisteredEntityTypes(): ReadonlySet<string>;
   /** The SDK's relation kinds and the registered packs' */
   getRegisteredRelationKinds(): ReadonlySet<string>;
+  /** The SDK's roles and the registered packs' */
+  getRegisteredRoles(): ReadonlySet<string>;
   /** Lifecycle hooks of the currently registered packs, in registration order. */
   getLifecycleHooks(): PackLifecycleHooks[];
   /** A registered pack's registration, as it was registered */
@@ -470,6 +475,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     const kinds = [
       ['entity type', (ears: PackEARS) => ears.entities],
       ['relation kind', (ears: PackEARS) => ears.relKinds],
+      ['role', (ears: PackEARS) => ears.roles],
     ] as const;
     for (const [kind, namesOf] of kinds) {
       const declared = namesOf(registration.ears);
@@ -524,7 +530,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       settings: manifest.extensions?.settings,
       features: Object.fromEntries(Object.entries(manifest.features ?? {})
         .filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, { settings: feature.settings }])),
-      ears: { entities: runtime.entities, relKinds: runtime.relKinds },
+      ears: { entities: runtime.entities, relKinds: runtime.relKinds, roles: runtime.roles },
       repositories: runtime.repositories, contentWriters: runtime.contentWriters, appliers,
     }, origin, manifest => contentBindingProblem(manifest, runtime, appliers)));
   }
@@ -566,6 +572,9 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (apiProblem) throw new Error(`Native pack "${registration.id}" runtime ${apiProblem} does not match its admitted declarations`);
       if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
         throw new Error(`Native pack "${registration.id}" runtime ears.relKinds does not match its admitted declarations`);
+      }
+      if (!isDeepStrictEqual(registration.ears?.roles ?? {}, _packRoles(declaration))) {
+        throw new Error(`Native pack "${registration.id}" runtime ears.roles does not match its admitted declarations`);
       }
       const migrationProblem = migrationBindingProblem(declaration.migrations, registration.migrations);
       if (migrationProblem) throw new Error(`Native pack "${registration.id}" runtime ${migrationProblem} does not match its admitted declarations`);
@@ -765,6 +774,10 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     ...Object.values(SDK_REL_KINDS),
     ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.relKinds ?? {})),
   ]));
+  const roles = derived((): ReadonlySet<string> => new Set<string>([
+    ...Object.values(SDK_ROLES),
+    ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.roles ?? {})),
+  ]));
   const services = derived((): Record<string, unknown> =>
     Object.fromEntries([...admitted.values()].flatMap(pack => [...pack.services])));
 
@@ -825,17 +838,19 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     getSurfaceEventValidationMap: surfaceEventValidationMap,
 
     earsNames() {
-      const { entities, relKinds } = appEARS();
-      const names = { entities: { ...entities }, relKinds: { ...relKinds } };
+      const { entities, relKinds, roles } = appEARS();
+      const names = { entities: { ...entities }, relKinds: { ...relKinds }, roles: { ...roles } };
       for (const reg of registrations.values()) {
         Object.assign(names.entities, reg.ears?.entities ?? {});
         Object.assign(names.relKinds, reg.ears?.relKinds ?? {});
+        Object.assign(names.roles, reg.ears?.roles ?? {});
       }
       return names;
     },
 
     getRegisteredEntityTypes: entityTypes,
     getRegisteredRelationKinds: relationKinds,
+    getRegisteredRoles: roles,
     getRegisteredServices: services,
 
     getLifecycleHooks: () => [...registrations.values()].flatMap((reg) => (reg.lifecycle ? [reg.lifecycle] : [])),

@@ -7,6 +7,7 @@ export interface ContentRuntime {
   declarationRevision: string;
   entities: Record<string, string>;
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
   repositories: Record<string, unknown>;
   contentWriters: Record<string, ContentWriter>;
 }

@@ -39,32 +39,16 @@ return { threadId, before, after };`
 
   // Roles
   {
-    title: 'Grant and Revoke Roles',
-    description: 'Manage entity roles',
-    query: `const noteId = create(EARS.Entity.Note)
-  .set('title', 'Role Test Note')
-  .grant('assistant')
-  .grant('analyzer')
-  .id();
+    title: 'Move a Role',
+    description: 'Grant a role to one entity, taking it from the others (roles are declared in apack.json)',
+    query: `// The root flow is the flow holding the root_flow role; a role a pack didn't declare is refused
+const current = query.all().withRole(EARS.RoleKind.ROOT_FLOW).first();
+const next = query(EARS.Entity.Flow).ids().find((id) => id !== current);
+if (!next) return { current, moved: false };
 
-// Check initial roles
-const initialRoles = getRoles(noteId);
+write(next).grantExclusive(EARS.RoleKind.ROOT_FLOW, query.all().withRole(EARS.RoleKind.ROOT_FLOW).ids());
 
-// Revoke one role and grant another
-write(noteId)
-  .revoke('assistant')
-  .grant('supervisor');
-
-// Make this the only note with the 'primary' role
-write(noteId).grantExclusive('primary', query(EARS.Entity.Note).ids());
-
-const finalRoles = getRoles(noteId);
-
-return {
-  noteId,
-  initialRoles,
-  finalRoles
-};`
+return { previous: current, current: next, roles: getRoles(next) };`
   },
 
   // Complex Operations
@@ -87,8 +71,6 @@ const flowId = create(EARS.Entity.Flow)
     status: 'draft',
     version: '1.0.0'
   })
-  .grant('template')
-  .grant('featured')
   .link(EARS.RelKind.CONTAINS, startId)
   .link(EARS.RelKind.CONTAINS, actionId)
   .id();

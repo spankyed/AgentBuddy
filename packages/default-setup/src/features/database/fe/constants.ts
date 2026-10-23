@@ -48,7 +48,6 @@ const noteId = create(EARS.Entity.Note)
   .set('title', 'My Note')
   .set('content', 'A helpful note')
   .set('noteType', 'document')
-  .grant('primary')
   .id();
 
 // Update existing entity
@@ -69,7 +68,7 @@ return {
 
 // More transaction examples:
 // Delete an entity: write(entityId).destroy();
-// Grant/revoke roles: write(entityId).grant('admin').revoke('user');
+// Grant/revoke a declared role: write(entityId).grant(EARS.RoleKind.X).revoke(EARS.RoleKind.Y);
 // Set several attributes: write(id).setMany({ name: 'New Name', status: 'updated' });
 // Get or create by id: upsert(EARS.Entity.Note, id).set('title', 'Kept');
 `

@@ -52,7 +52,7 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "export { findAll } from '@apackdev/ears';",
     // An engine is an instance a test or tool creates; its admin face comes only with it
     "import { createEarsEngine } from '@apackdev/ears';",
-    "const engine = createEarsEngine({ isRelationKind: () => true, isEntityType: (name) => name === 'Memo' });",
+    "const engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => name === 'Memo' });",
     "engine.create('Memo').set('title', 'held');",
     "engine.admin.clear();",
     // Host-only modules live in the private @apackdev/host

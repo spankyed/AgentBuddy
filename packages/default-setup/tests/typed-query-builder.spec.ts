@@ -3,8 +3,8 @@ import { expectTypeOf } from 'vitest';
 import type { QueryBuilder } from '@apackdev/ears';
 import { EARS, query, type EntityName, type PackShapes } from '#generated/ears.ts';
 
-/** A query builder over this pack's names: its entity shapes and names and its relation kinds */
-type PackQuery<E extends string> = QueryBuilder<E, PackShapes, EntityName, EARS.RelKind>;
+/** A query builder over this pack's names: its entity shapes and names, its relation kinds and its roles */
+type PackQuery<E extends string> = QueryBuilder<E, PackShapes, EntityName, EARS.RelKind, EARS.RoleKind>;
 
 // ─── query entry points ────────────────────────────────────────────────────
 

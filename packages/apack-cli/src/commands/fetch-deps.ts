@@ -406,8 +406,9 @@ export async function fetchDeps(_args: string[]) {
     if (result) {
       const entityCount = Object.keys(result.snapshot.types.entities).length;
       const relCount = Object.keys(result.snapshot.types.relKinds).length;
+      const roleCount = Object.keys(result.snapshot.types.roles).length;
       const facadeCount = Object.keys(result.snapshot.facades).length;
-      console.log(`  ${depId}: ${entityCount} entities, ${relCount} relKinds, ${facadeCount} facade(s) (${result.resolvedFrom}; format ${result.snapshot.format ?? 'unstamped'}${result.snapshot.sdkVersion ? `, SDK ${result.snapshot.sdkVersion}` : ''})`);
+      console.log(`  ${depId}: ${entityCount} entities, ${relCount} relKinds, ${roleCount} roles, ${facadeCount} facade(s) (${result.resolvedFrom}; format ${result.snapshot.format ?? 'unstamped'}${result.snapshot.sdkVersion ? `, SDK ${result.snapshot.sdkVersion}` : ''})`);
       resolved++;
     } else {
       failed.push(depId);
