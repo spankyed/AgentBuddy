@@ -253,7 +253,7 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 
 | Module | What |
 |---|---|
-| `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact` and `newId` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
+| `#generated/ears` | Your pack's `EARS` constants and the typed `query`, `create`, `upsert`, `write`, `transact`, `newId` and `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
 | `#generated/repository` | `repository`, typed with your and your dependencies' repositories |
 | `@apackdev/sdk/ears` | The app's engine, untyped: `untypedQuery`, `untypedCreate`, `untypedUpsert`, `untypedWrite`, `transact`, relation, role, graph and blueprint operations, and `repository` |
 | `@apackdev/ears` | The engine itself: `createEarsEngine` for tests and tooling, `EarsError`, `RepositoryError`, `bp` blueprints, the core `EARS` types and `BaseEntity` |
@@ -543,9 +543,11 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
-`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact` and `newId`.
+`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `newId` and `getAttr`.
 Rows are a query's: the row with an id is `query.ids(id).pickOne()`, rows of a type `query(type).pickAll()`, and of a type
-with a field's value `query(type).where(field, value).pickAll()`; a write reads its entity back with `row()`. `@apackdev/ears` exports the
+with a field's value `query(type).where(field, value).pickAll()`; a write reads its entity back with `row()`.
+A query reads live entities; `getAttr(id, field)` (one field) and `getRow(id)` (the whole row, from `@apackdev/sdk/ears`)
+read an entity by id as it is stored, the trash included, answering `undefined` for nothing there. `@apackdev/ears` exports the
 writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out rows in the trash, as every query does. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's
 declared shapes), `PackShapes` (the SDK's, the dependencies' and this pack's), `EntityName`, and
