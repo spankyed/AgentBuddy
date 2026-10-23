@@ -4,7 +4,7 @@ import * as path from 'path'
 
 import { EARS } from '#generated/ears.ts'
 import type { LibraryItem, FolderContents, BreadcrumbItem } from '../types.ts'
-import { parentCollectionOf } from '@apackdev/sdk/repositories'
+import { ancestors } from '@apackdev/sdk/ears'
 import { formatFileSize } from './helpers.ts'
 import type { DocumentShortCode } from '#features/library/be/types.ts';
 
@@ -187,22 +187,11 @@ function buildSymlinkBreadcrumbs(collectionId: string, relativePath: string): Br
   const collection = collections[0]
   if (!collection) return breadcrumbs
 
-  // Add EARS parent breadcrumbs for the symlink collection
-  let parentId: EARS.EntityId | null = parentCollectionOf(collectionId as EARS.EntityId)
-  const parentCrumbs: BreadcrumbItem[] = []
-  while (parentId) {
-    const parents = query.ids(parentId).pickAll()
-    const parent = parents[0]
-    if (parent) {
-      parentCrumbs.unshift({
-        id: parentId,
-        name: parent.name as string,
-        path: [],
-      })
-    }
-    parentId = parentCollectionOf(parentId)
+  // The folders above the symlink collection, the root first
+  for (const parentId of ancestors(collectionId as EARS.EntityId, EARS.RelKind.PARENT_OF).reverse()) {
+    const [parent] = query.ids(parentId).pickAll()
+    if (parent) breadcrumbs.push({ id: parentId, name: parent.name as string, path: [] })
   }
-  breadcrumbs.push(...parentCrumbs)
 
   // Add the symlink root
   breadcrumbs.push({

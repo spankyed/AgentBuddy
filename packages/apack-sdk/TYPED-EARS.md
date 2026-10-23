@@ -88,7 +88,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 
 **Which `EARS` to import.**
 - Pack code imports `EARS` from its `#generated/ears` by default.
-- The SDK's `EARS` (`@apackdev/sdk`) is fine for `EntityId`, the SDK-owned constants and the shared EARS types (`AttrKind`, `RoleKind`, `Blueprint`…). That covers build facets and SDK-level code. Its `EntityId` is the same type the generated one aliases, and a pack's name (`EARS.Entity.Note`) doesn't exist on it, so a wrong import fails to compile.
+- The SDK's `EARS` (`@apackdev/sdk`) is fine for `EntityId`, the SDK-owned constants and the shared EARS types (`AttrKind`, `RoleKind`…). That covers build facets and SDK-level code. Its `EntityId` is the same type the generated one aliases, and a pack's name (`EARS.Entity.Note`) doesn't exist on it, so a wrong import fails to compile.
 - The one hazard is the SDK's `EARS.Entity` as a type. It's open (any string), so a value annotated with it passes the entity-name check unchecked, reads with the generic shape, and compiles with a typo. Use it only when an open name is intended, as in default-setup's create step (`entityTypeTarget`, any entity type a flow names); otherwise annotate with the generated `EARS.Entity` or `EntityName`, which are closed.
 
 **Defaults.**

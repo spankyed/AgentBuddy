@@ -1,6 +1,7 @@
 import { featureSettings } from '#generated/settings.ts';
 
 import { query } from '#generated/ears.ts';
+import { wouldCreateCycle } from '@apackdev/sdk/ears';
 import { broadcastToSurface } from '#generated/events.ts';
 import { setup } from 'xstate';
 import type { Reply } from '@apackdev/sdk/events';
@@ -32,14 +33,9 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('notes');
 
-function isDescendantOf(noteId: EARS.EntityId, ancestorId: EARS.EntityId): boolean {
-  const childIds = query.ids(ancestorId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-  for (const childId of childIds) {
-    if (childId === noteId) return true;
-    if (isDescendantOf(noteId, childId)) return true;
-  }
-  return false;
-}
+/** Whether putting `noteId` under `newParentId` would put a note inside itself */
+const wouldNestInItself = (noteId: EARS.EntityId, newParentId: EARS.EntityId) =>
+  wouldCreateCycle(newParentId, noteId, [EARS.RelKind.CONTAINS]);
 
 export const notesSpec = defineSystem<Contract>();
 
@@ -263,11 +259,8 @@ export const notesSystem = setup({
       for (const noteId of ev.ids) {
         const id = noteId as EARS.EntityId;
 
-        // Skip self-drop
-        if (newParentId === id) continue;
-
-        // Skip descendant-drop (would create circular reference)
-        if (newParentId && isDescendantOf(newParentId, id)) continue;
+        // Skip a drop onto itself or into its own subtree
+        if (newParentId && wouldNestInItself(id, newParentId)) continue;
 
         // Find current parent to skip same-parent no-op
         const currentParentIds = query.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
@@ -306,11 +299,8 @@ export const notesSystem = setup({
       const noteId = ev.id as EARS.EntityId;
       const newParentId = ev.newParentId as EARS.EntityId | null;
 
-      // Skip self-drop
-      if (newParentId === noteId) return;
-
-      // Skip descendant-drop
-      if (newParentId && isDescendantOf(newParentId, noteId)) return;
+      // Skip a drop onto itself or into its own subtree
+      if (newParentId && wouldNestInItself(noteId, newParentId)) return;
 
       const { oldParentId, affectedIds } = repository.noteCommands.reorder(noteId, newParentId, ev.newIndex);
 

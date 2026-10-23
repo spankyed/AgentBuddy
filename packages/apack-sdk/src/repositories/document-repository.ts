@@ -7,7 +7,7 @@
 // so an entity that moved without them would sort differently depending on who wrote it. What stays with
 // the feature that draws the tree is everything a view wants: paths, counts, child shapes, the index,
 // search, symlink resolution. These return rows and ids; a DTO is the editor's.
-import { boundEars as ears, findRelations, generateShortCode, untypedCreate, untypedQuery as query, untypedWrite as write } from '../ears/index.ts';
+import { ancestors, boundEars as ears, findRelations, generateShortCode, untypedCreate, untypedQuery as query, untypedWrite as write } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import type { CollectionEntity, ContentSection, DocumentEntity } from '../types/sdk-entities.ts';
 
@@ -57,12 +57,10 @@ export function collectionOfDocument(documentId: EARS.EntityId): EARS.EntityId |
 
 /** A folder's names from the root down to it */
 export function collectionPath(collectionId: EARS.EntityId): string[] {
-  const path: string[] = [];
-  for (let id: EARS.EntityId | null = collectionId; id !== null; id = parentCollectionOf(id)) {
+  return [collectionId, ...ancestors(collectionId, EARS.RelKind.PARENT_OF)].reverse().flatMap((id) => {
     const [row] = query.ids(id).pickAll() as Array<Record<string, unknown>>;
-    if (row) path.unshift(String(row.name));
-  }
-  return path;
+    return row ? [String(row.name)] : [];
+  });
 }
 
 /**

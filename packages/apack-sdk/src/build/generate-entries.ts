@@ -214,7 +214,6 @@ ${roleMembers.join('\n')}
   }
   export type AttrKind = import('@apackdev/ears').EARS.AttrKind;
 
-  export type Blueprint = import('@apackdev/ears').EARS.Blueprint;
   export type RelationDetail = import('@apackdev/ears').EARS.RelationDetail;
   export type AttributePayloads = import('@apackdev/ears').EARS.AttributePayloads;
   export type AttributeValue<K extends AttrKind = AttrKind> = import('@apackdev/ears').EARS.AttributeValue<K>;

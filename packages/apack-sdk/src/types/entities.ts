@@ -39,5 +39,4 @@ export namespace EARS {
   export type AttributeType = Core.AttributeType;
   export type AttributeStore = Core.AttributeStore;
 
-  export type Blueprint = Core.Blueprint;
 }

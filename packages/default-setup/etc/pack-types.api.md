@@ -1351,7 +1351,6 @@ declare namespace EARS {
         const Custom: <T extends string>(k: T) => T & AttrKind;
     }
     type AttrKind = _apackdev_ears.EARS.AttrKind;
-    type Blueprint = _apackdev_ears.EARS.Blueprint;
     type RelationDetail = _apackdev_ears.EARS.RelationDetail;
     type AttributePayloads = _apackdev_ears.EARS.AttributePayloads;
     type AttributeValue<K extends AttrKind = AttrKind> = _apackdev_ears.EARS.AttributeValue<K>;
@@ -6299,6 +6298,7 @@ declare const noteQueries: {
     readonly all: () => NoteEntity[];
     readonly allDTOs: () => NoteDTO[];
     readonly children: (parentId: EARS.EntityId) => NoteDTO[];
+    /** The notes above this one, its root first */
     readonly ancestorChain: (noteId: EARS.EntityId) => NoteDTO[];
     readonly referencedBy: (noteId: EARS.EntityId) => EARS.EntityId[];
     readonly trashedDTOs: () => NoteDTO[];

@@ -8,6 +8,7 @@ import {
   collectionPath, collectionRepository, displayOrderOf, documentRepository, nextDisplayOrder, parentCollectionOf,
 } from '@apackdev/sdk/repositories'
 import { formatFileSize, getContentLength } from './helpers.ts'
+import { wouldCreateCycle } from '@apackdev/sdk/ears'
 import type { ContentSection } from '#features/library/be/types.ts';
 
 
@@ -255,9 +256,10 @@ const writers = {
       if (id.startsWith('Document-')) {
         this.moveDocument(id, targetFolderId || undefined)
       } else if (id.startsWith('Collection-')) {
-        // Move collection to new parent
+        // Move collection to new parent, unless that would put the folder inside itself
         const collectionId = id
-        
+        if (targetFolderId && wouldCreateCycle(targetFolderId, collectionId, [EARS.RelKind.PARENT_OF])) continue
+
         const currentParent = parentCollectionOf(collectionId)
         
         // Remove from current parent if exists
