@@ -1,4 +1,4 @@
-import { query, create, write, findById } from '#generated/ears.ts';
+import { query, create, write } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { findRelations, untypedQuery } from '@apackdev/sdk/ears';
 import type { FlowTNodeData, EventListenerEntity } from '../types.ts';
@@ -487,7 +487,7 @@ export const brainCommands = {
       );
     }
 
-    const existing = findById<TNodeEntity>(rootId);
+    const existing = query.ids(rootId).ofType(EARS.Entity.TNode).pickOne();
     if (existing) {
       return { rootFlow, rootFlowTNode: existing };
     }

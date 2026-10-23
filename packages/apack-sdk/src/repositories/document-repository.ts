@@ -7,7 +7,7 @@
 // so an entity that moved without them would sort differently depending on who wrote it. What stays with
 // the feature that draws the tree is everything a view wants: paths, counts, child shapes, the index,
 // search, symlink resolution. These return rows and ids; a DTO is the editor's.
-import { ancestors, boundEars as ears, findRelations, untypedCreate, untypedQuery as query, untypedWrite as write } from '../ears/index.ts';
+import { ancestors, findRelations, untypedCreate, untypedQuery as query, untypedWrite as write } from '../ears/index.ts';
 import { sdkEntities } from '../ears/sdk-entities.ts';
 import { EARS } from '../types/entities.ts';
 import type { CollectionEntity, ContentSection, DocumentEntity } from '../types/sdk-entities.ts';
@@ -87,7 +87,7 @@ export function nextDisplayOrder(parentId: EARS.EntityId | null): number {
 
 /** Rows of documents, which no write announcement wraps */
 const documentReads = {
-  byId: (id: EARS.EntityId): DocumentEntity | undefined => ears().findById<DocumentEntity>(id) ?? undefined,
+  byId: (id: EARS.EntityId): DocumentEntity | undefined => sdkEntities.query.ids(id).ofType(EARS.Entity.Document).pickOne() ?? undefined,
 
   all: (): DocumentEntity[] => sdkEntities.query(EARS.Entity.Document).pickAll(),
 
@@ -198,7 +198,7 @@ export const documentRepository = {
 
 /** Rows and writes of the folders documents sit in */
 export const collectionRepository = {
-  byId: (id: EARS.EntityId): CollectionEntity | undefined => ears().findById<CollectionEntity>(id) ?? undefined,
+  byId: (id: EARS.EntityId): CollectionEntity | undefined => sdkEntities.query.ids(id).ofType(EARS.Entity.Collection).pickOne() ?? undefined,
 
   all: (): CollectionEntity[] => sdkEntities.query(EARS.Entity.Collection).pickAll(),
 

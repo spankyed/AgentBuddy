@@ -13,7 +13,7 @@ import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  query, create, upsert, newId, findById, write, getAttr, type EntityShape
+  query, create, upsert, newId, write, getAttr, type EntityShape
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
 import { resetTestData } from '@apackdev/sdk/testing';
@@ -66,8 +66,8 @@ describe('Type inference — EARS runtime', () => {
 describe('Type inference — typed EARS helpers', () => {
   const actionId = 'Action-1' as EARS.EntityId<'Action'>;
 
-  it('findById with a branded id reads the declared shape', () => {
-    expectTypeOf(() => findById(actionId)!.actionFn).returns.toEqualTypeOf<string>();
+  it('the row with a branded id reads the declared shape', () => {
+    expectTypeOf(() => query.ids(actionId).pickOne()!.actionFn).returns.toEqualTypeOf<string>();
   });
 
   it('a query by type, and by a field, reads the declared shape', () => {
@@ -84,7 +84,7 @@ describe('Type inference — typed EARS helpers', () => {
   });
 
   it('create may leave out the short code a shape numbers, which reads back as its type\'s', () => {
-    const action = findById(create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()' }).id())!;
+    const action = create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()' }).row();
     expectTypeOf(action.shortCode).toEqualTypeOf<`ACT-${number}`>();
     expect(action.shortCode).toMatch(/^ACT-\d+$/);
     // Type-level only: the engine refuses these rows at runtime too
@@ -280,20 +280,17 @@ describe('Generated repository', () => {
 describe('Generic flow — runtime verification', () => {
   beforeEach(() => resetTestData());
 
-  it('findById<T> returns typed result with T properties', () => {
-    type ActionEntity = {
-      label: string;
-      actionFn: string;
-      category: string;
-      entityType: EARS.Entity;
-    };
+  it("create's row() and pickOne() read the entity back typed by its id, with no shape to name", () => {
+    const entity = create(EARS.Entity.Action, { input: {}, label: 'TypedAction', actionFn: 'fn()', category: 'test' }).row();
+    expectTypeOf(entity.actionFn).toEqualTypeOf<string>();
 
-    const entity = findById(create(EARS.Entity.Action, { input: {}, label: 'TypedAction', actionFn: 'fn()', category: 'test' }).id())!;
-
-    const found = findById<ActionEntity>(entity.id);
-    expect(found).toBeDefined();
-    expect(found!.label).toBe('TypedAction');
-    expect(found!.category).toBe('test');
+    const found = query.ids(entity.id).pickOne();
+    expectTypeOf(found).toEqualTypeOf<EntityShape<'Action'> | null>();
+    expect(found).toEqual(entity);
+    // An id with no type in it is narrowed by ofType, which checks the entity's type rather than asserting it
+    const plain: EARS.EntityId = entity.id;
+    expect(query.ids(plain).ofType(EARS.Entity.Action).pickOne()?.label).toBe('TypedAction');
+    expect(query.ids(plain).ofType(EARS.Entity.Prompt).pickOne()).toBeNull();
   });
 
   it('a query by type returns every row of it', () => {

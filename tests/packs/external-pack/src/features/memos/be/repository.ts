@@ -1,4 +1,4 @@
-import { query, findById, create, EARS } from '#generated/ears.ts';
+import { query, create, EARS } from '#generated/ears.ts';
 import type { MemoDTO, MemoEntity } from './types.ts';
 
 function toDTO(memo: MemoEntity): MemoDTO {
@@ -11,5 +11,5 @@ export const memoQueries = {
 };
 
 export const memoCommands = {
-  add: (text: string): MemoDTO => toDTO(findById(create(EARS.Entity.Memo, { text }).id())!),
+  add: (text: string): MemoDTO => toDTO(create(EARS.Entity.Memo, { text }).row()),
 };

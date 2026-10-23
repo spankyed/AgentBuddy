@@ -515,7 +515,7 @@ engine.query('Bookmark').count();                             // 1
 
 ```
 
-- The engine's members are its operations: `query`, `create`, `upsert`, `write`, `transact`, the finders, relation reads, graph helpers and its repository registry, untyped.
+- The engine's members are its operations: `query`, `create`, `upsert`, `write`, `transact`, relation reads, the hierarchy walks and its repository registry, untyped.
 - `engine.admin`, beside them, is for the code that created the engine: bulk loading, clearing (`admin.clear()`), direct attribute and relation writes. Pack code never gets it.
 - `isEntityType` says which names are entity types: `create('Bookmark')` and `query('Bookmark')` refuse `'Bookmark'` unless it returns true for it. `isRelationKind` says which are relation kinds, which a link and every read or walk over links refuse otherwise, and `isRole` which are roles.
 - An engine you create is the one you hold: nothing acts on it but what you call on it. The functions in `@apackdev/sdk/ears` act on the app's, and with none bound (a script, a test without the harness) they throw, naming how to bind one.
@@ -541,8 +541,9 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
-`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `findById`, `newId` and `getAttr`.
-Rows of a type are `query(type).pickAll()`, and of a type with a field's value `query(type).where(field, value).pickAll()`. `@apackdev/ears` exports the
+`#generated/ears` exports: `query`, `create`, `upsert`, `write`, `transact`, `newId` and `getAttr`.
+Rows are a query's: the row with an id is `query.ids(id).pickOne()`, rows of a type `query(type).pickAll()`, and of a type
+with a field's value `query(type).where(field, value).pickAll()`; a write reads its entity back with `row()`. `@apackdev/ears` exports the
 writes unchecked, as `untypedCreate`, `untypedUpsert` and `untypedWrite`, and `transact`. The `find*` helpers leave out rows in the trash, as every query does. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's
 declared shapes), `PackShapes` (the SDK's, the dependencies' and this pack's), `EntityName`, and
@@ -564,7 +565,7 @@ query(EARS.Entity.Bookmark).orderBy('createdAt') // BaseEntity fields are includ
 declared shape read as `BaseEntity & Record<string, unknown>`: every field is there, but
 you have to narrow a value before using it. An id carries its entity type when it comes
 from a typed helper (`newId(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookmark'>`),
-so builders written with it (`query.ids(id)`, `write(id)`, `findById(id)`) are typed too;
+so builders written with it (`query.ids(id)`, `write(id)`) are typed too;
 unbranded ids (`EARS.EntityId`) and `query.all()` read as undeclared.
 
 **A short code is numbered by `create`.** A shape that types its `shortCode` as `ShortCode<prefix>` (from
@@ -589,7 +590,7 @@ without naming the shape:
 
 ```ts
 const first = query(EARS.Entity.Bookmark).first();   // EARS.EntityId<'Bookmark'> | null
-if (first) findById(first)?.title;                 // typed with the Bookmark shape
+if (first) query.ids(first).pickOne()?.title;      // typed with the Bookmark shape
 ```
 
 A plain `EARS.EntityId` (from an event, JSON or a route) carries no entity type and is accepted

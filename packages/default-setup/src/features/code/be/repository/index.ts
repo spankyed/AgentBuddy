@@ -1,4 +1,4 @@
-import { create, write, findById, query } from '#generated/ears.ts';
+import { create, write, query } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts'
 
@@ -25,7 +25,7 @@ export interface TerminalEntity {
 
 export const terminalQueries = {
   byId: (id: EARS.EntityId): TerminalEntity | undefined => {
-    return findById<TerminalEntity>(id)
+    return query.ids(id).ofType(EARS.Entity.Terminal).pickOne() ?? undefined
   },
 
   all: (): TerminalEntity[] => {

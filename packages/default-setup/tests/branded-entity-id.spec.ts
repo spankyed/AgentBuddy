@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
 import type { QueryBuilder } from '@apackdev/ears';
-import { EARS, newId, findById, query, type EntityShape, type PackShapes } from '#generated/ears.ts';
+import { EARS, newId, query, type EntityShape, type PackShapes } from '#generated/ears.ts';
 
 // ─── EntityId<E> phantom brand ─────────────────────────────────────────
 
@@ -67,33 +67,17 @@ describe('Branded EntityId — newId overloads', () => {
   });
 });
 
-// ─── findById with branded id ──────────────────────────────────────────
+// ─── the row with an id ────────────────────────────────────────────────
 
-type InferFindById<E extends string> =
-  EARS.EntityId<E> extends EARS.EntityId<infer R>
-    ? R extends keyof PackShapes
-      ? EntityShape<R> | undefined
-      : unknown
-    : unknown;
-
-describe('Branded EntityId — findById inference', () => {
-  it('findById with branded EntityId<"Action"> returns EntityShape<"Action">', () => {
-    type Result = InferFindById<'Action'>;
-    expectTypeOf<Result>().exclude<undefined>().toHaveProperty('label');
-    expectTypeOf<Result>().exclude<undefined>().toHaveProperty('actionFn');
-    expectTypeOf<Result>().exclude<undefined>().toHaveProperty('id');
+describe('Branded EntityId — the row with an id', () => {
+  it("pickOne() on a branded id returns that entity's shape", () => {
+    const row = (id: EARS.EntityId<'Action'>) => query.ids(id).pickOne();
+    expectTypeOf(row).returns.toEqualTypeOf<EntityShape<'Action'> | null>();
   });
 
-  it('findById overload: branded id narrows to EntityShape', () => {
-    type FindByIdBranded = (id: EARS.EntityId<'Thread'>) => EntityShape<'Thread'> | undefined;
-    const typedFind: FindByIdBranded = findById;
-    expectTypeOf(typedFind).returns.toMatchTypeOf<EntityShape<'Thread'> | undefined>();
-  });
-
-  it('findById overload: explicit T still works', () => {
-    type Custom = { myField: string };
-    const typedFind: (id: EARS.EntityId) => Custom | undefined = findById;
-    expectTypeOf(typedFind).returns.toMatchTypeOf<Custom | undefined>();
+  it('an unbranded id is typed by ofType, which checks the entity rather than asserting its shape', () => {
+    const row = (id: EARS.EntityId) => query.ids(id).ofType(EARS.Entity.Thread).pickOne();
+    expectTypeOf(row).returns.toEqualTypeOf<EntityShape<'Thread'> | null>();
   });
 });
 
@@ -109,7 +93,7 @@ describe('Branded EntityId — integration with QueryBuilder', () => {
     // Type-level only: never called, since the EARS runtime isn't initialized here
     const check = () => {
       const first = query(EARS.Entity.Note).first();
-      if (first) expectTypeOf(findById(first)).toEqualTypeOf<EntityShape<'Note'> | undefined>();
+      if (first) expectTypeOf(query.ids(first).pickOne()).toEqualTypeOf<EntityShape<'Note'> | null>();
       const row = query(EARS.Entity.Note).pickAll()[0];
       if (row) expectTypeOf(row.id).toEqualTypeOf<EARS.EntityId<'Note'>>();
       const picked = query(EARS.Entity.Note).pickOne(['title']);

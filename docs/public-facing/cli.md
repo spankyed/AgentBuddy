@@ -762,7 +762,7 @@ apack db script ./cleanup.ts --profile development -- --older-than 30
 
 | It receives | |
 |---|---|
-| `db` | the open database: `query` (`query`, `create`, `upsert`, `write`, the finders), `admin`, `store`, `schema`, `paths`, `userDataDir` |
+| `db` | the open database: `query` (`query`, `create`, `upsert`, `write`), `admin`, `store`, `schema`, `paths`, `userDataDir` |
 | `EARS` | the entity types and relation kinds of the packs installed in that data dir |
 | `args` | whatever follows `--` |
 | `log` | prints a line, like the script's own output |

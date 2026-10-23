@@ -93,7 +93,7 @@ it('replaces deliberately, survives boot refresh, then restores a removed defaul
   expect(readInstalledPacks(context.installedPacksFile)[0]).toMatchObject({ enabled: true, updatesWith: 'app' });
   expect(readInstalledPacks(context.installedPacksFile)[0]).not.toHaveProperty('suppressAppInstall');
   const reopened = await openAppDatabase({ env: context.env, userDataDir: context.userDataDir, readOnly: true, log: () => {} });
-  try { expect(reopened.ears.findById<{ data: typeof choices }>(settingsId)?.data).toEqual(choices); }
+  try { expect(reopened.ears.query.ids(settingsId).pickOne()?.data).toEqual(choices); }
   finally { reopened.close(); }
   expect(findDatabaseWriter(context.userDataDir)).toBeNull();
 });

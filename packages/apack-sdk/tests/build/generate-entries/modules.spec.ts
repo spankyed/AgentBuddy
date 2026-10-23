@@ -178,7 +178,7 @@ describe('generated EARS facade', () => {
     const ears = (await generate({ data: { entities: { Memo: "src/memo.ts#MemoEntity", Tag: null } }, }))['src/__generated__/ears.ts'];
     expect(ears).toContain(`export type EntityName = ${['Memo', 'Tag', ...Object.values(SDK_ENTITIES)].map((name) => `'${name}'`).join(' | ')};`);
     expect(ears).toContain('defineEars<PackShapes, EntityName, EARS.RelKind, EARS.RoleKind>(boundEars)');
-    expect(ears).toMatch(/export const \{\n  query, create, upsert, write, transact, findById/);
+    expect(ears).toMatch(/export const \{\n  query, create, upsert, write, transact, newId, getAttr,\n\}/);
   });
 });
 

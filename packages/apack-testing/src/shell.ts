@@ -145,7 +145,7 @@ export async function startShell(packId: string, options: StartShellOptions, bac
     packClientReady: async (id) => testRootEvents.emitPackClientConnected(id),
     // The test's surfaces are registered up front, as a built-in pack's are: no external pack frontends to load
     loadedPacks: async () => [],
-    entityExists: async (id, signal) => { signal.throwIfAborted(); return boundEars().findById(id) !== undefined; },
+    entityExists: async (id, signal) => { signal.throwIfAborted(); return boundEars().query.ids(id).exists(); },
     describeConnection: async () => 'A unit test\'s shell: its client is the harness\'s in-memory bus',
   };
 

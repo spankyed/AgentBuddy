@@ -1,7 +1,7 @@
 import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
 import { createLogger } from '@apackdev/sdk/logger';
 import { extractValueByPath } from '@apackdev/sdk/utils';
-import { findById, write, type EARS } from '#generated/ears.ts';
+import { query, write, type EARS } from '#generated/ears.ts';
 import { assertEntityType, createEntityRow, reportStepError, stepFields } from '../create/runtime.ts';
 import type { UpdateNode } from './types.ts';
 
@@ -25,10 +25,10 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     const id = (resolved || undefined) as EARS.EntityId | undefined;
     const fields = stepFields(t);
 
-    if (id && findById(id)) {
+    if (id && query.ids(id).pickOne()) {
       write(id).setMany(fields);
       brainLogger.debug(`Updated ${id} in node: ${n.label}`, { fields });
-      a.send({ type: 'COMPLETE', result: { ...findById(id), updated: true } });
+      a.send({ type: 'COMPLETE', result: { ...query.ids(id).pickOne(), updated: true } });
       return;
     }
 

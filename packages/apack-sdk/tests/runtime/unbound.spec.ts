@@ -155,7 +155,7 @@ describe('bindHost', () => {
   it("binds the app's engine for the SDK's engine operations, until unbound", () => {
     bindHost(runtime);
     const id = untypedCreate('Memo').set('title', 'bound').id();
-    expect(engine.findById(id)).toMatchObject({ title: 'bound' });
+    expect(engine.query.ids(id).pickOne()).toMatchObject({ title: 'bound' });
     expect(untypedQuery('Memo').ids()).toEqual([id]);
     unbindHost();
     expect(() => untypedQuery('Memo')).toThrow('No EARS engine is bound');

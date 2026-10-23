@@ -1,7 +1,7 @@
 import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
 import { reportError, createLogger } from '@apackdev/sdk/logger';
 import { isEntityType } from '@apackdev/sdk/ears';
-import { EARS, create, findById } from '#generated/ears.ts';
+import { EARS, create } from '#generated/ears.ts';
 import type { CreateNode } from './types.ts';
 
 const brainLogger = createLogger('brain', { debug: true });
@@ -31,7 +31,7 @@ export function createEntityRow(entityType: string, fields: Record<string, unkno
     if (source !== undefined) data.label = source;
   }
   // `create` numbers a short code the type declares
-  return findById(create(entityType, data).id())!;
+  return create(entityType, data).row();
 }
 
 /** Reports a create or update step's error against its TNode */
