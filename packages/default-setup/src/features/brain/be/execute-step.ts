@@ -20,7 +20,7 @@ function failLater(actor: { send(event: { type: string; error?: unknown }): void
   });
 }
 
-export function executeNode(
+export function executeStep(
   input: StepInput,
   node: NodeEntity,
   executionContext: ExecutionContext,

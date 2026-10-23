@@ -1,6 +1,6 @@
 import type { NodeEntity } from '#generated/types.ts';
-import type { FieldMapping, SourceResolver } from '../types.ts';
-import { brainLogger } from '../utils/brain-inspect.ts';
+import type { FieldMapping, SourceResolver } from './types.ts';
+import { brainLogger } from './utils/brain-inspect.ts';
 import type { ExecutionContext } from '@apackdev/sdk/steps';
 
 /*─────────────────────────────────────────────────────────────

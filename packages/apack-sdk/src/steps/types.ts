@@ -30,7 +30,7 @@ export interface StepRelation {
  *
  * One declaration because there were eight, and they had already drifted: four typed `default` as `any` and
  * three as `unknown`, and four of those reached dependent packs through the published facade. The runtime
- * (`node-attribute-mappers.ts`), the step compilers and the editor forms all describe the same record.
+ * (`step-input.ts`), the step compilers and the editor forms all describe the same record.
  */
 export interface FieldMapping {
   target: string;

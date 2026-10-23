@@ -1,7 +1,7 @@
 // A mapping's fallback, end to end: `map: { field: { source, default } }` through the compiler and into what
 // the step writes.
 //
-// The runtime has applied a mapping's `default` since long before this spec (`node-attribute-mappers.ts`), but
+// The runtime has applied a mapping's `default` since long before this spec (`step-input.ts`), but
 // nothing could set one — the DSL typed `map` as `Record<string, string>` and the editor's forms wrote only a
 // target and a source. So the branch had no producer, and a review could not tell the code from dead code by
 // reading it. These cases are what makes it reachable; with the long form removed from `expandRecord` the first
