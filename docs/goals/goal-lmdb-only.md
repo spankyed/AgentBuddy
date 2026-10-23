@@ -47,6 +47,16 @@ Never:
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 ```
 
+## Run history: superseded (2026-10-23)
+
+Everything below about traces — the `ears-trace` environment and its partition, `services.traceStore`, the
+sharded router, `clearVolatileData`, `tnodeRepository`, `memoryTraceStore`, the `TRACKED`/`SPAWNED` links and
+Decision 4's one env per partition — describes an engine that no longer exists. Flow runs left the engine:
+TNode is not an entity, the run history is a record store of its own (`run-history`, `services.runHistory`),
+and the engine has one environment ([run-history-store.md](../plans/run-history-store.md)). A resumption of
+this goal starts from that: there is no trace partition left to port, and Phase 6's `services.traceStore`
+item has no subject.
+
 ## Background
 
 `@apackdev/ears` (see `packages/apack-ears/CLAUDE.md`) keeps all data in memory and mirrors writes to LMDB:

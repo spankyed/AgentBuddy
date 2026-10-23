@@ -149,7 +149,7 @@ Ordinary pack source imports its own `services` and `Services` from `#generated/
 | `services.emitter` | Typed sends to surfaces and systems (`broadcastToSurface`, and `sendToSystem` naming a system `<pack>/<feature>`, such as `'my-pack/bookmarks'`, or a role, `{ role: 'brain' }`) |
 | `services.appData` | Reset, export and import app data, and inspect backup metadata |
 | `services.onboarding` | Read and complete onboarding (`isComplete`, `complete`) without granting whole-data administration |
-| `services.traceStore` | Read flow execution records |
+| `services.runHistory` | Flow runs: each run's tree of nodes, recorded while it runs and kept after |
 | `services.secrets` | The user's API keys as metadata (`list`, `select`, `rename`, `delete`, `status`); never values |
 | `services.filesystem` | Files and folders on disk, as UTF-8 text (`readFile`, `writeFile`, `readDir`, `mkdir`, `stat`, `exists`, `rename`, `remove`) |
 

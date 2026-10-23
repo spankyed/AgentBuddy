@@ -116,7 +116,7 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
 9. start the bus actor             — createAppBus(registry) (@apackdev/host/bus) with systemId `HOST.bus`, which spawns every registered system
 ```
 
-Every pack registers before hydration, so its entity types are visible to the partition policy resolver.
+Every pack registers before hydration, so the engine knows its entity types when their rows are loaded.
 
 ## Pack entry contract
 

@@ -11,10 +11,9 @@ Normal application queries run against JavaScript memory. Replacing LMDB with SQ
 sink would not accelerate them. Moving those queries into SQL would require changing the query engine,
 including its equality, ordering, relation traversal and synchronous mutation semantics.
 
-Trace-history indexing, pagination and traversal optimization are outside this plan. The audit found
-scans in the separate trace database, but did not establish usage or measured cost that justifies
-optimizing them. Retain its existing read path. No new indexes are proposed for primary data either:
-normal queries already use in-memory entity-type and relation indexes.
+Run history is outside this plan: it left the engine for a record store of its own, indexed by the fields
+it is looked up by and paged ([run-history-store.md](run-history-store.md)). No new indexes are proposed for
+the database either: normal queries already use in-memory entity-type and relation indexes.
 
 This decision follows source inspection, not a measured LMDB-versus-SQLite benchmark. Revisit SQLite
 WAL if primary data must become disk-resident and the application needs SQL filtering, JOINs, reporting
@@ -27,23 +26,21 @@ and pagination over that data. SQLite WAL would still need deliberate batching a
 | Attributes and entity membership | [attribute-storage.ts](../../packages/apack-ears/src/attribute-storage.ts) | Attribute-kind maps contain entity value lists; entity-type sets provide candidate IDs. Writes update memory and call the persistence sink. |
 | Query evaluation | [query.ts](../../packages/apack-ears/src/query.ts) | `where()` filters candidate IDs in memory. Multiple predicates do not cause database reads. |
 | Relation lookup | [relation-index.ts](../../packages/apack-ears/src/relation-index.ts) | Relation-kind indexes map source and target IDs to relation IDs. Normal graph queries use these in-memory indexes. |
-| Mutation lifecycle | [write.ts](../../packages/apack-ears/src/write.ts), [journal.ts](../../packages/apack-ears/src/journal.ts) | Builder methods mutate immediately. `transact(fn)` undoes a unit in memory when it throws and hands persistence a committed unit whole, which the LMDB adapter stores in one transaction per environment; it gives no durable commit acknowledgment. |
+| Mutation lifecycle | [write.ts](../../packages/apack-ears/src/write.ts), [journal.ts](../../packages/apack-ears/src/journal.ts) | Builder methods mutate immediately. `transact(fn)` undoes a unit in memory when it throws and hands persistence a committed unit whole, which the LMDB adapter stores in one transaction; it gives no durable commit acknowledgment. |
 | Persistence scheduling | [adapter.ts](../../packages/apack-ears/src/lmdb/adapter.ts) | Keyed buffers coalesce final values and flush in a microtask through `transactionSync()`. Entity destruction takes a separate synchronous transaction. Failed batches retry individual steps, allowing partial persistence. |
-| Boot | [hydrate.ts](../../packages/apack-ears/src/lmdb/hydrate.ts) | Primary attributes and relations hydrate into memory. Hydration cost and heap usage grow with primary data. |
-| Partitions | [policy.ts](../../packages/apack-ears/src/persistence/policy.ts), [open.ts](../../packages/apack-host/src/database/open.ts) | `TNode` history and relations touching it go to `volatileBackup`, which normally stays outside hydration. Both partitions are persisted. |
-| Database-backed reads | [lmdb/reader.ts](../../packages/apack-ears/src/lmdb/reader.ts), [trace-store.ts](../../packages/apack-host/src/services/trace-store.ts) | Persisted relation queries scan the relation database. History attributes are read separately. |
-| History traversal | [trace-query.ts](../../packages/default-setup/src/features/database/be/repository/trace-query.ts) | Traversal repeats relation scans. Recursive tree construction uses all descendants as children, repeating subtree work and potentially duplicating descendants. |
+| Boot | [hydrate.ts](../../packages/apack-ears/src/lmdb/hydrate.ts) | The database's attributes and relations hydrate into memory. Hydration cost and heap usage grow with the data. |
+| Run history | [record-store.ts](../../packages/apack-ears/src/lmdb/record-store.ts), [run-history.ts](../../packages/apack-sdk/src/services/run-history.ts) | Flow runs are not in the engine: they are whole records in a record store of their own (`run-history`), found through indexed fields, one transaction per write without a sync. |
 | Streaming writes | [stream-writer.ts](../../packages/default-setup/src/content/actions/claude-code/_helpers/stream-writer.ts) | Text updates are throttled to 80 ms by default and replace accumulated text. Microtask coalescing does not merge separate timer events. |
 | Process ownership | [ApiServer.ts](../../packages/main/src/modules/api-server/ApiServer.ts), [config.ts](../../packages/main/src/modules/api-server/config.ts) | Electron Main starts the API child process. The child owns EARS and persistence; packaged execution uses Electron as Node. |
 | Backup | [store.ts](../../packages/apack-ears/src/lmdb/store.ts) | `copyTo()` uses LMDB snapshot backup but does not itself establish a pending-write flush barrier. |
 
 Notes use in-memory `CONTAINS` and `REFERENCES` traversal. Chat commands update message attributes,
-timestamps and thread relations. Brain execution writes `TNode` lifecycle records. These are the
+timestamps and thread relations. Brain execution writes `TNode` lifecycle records to the run history, outside the engine. These are the
 representative workloads for validation, rather than a synthetic key-value throughput score alone.
 
 ## Storage design
 
-Retain two environments, each with `meta`, `entities`, `attrs` and `relations` named databases.
+Retain one environment, with `meta`, `entities`, `attrs` and `relations` named databases.
 The existing encoding is:
 
 ```text
@@ -59,9 +56,6 @@ primary/relations:
   Relation-456 -> {
     kind: "CONTAINS", src: "Thread-789", tgt: "Message-123", createdAt: ...
   }
-
-volatileBackup:
-  TNode records and relations touching them, using the same core databases
 ```
 
 Keep the existing storage layout and encoding. No new named databases, history summaries, index
@@ -149,19 +143,15 @@ Each checkpoint requires its deliverable and closing checks before the next depe
 | Checkpoint | Deliverable | Dependencies | Closing checks |
 |---|---|---|---|
 | 1. Establish budgets | Representative workload and measured baseline for commit duration, queue age/bytes, hydration, heap and file growth; define acceptance budgets | None | Reproducible dataset and workload; distinguish source findings from measured results; use existing instrumentation where possible |
-| 2. Specify persistence units | Concrete API and failure semantics for logical commands, memory divergence, retries, flush acknowledgment and cross-partition outcomes | 1 | Trace message creation, graph deletion and TNode completion through success and failure; review all lifecycle callers |
+| 2. Specify persistence units | Concrete API and failure semantics for logical commands, memory divergence, retries and flush acknowledgment | 1 | Trace message creation and graph deletion through success and failure; review all lifecycle callers |
 | 3. Implement durability | Buffered destruction, atomic units, bounded background scheduling and barriers in lifecycle operations | 2 | Crash/reopen, commit failure, retry ordering, deletion, stream completion, shutdown, backup, reset and replacement checks |
 | 4. Verify shipping behavior | Packaged-runtime database smoke coverage and final workload comparison | 3 | Native loading on shipped targets, no unacceptable API/UI stalls, bounded queues and acceptable sustained file growth |
-
-Preserve historical relation retention when a primary entity is deleted: the sharded router deliberately
-keeps links stored in a different partition from the destroyed entity. Buffered deletion must follow
-that policy rather than enforcing blanket endpoint deletion.
 
 ## Validation and completion
 
 Use meaningful failure and lifecycle tests rather than tests that mirror buffer implementation. Cover
 atomic multi-record persistence, final acknowledged writes after reopen, failed saves, full-disk behavior
-in an isolated temporary store, backup/restore, and cross-partition history retention.
+in an isolated temporary store, and backup/restore.
 
 Run focused checks during implementation, the existing EARS benchmark with
 `npm run bench -w @apackdev/ears`, and `npm run chain` after code changes. Public export changes also

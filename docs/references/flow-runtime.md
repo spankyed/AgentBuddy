@@ -9,7 +9,7 @@ This document describes how apack executes flows at runtime. It covers the backe
 | Flow blueprint | Persisted flow graph authored in the flows UI or imported from DSL. Contains trigger nodes, step nodes, and edges. |
 | Flow actor | Runtime XState actor created for one executing flow instance. Root and spawned subflows each get their own actor. |
 | Step actor | Runtime XState actor created for one executing step node. |
-| TNode | Runtime trace node persisted for a flow, trigger event, or step execution. TNodes are volatile and cleared when the brain is killed or restarted. |
+| TNode | A run node: the run history's record (`services.runHistory`) of a flow, trigger event, or step execution, linked to the node it ran under by `parentId`. A kill or restart marks a session's running nodes `stopped` and keeps them; the history keeps 30 days of runs. |
 | Event track | One fired trigger plus the downstream step chain spawned from it. |
 | Trigger node | A `listener` or `schedule` node. Trigger nodes do not execute as steps. |
 | Flow node | A step node whose `nodeType` is `flow`; when executed, it spawns a child flow actor. |
@@ -32,9 +32,9 @@ The brain system starts in `running` and creates the root flow actor on entry.
 
 1. On app startup, the brain ensures there is a root flow role if flows exist.
 2. `START_BRAIN` or entering `running` calls `startBrain`.
-3. `startBrain` calls `createFlowNodeSystem()` with no flow id, which creates the root flow TNode and root flow actor.
+3. `startBrain` calls `createFlowNodeSystem()` with no flow id, which creates the session's root flow TNode (a new one each start, held as `rootRunId`) and root flow actor.
 4. The root flow actor enters `active`, registers itself in the flow actor registry, registers schedule jobs for its schedule nodes, then raises `flow.entry`.
-5. `KILL_BRAIN` stops the root actor, clears volatile TNode data, removes ad-hoc listeners, clears all cron schedules, clears the flow actor registry, and notifies the frontend.
+5. `KILL_BRAIN` stops the root actor, marks the session's running TNodes `stopped`, removes ad-hoc listeners, clears all cron schedules, clears the flow actor registry, and notifies the frontend.
 6. `RESTART_BRAIN` does the same cleanup and then starts a fresh root flow actor.
 
 When the root flow actor completes naturally, it sends `CHILD_COMPLETED` to the brain system. The brain treats that as root completion and kills the brain.
@@ -197,13 +197,13 @@ On resume, the flow actor:
 2. Replays deferred events into itself.
 3. Clears pending queues.
 
-Brain kill and restart clear the event queue, pending runtime actors, volatile traces, schedules, and actor registry.
+Brain kill and restart clear the event queue, pending runtime actors, schedules, and actor registry, and mark what the session was running as `stopped` in the run history (`services.runHistory`), which keeps it.
 
 ## Trace Data
 
 The runtime emits trace events to the frontend:
 
-- `TNODE_SPAWNED` when flow, event, or step TNodes are created.
+- `TNODE_SPAWNED` when flow, event, or step run nodes are created in the run history.
 - `TNODE_UPDATED` when TNodes complete or fail.
 - `TNODE_OPENED` and `RECEIVE_SURFACE_DATA` when the UI requests flow trace data.
 - `TNODE_DETAILS` for details-panel data.

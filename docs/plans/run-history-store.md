@@ -1,6 +1,6 @@
 # Run history leaves the engine — its own store, one engine environment
 
-Status: in progress, 2026-10-23, on `ears-engine-overhaul`. Raised in the review of the EARS API cleanup (items 7, 8 and 12).
+Status: done, 2026-10-23, on `run-history-store` (cut from `ears-engine-overhaul`; see Outcome). Raised in the review of the EARS API cleanup (items 7, 8 and 12).
 
 ## Context
 
@@ -151,3 +151,23 @@ copy (restore with `cp`, never `git stash`).
 - In the app: `npm run dev`, run a flow, check the Brain surface shows the live run, kill the brain (nodes go
   `stopped`), restart (new root), and the Database trace viewer lists past runs without duplicated children;
   `apack db runs --profile <name>` lists them.
+
+## Outcome
+
+Nine commits on `run-history-store`, which holds C1 and C2 picked off `ears-engine-overhaul`:
+
+| Step | Commit | Where it departed from the plan |
+|---|---|---|
+| C1 record store | `d3e3625f0e` | Its format is a number with a `kind` stamp beside it, so it and an EARS environment each refuse the other's files |
+| C2 `services.runHistory` | `0db8f8846f` | — |
+| C3 + C4 brain, steps, viewer | `e471092b7a` | C4 (the Database viewer) landed with C3: the viewer read the trace store C3 stopped writing. A value is bounded once, when written, and a step is handed the node as built, not the stored copy |
+| C5 TNode not an entity | `2deba4e475` | — |
+| C6 one environment | `96bf0e71a1` | A backup held `lmdb` only between C6 and C7. Ears bench within +10% of the commit before on every case |
+| C7 backups | `a457bd5269` | — |
+| C8 retention | `343729ea73` | A session the app stopped at open (a crash, a quit mid-run) ended then, and is kept 30 days from there |
+| C9 `apack db runs` | `066aa4d6a2` | Plus `npm run db:runs` |
+| C10 docs | this commit | `docs/goals/goal-lmdb-only.md` gets a note that its trace parts are superseded, rather than a rewrite |
+
+Left for after merge, with the user's go-ahead: delete `ears-trace` from the data dirs by hand. No version of
+apack reads it any more, and nothing at boot removes it.
+
