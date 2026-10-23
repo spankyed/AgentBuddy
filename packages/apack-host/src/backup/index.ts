@@ -48,7 +48,7 @@ export type BackupStores = { lmdb: BackupStore } & Partial<Record<Exclude<Databa
 /** Opens a backup's copy of a store read-only, refusing one in a format this version can't read, and closes it */
 const CHECK_COPY: Record<DatabaseName, (dir: string) => void> = {
   lmdb: (dir) => closeEnv(openEnvAt(dir, { readOnly: true }), () => {}),
-  runHistory: (dir) => openRecordStore({ path: dir, indexes: [], readOnly: true }).close(),
+  runHistory: (dir) => openRecordStore({ path: dir, indexes: {}, readOnly: true }).close(),
 };
 
 /**

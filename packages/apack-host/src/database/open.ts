@@ -1,9 +1,9 @@
 // Opening an app's database: the one composition of the LMDB store and the engine, which the API's boot and tools
 // (apack db) share, so both hydrate a data dir the same way
-import { createEarsEngine, type EarsAdmin, type EarsEngine, type Ears } from '@apackdev/ears';
+import { createEarsEngine, type EarsAdmin, type EarsEngine, type Ears, type RecordStore } from '@apackdev/ears';
 import { _bindEars } from '@apackdev/sdk/ears';
-import { openLmdbStore, openRecordStore, type LmdbStore, type RecordStore, type WriteFailure } from '@apackdev/ears/lmdb';
-import { _RUN_HISTORY_INDEXES } from '@apackdev/sdk/services';
+import { openLmdbStore, openRecordStore, type LmdbStore, type WriteFailure } from '@apackdev/ears/lmdb';
+import { _RUN_HISTORY_INDEXES, type TNode } from '@apackdev/sdk/services';
 import { resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import type { _AppDataPaths } from '@apackdev/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
@@ -39,7 +39,7 @@ export function openDatabaseStore({ path, schema, readOnly, log, onWriteFailure 
 }
 
 /** The run history's store at `path`, indexed as `services.runHistory` looks its records up */
-export function openRunHistoryStore(path: string, { readOnly }: { readOnly?: boolean } = {}): RecordStore {
+export function openRunHistoryStore(path: string, { readOnly }: { readOnly?: boolean } = {}): RecordStore<TNode> {
   return openRecordStore({ path, indexes: _RUN_HISTORY_INDEXES, readOnly });
 }
 

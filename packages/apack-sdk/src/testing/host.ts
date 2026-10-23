@@ -10,7 +10,7 @@ import type { Message } from '../events/index.ts';
 import type { EarsEngine } from '@apackdev/ears';
 import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
 import { _createRunHistory, type RunHistory } from '../services/run-history.ts';
-import { _memoryRecords } from './memory-records.ts';
+import { _memoryRunHistoryStore } from './memory-run-history.ts';
 import type { OnboardingService } from '../services/onboarding.ts';
 import type { SecretMetadata, SecretProvider, SecretsService } from '../services/secrets.ts';
 import { _secretRules } from '../services/secrets-rules.ts';
@@ -77,10 +77,10 @@ const memoryOnboarding: OnboardingService = {
 export function resetTestHostState(): void {
   testSecrets = [];
   onboarded = false;
-  testHistory = _createRunHistory(_memoryRecords());
+  testHistory = _createRunHistory(_memoryRunHistoryStore());
 }
 
-let testHistory = _createRunHistory(_memoryRecords());
+let testHistory = _createRunHistory(_memoryRunHistoryStore());
 
 /** The test runtime's run history, in memory: what `services.runHistory` is until `resetTestData` replaces it */
 export const testRunHistory = (): RunHistory => testHistory;

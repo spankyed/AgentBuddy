@@ -3,7 +3,8 @@ import { createLogger, reportError } from '@apackdev/sdk/logger';
 import { bindHost, type HostRuntime } from '@apackdev/sdk/runtime';
 import { _getLmdbPath, _getRunHistoryPath } from '@apackdev/sdk/utils';
 import type { EarsEngine } from '@apackdev/ears';
-import type { LmdbStore, RecordStore, WriteFailure } from '@apackdev/ears/lmdb';
+import type { RecordStore } from '@apackdev/ears';
+import type { LmdbStore, WriteFailure } from '@apackdev/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore, openRunHistoryStore, storedSettings } from '@apackdev/host/database';
 import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apackdev/host/packs';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
@@ -15,7 +16,7 @@ import {
 } from '@apackdev/host/features';
 import { createAppBus, createParticipantClaims, HOST } from '@apackdev/host/bus';
 import { createHostRuntime } from '@apackdev/host/services';
-import { _settingsAdmin } from '@apackdev/sdk/services';
+import { _settingsAdmin, type TNode } from '@apackdev/sdk/services';
 import { compileSettingsCatalog, createSettingsAccess } from '@apackdev/host/settings';
 import { forwardSecretsChanges } from '@apackdev/host/secrets';
 import { assertSourceResolution } from '@apackdev/host/build/source-resolution';
@@ -48,7 +49,7 @@ function logErrors(actor: string) {
 export interface AppStore {
   store: LmdbStore;
   /** The run history's store, closed with the app's */
-  runHistory: RecordStore;
+  runHistory: RecordStore<TNode>;
   engine: EarsEngine;
   packs: PackRegistry;
 }
@@ -68,7 +69,7 @@ export let appSettingsAccess: ReturnType<typeof createSettingsAccess>;
 export let appStore: LmdbStore | undefined;
 
 /** The run history's open store, so shutdown can close it */
-export let appRunHistory: RecordStore | undefined;
+export let appRunHistory: RecordStore<TNode> | undefined;
 
 /**
  * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller

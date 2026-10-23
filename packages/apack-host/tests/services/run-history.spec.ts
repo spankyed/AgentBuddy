@@ -4,14 +4,14 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
-import type { RecordStore } from '@apackdev/ears/lmdb';
-import type { RunHistory, TNodeId, TNodeInput } from '@apackdev/sdk/services';
-import { _memoryRecords } from '@apackdev/sdk/testing';
+import type { RecordStore } from '@apackdev/ears';
+import type { RunHistory, TNode, TNodeId, TNodeInput } from '@apackdev/sdk/services';
+import { _memoryRunHistoryStore } from '@apackdev/sdk/testing';
 import { openRunHistoryStore } from '../../src/database/open.ts';
 import { createRunHistory, RUN_HISTORY_RETENTION_MS } from '../../src/services/run-history.ts';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-history-'));
-const open: RecordStore[] = [];
+const open: RecordStore<TNode>[] = [];
 afterEach(() => { for (const store of open.splice(0)) store.close(); });
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
@@ -21,7 +21,7 @@ const STORES: Record<string, () => RunHistory> = {
     open.push(store);
     return createRunHistory(store);
   },
-  'in memory': () => createRunHistory(_memoryRecords()),
+  'in memory': () => createRunHistory(_memoryRunHistoryStore()),
 };
 
 /** Adds a node under `parentId` and returns its id */

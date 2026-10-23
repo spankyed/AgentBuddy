@@ -21,6 +21,7 @@ import type { InferSchema } from 'ai';
 import type { JSONSchema7 } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import { RecordStore } from '@apackdev/ears';
 import type { Ref } from 'vue';
 import type { rerank } from 'ai';
 import { RowRules } from '@apackdev/ears';
@@ -144,7 +145,7 @@ export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {
 }
 
 // @internal
-export function _memoryRecords(): _RunHistoryRecords;
+export function _memoryRunHistoryStore(): RecordStore<TNode>;
 
 // @public
 export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): NativePackDeclaration;
