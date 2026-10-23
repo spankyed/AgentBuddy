@@ -316,6 +316,11 @@ describe('notes applying (generic pipeline)', () => {
     contentNotes('v1');
     const counts = contentNotes('v2', { mode: 'wipe-and-replace' });
     expect(counts.errors).toBeUndefined();
-    expect(notesOf(snapshot(), { withHash: true })).toEqual(freshV2);
+    // A short code or a numbered default label is never handed out twice, so the notes written again take new ones
+    const withoutCodes = ({ rows, relations }: ReturnType<typeof notesOf>) => ({
+      rows: Object.fromEntries(Object.entries(rows).map(([alias, { shortCode: _code, label: _label, ...row }]) => [alias, row])),
+      relations,
+    });
+    expect(withoutCodes(notesOf(snapshot(), { withHash: true }))).toEqual(withoutCodes(freshV2));
   });
 });

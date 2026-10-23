@@ -283,7 +283,7 @@
           }
         },
         "label": "Echo",
-        "shortCode": "ACT-1"
+        "shortCode": "ACT-3"
       },
       "Action:Set Instructions": {
         "category": "commands",
@@ -297,7 +297,7 @@
           }
         },
         "label": "Set Instructions",
-        "shortCode": "ACT-2"
+        "shortCode": "ACT-4"
       },
       "Collection:advanced": {
         "contentHash": "08f76a29861feea7",
@@ -323,7 +323,7 @@
         "displayOrder": 2000,
         "entityType": "Document",
         "name": "2024",
-        "shortCode": "DOC-3",
+        "shortCode": "DOC-6",
         "tags": [
           "year"
         ]
@@ -339,7 +339,7 @@
         "displayOrder": 1000,
         "entityType": "Document",
         "name": "deep dive",
-        "shortCode": "DOC-1",
+        "shortCode": "DOC-4",
         "tags": [
           "default"
         ]
@@ -380,7 +380,7 @@
         "displayOrder": 2000,
         "entityType": "Document",
         "name": "Getting Started",
-        "shortCode": "DOC-2",
+        "shortCode": "DOC-5",
         "tags": [
           "intro",
           "docs"
@@ -485,7 +485,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PRO-1"
+        "shortCode": "PRO-3"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -500,7 +500,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PRO-2"
+        "shortCode": "PRO-4"
       }
     },
     "relations": [
@@ -554,7 +554,7 @@
           }
         },
         "label": "Echo",
-        "shortCode": "ACT-1"
+        "shortCode": "ACT-5"
       },
       "Action:Set Instructions": {
         "category": "commands",
@@ -568,7 +568,7 @@
           }
         },
         "label": "Set Instructions",
-        "shortCode": "ACT-2"
+        "shortCode": "ACT-6"
       },
       "Collection:advanced": {
         "contentHash": "62a5dc465126ce53",
@@ -594,7 +594,7 @@
         "displayOrder": 2000,
         "entityType": "Document",
         "name": "2024",
-        "shortCode": "DOC-4",
+        "shortCode": "DOC-10",
         "tags": [
           "year"
         ]
@@ -610,7 +610,7 @@
         "displayOrder": 1000,
         "entityType": "Document",
         "name": "deep dive",
-        "shortCode": "DOC-1",
+        "shortCode": "DOC-7",
         "tags": [
           "default"
         ]
@@ -626,7 +626,7 @@
         "displayOrder": 2000,
         "entityType": "Document",
         "name": "Getting Started",
-        "shortCode": "DOC-2",
+        "shortCode": "DOC-8",
         "tags": [
           "intro",
           "docs",
@@ -644,7 +644,7 @@
         "displayOrder": 3000,
         "entityType": "Document",
         "name": "New Doc",
-        "shortCode": "DOC-3",
+        "shortCode": "DOC-9",
         "tags": [
           "default"
         ]
@@ -748,7 +748,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PRO-1"
+        "shortCode": "PRO-5"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -763,7 +763,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PRO-2"
+        "shortCode": "PRO-6"
       }
     },
     "relations": [

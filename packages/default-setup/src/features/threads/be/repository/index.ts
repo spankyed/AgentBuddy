@@ -6,7 +6,7 @@ import { EARS } from '#generated/ears.ts';
 import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { trash } from '@apackdev/sdk/repositories';
 import { updateEntity } from '#generated/ears.ts';
-import { wouldCreateCycle } from '@apackdev/sdk/ears';
+import { generateShortCode, wouldCreateCycle } from '@apackdev/sdk/ears';
 import { createLogger } from '@apackdev/sdk/logger';
 import { b64Encode, b64Decode } from '@apackdev/ears';
 import type {
@@ -168,8 +168,7 @@ export const threadCommands = {
     }
 
     const ts = Date.now();
-    const count = query(EARS.Entity.Thread).count() + 1;
-    const shortCode = `T-${count}` as ThreadTypeShortCode;
+    const shortCode = generateShortCode(EARS.Entity.Thread, 'T') as ThreadTypeShortCode;
 
     const id = create(EARS.Entity.Thread, {
       ...(input.id ? { id: input.id as EARS.EntityId<'Thread'> } : {}),
