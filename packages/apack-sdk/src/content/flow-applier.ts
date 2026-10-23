@@ -225,9 +225,11 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
 
         if (existing) {
           try {
-            // The flow writer's whole-item write is a delete and a re-import, since a flow's nodes and
-            // wiring arrive together
-            flowRepository.deleteFlow(existing.id, { allowRoot: true });
+            // The import reconciles a flow already under its compiled id in place, keeping what points into it
+            // (runs, subflows, the root role); one under another id can't be reconciled, so it is replaced
+            const compiledId = (compileFlowDSL({ [key]: entry }, { actions: actionMap, prompts: promptMap }).entity as Array<{ id: string; entityType?: string }>)
+              .find((row) => row.entityType === EARS.Entity.Flow)?.id;
+            if (compiledId !== existing.id) flowRepository.deleteFlow(existing.id, { allowRoot: true });
             replacedLabels.add(key);
             ctx.log(`  flow replaced (hash mismatch): ${key}`);
           } catch (error: any) {

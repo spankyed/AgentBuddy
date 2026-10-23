@@ -2,7 +2,7 @@
 // The SDK declares these entities (sdk-entities.ts), so it owns their reads and writes; packs build
 // their views on top (default-setup's flows repository).
 import { filterSystemFields, getTimestamp, RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
-import { findRelations, generateLabelWithCount, generateShortCode, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
+import { findRelations, generateLabelWithCount, generateShortCode, getAll, getRoles, removeRelationById, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
@@ -27,6 +27,32 @@ export interface FlowEdge {
   sourceHandle?: string;
   targetHandle?: string;
   info?: Record<string, unknown>;
+}
+
+/** The relation kinds a flow's interior is made of: the flow holding its nodes, their edges, a node's related entity */
+const INTERIOR_KINDS: readonly string[] = [EARS.RelKind.CONTAINS, EARS.RelKind.TRANSITIONS_TO, EARS.RelKind.INSTANCE_OF];
+
+/** One relation, as the import compares it: its ends, kind and info */
+const relationKey = (source: string, kind: string, target: string, info: unknown) =>
+  JSON.stringify([source, kind, target, info ?? null]);
+
+/** The fields an import may not rewrite on an entity that is already there: what identifies it and when it began */
+const IDENTITY_FIELDS = new Set(['id', 'entityType', 'createdAt']);
+
+/**
+ * Writes an imported row: a new entity as the file has it; one already there, only the declared fields whose
+ * value differs, leaving its identity and every field the file doesn't declare as they were.
+ */
+function writeDeclared(row: { id: EARS.EntityId; entityType: string } & Record<string, unknown>): void {
+  const { id, entityType, createdAt, ...fields } = row;
+  if (!query.ids(id).exists()) {
+    untypedCreate(entityType as never, { id, createdAt: createdAt as number | undefined }).setMany(fields);
+    return;
+  }
+  const current = getAll(id) as Record<string, unknown>;
+  const changed = Object.fromEntries(Object.entries(fields)
+    .filter(([field, value]) => !IDENTITY_FIELDS.has(field) && JSON.stringify(current[field]) !== JSON.stringify(value)));
+  if (Object.keys(changed).length > 0) untypedWrite(id).setMany(changed);
 }
 
 /** The role of the flow the brain runs when the app starts */
@@ -217,24 +243,61 @@ export const flowRepository = {
   },
 
   /**
-   * Writes compiled flow DSL (`compileFlowDSL`): its rows, relations and roles; a root flow takes the root role.
-   * A flow already there under a compiled id is replaced whole, its old nodes and edges with it, in one unit:
-   * the import lands entirely or not at all.
+   * Writes compiled flow DSL (`compileFlowDSL`) by reconciling: each flow it names ends as the file describes it,
+   * changed in place, in one unit that lands entirely or not at all.
+   *
+   * **The file owns a flow's interior and nothing that points into it.** The interior is what the file writes —
+   * the flow's own fields, its nodes, and the relations leaving them (`INTERIOR_KINDS`, plus any kind the file
+   * emits). Everything else is the database's and survives by construction: a link from another entity (a run's
+   * TNode, another flow's subflow), the flow's fields the file doesn't declare (a content key, a user's
+   * description), and its roles. So identity is kept — a flow or node the file still declares keeps its id, and
+   * so does each relation it keeps — a node the file dropped goes with its edges, and importing the same file
+   * twice changes nothing.
+   *
+   * Roles are granted, never revoked, on a flow: `root: true` makes it the root flow, and a file that doesn't say
+   * so has expressed no choice about which flow is root. A node's roles are the file's, being interior.
    */
   importFromDSL: (compiled: CompiledRows): { flowIds: EARS.EntityId[] } => transact(() => {
-    const flowIds: EARS.EntityId[] = [];
-    for (const entity of compiled.entity) {
-      const { id, entityType } = entity as { id: EARS.EntityId; entityType?: string };
-      if (entityType === EARS.Entity.Flow && query.ids(id).exists()) flowRepository.deleteFlow(id, { allowRoot: true });
+    const rows = new Map(compiled.entity.map((entity) => {
+      const row = entity as { id: EARS.EntityId; entityType: string } & Record<string, unknown>;
+      return [row.id, row] as const;
+    }));
+    const flowIds = [...rows.values()].filter((row) => row.entityType === EARS.Entity.Flow).map((row) => row.id);
+    for (const relation of compiled.relation) {
+      if (!rows.has(relation.source as EARS.EntityId)) {
+        throw new RepositoryError(`The import links from ${relation.source}, which it doesn't write`, RepositoryErrorCode.VALIDATION_ERROR);
+      }
     }
-    for (const entity of compiled.entity) {
-      const { id, entityType, createdAt, ...fields } = entity as { id: EARS.EntityId; entityType: string; createdAt?: number } & Record<string, unknown>;
-      if (query.ids(id).exists()) untypedWrite(id).destroy();
-      untypedCreate(entityType as never, { id, createdAt }).setMany(fields);
-      if (entityType === EARS.Entity.Flow) flowIds.push(id);
+
+    // Nodes a flow holds now and the file no longer declares go, with their edges
+    const declared = new Set(compiled.relation.filter((r) => r.kind === EARS.RelKind.CONTAINS).map((r) => r.target));
+    for (const flowId of flowIds) {
+      if (!query.ids(flowId).exists()) continue;
+      for (const nodeId of flowNodeIds(flowId)) {
+        if (!declared.has(nodeId)) flowRepository.deleteNode(nodeId);
+      }
+    }
+
+    for (const row of rows.values()) writeDeclared(row);
+
+    // The relations leaving what the file writes, of the kinds it owns, are exactly the file's
+    const owned = new Set([...INTERIOR_KINDS, ...compiled.relation.map((r) => r.kind)]);
+    const wanted = new Set(compiled.relation.map((r) => relationKey(r.source, r.kind, r.target, r.info)));
+    for (const id of rows.keys()) {
+      for (const details of findRelations({ sourceEntity: id })) {
+        const key = relationKey(details.sourceEntity, details.relationType, details.targetEntity, details.info);
+        if (owned.has(details.relationType) && !wanted.has(key)) removeRelationById(details.id);
+      }
     }
     for (const relation of compiled.relation) {
       untypedWrite(relation.source as EARS.EntityId).link(relation.kind, relation.target as EARS.EntityId, { info: relation.info });
+    }
+
+    const rolesOf = (id: string) => compiled.role.filter((role) => role.entityId === id).map((role) => role.role);
+    for (const row of rows.values()) {
+      if (row.entityType === EARS.Entity.Flow) continue;
+      const keep = rolesOf(row.id);
+      for (const role of getRoles(row.id)) if (!keep.includes(role)) untypedWrite(row.id).revoke(role);
     }
     for (const role of compiled.role) {
       if (role.role === ROOT_FLOW) flowRepository.grantRootFlowRole(role.entityId as EARS.EntityId);

@@ -161,35 +161,88 @@ describe('flowRepository', () => {
     expect(flowRepository.flowEdges(flow.id)).toEqual([]);
   });
 
-  it('replaces a flow imported again under the same ids whole, and leaves it as it was when the import throws', () => {
-    const greet = actionRepository.create({ label: 'Greet', actionFn: 'return 1' });
-    const wave = actionRepository.create({ label: 'Wave', actionFn: 'return 2' });
-    const actions = new Map([['Greet', greet.id], ['Wave', wave.id]]);
-    const twoSteps = compileFlowDSL(
-      { Demo: { tracks: [{ event: 'flow.entry', exits: [[{ type: 'action', action: 'Greet' }, { type: 'action', action: 'Wave' }]] }] } },
-      { actions },
+  describe('importing a flow again', () => {
+    const demo = (steps: string[], root = false) => compileFlowDSL(
+      { Demo: { ...(root && { root: true }), tracks: [{ event: 'flow.entry', exits: [steps.map((action) => ({ type: 'action', action }))] }] } },
+      { actions: actionIds() },
     );
-    const oneStep = compileFlowDSL(
-      { Demo: { tracks: [{ event: 'flow.entry', exits: [[{ type: 'action', action: 'Greet' }]] }] } },
-      { actions },
-    );
-    const { flowIds: [flowId] } = flowRepository.importFromDSL(twoSteps);
-    const before = flowRepository.flowNodes(flowId).map((node) => node.id).sort();
-    expect(before).toHaveLength(3);
+    let ids: Map<string, EARS.EntityId>;
+    const actionIds = () => ids;
+    beforeEach(() => {
+      ids = new Map([
+        ['Greet', actionRepository.create({ label: 'Greet', actionFn: 'return 1' }).id],
+        ['Wave', actionRepository.create({ label: 'Wave', actionFn: 'return 2' }).id],
+      ]);
+    });
+    const nodeIds = (flowId: EARS.EntityId) => flowRepository.flowNodes(flowId).map((node) => node.id).sort();
+    const edgeIds = (flowId: EARS.EntityId) => flowRepository.flowEdges(flowId).map((edge) => edge.id).sort();
+    const rows = (flowId: EARS.EntityId) => [flowId, ...nodeIds(flowId)].map((id) => [id, boundEars().getAll(id)]);
 
-    // The same flow id again, with one step fewer: the dropped step's node goes, not only its link
-    expect(flowRepository.importFromDSL(oneStep).flowIds).toEqual([flowId]);
-    const after = flowRepository.flowNodes(flowId).map((node) => node.id).sort();
-    expect(after).toHaveLength(2);
-    for (const gone of before.filter((id) => !after.includes(id))) expect(untypedQuery.ids(gone).exists()).toBe(false);
-    expect(untypedQuery(EARS.Entity.Node).count()).toBe(2);
+    it('refuses a file linking from something it does not write, before changing anything', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      const oneStep = demo(['Greet']);
+      const broken = { ...oneStep, relation: [...oneStep.relation, { source: 'Node-missing', kind: EARS.RelKind.TRANSITIONS_TO, target: flowId }] };
+      expect(() => flowRepository.importFromDSL(broken as typeof oneStep)).toThrow(/links from Node-missing, which it doesn't write/);
+      expect(nodeIds(flowId)).toHaveLength(3);
+    });
 
-    // An import that fails part way (a relation from an entity it never wrote) undoes the replacement
-    const broken = { ...twoSteps, relation: [...twoSteps.relation, { source: 'Node-missing', kind: EARS.RelKind.TRANSITIONS_TO, target: after[0] }] };
-    expect(() => flowRepository.importFromDSL(broken as typeof twoSteps)).toThrow();
-    expect(flowRepository.flowNodes(flowId).map((node) => node.id).sort()).toEqual(after);
-    expect(untypedQuery(EARS.Entity.Node).count()).toBe(2);
-    expect(flowRepository.flowEdges(flowId)).toHaveLength(1);
+    it('changes nothing when the file is the same', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      const before = { rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ sourceEntity: flowId }).map((r) => r.id) };
+
+      expect(flowRepository.importFromDSL(demo(['Greet', 'Wave'])).flowIds).toEqual([flowId]);
+      expect({ rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ sourceEntity: flowId }).map((r) => r.id) }).toEqual(before);
+    });
+
+    it('removes a dropped node with its edges, and keeps the ids of what stays', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      const before = nodeIds(flowId);
+      expect(before).toHaveLength(3);
+      const greetNode = flowRepository.flowNodes(flowId).find((node) => node.actionId === ids.get('Greet'))!;
+      const kept = flowRepository.flowEdges(flowId).find((edge) => edge.target === greetNode.id)!;
+
+      flowRepository.importFromDSL(demo(['Greet']));
+      const after = nodeIds(flowId);
+      expect(after).toHaveLength(2);
+      expect(before).toEqual(expect.arrayContaining(after));
+      for (const gone of before.filter((id) => !after.includes(id))) expect(untypedQuery.ids(gone).exists()).toBe(false);
+      expect(untypedQuery(EARS.Entity.Node).count()).toBe(2);
+      expect(edgeIds(flowId)).toEqual([kept.id]);
+    });
+
+    it('keeps what points into the flow and its nodes, and the fields the file does not declare', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      const greetNode = flowRepository.flowNodes(flowId).find((node) => node.actionId === ids.get('Greet'))!;
+      // A run of the flow, and another flow's node naming it
+      const run = untypedCreate(EARS.Entity.TNode).link(EARS.RelKind.INSTANCE_OF, flowId).link(EARS.RelKind.TRACKED, greetNode.id).id();
+      boundEars().write(flowId).set('contentKey', 'pack:flows/Demo').set('description', 'mine');
+
+      flowRepository.importFromDSL(demo(['Greet']));
+      expect(findRelations({ sourceEntity: run }).map((r) => [r.relationType, r.targetEntity]).sort()).toEqual(
+        [[EARS.RelKind.INSTANCE_OF, flowId], [EARS.RelKind.TRACKED, greetNode.id]].sort(),
+      );
+      expect(boundEars().getAll(flowId)).toMatchObject({ contentKey: 'pack:flows/Demo', description: 'mine', label: 'Demo' });
+    });
+
+    it('keeps the root role when the file does not say root, and grants it when it does', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet'], true));
+      expect(flowRepository.rootFlow()).toBe(flowId);
+
+      flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      expect(flowRepository.rootFlow()).toBe(flowId);
+    });
+
+    it('leaves everything as it was when the import throws part way', () => {
+      const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
+      const before = { rows: rows(flowId), edges: edgeIds(flowId) };
+      const oneStep = demo(['Greet']);
+      // A row of a type nothing registers, which fails after the dropped node and its edges are gone
+      const broken = { ...oneStep, entity: [...oneStep.entity, { id: 'Unknown-1', entityType: 'Unknown' }] };
+
+      expect(() => flowRepository.importFromDSL(broken as typeof oneStep)).toThrow(/not a registered entity type/);
+      expect({ rows: rows(flowId), edges: edgeIds(flowId) }).toEqual(before);
+      expect(untypedQuery(EARS.Entity.Node).count()).toBe(3);
+    });
   });
 });
 
