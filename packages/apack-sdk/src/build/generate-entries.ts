@@ -1749,7 +1749,7 @@ export type EntityId = EARS.EntityId;
     const entries = repositoryEntries();
     const deps = depTypeImports('Repositories');
     return `${HEADER}
-import { repository as earsRepository } from '@apackdev/sdk/ears';
+import { repository as registeredRepository } from '@apackdev/sdk/services';
 ${entries.map(([name, path, exportName]) => `import type { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
 ${deps.imports.join('\n')}
 
@@ -1761,11 +1761,11 @@ ${entries.map(([name]) => `  ${propertyKey(name, name)}: typeof __repo_${name};`
 /** Every repository this pack can use: its own and its dependencies' */
 export type Repositories = OwnRepositories${deps.aliases.map(a => ` & ${a}`).join('')};
 
-export const repository = earsRepository as unknown as Repositories;
+export const repository = registeredRepository as unknown as Repositories;
 `;
   }
 
-  /** This pack's repositories by name, which its registration carries (the host registers them with the app's engine) */
+  /** This pack's repositories by name, which its registration carries (the app holds them with its other contributions) */
   function generateRepositories(): string {
     const entries = repositoryEntries();
     if (entries.length === 0) return '';

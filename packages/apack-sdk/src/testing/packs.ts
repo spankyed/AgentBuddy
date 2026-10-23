@@ -34,6 +34,8 @@ export interface TestPacks {
   readonly services: Map<string, unknown>;
   /** Content writers by entity type */
   readonly contentWriters: Map<string, ContentWriter>;
+  /** Repositories by name, over the registered packs' */
+  readonly repositories: Map<string, unknown>;
   /** Appliers by pack id */
   readonly appliers: Map<string, ContentApplier[]>;
   readonly help: Map<string, HelpArticle[]>;
@@ -58,6 +60,7 @@ function createTestPacks(): TestPacks {
     blocks: new Map<string, BlockDefinition>(),
     services: new Map<string, unknown>(),
     contentWriters: new Map<string, ContentWriter>(),
+    repositories: new Map<string, unknown>(),
     appliers: new Map<string, ContentApplier[]>(),
     help: new Map<string, HelpArticle[]>(),
     earsEntities: new Map<string, string>(),
@@ -131,6 +134,7 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     block: (type) => testPacks.blocks.get(type) ?? registered?.block(type),
     blocks: () => withOwn(registered?.blocks(), testPacks.blocks),
     getRegisteredServices: () => ({ ...registered?.getRegisteredServices(), ...Object.fromEntries(testPacks.services) }),
+    repository: (name) => testPacks.repositories.get(name) ?? registered?.repository(name),
     // A test names a ref as it likes, as it does a role's
     systemIds: () => [...new Set([...(registered?.systemIds() ?? []), ...testPacks.systems])] as FeatureRef[],
     surfaceIds: () => [...new Set([...(registered?.surfaceIds() ?? []), ...testPacks.surfaces])] as FeatureRef[],

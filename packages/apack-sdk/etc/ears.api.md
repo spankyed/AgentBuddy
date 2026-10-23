@@ -43,16 +43,7 @@ export const nextLabel: (type: EARS.Entity, base: string) => string;
 export const NO_ENGINE_BOUND: string;
 
 // @public (undocumented)
-export const registerRepository: (name: string, value: unknown) => void;
-
-// @public
-export const repository: Record<string, unknown>;
-
-// @public (undocumented)
 export const transact: <T>(fn: () => T) => T;
-
-// @public (undocumented)
-export const unregisterRepository: (name: string) => void;
 
 // @public
 export const untypedCreate: Create;

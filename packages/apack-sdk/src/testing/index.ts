@@ -63,14 +63,13 @@ let started: Pick<TestRuntimeStartOptions, 'packs' | 'appVersion' | 'onboarding'
 let engine: EarsEngine | undefined;
 
 /** A new in-memory engine checking entity types, relation kinds and roles against the test runtime's, and installed */
-function installFreshEngine(repositories: Record<string, unknown> = {}): EarsEngine {
+function installFreshEngine(): EarsEngine {
   engine = createEarsEngine({
     isEntityType: (value: string) => entityTypes.has(value),
     isRelationKind: (value: string) => relationKinds.has(value),
     isRole: (value: string) => roles.has(value),
     rowRules: (type: string) => rowRules.get(type),
   });
-  for (const [name, repo] of Object.entries(repositories)) engine.registerRepository(name, repo);
   _bindEars(engine);
   return engine;
 }
@@ -110,19 +109,19 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
   bindTestRuntime({ engine: testEngine, resetData: resetTestData, ...started });
 }
 
-/** Registers a pack's content runtime: its entity types, its repositories (with the engine) and its content writers (in `testPacks`) */
+/** Registers a pack's content runtime: its entity types, and its repositories and content writers (in `testPacks`) */
 export function registerContentRuntime(runtime: ContentRuntime): void {
   startTestRuntime({ entityTypes: Object.values(runtime.entities), relationKinds: Object.values(runtime.relKinds), roles: Object.values(runtime.roles), rowRules: runtime.rowRules });
-  for (const [name, repo] of Object.entries(runtime.repositories)) testEngine().registerRepository(name, repo);
+  for (const [name, repo] of Object.entries(runtime.repositories)) testPacks.repositories.set(name, repo);
   for (const [entity, hooks] of Object.entries(runtime.contentWriters)) testPacks.contentWriters.set(entity, hooks);
 }
 
 /**
- * Replaces the in-memory database with a fresh engine (keeping the registered repositories), and empties the
- * stored keys and the onboarding state (registrations stay)
+ * Replaces the in-memory database with a fresh engine, and empties the stored keys and the onboarding state
+ * (registrations, repositories among them, stay)
  */
 export function resetTestData(): void {
-  installFreshEngine(testEngine().admin.repositories());
+  installFreshEngine();
   resetTestHostState();
 }
 

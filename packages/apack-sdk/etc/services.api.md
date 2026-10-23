@@ -213,6 +213,9 @@ export interface PackServiceAccess {
 // @public
 export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
+// @public
+export const repository: Record<string, unknown>;
+
 // @internal
 export type _ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => _InferenceModels[K] | Promise<_InferenceModels[K]>;
 

@@ -127,6 +127,7 @@ export interface PackRegistryView extends PackExtensionsView {
     help(): HelpCatalog;
     // (undocumented)
     onCatalogChanged(listener: () => void): () => void;
+    repository(name: string): unknown;
     // (undocumented)
     settingsCatalog(): SettingsCatalog;
     // (undocumented)

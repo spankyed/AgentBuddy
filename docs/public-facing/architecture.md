@@ -347,7 +347,7 @@ The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant ove
 | `runtime-services.ts` | Shared runtime service binding used by the generated facade and registration |
 | `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the host-selected `services` facade and `servicesForAction(label)` factory. `Services` types `services.emitter` as `PackEmitter`, with this pack's surface and system events |
 | `repository.ts` | `repository`, typed with the repositories declared in `features.<id>.repositories` and dependencies' |
-| `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the host registers them with the app's engine) |
+| `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the app holds them with the pack's other contributions) |
 | `pack-types.ts` | The facade types `apack pack build` bundles into `dist/types/pack-types.d.ts` for dependents |
 | `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot. Its header names the version (`// <id>@<version> facade types`); `apack pack build` warns when the dependency it builds with is another version |
 | `deps/<id>.flow-helpers.js`, `.d.ts` | Each dependency's flow helpers module and declarations, from its snapshot |
