@@ -136,10 +136,11 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   // Hydration indexes an entity by its type, so this is the set of types the data turned out to hold. It runs
   // after hydration and not during it: nothing hydration does consults the check (a bulk load doesn't), so the
   // set it would be widening from is the data it is reading.
-  for (const type of engine.getAllEntityTypes()) knownToEngine.add(type);
+  const held = engine.getSchemaStats();
+  for (const type of Object.keys(held.entities)) knownToEngine.add(type);
   // Relation kinds and roles the same way: links and roles a removed pack left are still there to read
-  for (const kind of engine.getAllRelationKinds()) kindsKnownToEngine.add(kind);
-  for (const role of engine.getAllRoles()) rolesKnownToEngine.add(role);
+  for (const kind of Object.keys(held.relations)) kindsKnownToEngine.add(kind);
+  for (const role of Object.keys(held.roles)) rolesKnownToEngine.add(role);
   // Bound so the SDK's engine operations (`@apackdev/sdk/ears`) read this database until `close()`, which
   // puts back whatever was bound before rather than leaving none. `apack db`, the one caller today, has no
   // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command
