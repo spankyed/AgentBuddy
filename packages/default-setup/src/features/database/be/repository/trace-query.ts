@@ -8,7 +8,7 @@ const logger = createLogger('database:trace');
 
 /**
  * Helper to get all descendant TNodes via a specific relation type
- * Similar to core/ears/helpers/graph.ts descendants but for LMDB
+ * The query step `descendants`, over the run history in LMDB
  */
 function getDescendants(
   query: TraceStore,
