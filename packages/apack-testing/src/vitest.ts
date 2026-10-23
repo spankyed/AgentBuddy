@@ -163,10 +163,10 @@ export async function definePackTestConfig(options: PackTestConfig = {}): Promis
       // `tests/e2e/` is Playwright's, run by `apack pack test` — a different runner, not a cost half. `_support/`
       // is helpers and fixture packs: a fixture that grew a spec would otherwise join this suite.
       exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**', 'tests/_support/**', ...(options.exclude ?? [])],
-      // Small (`SIZE_MS`, scripts/lib/unit-suites.ts): a unit test that takes longer is hung, not
+      // Small (`SIZE_MS` × `DEADLINE_FACTOR`, scripts/lib/unit-suites.ts): a unit test that takes longer is hung, not
       // slow. Vitest's own default is 5s for a test and 10s for a hook, both tighter than the size allows.
-      testTimeout: 15_000,
-      hookTimeout: 15_000,
+      testTimeout: 30_000,
+      hookTimeout: 30_000,
       // Each worker's tests create their own EARS engines, so files may run in parallel
       fileParallelism: true,
       env: dataDir.env,

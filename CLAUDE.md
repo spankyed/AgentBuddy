@@ -258,6 +258,9 @@ Rules that pay for themselves:
   field; one compared against an edge needs all of them, and the edge can usually be declared instead.
 - **Load inflates a duration and cannot deflate it.** Gate only on *measured faster than declared* (the
   `@slow:` marker gate); *measured slower* is only ever a report.
+- **A test's budget and its deadline are two numbers.** A vitest config declares `DEADLINE_FACTOR` times its
+  size (`scripts/lib/unit-suites.ts`): a pass past the budget is reported under the step, and only the deadline,
+  which catches a hang, fails one. Never raise a budget to get a pass.
 
 [`docs/archive/references/pipeline-lessons.md`](docs/archive/references/pipeline-lessons.md) has what each of these cost to
 learn.
@@ -330,7 +333,7 @@ npm run test:unit                # The host pool and the pack pool (scripts/lib/
 npm run test:unit:host           # One pool, only the projects whose inputs changed
 npm run test:unit:pack           # The pack pool, resolving the published dist
 npm run test:integration         # Every suite's expensive half, as one vitest run at half the cores
-npm run test:native              # The native half (*.native.spec.ts), one file at a time, 300s a case
+npm run test:native              # The native half (*.native.spec.ts), one file at a time, a 300s budget a case
 npm run test:linux -- <command>  # Run a command in the Linux test container (the chain does for test:native on a Mac)
 npm run test:external-pack       # Both halves of the fixture-pack check
 npm run test:external-pack:contract  # Validate, build, typecheck, harness specs — no app

@@ -39,7 +39,7 @@ afterEach(() => {
 
 /** A module as the durations reporter records one */
 const mod = (project: string, file: string, ms: number, skipped = false, overheadMs = 0) =>
-  ({ project, file, ms, overheadMs, skipped });
+  ({ project, file, ms, overheadMs, skipped, overBudget: [] });
 const reported = (...modules: ReturnType<typeof mod>[]): ReportedRun =>
   ({ projects: [...new Set(modules.map((one) => one.project))], modules });
 

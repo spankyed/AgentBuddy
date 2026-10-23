@@ -4,8 +4,9 @@
 //
 // The budget lives with `SIZE_MS` and the configs keep plain literals, deliberately: a vitest config
 // importing a constant across package layers is the thing `check:specifiers` exists to prevent. So the
-// literals are checked here — that every config declares its size's budget, and that no config or single
-// test moves above it. Both directions, because a budget tighter than the size is not a safe default: it
+// literals are checked here — that every vitest config declares its size's deadline (`DEADLINE_FACTOR` times
+// the budget: a test that passes past its budget is reported, not failed) and that no config or single test
+// moves above the size's own limit. Both directions, because a budget tighter than the size is not a safe default: it
 // turns contention into a failure where the size had headroom, which is what it did.
 //
 // Both halves matter, and only the first was checked at first. A config states the policy; a third argument
@@ -16,7 +17,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { INTEGRATION_SUITES, NATIVE_SUITES } from '../../../scripts/lib/chain-steps.ts';
-import { SIZE_MS, UNIT_SUITES, type Size } from '../../../scripts/lib/unit-suites.ts';
+import { DEADLINE_FACTOR, SIZE_MS, UNIT_SUITES, type Size } from '../../../scripts/lib/unit-suites.ts';
 import ts from 'typescript';
 import { constantMs, overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOverride } from '../../../scripts/lib/test-timeouts.ts';
 import { repoFiles } from './_support/repo-files.ts';
@@ -255,7 +256,15 @@ describe('a timeout written as a sum of its phases', () => {
   });
 });
 
-describe('a suite times a test out at its size budget', () => {
+/**
+ * What a config declares for its size. A vitest config declares the deadline, `DEADLINE_FACTOR` times the budget,
+ * since a test that passes past its budget is reported rather than failed; Playwright's `timeout` is the budget
+ * itself, the E2E suite keeping its own model.
+ */
+const deadlineFor = (file: string, size: Size): number =>
+  (file.endsWith('playwright.config.ts') ? 1 : DEADLINE_FACTOR) * SIZE_MS[size];
+
+describe('a suite times a test out at its size deadline', () => {
   // The population, not a spot check: a config nobody derived is one whose budget nothing holds
   it('finds every test config, so none goes unchecked', () => {
     const found = configs();
@@ -264,10 +273,10 @@ describe('a suite times a test out at its size budget', () => {
       .toEqual(new Set(Object.keys(SIZE_MS)));
   });
 
-  it.each(configs())('$file declares nothing above its $size budget', ({ file, size }) => {
-    const budget = SIZE_MS[size];
-    const over = declaredTimeouts(file).filter(({ ms }) => ms > budget);
-    expect(over, `${file} is ${size}, whose budget is ${budget}ms`).toEqual([]);
+  it.each(configs())('$file declares nothing above its $size deadline', ({ file, size }) => {
+    const deadline = deadlineFor(file, size);
+    const over = declaredTimeouts(file).filter(({ ms }) => ms > deadline);
+    expect(over, `${file} is ${size}, whose deadline is ${deadline}ms`).toEqual([]);
   });
 
   /**
@@ -286,13 +295,13 @@ describe('a suite times a test out at its size budget', () => {
    */
   const REQUIRED = (file: string): string[] => (file.endsWith('playwright.config.ts') ? ['timeout'] : ['testTimeout', 'hookTimeout']);
 
-  it.each(configs())('$file declares its $size budget', ({ file, size }) => {
-    const budget = SIZE_MS[size];
+  it.each(configs())('$file declares its $size deadline', ({ file, size }) => {
+    const deadline = deadlineFor(file, size);
     const declared = new Map(declaredTimeouts(file).map(({ key, ms }) => [key, ms]));
     const wrong = REQUIRED(file)
-      .filter((key) => declared.get(key) !== budget)
+      .filter((key) => declared.get(key) !== deadline)
       .map((key) => `${key} is ${declared.has(key) ? `${declared.get(key)!}ms` : 'not declared, so the runner default applies'}`);
-    expect(wrong, `${file} is ${size}, so it must declare ${budget}ms`).toEqual([]);
+    expect(wrong, `${file} is ${size}, so it must declare ${deadline}ms`).toEqual([]);
   });
 });
 

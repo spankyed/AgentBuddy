@@ -9,10 +9,10 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    // Large (`SIZE_MS`): these specs run `tsc` over fixture trees, which is tens of seconds of
+    // Large (`SIZE_MS` × `DEADLINE_FACTOR`): these specs run `tsc` over fixture trees, which is tens of seconds of
     // work in a handful of tests.
-    testTimeout: 60_000,
-    hookTimeout: 60_000,
+    testTimeout: 120_000,
+    hookTimeout: 120_000,
     setupFiles: ['./tests/_support/turn-event-loop.ts'],
     include: ['tests/**/*.integration.spec.ts'],
     exclude: ['**/node_modules/**'],

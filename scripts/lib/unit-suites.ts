@@ -82,6 +82,22 @@ export const SIZE_MS = { small: 15_000, large: 60_000, enormous: 300_000 } as co
 export type Size = keyof typeof SIZE_MS;
 
 /**
+ * How far past its size budget a test runs before it is failed: a vitest config declares
+ * `DEADLINE_FACTOR × SIZE_MS[size]` as its `testTimeout` and `hookTimeout`.
+ *
+ * **Two numbers with two jobs.** The budget is what a test is expected to cost, and a test that passed past it
+ * is *reported* — the pool names it and the chain shows it under the step — because load inflates a duration
+ * and never deflates one, so a slow pass is a reading rather than a defect. The deadline is there to catch a
+ * hang, and so sits where load cannot reach it. A case that timed out at its budget under the chain's load
+ * took 19.9s alone and over 60s beside an Electron suite: the factor is what that kind of contention costs,
+ * with headroom, not a measurement of any one run.
+ *
+ * Per-case overrides are not multiplied. Each one is composed from operations that carry their own bounds (a
+ * `runCommand` budget, a build's), so doubling the outer number would change nothing those inner bounds did not.
+ */
+export const DEADLINE_FACTOR = 2;
+
+/**
  * Which size a given test file runs at is `sizeOf` (`scripts/lib/test-timeouts.ts`), not a field here.
  *
  * It is derived rather than declared, because what it would declare is already decided elsewhere: a spec
