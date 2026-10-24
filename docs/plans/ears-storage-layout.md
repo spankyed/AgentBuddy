@@ -271,10 +271,9 @@ on (generators measured slower: relation traversal 2.3×, `linkedWith` +47%). A 
 nothing, and every terminal runs the whole query against the data as it is then, so a predicate runs once per entity
 per terminal. 1,000 `query(type).first()` over 40k 3,815 → 0.25 ms, 100 `linkedWith` 49.4 → 44.7 ms.
 
-### 8. Writes committed when they return (review item 9) — dropped
-With one copy of the data there is nothing to roll back, so the journal, the adapter, the sink and hydration go in
-Step 10 instead of being reworked. Its design is kept, with moving thread messages out of the engine, in
-[deferred/ears-in-memory-path.md](deferred/ears-in-memory-path.md), the path not taken.
+### 8. Writes committed when they return (review item 9) — taken up by an experiment
+Built as Step 0 of [ears-in-memory-engine.md](ears-in-memory-engine.md): the strongest version of the in-memory
+design, built beside Step 10 and judged against it on the same harness, bench and production readings.
 
 ### 9. Relations are not entities
 Done, 2026-10-24, with two of its follow-ups:

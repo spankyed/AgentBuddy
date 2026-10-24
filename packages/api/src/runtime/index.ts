@@ -4,7 +4,7 @@ import { bindHost, type HostRuntime } from '@apackdev/sdk/runtime';
 import { _getLmdbPath, _getRunHistoryPath } from '@apackdev/sdk/utils';
 import type { EarsEngine } from '@apackdev/ears';
 import type { RecordStore } from '@apackdev/ears';
-import type { LmdbStore, WriteFailure } from '@apackdev/ears/lmdb';
+import type { LmdbStore } from '@apackdev/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore, openRunHistoryStore, storedSettings } from '@apackdev/host/database';
 import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apackdev/host/packs';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
@@ -59,15 +59,11 @@ export interface AppStore {
 export let appPacks: PackRegistry;
 export let appSettingsAccess: ReturnType<typeof createSettingsAccess>;
 
-/**
- * The open store, so shutdown can flush it.
- *
- * Nothing closed it until 2026-10-01: shutdown stopped the actor and closed the servers, so the adapter's
- * final flush never ran in production and whatever sat in its buffers at exit was simply gone — along with
- * `errorCount`, which `openAppDatabase().close()` has always known how to report and which no running app
- * ever read.
- */
+/** The open store, so shutdown can flush it and `apack db` reach the data through the app (`transport/database.ts`) */
 export let appStore: LmdbStore | undefined;
+
+/** The app's engine, which `apack db` reaches through the app */
+export let appEngine: EarsEngine | undefined;
 
 /** The run history's open store, so shutdown can close it */
 export let appRunHistory: RecordStore<RunNode> | undefined;
@@ -80,26 +76,6 @@ export let appRunHistory: RecordStore<RunNode> | undefined;
  * registry (the SDK's lookups read it), the engine (packs get its operations, bound by the bind) and the host
  * services over the store and the engine's admin face. The caller hydrates the store once the packs are registered.
  */
-/**
- * A write that did not reach the database.
- *
- * Every one is logged with the row it was for, which is what a diagnosis needs and what the old
- * `console.error` never carried. The user is told **once** per process: a production app dropped 3,187
- * writes in one session, and 3,187 toasts would be worse than none — so later drops only move the count,
- * which the message names so a second look says how bad it got.
- */
-let droppedWrites = 0;
-function reportDroppedWrite({ op, key, error }: WriteFailure): void {
-  droppedWrites++;
-  logger.error(`A write didn't reach the database (${op} ${key})`, { error, dropped: droppedWrites });
-  if (droppedWrites > 1) return;
-  reportError({
-    error,
-    title: `Some changes aren't reaching the database (${op} ${key}). Recent edits may not have been saved.`,
-    source: 'database',
-  });
-}
-
 /** What hydrating took: its time, the heap it added and the heap after it, and the database's size on disk */
 function hydrationReading(ms: number, heapBefore: number): string {
   const mb = (bytes: number) => `${(bytes / 2 ** 20).toFixed(1)} MB`;
@@ -127,7 +103,6 @@ export function openAppStore(): AppStore {
   const { store, engine } = openDatabaseStore({
     path: _getLmdbPath(),
     schema: packs,
-    onWriteFailure: reportDroppedWrite,
   });
   const runHistory = openRunHistoryStore(_getRunHistoryPath());
   runtime = createHostRuntime({ store, runHistory, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs });
@@ -136,6 +111,7 @@ export function openAppStore(): AppStore {
   appPacks = packs;
   appSettingsAccess = createSettingsAccess(runtime.services.settings, packs.getPackRuntime);
   appStore = store;
+  appEngine = engine;
   appRunHistory = runHistory;
   return { store, runHistory, engine, packs };
 }

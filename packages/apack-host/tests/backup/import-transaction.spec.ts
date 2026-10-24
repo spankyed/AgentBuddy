@@ -8,7 +8,7 @@ import { importDatabase } from '../../src/backup/index.ts';
 // Exercise filesystem rollback without opening native environments; import.spec covers real LMDB.
 vi.mock('@apackdev/ears/lmdb', async importOriginal => ({
   ...await importOriginal<typeof import('@apackdev/ears/lmdb')>(),
-  openEnvAt: () => ({ entities: { getRange: () => [] } }),
+  openEnvAt: () => ({ rows: { getRange: () => [] } }),
   closeEnv: () => {},
 }));
 
@@ -28,7 +28,9 @@ function fixture() {
   const store = {
     path: primary,
     copyTo: (dest: string) => fs.copy(primary, dest),
-    close: vi.fn(), reopen: vi.fn(),
+    // What a store's one-transaction replacement leaves: the copy's contents where the store's were
+    replaceWith: (from: string) => fs.copySync(path.join(from, 'data.mdb'), path.join(primary, 'data.mdb')),
+    close: vi.fn(),
   } as unknown as LmdbStore;
   return { root, primary, backup, media, store };
 }

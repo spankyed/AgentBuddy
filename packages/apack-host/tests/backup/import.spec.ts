@@ -35,7 +35,7 @@ async function fixture(settings: unknown = {}) {
   fs.cpSync(_appDataPaths(source).lmdb, path.join(backup, 'lmdb'), { recursive: true });
   fs.writeFileSync(path.join(backup, 'metadata.json'), JSON.stringify({ databases: ['lmdb'] }));
   const original = openEnvAt(path.join(backup, 'lmdb'));
-  original.entities.putSync('Note-candidate', { type: 'Note' });
+  original.rows.putSync('Note-candidate', { type: 'Note', fields: [], outOfLine: [] });
   closeEnv(original);
   fs.mkdirSync(path.join(backup, 'media'));
   fs.writeFileSync(path.join(backup, 'media', 'asset.txt'), 'candidate');
@@ -46,9 +46,8 @@ async function fixture(settings: unknown = {}) {
     schema: readInstalledSchema(schemaContext(current)), log: () => {},
   });
   stores.push(store);
-  store.env.entities.putSync('Note-current', { type: 'Note' });
-  // Hydration loads attribute rows, so the incumbent needs one to be visible in memory after a restore.
-  store.env.attrs.putSync('entityType\x1FNote-current', { t: 'string', v: 'Note' });
+  // Hydration loads an entity's fields, so the incumbent holds one to be visible in memory after a restore
+  store.env.rows.putSync('Note-current', { type: 'Note', fields: [['title', 'current']], outOfLine: [] });
   return { backup, store, engine, current, media: paths.media };
 }
 
@@ -64,27 +63,26 @@ it('restores and hydrates the incumbent when imported data fails hydration', asy
   const service = appData(f);
   vi.spyOn(f.store, 'hydrate').mockRejectedValueOnce(new Error('candidate hydration failed'));
   await expect(service.importBackup(f.backup)).rejects.toThrow('candidate hydration failed');
-  expect(f.store.env.entities.get('Note-current')).toEqual({ type: 'Note' });
-  expect(f.store.env.entities.get('Note-candidate')).toBeUndefined();
+  expect(f.store.env.rows.get('Note-current')).toMatchObject({ type: 'Note' });
+  expect(f.store.env.rows.get('Note-candidate')).toBeUndefined();
   expect(f.engine.query.ids('Note-current' as EARS.EntityId).pickOne(['entityType'])).not.toBeNull();
   expect(fs.existsSync(f.media)).toBe(false);
   expect(fs.readdirSync(path.dirname(f.store.path)).filter(name => name.startsWith('.apack-import-'))).toEqual([]);
 });
 
-it('preserves the recovery error and a durable copy when import and reopening both fail', async () => {
+it('preserves the recovery error and a durable copy when installing the import and the rollback both fail', async () => {
   const f = await fixture();
   const service = appData(f);
-  const reopen = vi.spyOn(f.store, 'reopen').mockImplementation(() => { throw new Error('open failed'); });
+  const replace = vi.spyOn(f.store, 'replaceWith').mockImplementation(() => { throw new Error('replace failed'); });
   let failure: unknown;
   try { await service.importBackup(f.backup); } catch (error) { failure = error; }
   expect(failure).toBeInstanceOf(AggregateError);
   const rollback = (failure as AggregateError).message.split('retained at ')[1];
   expect(path.dirname(path.dirname(rollback))).toBe(path.dirname(f.store.path));
   const copy = openEnvAt(path.join(rollback, 'lmdb'), { readOnly: true });
-  try { expect(copy.entities.get('Note-current')).toEqual({ type: 'Note' }); }
+  try { expect(copy.rows.get('Note-current')).toMatchObject({ type: 'Note' }); }
   finally { closeEnv(copy); }
-  reopen.mockRestore();
-  f.store.reopen();
+  replace.mockRestore();
 });
 
 it('refuses invalid settings before entering replacement or closing the live database', async () => {
@@ -94,7 +92,7 @@ it('refuses invalid settings before entering replacement or closing the live dat
   await expect(importDatabase({ lmdb: store }, backup, media, { validate, log, withReplacement: replace })).rejects.toThrow();
   expect(replace).not.toHaveBeenCalled();
   expect(close).not.toHaveBeenCalled();
-  expect(store.env.entities.get('Note-current')).toEqual({ type: 'Note' });
+  expect(store.env.rows.get('Note-current')).toMatchObject({ type: 'Note' });
 });
 
 it('installs the validated copy even when the original backup is removed after preflight', async () => {
@@ -103,31 +101,30 @@ it('installs the validated copy even when the original backup is removed after p
     fs.rmSync(backup, { recursive: true });
     return replace();
   } });
-  expect(store.env.entities.get('Note-candidate')).toEqual({ type: 'Note' });
-  expect(store.env.entities.get('Note-current')).toBeUndefined();
+  expect(store.env.rows.get('Note-candidate')).toMatchObject({ type: 'Note' });
+  expect(store.env.rows.get('Note-current')).toBeUndefined();
   expect(fs.readFileSync(path.join(media, 'asset.txt'), 'utf8')).toBe('candidate');
 });
 
-it('restores live data and absence of media when reopening the imported database fails', async () => {
+it('restores live data and absence of media when installing the imported database fails', async () => {
   const { backup, store, media } = await fixture();
-  vi.spyOn(store, 'reopen').mockImplementationOnce(() => { throw new Error('open failed'); });
-  await expect(importDatabase({ lmdb: store }, backup, media, { validate, log })).rejects.toThrow('open failed');
-  expect(store.env.entities.get('Note-current')).toEqual({ type: 'Note' });
-  expect(store.env.entities.get('Note-candidate')).toBeUndefined();
+  vi.spyOn(store, 'replaceWith').mockImplementationOnce(() => { throw new Error('replace failed'); });
+  await expect(importDatabase({ lmdb: store }, backup, media, { validate, log })).rejects.toThrow('replace failed');
+  expect(store.env.rows.get('Note-current')).toMatchObject({ type: 'Note' });
+  expect(store.env.rows.get('Note-candidate')).toBeUndefined();
   expect(fs.existsSync(media)).toBe(false);
 });
 
 it('retains a readable rollback snapshot when restoration also fails', async () => {
   const { backup, store, media } = await fixture();
-  const reopen = vi.spyOn(store, 'reopen').mockImplementation(() => { throw new Error('open failed'); });
+  const replace = vi.spyOn(store, 'replaceWith').mockImplementation(() => { throw new Error('replace failed'); });
   let failure: unknown;
   try { await importDatabase({ lmdb: store }, backup, media, { validate, log }); } catch (error) { failure = error; }
   expect(failure).toBeInstanceOf(AggregateError);
   const rollback = (failure as AggregateError).message.split('retained at ')[1];
   retained.push(path.dirname(rollback));
   const copy = openEnvAt(path.join(rollback, 'lmdb'), { readOnly: true });
-  try { expect(copy.entities.get('Note-current')).toEqual({ type: 'Note' }); }
+  try { expect(copy.rows.get('Note-current')).toMatchObject({ type: 'Note' }); }
   finally { closeEnv(copy); }
-  reopen.mockRestore();
-  store.reopen();
+  replace.mockRestore();
 });

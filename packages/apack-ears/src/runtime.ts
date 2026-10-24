@@ -39,19 +39,27 @@ export interface PersistenceSink {
   /** A relation (a link between two entities) was removed: unlinked, destroyed, or with one of its entities */
   onRemoveRelation(relId: string): void;
   /**
-   * A committed unit (`transact`) begins: the calls up to `onUnitEnd` are its writes, and the sink stores them
-   * together or not at all. Calls outside a unit are each their own.
+   * A unit begins: the calls up to `onUnitEnd` are its writes. Every write is made in one (a write outside `transact`
+   * is a unit of its own), so a sink sees nothing but units.
    */
   onUnitStart(): void;
-  onUnitEnd(): void;
+  /**
+   * The unit ends: the sink stores its writes together, before returning, or throws having stored none of them —
+   * and the engine then undoes the unit in memory, so it never holds a write the sink did not take. A `durable` unit
+   * is on disk when the call returns, not only stored (`transact(fn, { durable: true })`)
+   */
+  onUnitEnd(options?: { durable?: boolean }): void;
+  /**
+   * Resolves once every unit stored so far is on disk, so it survives the machine losing power as well as the app
+   * crashing. A sink that keeps nothing on disk has nothing to wait for, and need not answer
+   */
+  durable?(): Promise<void>;
+  /**
+   * An attribute's stored value, read synchronously, or undefined when none is stored. A sink that can answer lets the
+   * engine keep large values out of memory, reading them back when asked; one that can't keeps every value in memory
+   */
+  readAttr?(kind: string, entityId: string): unknown;
   close?(): void;
-  getErrorStats?(): PersistenceErrorStats;
-}
-
-/** The writes a sink failed to store so far, and the last failure */
-export interface PersistenceErrorStats {
-  errorCount: number;
-  lastError: unknown;
 }
 
 /** A sink that drops every write: an engine's persistence unless it's given one */

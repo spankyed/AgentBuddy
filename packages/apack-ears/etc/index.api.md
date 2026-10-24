@@ -24,6 +24,17 @@ export interface BaseEntity {
 }
 
 // @public
+export interface ChangeSet {
+    readonly entities: ReadonlySet<EARS.EntityId>;
+    readonly kinds: ReadonlySet<string>;
+    // (undocumented)
+    readonly relationKinds: ReadonlySet<string>;
+    readonly relations: ReadonlySet<EARS.RelationId>;
+    readonly replaced: boolean;
+    readonly types: ReadonlySet<string>;
+}
+
+// @public
 export interface Create {
     // (undocumented)
     <E extends string>(type: TypeName<E>, row?: Record<string, unknown> & RowIdentity): WriteBuilder<E>;
@@ -104,6 +115,7 @@ export namespace EARS {
 // @public
 export interface Ears {
     create: Create;
+    durable(): Promise<void>;
     findRelations(match?: RelationMatch): RelationRow[];
     getAttr(id: EARS.EntityId, field: EARS.AttrKind): EARS.AttributeValue | undefined;
     getRelation(relId: EARS.RelationId): RelationRow | undefined;
@@ -115,9 +127,11 @@ export interface Ears {
     isRelationKind(name: string): boolean;
     isRole(name: string): boolean;
     nextLabel(type: EARS.Entity, base: string): string;
+    onCommit(listener: (changes: ChangeSet) => void): () => void;
     query: Query;
     removeRelation(relId: EARS.RelationId): void;
-    transact<T>(fn: () => T): T;
+    subscribe<T>(read: () => T, onChange: (value: T) => void): () => void;
+    transact<T>(fn: () => T, options?: TransactOptions): T;
     updateRelation(relId: EARS.RelationId, patch: {
         source?: EARS.EntityId;
         target?: EARS.EntityId;
@@ -132,12 +146,15 @@ export interface Ears {
 export interface EarsAdmin {
     addRelation(source: EARS.EntityId, kind: string, target: EARS.EntityId, info?: unknown): EARS.RelationId;
     bulkLoadAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
+    bulkLoadOutOfLine(id: EARS.EntityId, kind: EARS.AttrKind, size: number, length: number | undefined): void;
     bulkLoadRelation(relId: EARS.RelationId, kind: string, source: EARS.EntityId, target: EARS.EntityId, info?: unknown): void;
     clear(): void;
     deleteAttr(id: EARS.EntityId, kind: EARS.AttrKind): void;
     getAllEntities(): EARS.EntityId[];
     getEntitiesOfType(type: EARS.Entity): EARS.EntityId[];
+    memoryStats(): MemoryStats;
     putAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
+    replaced(): void;
     updateRelation(relId: EARS.RelationId, patch: {
         source?: EARS.EntityId;
         target?: EARS.EntityId;
@@ -271,6 +288,26 @@ export interface LinkOptions<R extends string = string> {
 export type ListElement<T> = [T] extends [readonly (infer U)[]] ? U : unknown;
 
 // @public
+export interface MemoryStats {
+    cache: {
+        values: number;
+        bytes: number;
+        capacity: number;
+        hits: number;
+        misses: number;
+    };
+    outOfLine: {
+        values: number;
+        bytes: number;
+    };
+    types: Record<string, {
+        entities: number;
+        attributes: number;
+        bytes: number;
+    }>;
+}
+
+// @public
 export const noopSink: PersistenceSink;
 
 // @public
@@ -281,19 +318,13 @@ E
 }[keyof ShapeOf<S, E>], WritableField<S, E>> : string;
 
 // @public
-export interface PersistenceErrorStats {
-    // (undocumented)
-    errorCount: number;
-    // (undocumented)
-    lastError: unknown;
-}
+export const OUT_OF_LINE_BYTES = 2048;
 
 // @public (undocumented)
 export interface PersistenceSink {
     // (undocumented)
     close?(): void;
-    // (undocumented)
-    getErrorStats?(): PersistenceErrorStats;
+    durable?(): Promise<void>;
     // (undocumented)
     onAddRelation(relId: string, kind: string, source: string, target: string, info: unknown): void;
     onCreateEntity(entityId: string, entityType: string): void;
@@ -302,8 +333,9 @@ export interface PersistenceSink {
     onDropAttr(kind: string, entityId: string): void;
     onPutAttr(kind: string, entityId: string, value: unknown): void;
     onRemoveRelation(relId: string): void;
-    // (undocumented)
-    onUnitEnd(): void;
+    onUnitEnd(options?: {
+        durable?: boolean;
+    }): void;
     onUnitStart(): void;
     // (undocumented)
     onUpdateRelation(relId: string, patch: {
@@ -311,6 +343,7 @@ export interface PersistenceSink {
         target?: string;
         info?: unknown;
     }): void;
+    readAttr?(kind: string, entityId: string): unknown;
 }
 
 // @public
@@ -404,9 +437,8 @@ export interface RecordStore<R extends {
     put(record: R): void;
     // (undocumented)
     readonly readOnly: boolean;
-    // (undocumented)
-    reopen(): void;
-    reset(): Promise<void>;
+    replaceWith(dir: string): void;
+    reset(): void;
 }
 
 // @public
@@ -506,6 +538,11 @@ E
 export type StoredRecord = {
     id: string;
 } & Record<string, unknown>;
+
+// @public
+export interface TransactOptions {
+    durable?: boolean;
+}
 
 // @public
 export interface TypedCreate<D extends EarsSchema> {

@@ -2,7 +2,7 @@
 // the creator's privileges beside them (`engine.admin`). Nothing here acts on an engine you didn't pass: the app's
 // engine, and the operations over it that pack code calls, are the SDK's (`@apackdev/sdk/ears`).
 export {
-  createEarsEngine, type EarsEngine, type Ears, type EarsAdmin,
+  createEarsEngine, type EarsEngine, type Ears, type EarsAdmin, type TransactOptions,
 } from './engine.ts';
 export type { Create, Upsert, Write, TypeName } from './write.ts';
 export { EarsError, RESERVED_ATTRIBUTES, RESERVED_ENTITY_TYPES, type EarsErrorCode } from './errors.ts';
@@ -10,11 +10,13 @@ export type {
   EARSRuntimeDeps, EarsSchema, UntypedSchema, QueryBuilder, WriteBuilder, RelationEdge, LinkOptions, RowIdentity, ShortCodeIdentity, WriteOptions, WriteTarget, FieldValue, FieldValues, ListElement, WritableField, OptionalField, RequiredField, CreateFields, WhereValue, RowRules, ShortCode,
 } from './runtime.ts';
 export { b64Encode, b64Decode, type Query } from './query.ts';
-export { entityTypeOf, type EntityRow, type SchemaStats } from './attribute-storage.ts';
+export { entityTypeOf, type EntityRow, type MemoryStats, type SchemaStats } from './attribute-storage.ts';
+export type { ChangeSet } from './changes.ts';
+export { OUT_OF_LINE_BYTES } from './values.ts';
 export { getTimestamp } from './numbering.ts';
 export type { RelationMatch, RelationRow, RelationStats } from './relations.ts';
 // Types that appear in the signatures above, so pack authors can name them.
-export type { PersistenceSink, PersistenceErrorStats } from './runtime.ts';
+export type { PersistenceSink } from './runtime.ts';
 export { noopSink } from './runtime.ts';
 // Record stores: whole records by id, found through declared indexes (the run history's store); one on disk is
 // `@apackdev/ears/lmdb`'s `openRecordStore`
