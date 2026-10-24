@@ -3,11 +3,22 @@ import { EARS } from './entities.ts';
 import type { QueryBuilder, RelationEdge } from './runtime.ts';
 import { EarsError } from './errors.ts';
 import { SEQUENCE_TYPE } from './numbering.ts';
-import { entityTypeOf, holds } from './attribute-storage.ts';
+import { entityTypeOf, holds, setField } from './attribute-storage.ts';
 
 /** A query started from types and not yet walked */
 interface TypeStart {
   types: readonly EARS.Entity[];
+}
+
+/**
+ * A visit of ids, one at a time: `visit` answers whether to go on, so a walk stops once it returns false. A loop
+ * over a callback rather than a generator, which costs V8 an object and a resume per id.
+ */
+type Visit = (id: EARS.EntityId) => boolean;
+
+/** A step not yet run: it runs `visit` over its ids, from the step before, each time they are asked for */
+interface Stream {
+  run: (visit: Visit) => void;
 }
 
 const ENTITY_TYPE = 'entityType' as EARS.AttrKind;
@@ -55,7 +66,7 @@ export interface Query extends QueryEntries {
 /** An engine's untyped query entry points, over its storage (which reads the relation index for them) */
 export function createQuery({ storage, isEntityType, names }: { storage: AttributeStorage; isEntityType: (name: string) => boolean; names: NameChecks }): Query {
   const {
-    getAllEntities, getEntitiesOfType, hasEntity, isLive, isTrashed, holders, orderOf, removals, getAttr, hasAttr,
+    getAllEntities, getEntitiesOfType, entitiesOfType, hasEntity, isLive, isTrashed, holders, orderOf, getAttr, hasAttr,
     findEntitiesInRelationTo, findEntitiesByRelationTo, relationsOf, getRow,
   } = storage;
 
@@ -87,33 +98,91 @@ export function createQuery({ storage, isEntityType, names }: { storage: Attribu
   const indexable = (kind: EARS.AttrKind, v: unknown) =>
     kind !== ENTITY_TYPE && (v === null || ['string', 'number', 'boolean'].includes(typeof v)) && !Number.isNaN(v);
 
+  const collator = new Intl.Collator();
+  /**
+   * Where a value sorts among the others in `orderBy`: booleans, numbers, dates, strings, then anything else by its
+   * text, and last `null`, which `getAttr` gives for a missing value as for a stored one, and which
+   * `orderBy(field, 'desc')` therefore puts first
+   */
+  const rankOf = (v: unknown): number =>
+    v === null ? 5
+      : typeof v === 'boolean' ? 0
+      : typeof v === 'number' ? 1
+      : v instanceof Date ? 2
+      : typeof v === 'string' ? 3
+      : 4;
+  /** Two values of one rank, compared */
+  const compareWithin = (rank: number, a: unknown, b: unknown): number => {
+    switch (rank) {
+      case 0: return Number(a) - Number(b);
+      case 1: return (a as number) - (b as number);
+      case 2: return (a as Date).getTime() - (b as Date).getTime();
+      case 3: return collator.compare(a as string, b as string);
+      case 4: return collator.compare(JSON.stringify(a), JSON.stringify(b));
+      default: return 0;
+    }
+  };
+
   /**
    * The builder over the entities `alive` admits: every step after the start, a link's far end included, reaches
-   * only those. A start from types stays unwalked until a step needs its ids, so `where(k, v)` and `withRole` on it
-   * read the value index — the matches, rather than every entity of the types. Ids a chained step passes on were
-   * checked when the step ran.
+   * only those. A builder is a recipe: no step runs when it is chained, and each terminal runs the whole query
+   * against the data as it is then, so a builder kept across writes answers as one made after them, and a
+   * predicate runs once per entity per terminal. A step that keeps or walks ids one at a time visits them as they
+   * come: `first`, `exists`, `count` and `limit` stop once they have their answer. One that needs the whole set
+   * (`orderBy`, `reverse`, `distinct`, `descendants`) collects it when it runs. A start from types stays unwalked,
+   * so `where(k, v)` and `withRole` straight after it read the value index — the matches, rather than every
+   * entity of the types.
    */
   const builderOver = (alive: (id: EARS.EntityId) => boolean) => {
-    const qxImpl = (source: EARS.EntityId[] | TypeStart): QueryBuilder<string> => {
-      const resolvedAt = removals();
-      const start = Array.isArray(source) ? undefined : source as TypeStart;
-      let resolved = start ? undefined : source as EARS.EntityId[];
-      const cur = () => (resolved ??= start!.types.flatMap((t) => getEntitiesOfType(t)).filter(alive));
-
-      /** The ids holding `v` under `kind`, as `holds` would find them: from the index, in the order a walk gives */
-      const holding = (kind: EARS.AttrKind, v: unknown): EARS.EntityId[] => {
-        const found = holders(kind, v);
-        if (!start) return cur().filter((i) => found.has(i));
-        const rank = new Map(start.types.map((t, i) => [t, i]));
-        const typeRank = (id: EARS.EntityId) => rank.get(entityTypeOf(id)) ?? -1;
-        return [...found]
-          .filter((id) => typeRank(id) !== -1 && alive(id))
-          .sort((a, b) => typeRank(a) - typeRank(b) || orderOf(a) - orderOf(b));
+    const qxImpl = (source: TypeStart | Stream): QueryBuilder<string> => {
+      const start = 'types' in source ? source : undefined;
+      /**
+       * Visits the ids: the start's walk, or the step's. Each step reads the data as it is when it runs, so every id
+       * it passes on is one `alive` admits
+       */
+      const pull = (visit: Visit): void => {
+        // The entities of the types in the engine's order, those `alive` admits
+        if (start) {
+          for (const t of start.types) if (!entitiesOfType(t, (id) => !alive(id) || visit(id))) return;
+        } else (source as Stream).run(visit);
       };
 
-      // A builder may be kept across writes: a step after an entity left the engine drops the ids no longer in it
-      const setIds = (next: EARS.EntityId[]) =>
-        qxImpl(removals() === resolvedAt ? next : next.filter(alive));
+      /** The ids, collected: what a terminal or step needing the whole set reads */
+      const cur = (): EARS.EntityId[] => {
+        const ids: EARS.EntityId[] = [];
+        pull((id) => (ids.push(id), true));
+        return ids;
+      };
+
+      /** The step keeping the ids `test` admits, made when the step runs (an index read, say) */
+      const keepIds = (makeTest: () => (id: EARS.EntityId) => boolean) => qxImpl({
+        run(visit) {
+          const test = makeTest();
+          pull((id) => !test(id) || visit(id));
+        },
+      });
+
+      /** The step whose ids `compute` makes from the whole set before it, when it runs */
+      const whole = (compute: (ids: EARS.EntityId[]) => Iterable<EARS.EntityId>) => qxImpl({
+        run(visit) {
+          for (const id of compute(cur())) if (!visit(id)) return;
+        },
+      });
+
+      /**
+       * The start's entities holding `v` under `kind`, as `holds` would find them: from the index, in the order a walk
+       * of the types gives
+       */
+      const holding = (kind: EARS.AttrKind, v: unknown, start: TypeStart) => qxImpl({
+        run(visit) {
+          const rank = new Map(start.types.map((t, i) => [t, i]));
+          const typeRank = (id: EARS.EntityId) => rank.get(entityTypeOf(id)) ?? -1;
+          const found = [...holders(kind, v)]
+            .filter((id) => typeRank(id) !== -1 && alive(id))
+            .sort((a, b) => typeRank(a) - typeRank(b) || orderOf(a) - orderOf(b));
+          for (const id of found) if (!visit(id)) return;
+        },
+      });
 
       /** Whether an entity at an edge's far end is of one of the types, when any are given */
       const ofTypes = (type?: MaybeArr<EARS.Entity>) => {
@@ -125,12 +194,23 @@ export function createQuery({ storage, isEntityType, names }: { storage: Attribu
       const walk = (kinds: MaybeArr<string>, type: MaybeArr<EARS.Entity> | undefined, outward: boolean) => {
         names.relationKinds(kinds, outward ? 'out' : 'in');
         const matches = ofTypes(type);
-        const reached = new Set<EARS.EntityId>();
-        for (const from of cur()) for (const k of asArr(kinds)) {
-          for (const i of findEntitiesByRelationTo(k, from, outward)) if (i !== from && matches(i)) reached.add(i);
-        }
-        // A relation's far end may not be in the engine, or be in the trash
-        return qxImpl([...reached].filter(alive));
+        const kindList = asArr(kinds);
+        return qxImpl({
+          run(visit) {
+            const reached = new Set<EARS.EntityId>();
+            pull((from) => {
+              for (const k of kindList) {
+                for (const i of findEntitiesByRelationTo(k, from, outward)) {
+                  if (i === from || !matches(i) || reached.has(i)) continue;
+                  reached.add(i);
+                  // A relation's far end may not be in the engine, or be in the trash
+                  if (alive(i) && !visit(i)) return false;
+                }
+              }
+              return true;
+            });
+          },
+        });
       };
 
       /**
@@ -141,22 +221,24 @@ export function createQuery({ storage, isEntityType, names }: { storage: Attribu
       const reach = (kinds: MaybeArr<string>, type: MaybeArr<EARS.Entity> | undefined, outward: boolean) => {
         names.relationKinds(kinds, outward ? 'descendants' : 'ancestors');
         const matches = ofTypes(type);
-        let frontier = cur();
-        const seen = new Set(frontier);
-        const reached: EARS.EntityId[] = [];
-        while (frontier.length) {
-          const next: EARS.EntityId[] = [];
-          for (const from of frontier) for (const k of asArr(kinds)) {
-            for (const i of findEntitiesByRelationTo(k, from, outward)) {
-              if (seen.has(i) || !alive(i)) continue;
-              seen.add(i);
-              next.push(i);
+        return whole((ids) => {
+          let frontier = ids;
+          const seen = new Set(frontier);
+          const reached: EARS.EntityId[] = [];
+          while (frontier.length) {
+            const next: EARS.EntityId[] = [];
+            for (const from of frontier) for (const k of asArr(kinds)) {
+              for (const i of findEntitiesByRelationTo(k, from, outward)) {
+                if (seen.has(i) || !alive(i)) continue;
+                seen.add(i);
+                next.push(i);
+              }
             }
+            reached.push(...next);
+            frontier = next;
           }
-          reached.push(...next);
-          frontier = next;
-        }
-        return qxImpl(reached.filter(matches));
+          return reached.filter(matches);
+        });
       };
 
       /**
@@ -168,7 +250,7 @@ export function createQuery({ storage, isEntityType, names }: { storage: Attribu
         names.relationKinds(kind, via);
         const linked = (i: EARS.EntityId) => findEntitiesByRelationTo(kind, i, outward)
           .some((end) => (other === undefined ? end !== i && alive(end) : end === other));
-        return setIds(cur().filter((i) => linked(i) === keep));
+        return keepIds(() => (i) => linked(i) === keep);
       };
 
       /** Each edge of the kinds, out or in, whose far end this query could reach: its relation row */
@@ -185,12 +267,23 @@ export function createQuery({ storage, isEntityType, names }: { storage: Attribu
         return rows;
       };
 
+      /** One entity's fields: those it holds of `fields`, a stored null as null and one it lacks left out, as getRow does */
+      const picked = (i: EARS.EntityId, fields: readonly string[]) => {
+        const o: Record<string, unknown> = { id: i };
+        for (const k of fields) {
+          if (k === 'id') continue;
+          const kind = EARS.AttrKind.Custom(k);
+          if (hasAttr(i, kind)) setField(o, k, getAttr(i, kind));
+        }
+        return o;
+      };
+
       const self = {
-        ofType: (t: EARS.Entity) => setIds(cur().filter(hasPrefix(t))),
+        ofType: (t: EARS.Entity) => keepIds(() => hasPrefix(t)),
 
         within: (sub: readonly EARS.EntityId[]) => {
           const subSet = new Set(sub);
-          return setIds(cur().filter(i => subSet.has(i)));
+          return keepIds(() => (i) => subSet.has(i));
         },
 
         where: (k: string, v: unknown) => {
@@ -198,33 +291,43 @@ export function createQuery({ storage, isEntityType, names }: { storage: Attribu
             throw new EarsError('NO_VALUE', `where('${k}'): no value to compare with. has('${k}') and lacks('${k}') ask whether there is one`);
           }
           const kind = EARS.AttrKind.Custom(k);
-          if (indexable(kind, v)) return setIds(holding(kind, v));
+          if (indexable(kind, v)) {
+            if (start) return holding(kind, v, start);
+            return keepIds(() => {
+              const found = holders(kind, v);
+              return (i) => found.has(i);
+            });
+          }
           // A value matches itself or a list holding it; a predicate is given the whole value
           const test = typeof v === 'function'
             ? (i: EARS.EntityId) => hasAttr(i, kind) && (v as (value: unknown) => boolean)(getAttr(i, kind))
             : (i: EARS.EntityId) => holds(getAttr(i, kind), v);
-          return setIds(cur().filter(test));
+          return keepIds(() => test);
         },
 
         has: (k: string) => {
           const kind = EARS.AttrKind.Custom(k);
-          return setIds(cur().filter(i => hasAttr(i, kind)));
+          return keepIds(() => (i) => hasAttr(i, kind));
         },
 
         lacks: (k: string) => {
           const kind = EARS.AttrKind.Custom(k);
-          return setIds(cur().filter(i => !hasAttr(i, kind)));
+          return keepIds(() => (i) => !hasAttr(i, kind));
         },
 
         withRole: (r: string) => {
           names.role(r, 'withRole');
-          return setIds(holding(EARS.AttrKind.Role, r));
+          if (start) return holding(EARS.AttrKind.Role, r, start);
+          return keepIds(() => {
+            const found = holders(EARS.AttrKind.Role, r);
+            return (i) => found.has(i);
+          });
         },
 
-        linkedWith: (other: EARS.EntityId) => {
+        linkedWith: (other: EARS.EntityId) => keepIds(() => {
           const linked = new Set(findEntitiesInRelationTo(other));
-          return setIds(cur().filter(i => linked.has(i)));
-        },
+          return (i) => linked.has(i);
+        }),
 
         linkedTo: (kind: string, other?: EARS.EntityId) => filterByLink('linkedTo', kind, other, true, true),
         linkedFrom: (kind: string, other?: EARS.EntityId) => filterByLink('linkedFrom', kind, other, false, true),
@@ -240,21 +343,12 @@ export function createQuery({ storage, isEntityType, names }: { storage: Attribu
         inEdges: <K extends string>(kinds: K | readonly K[], type?: MaybeArr<EARS.Entity>) => edges(kinds, type, false),
 
         pick: <A extends readonly string[]>(fields: A) =>
-          cur().map(i => {
-            const o: Record<string, unknown> = { id: i };
-            // A field the row lacks is left out, as getRow leaves it: a stored null reads as null
-            fields.forEach(k => {
-              if (k === "id") return;
-              const kind = EARS.AttrKind.Custom(k);
-              if (hasAttr(i, kind)) o[k] = getAttr(i, kind);
-            });
-            return o as { id: EARS.EntityId } & { [K in A[number]]: unknown };
-          }),
+          cur().map((i) => picked(i, fields) as { id: EARS.EntityId } & { [K in A[number]]: unknown }),
         // The first row: the fields picked, or with none the whole row, as pickAll reads it
         pickOne: (f?: readonly string[]) => {
-          if (f) return self.pick(f)[0];
-          const [first] = cur();
-          return first === undefined ? undefined : getRow(first)!;
+          const first = self.first();
+          if (first === undefined) return undefined;
+          return f ? picked(first, f) : getRow(first)!;
         },
 
         // A step's ids are in the engine, so each has a row
@@ -265,39 +359,43 @@ export function createQuery({ storage, isEntityType, names }: { storage: Attribu
           dir: "asc" | "desc" = "asc",
         ) => {
           const kind = EARS.AttrKind.Custom(field);
-          const cmp = (a: unknown, b: unknown) => {
-            if (a === b) return 0;
-            if (a === undefined) return 1;
-            if (b === undefined) return -1;
-            if (typeof a === "number" && typeof b === "number") return a - b;
-            return String(a).localeCompare(String(b));
-          };
-          const next = [...cur()].sort((aId, bId) => {
-            const res = cmp(getAttr(aId, kind), getAttr(bId, kind));
-            return dir === "asc" ? res : -res;
-          });
-          return setIds(next);
-        },
-
-        reverse: () => setIds([...cur()].reverse()),
-
-        limit: (n: number) => setIds(cur().slice(0, n)),
-
-        distinct: (field?: string) => {
-          let next: EARS.EntityId[];
-          if (!field) {
-            next = [...new Set(cur())];
-          } else {
-            const seen = new Set<unknown>();
-            next = cur().filter(id => {
-              const val = getAttr(id, EARS.AttrKind.Custom(field));
-              if (seen.has(val)) return false;
-              seen.add(val);
-              return true;
+          // Each value read once, then sorted by its type's rank and within it by value; a sort is stable, so ties
+          // keep the query's order
+          return whole((ids) => {
+            const values = ids.map((id) => getAttr(id, kind));
+            const ranks = values.map(rankOf);
+            const order = ids.map((_, i) => i).sort((i, j) => {
+              const res = ranks[i] - ranks[j] || compareWithin(ranks[i], values[i], values[j]);
+              return dir === "asc" ? res : -res;
             });
-          }
-          return setIds(next);
+            return order.map((i) => ids[i]);
+          });
         },
+
+        reverse: () => whole((ids) => ids.reverse()),
+
+        // The first `n` ids, `n` rounded down: none for a count below one, or one that isn't a number
+        limit: (n: number) => {
+          const take = Number.isNaN(n) ? 0 : Math.floor(n);
+          return qxImpl({
+            run(visit) {
+              if (take <= 0) return;
+              let taken = 0;
+              pull((id) => visit(id) && ++taken < take);
+            },
+          });
+        },
+
+        distinct: (field?: string) => whole((ids) => {
+          if (!field) return new Set(ids);
+          const seen = new Set<unknown>();
+          return ids.filter((id) => {
+            const val = getAttr(id, EARS.AttrKind.Custom(field));
+            if (seen.has(val)) return false;
+            seen.add(val);
+            return true;
+          });
+        }),
 
         groupBy: (field: string) => {
           const groups = new Map<unknown, EARS.EntityId[]>();
@@ -313,11 +411,19 @@ export function createQuery({ storage, isEntityType, names }: { storage: Attribu
           return groups;
         },
 
-        ids: () => [...cur()],
-        count: () => cur().length,
-        first: () => cur()[0],
+        ids: () => cur(),
+        count: () => {
+          let n = 0;
+          pull(() => (n++, true));
+          return n;
+        },
+        first: (): EARS.EntityId | undefined => {
+          let first: EARS.EntityId | undefined;
+          pull((id) => ((first = id), false));
+          return first;
+        },
         last: () => cur().at(-1),
-        exists: () => cur().length > 0,
+        exists: () => self.first() !== undefined,
 
         map: <T>(fn: (i: EARS.EntityId) => T) => cur().map(fn),
         forEach: (fn: (i: EARS.EntityId) => void) => (cur().forEach(fn), self),
@@ -333,12 +439,22 @@ export function createQuery({ storage, isEntityType, names }: { storage: Attribu
   /** The entry points over the entities `alive` admits */
   const entriesOver = (alive: (id: EARS.EntityId) => boolean, start: (id: EARS.EntityId) => boolean = alive): QueryEntries => {
     const qx = builderOver(alive);
-    const entries = ((types: unknown) => start === alive
-      ? qx({ types: ofTypes(types) })
-      : qx(ofTypes(types).flatMap((t) => getEntitiesOfType(t)).filter(start))) as unknown as QueryEntries;
-    entries.ids = ((ids: EARS.EntityId | readonly EARS.EntityId[]) =>
-      qx((Array.isArray(ids) ? ids : [ids]).filter(start))) as Query['ids'];
-    entries.all = (() => qx(getAllEntities().filter((id) => start(id) && !engineOwn.some((own) => own(id))))) as Query['all'];
+    /** The ids `list` gives that `keep` admits, read when the query runs */
+    const reading = (list: () => readonly EARS.EntityId[], keep: (id: EARS.EntityId) => boolean) => qx({
+      run(visit) {
+        for (const id of list()) if (keep(id) && !visit(id)) return;
+      },
+    });
+    const entries = ((types: unknown) => {
+      const named = ofTypes(types);
+      return start === alive ? qx({ types: named }) : reading(() => named.flatMap((t) => getEntitiesOfType(t)), start);
+    }) as unknown as QueryEntries;
+    // The ids named: each checked when the query runs, so one that has left the engine (or the trash) is skipped
+    entries.ids = ((ids: EARS.EntityId | readonly EARS.EntityId[]) => {
+      const named = Array.isArray(ids) ? [...ids] : [ids as EARS.EntityId];
+      return reading(() => named, start);
+    }) as Query['ids'];
+    entries.all = (() => reading(getAllEntities, (id) => start(id) && !engineOwn.some((own) => own(id)))) as Query['all'];
     return entries;
   };
 

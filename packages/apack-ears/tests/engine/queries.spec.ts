@@ -33,6 +33,24 @@ describe('starts', () => {
     expect(e.admin.getEntitiesOfType('Relation')).toHaveLength(3);
   });
 
+  it('a builder kept across writes answers as one made after them, whatever its steps', () => {
+    const held = {
+      indexed: e.query('Task').where('status', 'open'),
+      role: e.query('Task').withRole('focus'),
+      filtered: e.query('Task').has('rank'),
+      ordered: e.query('Task').orderBy('title'),
+      everything: e.query.all(),
+    };
+    // A terminal run before the write doesn't fix what the builder answers after it
+    expect(held.indexed.ids()).toEqual([t.a, t.c, t.d]);
+    const late = e.create('Task').setMany({ title: 'aardvark', rank: 3, status: 'open' }).grant('focus').id();
+    expect(held.indexed.ids()).toEqual([t.a, t.c, t.d, late]);
+    expect(held.role.ids()).toEqual([t.a, late]);
+    expect(held.filtered.count()).toBe(4);
+    expect(held.ordered.first()).toBe(late);
+    expect(held.everything.ids()).toContain(late);
+  });
+
   /**
    * A type and an id are claims made to different functions, so each can be held to its own: a name that isn't a
    * registered type is a mistake to report, where one start taking both had to read it as an id that matched
@@ -56,7 +74,10 @@ describe('starts', () => {
 
   it('a builder kept across writes drops, at its next step, the ids destroyed since', () => {
     const tasks = e.query('Task');
+    const named = e.query.ids([t.a, t.b]);
     e.write(t.b).destroy();
+    expect(named.limit(10).ids()).toEqual([t.a]);
+    expect(named.has('title').count()).toBe(1);
     expect(tasks.limit(10).ids()).toEqual([t.a, t.c, t.d]);
     expect(tasks.ofType('Task').count()).toBe(3);
     expect(tasks.orderBy('title').ids()).toEqual([t.d, t.a, t.c]);
@@ -126,6 +147,26 @@ describe('ordering', () => {
     expect(e.query('Task').limit(2).ids()).toEqual([t.a, t.b]);
   });
 
+  it('orderBy sorts by type, then value: a list or object after strings, a missing value or null last, a date by its time', () => {
+    const at = (fields: Record<string, unknown>) => e.create('Person').setMany(fields).id();
+    const v = {
+      text: at({ value: 'pear' }),
+      none: at({}),
+      nil: at({ value: null }),
+      ten: at({ value: 10 }),
+      later: at({ value: new Date('2026-02-01') }),
+      two: at({ value: 2 }),
+      earlier: at({ value: new Date('2026-01-01') }),
+      flag: at({ value: true }),
+      word: at({ value: 'apple' }),
+      list: at({ value: ['x'] }),
+    };
+    expect(e.query('Person').orderBy('value').ids())
+      .toEqual([v.flag, v.two, v.ten, v.earlier, v.later, v.word, v.text, v.list, v.none, v.nil]);
+    expect(e.query('Person').orderBy('value', 'desc').ids())
+      .toEqual([v.none, v.nil, v.list, v.text, v.word, v.later, v.earlier, v.ten, v.two, v.flag]);
+  });
+
   it('distinct and groupBy', () => {
     expect(e.query.ids([t.a, t.a, t.b]).distinct().ids()).toEqual([t.a, t.b]);
     expect(e.query('Task').distinct('title').ids()).toEqual([t.a, t.b, t.c]);
@@ -150,6 +191,46 @@ describe('terminals', () => {
     const ids = q.ids();
     ids.pop();
     expect(q.count()).toBe(3);
+  });
+
+  it('first, exists, pickOne and limit read only as far as their answer', () => {
+    let read = 0;
+    const counted = () => e.query('Task').where('title', () => (read++, true));
+    const reads = (run: () => unknown) => {
+      read = 0;
+      run();
+      return read;
+    };
+    expect(reads(() => counted().first())).toBe(1);
+    expect(reads(() => counted().exists())).toBe(1);
+    expect(reads(() => counted().pickOne(['title']))).toBe(1);
+    expect(reads(() => counted().limit(2).ids())).toBe(2);
+    e.write(t.a).link('contains', t.c);
+    expect(reads(() => counted().out('contains').first())).toBe(1);
+    expect(reads(() => counted().count())).toBe(4);
+  });
+
+  it("a predicate that creates an entity of the type it walks doesn't reach it", () => {
+    const made: Id[] = [];
+    // Capped, so a walk that did reach what it made would end rather than run forever
+    const make = () => made.length < 10 && made.push(e.create('Task').set('title', 'new').id());
+    const ids = e.query('Task').where('title', () => (make(), true)).ids();
+    expect(ids).toEqual([t.a, t.b, t.c, t.d]);
+    expect(made).toHaveLength(4);
+  });
+
+  it("limit takes the first n, rounded down, and none for a count below one or one that isn't a number", () => {
+    expect(e.query('Task').limit(2.5).ids()).toEqual([t.a, t.b]);
+    expect(e.query('Task').limit(Number.NaN).ids()).toEqual([]);
+    expect(e.query('Task').limit(-1).ids()).toEqual([]);
+    expect(e.query('Task').limit(Number.POSITIVE_INFINITY).count()).toBe(4);
+  });
+
+  it('pick holds a field named __proto__ as its own, as getRow does', () => {
+    e.write(t.a).set('__proto__', { x: 1 });
+    const [row] = e.query.ids(t.a).pick(['__proto__']);
+    expect(Object.getOwnPropertyDescriptor(row, '__proto__')?.value).toEqual({ x: 1 });
+    expect(Object.getPrototypeOf(row)).toBe(Object.prototype);
   });
 
   it('pick, pickOne and pickAll', () => {

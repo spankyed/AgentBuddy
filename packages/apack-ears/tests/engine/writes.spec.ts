@@ -401,6 +401,16 @@ describe('rows', () => {
     expect(e.getRow(id)).toEqual({ ...row, trashedAt: 7 });
     expect(e.query.ids(id).pickOne()).toBeUndefined();
   });
+
+  it('a field named __proto__ is a field like any other', () => {
+    const id = e.create('Task').set('__proto__', { x: 1 }).id();
+    expect(e.getAttr(id, '__proto__')).toEqual({ x: 1 });
+    const row = e.getRow(id)!;
+    expect(Object.getOwnPropertyDescriptor(row, '__proto__')?.value).toEqual({ x: 1 });
+    expect(Object.getPrototypeOf(row)).toBe(Object.prototype);
+    e.write(id).delete('__proto__');
+    expect(e.getAttr(id, '__proto__')).toBeUndefined();
+  });
 });
 
 describe('rows', () => {
@@ -461,5 +471,16 @@ describe('rows', () => {
   it('isEntityType answers from the engine\'s checker', () => {
     expect(e.isEntityType('Task')).toBe(true);
     expect(e.isEntityType('Memo')).toBe(false);
+  });
+});
+
+describe('schema stats', () => {
+  it('count a field named for an Object.prototype member, and change no other object', () => {
+    e.create('Task').setMany({ constructor: 1, toString: 'x' }).set('__proto__', 5);
+    const { attributes } = e.getSchemaStats();
+    expect(Object.getOwnPropertyDescriptor(attributes, '__proto__')?.value).toEqual({ entityCount: 1, totalValues: 1 });
+    expect(Object.getOwnPropertyDescriptor(attributes, 'constructor')?.value).toEqual({ entityCount: 1, totalValues: 1 });
+    expect(Object.getOwnPropertyDescriptor(attributes, 'toString')?.value).toEqual({ entityCount: 1, totalValues: 1 });
+    expect(({} as Record<string, unknown>).entityCount).toBeUndefined();
   });
 });
