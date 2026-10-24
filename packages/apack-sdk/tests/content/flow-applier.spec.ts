@@ -275,6 +275,20 @@ describe('flow applier', () => {
    * is that the compiler emits nothing else, which is asked of the compiler's own output here: add a third
    * kind to `flow-compiler.ts` and this fails rather than the filter silently dropping it.
    */
+  it('keeps the short code of a flow it deletes only to write again, rather than numbering it anew', () => {
+    _bindEars(createEarsEngine({
+      isRelationKind: () => true, isRole: () => true, isEntityType: (name) => ['Flow', 'Node', 'Action', 'Prompt'].includes(name),
+      rowRules: (type) => (type === 'Flow' ? { required: [], shortCode: 'FLW' } : undefined),
+    }));
+    const dir = compiledFlows('Demo Flow');
+    apply(dir);
+    const codeOf = () => (flows('Demo Flow') as Array<{ shortCode?: string }>).map((flow) => flow.shortCode);
+    expect(codeOf()).toEqual(['FLW-1']);
+    // A number is never handed out twice, so a flow numbered afresh here would be FLW-2
+    createFlowApplier({ onUserEdit: 'offer' }).apply({ compiledDir: dir, mode: 'wipe-and-replace', log: () => {} });
+    expect(codeOf()).toEqual(['FLW-1']);
+  });
+
   it('filters the wiring to the relation kinds a compiled flow holds', async () => {
     const { GRAPH_REL_KINDS } = await import('../../src/content/flow-applier.ts');
     const { compile } = await import('../../src/build/compilers/flow-compiler.ts');
