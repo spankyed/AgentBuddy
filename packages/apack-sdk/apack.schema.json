@@ -110,7 +110,7 @@
               "shortCode": {
                 "type": "string",
                 "pattern": "^[A-Z]{3}$",
-                "description": "The prefix create numbers each row's short code with, <prefix>-<n>: three uppercase letters, unique across every pack. The shape types its shortCode field ShortCode<prefix>. Leave it out for an entity that isn't numbered."
+                "description": "The prefix create numbers each row's short code with, <prefix>-<n>: three uppercase letters, unique across every pack. The shape declares no shortCode: #generated/ears types the field from this prefix (ShortCodeOf<E>). Leave it out for an entity that isn't numbered."
               }
             },
             "additionalProperties": false,
@@ -190,7 +190,7 @@
                 "shortCode": {
                   "type": "string",
                   "pattern": "^[A-Z]{3}$",
-                  "description": "The prefix create numbers each row's short code with, <prefix>-<n>: three uppercase letters, unique across every pack. The shape types its shortCode field ShortCode<prefix>. Leave it out for an entity that isn't numbered."
+                  "description": "The prefix create numbers each row's short code with, <prefix>-<n>: three uppercase letters, unique across every pack. The shape declares no shortCode: #generated/ears types the field from this prefix (ShortCodeOf<E>). Leave it out for an entity that isn't numbered."
                 }
               },
               "additionalProperties": false,

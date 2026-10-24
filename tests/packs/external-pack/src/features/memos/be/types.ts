@@ -1,4 +1,3 @@
-import type { ShortCode } from '@apackdev/ears';
 import type { MemoNoteDTO } from './memo-notes.ts';
 import type { BaseEntity, EARS } from '#generated/ears.ts';
 
@@ -7,8 +6,6 @@ export interface MemoEntity extends BaseEntity {
   /** Written memos have a title; an apply matches existing entities by it */
   title?: string;
   text: string;
-  /** Numbered by `create`, a pack shape's as the SDK's are */
-  shortCode: ShortCode<'MEM'>;
   createdAt: number;
   updatedAt: number;
 }

@@ -157,34 +157,32 @@ describe('generated EARS facade', () => {
     expect(entry).toContain('rowRules: {"Memo":{"required":["pinned","text"]}}');
   });
 
-  it("numbers an entity with the prefix its manifest entry declares, and never requires the code", async () => {
-    write('src/memo.ts', 'export interface MemoEntity { shortCode: `MEM-${number}`; text: string }\n');
-    const entry = (await generate({ data: {
+  it("numbers an entity with the prefix its manifest entry declares, and types its rows' code from it", async () => {
+    write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
+    const files = await generate({ data: {
       entities: { Memo: { shape: 'src/memo.ts#MemoEntity', shortCode: 'MEM' }, Tag: { shortCode: 'TAG' } },
-    } }))['src/__generated__/pack-entry.ts'];
-    expect(entry).toContain('"Memo":{"required":["text"],"shortCode":"MEM"}');
+    } });
+    expect(files['src/__generated__/pack-entry.ts']).toContain('"Memo":{"required":["text"],"shortCode":"MEM"}');
     // An unshaped entity is numbered too, held to nothing else
-    expect(entry).toContain('"Tag":{"required":[],"shortCode":"TAG"}');
+    expect(files['src/__generated__/pack-entry.ts']).toContain('"Tag":{"required":[],"shortCode":"TAG"}');
+    // The shape declares no short code: the generated shapes add it from the entry, and ShortCodeOf reads it back
+    expect(files['src/__generated__/ears.ts']).toContain("'Memo': __shape_Memo & { shortCode: ShortCode<'MEM'> };");
+    expect(files['src/__generated__/ears.ts']).toContain('export type ShortCodeOf<E extends keyof PackShapes>');
   });
 
   it("refuses a short code prefix a dependency numbers with, at build time rather than at install", async () => {
-    write('src/memo.ts', 'export interface MemoEntity { shortCode: `MEM-${number}`; text: string }\n');
+    write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
     const deps = { 'base-pack': { ...dependency({ data: { entities: { Memo: { shortCode: 'MEM' } } } }), types: { entities: { Memo: 'Memo' }, relKinds: {}, roles: {} } } };
     await expect(generate({ dependencies: { 'base-pack': '*' }, data: { entities: { Note: { shape: 'src/memo.ts#MemoEntity', shortCode: 'MEM' } } } }, deps))
       .rejects.toThrow('Entity "Note": the short code prefix "MEM" numbers Memo of the dependency "base-pack": choose another');
   });
 
-  it("refuses a shape whose ShortCode and the manifest's prefix disagree, either way", async () => {
-    write('src/memo.ts', [
-      'export interface TypedEntity { shortCode: `MEM-${number}`; text: string }',
-      'export interface PlainEntity { shortCode: string }',
-    ].join('\n'));
-    await expect(generate({ data: { entities: { Memo: { shape: 'src/memo.ts#TypedEntity' } } } }))
-      .rejects.toThrow(/declares no short code for it/);
-    await expect(generate({ data: { entities: { Memo: { shape: 'src/memo.ts#TypedEntity', shortCode: 'MMO' } } } }))
-      .rejects.toThrow(/ShortCode<'MMO'>, not ShortCode<'MEM'>/);
-    await expect(generate({ data: { entities: { Memo: { shape: 'src/memo.ts#PlainEntity', shortCode: 'MEM' } } } }))
-      .rejects.toThrow(/types shortCode as ShortCode<'MEM'>/);
+  it('refuses a shape that declares shortCode, which the engine writes and the entry types', async () => {
+    write('src/memo.ts', 'export interface CodedEntity { shortCode: string; text: string }\n');
+    await expect(generate({ data: { entities: { Memo: { shape: 'src/memo.ts#CodedEntity', shortCode: 'MEM' } } } }))
+      .rejects.toThrow(/declares shortCode, which the engine writes: remove it — the manifest entry's "MEM" types the field, as ShortCodeOf<'Memo'>/);
+    await expect(generate({ data: { entities: { Memo: { shape: 'src/memo.ts#CodedEntity' } } } }))
+      .rejects.toThrow(/number the entity by giving its manifest entry a "shortCode" prefix/);
   });
 
   it('names the declared entities and passes them to the typed helpers, with the writes', async () => {

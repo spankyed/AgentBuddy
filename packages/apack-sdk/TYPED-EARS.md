@@ -85,8 +85,11 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   that has none. The row argument
   is required exactly when the shape requires a field, so an incomplete row doesn't compile; `upsert(type, { id, ...row })`
   is held to the same row, its id always given. `shortCode` is one of the engine's own attributes, never a field of
-  the row: `create` numbers it from the prefix the type's manifest entry declares (`shortCode`), and the shape types it
-  `ShortCode<prefix>` with that same prefix, which codegen checks both ways.
+  the row: `create` numbers it from the prefix the type's manifest entry declares (`shortCode`). A pack's shape
+  declares no `shortCode` — codegen refuses one — and the generated `PackShapes` intersects a numbered entity's shape
+  with `{ shortCode: ShortCode<prefix> }`, so the prefix is written once. `ShortCodeOf<E>` (`#generated/ears`) reads
+  the field back for a pack's own types, covering its entities, its dependencies' and the SDK's (whose hand-written
+  shapes take their prefixes from `SDK_SHORT_CODES`); it is `never` for an entity that isn't numbered or has no shape.
   The engine holds every write to the same rules at runtime: codegen reads each pack shape's required fields with the
   TypeScript checker (`rowRulesOf`) and each type's prefix from the manifest into its registration
   (`PackEARS.rowRules`), the SDK lists its own (`SDK_ROW_RULES`, its prefixes from `SDK_SHORT_CODES`, compiler-checked

@@ -170,7 +170,7 @@ type AgentSettings = ThreadsSettings['chat'];
 
 type AgentThreadData = {
     id?: ThreadEntity['id'];
-    shortCode?: ThreadEntity['shortCode'];
+    shortCode?: ThreadTypeShortCode;
     topic: ThreadEntity['topic'];
     instructions: ThreadEntity['instructions'];
     status: ThreadEntity['status'];
@@ -4127,7 +4127,9 @@ type OutgoingThreadsEvents = {
 
 /** Entity shapes this pack declares */
 type OwnEntityShapes = {
-    'Thread': ThreadEntity;
+    'Thread': ThreadEntity & {
+        shortCode: ShortCode<'THR'>;
+    };
     'Message': MessageEntity;
     'Artifact': ArtifactEntity;
     'Terminal': TerminalEntity;
@@ -4900,6 +4902,15 @@ declare const SettingScopeSchema: z.ZodEnum<["user", "project", "local"]>;
 
 type SettingsOf<K extends keyof AvailableSettings> = AvailableSettings[K];
 
+/**
+ * A numbered entity's short code type, `ShortCode<prefix>` from the prefix its manifest entry declares
+ * (`ShortCodeOf<'Thread'>` is THR-<n>): this pack's, its dependencies' and the SDK's. Never for an entity
+ * that isn't numbered, or one declared without a shape.
+ */
+type ShortCodeOf<E extends keyof PackShapes> = PackShapes[E] extends {
+    shortCode: infer C;
+} ? C : never;
+
 type Simplify<T> = {
     [K in keyof T]: T[K];
 } & {};
@@ -5108,8 +5119,6 @@ interface ThreadEntity extends BaseEntity {
     timestamp: number;
     lastMessageTimestamp?: number;
     lastVisitedTimestamp?: number;
-    /** Numbered by `create` */
-    shortCode: ThreadTypeShortCode;
     status: string;
     tags?: string[];
     forcedMode?: string;
@@ -5131,7 +5140,7 @@ type ThreadExtendedData = ThreadLinkedFields & {
     status?: string;
     pinned?: boolean;
     archived?: boolean;
-    shortCode?: ThreadEntity['shortCode'];
+    shortCode?: ThreadTypeShortCode;
     timestamp?: number;
     lastMessageTimestamp?: number;
 };
@@ -5140,7 +5149,8 @@ interface ThreadForkParams extends ThreadStartParams {
     threadId: string;
 }
 
-type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic'> & {
+type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'status' | 'timestamp' | 'topic'> & {
+    shortCode: ThreadTypeShortCode;
     relation: ThreadLinkRelation;
 };
 
@@ -5202,13 +5212,13 @@ interface ThreadTagOption {
     color?: string;
 }
 
-/** A thread's short code, `THR-<n>`: the prefix Thread's apack.json entry declares (`shortCode`) */
-type ThreadTypeShortCode = ShortCode<'THR'>;
+/** A thread's short code, `THR-<n>`: the engine numbers it with the prefix Thread's apack.json entry declares */
+type ThreadTypeShortCode = ShortCodeOf<'Thread'>;
 
 type ThreadViewData = Simplify<ThreadCreateData & {
     id: ThreadEntity['id'];
     /** `''` while the view holds a thread not yet created */
-    shortCode: ThreadEntity['shortCode'] | '';
+    shortCode: ThreadTypeShortCode | '';
     status: ThreadEntity['status'];
     timestamp: ThreadEntity['timestamp'];
     archived?: ThreadEntity['archived'];
@@ -6544,7 +6554,7 @@ declare const threadQueries: {
         };
         topic: string;
         status: string;
-        shortCode: ThreadTypeShortCode;
+        shortCode: _apackdev_ears.ShortCode<"THR">;
         timestamp: number;
         relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
     }[];

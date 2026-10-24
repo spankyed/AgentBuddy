@@ -582,8 +582,9 @@ so builders written with it (`query.ids(id)`, `write(id)`) are typed too;
 unbranded ids (`EARS.EntityId`) and `query.all()` read as undeclared.
 
 **A short code is declared in the manifest and numbered by `create`.** Give the entity's entry a `shortCode`
-prefix, and type the shape's `shortCode` as `ShortCode<prefix>` (from
-`@apackdev/ears`) with the same prefix; the build refuses the two disagreeing. A prefix is three uppercase letters —
+prefix, and leave the field out of its shape: the engine writes it, and your `#generated/ears` adds it to the shape,
+typed from that prefix — the build refuses a shape declaring it, since that would be a second account of the
+prefix. A prefix is three uppercase letters —
 the word's common abbreviation where it has one (`DOC`, `MSG`), otherwise its first letter and next two distinct
 consonants (`THR`, `BKM`) — and unique across every pack, the SDK's `FLW`, `ACT`, `PRM` and `DOC` included.
 
@@ -594,12 +595,13 @@ consonants (`THR`, `BKM`) — and unique across every pack, the SDK's `FLW`, `AC
 ```
 
 ```typescript
-import type { ShortCode } from '@apackdev/ears';
-
 export interface BookmarkEntity extends BaseEntity {
-  shortCode: ShortCode<'BKM'>;   // BKM-1, BKM-2, …
-  url: string;
+  url: string;            // no shortCode: the generated shapes add it, BKM-1, BKM-2, …
 }
+
+// Where your own types need the code, name it from the generated facade
+import type { ShortCodeOf } from '#generated/ears.ts';
+type BookmarkCode = ShortCodeOf<'Bookmark'>;   // `BKM-${number}`
 ```
 
 `create` numbers every row, and a number is never handed out twice for a type, a destroyed row's included. The code
