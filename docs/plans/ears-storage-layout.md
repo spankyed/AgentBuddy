@@ -69,9 +69,34 @@ value. Undefined stays last.
 **Done when:** a spec pins mixed-type order; the `orderBy` bench case is faster (the spike measured 21.8 → 7.7 ms).
 
 ### 4. Benchmark cases and baseline
-Add to `bench/ears.bench.ts`: `getRow`, `pickAll` over a type, linking 10k children to one parent, destroying an
-entity with many edges, `linkedWith`, `query(type).first()` on 50k entities, `orderBy` on strings, and heap at 50k
-entities. Run on the built dist (`npm run bench -w @apackdev/ears`) and record the baseline here.
+Done, 2026-10-23. `bench/ears.bench.ts` times the engine in `dist` (`npm run bench -w @apackdev/ears` builds first) and
+gained the cases below; `bench/heap.ts` (`npm run bench:heap`) reads the heap with the same graph loaded. The bench
+graph holds 8 attribute kinds, so `getRow`'s O(K) shows less here than in the app, which holds hundreds.
+
+Baseline (mean ms, after Step 3; macOS, Node 23.11, lmdb 3.5.3, the bench's 50k entities / 200k attributes / 100k
+relations):
+
+| Case | ms |
+|---|---|
+| bulk load | 180.9 |
+| query by type with where and pickAll | 16.6 |
+| 1,000 where lookups by a unique value | 0.76 |
+| 100 withRole lookups | 12.0 |
+| 1,000 `query.ids(id)` lookups | 0.28 |
+| query by type with 3 chained steps (`orderBy('rank')`) | 11.8 |
+| relation traversal | 0.0025 |
+| `orderBy` a string over 40k | 11.9 |
+| 1,000 `query(type).first()` over 40k | 3,815 |
+| 1,000 `getRow` | 0.72 |
+| `pickAll` over 40k | 35.7 |
+| 100 `linkedWith` | 52.5 |
+| link 10k tasks to one project, then destroy it | 6,178 |
+| 1,000 creates | 4.50 |
+| 1,000 short codes | 4.43 |
+| transact: 1,000 creates as one unit | 6.93 |
+| heap, graph loaded | 61.3 MB |
+
+Step 3, measured against the comparator it replaced: 3 chained steps 27.8 → 11.8 ms, `orderBy` a string 14.9 → 11.9 ms.
 
 ### 5. Rewrite `goal-lmdb-only.md`
 Reduce it to Step 10's trigger and design: delete the trace, partition, router and session material; record the
