@@ -51,7 +51,7 @@ it.each(['IMPORT_DATABASE_SUCCESS', 'RESET_DATABASE_SUCCESS'] as const)(
   },
 );
 
-it('keeps mutable trace state separate between windows', () => {
+it('keeps mutable run history state separate between windows', () => {
   const first = createActor(databaseState).start();
   const second = createActor(databaseState).start();
   first.getSnapshot().context.expandedNodes.add('row-from-first-window');

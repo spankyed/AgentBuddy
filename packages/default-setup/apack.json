@@ -10,7 +10,7 @@
     "services": [
       "host/onboarding",
       "host/appData",
-      "host/traceStore",
+      "host/runHistory",
       "host/inference",
       "host/secrets",
       "host/filesystem"
@@ -28,7 +28,6 @@
       "duplicates"
     ],
     "roles": [
-      "root_trace_node",
       "assistant_birth"
     ]
   },

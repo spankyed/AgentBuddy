@@ -5,10 +5,10 @@ import { _pathSegmentProblem } from './path-segment.ts'
 
 /** @internal Host-only: the app's stores in a data dir */
 export interface _AppDataPaths {
-  /** The database's primary partition */
+  /** The database: the engine's entities and relations */
   lmdb: string
-  /** The database's volatile partition (run history) */
-  volatileLmdb: string
+  /** The run history: every flow run's record (`services.runHistory`) */
+  runHistory: string
   /** The user's secrets (values encrypted; the data key sits beside it) */
   secretsFile: string
   media: string
@@ -16,7 +16,7 @@ export interface _AppDataPaths {
 
 const DATA_DIRS: _AppDataPaths = {
   lmdb:         'ears-db',
-  volatileLmdb: 'ears-trace',
+  runHistory:   'run-history',
   secretsFile:  'secrets.json',
   media:        'media',
 }
@@ -41,8 +41,8 @@ export function _appDataPaths(userDataDir: string): _AppDataPaths {
 export const getUserDataPath = (): string => resolveAppEnvironment().userDataDir
 /** @internal Host-only: the app's database location. */
 export const _getLmdbPath = (): string => _resolvePath('lmdb')
-/** @internal Host-only: the app's database location. */
-export const _getVolatileLmdbPath = (): string => _resolvePath('volatileLmdb')
+/** @internal Host-only: the run history's store. */
+export const _getRunHistoryPath = (): string => _resolvePath('runHistory')
 /** @internal Host-only: the file holding the user's secrets (values encrypted). */
 export const _getSecretsFilePath = (): string => _resolvePath('secretsFile')
 /** @internal Host-only: the app's media location. */

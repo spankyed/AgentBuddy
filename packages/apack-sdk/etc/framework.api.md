@@ -7,7 +7,6 @@
 import type { ActionArgs } from 'xstate';
 import type { AnyActorRef } from 'xstate';
 import type { AnyStateMachine } from 'xstate';
-import type { BaseEntity } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
 import type { EventObject } from 'xstate';
 import type { MachineContext } from 'xstate';
@@ -294,7 +293,7 @@ export interface HelpTarget {
 }
 
 // @internal
-export const _HOST_SERVICE_NAMES: readonly ["logger", "emitter", "repository", "settings", "onboarding", "appData", "traceStore", "inference", "secrets", "filesystem"];
+export const _HOST_SERVICE_NAMES: readonly ["logger", "emitter", "repository", "settings", "onboarding", "appData", "runHistory", "inference", "secrets", "filesystem"];
 
 // @public
 export const LIFECYCLE_HOOK_NAMES: readonly ["onInit", "onShutdown"];

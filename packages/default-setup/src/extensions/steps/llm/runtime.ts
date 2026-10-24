@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 import type { NodeEntity } from '#generated/types.ts';
 import { EARS } from '@apackdev/sdk';
 import { repository } from '#generated/repository.ts';
@@ -21,8 +21,8 @@ interface LLMNodeConfig {
 
 type LLMNode = NodeEntity & LLMNodeConfig;
 
-function generatePrompt(tNode: TNodeEntity, node: LLMNode): string {
-  const nodeData = tNode.nodeAttributes || {};
+function generatePrompt(input: StepInput, node: LLMNode): string {
+  const nodeData = input.settings;
 
   if (nodeData.prompt && typeof nodeData.prompt === 'string') {
     return nodeData.prompt;
@@ -36,7 +36,7 @@ function generatePrompt(tNode: TNodeEntity, node: LLMNode): string {
         return 'Error: Prompt template not found';
       }
 
-      const templateParams: Record<string, any> = (tNode.resolvedParams as Record<string, any>) || {};
+      const templateParams: Record<string, any> = input.params;
 
       brainLogger.debug(`Using resolved params for ${node.label}:`, templateParams);
 
@@ -55,15 +55,15 @@ function generatePrompt(tNode: TNodeEntity, node: LLMNode): string {
   return 'No prompt specified';
 }
 
-export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(input: StepInput, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as LLMNode;
   const a = actor as { send: (event: any) => void };
-  const nodeData = t.nodeAttributes || {};
+  const nodeData = input.settings;
 
   try {
     brainLogger.debug(`Executing LLM node: ${n.label}`, { nodeData });
 
-    const prompt = generatePrompt(t, n);
+    const prompt = generatePrompt(input, n);
 
     brainLogger.debug(`Generated prompt preview: ${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}`);
 
@@ -106,8 +106,8 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       source: 'brain-llm',
       step: {
         phase: 'llm.execute',
-        flowTNodeId: ctx.flowTNodeId,
-        tNodeId: t.id,
+        flowRunNodeId: ctx.flowRunNodeId,
+        runNodeId: input.runNodeId,
         nodeId: n.id,
         nodeLabel: n.label,
         nodeType: n.nodeType,

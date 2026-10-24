@@ -1,24 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { repository } from '#generated/repository.ts'
-import { query, create, EARS } from '#generated/ears.ts'
+import { services } from '#generated/services.ts'
+import type { EARS } from '#generated/ears.ts'
 
-describe('brainCommands writing to a TNode', () => {
-  it('leave nothing behind for a TNode that is gone', () => {
-    const id = create(EARS.Entity.TNode, { tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0 }).id()
-    repository.brainCommands.clearVolatileData()
+describe('brainCommands starting run nodes', () => {
+  it('starts an event node under the flow run that heard it, with its payload, its trigger and the flow it walks', () => {
+    const flowRun = services.runHistory.start({ kind: 'flow', label: 'Root', flowId: 'Flow-root' as EARS.EntityId })
 
-    repository.brainCommands.updateTNodeStatus(id, 'completed')
-    repository.brainCommands.updateTNodeAttributes(id, { payload: 1 })
+    const event = repository.brainCommands.createEventRunNode(
+      { id: 'Node-trigger', label: 'go', eventType: 'go' },
+      flowRun.id,
+      { text: 'hello' },
+    )
 
-    expect(query.ids(id).exists()).toBe(false)
-  })
-
-  it('still write to a TNode that exists', () => {
-    const id = create(EARS.Entity.TNode, { tNodeType: 'step', label: 'Step', status: 'active', startedAt: 0 }).id()
-
-    repository.brainCommands.updateTNodeStatus(id, 'completed')
-    repository.brainCommands.updateTNodeAttributes(id, { payload: 1 })
-
-    expect(query.ids(id).pickOne(['status', 'nodeAttributes'])).toMatchObject({ status: 'completed', nodeAttributes: { payload: 1 } })
+    expect(services.runHistory.get(event.id)).toMatchObject({
+      kind: 'event', status: 'active', parentId: flowRun.id, rootId: flowRun.id,
+      nodeId: 'Node-trigger', flowId: 'Flow-root', triggerType: 'listener', payload: { text: 'hello' },
+    })
   })
 })

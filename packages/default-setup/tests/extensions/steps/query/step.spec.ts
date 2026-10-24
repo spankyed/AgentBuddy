@@ -2,7 +2,7 @@
 // runs it with the database console's query executor and completes with { query, [as]: rows }
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mockInference, mockService, importContent } from '@apackdev/testing/harness';
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 import { repository } from '#generated/repository.ts';
 import { handler } from '#extensions/steps/query/runtime.ts';
 import { DEFAULT_MODEL } from '#extensions/steps/llm/model.ts';
@@ -12,8 +12,8 @@ type Sent = { type: string; result?: unknown; error?: { message?: string } };
 function run(node: Record<string, unknown>) {
   const sent: Sent[] = [];
   const actor = { send: (event: Sent) => sent.push(event) };
-  const tNode = { id: 'TNode-query', nodeAttributes: {} } as unknown as TNodeEntity;
-  return handler(tNode, { label: 'Find actions', nodeType: 'query', prompt: 'Labels of every action', ...node }, {} as ExecutionContext, actor).then(() => sent);
+  const input: StepInput = { runNodeId: 'RunNode-query', settings: {}, params: {} };
+  return handler(input, { label: 'Find actions', nodeType: 'query', prompt: 'Labels of every action', ...node }, {} as ExecutionContext, actor).then(() => sent);
 }
 
 const errorMessage = (sent: Sent[]) => {

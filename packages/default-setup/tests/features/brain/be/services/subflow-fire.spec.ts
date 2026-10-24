@@ -30,9 +30,9 @@ describe('subflow context', () => {
     const app = await startBrain()
     await app.runFlow('Outer', { event: 'go', data: { text: 'hi' } })
     await app.settle()
-    const [read] = app.flowTrace('Inner')
+    const [read] = app.flowSteps('Inner')
     expect(read).toMatchObject({ label: 'read', status: 'completed' })
-    return read.params
+    return read.input.params
   }
 
   it("starts the child's entry track with the parent's event data and steps when it inherits (the default)", async () => {
@@ -73,8 +73,8 @@ describe('fire', () => {
     await app.runFlow('Outer', { event: 'go', data: { text: 'hi' } })
     await app.settle()
 
-    const heard = app.flowTrace('Outer').find((s) => s.label === 'heard')
-    expect(heard?.params.payload).toEqual({ color: 'red', nested: ['hi', { step: { color: 'red' } }], literal: 'plain', count: 2 })
+    const heard = app.flowSteps('Outer').find((s) => s.label === 'heard')
+    expect((heard?.input.params as { payload?: unknown } | undefined)?.payload).toEqual({ color: 'red', nested: ['hi', { step: { color: 'red' } }], literal: 'plain', count: 2 })
   })
 
   it('sends a payload that is a single mapping as its value', async () => {
@@ -94,7 +94,8 @@ describe('fire', () => {
     await app.runFlow('Outer', { event: 'go' })
     await app.settle()
 
-    expect(app.flowTrace('Outer').find((s) => s.label === 'heard')?.params.payload).toEqual({ color: 'red' })
+    const heard = app.flowSteps('Outer').find((s) => s.label === 'heard')
+    expect((heard?.input.params as { payload?: unknown } | undefined)?.payload).toEqual({ color: 'red' })
   })
 
   it.each([
@@ -113,11 +114,11 @@ describe('fire', () => {
     await app.runFlow('A', { event: 'go' })
     await app.settle()
 
-    const labels = (flow: string) => app.flowTrace(flow).map((s) => s.label)
+    const labels = (flow: string) => app.flowSteps(flow).map((s) => s.label)
     expect(['A', 'B'].filter((flow) => labels(flow).includes(`${flow} heard`))).toEqual(heardBy)
-    const fired = app.flowTrace('A').find((s) => s.label === 'fire ping')?.nodeAttributes.result as { targetFlowId?: string }
+    const fired = app.flowSteps('A').find((s) => s.label === 'fire ping')?.result as { targetFlowId?: string }
     // A local event names the flow it was sent to, so a listener can tell it from a global one
-    expect(heard).toEqual([{ type: 'ping', payload: undefined, targetFlowId: scope === 'local' ? expect.stringMatching(/^TNode/) : undefined }])
+    expect(heard).toEqual([{ type: 'ping', payload: undefined, targetFlowId: scope === 'local' ? expect.stringMatching(/^RunNode/) : undefined }])
     expect(heard[0].targetFlowId).toBe(fired.targetFlowId)
   })
 })

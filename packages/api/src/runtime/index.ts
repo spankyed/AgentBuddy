@@ -1,10 +1,11 @@
 import { createActor } from 'xstate';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 import { bindHost, type HostRuntime } from '@apackdev/sdk/runtime';
-import { _getLmdbPath, _getVolatileLmdbPath } from '@apackdev/sdk/utils';
+import { _getLmdbPath, _getRunHistoryPath } from '@apackdev/sdk/utils';
 import type { EarsEngine } from '@apackdev/ears';
+import type { RecordStore } from '@apackdev/ears';
 import type { LmdbStore, WriteFailure } from '@apackdev/ears/lmdb';
-import { assertNoDatabaseWriter, openDatabaseStore, storedSettings } from '@apackdev/host/database';
+import { assertNoDatabaseWriter, openDatabaseStore, openRunHistoryStore, storedSettings } from '@apackdev/host/database';
 import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apackdev/host/packs';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
@@ -15,7 +16,7 @@ import {
 } from '@apackdev/host/features';
 import { createAppBus, createParticipantClaims, HOST } from '@apackdev/host/bus';
 import { createHostRuntime } from '@apackdev/host/services';
-import { _settingsAdmin } from '@apackdev/sdk/services';
+import { _settingsAdmin, type RunNode } from '@apackdev/sdk/services';
 import { compileSettingsCatalog, createSettingsAccess } from '@apackdev/host/settings';
 import { forwardSecretsChanges } from '@apackdev/host/secrets';
 import { assertSourceResolution } from '@apackdev/host/build/source-resolution';
@@ -47,6 +48,8 @@ function logErrors(actor: string) {
 /** The app's data: its LMDB store, the engine that persists to it (both faces: the composition keeps `admin`), and its registered packs */
 export interface AppStore {
   store: LmdbStore;
+  /** The run history's store, closed with the app's */
+  runHistory: RecordStore<RunNode>;
   engine: EarsEngine;
   packs: PackRegistry;
 }
@@ -65,10 +68,13 @@ export let appSettingsAccess: ReturnType<typeof createSettingsAccess>;
  */
 export let appStore: LmdbStore | undefined;
 
+/** The run history's open store, so shutdown can close it */
+export let appRunHistory: RecordStore<RunNode> | undefined;
+
 /**
  * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller
  * registers them), the LMDB store and the app's engine persisting to it (`openDatabaseStore`, `@apackdev/host/database`,
- * which `apack db` opens a data dir with too) with their partition policy and entity types, and
+ * which `apack db` opens a data dir with too) with their entity types, the run history's store, and
  * `bindHost(createHostRuntime(...))` with the root event bus, whose log events are printed, the app version, the
  * registry (the SDK's lookups read it), the engine (packs get its operations, bound by the bind) and the host
  * services over the store and the engine's admin face. The caller hydrates the store once the packs are registered.
@@ -103,17 +109,19 @@ export function openAppStore(): AppStore {
     settingsForPack: (packId) => runtime.services.settings.forPack(packId),
   });
   const { store, engine } = openDatabaseStore({
-    paths: { primary: _getLmdbPath(), volatileBackup: _getVolatileLmdbPath() },
+    path: _getLmdbPath(),
     schema: packs,
     onWriteFailure: reportDroppedWrite,
   });
-  runtime = createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs });
+  const runHistory = openRunHistoryStore(_getRunHistoryPath());
+  runtime = createHostRuntime({ store, runHistory, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs });
   bindHost(runtime);
   printLogEvents();
   appPacks = packs;
   appSettingsAccess = createSettingsAccess(runtime.services.settings, packs.getPackRuntime);
   appStore = store;
-  return { store, engine, packs };
+  appRunHistory = runHistory;
+  return { store, runHistory, engine, packs };
 }
 
 /**
@@ -199,7 +207,7 @@ export async function setupBackend(): Promise<void> {
     }
   }
 
-  // ── Hydrate (policy now sees all entity types from all packs)
+  // ── Hydrate (the engine now knows every pack's entity types)
   await store.hydrate();
 
   // ── Start the packs: each one's onInit, the migrations (the app's, then external packs'), the content

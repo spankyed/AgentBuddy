@@ -1,4 +1,4 @@
-import type { TNodeEntity } from '@apackdev/sdk/steps';
+import type { RunTree, RunNode } from '@apackdev/sdk/steps';
 
 import { EARS } from '#generated/ears.ts';
 
@@ -42,10 +42,10 @@ export type IncomingDatabaseEvents =
   | { type: 'EXECUTE_TRANSACTION'; code: string }
   | { type: 'GENERATE_AI_QUERY'; prompt: string; mode?: 'query' | 'transaction' }
   | { type: 'REFRESH_SCHEMA' }
-  | { type: 'GET_TRACE_FLOWS' }
+  | { type: 'GET_FLOW_RUNS' }
   | { type: 'GET_FLOW_EVENTS'; flowId: string; offset?: number; limit?: number }
   | { type: 'GET_NODE_DETAILS'; nodeId: string }
-  | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'volatileLmdb')[] }
+  | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'runHistory')[] }
   | { type: 'IMPORT_DATABASE'; path: string; skipUnknownDatabases?: boolean }
   | { type: 'GET_BACKUP_INFO'; path: string }
   | { type: 'RESET_DATABASE' };
@@ -81,13 +81,13 @@ export type OutgoingDatabaseEvents =
    * and one event cannot be both.
    */
   | { type: 'AI_QUERY_ERROR'; error: string }
-  | { type: 'TRACE_FLOWS_RESULT'; flows: TNodeEntity[] }
+  | { type: 'FLOW_RUNS_RESULT'; flows: RunNode[] }
   /**
    * `offset` is which page these events are, which is what tells two pages of one flow apart — the flow id
    * alone cannot, so a viewer correlating on it places a late page by wherever it has since got to.
    */
-  | { type: 'FLOW_EVENTS_RESULT'; flowId: string; events: TNodeEntity[]; hasMore: boolean; offset: number }
-  | { type: 'NODE_DETAILS_RESULT'; nodeId: string; details: TNodeEntity | null }
+  | { type: 'FLOW_EVENTS_RESULT'; flowId: string; events: RunTree[]; hasMore: boolean; offset: number }
+  | { type: 'NODE_DETAILS_RESULT'; nodeId: string; details: RunNode | null }
   | { type: 'EXPORT_DATABASE_SUCCESS'; path: string }
   | { type: 'EXPORT_DATABASE_ERROR'; error: string }
   | { type: 'IMPORT_DATABASE_SUCCESS'; message?: string }

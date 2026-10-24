@@ -15,8 +15,8 @@ export interface _AppDataPaths {
     lmdb: string;
     // (undocumented)
     media: string;
+    runHistory: string;
     secretsFile: string;
-    volatileLmdb: string;
 }
 
 // @internal
@@ -198,13 +198,13 @@ export const _getLmdbPath: () => string;
 export const _getMediaPath: () => string;
 
 // @internal
+export const _getRunHistoryPath: () => string;
+
+// @internal
 export const _getSecretsFilePath: () => string;
 
 // @public (undocumented)
 export const getUserDataPath: () => string;
-
-// @internal
-export const _getVolatileLmdbPath: () => string;
 
 // @public
 export function hasOwn(object: object, key: PropertyKey): boolean;

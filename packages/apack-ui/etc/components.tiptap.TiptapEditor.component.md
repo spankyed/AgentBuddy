@@ -27,7 +27,7 @@ props {
   pauseAvailable?: boolean | undefined;
   placeholder?: string | undefined;
   showGutter?: boolean | undefined;
-  variant?: "chat" | "full" | undefined;
+  variant?: TiptapVariant | undefined;
 }
 emits {
   (event: "clearInput") => void;

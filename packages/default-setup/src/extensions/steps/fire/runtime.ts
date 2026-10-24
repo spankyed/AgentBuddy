@@ -1,5 +1,5 @@
 import { sendToSystem } from '#generated/events.ts';
-import type { TNodeEntity, ExecutionContext } from '@apackdev/sdk/steps';
+import type { StepInput, ExecutionContext } from '@apackdev/sdk/steps';
 import { extractValueByPath } from '@apackdev/sdk/utils';
 import type { FireNode } from './types.ts';
 
@@ -13,10 +13,10 @@ function resolvePayload(value: unknown, ctx: ExecutionContext): unknown {
   return value;
 }
 
-export function handler(tNode: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export function handler(input: StepInput, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const a = actor as { send: (event: any) => void };
 
-  const fireConfig = tNode.nodeAttributes || {};
+  const fireConfig = input.settings;
 
   if (!fireConfig.eventType) {
     a.send({ type: 'ERROR', error: 'Missing eventType' });
@@ -25,10 +25,10 @@ export function handler(tNode: TNodeEntity, node: unknown, ctx: ExecutionContext
 
   const scope = fireConfig.scope || 'local';
   const eventType = fireConfig.eventType as string;
-  // A payload mapping (the editor's, resolved into the TNode's params) wins over the node's payload
-  const mapped = tNode.resolvedParams ?? {};
+  // A payload mapping (the editor's, resolved into the step's params) wins over the node's payload
+  const mapped = input.params;
   const payload = 'payload' in mapped ? mapped.payload : resolvePayload((node as FireNode).payload, ctx);
-  const targetFlowId = scope === 'local' ? ctx.flowTNodeId : undefined;
+  const targetFlowId = scope === 'local' ? ctx.flowRunNodeId : undefined;
 
   try {
     sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT',  eventType, payload, targetFlowId });

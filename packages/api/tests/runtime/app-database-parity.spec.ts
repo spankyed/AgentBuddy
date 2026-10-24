@@ -79,13 +79,11 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 
 describe('a data dir opened by the API and by openAppDatabase', () => {
   it('hydrates to the same entities, relations and roles', async () => {
-    // A first run content the app's data; the user adds a note with a role and a relation, and a run leaves a trace in
-    // the volatile partition, which neither hydrates
+    // A first run applies the app's content; the user adds a note with a role and a relation
     const first = await bootApi();
     startPacks(first.packs);
     untypedCreate('Note', { id: 'Note-child', title: 'child', content: '', icon: null, noteType: 'document', completed: false, hideCompletedChildren: false, displayOrder: 0, lastSeen: 0 });
     untypedCreate('Note', { id: 'Note-parity', title: 'mine', content: '', icon: null, noteType: 'document', completed: false, hideCompletedChildren: false, displayOrder: 0, lastSeen: 0 }).grant('assistant_birth').link('parent_of', 'Note-child');
-    untypedCreate('TNode', { id: 'TNode-parity', tNodeType: 'step', label: 'Step', status: 'done', startedAt: 0 });
     closeApi(first);
 
     const api = await bootApi();
@@ -101,11 +99,8 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     expect(fromApi.relations.length).toBeGreaterThan(0);
     expect(fromApi.entities.some(({ roles }) => roles.length > 0)).toBe(true);
     expect(fromApi.entities.find(({ id }) => id === 'Note-parity')).toMatchObject({ roles: ['assistant_birth'] });
-    expect(fromApi.entities.find(({ id }) => id === 'TNode-parity')).toBeUndefined();
     expect(fromTool).toEqual(fromApi);
-    // The tool knows the built-in pack's entity types. Which partition each lands in is not compared here:
-    // both sides call the one `appPartitionPolicy()`, so an equality between them cannot fail —
-    // tests/database/partition-policy.spec.ts is where that routing is asserted
+    // The tool knows the built-in pack's entity types
     expect(db.schema.getRegisteredEntityTypes()).toEqual(types);
   });
 });
@@ -113,13 +108,12 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
 // The tool writes through the schema it reconstructs, so a row it creates has to land in the partition the API reads
 // it from — the direction a schema drift would corrupt
 describe('what the tool writes', () => {
-  it('lands where the API reads it, the excluded types in the volatile partition', async () => {
+  it('lands where the API reads it', async () => {
     const booted = await bootApi();
     closeApi(booted);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, log: () => {} });
     untypedCreate('Note', { id: 'Note-tool' }).set('title', 'from the tool').grant('assistant_birth');
-    untypedCreate('TNode', { id: 'TNode-tool', tNodeType: 'step', label: 'Step', status: 'done', startedAt: 0 });
     db.close();
 
     const api = await bootApi();
@@ -127,9 +121,6 @@ describe('what the tool writes', () => {
       // The note is in the data the API hydrates, with its role
       expect(api.engine.getRow('Note-tool')?.title).toBe('from the tool');
       expect([...api.engine.getRoles('Note-tool')]).toEqual(['assistant_birth']);
-      // The run history isn't hydrated, and is in the partition the app keeps it in
-      expect(api.engine.getRow('TNode-tool')?.status).toBeUndefined();
-      expect(api.store.read('volatileBackup').getAttr('TNode-tool', 'status')).toBe('done');
     } finally {
       closeApi(api);
     }

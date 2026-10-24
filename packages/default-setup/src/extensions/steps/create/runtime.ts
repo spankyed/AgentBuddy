@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 import { reportError, createLogger } from '@apackdev/sdk/logger';
 import { isEntityType } from '@apackdev/sdk/ears';
 import { EARS, create } from '#generated/ears.ts';
@@ -12,8 +12,8 @@ type StepActor = { send: (event: { type: 'COMPLETE'; result: unknown } | { type:
 const LABEL_SOURCES = ['title', 'name', 'topic'] as const;
 
 /** The step's fields: its literal params with its resolved mappings over them, without undefined values */
-export function stepFields(tNode: TNodeEntity): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(tNode.resolvedParams ?? {}).filter(([, value]) => value !== undefined));
+export function stepFields(input: StepInput): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(input.params).filter(([, value]) => value !== undefined));
 }
 
 /** Throws naming the entity type when the running app hasn't registered it (the SDK's and every registered pack's count) */
@@ -34,15 +34,15 @@ export function createEntityRow(entityType: string, fields: Record<string, unkno
   return create(entityType, data).row();
 }
 
-/** Reports a create or update step's error against its TNode */
-export function reportStepError(error: unknown, t: TNodeEntity, n: CreateNode | { id: string; label: string; nodeType: string }, ctx: ExecutionContext) {
+/** Reports a create or update step's error against its run node */
+export function reportStepError(error: unknown, input: StepInput, n: CreateNode | { id: string; label: string; nodeType: string }, ctx: ExecutionContext) {
   return reportError({
     error,
     source: `brain-${n.nodeType}`,
     step: {
       phase: `${n.nodeType}.execute`,
-      flowTNodeId: ctx.flowTNodeId,
-      tNodeId: t.id,
+      flowRunNodeId: ctx.flowRunNodeId,
+      runNodeId: input.runNodeId,
       nodeId: n.id as EARS.EntityId,
       nodeLabel: n.label,
       nodeType: n.nodeType,
@@ -51,15 +51,15 @@ export function reportStepError(error: unknown, t: TNodeEntity, n: CreateNode | 
   });
 }
 
-export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(input: StepInput, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as CreateNode;
   const a = actor as StepActor;
   try {
     assertEntityType(n.entityTypeTarget, n.label);
-    const row = createEntityRow(n.entityTypeTarget, stepFields(t), n.inferLabel);
+    const row = createEntityRow(n.entityTypeTarget, stepFields(input), n.inferLabel);
     brainLogger.debug(`Created ${n.entityTypeTarget} ${row.id} in node: ${n.label}`, { row });
     a.send({ type: 'COMPLETE', result: row });
   } catch (error) {
-    a.send({ type: 'ERROR', error: reportStepError(error, t, n, ctx) });
+    a.send({ type: 'ERROR', error: reportStepError(error, input, n, ctx) });
   }
 }

@@ -63,7 +63,7 @@ const context = (userDataDir: string) => ({
 export async function writeData(userDataDir: string, write: () => void): Promise<void> {
   const paths = _appDataPaths(userDataDir);
   const { store, engine } = openDatabaseStore({
-    paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
+    path: paths.lmdb,
     schema: readInstalledSchema(context(userDataDir)),
     log: () => {},
   });

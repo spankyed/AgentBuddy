@@ -20,12 +20,12 @@
       :min-zoom="0.5"
       :max-zoom="2"
     >
-      <template #node-tnode="nodeProps">
+      <template #node-run-node="nodeProps">
         <BaseNode
           v-bind="nodeProps"
           :editable="false"
-          :show-status-indicator="nodeProps.data.tNodeType !== 'event'"
-          :selectable="nodeProps.data.tNodeType === 'flow' || nodeProps.data.tNodeType === 'step' || nodeProps.data.tNodeType === 'event'"
+          :show-status-indicator="nodeProps.data.kind !== 'event'"
+          :selectable="nodeProps.data.kind === 'flow' || nodeProps.data.kind === 'step' || nodeProps.data.kind === 'event'"
         />
       </template>
       <Background variant="dots" />
@@ -56,10 +56,10 @@
         </button>
       </div>
       
-      <!-- Current TNode label (top center) -->
-      <div v-if="flowTNodeId" class="absolute z-10 transform -translate-x-1/2 left-1/2 top-4">
+      <!-- Current RunNode label (top center) -->
+      <div v-if="flowRunNodeId" class="absolute z-10 transform -translate-x-1/2 left-1/2 top-4">
         <div class="px-4 py-2 border rounded-md bg-neutral-900/90 border-neutral-800 backdrop-blur-sm">
-          <span class="text-sm text-neutral-100">{{ flowTNodeId }}</span>
+          <span class="text-sm text-neutral-100">{{ flowRunNodeId }}</span>
         </div>
       </div>
     </VueFlow>
@@ -68,7 +68,7 @@
 
 <script lang="ts">
 export default {
-  name: 'TNodeGraph'
+  name: 'RunNodeGraph'
 }
 </script>
 
@@ -85,7 +85,7 @@ import {
 } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
-import type { TrackTree } from '@apackdev/sdk/steps';
+import type { RunTree } from '@apackdev/sdk/steps';
 import BaseNode from '@apackdev/ui/components/BaseNode';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport.ts';
@@ -95,8 +95,8 @@ import { useStepDeclarations } from '@apackdev/sdk/fe';
 const stepDeclarations = useStepDeclarations();
 
 interface Props {
-  tnodeTree?: TrackTree[];
-  flowTNodeId?: string;
+  runNodeTree?: RunTree[];
+  flowRunNodeId?: string;
   canGoBack: boolean;
   animationsEnabled?: boolean;
   selectedNodeId?: string;
@@ -105,8 +105,8 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  'node-click': [tNodeId: string];
-  'flow-navigate': [tNodeId: string];
+  'node-click': [runNodeId: string];
+  'flow-navigate': [runNodeId: string];
   'back-click': [];
 }>();
 
@@ -165,46 +165,46 @@ const clearStalePan = (event: MouseEvent) => {
 };
 
 // Helper functions
-const createVueFlowNode = (tnode: TrackTree, position: { x: number; y: number }): VueFlowNode => {
-  const isTrigger = stepDeclarations.value.some(entry => entry.type === tnode.triggerType && entry.declaration.kind === 'trigger');
+const createVueFlowNode = (runNode: RunTree, position: { x: number; y: number }): VueFlowNode => {
+  const isTrigger = stepDeclarations.value.some(entry => entry.type === runNode.triggerType && entry.declaration.kind === 'trigger');
   return {
-    id: tnode.id,
-    type: 'tnode',
+    id: runNode.id,
+    type: 'run-node',
     position,
     data: {
-      label: tnode.label,
-      nodeType: isTrigger ? tnode.triggerType : (tnode.stepNodeType || tnode.tNodeType),
-      tNodeType: tnode.tNodeType,
-      status: tnode.status,
-      eventType: tnode.eventType,
-      subtitle: isTrigger && tnode.cronExpression ? cronToHuman(tnode.cronExpression) : tnode.eventType,
+      label: runNode.label,
+      nodeType: isTrigger ? runNode.triggerType : (runNode.stepNodeType || runNode.kind),
+      kind: runNode.kind,
+      status: runNode.status,
+      eventType: runNode.eventType,
+      subtitle: isTrigger && runNode.cronExpression ? cronToHuman(runNode.cronExpression) : runNode.eventType,
     },
   };
 };
 
-const subtreeLeafCount = (tnode: TrackTree): number => {
-  if (tnode.children.length === 0) return 1;
-  return tnode.children.reduce((sum, child) => sum + subtreeLeafCount(child), 0);
+const subtreeLeafCount = (runNode: RunTree): number => {
+  if (runNode.children.length === 0) return 1;
+  return runNode.children.reduce((sum, child) => sum + subtreeLeafCount(child), 0);
 };
 
-const calculateNodePositions = (tracks: TrackTree[]): VueFlowNode[] => {
+const calculateNodePositions = (tracks: RunTree[]): VueFlowNode[] => {
   const nodes: VueFlowNode[] = [];
   let trackY = 0;
 
-  const traverseTrack = (tnode: TrackTree, x: number, y: number) => {
-    nodes.push(createVueFlowNode(tnode, { x, y }));
+  const traverseTrack = (runNode: RunTree, x: number, y: number) => {
+    nodes.push(createVueFlowNode(runNode, { x, y }));
     const childX = x + LAYOUT.NODE_WIDTH + LAYOUT.HORIZONTAL_GAP;
 
-    if (tnode.children.length === 1) {
+    if (runNode.children.length === 1) {
       // Sequential: continue same row
-      traverseTrack(tnode.children[0], childX, y);
-    } else if (tnode.children.length > 1) {
+      traverseTrack(runNode.children[0], childX, y);
+    } else if (runNode.children.length > 1) {
       // Parallel: fan out vertically
-      const totalLeaves = tnode.children.reduce((s, c) => s + subtreeLeafCount(c), 0);
+      const totalLeaves = runNode.children.reduce((s, c) => s + subtreeLeafCount(c), 0);
       const totalPixelHeight = (totalLeaves - 1) * ROW_HEIGHT;
       let currentY = y - totalPixelHeight / 2;
 
-      tnode.children.forEach(child => {
+      runNode.children.forEach(child => {
         const childLeaves = subtreeLeafCount(child);
         const childCenterY = currentY + ((childLeaves - 1) * ROW_HEIGHT) / 2;
         traverseTrack(child, childX, childCenterY);
@@ -229,13 +229,13 @@ const calculateNodePositions = (tracks: TrackTree[]): VueFlowNode[] => {
 // Limit canvas to the 150 most recent event tracks
 const MAX_CANVAS_TRACKS = 150;
 const recentTracks = computed(() => {
-  if (!props.tnodeTree?.length) return [];
-  return props.tnodeTree.length > MAX_CANVAS_TRACKS
-    ? props.tnodeTree.slice(-MAX_CANVAS_TRACKS)
-    : props.tnodeTree;
+  if (!props.runNodeTree?.length) return [];
+  return props.runNodeTree.length > MAX_CANVAS_TRACKS
+    ? props.runNodeTree.slice(-MAX_CANVAS_TRACKS)
+    : props.runNodeTree;
 });
 
-// Convert TNode tree to VueFlow nodes
+// Convert RunNode tree to VueFlow nodes
 const nodes = computed<VueFlowNode[]>(() => {
   if (!recentTracks.value.length) return [];
   return calculateNodePositions(recentTracks.value);
@@ -247,14 +247,14 @@ const edges = computed<Edge[]>(() => {
   const result: Edge[] = [];
 
   // Helper to recursively build edges — every child connects to its parent
-  const buildEdges = (tnode: TrackTree) => {
-    tnode.children.forEach((child) => {
+  const buildEdges = (runNode: RunTree) => {
+    runNode.children.forEach((child) => {
       result.push({
-        id: `${tnode.id}-to-${child.id}`,
-        source: tnode.id,
+        id: `${runNode.id}-to-${child.id}`,
+        source: runNode.id,
         target: child.id,
         type: 'smoothstep',
-        animated: tnode.status === 'active',
+        animated: runNode.status === 'active',
       });
       buildEdges(child);
     });
@@ -267,9 +267,9 @@ const edges = computed<Edge[]>(() => {
 
 // Register node event handlers using Vue Flow composables
 onNodeClick((event: NodeMouseEvent) => {
-  const nodeData = event.node.data as { tNodeType?: string };
+  const nodeData = event.node.data as { kind?: string };
   
-  if (nodeData.tNodeType === 'flow') {
+  if (nodeData.kind === 'flow') {
     // For flow nodes, delay single click to allow for double-click detection
     if (clickTimeout) {
       clearTimeout(clickTimeout);
@@ -278,17 +278,17 @@ onNodeClick((event: NodeMouseEvent) => {
       emit('node-click', event.node.id);
       clickTimeout = null;
     }, DOUBLE_CLICK_DELAY);
-  } else if (nodeData.tNodeType === 'step' || nodeData.tNodeType === 'event') {
+  } else if (nodeData.kind === 'step' || nodeData.kind === 'event') {
     // Step and event nodes always open details immediately
     emit('node-click', event.node.id);
   }
 });
 
 onNodeDoubleClick((event: NodeMouseEvent) => {
-  const nodeData = event.node.data as { tNodeType?: string };
+  const nodeData = event.node.data as { kind?: string };
   
   // Only flow nodes can be navigated into on double click
-  if (nodeData.tNodeType === 'flow') {
+  if (nodeData.kind === 'flow') {
     // Cancel the pending single-click action
     if (clickTimeout) {
       clearTimeout(clickTimeout);
@@ -308,7 +308,7 @@ const panToLatestTrack = () => {
   const positions = new Map(nodes.value.map(n => [n.id, n.position]));
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
 
-  const visit = (n: TrackTree) => {
+  const visit = (n: RunTree) => {
     const p = positions.get(n.id);
     if (p) {
       minX = Math.min(minX, p.x);

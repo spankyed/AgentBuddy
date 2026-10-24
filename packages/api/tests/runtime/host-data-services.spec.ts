@@ -1,5 +1,5 @@
 // The pack-facing replacements for @apackdev/host in pack code: relation reads in @apackdev/ears,
-// and the host-implemented services.appData and services.traceStore, as the API's host init registers them.
+// and the host-implemented services.appData, as the API's host init registers it.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -17,7 +17,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-host-data-services-')
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('../../src/runtime/index.ts');
-const { store, engine, packs } = openAppStore();
+const { store, runHistory, engine, packs } = openAppStore();
 const { untypedQuery, untypedCreate, untypedUpsert, untypedWrite } = await import('@apackdev/sdk/ears');
 const { boundHost } = await import('@apackdev/sdk/runtime/internals');
 const { services } = boundHost();
@@ -25,40 +25,8 @@ const settingsAdmin = () => boundHost().services.settings;
 
 afterAll(() => {
   store.close();
+  runHistory.close();
   fs.rmSync(dataDir, { recursive: true, force: true });
-});
-
-describe('services.traceStore', () => {
-  const US = '\x1F';
-  const ids = { flow: 'TNode-trace-flow', event: 'TNode-trace-event', later: 'TNode-trace-later' } as const;
-
-  afterAll(() => {
-    const dbs = store.envs.volatileBackup;
-    for (const id of Object.values(ids)) dbs.entities.removeSync(id);
-    dbs.attrs.removeSync(`label${US}${ids.flow}`);
-    dbs.relations.removeSync('Relation-trace-1');
-    dbs.relations.removeSync('Relation-trace-2');
-  });
-
-  it("reads the volatile store's entities, attributes and relations", () => {
-    const dbs = store.envs.volatileBackup;
-    dbs.entities.putSync(ids.flow, { type: 'TNode', createdAt: 1 });
-    dbs.entities.putSync(ids.event, { type: 'TNode', createdAt: 2 });
-    dbs.entities.putSync(ids.later, { type: 'TNode', createdAt: 3 });
-    dbs.attrs.putSync(`label${US}${ids.flow}`, { t: 'string', v: 'Run' });
-    dbs.relations.putSync('Relation-trace-1', { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 });
-    dbs.relations.putSync('Relation-trace-2', { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 });
-
-    const traces = services.traceStore;
-    expect(traces.entities().filter((e) => e.id.startsWith('TNode-trace-')).map((e) => e.id).sort()).toEqual(Object.values(ids).sort());
-    expect(traces.getEntityMeta(ids.flow)).toEqual({ type: 'TNode', createdAt: 1 });
-    expect(traces.getAttr(ids.flow, 'label')).toBe('Run');
-    expect(traces.relations({ kind: 'tracked', source: ids.flow })).toEqual([
-      { id: 'Relation-trace-1', kind: 'tracked', source: ids.flow, target: ids.event, createdAt: 5 },
-      { id: 'Relation-trace-2', kind: 'tracked', source: ids.flow, target: ids.later, createdAt: 6 },
-    ]);
-    expect(traces.relations({ kind: 'tracked', source: ids.flow, limit: 1 })).toHaveLength(1);
-  });
 });
 
 describe('services.appData', () => {
@@ -74,14 +42,14 @@ describe('services.appData', () => {
 
     version.current = '0.4.1';
     try {
-      const backup = await services.appData.exportBackup(dir, 'probe', ['volatileLmdb']);
+      const backup = await services.appData.exportBackup(dir, 'probe', ['lmdb']);
       expect(backup).toBe(path.join(dir, 'probe'));
       // What made it, so a backup folder says where it came from without opening its databases
       expect(await services.appData.readBackupSummary(backup)).toEqual({
-        timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false, appVersion: '0.4.1',
+        timestamp: expect.any(Number), databases: ['lmdb'], size: expect.any(Number), hasMedia: false, appVersion: '0.4.1',
       });
       const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
-      expect(metadata).toMatchObject({ appVersion: '0.4.1', storageFormat: expect.any(Number) });
+      expect(metadata).toMatchObject({ appVersion: '0.4.1', storageFormats: { lmdb: expect.any(Number) } });
     } finally {
       version.current = undefined;
     }
@@ -107,18 +75,6 @@ describe('services.appData', () => {
     expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true }))
       .toEqual({ databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] });
     expect(untypedQuery.ids('Prompt-kept').pickOne(['label'])).toBeUndefined();
-  });
-
-  it('restores a backup whose listed store it holds nothing for, and says which', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-empty-db-backup-'));
-    dirs.push(dir);
-    // exportBackup lists volatileLmdb but copies no folder when there is nothing in it
-    const backup = await services.appData.exportBackup(dir, 'sparse', ['lmdb', 'volatileLmdb']);
-    fs.rmSync(path.join(backup, 'volatileLmdb'), { recursive: true, force: true });
-
-    // Reported, so the app can tell the user that store came back empty rather than dropping it silently
-    expect(await services.appData.importBackup(backup))
-      .toEqual({ databases: ['lmdb'], missingDatabases: ['volatileLmdb'], unknownEntityTypes: [] });
   });
 
   it('restores current preferences, onboarding completion and unavailable feature overrides', async () => {
@@ -209,9 +165,41 @@ describe('services.appData', () => {
     } finally { off(); }
   });
 
+  it('restores a backup whose listed store it holds nothing for, and says which', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-empty-db-backup-'));
+    dirs.push(dir);
+    const backup = await services.appData.exportBackup(dir, 'sparse', ['lmdb', 'runHistory']);
+    fs.rmSync(path.join(backup, 'runHistory'), { recursive: true, force: true });
+
+    // Reported, so the app can tell the user that store came back empty rather than dropping it silently
+    expect(await services.appData.importBackup(backup)).toMatchObject({ databases: ['lmdb'], missingDatabases: ['runHistory'] });
+  });
+
+  it('brings back the run history a backup holds, with what was running then stopped', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-history-backup-'));
+    dirs.push(dir);
+    const { id } = services.runHistory.start({ kind: 'flow', label: 'Running at the backup' });
+    const backup = await services.appData.exportBackup(dir, 'history', ['lmdb', 'runHistory']);
+    services.runHistory.update(id, { label: 'Changed since' });
+
+    await services.appData.importBackup(backup);
+
+    expect(services.runHistory.get(id)).toMatchObject({ label: 'Running at the backup', status: 'stopped' });
+  });
+
   it('rejects an import of a directory that is not a backup', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-not-backup-'));
     dirs.push(dir);
     await expect(services.appData.importBackup(dir)).rejects.toThrow(`${dir} isn't a backup: it has no metadata.json`);
+  });
+});
+
+describe('a reset', () => {
+  it('empties the run history with the database', async () => {
+    const { id } = services.runHistory.start({ kind: 'flow', label: 'Before the reset' });
+
+    await services.appData.reset();
+
+    expect(services.runHistory.get(id)).toBeUndefined();
   });
 });

@@ -239,7 +239,7 @@ it('summarizes a note', async () => {
   const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
 
   expect(run.steps).toEqual([expect.objectContaining({ label: 'summarize', status: 'completed' })]);
-  expect(run.steps[0].nodeAttributes.result).toMatchObject({ text: 'Buy milk' });
+  expect(run.steps[0].result).toMatchObject({ text: 'Buy milk' });
 });
 ```
 
@@ -247,11 +247,11 @@ it('summarizes a note', async () => {
 - **`runFlow(label, { event?, data?, timeoutMs? })`** (default timeout 10 000 ms, covering its sends and settling) sends `event` with `data` as its payload, as a client sends an event to the brain, and waits for the flow labelled `label`, which must be running (the root flow or a subflow).
   - It resolves once every track of that flow the event triggered has finished: steps completed or failed, apart from steps that wait by design (keep-alive).
   - Without `event`, it resolves with the entry tracks the flow ran when it started.
-  - It returns a `FlowRun`: `eventTNodeIds`, the trace nodes of the tracks the event triggered, and `steps`, the steps those tracks ran in start order, each a `FlowStepTrace` (`tNodeId`, `label`, `tNodeType` (`step`, or `flow` for a subflow), `status`, `nodeAttributes` (with `result`) and `params` (the inputs resolved from the event and earlier steps)).
+  - It returns a `FlowRun`: `eventRunNodeIds`, the run-history nodes of the tracks the event triggered, and `steps`, the steps those tracks ran in start order, each a `FlowRunStep` (`runNodeId`, `label`, `kind` (`step`, or `flow` for a subflow), `status`, `input` (what the step was given: its settings, and under `params` the inputs it resolved from the event and earlier steps, as its run node records them — a long value is a `{ value, _truncated }` marker) and `result`, what the step returned).
   - It never makes a flow the root flow or restarts the brain; it fails naming the running flows when `label` isn't one.
-  - The result holds only the tracks `event` triggered. Tracks started by events those tracks send (a `fire` step, a `TRIGGER_BRAIN_EVENT` sent to the brain's role) aren't in it: `await app.settle()`, then read them with `flowTrace`.
+  - The result holds only the tracks `event` triggered. Tracks started by events those tracks send (a `fire` step, a `TRIGGER_BRAIN_EVENT` sent to the brain's role) aren't in it: `await app.settle()`, then read them with `flowSteps`.
   - It doesn't connect the app: flows run, and events from `fire` steps and schedule ticks reach the brain, without a client. Connect only to read what systems send to surfaces (`emitted`, `nextEmit`).
-- **`flowTrace(label)`** returns the steps a flow has run so far in the app, the root flow or a subflow, by the flow's label (not the label of the step that runs it). It still reads after `stop()`: rows are kept as the brain last reported them.
+- **`flowSteps(label)`** returns the steps a flow has run so far in the app, the root flow or a subflow, by the flow's label (not the label of the step that runs it). It still reads after `stop()`: rows are kept as the brain last reported them.
 - **Without a root flow** the brain doesn't start: it reports that no flow has the root role when flows exist, and stays stopped with no flows at all.
 - **Schedule triggers** register through the `scheduler` service. Mock it (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) and call the tick it receives to run the track. Unmocked, real cron jobs run while the app runs and stop when it stops.
 
@@ -261,7 +261,7 @@ it('summarizes a note', async () => {
 
 - **Setup and data:** `setupPackTests` (`PackTestOptions`), `importContent` (`ImportContentOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `ContentRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
 - **Frontend:** `startShell` (`StartShellOptions`, `TestShell`, `TestSurface`).
-- **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `SurfaceEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
+- **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowRunStep`, `RunFlowOptions` and `SurfaceEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
 - **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`, `getTestSettings`.
 
 `@apackdev/testing/vitest`: `isolatedDataDir` (`IsolatedDataDir`).

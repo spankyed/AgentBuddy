@@ -112,7 +112,6 @@ export namespace EARS {
         readonly Relation: "Relation";
         readonly Flow: "Flow";
         readonly Node: "Node";
-        readonly TNode: "TNode";
         readonly Action: "Action";
         readonly Prompt: "Prompt";
         readonly Document: "Document";
@@ -127,8 +126,6 @@ export namespace EARS {
         readonly CONTAINS: "contains";
         readonly TRANSITIONS_TO: "transitions_to";
         readonly INSTANCE_OF: "instance_of";
-        readonly SPAWNED: "spawned";
-        readonly TRACKED: "tracked";
         readonly PARENT_OF: "parent_of";
     };
     // (undocumented)
@@ -262,6 +259,9 @@ export interface RelationEntity extends BaseEntity {
 }
 
 // @public
+export type RunNodeKind = RunNode['kind'];
+
+// @public
 export function safeEvents<TEvent extends {
     type: string;
 }>(): <TTypes extends TEvent["type"] | readonly TEvent["type"][]>(expected: TTypes, event: TEvent) => ExtractEvent<TEvent, TTypes extends readonly TEvent["type"][] ? TTypes[number] : TTypes>;
@@ -271,7 +271,6 @@ export type SdkEntityShapes = {
     Relation: RelationEntity;
     Flow: FlowEntity;
     Node: NodeBase;
-    TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
     Document: DocumentEntity;
@@ -379,44 +378,6 @@ export interface TextContent {
     // (undocumented)
     type: 'text';
 }
-
-// @public (undocumented)
-export interface TNodeEntity extends BaseEntity {
-    // (undocumented)
-    blueprint?: {
-        nodeId: EARS.EntityId;
-        flowId: EARS.EntityId;
-    };
-    // (undocumented)
-    completedAt?: TimestampMs;
-    // (undocumented)
-    cronExpression?: string;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    eventType?: string;
-    // (undocumented)
-    final?: boolean;
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    nodeAttributes?: Record<string, unknown>;
-    // (undocumented)
-    resolvedParams?: Record<string, unknown>;
-    // (undocumented)
-    startedAt: TimestampMs;
-    // (undocumented)
-    status: EntityStatus;
-    // (undocumented)
-    stepNodeType?: string;
-    // (undocumented)
-    tNodeType: TNodeKind;
-    // (undocumented)
-    triggerType?: string;
-}
-
-// @public (undocumented)
-export type TNodeKind = 'flow' | 'event' | 'step';
 
 // (No @packageDocumentation comment for this package)
 

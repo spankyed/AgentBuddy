@@ -498,7 +498,7 @@ describe('findLmdbImports', () => {
   });
 
   it.each([
-    ['packages/apack-host/src/services/trace-store.ts', "import { open } from 'lmdb';"],
+    ['packages/apack-host/src/services/run-history.ts', "import { open } from 'lmdb';"],
     ['packages/apack-host/tests/store.spec.ts', "const lmdb = await import('lmdb');"],
     ['packages/api/src/setup/backend.ts', "import type { Database } from 'lmdb';"],
     ['packages/api/scripts/db/fix.ts', "const { open } = require('lmdb/dist/index.cjs');"],
@@ -687,7 +687,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
       dirs: rule.dirs.map((dir) => `src/${dir}`),
       except: rule.except && `src/${rule.except}`,
     }));
-    write('packages/apack-host/src/services/trace-store.ts', "import { open } from 'lmdb';");
+    write('packages/apack-host/src/services/run-history.ts', "import { open } from 'lmdb';");
     return findLmdbImports(rules, root);
   },
   findRawGitListings: () => {

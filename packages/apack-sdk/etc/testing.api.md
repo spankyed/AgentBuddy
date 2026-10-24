@@ -7,7 +7,6 @@
 import type { AnyActorRef } from 'xstate';
 import type { AnyExtension } from '@tiptap/vue-3';
 import type { AnyStateMachine } from 'xstate';
-import type { BaseEntity } from '@apackdev/ears';
 import type { Component } from 'vue';
 import type { DeepPartial } from 'ai';
 import { EARS as EARS_2 } from '@apackdev/ears';
@@ -22,6 +21,7 @@ import type { InferSchema } from 'ai';
 import type { JSONSchema7 } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import { RecordStore } from '@apackdev/ears';
 import type { Ref } from 'vue';
 import type { rerank } from 'ai';
 import { RowRules } from '@apackdev/ears';
@@ -144,6 +144,9 @@ export interface FakeTextCall {
 export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {
 }
 
+// @internal
+export function _memoryRunHistoryStore(): RecordStore<RunNode>;
+
 // @public
 export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): NativePackDeclaration;
 
@@ -207,6 +210,9 @@ export interface TestRootEvents extends RootEvents {
 
 // @public
 export const testRootEvents: TestRootEvents;
+
+// @public
+export const testRunHistory: () => RunHistory;
 
 // @public
 export interface TestRuntimeStartOptions {

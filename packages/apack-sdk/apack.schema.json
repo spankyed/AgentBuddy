@@ -58,7 +58,7 @@
                   "host/settings",
                   "host/onboarding",
                   "host/appData",
-                  "host/traceStore",
+                  "host/runHistory",
                   "host/inference",
                   "host/secrets",
                   "host/filesystem"
@@ -117,7 +117,6 @@
                 "Relation",
                 "Flow",
                 "Node",
-                "TNode",
                 "Action",
                 "Prompt",
                 "Document",
@@ -137,8 +136,6 @@
                 "contains",
                 "transitions_to",
                 "instance_of",
-                "spawned",
-                "tracked",
                 "parent_of"
               ]
             }
@@ -195,7 +192,6 @@
                   "Relation",
                   "Flow",
                   "Node",
-                  "TNode",
                   "Action",
                   "Prompt",
                   "Document",

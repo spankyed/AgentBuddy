@@ -14,7 +14,8 @@ import { testPacks } from './packs.ts';
 import { bindTestRuntime, resetTestHostState } from './host.ts';
 import type { OnboardingService } from '../services/onboarding.ts';
 
-export { testRootEvents, takeSystemErrors, addTestSecret, type TestRootEvents } from './host.ts';
+export { testRootEvents, testRunHistory, takeSystemErrors, addTestSecret, type TestRootEvents } from './host.ts';
+export { _memoryRunHistoryStore } from './memory-run-history.ts';
 export { testPacks, type TestPacks } from './packs.ts';
 export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInferenceReplies, type FakeInferenceReply, type FakeTextCall } from './fake-inference.ts';
 // A pack's own tests bind a frontend host for the file and forget it again; bindFeHost is the renderer's,
@@ -85,7 +86,7 @@ function testEngine(): EarsEngine {
  * relation kinds plus `relationKinds` and roles plus `roles`, writes not persisted, and binds
  * an in-memory app (`bindHost`): `testRootEvents` as its bus (so `broadcastToSurface`, `sendToSystem`, `onIncoming` and
  * log events go there; its log events are printed and its SYSTEM_ERROR events recorded for `takeSystemErrors`),
- * `testPacks` over `packs`, `appVersion`, an `appData` that resets the database and keeps onboarding in `onboarding`, a trace store
+ * `testPacks` over `packs`, `appVersion`, an `appData` that resets the database and keeps onboarding in `onboarding`, a run history in memory
  * over it, `secrets` in memory, and an `inference` that fails until a test mocks it. Safe to call again; entity types
  * accumulate, and `packs`, `appVersion` and `onboarding` must be given on the first call.
  */

@@ -1,4 +1,4 @@
-// What a step runs on is `{ ...params, ...mapped }` (`node-attribute-mappers.ts`), so the two can name the same
+// What a step runs on is `{ ...params, ...mapped }` (`step-input.ts`), so the two can name the same
 // field and the mapping wins. These pin what happens when the mapping's source resolves to nothing — the case
 // where "the mapping wins" is a question rather than an answer, since there is no mapped value to win with.
 //
@@ -71,8 +71,8 @@ describe('a fire step whose payload mapping resolves to nothing', () => {
     const app = await startApp({ systems: ['brain'] })
     await app.runFlow('Outer', { event: 'go', data: { present: 'from the event' } })
     await app.settle()
-    const step = app.flowTrace('Outer').find((s) => s.label === 'ping')
-    return (step?.nodeAttributes.result as { payload?: unknown } | undefined)?.payload
+    const step = app.flowSteps('Outer').find((s) => s.label === 'ping')
+    return (step?.result as { payload?: unknown } | undefined)?.payload
   }
 
   it('fires the payload set beside the mapping', async () => {

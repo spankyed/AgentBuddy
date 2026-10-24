@@ -4,7 +4,7 @@
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
 // `apack.json` names it at `features[].surface.contract`.
 import type { SurfaceInbox } from '@apackdev/sdk/fe'
-import type { TNodeEntity } from '@apackdev/sdk'
+import type { RunTree, RunNode } from '@apackdev/sdk/steps'
 import type { DatabaseSettings } from '#generated/types.ts'
 import type { DatabaseSchemaInfo } from '../be/types.ts'
 
@@ -34,15 +34,15 @@ export interface DatabaseContext {
   isAiQueryLoading: boolean;
   isRefreshing: boolean;
   settings: DatabaseSettings | null;
-  // Trace viewer fields
-  viewMode: 'database' | 'trace';
-  traceFlows: TNodeEntity[];
+  // Run history viewer fields
+  viewMode: 'database' | 'runs';
+  flowRuns: RunNode[];
   currentFlowId: string | null;
-  flowEvents: TNodeEntity[];
+  flowEvents: RunTree[];
   expandedNodes: Set<string>;
-  nodeDetails: Map<string, TNodeEntity>;
-  isLoadingTrace: boolean;
-  tracePagination: {
+  nodeDetails: Map<string, RunNode>;
+  isLoadingRuns: boolean;
+  runPagination: {
     offset: number;
     limit: number;
     hasMore: boolean;

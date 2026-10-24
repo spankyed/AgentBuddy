@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="px-3 py-3 border-b border-neutral-800">
       <button
-        @click="exitTraceView"
+        @click="exitRunView"
         class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded-lg transition-colors w-full"
       >
         <ArrowLeft class="w-4 h-4" />
@@ -13,12 +13,12 @@
     
     <!-- Flow List -->
     <div class="flex-1 p-2 overflow-y-auto">
-      <div v-if="traceFlows.length === 0 && !isLoadingTrace" class="px-4 py-8 text-center">
-        <p class="text-xs text-neutral-500">No trace flows found</p>
-        <p class="mt-1 text-xs text-neutral-600">Run a flow to generate trace data</p>
+      <div v-if="flowRuns.length === 0 && !isLoadingRuns" class="px-4 py-8 text-center">
+        <p class="text-xs text-neutral-500">No flow runs yet</p>
+        <p class="mt-1 text-xs text-neutral-600">Run a flow to see it here</p>
       </div>
       
-      <div v-else-if="isLoadingTrace && traceFlows.length === 0" class="px-4 py-8 text-center">
+      <div v-else-if="isLoadingRuns && flowRuns.length === 0" class="px-4 py-8 text-center">
         <div class="inline-flex items-center justify-center w-8 h-8 mb-2">
           <Loader2 class="w-5 h-5 animate-spin text-neutral-500" />
         </div>
@@ -27,7 +27,7 @@
       
       <div v-else class="space-y-1">
         <div
-          v-for="flow in traceFlows"
+          v-for="flow in flowRuns"
           :key="flow.id"
           :class="[
             'group px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150',
@@ -82,21 +82,21 @@ import { useSurface } from '@apackdev/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import type { DatabaseState } from '../../state.ts'
 import { GitBranch, Loader2, ArrowLeft } from 'lucide-vue-next'
-import type { TNodeEntity } from '@apackdev/sdk/steps'
+import type { RunStatus } from '@apackdev/sdk/steps'
 
 const databaseActor: DatabaseState = useSurface()
 
 // State selectors
-const traceFlows = useSelector(databaseActor, (state) => state.context.traceFlows)
+const flowRuns = useSelector(databaseActor, (state) => state.context.flowRuns)
 const currentFlowId = useSelector(databaseActor, (state) => state.context.currentFlowId)
-const isLoadingTrace = useSelector(databaseActor, (state) => state.context.isLoadingTrace)
+const isLoadingRuns = useSelector(databaseActor, (state) => state.context.isLoadingRuns)
 
 // Actions
 function selectFlow(flowId: string) {
-  databaseActor.send({ type: 'TRACE.SELECT_FLOW', flowId })
+  databaseActor.send({ type: 'RUNS.SELECT_FLOW', flowId })
 }
 
-function exitTraceView() {
+function exitRunView() {
   databaseActor.send({ type: 'VIEW_MODE.TOGGLE' })
 }
 
@@ -157,14 +157,14 @@ import { defineComponent, h } from 'vue'
 export const StatusIndicator = defineComponent({
   props: {
     status: {
-      type: String as () => TNodeEntity['status'],
+      type: String as () => RunStatus,
       required: true
     }
   },
   setup(props) {
     const statusConfig = {
       active: { color: 'bg-yellow-500', pulse: true },
-      paused: { color: 'bg-gray-500', pulse: false },
+      stopped: { color: 'bg-gray-500', pulse: false },
       completed: { color: 'bg-green-500', pulse: false },
       failed: { color: 'bg-red-500', pulse: false },
     }

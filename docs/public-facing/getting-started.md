@@ -159,7 +159,7 @@ apack pack clean      # Remove dist/, .apack/, __generated__/
 ## Constraints
 
 - External packs declare feature preferences in `features.<id>.settings`, pack preferences in `extensions.settings`, and references in `features.<id>.references`. Host preferences belong to the host; see [settings declarations](manifest.md#feature-settings).
-- Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `settings`, `onboarding`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`).
+- Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `settings`, `onboarding`, `appData`, `runHistory`, `inference`, `secrets`, `filesystem`).
 - The app must be restarted after installing or uninstalling a pack.
 
 ## Next steps

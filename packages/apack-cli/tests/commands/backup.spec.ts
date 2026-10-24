@@ -6,7 +6,7 @@ import { openEnvAt, closeEnv } from '@apackdev/ears/lmdb';
 import { readBackup, importDatabase } from '@apackdev/host/backup';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { _appDataPaths } from '@apackdev/sdk/utils';
-import { findDatabaseWriter, publishRunningApp, openDatabaseStore, readInstalledSchema } from '@apackdev/host/database';
+import { findDatabaseWriter, publishRunningApp, openDatabaseStore, openRunHistoryStore, readInstalledSchema } from '@apackdev/host/database';
 import { db } from '../../src/commands/db';
 
 it('creates an importable backup with media and run history, and refuses overwrite and nested destinations', async () => {
@@ -19,14 +19,14 @@ it('creates an importable backup with media and run history, and refuses overwri
     const primary = openEnvAt(paths.lmdb);
     primary.entities.putSync('Note-a', { type: 'Note' });
     closeEnv(primary, () => {});
-    const history = openEnvAt(paths.volatileLmdb);
-    history.entities.putSync('TNode-a', { type: 'TNode' });
-    closeEnv(history, () => {});
+    const history = openRunHistoryStore(paths.runHistory);
+    history.put({ id: 'RunNode-a', rootId: 'RunNode-a', kind: 'flow', label: 'Run', status: 'completed', startedAt: 0 });
+    history.close();
     fs.mkdirSync(paths.media, { recursive: true });
     fs.writeFileSync(path.join(paths.media, 'asset.txt'), 'media');
     await db(['backup', '--data-dir', source, '--out', out], io);
     expect(fs.statSync(out).mode & 0o777).toBe(0o700);
-    expect(readBackup(out)).toMatchObject({ databases: ['lmdb', 'volatileLmdb'], hasMedia: true });
+    expect(readBackup(out)).toMatchObject({ databases: ['lmdb', 'runHistory'], hasMedia: true });
     expect(fs.readFileSync(path.join(out, 'media/asset.txt'), 'utf8')).toBe('media');
     const copy = openEnvAt(path.join(out, 'lmdb'), { readOnly: true });
     expect(copy.entities.get('Note-a')).toEqual({ type: 'Note' });
@@ -36,15 +36,16 @@ it('creates an importable backup with media and run history, and refuses overwri
     const restoreContext = resolveAppEnvironment({ env: 'production', userDataDir: path.join(root, 'restored') });
     const restored = _appDataPaths(restoreContext.userDataDir);
     const { store } = openDatabaseStore({
-      paths: { primary: restored.lmdb, volatileBackup: restored.volatileLmdb },
+      path: restored.lmdb,
       schema: readInstalledSchema(restoreContext), log: () => {},
     });
+    const runHistory = openRunHistoryStore(restored.runHistory);
     try {
-      await importDatabase(store, out, restored.media, { log: { info: () => {}, warn: () => {} } });
-      expect(store.envs.primary.entities.get('Note-a')).toEqual({ type: 'Note' });
-      expect(store.envs.volatileBackup.entities.get('TNode-a')).toEqual({ type: 'TNode' });
+      await importDatabase({ lmdb: store, runHistory }, out, restored.media, { log: { info: () => {}, warn: () => {} } });
+      expect(store.env.entities.get('Note-a')).toEqual({ type: 'Note' });
+      expect(runHistory.get('RunNode-a')).toMatchObject({ id: 'RunNode-a', status: 'completed' });
       expect(fs.readFileSync(path.join(restored.media, 'asset.txt'), 'utf8')).toBe('media');
-    } finally { store.close(); }
+    } finally { store.close(); runHistory.close(); }
     const running = publishRunningApp(source);
     try {
       await expect(db(['backup', '--data-dir', source, '--out', path.join(root, 'while-running')], io)).rejects.toThrow('Quit the app');
@@ -73,7 +74,7 @@ it('creates an importable backup with media and run history, and refuses overwri
     fs.rmSync(path.join(out, 'media'));
     fs.renameSync(path.join(out, 'saved-media'), path.join(out, 'media'));
     fs.writeFileSync(metadataPath, JSON.stringify(metadata));
-    fs.rmSync(path.join(out, 'volatileLmdb'), { recursive: true });
+    fs.rmSync(path.join(out, 'runHistory'), { recursive: true });
     io.out.mockClear();
     await expect(db(['backup', 'verify', out, '--json'], io)).rejects.toThrow('Missing backup databases');
     expect(io.out).toHaveBeenCalledOnce();

@@ -694,7 +694,7 @@ Shapes type attributes without changing stored identities.
 
 No two packs may use the same name: a key or a value another installed pack declares fails `apack pack build` (for a dependency) and the app's registration of the pack.
 
-The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action`, `Prompt`, `Document` and `Collection`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`), `SPAWNED` (`spawned`), `TRACKED` (`tracked`) and `PARENT_OF` (`parent_of`), and the roles `ROOT_FLOW` (`root_flow`) and `ENTRY_EVENT` (`entry_event`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `apack.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
+The SDK defines the entity types `Relation`, `Flow`, `Node`, `Action`, `Prompt`, `Document` and `Collection`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`) and `PARENT_OF` (`parent_of`), and the roles `ROOT_FLOW` (`root_flow`) and `ENTRY_EVENT` (`entry_event`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `apack.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
 
 ## DSL definitions
 

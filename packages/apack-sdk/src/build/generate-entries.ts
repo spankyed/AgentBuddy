@@ -812,7 +812,7 @@ export async function generatePackFiles(
           imports.push(facet.import);
           parts.push(`handler: ${facet.expr}`);
         } else {
-          parts.push(`handler: ${lazyCall(label, runtime.handler, 'tNode, node, ctx, actor')}`);
+          parts.push(`handler: ${lazyCall(label, runtime.handler, 'runNode, node, ctx, actor')}`);
         }
       }
       for (const flag of ['isAsync', 'waits', 'spawnsSubflow'] as const) {

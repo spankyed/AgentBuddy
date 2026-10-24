@@ -4,7 +4,7 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('scheduler');
 
-/** Active cron jobs keyed by `${flowTNodeId}:${nodeId}` */
+/** Active cron jobs keyed by `${flowRunNodeId}:${nodeId}` */
 const activeJobs = new Map<string, Cron>();
 
 /**

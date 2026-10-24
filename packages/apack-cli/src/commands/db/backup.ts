@@ -1,14 +1,14 @@
 import { dbBackupVerify, verifyBackup, VERIFY_USAGE } from './backup-verify';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { findRunningApp, holdDatabaseWriteLock } from '@apackdev/host/database';
+import { findRunningApp, holdDatabaseWriteLock, openRunHistoryStore } from '@apackdev/host/database';
 import { exportDatabase } from '@apackdev/host/backup';
 import { readHostCompatibility } from '@apackdev/host/packs';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
 export const BACKUP_USAGE = [
   'Usage: apack db backup --out <dir> [options]', VERIFY_USAGE, '',
-  'Create a restorable backup of both database partitions and media while the app is closed.',
+  'Create a restorable backup of the database, the run history and media while the app is closed.',
   'The destination must not exist. Installed packs and secrets are not included.',
   '', '  --out <dir>            New backup directory (required)', TARGET_USAGE,
 ].join('\n');
@@ -38,11 +38,18 @@ export async function dbBackup(args: string[], io: DbIo): Promise<void> {
     await withDatabase(db, async () => {
       fs.mkdirSync(path.dirname(destination), { recursive: true });
       stage = fs.mkdtempSync(path.join(path.dirname(destination), '.apack-backup-'));
-      const backup = await exportDatabase(db.store, stage, {
-        name: 'backup', databases: ['lmdb', 'volatileLmdb'], mediaPath: db.paths.media,
-        appVersion: readHostCompatibility(target.userDataDir).version,
-        log: { info: message => io.err(message), warn: message => io.err(message) },
-      });
+      // A data dir the app never ran a flow in has no run history yet
+      const runHistory = fs.existsSync(db.paths.runHistory) ? openRunHistoryStore(db.paths.runHistory, { readOnly: true }) : undefined;
+      let backup: string;
+      try {
+        backup = await exportDatabase({ lmdb: db.store, ...(runHistory && { runHistory }) }, stage, {
+          name: 'backup', databases: runHistory ? ['lmdb', 'runHistory'] : ['lmdb'], mediaPath: db.paths.media,
+          appVersion: readHostCompatibility(target.userDataDir).version,
+          log: { info: message => io.err(message), warn: message => io.err(message) },
+        });
+      } finally {
+        runHistory?.close();
+      }
       verifyBackup(backup);
       fs.chmodSync(backup, 0o700);
       // Exclusive reservation prevents overwriting a destination created while the snapshot was copied.

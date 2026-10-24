@@ -30,7 +30,7 @@ async function runCommand(flow: string, data: Record<string, unknown>): Promise<
   return app.runFlow(flow, { event: 'command', data })
 }
 
-const switchResult = (run: FlowRun) => run.steps.find((s) => s.label === 'Switch')?.nodeAttributes.result as Record<string, unknown>
+const switchResult = (run: FlowRun) => run.steps.find((s) => s.label === 'Switch')?.result as Record<string, unknown>
 const ranAfterSwitch = (run: FlowRun) => run.steps.filter((s) => s.label !== 'Switch').map((s) => s.label)
 
 /** Replaces the flow's switch conditions, as the flow editor can (code-mode predicates, none at all) */
@@ -104,7 +104,7 @@ describe('switch step', () => {
 
       const switchStep = run.steps.find((s) => s.label === 'Switch')
       expect(switchStep?.status).toBe('failed')
-      expect(switchStep?.nodeAttributes.result).toEqual({
+      expect(switchStep?.result).toEqual({
         error: expect.objectContaining({ source: 'brain-switch', phase: 'switch.validate', message: expect.stringMatching(/no conditions/i) }),
       })
       expect(ranAfterSwitch(run)).toEqual([])

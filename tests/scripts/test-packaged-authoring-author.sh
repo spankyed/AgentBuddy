@@ -278,7 +278,7 @@ describe('notes summary flow', () => {
     const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
 
     expect(run.steps).toEqual([expect.objectContaining({ label: 'summarize', status: 'completed' })]);
-    expect(run.steps[0].nodeAttributes.result).toMatchObject({ text: 'Buy milk' });
+    expect(run.steps[0].result).toMatchObject({ text: 'Buy milk' });
     expect(inference.calls).toEqual([expect.objectContaining({ model: 'openai:gpt-4o-mini', messages: [{ role: 'user', text: 'Summarize this note: Remember to buy milk' }] })]);
   });
 });

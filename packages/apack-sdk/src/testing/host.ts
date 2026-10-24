@@ -7,10 +7,10 @@ import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { testPacksView } from './packs.ts';
 import type { RootEvents } from '../runtime/root-events.ts';
 import type { Message } from '../events/index.ts';
-import type { EarsEngine, EntityRow } from '@apackdev/ears';
-import type { EARS } from '../types/entities.ts';
+import type { EarsEngine } from '@apackdev/ears';
 import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
-import type { TraceStore } from '../services/trace-store.ts';
+import { _createRunHistory, type RunHistory } from '../services/run-history.ts';
+import { _memoryRunHistoryStore } from './memory-run-history.ts';
 import type { OnboardingService } from '../services/onboarding.ts';
 import type { SecretMetadata, SecretProvider, SecretsService } from '../services/secrets.ts';
 import { _secretRules } from '../services/secrets-rules.ts';
@@ -77,7 +77,13 @@ const memoryOnboarding: OnboardingService = {
 export function resetTestHostState(): void {
   testSecrets = [];
   onboarded = false;
+  testHistory = _createRunHistory(_memoryRunHistoryStore());
 }
+
+let testHistory = _createRunHistory(_memoryRunHistoryStore());
+
+/** The test runtime's run history, in memory: what `services.runHistory` is until `resetTestData` replaces it */
+export const testRunHistory = (): RunHistory => testHistory;
 
 /** The user's keys in memory, keeping the host's rules */
 const memorySecrets: SecretsService = {
@@ -123,23 +129,6 @@ const memorylessSettings: SettingsAdmin = {
 
 const unsupported = (name: string) => () => Promise.reject(new Error(`appData.${name} isn't supported in unit tests: there is no stored data to back up`));
 
-/** Reads the in-memory database: unit tests keep flow execution records (TNodes) there */
-function memoryTraceStore(engine: () => EarsEngine): TraceStore {
-  const entityMeta = (row: EntityRow) => ({ type: row.entityType, createdAt: Number(row.createdAt ?? 0) });
-  return {
-    entities: () => engine().admin.getAllEntities().map((id) => ({ id, meta: entityMeta(engine().getRow(id)!) })),
-    getEntityMeta: (id) => { const row = engine().getRow(id); return row ? entityMeta(row) : null; },
-    getAttr: (id, kind) => engine().getRow(id)?.[kind],
-    relations: ({ kind, source, target, limit } = {}) => engine().findRelations({
-      ...(kind && { kind: kind as EARS.RelKind }),
-      ...(source && { source }),
-      ...(target && { target }),
-    })
-      .slice(0, limit)
-      .map((relation) => ({ ...relation, createdAt: 0 })),
-  };
-}
-
 export interface TestRuntimeOptions {
   /** The in-memory engine, which a reset replaces */
   engine: () => EarsEngine;
@@ -176,7 +165,7 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
         importBackup: unsupported('importBackup'),
         readBackupSummary: async () => null,
       },
-      traceStore: memoryTraceStore(engine),
+      get runHistory() { return testHistory; },
       // No test reaches a provider: code calling a model fails until the test mocks inference
       inference: {
         generateText: unmockedInference, streamText: unmockedInference, createAgent: unmockedInference,

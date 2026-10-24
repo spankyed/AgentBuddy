@@ -28,21 +28,21 @@ export { ContentRuntime }
 
 // @public (undocumented)
 export interface FlowRun {
-    eventTNodeIds: string[];
-    steps: FlowStepTrace[];
+    eventRunNodeIds: string[];
+    steps: FlowRunStep[];
 }
 
 // @public
-export interface FlowStepTrace {
+export interface FlowRunStep {
+    input: Record<string, unknown>;
+    kind: string;
     // (undocumented)
     label: string;
-    nodeAttributes: Record<string, unknown>;
-    params: Record<string, unknown>;
+    result?: unknown;
+    // (undocumented)
+    runNodeId: string;
     // (undocumented)
     status: string;
-    // (undocumented)
-    tNodeId: string;
-    tNodeType: string;
 }
 
 // @public
@@ -121,7 +121,7 @@ export { takeSystemErrors }
 export interface TestApp {
     connect(): Promise<void>;
     emitted(surface: string): SurfaceEvent[];
-    flowTrace(label: string): FlowStepTrace[];
+    flowSteps(label: string): FlowRunStep[];
     nextEmit(surface: string, type: string, options?: {
         timeoutMs?: number;
         answering?: string;

@@ -1,7 +1,7 @@
 import type { StepRuntimeError } from '@apackdev/sdk/steps';
 import type { EARS } from '#generated/ears.ts';
 
-import type { TrackTree, TNodeEntity, ExecutionContext } from '@apackdev/sdk/steps';
+import type { RunStatus, RunTree, RunNode, RunNodeId, ExecutionContext } from '@apackdev/sdk/steps';
 
 export type JsonPath = string;
 
@@ -16,17 +16,20 @@ export interface EventListenerEntity {
   cronExpression?: string;
 }
 
-export interface FlowTNodeData {
-  flowTNodeId: EARS.EntityId;
-  tNodeTree: TrackTree[];
+export interface FlowRunNodeData {
+  flowRunNodeId: EARS.EntityId;
+  runNodeTree: RunTree[];
   possibleEvents: EventListenerEntity[];
-  flowHierarchy: Array<{ flowTNodeId: EARS.EntityId; label: string }>;
+  flowHierarchy: Array<{ flowRunNodeId: EARS.EntityId; label: string }>;
 }
 
-export interface TNodeUpdate {
-  tNodeId: EARS.EntityId;
-  status: TNodeEntity['status'];
-  eventTNodeId?: EARS.EntityId;
+/** A run node as the Brain surface shows it: with where its blueprint is, to reveal it in the Flows surface */
+export type RunNodeDetails = RunNode & { revealIn?: { flowId: EARS.EntityId; nodeId: EARS.EntityId } };
+
+export interface RunNodeUpdate {
+  runNodeId: RunNodeId;
+  status: RunStatus;
+  eventRunNodeId?: RunNodeId;
 }
 
 /** ── Schema definition types ────────────────────────────────────────────── */
@@ -72,7 +75,7 @@ export const ContextPaths = {
   STEPS: '$.steps' as const,
 
   // Helper functions, returning the same string shapes as the constants above
-  stepById: (tNodeId: string): JsonPath => `$.steps[id=${tNodeId}].result`,
+  stepById: (runNodeId: string): JsonPath => `$.steps[id=${runNodeId}].result`,
   stepByLabel: (label: string): JsonPath => `$.steps[label=${label}].result`,
 } as const;
 
@@ -96,10 +99,10 @@ export interface EventReceived {
 export type BrainSettings = import('#generated/settings.ts').SettingsOf<'brain'>;
 
 export type IncomingBrainEvents =
-  | { type: 'OPEN_TNODE'; tNodeId: string }
-  | { type: 'GO_BACK_TNODE'; currentFlowTNodeId?: string }
-  | { type: 'REQUEST_SURFACE_DATA'; flowTNodeId?: string }
-  | { type: 'GET_TNODE_DETAILS'; tNodeId: string }
+  | { type: 'OPEN_RUN_NODE'; runNodeId: string }
+  | { type: 'GO_BACK_RUN_NODE'; currentFlowRunNodeId?: string }
+  | { type: 'REQUEST_SURFACE_DATA'; flowRunNodeId?: string }
+  | { type: 'GET_RUN_NODE_DETAILS'; runNodeId: string }
   | { type: 'TOGGLE_INSPECT' }
   | { type: 'START_BRAIN' }
   | { type: 'KILL_BRAIN' }
@@ -114,18 +117,18 @@ export type IncomingBrainEvents =
 // `HANDLE_BRAIN_EVENT` is not one of them despite being raised here too — the database system sends it
 // (`features/database/be/system.ts`), which makes it incoming.
 export type BrainInternalEvents =
-  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
-  | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
-  | { type: 'CHILD_COMPLETED'; stepId?: EARS.EntityId; tNodeId?: EARS.EntityId; stepLabel?: string; result?: any; final?: boolean; eventTNodeId?: EARS.EntityId; isFlow?: boolean }
+  | { type: 'RUN_NODE_SPAWNED'; runNode: RunNode; parentId?: EARS.EntityId; eventRunNodeId?: RunNodeId; flowRunNodeId: EARS.EntityId }
+  | { type: 'RUN_NODE_UPDATED'; data: RunNodeUpdate }
+  | { type: 'CHILD_COMPLETED'; stepId?: EARS.EntityId; runNodeId?: RunNodeId; stepLabel?: string; result?: any; final?: boolean; eventRunNodeId?: RunNodeId; isFlow?: boolean }
 
 export type OutgoingBrainEvents =
-  | { type: 'RECEIVE_SURFACE_DATA'; data: FlowTNodeData }
-  // | { type: 'BRAIN_CONNECTED'; data: FlowTNodeData }
-  | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
-  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
-  | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
+  | { type: 'RECEIVE_SURFACE_DATA'; data: FlowRunNodeData }
+  // | { type: 'BRAIN_CONNECTED'; data: FlowRunNodeData }
+  | { type: 'RUN_NODE_OPENED'; runNodeId: EARS.EntityId; data: FlowRunNodeData }
+  | { type: 'RUN_NODE_SPAWNED'; runNode: RunNode; parentId?: EARS.EntityId; eventRunNodeId?: RunNodeId; flowRunNodeId: EARS.EntityId }
+  | { type: 'RUN_NODE_UPDATED'; data: RunNodeUpdate }
   | { type: 'EVENT_PULSE'; eventType: string }
-  | { type: 'TNODE_DETAILS'; tNodeId: EARS.EntityId; details: TNodeEntity | null }
+  | { type: 'RUN_NODE_DETAILS'; runNodeId: RunNodeId; details: RunNodeDetails | null }
   | { type: 'BRAIN_RUNTIME_ERROR'; error: StepRuntimeError }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   /** The brain stopped; `startError` says why it couldn't start, while it stays stopped for that reason */
@@ -146,4 +149,6 @@ export interface BrainContext {
   clientConnected: boolean;
   /** The root flow the running brain started with; undefined while it's stopped */
   runningRootFlowId?: EARS.EntityId;
+  /** This session's root run in the run history: a new one each time the brain starts */
+  rootRunId?: RunNodeId;
 }

@@ -6,7 +6,7 @@ import { setSecretValueMatcher } from '../utils/redact.ts';
 import type { RootEvents } from './root-events.ts';
 import type { AppDataService } from '../services/app-data.ts';
 import type { OnboardingService } from '../services/onboarding.ts';
-import type { TraceStore } from '../services/trace-store.ts';
+import type { RunHistory } from '../services/run-history.ts';
 import type { InferenceService } from '../services/inference.ts';
 import type { SecretsService } from '../services/secrets.ts';
 import type { FilesystemService } from '../services/filesystem.ts';
@@ -22,8 +22,8 @@ export interface HostRuntimeServices {
   appData: AppDataService;
   /** Completion of the app's onboarding */
   onboarding: OnboardingService;
-  /** The volatile trace store (flow execution records) */
-  traceStore: TraceStore;
+  /** Flow runs, recorded while they run and kept after */
+  runHistory: RunHistory;
   /** Model calls with the user's provider keys */
   inference: InferenceService;
   /** The user's API keys, as metadata */
