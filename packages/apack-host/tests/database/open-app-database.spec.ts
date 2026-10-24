@@ -34,8 +34,10 @@ describe('readInstalledSchema', () => {
     });
     const schema = readInstalledSchema(schemaContext(dir));
     const types = schema.getRegisteredEntityTypes();
-    for (const type of ['Note', 'Trace', 'Bookmark', 'Pin', 'Flow', 'Relation', 'AppState']) expect(types.has(type)).toBe(true);
+    for (const type of ['Note', 'Trace', 'Bookmark', 'Pin', 'Flow', 'AppState']) expect(types.has(type)).toBe(true);
     expect(types.has('Hidden')).toBe(false);
+    // A relation is no entity type
+    expect(types.has('Relation')).toBe(false);
     expect(schema.relKinds.MENTIONS).toBe('mentions');
     expect(schema.packs).toEqual([
       { id: 'bookmarks' },

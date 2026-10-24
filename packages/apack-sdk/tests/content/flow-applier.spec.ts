@@ -23,7 +23,7 @@ const { contentPath } = await import('../../src/build/manifest.ts');
 let tmp: string | undefined;
 // The applier reads and writes the installed engine: a fresh one per test
 beforeEach(() => {
-  _bindEars(createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => ['Flow', 'Node', 'Action', 'Prompt', 'Relation'].includes(name) }));
+  _bindEars(createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => ['Flow', 'Node', 'Action', 'Prompt'].includes(name) }));
 });
 afterEach(() => {
   _bindEars(undefined);
