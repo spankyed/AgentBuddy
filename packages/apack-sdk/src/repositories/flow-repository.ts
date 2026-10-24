@@ -3,7 +3,7 @@
 // their views on top (default-setup's flows repository).
 import { getTimestamp, RESERVED_ATTRIBUTES } from '@apackdev/ears';
 import { RepositoryError, RepositoryErrorCode } from './repository-error.ts';
-import { findRelations, nextLabel, getRow, getRoles, updateRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
+import { findRelations, nextLabel, getRow, getRoles, updateRelation, removeRelation, untypedCreate, untypedWrite, untypedQuery as query, transact } from '../ears/index.ts';
 import { EARS } from '../types/entities.ts';
 import type { FlowEntity, NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
@@ -84,7 +84,7 @@ const handleInfo = (handles?: Handles): Handles | undefined =>
  * Throws unless an edge from `sourceId` to `targetId` with these handles may exist: a trigger receives none, the
  * same edge isn't there twice, and a non-trigger's source handle has one outgoing edge. `except` is an edge being moved.
  */
-function assertEdgeAllowed(sourceId: EARS.EntityId, targetId: EARS.EntityId, handles?: Handles, except?: EARS.EntityId): void {
+function assertEdgeAllowed(sourceId: EARS.EntityId, targetId: EARS.EntityId, handles?: Handles, except?: EARS.RelationId): void {
   const isTrigger = (id: EARS.EntityId) => {
     const nodeType = query.ids(id).pickOne(['nodeType'])?.nodeType;
     return typeof nodeType === 'string' && getStepDeclaration(nodeType)?.declaration.kind === 'trigger';
@@ -285,7 +285,7 @@ export const flowRepository = {
     for (const id of rows.keys()) {
       for (const details of findRelations({ source: id })) {
         const key = relationKey(details.source, details.kind, details.target, details.info);
-        if (owned.has(details.kind) && !wanted.has(key)) untypedWrite(details.id).destroy();
+        if (owned.has(details.kind) && !wanted.has(key)) removeRelation(details.id);
       }
     }
     for (const relation of compiled.relation) {
@@ -387,7 +387,7 @@ export const flowRepository = {
    * Connects two nodes. A trigger can't be a target, an identical edge can't be added twice, and a
    * non-trigger's handle has at most one outgoing edge.
    */
-  createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId, options?: Handles): { relId: EARS.EntityId } => {
+  createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId, options?: Handles): { relId: EARS.RelationId } => {
     assertEdgeAllowed(sourceId, targetId, options);
     untypedWrite(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId, { info: handleInfo(options) });
 
@@ -397,12 +397,12 @@ export const flowRepository = {
     return { relId };
   },
 
-  deleteEdge: (edgeId: EARS.EntityId): void => {
-    untypedWrite(edgeId).destroy();
+  deleteEdge: (edgeId: EARS.RelationId): void => {
+    removeRelation(edgeId);
   },
 
   /** Moves an edge to new ends and handles, keeping its id; throws, leaving it as it was, when that edge isn't allowed */
-  updateEdge: (edgeId: EARS.EntityId, next: { source: EARS.EntityId; target: EARS.EntityId } & Handles): void => {
+  updateEdge: (edgeId: EARS.RelationId, next: { source: EARS.EntityId; target: EARS.EntityId } & Handles): void => {
     assertEdgeAllowed(next.source, next.target, next, edgeId);
     updateRelation(edgeId, { source: next.source, target: next.target, info: handleInfo(next) ?? {} });
   },

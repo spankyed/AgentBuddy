@@ -397,12 +397,13 @@ transact(() => {
 `query.ids(id).out(kinds)` walks to the entities an entity links to and `in(kinds)` to those linking to it; `outEdges(kinds)` and `inEdges(kinds)` return the edges themselves. A relation reads the same wherever it comes from — `outEdges`, `inEdges`, `findRelations` — as `{ id, kind, source, target, info }`: its own id, its kind, its two ends and its `info` (a flow edge's handles). `findRelations` finds relations by any of `kind`, `source` and `target`, and `getSchemaStats().relations` counts each kind's:
 
 ```typescript
-import { findRelations, getSchemaStats } from '@apackdev/sdk/ears';
+import { findRelations, getRelation, removeRelation, getSchemaStats } from '@apackdev/sdk/ears';
 
 const [edge] = findRelations({ source: nodeId, kind: EARS.RelKind.TRANSITIONS_TO });
 edge.target;                       // the node it leads to
 edge.info;                         // { sourceHandle: 'yes' }
-write(edge.id).destroy();                  // that one edge, leaving any other between the same nodes
+getRelation(edge.id);                     // the same row, read by its id
+removeRelation(edge.id);                  // that one edge, leaving any other between the same nodes
 getSchemaStats().relations.contains;      // { total, uniqueSources, uniqueTargets }
 ```
 
@@ -431,7 +432,12 @@ From `@apackdev/sdk/ears` (untyped, on the app's engine):
 
 | Call | Does |
 |---|---|
-| `updateRelation(relationId, { source?, target?, info? })` | Moves a relation to new ends, or replaces its info, keeping its id |
+| `getRelation(relationId)` | The relation's row (`{ id, kind, source, target, info }`), or `undefined` when no relation has the id |
+| `updateRelation(relationId, { source?, target?, info? })` | Moves a relation to new ends, or replaces its info, keeping its id; refuses an id no relation has |
+| `removeRelation(relationId)` | Removes that one relation; refuses an id no relation has |
+
+A relation's id is an `EARS.RelationId`, which every relation read gives back (`findRelations`, `outEdges`,
+`inEdges`). A relation is not an entity, so `write` refuses a relation's id at compile time.
 | `isEntityType(name)` | Whether the running app has registered the entity type: the SDK's and every registered pack's |
 
 ### Hierarchies

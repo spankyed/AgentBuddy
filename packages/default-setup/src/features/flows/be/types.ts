@@ -86,10 +86,10 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_DELETED'; nodeId: string }
-  | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId; sourceHandle?: string; targetHandle?: string }
+  | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.RelationId; sourceHandle?: string; targetHandle?: string }
   | { type: 'EDGE_CREATE_FAILED'; sourceId: string; targetId: string; error: string }
   | { type: 'EDGE_DELETED'; edgeId: string }
-  | { type: 'EDGE_UPDATED'; edgeId: EARS.EntityId; source: EARS.EntityId; target: EARS.EntityId; sourceHandle?: string; targetHandle?: string }
+  | { type: 'EDGE_UPDATED'; edgeId: EARS.RelationId; source: EARS.EntityId; target: EARS.EntityId; sourceHandle?: string; targetHandle?: string }
   | { type: 'EDGE_UPDATE_FAILED'; edgeId: string; error: string }
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }

@@ -2361,11 +2361,13 @@
           "getRow": "typeof _dsl.getRow",
           "getAttr": "typeof _dsl.getAttr",
           "getRoles": "typeof _dsl.getRoles",
+          "getRelation": "typeof _dsl.getRelation",
           "findRelations": "typeof _dsl.findRelations",
           "getSchemaStats": "typeof _dsl.getSchemaStats",
           "create": "typeof _dsl.create",
           "upsert": "typeof _dsl.upsert",
-          "write": "typeof _dsl.write"
+          "write": "typeof _dsl.write",
+          "removeRelation": "typeof _dsl.removeRelation"
         }
       }
     },
