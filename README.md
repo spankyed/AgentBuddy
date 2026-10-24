@@ -12,7 +12,7 @@ query and update your data, and respond to events or schedules. Conversations ca
 controls and results as plans, diffs, documents and other artifacts.
 
 The included tools cover coding, notes, a document library and web browsing. In a code project, you
-can edit and review alongside your agents, use the terminal, and manage Git changes and pull requests.
+can edit and review code, use the terminal, and manage Git changes and pull requests.
 You can extend these tools or add your own through packs.
 
 Workspace data is stored locally, with backup and restore support.
