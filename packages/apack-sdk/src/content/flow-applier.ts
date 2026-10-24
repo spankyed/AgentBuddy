@@ -113,19 +113,21 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
       const packId = contentPackId(ctx.compiledDir);
 
       /**
-       * The short codes of flows this apply deletes only to write again — a wipe, or a flow stored under another id
-       * than its compiled one — by content key, so the flow it writes in their place keeps the code users know it by
+       * The short codes of flows this apply deleted only to write again — a wipe, or a flow stored under another id
+       * than its compiled one — by content key, so the flow it writes in their place keeps the code users know it by.
+       * Taken once the delete has happened: a flow the delete refused still holds its code, which a new flow brought
+       * would be refused for
        */
       const keptCodes = new Map<string, string>();
-      const keepCode = (flow: FlowEntity) => {
+      const deleteKeepingCode = (flow: FlowEntity, options?: { allowRoot?: boolean }) => {
         const contentKey = contentKeyOf(flow.id);
+        flowRepository.deleteFlow(flow.id, options);
         if (contentKey && typeof flow.shortCode === 'string' && FLOW_SHORT_CODE.test(flow.shortCode)) keptCodes.set(contentKey, flow.shortCode);
       };
 
       if (ctx.mode === 'wipe-and-replace') {
         for (const flow of sdkEntities.query(EARS.Entity.Flow).pickAll()) {
-          keepCode(flow);
-          try { flowRepository.deleteFlow(flow.id); } catch {}
+          try { deleteKeepingCode(flow); } catch {}
         }
         ctx.log('  flows wiped');
       }
@@ -244,10 +246,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
             // (runs, subflows, the root role); one under another id can't be reconciled, so it is replaced
             const compiledId = (compileFlowDSL({ [key]: entry }, { actions: actionMap, prompts: promptMap }).entity as Array<{ id: string; entityType?: string }>)
               .find((row) => row.entityType === EARS.Entity.Flow)?.id;
-            if (compiledId !== existing.id) {
-              keepCode(existing);
-              flowRepository.deleteFlow(existing.id, { allowRoot: true });
-            }
+            if (compiledId !== existing.id) deleteKeepingCode(existing, { allowRoot: true });
             replacedLabels.add(key);
             ctx.log(`  flow replaced (hash mismatch): ${key}`);
           } catch (error: any) {

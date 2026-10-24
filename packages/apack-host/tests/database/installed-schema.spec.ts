@@ -85,7 +85,13 @@ describe("a pack's short code prefixes, read from its manifest", () => {
     const dir = dataDirWithPacks();
     writeInstalledPackFixture(path.dirname(manifestFile(dir, 'a')), numbered('a', 'Memo', 'MEM'));
     writeInstalledPackFixture(path.dirname(manifestFile(dir, 'b')), numbered('b', 'Member', 'MEM'));
-    expect(() => readInstalledSchema(schemaContext(dir))).toThrow('Two packs declare the short code prefix MEM: "a" and "b"');
+    expect(() => readInstalledSchema(schemaContext(dir))).toThrow('The short code prefix MEM numbers both Memo of pack "a" and Member of pack "b"');
+  });
+
+  it("are refused when a pack takes one of the SDK's, naming the SDK's type", () => {
+    const dir = dataDirWithPacks();
+    writeInstalledPackFixture(path.dirname(manifestFile(dir, 'a')), numbered('a', 'Paper', 'DOC'));
+    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(/DOC.*the SDK's Document/);
   });
 });
 

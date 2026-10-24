@@ -216,15 +216,19 @@ export function readInstalledSchema(context: SchemaContext, options: { schemaFro
   const roleOwners = new Map<string, string>(Object.entries(roles).flatMap(([name, value]) => [[name, 'apack'], [value, 'apack']] as Array<[string, string]>));
   // A prefix numbers one entity type across the app, so a tool refuses two packs sharing one as the app's registry does
   const prefixes: Record<string, string> = {};
-  const prefixOwners = new Map<string, string>(Object.values(SDK_SHORT_CODES).map((prefix) => [prefix, 'apack']));
+  // Each prefix's owner, as a pack id and how a refusal names it; the SDK's are taken before any pack's
+  const prefixOwners = new Map<string, { id: string; name: string }>(
+    Object.entries(SDK_SHORT_CODES).map(([type, prefix]) => [prefix, { id: 'apack', name: `the SDK's ${type}` }]));
   for (const manifest of packs) {
     addNames(entities, entityOwners, manifest.id, _packEntityTypes(manifest), 'entity type');
     addNames(relKinds, relKindOwners, manifest.id, _packRelationTypes(manifest), 'relation kind');
     addNames(roles, roleOwners, manifest.id, _packRoles(manifest), 'role');
     for (const [type, prefix] of Object.entries(_packShortCodes(manifest))) {
       const owner = prefixOwners.get(prefix);
-      if (owner !== undefined && owner !== manifest.id) throw new Error(`Two packs declare the short code prefix ${prefix}: "${owner}" and "${manifest.id}"`);
-      prefixOwners.set(prefix, manifest.id);
+      if (owner !== undefined && owner.id !== manifest.id) {
+        throw new Error(`The short code prefix ${prefix} numbers both ${owner.name} and ${type} of pack "${manifest.id}"`);
+      }
+      prefixOwners.set(prefix, { id: manifest.id, name: `${type} of pack "${manifest.id}"` });
       prefixes[type] = prefix;
     }
   }

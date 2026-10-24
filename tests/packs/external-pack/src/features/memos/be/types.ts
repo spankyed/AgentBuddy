@@ -1,5 +1,5 @@
 import type { MemoNoteDTO } from './memo-notes.ts';
-import type { BaseEntity, EARS } from '#generated/ears.ts';
+import type { BaseEntity, EARS, ShortCodeOf } from '#generated/ears.ts';
 
 export interface MemoEntity extends BaseEntity {
   entityType: EARS.Entity.Memo;
@@ -12,6 +12,7 @@ export interface MemoEntity extends BaseEntity {
 
 export interface MemoDTO {
   id: string;
+  shortCode: ShortCodeOf<'Memo'>;
   text: string;
   createdAt: number;
 }

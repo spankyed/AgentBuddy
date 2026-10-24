@@ -10,7 +10,8 @@
  * `F-<name>`, `PROMPT-`, and the first three letters of any type, `PRO-` and `NOT-`, which the engine once defaulted
  * to). This converts it once, explicitly, here — never at boot:
  *
- * - **Codes of a numbered type** (the SDK's `SDK_SHORT_CODES` and default-setup's manifest): a code already in the
+ * - **Codes of a numbered type** (the SDK's `SDK_SHORT_CODES`, the checkout's default-setup manifest, and every pack
+ *   installed in the data dir beside the database): a code already in the
  *   type's form stays. Any other `<X>-<n>` becomes `<prefix>-<n>`, keeping its number unless a row of the type already
  *   holds it; what is left — a taken number, or a code with none, such as a compiled flow's `F-<name>` — is numbered
  *   after the highest.
@@ -18,9 +19,10 @@
  * - **Sequences:** every short code numbering row goes. The engine starts a prefix's sequence after the highest number
  *   its type holds, so none is handed out twice, whatever the data held before.
  * - **References:** a stored reference node (an object holding `shortCode` beside `refId` or `refType`) and a
- *   `data-short-code="…"` attribute in stored markup are rewritten to the new code. A code written into plain prose is
- *   not rewritten — `T-12` in a sentence could be anything — and the script counts those it sees so they can be
- *   checked by hand.
+ *   `data-short-code="…"` attribute in stored markup are rewritten to the new code — by the entity they name (`refId`,
+ *   or the markup's `apack-ref://` href), else by the old code when only one entity held it. A code written into
+ *   plain prose is not rewritten — `T-12` in a sentence could be anything — and the script counts those it sees, and
+ *   any reference it could not resolve, so they can be checked by hand.
  *
  * It prints what it changed.
  */
@@ -28,16 +30,44 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { REMOVE_ATTRIBUTE, rewriteAttributes } from '@apackdev/ears/lmdb';
-import { _packShortCodes } from '@apackdev/sdk/framework';
+import { _packShortCodes, parseReferenceHref } from '@apackdev/sdk/framework';
 import { SDK_SHORT_CODES } from '@apackdev/sdk/types';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Each numbered entity type's prefix: the SDK's and the shipped pack's, as declared now */
-export function declaredPrefixes(): Record<string, string> {
-  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'packages/default-setup/apack.json'), 'utf8'));
-  return { ...SDK_SHORT_CODES, ..._packShortCodes(manifest) };
+/**
+ * Each numbered entity type's prefix: the SDK's, the checkout's default-setup (the declaration it is converted to,
+ * whatever build the data dir has installed), and every other pack installed in `packsDir`, so a type of theirs keeps
+ * its codes rather than being read as one that isn't numbered. Two types sharing a prefix are refused, as the app's
+ * registry refuses them.
+ */
+export function declaredPrefixes(packsDir?: string): Record<string, string> {
+  const shipped = JSON.parse(fs.readFileSync(path.join(ROOT, 'packages/default-setup/apack.json'), 'utf8'));
+  const manifests: Array<Parameters<typeof _packShortCodes>[0] & { id: string }> = [shipped];
+  if (packsDir && fs.existsSync(packsDir)) {
+    for (const entry of fs.readdirSync(packsDir, { withFileTypes: true })) {
+      // A dot directory is an install in progress or one being retired, not an installed pack
+      const file = path.join(packsDir, entry.name, 'apack.json');
+      if (!entry.isDirectory() || entry.name.startsWith('.') || !fs.existsSync(file)) continue;
+      const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (manifest.id !== shipped.id) manifests.push(manifest);
+    }
+  }
+  const prefixes: Record<string, string> = { ...SDK_SHORT_CODES };
+  const owners = new Map<string, string>(Object.entries(SDK_SHORT_CODES).map(([type, prefix]) => [prefix, `the SDK's ${type}`]));
+  for (const manifest of manifests) {
+    for (const [type, prefix] of Object.entries(_packShortCodes(manifest))) {
+      const owner = owners.get(prefix);
+      if (owner) throw new Error(`The short code prefix ${prefix} numbers both ${owner} and ${type} of "${manifest.id}"`);
+      owners.set(prefix, `${type} of "${manifest.id}"`);
+      prefixes[type] = prefix;
+    }
+  }
+  return prefixes;
 }
+
+/** The installed packs directory of the data dir a database belongs to: beside it, in the app's layout */
+const packsBeside = (databaseDir: string) => path.join(path.dirname(databaseDir), 'packs');
 
 /** The data dir's database directory, in the app's layout or directly */
 function database(dataDir: string): string {
@@ -109,29 +139,47 @@ function plan(dir: string, prefixes: Readonly<Record<string, string>>) {
     for (const { code } of rows) oldCodeHolders.set(code, (oldCodeHolders.get(code) ?? 0) + 1);
   }
 
-  // A reference by code alone is rewritten only when one entity held that code
+  // A reference by code alone is rewritten only when one entity held that code; a code several held and one of them
+  // gave up is ambiguous, and a reference naming it by code alone is left, and counted
   const codes = new Map<string, string>();
+  const ambiguous = new Set<string>();
   for (const [type, rows] of held) {
     if (!prefixes[type]) continue;
     for (const { id, code } of rows) {
       const to = byId.get(id);
-      if (typeof to === 'string' && oldCodeHolders.get(code) === 1) codes.set(code, to);
+      if (typeof to !== 'string') continue;
+      if (oldCodeHolders.get(code) === 1) codes.set(code, to);
+      else ambiguous.add(code);
     }
   }
-  return { byId, codes, sequences: [...sequences], summary, renumbered };
+  return { byId, codes, ambiguous, sequences: [...sequences], summary, renumbered };
+}
+
+/** A tag in stored markup carrying a short code: a reference pill's `<a>`, which names its entity in its href */
+const CODED_TAG = /<[a-z][^>]*\bdata-short-code="([^"]*)"[^>]*>/gi;
+
+/** The new code of the entity a reference names, else the one its old code alone resolves to, else undefined */
+function resolvedCode(id: unknown, code: string, byId: ReadonlyMap<string, unknown>, codes: ReadonlyMap<string, string>): string | undefined {
+  const byRef = typeof id === 'string' ? byId.get(id) : undefined;
+  const to = typeof byRef === 'string' ? byRef : codes.get(code);
+  return to === code ? undefined : to;
 }
 
 /** `value` with every reference it holds rewritten, or undefined when it holds none */
-function rewriteReferences(value: unknown, byId: ReadonlyMap<string, unknown>, codes: ReadonlyMap<string, string>, markup: RegExp | undefined): unknown {
+function rewriteReferences(value: unknown, byId: ReadonlyMap<string, unknown>, codes: ReadonlyMap<string, string>): unknown {
   if (typeof value === 'string') {
-    if (!markup) return undefined;
-    const next = value.replace(markup, (whole, code: string) => whole.replace(code, codes.get(code)!));
+    if (!value.includes('data-short-code="')) return undefined;
+    const next = value.replace(CODED_TAG, (tag, code: string) => {
+      const href = /\bhref="([^"]*)"/.exec(tag)?.[1];
+      const to = resolvedCode(href ? parseReferenceHref(href.replace(/&amp;/g, '&'))?.id : undefined, code, byId, codes);
+      return to === undefined ? tag : tag.replace(`data-short-code="${code}"`, `data-short-code="${to}"`);
+    });
     return next === value ? undefined : next;
   }
   if (Array.isArray(value)) {
     let changed = false;
     const next = value.map((item) => {
-      const rewritten = rewriteReferences(item, byId, codes, markup);
+      const rewritten = rewriteReferences(item, byId, codes);
       if (rewritten === undefined) return item;
       changed = true;
       return rewritten;
@@ -146,10 +194,8 @@ function rewriteReferences(value: unknown, byId: ReadonlyMap<string, unknown>, c
       let rewritten: unknown;
       if (key === 'shortCode' && ('refId' in record || 'refType' in record) && typeof field === 'string') {
         // The entity it names, when it names one, says which code it now holds; the code alone, when only one held it
-        const byRef = typeof record.refId === 'string' ? byId.get(record.refId) : undefined;
-        rewritten = typeof byRef === 'string' ? byRef : codes.get(field);
-        if (rewritten === field) rewritten = undefined;
-      } else rewritten = rewriteReferences(field, byId, codes, markup);
+        rewritten = resolvedCode(record.refId, field, byId, codes);
+      } else rewritten = rewriteReferences(field, byId, codes);
       if (rewritten === undefined) next[key] = field;
       else { next[key] = rewritten; changed = true; }
     }
@@ -166,17 +212,17 @@ function mentions(value: unknown, pattern: RegExp): number {
   return 0;
 }
 
-export function convertShortCodes(dir: string, prefixes: Readonly<Record<string, string>> = declaredPrefixes()) {
-  const { byId, codes, sequences, summary, renumbered } = plan(dir, prefixes);
-  const changed = [...codes].filter(([from, to]) => from !== to).map(([from]) => from);
-  const markup = changed.length > 0 ? new RegExp(`data-short-code="(${changed.map(escape).join('|')})"`, 'g') : undefined;
-  // Old codes still named in prose after the rewrite, counted rather than guessed at
-  const prose = changed.length > 0 ? new RegExp(`\\b(${changed.map(escape).join('|')})\\b`, 'g') : undefined;
-  let proseMentions = 0;
+export function convertShortCodes(dir: string, prefixes: Readonly<Record<string, string>> = declaredPrefixes(packsBeside(dir))) {
+  const { byId, codes, ambiguous, sequences, summary, renumbered } = plan(dir, prefixes);
+  // Old codes still named after the rewrite — in prose, or in a reference nothing resolved — counted rather than
+  // guessed at: every code that changed, and every one several entities held
+  const left = [...new Set([...[...codes].filter(([from, to]) => from !== to).map(([from]) => from), ...ambiguous])];
+  const leftPattern = left.length > 0 ? new RegExp(`\\b(${left.map(escape).join('|')})\\b`, 'g') : undefined;
+  let mentionsLeft = 0;
   const written = rewriteAttributes(dir, (kind, id, value) => {
     if (kind === 'shortCode') return byId.get(id);
-    const next = rewriteReferences(value, byId, codes, markup);
-    if (prose) proseMentions += mentions(next ?? value, prose);
+    const next = rewriteReferences(value, byId, codes);
+    if (leftPattern) mentionsLeft += mentions(next ?? value, leftPattern);
     return next;
   }, { removeEntities: sequences });
   return {
@@ -185,7 +231,7 @@ export function convertShortCodes(dir: string, prefixes: Readonly<Record<string,
     sequencesRemoved: written.removedEntities,
     attributesRewritten: written.rewritten,
     attributesRemoved: written.removed,
-    proseMentionsLeft: proseMentions,
+    mentionsLeft,
   };
 }
 
