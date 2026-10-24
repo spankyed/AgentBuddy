@@ -227,7 +227,7 @@ export const flowsSystem = setup({
       
       logger.info('Deleting edge', { flowId, edgeId });
       
-      repository.flowsCommands.deleteEdge(edgeId as EARS.EntityId);
+      repository.flowsCommands.deleteEdge(edgeId as EARS.RelationId);
       
       broadcastToSurface(surfaceId, {
         type: 'EDGE_DELETED',
@@ -242,7 +242,7 @@ export const flowsSystem = setup({
       logger.info('Updating edge', { flowId, edgeId, source, target, sourceHandle, targetHandle });
 
       try {
-        repository.flowsCommands.updateEdge(edgeId as EARS.EntityId, {
+        repository.flowsCommands.updateEdge(edgeId as EARS.RelationId, {
           source: source as EARS.EntityId,
           target: target as EARS.EntityId,
           sourceHandle,
@@ -250,7 +250,7 @@ export const flowsSystem = setup({
         });
         broadcastToSurface(surfaceId, {
           type: 'EDGE_UPDATED',
-          edgeId: edgeId as EARS.EntityId,
+          edgeId: edgeId as EARS.RelationId,
           source: source as EARS.EntityId,
           target: target as EARS.EntityId,
           sourceHandle,

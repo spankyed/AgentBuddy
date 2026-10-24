@@ -89,9 +89,9 @@ it.each([
 
 it('admits native feature-owned entities statically and checks their runtime wire identities', () => {
   const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native',
-    features: { notes: { description: 'Feature declaration fixture.', entities: { NativeNote: 'src/types.ts#NoteShape', NativeIndex: null } } } }] });
+    features: { notes: { description: 'Feature declaration fixture.', entities: { NativeNote: { shape: 'src/types.ts#NoteShape' }, NativeIndex: {} } } } }] });
   expect(registry.catalog.getSnapshot().native[0].features!.notes.entities).toEqual({
-    NativeNote: 'src/types.ts#NoteShape', NativeIndex: null,
+    NativeNote: { shape: 'src/types.ts#NoteShape' }, NativeIndex: {},
   });
   expect(() => registry.registerPack({ id: 'native', features: { notes: {} }, ears: { entities: {}, relKinds: {}, roles: {} } }))
     .toThrow('runtime does not match its admitted declarations');

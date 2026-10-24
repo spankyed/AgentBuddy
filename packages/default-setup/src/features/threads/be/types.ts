@@ -1,6 +1,5 @@
 export type * from './export-types.ts';
-import type { ShortCode } from '@apackdev/ears';
-import { type BaseEntity, EARS } from '#generated/ears.ts';
+import { type BaseEntity, EARS, type PackShapes, type ShortCodeOf } from '#generated/ears.ts';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "#features/code/be/services/claude-code/types.ts";
 
@@ -187,7 +186,11 @@ export interface ThreadContext {
   [featureKey: string]: unknown;
 }
 
-export interface ThreadEntity extends BaseEntity {
+/**
+ * The fields a thread declares, which apack.json names as Thread's shape. Its short code is not one of them: the
+ * engine numbers it from the prefix Thread's entry declares, and the generated facade adds it to the row
+ */
+export interface ThreadShape extends BaseEntity {
   entityType: EARS.Entity.Thread;
   topic: string;
   instructions: string;
@@ -195,8 +198,6 @@ export interface ThreadEntity extends BaseEntity {
   timestamp: number;
   lastMessageTimestamp?: number;
   lastVisitedTimestamp?: number;
-  /** Numbered by `create` */
-  shortCode: ThreadTypeShortCode;
   status: string; // Dynamic statuses from settings
   tags?: string[]; // Tag names from settings
   forcedMode?: string; // Forced mode name for this thread
@@ -220,7 +221,8 @@ export interface ArtifactEntity extends BaseEntity {
 export const ThreadRelations = [EARS.RelKind.PARENT_OF, EARS.RelKind.BLOCKS, EARS.RelKind.BLOCKED_BY, EARS.RelKind.DUPLICATES] as const;
 export type ThreadLinkRelation = typeof ThreadRelations[number];
 
-export type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic'> & {
+export type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'status' | 'timestamp' | 'topic'> & {
+  shortCode: ThreadTypeShortCode;
   relation: ThreadLinkRelation
 };
 
@@ -248,7 +250,7 @@ export type ThreadViewData = Simplify<
   & {
     id: ThreadEntity['id'];
     /** `''` while the view holds a thread not yet created */
-    shortCode: ThreadEntity['shortCode'] | '';
+    shortCode: ThreadTypeShortCode | '';
     status: ThreadEntity['status'];
     timestamp: ThreadEntity['timestamp'];
     archived?: ThreadEntity['archived'];
@@ -268,12 +270,16 @@ export type ThreadExtendedData = ThreadLinkedFields & {
   status?: string;
   pinned?: boolean;
   archived?: boolean;
-  shortCode?: ThreadEntity['shortCode'];
+  shortCode?: ThreadTypeShortCode;
   timestamp?: number;
   lastMessageTimestamp?: number;
 }
 
-export type ThreadTypeShortCode = ShortCode<'T'>;
+/** A thread as a read gives it back: its declared fields and its short code */
+export type ThreadEntity = PackShapes['Thread'];
+
+/** A thread's short code, `THR-<n>`: the engine numbers it with the prefix Thread's apack.json entry declares */
+export type ThreadTypeShortCode = ShortCodeOf<'Thread'>;
 
 export type ThreadConnectedData = {
   threads: ThreadExtended[];
@@ -286,7 +292,7 @@ export type ThreadConnectedData = {
 
 export type AgentThreadData = {
   id?: ThreadEntity['id'];
-  shortCode?: ThreadEntity['shortCode'];
+  shortCode?: ThreadTypeShortCode;
   topic: ThreadEntity['topic'];
   instructions: ThreadEntity['instructions'];
   status: ThreadEntity['status'];

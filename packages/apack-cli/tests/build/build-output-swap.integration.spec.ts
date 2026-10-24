@@ -124,7 +124,7 @@ describe('a build that fails', () => {
     const dir = previousBuild([]);
     const root = path.dirname(dir);
     packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
-      features: { notes: { description: 'Store notes.', entities: { Note: 'src/shape.ts#NoteShape' } } },
+      features: { notes: { description: 'Store notes.', entities: { Note: { shape: 'src/shape.ts#NoteShape' } } } },
     }, files: { 'src/shape.ts': 'export interface NoteShape { title: string }' } });
     const facade = () => readPackBuild(dir).snapshot.facades[PACK_TYPES_FACADE];
     await build(['--skip-fe'], root);

@@ -20,7 +20,7 @@ describe('the helpers console code sees', () => {
   // `apack db query`/`exec` all rest on what a query can and cannot reach
   it('gives a query these, and nothing that writes', async () => {
     expect([...READ_HELPER_NAMES].sort()).toEqual([
-      'findRelations', 'getAttr', 'getRoles', 'getRow', 'getSchemaStats', 'query',
+      'findRelations', 'getAttr', 'getRelation', 'getRoles', 'getRow', 'getSchemaStats', 'query',
     ]);
     for (const name of READ_HELPER_NAMES) {
       await expect(runQueryCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -29,7 +29,7 @@ describe('the helpers console code sees', () => {
 
   it('gives a transaction the write helpers as well', async () => {
     expect([...WRITE_HELPER_NAMES].sort()).toEqual([
-      'create', 'upsert', 'write',
+      'create', 'removeRelation', 'upsert', 'write',
     ]);
     for (const name of [...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES]) {
       await expect(runTransactionCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -39,7 +39,8 @@ describe('the helpers console code sees', () => {
 
 describe('runQueryCode', () => {
   it('returns what the code returns, reading the installed engine and the EARS it is given', async () => {
-    untypedCreate('Flow', { id: 'Flow-1', shortCode: 'FLOW-1', label: 'Main', flowType: 'workflow' });
+    // The row brings its code, so no numbering sequence joins the entities the stats count
+    untypedCreate('Flow', { id: 'Flow-1', shortCode: 'FLW-1', label: 'Main', flowType: 'workflow' });
     await expect(runQueryCode("return query(EARS.Entity.Flow).pickAll().map((f) => f.label)", scope)).resolves.toEqual(['Main']);
     await expect(runQueryCode('return getRow("Flow-1")?.label', scope)).resolves.toBe('Main');
     await expect(runQueryCode('return getSchemaStats().entities', scope)).resolves.toEqual({ Flow: 1 });
@@ -63,26 +64,26 @@ describe('runQueryCode', () => {
 
 describe('runTransactionCode', () => {
   it('writes with the write helpers and reads with the read helpers', async () => {
-    const id = await runTransactionCode("const id = create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'New', flowType: 'workflow' }).id(); return getRow(id)?.label", scope);
+    const id = await runTransactionCode("const id = create(EARS.Entity.Flow, { label: 'New', flowType: 'workflow' }).id(); return getRow(id)?.label", scope);
     expect(id).toBe('New');
     expect(untypedQuery('Flow').ids()).toHaveLength(1);
   });
 
   it('keeps none of its writes when it throws part way, and prefixes its error', async () => {
-    await expect(runTransactionCode("create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'Lost', flowType: 'workflow' }); throw new Error('boom')", scope)).rejects
+    await expect(runTransactionCode("create(EARS.Entity.Flow, { label: 'Lost', flowType: 'workflow' }); throw new Error('boom')", scope)).rejects
       .toThrow('Transaction failed: boom\n  Nothing it wrote was kept: a transaction is undone as a whole.');
     expect(untypedQuery('Flow').ids()).toEqual([]);
   });
 
   it('refuses code that would split the unit: an await, or a returned promise, keeping nothing', async () => {
-    await expect(runTransactionCode("await 1; create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'Lost', flowType: 'workflow' })", scope)).rejects.toThrow(/^Transaction failed:/);
-    await expect(runTransactionCode("create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'Lost', flowType: 'workflow' }); return Promise.resolve(3)", scope)).rejects
+    await expect(runTransactionCode("await 1; create(EARS.Entity.Flow, { label: 'Lost', flowType: 'workflow' })", scope)).rejects.toThrow(/^Transaction failed:/);
+    await expect(runTransactionCode("create(EARS.Entity.Flow, { label: 'Lost', flowType: 'workflow' }); return Promise.resolve(3)", scope)).rejects
       .toThrow(/^Transaction failed: transaction code must be synchronous, and this returned a promise/);
     expect(untypedQuery('Flow').ids()).toEqual([]);
   });
 
   it('says what a returned promise kept: the writes after its first await, outside the unit', async () => {
-    const code = "return (async () => { create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'Undone', flowType: 'workflow' }); await 0; create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'Kept', flowType: 'workflow' }); })()";
+    const code = "return (async () => { create(EARS.Entity.Flow, { label: 'Undone', flowType: 'workflow' }); await 0; create(EARS.Entity.Flow, { label: 'Kept', flowType: 'workflow' }); })()";
     await expect(runTransactionCode(code, scope)).rejects
       .toThrow(/What it wrote before its first await was undone; what it writes after that runs outside the transaction and is kept/);
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -92,8 +93,8 @@ describe('runTransactionCode', () => {
 
 describe('getSchemaStats', () => {
   it('counts entities, attribute kinds, relation kinds and roles', () => {
-    untypedCreate('Flow', { id: 'Flow-1', shortCode: 'FLOW-1', label: 'a', flowType: 'workflow' });
-    untypedCreate('Flow', { id: 'Flow-2', shortCode: 'FLOW-2', label: 'b', flowType: 'workflow' }).link('contains', 'Flow-1').grant('root_flow');
+    untypedCreate('Flow', { id: 'Flow-1', label: 'a', flowType: 'workflow' });
+    untypedCreate('Flow', { id: 'Flow-2', label: 'b', flowType: 'workflow' }).link('contains', 'Flow-1').grant('root_flow');
     const stats = getSchemaStats();
     expect(stats.entities.Flow).toBe(2);
     expect(stats.attributes.label).toEqual({ entityCount: 2, totalValues: 2 });

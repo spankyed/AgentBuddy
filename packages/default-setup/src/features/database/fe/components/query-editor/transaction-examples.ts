@@ -59,9 +59,8 @@ return { previous: current, current: next, roles: getRoles(next) };`
 const startId = create(EARS.Entity.Node, { nodeType: 'listener', label: 'Begin Onboarding' }).id();
 const actionId = create(EARS.Entity.Node, { nodeType: 'action', label: 'Collect Information' }).id();
 
-// Create a flow holding them: a created row holds every field its type requires
+// Create a flow holding them: a created row holds every field its type requires, and create numbers its shortCode
 const flowId = create(EARS.Entity.Flow, {
-  shortCode: 'FLOW-ONB',
   label: 'Customer Onboarding',
   flowType: 'workflow',
   description: 'Automated customer onboarding flow',

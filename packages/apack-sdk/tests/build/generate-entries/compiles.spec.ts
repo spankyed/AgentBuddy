@@ -377,7 +377,7 @@ it('generates owner-writable and dependency-readonly handles for both settings o
 
 it('preserves prototype-like entity wires in generated registrations and typed/untyped EARS', async () => {
   write('src/shape.ts', 'throw new Error("shape modules must never execute");\nexport interface EntityShape { title: string }\n');
-  const fields = { data: { entities: Object.fromEntries([['__proto__', 'src/shape.ts#EntityShape'], ['Untyped', null]]) } };
+  const fields = { data: { entities: Object.fromEntries([['__proto__', { shape: 'src/shape.ts#EntityShape' }], ['Untyped', {}]]) } };
   const files = await generatePackFiles(manifest(fields), { packRoot: root });
   write('src/probe.ts', `import { EARS, type EntityShape } from './__generated__/ears.ts';
     import { registration } from './__generated__/pack-entry.ts';

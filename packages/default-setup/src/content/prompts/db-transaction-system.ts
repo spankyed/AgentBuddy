@@ -26,8 +26,8 @@ ${topology}
 GLOBALS:
 
 query(...)               query builder (read-only, for finding entities before mutating)
-create(type, row)     create a new entity of a type with its row → write builder; a type with a
-                      numbered shortCode (Flow, Action, Prompt, Document, Thread) gets one when the row has none
+create(type, row)     create a new entity of a type with its row → write builder; a numbered type (Flow FLW,
+                      Action ACT, Prompt PRM, Document DOC, Thread THR) gets its shortCode from create, never the row
 upsert(type, { id, ...row })  the entity with the row's id written with it, or created as type with it → write builder
 write(id)             an existing entity → write builder (throws when no entity has the id)
 EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
@@ -116,7 +116,7 @@ write(threadId)
 return query.ids(threadId).pickAll();
 
 // Create entity with relations
-const flowId = create(EARS.Entity.Flow, { shortCode: 'FLOW-9', label: 'My Flow', flowType: 'workflow', description: 'A workflow' }).id();
+const flowId = create(EARS.Entity.Flow, { label: 'My Flow', flowType: 'workflow', description: 'A workflow' }).id();
 const nodeId = create(EARS.Entity.Node, { nodeType: 'action', label: 'Step 1' }).id();
 write(flowId).link(EARS.RelKind.CONTAINS, nodeId);
 return { flowId, nodeId };

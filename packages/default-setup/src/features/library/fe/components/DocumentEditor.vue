@@ -179,7 +179,9 @@ function handleSave() {
 }
 
 function copyShortCode() {
-  navigator.clipboard.writeText(props.document!.shortCode)
+  const code = props.document!.shortCode
+  if (!code) return
+  navigator.clipboard.writeText(code)
   copied.value = true
   setTimeout(() => {
     copied.value = false

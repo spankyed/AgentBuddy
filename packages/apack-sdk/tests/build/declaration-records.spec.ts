@@ -8,7 +8,7 @@ const own = <T>(value: T) => Object.fromEntries([['__proto__', value]]);
 describe('keyed declaration preservation', () => {
   it('preserves typed and untyped entity keys across native and authored decoding', () => {
     for (const shape of [null, 'src/types.ts#Entity']) {
-      const fields = { data: { entities: own(shape) } };
+      const fields = { data: { entities: own(shape === null ? {} : { shape }) } };
       const authored = ManifestSchema.parse({ ...pack, ...fields });
       const native = _NativePackDeclarationSchema.parse({ id: pack.id, ...fields });
       expect(_packEntities(authored)).toEqual([{ name: '__proto__', owner: 'data', shape }]);
@@ -18,7 +18,7 @@ describe('keyed declaration preservation', () => {
   });
 
   it('preserves keyed feature contributions, routes, globals and module targets', () => {
-    const fields = { features: { notes: { description: 'Edit notes.', entities: own(null),
+    const fields = { features: { notes: { description: 'Edit notes.', entities: own({}),
       services: own('src/services.ts#service'), repositories: own('src/repositories.ts#repository'),
       surface: { label: 'Notes', state: 'src/state.ts', canvas: { routes: { toString: 'src/view.vue' } } },
     } }, extensions: { dsl: own({ entry: 'src/types.ts', targets: ['monaco'], globals: own('Item') }),
@@ -35,8 +35,8 @@ describe('keyed declaration preservation', () => {
   });
 
   it('names both owners when the preserved wire is declared twice', () => {
-    const result = ManifestSchema.safeParse({ ...pack, data: { entities: own(null) },
-      features: { notes: { description: 'Edit notes.', entities: own(null) } } });
+    const result = ManifestSchema.safeParse({ ...pack, data: { entities: own({}) },
+      features: { notes: { description: 'Edit notes.', entities: own({}) } } });
     expect(result.success).toBe(false);
     if (result.success) throw new Error('Duplicate wire accepted');
     expect(result.error.message).toContain('data');

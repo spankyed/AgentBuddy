@@ -1093,7 +1093,7 @@ describe('apack db import', () => {
     const source = await appDataDir();
     // A pack was installed when the backup was made and declared Bookmark, which the target dir's packs don't
     const packDir = path.join(_appDirOf(source), 'packs', 'bookmarks');
-    const manifest = { id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', data: { entities: { Bookmark: null } } };
+    const manifest = { id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', data: { entities: { Bookmark: {} } } };
     fs.mkdirSync(path.join(packDir, PACK_LAYOUT.typesDir), { recursive: true });
     fs.mkdirSync(path.join(packDir, PACK_LAYOUT.runtimeDir), { recursive: true });
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,

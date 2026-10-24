@@ -33,7 +33,7 @@ it('refuses skipped generation after a packaged helper chunk changes at the same
     fs.symlinkSync(path.join(REPO_ROOT, 'node_modules/@apackdev', name), path.join(modules, '@apackdev', name), 'dir');
   }
   const pack = preparePack(root, 'tool-consumer', {
-    'apack.json': JSON.stringify({ id: 'tool-consumer', name: 'Tool Consumer', version: '1.0.0', data: { entities: { Memo: null } } }),
+    'apack.json': JSON.stringify({ id: 'tool-consumer', name: 'Tool Consumer', version: '1.0.0', data: { entities: { Memo: {} } } }),
     'package.json': packageJson('tool-consumer'), 'tsconfig.json': tsconfig,
   }, modules);
   const entry = path.join(cli, 'bin/apack.mjs');

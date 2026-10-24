@@ -33,7 +33,7 @@ import { services, type Services } from '#generated/services.ts';
 import type { HostServices } from '@apackdev/sdk/services';
 import type { flowRepository } from '@apackdev/sdk/repositories';
 import type { promptService } from '#features/prompts/be/services/prompt.ts';
-import { EARS } from '#generated/ears.ts';
+import { EARS, type ShortCodeOf } from '#generated/ears.ts';
 
 
 // ─── Compile-time type assertions ──────────────────────────────────────
@@ -96,6 +96,20 @@ describe('Type inference — typed EARS helpers', () => {
       create(EARS.Entity.Action, { input: {}, actionFn: 'fn()' });
       // @ts-expect-error not a field of Action
       create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()', notAField: 1 });
+    };
+    expectTypeOf(check).toBeFunction();
+  });
+
+  it("ShortCodeOf types a numbered entity's code from its manifest entry, a pack's and the SDK's alike", () => {
+    expectTypeOf<ShortCodeOf<'Thread'>>().toEqualTypeOf<`THR-${number}`>();
+    expectTypeOf<ShortCodeOf<'Document'>>().toEqualTypeOf<`DOC-${number}`>();
+    expectTypeOf<ShortCodeOf<'Message'>>().toBeNever();
+    // A thread's row holds it, though ThreadEntity declares none: the generated shapes add it
+    expectTypeOf<EntityShape<'Thread'>['shortCode']>().toEqualTypeOf<`THR-${number}`>();
+    const check = () => {
+      create(EARS.Entity.Thread, { topic: 't', instructions: '', status: 'Open', timestamp: 0, shortCode: 'THR-40' });
+      // @ts-expect-error a thread's code is THR-<n>
+      create(EARS.Entity.Thread, { topic: 't', instructions: '', status: 'Open', timestamp: 0, shortCode: 'DOC-40' });
     };
     expectTypeOf(check).toBeFunction();
   });

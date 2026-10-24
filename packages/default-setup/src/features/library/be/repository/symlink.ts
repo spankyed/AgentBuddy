@@ -5,7 +5,6 @@ import * as path from 'path'
 import { EARS } from '#generated/ears.ts'
 import type { LibraryItem, FolderContents, BreadcrumbItem } from '../types.ts'
 import { formatFileSize } from './helpers.ts'
-import type { DocumentShortCode } from '#features/library/be/types.ts';
 
 const SYMLINK_PREFIX = 'symlink:'
 
@@ -113,7 +112,6 @@ export async function listDirectory(dirPath: string, collectionId: string, relat
         type: 'document',
         id: itemId,
         name: entry.name,
-        shortCode: 'DOC-0' as DocumentShortCode,
         parentId: null,
         content: [],
         tags: [],

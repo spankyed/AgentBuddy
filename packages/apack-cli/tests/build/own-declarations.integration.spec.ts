@@ -25,8 +25,8 @@ it('preserves owned names through authoring, compiled snapshots, source-free dis
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-own-declarations-')); roots.push(root);
   const own = <T>(value: T) => Object.fromEntries([['__proto__', value]]);
   packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'),
-    manifest: { id: 'own-declarations', name: 'Own declarations', data: { entities: { Untyped: null } },
-      features: { notes: { description: 'Store notes.', entities: own('src/shape.ts#NoteShape'), services: own('src/service.ts#service') } },
+    manifest: { id: 'own-declarations', name: 'Own declarations', data: { entities: { Untyped: {} } },
+      features: { notes: { description: 'Store notes.', entities: own({ shape: 'src/shape.ts#NoteShape' }), services: own('src/service.ts#service') } },
       lifecycle: { onInit: 'src/lifecycle.ts#onInit' },
       extensions: { appExtensions: own('src/View.vue') },
     }, files: {
@@ -48,7 +48,7 @@ it('preserves owned names through authoring, compiled snapshots, source-free dis
   fs.rmSync(path.join(root, 'src'), { recursive: true });
   const report = await inspectPack(installed);
   expect(report.build.status).toBe('verified');
-  expect(report.declared.features?.notes.entities).toEqual(own('src/shape.ts#NoteShape'));
+  expect(report.declared.features?.notes.entities).toEqual(own({ shape: 'src/shape.ts#NoteShape' }));
   expect(report.declared.extensions?.appExtensions).toEqual(own('src/View.vue'));
   expect((globalThis as Record<string, unknown>).__ownDeclarationsLoaded).toBeUndefined();
   const loaded = loadSingleExternalPack(createPackRegistry(), installed);

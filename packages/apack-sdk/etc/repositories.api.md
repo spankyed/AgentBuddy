@@ -141,10 +141,10 @@ export const flowRepository: {
     updateNode: (nodeId: EARS.EntityId, updates: FlowNodeInput) => void;
     deleteNode: (nodeId: EARS.EntityId) => void;
     createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId, options?: Handles) => {
-        relId: EARS.EntityId;
+        relId: EARS.RelationId;
     };
-    deleteEdge: (edgeId: EARS.EntityId) => void;
-    updateEdge: (edgeId: EARS.EntityId, next: {
+    deleteEdge: (edgeId: EARS.RelationId) => void;
+    updateEdge: (edgeId: EARS.RelationId, next: {
         source: EARS.EntityId;
         target: EARS.EntityId;
     } & Handles) => void;

@@ -157,7 +157,7 @@ it.each(['configuration', 'sources', 'declarations', 'resolution'])('publishes c
   const { root, pack } = fixture(false);
   packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
     id: 'captured-config', name: 'Captured config', features: {}, lifecycle: { onInit: 'src/on-init.ts#onInit' },
-    data: { entities: { Probe: 'src/shape.ts#Probe' } },
+    data: { entities: { Probe: { shape: 'src/shape.ts#Probe' } } },
   }, files: {
     'src/on-init.ts': 'import {result} from "./input.tsx"; export function onInit() { return JSON.stringify(result); }',
     'src/shape.ts': 'export interface Probe { value: string }',

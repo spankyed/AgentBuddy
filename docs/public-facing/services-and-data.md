@@ -266,7 +266,7 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 ```json
 {
   "data": {
-    "entities": { "Bookmark": null, "Tag": null },
+    "entities": { "Bookmark": {}, "Tag": {} },
     "relations": ["tagged_with"]
   }
 }
@@ -397,12 +397,13 @@ transact(() => {
 `query.ids(id).out(kinds)` walks to the entities an entity links to and `in(kinds)` to those linking to it; `outEdges(kinds)` and `inEdges(kinds)` return the edges themselves. A relation reads the same wherever it comes from — `outEdges`, `inEdges`, `findRelations` — as `{ id, kind, source, target, info }`: its own id, its kind, its two ends and its `info` (a flow edge's handles). `findRelations` finds relations by any of `kind`, `source` and `target`, and `getSchemaStats().relations` counts each kind's:
 
 ```typescript
-import { findRelations, getSchemaStats } from '@apackdev/sdk/ears';
+import { findRelations, getRelation, removeRelation, getSchemaStats } from '@apackdev/sdk/ears';
 
 const [edge] = findRelations({ source: nodeId, kind: EARS.RelKind.TRANSITIONS_TO });
 edge.target;                       // the node it leads to
 edge.info;                         // { sourceHandle: 'yes' }
-write(edge.id).destroy();                  // that one edge, leaving any other between the same nodes
+getRelation(edge.id);                     // the same row, read by its id
+removeRelation(edge.id);                  // that one edge, leaving any other between the same nodes
 getSchemaStats().relations.contains;      // { total, uniqueSources, uniqueTargets }
 ```
 
@@ -431,7 +432,12 @@ From `@apackdev/sdk/ears` (untyped, on the app's engine):
 
 | Call | Does |
 |---|---|
-| `updateRelation(relationId, { source?, target?, info? })` | Moves a relation to new ends, or replaces its info, keeping its id |
+| `getRelation(relationId)` | The relation's row (`{ id, kind, source, target, info }`), or `undefined` when no relation has the id |
+| `updateRelation(relationId, { source?, target?, info? })` | Moves a relation to new ends, or replaces its info, keeping its id; refuses an id no relation has |
+| `removeRelation(relationId)` | Removes that one relation; refuses an id no relation has |
+
+A relation's id is an `EARS.RelationId`, which every relation read gives back (`findRelations`, `outEdges`,
+`inEdges`). A relation is not an entity, so `write` refuses a relation's id at compile time.
 | `isEntityType(name)` | Whether the running app has registered the entity type: the SDK's and every registered pack's |
 
 ### Hierarchies
@@ -543,8 +549,8 @@ To get typed attributes on entities, declare shapes in the manifest:
     "bookmarks": {
       "description": "Save and organize bookmarks.",
       "entities": {
-        "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes",
-        "ImportIndex": null
+        "Bookmark": { "shape": "src/features/bookmarks/be/types.ts#BookmarkAttributes" },
+        "ImportIndex": {}
       }
     }
   }
@@ -581,19 +587,41 @@ from a typed helper (`newId(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookm
 so builders written with it (`query.ids(id)`, `write(id)`) are typed too;
 unbranded ids (`EARS.EntityId`) and `query.all()` read as undeclared.
 
-**A short code is numbered by `create`.** A shape that types its `shortCode` as `ShortCode<prefix>` (from
-`@apackdev/ears`) has every created row numbered `<prefix>-<n>` when the row brings none, and a typed `create` may
-leave the field out. A number is never handed out twice for a type, a destroyed row's included, and a row that brings
-its own code keeps it:
+**A short code is declared in the manifest and numbered by `create`.** Give the entity's entry a `shortCode`
+prefix, and leave the field out of its shape: the engine writes it, and your `#generated/ears` adds it to the shape,
+typed from that prefix — the build refuses a shape declaring it, since that would be a second account of the
+prefix. A prefix is three uppercase letters —
+the word's common abbreviation where it has one (`DOC`, `MSG`), otherwise its first letter and next two distinct
+consonants (`THR`, `BKM`) — and unique across every pack, the SDK's `FLW`, `ACT`, `PRM` and `DOC` included.
 
-```typescript
-import type { ShortCode } from '@apackdev/ears';
-
-export interface BookmarkEntity extends BaseEntity {
-  shortCode: ShortCode<'BKM'>;   // BKM-1, BKM-2, …
-  url: string;
+```json
+"entities": {
+  "Bookmark": { "shape": "src/features/bookmarks/be/types.ts#BookmarkEntity", "shortCode": "BKM" }
 }
 ```
+
+```typescript
+export interface BookmarkEntity extends BaseEntity {
+  url: string;            // no shortCode: the generated shapes add it, BKM-1, BKM-2, …
+}
+
+// Where your own types need the code, name it from the generated facade
+import type { ShortCodeOf } from '#generated/ears.ts';
+type BookmarkCode = ShortCodeOf<'Bookmark'>;   // `BKM-${number}`
+```
+
+`create` numbers every row, and a number is never handed out twice for a type, a destroyed row's included. The code
+is the engine's, like the id: no write sets or deletes it, and a created row brings one only on import, as
+`create(type, { shortCode })` with a `BKM-<n>` no other row holds. A code is unique, so the typed query finds its row,
+and the value index answers it:
+
+```typescript
+const bookmark = query(EARS.Entity.Bookmark).where('shortCode', 'BKM-12').pickOne();
+```
+
+For a code whose type you don't know — one a user typed, or one found in text — `entityTypeOfShortCode(code)`
+(`@apackdev/sdk/services`) names it from every installed pack's prefixes (`'BKM-12'` → `'Bookmark'`), and the query
+follows.
 
 ### Entity ids
 

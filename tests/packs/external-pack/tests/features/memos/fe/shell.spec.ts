@@ -10,7 +10,7 @@ import { sendToSurface } from '#generated/events.ts';
 import memosState from '../../../../src/features/memos/fe/state.ts';
 import notesState from '../../../../src/features/notes/fe/state.ts';
 
-const memo = { id: 'memo-1', text: 'handed over on opening', createdAt: 1 };
+const memo = { id: 'memo-1', shortCode: 'MEM-1' as const, text: 'handed over on opening', createdAt: 1 };
 
 it('opens its surface by name, hands it the events, and the shell reads it as open', async () => {
   const shell = await startShell({ surfaces: { notes: { state: notesState }, memos: { state: memosState } } });

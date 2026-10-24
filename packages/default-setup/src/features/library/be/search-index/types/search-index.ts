@@ -85,7 +85,6 @@ export interface EmbeddingResult {
 
 export interface IndexedDocEntity {
   id: EARS.EntityId
-  shortCode: string
   indexId: string
   chunkKey: string
   documentId: EARS.EntityId

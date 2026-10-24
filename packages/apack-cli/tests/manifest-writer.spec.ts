@@ -12,7 +12,7 @@ describe('manifest formatting', () => {
         alpha: { description: 'Alpha purpose.' },
       },
       dependencies: { zeta: '*', alpha: '*' },
-      data: { entities: { Zeta: null, Alpha: null }, relations: ['zeta', 'alpha'] },
+      data: { entities: { Zeta: {}, Alpha: {} }, relations: ['zeta', 'alpha'] },
       version: '1.0.0', name: 'Fixture', id: 'fixture',
     };
     const before = structuredClone(manifest);

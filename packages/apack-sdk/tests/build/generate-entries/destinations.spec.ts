@@ -10,9 +10,9 @@ function destination(id: string, opens: string) {
 }
 
 it('materializes SDK, own and dependency destinations as deterministic data', async () => {
-  const ancestor = dependency({ id: 'ancestor', data: { entities: { Memo: null } } });
+  const ancestor = dependency({ id: 'ancestor', data: { entities: { Memo: {} } } });
   ancestor.types.entities = { Memo: 'Memo' };
-  const files = await generate({ data: { entities: { Note: null } }, features: {
+  const files = await generate({ data: { entities: { Note: {} } }, features: {
     notes: destination('notes', "'Note' | 'Action' | 'Memo'"),
   } }, { ancestor });
   expect(JSON.parse(files[GENERATED_ENTITY_DESTINATIONS_FILE])).toEqual({ Action: 'notes', Memo: 'notes', Note: 'notes' });

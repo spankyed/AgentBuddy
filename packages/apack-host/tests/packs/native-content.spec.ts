@@ -8,7 +8,7 @@ import { importCompiledContent } from '@apackdev/sdk/utils';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const declaration: NativePackDeclaration = {
-  id: 'native-content', data: { entities: { Memo: null } },
+  id: 'native-content', data: { entities: { Memo: {} } },
   content: { writers: { Memo: 'absent/writers.ts#memoWriter' },
     sources: { memos: { applier: 'absent/memos.ts' } },
   },
@@ -80,7 +80,7 @@ it.each([
 
 it('accepts a native writer owned by a feature', () => {
   expect(_nativePackDeclarationProblem({ id: 'feature-content',
-    features: { memos: { description: 'Manage memos.', entities: { Memo: null } } },
+    features: { memos: { description: 'Manage memos.', entities: { Memo: {} } } },
     content: declaration.content,
   })).toBeUndefined();
 });

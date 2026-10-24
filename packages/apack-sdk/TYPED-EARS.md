@@ -79,20 +79,26 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
   `set`, `append`, `merge`, `delete`, `removeAt` and `removeValue` take `K extends WritableField<S, E>`, which keeps
   field completions and makes a typo's error list the fields; `setMany` takes the declared fields as an object
   with no index signature, so a misspelled key is an excess property.
-- `create(type, row)` takes the whole row (`CreateFields & RowIdentity`): every field the shape requires
-  (`RequiredField`), any optional one, and the `id`, `createdAt` and `updatedAt` an import keeps. The row argument
+- `create(type, row)` takes the whole row (`CreateFields & RowIdentity & ShortCodeIdentity`): every field the shape requires
+  (`RequiredField`), any optional one, and the `id`, `createdAt` and `updatedAt` an import keeps — and its `shortCode`,
+  typed as the shape's own `ShortCode<prefix>`, so another type's code fails to compile, with no such key for a shape
+  that has none. The row argument
   is required exactly when the shape requires a field, so an incomplete row doesn't compile; `upsert(type, { id, ...row })`
-  is held to the same row, its id always given. A `shortCode` the shape types as `ShortCode<prefix>` is a required field the row may
-  leave out (`NumberedField`), since `create` numbers it.
-  The engine holds every write to the same rules at runtime: codegen reads each pack shape's required fields and
-  short-code prefix with the TypeScript checker (`rowRulesOf`) into its registration (`PackEARS.rowRules`), the SDK
-  lists its own (`SDK_ROW_RULES`, compiler-checked against its shapes), and `create` numbers a short code a row
-  lacks, refuses a row without a required field and `delete` one of them (`REQUIRED_FIELD`) — the untyped twins,
-  content writers and the console included.
+  is held to the same row, its id always given. `shortCode` is one of the engine's own attributes, never a field of
+  the row: `create` numbers it from the prefix the type's manifest entry declares (`shortCode`). A pack's shape
+  declares no `shortCode` — codegen refuses one — and the generated `PackShapes` intersects a numbered entity's shape
+  with `{ shortCode: ShortCode<prefix> }`, so the prefix is written once. `ShortCodeOf<E>` (`#generated/ears`) reads
+  the field back for a pack's own types, covering its entities, its dependencies' and the SDK's (whose hand-written
+  shapes take their prefixes from `SDK_SHORT_CODES`); it is `never` for an entity that isn't numbered or has no shape.
+  The engine holds every write to the same rules at runtime: codegen reads each pack shape's required fields with the
+  TypeScript checker (`rowRulesOf`) and each type's prefix from the manifest into its registration
+  (`PackEARS.rowRules`), the SDK lists its own (`SDK_ROW_RULES`, its prefixes from `SDK_SHORT_CODES`, compiler-checked
+  against its shapes), and `create` numbers a short code, refuses a row without a required field and `delete` one of
+  them (`REQUIRED_FIELD`) — the untyped twins, content writers and the console included.
 - `delete` takes only an optional field (`OptionalField`): removing a required one would leave a row its shape
   misdescribes, so a required field is replaced with `set`. `removeAt` and `removeValue` edit a list and remove
   no field, so they take any writable one.
-- The engine's own attributes (`id`, `entityType`, `createdAt`, `updatedAt`, `role`, `trashedAt`) are not
+- The engine's own attributes (`id`, `entityType`, `shortCode`, `createdAt`, `updatedAt`, `role`, `trashedAt`) are not
   writable fields, so the type refuses them as the runtime does.
 - A plain id leaves every write unchecked. EARS stores attributes a shape need not declare; code writing one
   says so with `untypedWrite`/`untypedCreate`/`untypedUpsert` (`@apackdev/sdk/ears`), or declares the field.

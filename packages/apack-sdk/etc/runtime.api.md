@@ -122,6 +122,7 @@ export interface PackRegistryView extends PackExtensionsView {
     appliers(packId: string): readonly ContentApplier[];
     contentWriters(entity: string): ContentWriter | undefined;
     earsNames(): EarsNames;
+    entityTypeOfShortCode(code: string): string | undefined;
     getRegisteredServices(): Record<string, unknown>;
     help(): HelpCatalog;
     // (undocumented)

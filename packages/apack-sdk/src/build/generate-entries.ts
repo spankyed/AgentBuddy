@@ -4,7 +4,7 @@ import { dataLiteral, propertyKey } from './code-literals.ts';
 import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
 import { resolveTypeModule } from './type-module.ts';
 import { _packModuleTargets, _moduleTargetSource } from './module-targets.ts';
-import { _packEntities, _packEntityTypes, _packRelationTypes, _packRoles, type PackDataDeclarations } from '../framework/data-declaration.ts';
+import { _packEntities, _packEntityTypes, _packRelationTypes, _packRoles, _packShortCodes, type PackDataDeclarations } from '../framework/data-declaration.ts';
 import { _parseModuleReference } from '../framework/module-reference.ts';
 import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
@@ -21,6 +21,7 @@ import { createModuleExports, type ModuleExport, type ModuleExports } from './mo
 import { hasOwn } from '../utils/shared.ts';
 import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
+import type { RowRules } from '@apackdev/ears';
 import type { ComponentTarget } from '../framework/surface-declaration.ts';
 import type { PackEventContracts } from '../framework/event-contracts.ts';
 
@@ -185,6 +186,7 @@ ${entityValue}${prototypeExport('Entity', registry.entities)}
   export type Entity = ${entityUnion};
 
   export type EntityId<E extends string = string> = import('@apackdev/ears').EARS.EntityId<E>;
+  export type RelationId = import('@apackdev/ears').EARS.RelationId;
 
   export namespace RelKind {
 ${relKindMembers.join('\n')}
@@ -1205,7 +1207,7 @@ ${regProps.join('\n')}
 // dependencies'), bound to the app's engine (\`boundEars\`). The call is pure, so bundles that only use the
 // EARS constants above drop it.
 
-import { defineEars, type EarsSchema, type ShapeOf } from '@apackdev/ears';
+import { defineEars, type EarsSchema, type ShapeOf, type ShortCode } from '@apackdev/ears';
 import { boundEars } from '@apackdev/sdk/ears';
 import type { SdkEntityShapes } from '@apackdev/sdk';
 ${ownNodes ? "import type { NodeEntity } from './types.ts';\n" : ''}${shapeImports.join('\n')}
@@ -1230,6 +1232,13 @@ export type PackShapes = Omit<SdkEntityShapes & OwnEntityShapes${depShapes.alias
 
 /** An entity type's shape in this pack; undeclared types read as base fields plus \`unknown\` values. */
 export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
+
+/**
+ * A numbered entity's short code type, \`ShortCode<prefix>\` from the prefix its manifest entry declares
+ * (\`ShortCodeOf<'Thread'>\` is THR-<n>): this pack's, its dependencies' and the SDK's. Never for an entity
+ * that isn't numbered, or one declared without a shape.
+ */
+export type ShortCodeOf<E extends keyof PackShapes> = PackShapes[E] extends { shortCode: infer C } ? C : never;
 
 /**
  * Entity names the helpers below accept as literals: this pack's, its dependencies' and the SDK's. A name
@@ -2011,13 +2020,42 @@ export type { ImportMode } from '@apackdev/sdk/utils';
   }
 
   /**
-   * What each of this pack's own shaped entities holds a created row to, read off its shape: the fields the engine
-   * refuses a created row without, and the prefix it numbers a short code with. An entity with no shape is held to
-   * nothing, and a dependency's register their own.
+   * What each of this pack's own entities holds a created row to: the fields the engine refuses a created row without,
+   * read off its shape, and the prefix it numbers a short code with, which its manifest entry declares (`shortCode`).
+   * The shape declares no `shortCode`: the engine writes it, and `#generated/ears` types it from that same prefix, so
+   * the type and the numbering have one source. An entity with neither a shape nor a prefix is held to nothing, and a
+   * dependency's register their own.
    */
   function rowRulesLiteral(): string {
-    return dataLiteral(Object.fromEntries(packShapes().map(({ entity, exportName, file }) =>
-      [entity, moduleReader().rowRulesOf(file, exportName)])));
+    const prefixes = new Map(_packEntities(manifest).flatMap(({ name, shortCode }) => (shortCode ? [[name, shortCode] as const] : [])));
+    // A prefix numbers one type across the app, so a dependency's are taken as the SDK's are: a collision fails the
+    // build here, rather than the install at the host registry. A dependency's snapshot carries its manifest whole
+    const taken = new Map<string, string>();
+    for (const [depId, snapshot] of depSnapshots) {
+      for (const [type, prefix] of Object.entries(_packShortCodes(snapshot.manifest))) taken.set(prefix, `${type} of the dependency "${depId}"`);
+    }
+    for (const [entity, prefix] of prefixes) {
+      const owner = taken.get(prefix);
+      if (owner) throw new Error(`Entity "${entity}": the short code prefix "${prefix}" numbers ${owner}: choose another`);
+    }
+    const shaped = new Set<string>();
+    const rules: Record<string, RowRules> = {};
+    for (const { entity, exportName, source, file } of packShapes()) {
+      shaped.add(entity);
+      const { required, declaresShortCode } = moduleReader().rowRulesOf(file, exportName);
+      const declared = prefixes.get(entity);
+      // The engine writes a short code and #generated/ears types it, from the prefix the entry declares: a shape
+      // declaring the field would be a second account of it, which could disagree with the first
+      if (declaresShortCode) {
+        throw new Error(`Entity "${entity}": ${source}#${exportName} declares shortCode, which the engine writes: `
+          + (declared === undefined
+            ? 'remove it, or number the entity by giving its manifest entry a "shortCode" prefix'
+            : `remove it — the manifest entry's "${declared}" types the field, as ShortCodeOf<'${entity}'> from #generated/ears`));
+      }
+      rules[entity] = { required, ...(declared !== undefined && { shortCode: declared }) };
+    }
+    for (const [entity, shortCode] of prefixes) if (!shaped.has(entity)) rules[entity] = { required: [], shortCode };
+    return dataLiteral(rules);
   }
 
   /** This pack's own shaped entities, each shape checked to be a type its module exports */
@@ -2040,13 +2078,16 @@ export type { ImportMode } from '@apackdev/sdk/utils';
   function entityShapeEntries(): { imports: string[]; entries: string[] } {
     const imports: string[] = [];
     const entries: string[] = [];
+    const prefixes = new Map(_packEntities(manifest).flatMap(({ name, shortCode }) => (shortCode ? [[name, shortCode] as const] : [])));
     for (const { entity, source, exportName: typeName } of packShapes()) {
       if ((SDK_SHAPED_ENTITIES as readonly string[]).includes(entity)) {
         throw new Error(`Entity shape "${entity}": the SDK declares this entity's shape; remove its entity declaration`);
       }
       const alias = `__shape_${entity.replace(/[^A-Za-z0-9_$]/g, '_')}`;
       imports.push(`import type { ${typeName} as ${alias} } from '${toImportPath(root, source)}';`);
-      entries.push(`  '${entity}': ${alias};`);
+      // A numbered entity's row holds the short code the engine writes, typed by its entry's prefix
+      const prefix = prefixes.get(entity);
+      entries.push(`  '${entity}': ${alias}${prefix ? ` & { shortCode: ShortCode<'${prefix}'> }` : ''};`);
     }
     return { imports, entries };
   }

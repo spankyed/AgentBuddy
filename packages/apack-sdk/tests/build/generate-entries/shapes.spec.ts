@@ -78,7 +78,7 @@ describe('generated entity shapes', () => {
   it('imports own shapes under aliases and dependency shapes from their facade types', async () => {
     write('src/features/memos/be/types.ts', 'export interface ItemEntity { text: string }\n');
     const files = await generate(
-      { data: { entities: { Memo: "src/features/memos/be/types.ts#ItemEntity" } },  },
+      { data: { entities: { Memo: { shape: "src/features/memos/be/types.ts#ItemEntity" } } },  },
       { 'base-pack': dependency({}) },
     );
     const ears = files['src/__generated__/ears.ts'];
@@ -106,40 +106,40 @@ describe('generated entity shapes', () => {
 
   it('fails when a declared shape type is not exported', async () => {
     write('src/types.ts', 'interface ItemEntity { text: string }\n');
-    await expect(generate({ data: { entities: { Memo: "src/types.ts#ItemEntity" } },  })).rejects.toThrow('Entity shape "Memo": src/types.ts doesn\'t export a type named "ItemEntity"');
+    await expect(generate({ data: { entities: { Memo: { shape: "src/types.ts#ItemEntity" } } },  })).rejects.toThrow('Entity shape "Memo": src/types.ts doesn\'t export a type named "ItemEntity"');
   });
 
   it("fails when a pack redeclares the SDK's Flow shape", async () => {
     write('src/types.ts', 'export interface MyFlow { x: string }\n');
-    await expect(generate({ data: { entities: { Flow: "src/types.ts#MyFlow" } } })).rejects.toThrow('is defined by the SDK');
+    await expect(generate({ data: { entities: { Flow: { shape: "src/types.ts#MyFlow" } } } })).rejects.toThrow('is defined by the SDK');
   });
 
   it('accepts a shape exported by name from a list', async () => {
     write('src/types.ts', 'interface ItemEntity { text: string }\nexport type { ItemEntity };\n');
-    await expect(generate({ data: { entities: { Memo: "src/types.ts#ItemEntity" } } })).resolves.toBeDefined();
+    await expect(generate({ data: { entities: { Memo: { shape: "src/types.ts#ItemEntity" } } } })).resolves.toBeDefined();
   });
 });
 
 describe('feature-owned entity declarations', () => {
   it('checks type exports without executing their module and keeps null entities untyped', async () => {
     write('src/types.ts', 'throw new Error("must never execute");\nexport interface MemoShape { text: string }\nexport const valueOnly = {};\n');
-    const files = await generate({ features: { memos: { entities: { Memo: 'src/types.ts#MemoShape', Index: null } } } });
+    const files = await generate({ features: { memos: { entities: { Memo: { shape: 'src/types.ts#MemoShape' }, Index: {} } } } });
     expect(files['src/__generated__/ears.ts']).toContain("'Memo': __shape_Memo;");
     expect(files['src/__generated__/ears.ts']).not.toContain("'Index': __shape_Index;");
     expect(files['src/__generated__/pack-entry.ts']).toContain('entities: {"Memo":"Memo","Index":"Index"}');
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('../types.ts');
-    await expect(generate({ features: { memos: { entities: { Memo: 'src/types.ts#valueOnly' } } } }))
+    await expect(generate({ features: { memos: { entities: { Memo: { shape: 'src/types.ts#valueOnly' } } } } }))
       .rejects.toThrow('Entity shape "Memo": src/types.ts doesn\'t export a type named "valueOnly"');
-    await expect(generate({ data: { entities: { Memo: 'src/missing.ts#MemoShape' } } }))
+    await expect(generate({ data: { entities: { Memo: { shape: 'src/missing.ts#MemoShape' } } } }))
       .rejects.toThrow('Entity shape "Memo": no file found at src/missing.ts');
-    await expect(generate({ data: { entities: { Memo: '../outside.ts#MemoShape' } } }))
+    await expect(generate({ data: { entities: { Memo: { shape: '../outside.ts#MemoShape' } } } }))
       .rejects.toThrow('Entity shape "Memo": module must be pack-root-relative and stay within the pack');
   });
 
   it('refuses duplicate ownership before generating a runtime inventory', async () => {
-    await expect(generate({ data: { entities: { Memo: null } }, features: { memos: { entities: { Memo: null } } } }))
+    await expect(generate({ data: { entities: { Memo: {} } }, features: { memos: { entities: { Memo: {} } } } }))
       .rejects.toThrow('Entity "Memo" is declared by both "data" and "features.memos"');
-    await expect(generate({ features: { memos: { entities: { Memo: null } }, other: { entities: { Memo: null } } } }))
+    await expect(generate({ features: { memos: { entities: { Memo: {} } }, other: { entities: { Memo: {} } } } }))
       .rejects.toThrow('both "features.memos" and "features.other"');
   });
 });
@@ -320,7 +320,7 @@ describe('generated services', () => {
 describe('entitiesWithoutShapes', () => {
   it("lists the pack's entities with no shape, leaving out those the SDK shapes", () => {
     expect(entitiesWithoutShapes({
-      data: { entities: { Memo: "src/memo.ts#MemoEntity", Tag: null } },
+      data: { entities: { Memo: { shape: "src/memo.ts#MemoEntity" }, Tag: {} } },
 
     })).toEqual(['Tag']);
     expect(entitiesWithoutShapes({})).toEqual([]);

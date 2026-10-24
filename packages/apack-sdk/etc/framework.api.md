@@ -326,7 +326,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     // (undocumented)
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null>;
+        entities?: Record<string, PackEntityDeclaration>;
         designation?: string;
         settings?: SettingsDefinition;
         surface?: SurfaceDeclaration;
@@ -387,7 +387,7 @@ export interface PackConsumption {
 export interface PackDataDeclarations {
     // (undocumented)
     data?: {
-        entities?: Readonly<Record<string, string | null>>;
+        entities?: Readonly<Record<string, PackEntityDeclaration>>;
         relations?: readonly string[];
         roles?: readonly string[];
     };
@@ -415,6 +415,12 @@ export interface PackEARS {
 // @internal
 export function _packEntities(declaration: PackDataDeclarations): _PackEntityDeclaration[];
 
+// @public
+export interface PackEntityDeclaration {
+    readonly shape?: string;
+    readonly shortCode?: string;
+}
+
 // @internal
 export interface _PackEntityDeclaration {
     // (undocumented)
@@ -423,6 +429,7 @@ export interface _PackEntityDeclaration {
     owner: string;
     // (undocumented)
     shape: string | null;
+    shortCode?: string;
 }
 
 // @internal
@@ -551,6 +558,9 @@ export function _packServiceSelection(pack: _PackServiceDeclarations, provider: 
     readonly packId: string;
     readonly name: string;
 }[];
+
+// @internal
+export function _packShortCodes(declaration: PackDataDeclarations): Record<string, string>;
 
 // @public
 export function packSystem(entry: SystemEntry, options: {
@@ -684,6 +694,12 @@ export interface SettingsValidator {
     // (undocumented)
     validate(value: unknown): SettingsProblem[];
 }
+
+// @internal
+export const _SHORT_CODE_PATTERN: RegExp;
+
+// @internal
+export function _shortCodeTypes(rules: ReadonlyArray<readonly [string, Partial<RowRules>]>): (code: string) => string | undefined;
 
 // @internal
 export function _stepBackendParts(entry: DeclarationData<Pick<StepEntry, 'build' | 'trigger'>>): {

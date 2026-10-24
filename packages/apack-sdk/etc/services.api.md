@@ -100,6 +100,9 @@ export function _createPackServices(): {
 export function _createRunHistory(records: RecordStore<RunNode>): RunHistory;
 
 // @public
+export const entityTypeOfShortCode: (code: string) => string | undefined;
+
+// @public
 export interface EventRunNode extends RunNodeBase {
     // (undocumented)
     cronExpression?: string;

@@ -48,8 +48,8 @@ export interface PackEARS {
   relKinds: Record<string, string>;
   roles: Record<string, string>;
   /**
-   * What each of the pack's shaped entities' created rows is held to, read off its shape: the fields the engine refuses
-   * a created row without, and the prefix it numbers a short code with; none when absent
+   * What each of the pack's entities' created rows is held to: the fields the engine refuses a created row without,
+   * read off its shape, and the prefix it numbers a short code with, from its manifest entry's `shortCode`; none when absent
    */
   rowRules?: Record<string, RowRules>;
 }

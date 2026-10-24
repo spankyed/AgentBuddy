@@ -86,16 +86,10 @@ export const libraryQueries = {
     }
   },
 
+  /** The document a short code names, or null: a code is unique, and the value index answers the lookup */
   findDocumentByShortCode(shortCode: DocumentShortCode): DocumentDTO | null {
-    const documents = query(EARS.Entity.Document)
-      .where('shortCode', shortCode)
-      .pickAll()
-    
-    if (documents.length === 0) {
-      return null
-    }
-    
-    return this.findDocument(documents[0].id as EARS.EntityId)
+    const id = query(EARS.Entity.Document).where('shortCode', shortCode).first()
+    return id ? this.findDocument(id) : null
   },
 
   /** Every document and folder by name, for the reference picker and the panel's stats */

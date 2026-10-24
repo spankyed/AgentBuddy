@@ -3,14 +3,12 @@
 // the faces define the contract, not a security boundary (packs run in-process).
 import type { EARS } from './entities.ts';
 import { noopSink, type EARSRuntimeDeps } from './runtime.ts';
-import { createRelationIndex } from './relation-index.ts';
 import { createAttributeStorage, type EntityRow, type SchemaStats } from './attribute-storage.ts';
-import { createEdgeStore } from './edge-store.ts';
 import { createQuery, type Query } from './query.ts';
 import { createHierarchy } from './hierarchy.ts';
 import { createWrites, type Create, type Upsert, type Write } from './write.ts';
 import { createEntityCounters } from './numbering.ts';
-import { createRelationReads, type RelationMatch, type RelationRow } from './relations.ts';
+import { createRelations, type RelationMatch, type RelationRow } from './relations.ts';
 import { createJournal } from './journal.ts';
 import { createNameChecks } from './names.ts';
 
@@ -43,9 +41,14 @@ export interface Ears {
   getRoles(id: EARS.EntityId): string[];
   /** What the engine holds, keyed by the names its data holds: entities per type, attribute, relation and role use */
   getSchemaStats(): SchemaStats;
-  /** Moves a relation to new ends, or replaces its info, keeping its id */
-  updateRelation(relId: EARS.EntityId, patch: { source?: EARS.EntityId; target?: EARS.EntityId; info?: unknown }): void;
+  /** The relation's row — its id, kind, ends and info — or undefined when no relation has the id */
+  getRelation(relId: EARS.RelationId): RelationRow | undefined;
+  /** The rows of the relations matching every end and kind named; with none named, every relation */
   findRelations(match?: RelationMatch): RelationRow[];
+  /** Moves a relation to new ends, or replaces its info, keeping its id; refuses an id no relation has */
+  updateRelation(relId: EARS.RelationId, patch: { source?: EARS.EntityId; target?: EARS.EntityId; info?: unknown }): void;
+  /** Removes the relation with the id, refusing an id no relation has */
+  removeRelation(relId: EARS.RelationId): void;
   /** Whether linking `source` to `target` would close a cycle through `kinds` */
   wouldCreateCycle(source: EARS.EntityId, target: EARS.EntityId, kinds: readonly EARS.RelKind[]): boolean;
   /** `<base> <n>`, numbered per type and base and never handed out twice: a default label that must be unique */
@@ -67,11 +70,11 @@ export interface EarsAdmin {
   /** Removes an attribute */
   deleteAttr(id: EARS.EntityId, kind: EARS.AttrKind): void;
   /** Links any kind between any ids, either end missing included: unchecked, as loaded data is */
-  addRelation(source: EARS.EntityId, kind: string, target: EARS.EntityId, info?: unknown): EARS.EntityId;
+  addRelation(source: EARS.EntityId, kind: string, target: EARS.EntityId, info?: unknown): EARS.RelationId;
   /** `updateRelation` without its checks: any relation, to any ends */
-  updateRelation(relId: EARS.EntityId, patch: { source?: EARS.EntityId; target?: EARS.EntityId; info?: unknown }): void;
+  updateRelation(relId: EARS.RelationId, patch: { source?: EARS.EntityId; target?: EARS.EntityId; info?: unknown }): void;
   /** Loads a stored relation, without telling persistence */
-  bulkLoadRelation(relId: EARS.EntityId, kind: string, source: EARS.EntityId, target: EARS.EntityId, info?: unknown): void;
+  bulkLoadRelation(relId: EARS.RelationId, kind: string, source: EARS.EntityId, target: EARS.EntityId, info?: unknown): void;
 }
 
 /** An EARS engine as its creator holds it: its operations, and the creator's privileges in `admin` */
@@ -88,37 +91,44 @@ export interface EarsEngine extends Ears {
 export function createEarsEngine({ persistence = noopSink, isEntityType, isRelationKind, isRole, rowRules = () => undefined }: EARSRuntimeDeps): EarsEngine {
   const names = createNameChecks({ isRelationKind, isRole });
   const { journal, unitSink, transact } = createJournal(persistence);
-  const relations = createRelationIndex(journal);
-  const storage = createAttributeStorage({ relations, persistence: unitSink, journal });
-  const edgeStore = createEdgeStore({ relations, storage });
-  const query = createQuery({ storage, isEntityType, names });
+  const storage = createAttributeStorage({ persistence: unitSink, journal });
+  const relations = createRelations({ persistence: unitSink, journal });
+  const query = createQuery({ storage, relations, isEntityType, names });
   const hierarchy = createHierarchy({ query, names });
   const counters = createEntityCounters(storage);
-  const { create, upsert, write, updateRelation } = createWrites({ storage, edgeStore, hierarchy, isEntityType, rowRules, counters, names, journal });
-  const relationReads = createRelationReads({ edgeStore, storage, names });
+  const { create, upsert, write, updateRelation, removeRelation } = createWrites({ storage, relations, hierarchy, isEntityType, rowRules, counters, names, journal });
 
   const operations: Ears = {
     query, create, upsert, write, transact, isEntityType, isRelationKind, isRole,
     nextLabel: counters.nextLabel,
-    ...relationReads,
     ...hierarchy,
     getRow: storage.getRow,
     getAttr: (id, field) => (storage.hasAttr(id, field) ? storage.getAttr(id, field) : undefined),
     getRoles: storage.getRoles,
-    getSchemaStats: storage.getSchemaStats,
+    getSchemaStats: () => ({ ...storage.entityStats(), relations: relations.stats() }),
+    getRelation: relations.get,
+    findRelations: (match = {}) => {
+      if (match.kind !== undefined) names.relationKinds(match.kind, 'findRelations');
+      return relations.find(match);
+    },
     updateRelation,
+    removeRelation,
   };
 
   const admin: EarsAdmin = {
-    clear: storage.clear,
+    // Attribute storage refuses a clear inside a unit before anything is emptied
+    clear: () => {
+      storage.clear();
+      relations.clear();
+    },
     getAllEntities: storage.getAllEntities,
     getEntitiesOfType: storage.getEntitiesOfType,
     bulkLoadAttr: storage.bulkLoadAttr,
     putAttr: storage.putAttr,
     deleteAttr: storage.deleteAttr,
-    addRelation: storage.addRelation,
-    updateRelation: (relId, { source, target, info }) => storage.updateRelation(relId, source, target, info),
-    bulkLoadRelation: storage.bulkLoadRelation,
+    addRelation: relations.add,
+    updateRelation: (relId, { source, target, info }) => relations.update(relId, source, target, info),
+    bulkLoadRelation: relations.bulkLoad,
   };
 
   return { ...operations, admin };

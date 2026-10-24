@@ -7,7 +7,7 @@ import { startTestRuntime, resetTestData } from '@apackdev/sdk/testing';
 import { contentBindingProblem } from '../../src/packs/declaration-binding.ts';
 
 const manifest = ManifestSchema.parse({
-  id: 'content-pack', name: 'Content', version: '1.0.0', data: { entities: { ContentThing: null } },
+  id: 'content-pack', name: 'Content', version: '1.0.0', data: { entities: { ContentThing: {} } },
   features: { notes: { description: 'Feature declaration fixture.',
     designation: 'notes', system: { entry: 'system.ts' }, surface: { label: 'Fixture', state: 'surface.ts' },
     services: { notes: 'notes.ts#notes' }, repositories: { contentQueries: 'queries.ts#queries' },

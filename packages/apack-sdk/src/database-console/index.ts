@@ -9,7 +9,7 @@
 import { boundHost } from '../runtime/host-runtime.ts';
 import type { EarsNames } from '../runtime/packs-view.ts';
 import { EARS as EARS_NAMES } from '../types/index.ts';
-import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, getRow, getRoles, findRelations, getSchemaStats } from '../ears/index.ts';
+import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, getRow, getRoles, getRelation, findRelations, removeRelation, getSchemaStats } from '../ears/index.ts';
 import { defineEars } from '@apackdev/ears';
 import { errorMessage } from '../utils/shared.ts';
 
@@ -20,6 +20,7 @@ const readHelpers = {
   getRow,
   getAttr,
   getRoles,
+  getRelation,
   findRelations,
   getSchemaStats,
 };
@@ -28,6 +29,7 @@ const writeHelpers = {
   create: untypedCreate,
   upsert: untypedUpsert,
   write: untypedWrite,
+  removeRelation,
 };
 
 /**

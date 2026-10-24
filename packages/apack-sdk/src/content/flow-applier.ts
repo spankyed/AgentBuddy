@@ -8,7 +8,7 @@ import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
 import { validate } from '../build/compilers/flow-dsl-validator.ts';
 import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
-import type { FlowEntity } from '../types/sdk-entities.ts';
+import { SDK_SHORT_CODES, type FlowEntity } from '../types/sdk-entities.ts';
 import type { ContentEditPolicy } from '../framework/declaration-schema.ts';
 import { childContentKey, contentKeyOf, defineKey, hashValues, recordApplied, CONTENT_KEY, contentKeyPrefix, CONTENT_HASH } from './format-applier.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
@@ -87,6 +87,9 @@ export function driftedGraphParts(item: AppliedItem, flowId: EARS.EntityId): str
 /** A DSL entry's content key: the writing pack, then the entry key and the flow's name in the source */
 const flowContentKey = (packId: string, name: string) => `${contentKeyPrefix(packId)}${childContentKey('flows', { entity: EARS.Entity.Flow, label: name }, ['label'])}`;
 
+/** A Flow's own short code, `FLW-<n>`: one written before the prefix was declared (`F-<name>`) is not carried */
+const FLOW_SHORT_CODE = new RegExp(`^${SDK_SHORT_CODES.Flow}-[1-9][0-9]*$`);
+
 function buildLabelMap(entities: Array<{ label: string; id: EARS.EntityId }>): Map<string, string> {
   return new Map(entities.map((e) => [e.label, e.id]));
 }
@@ -109,9 +112,22 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
 
       const packId = contentPackId(ctx.compiledDir);
 
+      /**
+       * The short codes of flows this apply deleted only to write again — a wipe, or a flow stored under another id
+       * than its compiled one — by content key, so the flow it writes in their place keeps the code users know it by.
+       * Taken once the delete has happened: a flow the delete refused still holds its code, which a new flow brought
+       * would be refused for
+       */
+      const keptCodes = new Map<string, string>();
+      const deleteKeepingCode = (flow: FlowEntity, options?: { allowRoot?: boolean }) => {
+        const contentKey = contentKeyOf(flow.id);
+        flowRepository.deleteFlow(flow.id, options);
+        if (contentKey && typeof flow.shortCode === 'string' && FLOW_SHORT_CODE.test(flow.shortCode)) keptCodes.set(contentKey, flow.shortCode);
+      };
+
       if (ctx.mode === 'wipe-and-replace') {
         for (const flow of sdkEntities.query(EARS.Entity.Flow).pickAll()) {
-          try { flowRepository.deleteFlow(flow.id); } catch {}
+          try { deleteKeepingCode(flow); } catch {}
         }
         ctx.log('  flows wiped');
       }
@@ -230,7 +246,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
             // (runs, subflows, the root role); one under another id can't be reconciled, so it is replaced
             const compiledId = (compileFlowDSL({ [key]: entry }, { actions: actionMap, prompts: promptMap }).entity as Array<{ id: string; entityType?: string }>)
               .find((row) => row.entityType === EARS.Entity.Flow)?.id;
-            if (compiledId !== existing.id) flowRepository.deleteFlow(existing.id, { allowRoot: true });
+            if (compiledId !== existing.id) deleteKeepingCode(existing, { allowRoot: true });
             replacedLabels.add(key);
             ctx.log(`  flow replaced (hash mismatch): ${key}`);
           } catch (error: any) {
@@ -309,6 +325,12 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
       }
 
       const compiled = compileFlowDSL(validFlowDSL, { actions: actionMap, prompts: promptMap, flows: subflowTargets() });
+      // A flow written in place of one this apply deleted brings that flow's code, as an import does; any other is
+      // numbered when it is created, and one already there keeps its own
+      for (const row of compiled.entity as Array<{ entityType?: string; label?: string; shortCode?: string }>) {
+        const kept = row.entityType === EARS.Entity.Flow && row.label !== undefined ? keptCodes.get(flowContentKey(packId, row.label)) : undefined;
+        if (kept) row.shortCode = kept;
+      }
       flowRepository.importFromDSL(compiled);
       for (const name of flowNames) {
         const row = (compiled.entity as Array<{ id: string; entityType?: string; label?: string }>)

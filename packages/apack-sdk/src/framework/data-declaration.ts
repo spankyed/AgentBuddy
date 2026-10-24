@@ -1,8 +1,21 @@
 import { hasOwn } from '../utils/shared.ts';
+import type { RowRules } from '@apackdev/ears';
+
+/** One entity type's declaration: everything the manifest says about it, in its own entry */
+export interface PackEntityDeclaration {
+  /** The pack-root-relative TypeScript export of its row's shape (`path#Export`); none for an untyped entity */
+  readonly shape?: string;
+  /** The prefix `create` numbers its rows' short codes with, `<prefix>-<n>`; none for an entity that isn't numbered */
+  readonly shortCode?: string;
+}
 
 /** Declarative entity ownership/shapes and the pack-level relation wire vocabulary. */
 export interface PackDataDeclarations {
-  data?: { entities?: Readonly<Record<string, string | null>>; relations?: readonly string[]; roles?: readonly string[] };
+  data?: {
+    entities?: Readonly<Record<string, PackEntityDeclaration>>;
+    relations?: readonly string[];
+    roles?: readonly string[];
+  };
   features?: Readonly<Record<string, object>>;
 }
 
@@ -11,20 +24,39 @@ export interface _PackEntityDeclaration {
   name: string;
   owner: string;
   shape: string | null;
+  /** The prefix its short codes are numbered with, when its entry names one */
+  shortCode?: string;
 }
+
+/**
+ * @internal A short code prefix: three uppercase letters — the word's common abbreviation where it has one (`DOC`, `MSG`), and
+ * otherwise its first letter and next two distinct consonants (`THR`, `FLW`). The pattern is the rule; the choice
+ * of letters is the convention
+ */
+export const _SHORT_CODE_PATTERN = /^[A-Z]{3}$/;
+
+type DeclarationBlock = { entities?: Readonly<Record<string, PackEntityDeclaration>> } | null | undefined;
 
 /** @internal Read declarations without loading shape modules; refuse ambiguous ownership. */
 export function _packEntities(declaration: PackDataDeclarations): _PackEntityDeclaration[] {
   const result = new Map<string, _PackEntityDeclaration>();
-  const homes: Array<[string, Readonly<Record<string, string | null>> | undefined]> = [
-    ['data', declaration.data?.entities],
-    ...Object.entries(declaration.features ?? {}).map(([id, feature]): [string, Readonly<Record<string, string | null>> | undefined] => [`features.${id}`, (feature as { entities?: Readonly<Record<string, string | null>> } | null | undefined)?.entities]),
+  const homes: Array<[string, DeclarationBlock]> = [
+    ['data', declaration.data],
+    ...Object.entries(declaration.features ?? {}).map(([id, feature]): [string, DeclarationBlock] => [`features.${id}`, feature as DeclarationBlock]),
   ];
-  for (const [owner, entities] of homes) {
-    for (const [name, shape] of Object.entries(entities ?? {})) {
+  const prefixOwners = new Map<string, string>();
+  for (const [owner, block] of homes) {
+    for (const [name, entry] of Object.entries(block?.entities ?? {})) {
       const previous = result.get(name);
       if (previous) throw new Error(`Entity "${name}" is declared by both "${previous.owner}" and "${owner}"`);
-      result.set(name, { name, owner, shape });
+      const { shape, shortCode } = entry ?? {};
+      if (shortCode !== undefined) {
+        if (!_SHORT_CODE_PATTERN.test(shortCode)) throw new Error(`The short code prefix of "${name}" is "${shortCode}": a prefix is three uppercase letters`);
+        const taken = prefixOwners.get(shortCode);
+        if (taken) throw new Error(`The short code prefix "${shortCode}" is declared for both "${taken}" and "${name}"`);
+        prefixOwners.set(shortCode, name);
+      }
+      result.set(name, { name, owner, shape: shape ?? null, ...(shortCode !== undefined && { shortCode }) });
     }
   }
   return [...result.values()];
@@ -33,6 +65,29 @@ export function _packEntities(declaration: PackDataDeclarations): _PackEntityDec
 /** @internal Flat wire identities for EARS and compiled type inventories. */
 export function _packEntityTypes(declaration: PackDataDeclarations): Record<string, string> {
   return Object.fromEntries(_packEntities(declaration).map(({ name }) => [name, name]));
+}
+
+/** @internal Each of the pack's numbered entity types and the prefix its manifest declares */
+export function _packShortCodes(declaration: PackDataDeclarations): Record<string, string> {
+  return Object.fromEntries(_packEntities(declaration).flatMap(({ name, shortCode }) => (shortCode === undefined ? [] : [[name, shortCode]])));
+}
+
+/**
+ * @internal A lookup from a short code to the entity type that numbers it, built from the row rules holding each
+ * type's prefix (`RowRules.shortCode`): `THR-41` → `Thread`. Undefined for a code that isn't `<prefix>-<n>`, or whose
+ * prefix no type declares. A prefix belongs to one type across the app, which the registry and the manifest schema
+ * enforce, so the answer is never ambiguous; the app's registry, a data dir's schema and the test runtime build theirs
+ * with this, so all three answer alike.
+ */
+export function _shortCodeTypes(rules: ReadonlyArray<readonly [string, Partial<RowRules>]>): (code: string) => string | undefined {
+  const byPrefix = new Map<string, string>();
+  for (const [type, { shortCode }] of rules) if (shortCode) byPrefix.set(shortCode, type);
+  return (code) => {
+    if (typeof code !== 'string') return undefined;
+    const dash = code.lastIndexOf('-');
+    if (dash <= 0 || !/^[1-9][0-9]*$/.test(code.slice(dash + 1))) return undefined;
+    return byPrefix.get(code.slice(0, dash));
+  };
 }
 
 /** A relation kind's or a role's stored name: snake_case, its generated EARS constant the same in uppercase */

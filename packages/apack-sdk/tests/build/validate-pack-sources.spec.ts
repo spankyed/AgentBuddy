@@ -86,7 +86,7 @@ describe('validatePackSources', () => {
       description: 'Manage memos.', system: { entry: 'src/system', contract: 'src/types#Contract' },
       surface: { label: 'Memos', state: 'src/views' },
       services: { memos: 'src/queries#queries' }, repositories: { memoQueries: 'src/queries#queries' },
-      entities: { Memo: 'src/types#Contract' },
+      entities: { Memo: { shape: 'src/types#Contract' } },
     } } };
     expect(validatePackSources(root, manifest).status).toBe('valid');
     fs.rmSync(path.join(root, 'src/types.ts'));

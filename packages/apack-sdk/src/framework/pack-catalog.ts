@@ -2,7 +2,7 @@ import type { z } from 'zod';
 import type { PackConsumption } from './service-consumption.ts';
 import type { ArtifactEntrySchema, BlockEntrySchema, DslEntrySchema, StepEntrySchema, MigrationsSchema } from './declaration-schema.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
-import type { PackDataDeclarations } from './data-declaration.ts';
+import type { PackDataDeclarations, PackEntityDeclaration } from './data-declaration.ts';
 import { boundHost } from '../runtime/host-runtime.ts';
 import type { SettingsDefinition } from './settings-definition.ts';
 import type { DeclarationData } from './catalog-view.ts';
@@ -42,7 +42,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
   repositories?: Record<string, string>;
   features?: Record<string, {
     description: string;
-    entities?: Record<string, string | null>;
+    entities?: Record<string, PackEntityDeclaration>;
     designation?: string;
     settings?: SettingsDefinition;
     surface?: SurfaceDeclaration;

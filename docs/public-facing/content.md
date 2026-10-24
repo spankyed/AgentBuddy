@@ -499,7 +499,7 @@ Content rows of an entity type from markdown or JSON in two parts of `apack.json
   "features": {
     "memos": {
       "description": "Short notes the pack ships.",
-      "entities": { "Memo": "src/features/memos/be/types.ts#MemoAttributes" }
+      "entities": { "Memo": { "shape": "src/features/memos/be/types.ts#MemoAttributes" } }
     }
   },
   "content": {
@@ -640,7 +640,7 @@ Without hooks, the applier writes rows directly: it matches existing rows on the
   "features": {
     "memos": {
       "description": "Short notes the pack ships.",
-      "entities": { "Memo": "src/features/memos/be/types.ts#MemoAttributes" }
+      "entities": { "Memo": { "shape": "src/features/memos/be/types.ts#MemoAttributes" } }
     }
   },
   "content": {

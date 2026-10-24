@@ -9,7 +9,7 @@ import { inspectPack, info } from '../../src/commands/info.ts';
 
 let root: string;
 const manifest: PackManifest = { id: 'inspection-pack', name: 'Inspection', version: '1.0.0',
-  features: { memos: { description: 'Inspection fixture.', entities: { Memo: null } } },
+  features: { memos: { description: 'Inspection fixture.', entities: { Memo: {} } } },
   content: { formats: { records: { format: 'json', entity: 'Memo', identity: ['id'] } },
     sources: { memos: { path: 'content', format: 'records' } } },
 };
@@ -121,7 +121,7 @@ describe('read-only pack inspection', () => {
     const report = await inspectPack(root);
     expect(report.build.status).toBe('verified');
     expect(report.build.content).toEqual(index);
-    expect(report.declared.features?.memos.entities).toEqual({ Memo: null });
+    expect(report.declared.features?.memos.entities).toEqual({ Memo: {} });
     expect(fs.readdirSync(root)).toEqual(before);
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -162,7 +162,7 @@ describe('read-only pack inspection', () => {
   it('preserves the complete declaration and lists feature-owned services and repositories offline', async () => {
     const declaration: PackManifest = { ...manifest,
       lifecycle: { onInit: 'src/unavailable.ts#initialize' },
-      features: { memos: { description: 'Inspect owned contributions.', entities: { Memo: null },
+      features: { memos: { description: 'Inspect owned contributions.', entities: { Memo: {} },
         system: { entry: 'src/unavailable.ts' },
         services: { memos: 'src/unavailable.ts#service' },
         repositories: { memoQueries: 'src/unavailable.ts#queries' },

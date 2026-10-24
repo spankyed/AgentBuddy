@@ -5,7 +5,7 @@ import type { DeclarationData } from '@apackdev/sdk/framework';
 import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
-import { _packEntityTypes, _packRelationTypes, _packRoles } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes, _packRoles, _shortCodeTypes } from '@apackdev/sdk/framework';
 import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
 import { eventBindingProblem } from './event-binding.ts';
 import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
@@ -31,7 +31,7 @@ import { assertPackServiceRequirements, packServiceDeclaration, type PackService
 import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
-import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROW_RULES, SDK_ROLES, _reservedEntries } from '@apackdev/sdk/types';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROW_RULES, SDK_ROLES, SDK_SHORT_CODES, _reservedEntries } from '@apackdev/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
@@ -467,6 +467,17 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
         if (taken) throw new Error(`EARS collision: ${kind} ${taken} — pack "${registration.id}" vs "${existingId}"`);
       }
     }
+    // A short code names one entity type across the app, so two types may not number with one prefix
+    const prefixes = (ears: PackEARS) => Object.entries(ears.rowRules ?? {}).flatMap(([type, { shortCode }]) => (shortCode ? [[shortCode, type] as const] : []));
+    const owners = new Map<string, string>(Object.entries(SDK_SHORT_CODES).map(([type, prefix]) => [prefix, `the SDK's ${type}`]));
+    for (const [existingId, existing] of registrations) {
+      if (existingId === replacing || !existing.ears) continue;
+      for (const [prefix, type] of prefixes(existing.ears)) owners.set(prefix, `${type} of pack "${existingId}"`);
+    }
+    for (const [prefix, type] of prefixes(registration.ears)) {
+      const owner = owners.get(prefix);
+      if (owner) throw new Error(`EARS collision: short code prefix ${prefix} — ${type} of pack "${registration.id}" vs ${owner}`);
+    }
   }
 
   /** Order admitted owners once per registration set, before narrowing either line or caller subset. */
@@ -760,6 +771,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     ...Object.entries(SDK_ROW_RULES),
     ...[...registrations.values()].flatMap((reg) => Object.entries(reg.ears?.rowRules ?? {})),
   ]));
+  // Each prefix's entity type, from those same rules, so a pack's codes come and go with it
+  const shortCodeTypes = derived(() => _shortCodeTypes([...rowRules()]));
   const services = derived((): Record<string, unknown> =>
     Object.fromEntries([...admitted.values()].flatMap(pack => [...pack.services])));
 
@@ -834,6 +847,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     getRegisteredRelationKinds: relationKinds,
     getRegisteredRoles: roles,
     getRowRules: (type) => rowRules().get(type),
+    entityTypeOfShortCode: (code) => shortCodeTypes()(code),
     getRegisteredServices: services,
 
     getLifecycleHooks: () => [...registrations.values()].flatMap((reg) => (reg.lifecycle ? [reg.lifecycle] : [])),

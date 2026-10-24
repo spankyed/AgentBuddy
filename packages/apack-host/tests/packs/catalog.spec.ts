@@ -404,7 +404,7 @@ it('rejects non-JSON native declaration data before cloning, without executing a
 });
 
 it('preserves own entity names and declaration identity across native, source and installed catalog inputs', () => {
-  const entities = Object.fromEntries([['__proto__', null]]);
+  const entities = Object.fromEntries([['__proto__', {}]]);
   const manifest: PackManifest = { id: 'owned', name: 'Owned', version: '1.0.0', data: { entities } };
   const revision = _declarationRevision(manifest);
   const catalog = createContributionCatalog(app);

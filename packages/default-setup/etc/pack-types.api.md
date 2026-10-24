@@ -170,7 +170,7 @@ type AgentSettings = ThreadsSettings['chat'];
 
 type AgentThreadData = {
     id?: ThreadEntity['id'];
-    shortCode?: ThreadEntity['shortCode'];
+    shortCode?: ThreadTypeShortCode;
     topic: ThreadEntity['topic'];
     instructions: ThreadEntity['instructions'];
     status: ThreadEntity['status'];
@@ -1218,7 +1218,8 @@ interface DocumentDTO {
     id: EARS.EntityId;
     name: string;
     content: ContentSection[];
-    shortCode: DocumentShortCode;
+    /** Its short code; absent for a file the library shows from disk (`isSymlinked`), which is no Document */
+    shortCode?: DocumentShortCode;
     tags: string[];
     /**
      * What this document is: `commands` marks a slash-command list, which the `commands` designation's
@@ -1238,7 +1239,8 @@ interface DocumentItem {
     type: 'document';
     id: EARS.EntityId;
     name: string;
-    shortCode: DocumentShortCode;
+    /** Its short code; absent for a file the library shows from disk (`isSymlinked`), which is no Document */
+    shortCode?: DocumentShortCode;
     parentId: EARS.EntityId | null;
     content: ContentSection[];
     tags: string[];
@@ -1288,6 +1290,7 @@ declare namespace EARS {
     }
     type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Flow | Entity.Node | Entity.Action | Entity.Prompt | Entity.Document | Entity.Collection;
     type EntityId<E extends string = string> = _apackdev_ears.EARS.EntityId<E>;
+    type RelationId = _apackdev_ears.EARS.RelationId;
     namespace RelKind {
         const HAS = "has";
         type HAS = typeof HAS;
@@ -3505,7 +3508,7 @@ type OutgoingFlowsEvents = {
     type: 'EDGE_CREATED';
     sourceId: EARS.EntityId;
     targetId: EARS.EntityId;
-    relId: EARS.EntityId;
+    relId: EARS.RelationId;
     sourceHandle?: string;
     targetHandle?: string;
 } | {
@@ -3518,7 +3521,7 @@ type OutgoingFlowsEvents = {
     edgeId: string;
 } | {
     type: 'EDGE_UPDATED';
-    edgeId: EARS.EntityId;
+    edgeId: EARS.RelationId;
     source: EARS.EntityId;
     target: EARS.EntityId;
     sourceHandle?: string;
@@ -4125,7 +4128,9 @@ type OutgoingThreadsEvents = {
 
 /** Entity shapes this pack declares */
 type OwnEntityShapes = {
-    'Thread': ThreadEntity;
+    'Thread': ThreadShape & {
+        shortCode: ShortCode<'THR'>;
+    };
     'Message': MessageEntity;
     'Artifact': ArtifactEntity;
     'Terminal': TerminalEntity;
@@ -4898,6 +4903,15 @@ declare const SettingScopeSchema: z.ZodEnum<["user", "project", "local"]>;
 
 type SettingsOf<K extends keyof AvailableSettings> = AvailableSettings[K];
 
+/**
+ * A numbered entity's short code type, `ShortCode<prefix>` from the prefix its manifest entry declares
+ * (`ShortCodeOf<'Thread'>` is THR-<n>): this pack's, its dependencies' and the SDK's. Never for an entity
+ * that isn't numbered, or one declared without a shape.
+ */
+type ShortCodeOf<E extends keyof PackShapes> = PackShapes[E] extends {
+    shortCode: infer C;
+} ? C : never;
+
 type Simplify<T> = {
     [K in keyof T]: T[K];
 } & {};
@@ -5098,24 +5112,8 @@ type ThreadEditFields = Simplify<Pick<ThreadEntity, 'instructions' | 'topic'> & 
     context?: ThreadContext;
 } & ThreadLinkedFields>;
 
-interface ThreadEntity extends BaseEntity {
-    entityType: EARS.Entity.Thread;
-    topic: string;
-    instructions: string;
-    sideTopics?: string[];
-    timestamp: number;
-    lastMessageTimestamp?: number;
-    lastVisitedTimestamp?: number;
-    /** Numbered by `create` */
-    shortCode: ThreadTypeShortCode;
-    status: string;
-    tags?: string[];
-    forcedMode?: string;
-    pinned?: boolean;
-    archived?: boolean;
-    chatState?: string;
-    context?: ThreadContext;
-}
+/** A thread as a read gives it back: its declared fields and its short code */
+type ThreadEntity = PackShapes['Thread'];
 
 type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData & {
     parentId?: string;
@@ -5129,7 +5127,7 @@ type ThreadExtendedData = ThreadLinkedFields & {
     status?: string;
     pinned?: boolean;
     archived?: boolean;
-    shortCode?: ThreadEntity['shortCode'];
+    shortCode?: ThreadTypeShortCode;
     timestamp?: number;
     lastMessageTimestamp?: number;
 };
@@ -5138,7 +5136,8 @@ interface ThreadForkParams extends ThreadStartParams {
     threadId: string;
 }
 
-type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic'> & {
+type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'status' | 'timestamp' | 'topic'> & {
+    shortCode: ThreadTypeShortCode;
     relation: ThreadLinkRelation;
 };
 
@@ -5179,6 +5178,27 @@ interface ThreadRollbackParams {
     numTurns: number;
 }
 
+/**
+ * The fields a thread declares, which apack.json names as Thread's shape. Its short code is not one of them: the
+ * engine numbers it from the prefix Thread's entry declares, and the generated facade adds it to the row
+ */
+interface ThreadShape extends BaseEntity {
+    entityType: EARS.Entity.Thread;
+    topic: string;
+    instructions: string;
+    sideTopics?: string[];
+    timestamp: number;
+    lastMessageTimestamp?: number;
+    lastVisitedTimestamp?: number;
+    status: string;
+    tags?: string[];
+    forcedMode?: string;
+    pinned?: boolean;
+    archived?: boolean;
+    chatState?: string;
+    context?: ThreadContext;
+}
+
 interface ThreadStartParams {
     cwd?: string;
     model?: string;
@@ -5200,12 +5220,13 @@ interface ThreadTagOption {
     color?: string;
 }
 
-type ThreadTypeShortCode = ShortCode<'T'>;
+/** A thread's short code, `THR-<n>`: the engine numbers it with the prefix Thread's apack.json entry declares */
+type ThreadTypeShortCode = ShortCodeOf<'Thread'>;
 
 type ThreadViewData = Simplify<ThreadCreateData & {
     id: ThreadEntity['id'];
     /** `''` while the view holds a thread not yet created */
-    shortCode: ThreadEntity['shortCode'] | '';
+    shortCode: ThreadTypeShortCode | '';
     status: ThreadEntity['status'];
     timestamp: ThreadEntity['timestamp'];
     archived?: ThreadEntity['archived'];
@@ -6162,13 +6183,13 @@ declare const flowsCommands: {
         sourceHandle?: string;
         targetHandle?: string;
     }) => {
-        relId: _apackdev_sdk.EARS.EntityId;
+        relId: _apackdev_sdk.EARS.RelationId;
     };
     readonly updateFlowLabel: (flowId: _apackdev_sdk.EARS.EntityId, label: string) => void;
     readonly updateNode: (nodeId: _apackdev_sdk.EARS.EntityId, updates: _apackdev_sdk_repositories.FlowNodeInput) => void;
     readonly deleteNode: (nodeId: _apackdev_sdk.EARS.EntityId) => void;
-    readonly deleteEdge: (edgeId: _apackdev_sdk.EARS.EntityId) => void;
-    readonly updateEdge: (edgeId: _apackdev_sdk.EARS.EntityId, next: {
+    readonly deleteEdge: (edgeId: _apackdev_sdk.EARS.RelationId) => void;
+    readonly updateEdge: (edgeId: _apackdev_sdk.EARS.RelationId, next: {
         source: _apackdev_sdk.EARS.EntityId;
         target: _apackdev_sdk.EARS.EntityId;
     } & {
@@ -6225,6 +6246,7 @@ declare const libraryCommands: {
 declare const libraryQueries: {
     readonly getDocuments: (collectionId?: string) => DocumentDTO[];
     readonly findDocument: (id: EARS.EntityId) => DocumentDTO | null;
+    /** The document a short code names, or null: a code is unique, and the value index answers the lookup */
     readonly findDocumentByShortCode: (shortCode: DocumentShortCode) => DocumentDTO | null;
     /** Every document and folder by name, for the reference picker and the panel's stats */
     readonly getIndex: () => LibraryIndex;
@@ -6540,7 +6562,7 @@ declare const threadQueries: {
         };
         topic: string;
         status: string;
-        shortCode: ThreadTypeShortCode;
+        shortCode: _apackdev_ears.ShortCode<"THR">;
         timestamp: number;
         relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
     }[];

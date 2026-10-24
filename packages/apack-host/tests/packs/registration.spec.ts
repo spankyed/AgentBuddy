@@ -187,6 +187,25 @@ describe('registerPack entities', () => {
     expect(getPackRegistration('second-pack')).toBeNull();
   });
 
+  it('rejects a short code prefix another pack, or the SDK, numbers an entity type with', () => {
+    const registerNumbered = (id: string, type: string, shortCode: string) => {
+      registerPack({ id, ears: { entities: { [type]: type }, relKinds: {}, roles: {}, rowRules: { [type]: { required: [], shortCode } } } } as unknown as PackRegistration);
+      registered.push(id);
+    };
+    registerNumbered('first-pack', 'Memo', 'MEM');
+    expect(() => registerNumbered('second-pack', 'Note', 'MEM')).toThrow('EARS collision: short code prefix MEM — Note of pack "second-pack" vs Memo of pack "first-pack"');
+    // Refused before the registry: a native declaration carries the prefix, and its schema knows the SDK's
+    expect(() => registerNumbered('second-pack', 'Note', 'DOC')).toThrow('"DOC" is the SDK\'s Document prefix');
+    expect(getPackRegistration('second-pack')).toBeNull();
+  });
+
+  it("answers a short code's entity type from the registered packs' prefixes, and forgets a pack's when it goes", () => {
+    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {}, roles: {}, rowRules: { Memo: { required: [], shortCode: 'MEM' } } } } as unknown as PackRegistration);
+    expect([registry.entityTypeOfShortCode('MEM-3'), registry.entityTypeOfShortCode('DOC-1'), registry.entityTypeOfShortCode('XYZ-1')]).toEqual(['Memo', 'Document', undefined]);
+    unregisterPack('memo-pack');
+    expect(registry.entityTypeOfShortCode('MEM-3')).toBeUndefined();
+  });
+
   it("rejects a relation kind another pack registered, by its name or its value", () => {
     registerEntities('first-pack', {}, { PINNED: 'pinned' });
     expect(() => registerEntities('second-pack', {}, { PINNED: 'pinned' })).toThrow('EARS collision: relation kind "PINNED": "pinned" — pack "second-pack" vs "first-pack"');

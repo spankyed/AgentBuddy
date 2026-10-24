@@ -5,12 +5,12 @@ import { hasOwn } from '../utils/shared.ts';
 import { _eventContractsProblem } from './event-contracts.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 export { LIFECYCLE_HOOK_NAMES } from './lifecycle-declaration.ts';
-import { _packEntities, _packEntityTypes, _packRelationTypes, _packRoles, _WIRE_NAME_PATTERN, type PackDataDeclarations } from './data-declaration.ts';
+import { _packEntities, _packEntityTypes, _packRelationTypes, _packRoles, _SHORT_CODE_PATTERN, _WIRE_NAME_PATTERN, type PackDataDeclarations } from './data-declaration.ts';
 import { _MODULE_REFERENCE_PATTERN, _MODULE_PATH_PATTERN } from './module-reference.ts';
 import { z } from 'zod';
 import { _PACK_VERSION_PATTERN, _validPackVersion, _validPackRange, parsePackDependency } from './dependency-source.ts';
 import { PackChecksSchema } from './pack-checks.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from '../types/sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES, SDK_SHORT_CODES } from '../types/sdk-entities.ts';
 import { RESERVED_ENTITY_TYPES } from '@apackdev/ears';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { HOST_PACK_ID } from '../ids/refs.ts';
@@ -54,6 +54,18 @@ function checkDeclaredNames(raw: unknown, ctx: z.RefinementCtx): unknown {
         });
       }
     }
+    // A prefix names one entity type across every pack: the SDK's are taken everywhere
+    const sdkPrefixes = new Map(Object.entries(SDK_SHORT_CODES).map(([entity, prefix]) => [prefix as string, entity]));
+    for (const { name, owner, shortCode } of _packEntities(declaration)) {
+      const sdkEntity = shortCode === undefined ? undefined : sdkPrefixes.get(shortCode);
+      if (sdkEntity) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [...owner.split('.'), 'entities', name, 'shortCode'],
+          message: `"${shortCode}" is the SDK's ${sdkEntity} prefix, which every pack has: choose another`,
+        });
+      }
+    }
   } catch (error) {
     ctx.addIssue({ code: 'custom', message: error instanceof Error ? error.message : String(error) });
   }
@@ -73,8 +85,13 @@ const ModulePathSchema = z.string().regex(_MODULE_PATH_PATTERN, 'Must name a mod
 /** A named export of a pack source file. */
 const ExportTargetSchema = z.string().regex(_MODULE_REFERENCE_PATTERN, 'Must be "path#exportName"');
 
-const EntitiesSchema = declarationRecord(z.string().min(1), ExportTargetSchema.nullable())
-  .describe('Entity wire names mapped to pack-root-relative TypeScript shape exports (path#exportName), or null for untyped entities.');
+const EntityDeclarationSchema = z.object({
+  shape: ExportTargetSchema.describe('The pack-root-relative TypeScript export of the row\'s shape (path#exportName). Leave it out for an untyped entity, whose fields read as unknown values.').optional(),
+  shortCode: z.string().regex(_SHORT_CODE_PATTERN, 'Must be three uppercase letters, e.g. "THR"')
+    .describe('The prefix create numbers each row\'s short code with, <prefix>-<n>: three uppercase letters, unique across every pack. The shape declares no shortCode: #generated/ears types the field from this prefix (ShortCodeOf<E>). Leave it out for an entity that isn\'t numbered.').optional(),
+}).strict().describe('One entity type: its shape and its short code prefix, each optional ({} for an untyped, unnumbered entity).');
+const EntitiesSchema = declarationRecord(z.string().min(1), EntityDeclarationSchema)
+  .describe('Entity wire names, each mapped to its declaration: { shape?, shortCode? }, or {} for an untyped, unnumbered entity.');
 const RelationsSchema = z.array(z.string().regex(_WIRE_NAME_PATTERN, 'Must be a snake_case relation wire name'))
   .superRefine((relations, ctx) => {
     try { notSdkOwned(SDK_REL_KINDS)(_packRelationTypes({ data: { relations } }), ctx); }
@@ -667,7 +684,7 @@ const FEATURE_ID_SCHEMA = z.string()
 
 export const FeatureEntrySchema = z.object({
   description: FeatureDescriptionSchema,
-  entities: EntitiesSchema.describe('Entity wire names owned by this feature, mapped to pack-root-relative TypeScript shape exports (path#exportName) or null for untyped entities. Placement does not change wire names.').optional(),
+  entities: EntitiesSchema.describe('Entity wire names owned by this feature, each mapped to its declaration: { shape?, shortCode? }, or {} for an untyped, unnumbered entity. Placement does not change wire names.').optional(),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: SettingsDefinitionSchema.describe('Declarative feature preferences: effective-value schema and explicit defaults.').optional(),
   types: z.string().min(1).regex(_MODULE_PATH_PATTERN, 'Must name a TypeScript module, not a single export').describe('Pack-root-relative TypeScript module whose public types are re-exported through #generated/types. Only declared modules contribute; no feature-path inference.').optional(),
