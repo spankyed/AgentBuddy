@@ -134,6 +134,12 @@ Filter and walk steps pull ids one at a time; `orderBy`, `reverse` and `distinct
 **Done when:** a spec counts storage reads and shows `first()` and `limit(n)` stop early; the `first()` bench case
 no longer scales with the type.
 
+Done, 2026-10-23. A step that keeps or walks ids is a stream: it runs a visit callback over the step before, which
+answers whether to go on. Generators measured slower (relation traversal 2.3×, `linkedWith` +47%, a type's
+materialisation +2 ms on 40k), so a stream is a loop over a callback. A type walk reaches only the entities in the
+type when it began, so a `where` predicate that creates one doesn't extend its own walk. Against Step 6: 1,000
+`query(type).first()` over 40k 3,815 → 0.25 ms, 100 `linkedWith` 49.4 → 44.7 ms, the rest within noise.
+
 ### 8. Writes committed when they return (review item 9)
 - Every top-level write runs as its own unit (autocommit); the journal commits to LMDB after `atCommit` checks, and a
   commit that throws runs the unit's undos and rethrows.
