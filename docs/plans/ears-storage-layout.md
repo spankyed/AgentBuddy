@@ -112,6 +112,22 @@ per field, and the adapter's destroy still seeks once per stored kind (`storedKi
 recorded. If heap grows materially, try a plain object per entity (V8 shares hidden classes across same-shaped rows;
 measure deletes, which drop an object to dictionary mode).
 
+Done, 2026-10-23. Each row is a plain object, not a `Map`: measured both (mean ms against the Step 4 baseline):
+
+| Case | Baseline | `Map` per entity | object per entity |
+|---|---|---|---|
+| heap, graph loaded | 61.3 MB | 85.6 MB | 67.8 MB |
+| 1,000 `getRow` | 0.72 | 0.62 | 0.18 |
+| query by type with where and pickAll | 16.6 | 9.6 | 7.0 |
+| `pickAll` over 40k | 35.7 | 18.7 | 20.7 |
+| 1,000 creates | 4.50 | 4.00 | 3.65 |
+| `orderBy` a string over 40k | 11.9 | 13.3 | 13.4 |
+| 3 chained steps (`orderBy('rank')`) | 11.8 | 13.4 | 13.0 |
+
+`orderBy` is over the +10% tolerance: each `getAttr` now looks its id up in one map of every entity, relations
+included (150k in the bench), where it used to look in a kind's map of 50k. Step 9 takes relations out of that
+map; re-measure there. A field named `__proto__` is set as an own property (`setField`), with a spec.
+
 ### 7. Lazy queries
 Filter and walk steps pull ids one at a time; `orderBy`, `reverse` and `distinct` collect. `first`, `exists` and
 `limit` stop early; `count` doesn't allocate the set. `removals`' check on a kept builder still applies.
