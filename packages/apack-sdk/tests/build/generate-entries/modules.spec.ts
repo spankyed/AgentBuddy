@@ -168,6 +168,13 @@ describe('generated EARS facade', () => {
     expect(entry).toContain('"Tag":{"required":[],"shortCode":"TAG"}');
   });
 
+  it("refuses a short code prefix a dependency numbers with, at build time rather than at install", async () => {
+    write('src/memo.ts', 'export interface MemoEntity { shortCode: `MEM-${number}`; text: string }\n');
+    const deps = { 'base-pack': { ...dependency({ data: { entities: { Memo: null }, shortCodes: { Memo: 'MEM' } } }), types: { entities: { Memo: 'Memo' }, relKinds: {}, roles: {} } } };
+    await expect(generate({ dependencies: { 'base-pack': '*' }, data: { entities: { Note: 'src/memo.ts#MemoEntity' }, shortCodes: { Note: 'MEM' } } }, deps))
+      .rejects.toThrow('Entity "Note": the short code prefix "MEM" numbers Memo of the dependency "base-pack": choose another');
+  });
+
   it("refuses a shape whose ShortCode and the manifest's prefix disagree, either way", async () => {
     write('src/memo.ts', [
       'export interface TypedEntity { shortCode: `MEM-${number}`; text: string }',
@@ -475,7 +482,7 @@ describe('the snapshot format', () => {
       manifest: {
         fields: ['$schema', 'build', 'checks', 'consumes', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
         extensions: ['appExtensions', 'artifacts', 'blocks', 'commands', 'dsl', 'help', 'services', 'settings', 'steps', 'textEditor'],
-        feature: ['description', 'designation', 'entities', 'references', 'repositories', 'services', 'settings', 'surface', 'system', 'types'],
+        feature: ['description', 'designation', 'entities', 'references', 'repositories', 'services', 'settings', 'shortCodes', 'surface', 'system', 'types'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
         surface: ['canvas', 'chat', 'contract', 'default', 'defaultVisible', 'fallbackPanel', 'hotkeys', 'icon', 'isPinned', 'label', 'options', 'panel', 'state'],

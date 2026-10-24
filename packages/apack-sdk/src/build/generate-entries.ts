@@ -4,7 +4,7 @@ import { dataLiteral, propertyKey } from './code-literals.ts';
 import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
 import { resolveTypeModule } from './type-module.ts';
 import { _packModuleTargets, _moduleTargetSource } from './module-targets.ts';
-import { _packEntities, _packEntityTypes, _packRelationTypes, _packRoles, type PackDataDeclarations } from '../framework/data-declaration.ts';
+import { _packEntities, _packEntityTypes, _packRelationTypes, _packRoles, _packShortCodes, type PackDataDeclarations } from '../framework/data-declaration.ts';
 import { _parseModuleReference } from '../framework/module-reference.ts';
 import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
@@ -2020,6 +2020,16 @@ export type { ImportMode } from '@apackdev/sdk/utils';
    */
   function rowRulesLiteral(): string {
     const prefixes = new Map(_packEntities(manifest).flatMap(({ name, shortCode }) => (shortCode ? [[name, shortCode] as const] : [])));
+    // A prefix numbers one type across the app, so a dependency's are taken as the SDK's are: a collision fails the
+    // build here, rather than the install at the host registry. A dependency's snapshot carries its manifest whole
+    const taken = new Map<string, string>();
+    for (const [depId, snapshot] of depSnapshots) {
+      for (const [type, prefix] of Object.entries(_packShortCodes(snapshot.manifest))) taken.set(prefix, `${type} of the dependency "${depId}"`);
+    }
+    for (const [entity, prefix] of prefixes) {
+      const owner = taken.get(prefix);
+      if (owner) throw new Error(`Entity "${entity}": the short code prefix "${prefix}" numbers ${owner}: choose another`);
+    }
     const shaped = new Set<string>();
     const rules: Record<string, RowRules> = {};
     for (const { entity, exportName, source, file } of packShapes()) {
