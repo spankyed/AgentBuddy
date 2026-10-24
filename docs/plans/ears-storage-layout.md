@@ -76,6 +76,47 @@ Of the production data's 171 MB of values, `Message.blocks` (thread transcripts)
   - **Rejected:** a full sync on every commit (today's) or at each `transact` (~4–8 ms each on macOS, on the main
     thread); background sync with no way to ask for durability, which leaves a write the user was told is saved
     exposed to an OS crash; and `noSync` with `useWritemap`, which can corrupt the database.
+- **Reads stream from LMDB cursors, one read snapshot per terminal** (decided 2026-10-24). Today only the run
+  history's `findBy` queries LMDB through a cursor; the engine answers from memory, hydration reads every table
+  whole, and the offline reader scans the entities and relations tables whole to filter them in JavaScript. With
+  one copy of the data in LMDB, every query is a set of key ranges, and Step 7's lazy builder is already the shape
+  that streams over them. Each rule below is decided:
+  - **Each step is a range of the key layout** (`goal-lmdb-only.md`, which holds the keys):
+
+    | Step | Reads | Streams in |
+    |---|---|---|
+    | `query(type)` | `['e', type]` range | insertion order |
+    | `query.ids(ids)` | `['i', id]` gets | the order given |
+    | `getAttr(id, k)` / `getRow(id)` | one get / `['v', id]` range | — |
+    | `where(k, v)` on an indexed value, `withRole(r)` | `['x', kind, value]` range | insertion order: the key holds the entity's sequence, not its id |
+    | `out` / `in` / `outEdges` / `inEdges` | `['o' \| 'n', entity, kind]` range | link order |
+    | `descendants` / `ancestors` | those ranges, breadth first | nearest first |
+    | `findRelations({ source \| target })` | the adjacency range of that end | link order |
+    | `findRelations({ kind })` / `findRelations()` | a walk of `['r', …]`, filtered by kind | relation id |
+    | `count()` of a type with no filter | `['c', type]`, one get | — |
+
+    A whole-graph read by kind (the Database view, `apack db export`) is rare, so it walks the relation rows rather
+    than paying a kind index on every link. `first`, `exists` and `limit` stop the cursor; `count` with a filter
+    counts the stream without collecting it; `orderBy`, `distinct` and the deep walks collect, as they do now; and a
+    `reverse` directly over a range reads the range backwards (`reverse: true`) instead of collecting it.
+  - **One read snapshot per terminal.** A terminal opens one read transaction (lmdb-js `useReadTransaction()`, passed
+    as `transaction` to every get and range it makes) and releases it when it returns or throws (`try`/`finally`).
+    Every range a query reads answers from the same moment, and a write a `where` predicate makes commits outside it,
+    so a walk reaches only what was there when it began, as the contract already says. A snapshot never outlives its
+    terminal or crosses a turn: an open read transaction stops LMDB reusing pages, so a held one grows the file.
+  - **No cursor leaves the store.** The engine hands out arrays and values, never an lmdb-js iterator. Every range is
+    consumed by `for…of`, which closes it on `break`, `return` and a throw; a range a body writes into is collected
+    first, as `convert.ts` does. An environment has 126 reader slots, and a cursor taken by hand and left open takes
+    one for the life of the process (the `getAttrLength` incident in `packages/apack-ears/CLAUDE.md`).
+  - **Synchronous, and decoded only when read.** Ranges use lmdb-js's synchronous `getRange`, so queries stay
+    synchronous, as the contract says; lmdb-js's lazy `map` and `filter` are fine inside the store, and `asArray`
+    only where a step collects. An index walk that needs only keys reads keys (`getKeys`, or `values: false`), so it
+    decodes no values.
+  - **Pagination is keyset when it is added.** Nothing pages today (`b64Encode`/`b64Decode` have no caller). A page
+    API continues from the last key it returned, never from an offset, so a page costs what it returns.
+  - **The offline reader goes.** `LmdbReader` is deleted with hydration: `apack db` opens the same engine on the LMDB
+    backend, read-only, so a tool's queries are the app's queries over the same cursors. Its whole-table scans
+    (`entitiesOfType`, `relations`) are not fixed in the meantime.
 
 ## Steps (in order of lift)
 
@@ -209,13 +250,18 @@ through `onWriteFailure`. Its design is kept, with moving thread messages out of
   bindings of our own.
 - Format 4, with a 3 → 4 step in `scripts/ears-convert.ts`. Only the developers' own data is in an older format, and
   it is converted explicitly, on a copy.
+- The read path above: every step a range of the layout, one read snapshot per terminal, no cursor leaving the
+  store, key-only index walks, and `LmdbReader` deleted with `apack db` reading through the engine.
 - A development check that freezes returned values in tests, since a read returns a copy.
 - The host, API, CLI and SDK test runtime cut over; hydration, the sink, the adapter and the journal deleted.
 **Done when:** the contract suite passes unchanged on both backends; boot, heap, the test run's time and the bench
 are measured against the readings above and the Step 4 baseline, the `orderBy` regression from Step 6 included; a
 write survives a child killed with SIGKILL right after it returns; a write behind `durable()` is on disk when it
-resolves (the sync count observed through the backend), and one without it is not synced per commit; and the
-create and update profile is recorded.
+resolves (the sync count observed through the backend), and one without it is not synced per commit; the
+create and update profile is recorded; on the LMDB backend, a spec counting reads shows `first()`, `exists()` and
+`limit(n)` stop early and an indexed `where` reads only its matches; a thousand queries that break early or throw
+leave the environment's reader count where it was (lmdb-js `readerList()`); and the bench's `first()`, `limit`,
+indexed-`where`, traversal and 10k-edge hub cases are recorded on LMDB.
 Narrowing the two locks for multi-process writes follows it.
 
 ## Out of scope

@@ -29,7 +29,7 @@ What is left is the engine itself: one copy of the data, in LMDB, behind an orde
   |---|---|---|
   | `['v', id, kind]` | the value | `getAttr` (one get), `getRow` (one range) |
   | `['k', kind, id]` | list length | stats, `has(k)` |
-  | `['x', kind, value, id]` | null | value index: strings up to 256 chars, finite numbers, booleans |
+  | `['x', kind, value, seq]` | id | value index: strings up to 256 chars, finite numbers, booleans; keyed by the entity's sequence, so a match streams in insertion order (decided in [ears-storage-layout.md](../plans/ears-storage-layout.md)) |
   | `['e', type, seq]` → id, `['i', id]` → seq | | entities by type in insertion order; existence |
   | `['c', type]` | count | `count()` by type |
   | `['T', seq]`/`['t', type]`, `['AK', seq]`/`['ak', kind]`, `['RK', seq]`/`['rk', kind]` | | catalogs in first-seen order |
