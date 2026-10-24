@@ -1,6 +1,6 @@
 # EARS storage: layout, relations, queries and write durability
 
-Status: planned, 2026-10-23. Takes up review items 6 (row reads) and 9 (durability) from the EARS API cleanup, and
+Status: Steps 1–7 done, 2026-10-23; Step 8 dropped, Step 9 as a contract change, Step 10 next. Takes up review items 6 (row reads) and 9 (durability) from the EARS API cleanup, and
 supersedes the open parts of [goal-lmdb-only.md](../goals/goal-lmdb-only.md) (PR #261, closed unmerged).
 
 ## Context
@@ -24,14 +24,25 @@ router. What is left is smaller and mostly in memory:
 - **Two smaller defects.** `orderBy` calls `getAttr` and `localeCompare` inside the comparator and compares mixed
   types as strings; `link`'s idempotence compares `info` with `JSON.stringify`, so key order makes a duplicate edge.
 
-Data today is small (the dev data dir's `ears-db` is 1.8 MB), so reading from disk is not needed now. Every step
-below moves the in-memory structures to the layout the spike designed for disk (`['v', id, kind]`, adjacency
-holding the far end), so a disk engine, if one is ever needed, is a storage swap behind one seam rather than a
-rewrite.
+Real data is not small. Measured 2026-10-23 on copies converted to format 3, the built engine, 3 runs each:
+
+| Data | Entities (relations) | Attribute values | Hydrate | Heap |
+|---|---|---|---|---|
+| The lead developer's production data (`abuddy/ears-db`, 292 MB) | 68.6k (45.8k) | 224k | 1.3–1.5 s | 308 MB |
+| The dev data dir (`apack-dev`) | 559 (325) | 2.4k | 22 ms | 1.4 MB |
+
+Of the production data's 171 MB of values, `Message.blocks` (thread transcripts) is 141 MB and `Artifact.content`
+13 MB; everything else is under 10 MB.
 
 ## Decisions
 
-- **Keep the in-memory read path.** Reading from disk (Step 10) waits for a measured trigger.
+- **The engine reads and writes LMDB; the in-memory database goes** (decided 2026-10-23). It was a prototype's
+  shortcut, and an embedded store with one copy of the data is the industry norm. The deciding reasons are the pit
+  of success: a write commits or throws, so memory can never run ahead of disk; data size is never a rule a feature
+  author has to know (moving the transcripts out would fix today's 308 MB and leave the trap for the next large
+  field); a read returns a copy, so mutating it can't change stored data unsaved; and tests run the engine the app
+  runs, on an in-memory backend of the same seam. Reads cost more per operation (2–10× in the spike, before lazy
+  queries), in microseconds. This drops Step 8, keeps Step 9's contract change, and starts Step 10 now.
 - **Store attributes by entity, not by attribute.** Queries start from a type's ids and read `getAttr(id, kind)`
   per id, which costs the same in either layout; the value index serves `where(k, v)` and `withRole` in both. The
   only readers of the by-attribute layout are the value index's first build of a kind and the schema view, both
@@ -99,7 +110,7 @@ relations):
 Step 3, measured against the comparator it replaced: 3 chained steps 27.8 → 11.8 ms, `orderBy` a string 14.9 → 11.9 ms.
 
 ### 5. Rewrite `goal-lmdb-only.md`
-Done, 2026-10-23: it is Step 10's trigger and design, with the spike's measurements and the lock analysis; the
+Done, 2026-10-23: it is Step 10's design, with the spike's measurements and the lock analysis; the
 trace, partition, router and session material is gone.
 
 ### 6. Attributes by entity (review item 6)
@@ -140,37 +151,36 @@ materialisation +2 ms on 40k), so a stream is a loop over a callback. A type wal
 type when it began, so a `where` predicate that creates one doesn't extend its own walk. Against Step 6: 1,000
 `query(type).first()` over 40k 3,815 → 0.25 ms, 100 `linkedWith` 49.4 → 44.7 ms, the rest within noise.
 
-### 8. Writes committed when they return (review item 9)
-- Every top-level write runs as its own unit (autocommit); the journal commits to LMDB after `atCommit` checks, and a
-  commit that throws runs the unit's undos and rethrows.
-- The adapter writes synchronously in `transactionSync` per unit; every callback has a block body. Flags per the
-  durability decision; the record store already uses `noSync`.
-- `reset` clears the databases in one transaction (keeping the stamp); `import` reads the backup read-only and copies
-  its rows in one transaction. The running app's store never closes.
-- Removed: the buffers, `DROPPED`, `discardBuffered`, the row-by-row retry, `onWriteFailure` and the api's
-  `reportDroppedWrite`, `heldForReset`, `openFailure`, `reopen` and the carried error stats.
-**Done when:** a child killed (SIGKILL) right after a write returns reopens with it; a commit that fails leaves memory
-unchanged and throws; reset and import work while systems keep writing; each mutation-checked. The bench shows the
-cost of the implicit unit on writes outside `transact`, which today cost nothing. A write bench (creates, updates
-and destroys against a 50k-entity store) records commit cost under format 3's `kind␟id` keys; it is the reading
-that sizes a format 4 key flip, since a synchronous commit per write makes pages dirtied per commit the cost.
+### 8. Writes committed when they return (review item 9) — dropped
+With one copy of the data there is nothing to roll back, so the journal-commit rework, the adapter rewrite, the sink
+and hydration go in Step 10 instead of being reworked. Two of its pieces move into Step 10's cut-over: the
+durability flags, and reset and import as transactions. Until Step 10 lands, a dropped write is still reported only
+through `onWriteFailure`.
 
-### 9. Relations first-class
-- A relation table, `Map<relId, RelationRow>`, and adjacency `entity → kind → out|in → Map<relId, farEnd>`
-  (insertion-ordered, so the order the contract pins holds).
-- Link and unlink are O(1); a hop reads no details; `destroyEntity`, `linkedWith` and `findRelations` touch only the
-  entity's own edges or the asked kind.
-- Relations leave the entity index (`engineOwn`'s `Relation` filter and `persisted()`'s special case go);
-  `write(relId).destroy()` still removes that relation.
-**Done when:** the contract suite passes; the hub-link and hub-destroy bench cases are linear.
+### 9. Relations are not entities — the contract change only
+- A relation is a row in its own map, `Map<relId, RelationRow>`, beside today's relation index; the entity index no
+  longer lists relations, and `query.all()`'s relation filter goes.
+- `write(relId).destroy()` still removes that relation.
+- The contract specs that pin the old behaviour change with it: `getEntitiesOfType('Relation')`,
+  `getRow(relId).relationDetails`, and `query.all()` leaving relations out.
+- No adjacency redesign: under Step 10 adjacency is keys, so an in-memory one would be thrown away.
+**Done when:** the contract suite pins the new behaviour, so Step 10's rewrite has to pass it unchanged.
 
-### 10. Reading from disk only — on a trigger
-Record a boot/hydrate and heap reading on real data; agree a threshold. Past it, the disk storage is a swap behind
-the storage seam (`composeEngine`, `RelationIndexReader`, added then), using the spike's key layout — by entity,
-`['v', id, kind]`, which is also the layout that serves writes (see Decisions) — with the lock narrowing from the
-goal. Not started before the threshold is crossed.
+### 10. The engine on an ordered key-value seam
+- `OrderedKV` (`get`, `put`, `del`, `range`, `commit`) with a contract spec, a `MemoryKV` and an LMDB backend. One
+  engine on the seam: the app on LMDB, tests on `MemoryKV`. No relation-level seam above it.
+- The key layout by entity (`['v', id, kind]`, adjacency `['o'|'n', entity, kind, seq] → [relId, farEnd]`), per
+  [goal-lmdb-only.md](../goals/goal-lmdb-only.md).
+- The durability flags, and reset and import as transactions (`replaceWith(dir)`).
+- Format 4, with a 3 → 4 step in `scripts/ears-convert.ts`. Only the developers' own data is in an older format, and
+  it is converted explicitly, on a copy.
+- A development check that freezes returned values in tests, since a read returns a copy.
+- The host, API, CLI and SDK test runtime cut over; hydration, the sink, the adapter and the journal deleted.
+**Done when:** the contract suite passes unchanged on both backends; boot, heap, the test run's time and the bench
+are measured against the readings above and the Step 4 baseline, the `orderBy` regression from Step 6 included.
+Narrowing the two locks for multi-process writes follows it.
 
 ## Out of scope
 
 - The typed contract (`entities.ts`, `runtime.ts`, `typed.ts`): nothing here changes a type packs see.
-- `PACK_SNAPSHOT_FORMAT` and the LMDB storage format: Steps 1–9 keep format 3.
+- `PACK_SNAPSHOT_FORMAT`. Steps 1–9 keep LMDB format 3; Step 10 is format 4.

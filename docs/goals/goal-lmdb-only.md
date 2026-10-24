@@ -1,8 +1,7 @@
 # Goal: EARS reads from disk — the engine's data only in LMDB
 
-Status: deferred, on a trigger. This is Step 10 of [ears-storage-layout.md](../plans/ears-storage-layout.md), which
-does the rest of what this goal set out to do in memory first. The spike (PR #261, closed unmerged) is recorded
-below; its code is not reused.
+Status: started, 2026-10-23 — Step 10 of [ears-storage-layout.md](../plans/ears-storage-layout.md), which has the
+decision and the readings behind it. The spike (PR #261, closed unmerged) is recorded below; its code is not reused.
 
 ## Where it starts
 
@@ -20,20 +19,11 @@ By the time this is picked up, the plan has made the in-memory engine look like 
 
 So what is left is the read path: replacing the memory storage with LMDB behind a storage seam.
 
-## The trigger
-
-Not started until a recorded reading on real data crosses an agreed threshold: hydrate time at boot, or the
-engine's heap (`npm run bench:heap -w @apackdev/ears` reads it for the bench graph: 61.3 MB at 50k entities,
-2026-10-23). The dev data dir's `ears-db` is 1.8 MB. A second reason that can trigger it on its own: tools writing
-to a running app's data (`apack db exec`) without a lock, which needs the app to hold no second copy (see the locks
-below).
-
 ## Design
 
-- **A storage seam.** `composeEngine({ storage, relations, isEntityType })` split out of `createEarsEngine`, and a
-  `RelationIndexReader` (`kinds`, `has`, `bySource`, `byTarget`, `all`, `stats`) the query, edge and relation reads
-  go through. The memory storage stays as the test backend or goes (decide then: one implementation, or two kept
-  equivalent by the contract suite running on both).
+- **An ordered key-value seam.** `OrderedKV` (`get`, `put`, `del`, `range`, `commit`) under the whole engine, with a
+  `MemoryKV` for tests and an LMDB backend for the app, and one contract spec both pass. The spike's
+  `RelationIndexReader` and `composeEngine` were seams above it and are not built.
 - **Key layout** (one env, one named database, ordered-binary array keys, msgpack values, which keep Dates, nested
   values and `undefined`):
 
@@ -53,8 +43,8 @@ below).
   costs about the B+tree pages it dirties, and an entity's fields share one or two.
 - **Values are copies.** Reads decode fresh values; pack code that mutated a returned value would silently stop
   persisting, so a development check freezes returned values in tests.
-- **Store format migration.** Format 3 converts once, explicitly, with `scripts/ears-convert.ts` on a copy (the
-  repo's rule for stored data), never at boot.
+- **Format 4.** Format 3 converts once, explicitly, with `scripts/ears-convert.ts` on a copy (the repo's rule for
+  stored data), never at boot.
 - **Locks narrow** in the same change (below).
 
 ## Spike results (2026-09-17)
