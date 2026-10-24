@@ -79,7 +79,7 @@ export function _packShortCodes(declaration: PackDataDeclarations): Record<strin
  * enforce, so the answer is never ambiguous; the app's registry, a data dir's schema and the test runtime build theirs
  * with this, so all three answer alike.
  */
-export function _shortCodeTypes(rules: Iterable<readonly [string, Partial<RowRules>]>): (code: string) => string | undefined {
+export function _shortCodeTypes(rules: ReadonlyArray<readonly [string, Partial<RowRules>]>): (code: string) => string | undefined {
   const byPrefix = new Map<string, string>();
   for (const [type, { shortCode }] of rules) if (shortCode) byPrefix.set(shortCode, type);
   return (code) => {

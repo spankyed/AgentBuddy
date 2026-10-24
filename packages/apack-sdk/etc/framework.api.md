@@ -699,7 +699,7 @@ export interface SettingsValidator {
 export const _SHORT_CODE_PATTERN: RegExp;
 
 // @internal
-export function _shortCodeTypes(rules: Iterable<readonly [string, Partial<RowRules>]>): (code: string) => string | undefined;
+export function _shortCodeTypes(rules: ReadonlyArray<readonly [string, Partial<RowRules>]>): (code: string) => string | undefined;
 
 // @internal
 export function _stepBackendParts(entry: DeclarationData<Pick<StepEntry, 'build' | 'trigger'>>): {

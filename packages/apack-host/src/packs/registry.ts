@@ -772,7 +772,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     ...[...registrations.values()].flatMap((reg) => Object.entries(reg.ears?.rowRules ?? {})),
   ]));
   // Each prefix's entity type, from those same rules, so a pack's codes come and go with it
-  const shortCodeTypes = derived(() => _shortCodeTypes(rowRules()));
+  const shortCodeTypes = derived(() => _shortCodeTypes([...rowRules()]));
   const services = derived((): Record<string, unknown> =>
     Object.fromEntries([...admitted.values()].flatMap(pack => [...pack.services])));
 

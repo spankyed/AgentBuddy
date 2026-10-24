@@ -3621,7 +3621,7 @@ export const SCRIPT_MODULE_EXTENSIONS: readonly [".ts", ".tsx", ".mts", ".cts", 
 export const _SHORT_CODE_PATTERN: RegExp;
 
 // @internal
-export function _shortCodeTypes(rules: Iterable<readonly [string, Partial<RowRules>]>): (code: string) => string | undefined;
+export function _shortCodeTypes(rules: ReadonlyArray<readonly [string, Partial<RowRules>]>): (code: string) => string | undefined;
 
 // @public (undocumented)
 export interface SkippedPackCheck {
