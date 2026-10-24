@@ -5,19 +5,15 @@ decision and the readings behind it. The spike (PR #261, closed unmerged) is rec
 
 ## Where it starts
 
-By the time this is picked up, the plan has made the in-memory engine look like the disk one:
-
 - **Run history is not in the engine** ([run-history-store.md](../plans/run-history-store.md)): no trace partition,
   no router, one environment.
 - **Attributes are stored by entity** (plan Step 6), the disk layout's `['v', id, kind]` order.
-- **Relations are first-class** (Step 9): a relation table and adjacency holding the far end, the disk layout's
-  `['s'|'g', kind, end, seq] → [relId, otherEnd]`.
-- **Queries are lazy** (Step 7), so `limit` and `first` stop reading early.
-- **A write is committed when it returns** (Step 8): `transactionSync` without a flush, `overlappingSync: false`, a
-  background `root.sync()`; a failed commit undoes memory and throws. Safe from app crashes, ~1 s lost on an OS
-  crash (decided 2026-10-23).
+- **Relations are not entities** (Step 9): a relation is a row of its own, which the contract suite pins.
+- **Queries are lazy** (Step 7), so `first`, `exists`, `count` and `limit` stop reading early.
+- **Durability is decided:** `transactionSync` without a flush, `overlappingSync: false`, a background
+  `root.sync()`. Safe from app crashes, ~1 s lost on an OS crash (2026-10-23).
 
-So what is left is the read path: replacing the memory storage with LMDB behind a storage seam.
+What is left is the engine itself: one copy of the data, in LMDB, behind an ordered key-value seam.
 
 ## Design
 

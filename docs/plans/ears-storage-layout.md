@@ -169,7 +169,7 @@ through `onWriteFailure`.
 ### 10. The engine on an ordered key-value seam
 - `OrderedKV` (`get`, `put`, `del`, `range`, `commit`) with a contract spec, a `MemoryKV` and an LMDB backend. One
   engine on the seam: the app on LMDB, tests on `MemoryKV`. No relation-level seam above it.
-- The key layout by entity (`['v', id, kind]`, adjacency `['o'|'n', entity, kind, seq] → [relId, farEnd]`), per
+- The key layout by entity (`['v', id, kind]`, and adjacency keys holding the far end), per
   [goal-lmdb-only.md](../goals/goal-lmdb-only.md).
 - The durability flags, and reset and import as transactions (`replaceWith(dir)`).
 - Format 4, with a 3 → 4 step in `scripts/ears-convert.ts`. Only the developers' own data is in an older format, and
