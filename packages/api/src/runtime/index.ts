@@ -24,7 +24,8 @@ import { rootEvents } from '../transport/emitter.ts';
 import { initializeLogCapture, printLogEvents } from '../adapters/logging.ts';
 import { createRequire } from 'module';
 import pkg from '../../../../package.json';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
 
 /** Packaged processes read the same manifest; source runs use the checkout version. */
 const APP_VERSION: string = process.env.APACK_APP_MANIFEST
@@ -97,6 +98,21 @@ function reportDroppedWrite({ op, key, error }: WriteFailure): void {
     title: `Some changes aren't reaching the database (${op} ${key}). Recent edits may not have been saved.`,
     source: 'database',
   });
+}
+
+/** What hydrating took: its time, the heap it added and the heap after it, and the database's size on disk */
+function hydrationReading(ms: number, heapBefore: number): string {
+  const mb = (bytes: number) => `${(bytes / 2 ** 20).toFixed(1)} MB`;
+  const { heapUsed } = process.memoryUsage();
+  let onDisk: string;
+  try {
+    onDisk = mb(statSync(path.join(_getLmdbPath(), 'data.mdb')).size);
+  } catch {
+    onDisk = 'unknown';
+  }
+  // A collection during hydration can leave less heap than before it
+  const added = heapUsed - heapBefore;
+  return `Hydrated in ${Math.round(ms)} ms: heap ${added < 0 ? '' : '+'}${mb(added)} (${mb(heapUsed)} in all), database ${onDisk} on disk`;
 }
 
 export function openAppStore(): AppStore {
@@ -207,8 +223,12 @@ export async function setupBackend(): Promise<void> {
     }
   }
 
-  // ── Hydrate (the engine now knows every pack's entity types)
+  // ── Hydrate (the engine now knows every pack's entity types). What it cost is the boot's reading of the user's
+  // own data, which the bench's synthetic graph can't give
+  const heapBefore = process.memoryUsage().heapUsed;
+  const hydrateStarted = performance.now();
   await store.hydrate();
+  logger.info(hydrationReading(performance.now() - hydrateStarted, heapBefore));
 
   // ── Start the packs: each one's onInit, the migrations (the app's, then external packs'), the content
   if (!recoveringSettings) startPacks(packs);
