@@ -22,6 +22,9 @@
       "entities": {
         "Memo": "src/features/memos/be/types.ts#MemoEntity"
       },
+      "shortCodes": {
+        "Memo": "MEM"
+      },
       "settings": {
         "schema": {
           "type": "object",

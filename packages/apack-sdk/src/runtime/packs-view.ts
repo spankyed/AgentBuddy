@@ -60,6 +60,12 @@ export interface PackRegistryView extends PackExtensionsView {
   help(): HelpCatalog;
   /** The app's own entity types and relation kinds and every registered pack's, by the name each declares them under */
   earsNames(): EarsNames;
+  /**
+   * The entity type a short code belongs to, from the prefixes the SDK and every registered pack declare: `THR-41` →
+   * `Thread`. Undefined for a code that isn't `<prefix>-<n>` or whose prefix no registered type numbers with. Find the
+   * entity with the typed query, `query(type).where('shortCode', code)`, which the value index answers
+   */
+  entityTypeOfShortCode(code: string): string | undefined;
 }
 
 /**

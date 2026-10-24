@@ -29,6 +29,14 @@ export type { ModelId, ProviderName } from './models.ts';
 
 const logger = createLogger('log-service');
 
+/**
+ * The entity type a short code belongs to, from the prefixes the SDK and the bound app's registered packs declare:
+ * `THR-41` → `Thread`, undefined for a code that isn't `<prefix>-<n>` or whose prefix no registered type numbers
+ * with. For a code whose type isn't known — one a user typed, or one found in text — the entity is then the typed
+ * query: `untypedQuery(type).where('shortCode', code).first()`.
+ */
+export const entityTypeOfShortCode = (code: string): string | undefined => boundHost().packs.entityTypeOfShortCode(code);
+
 /** The bound app's registered packs' repositories, by name; reading one no pack declares throws */
 export const repository: Record<string, unknown> = new Proxy({}, {
   get(_target, name) {

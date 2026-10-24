@@ -283,7 +283,7 @@ function onDelete() {
 }
 
 function copyId() {
-  const text = props.item.type === 'document' ? props.item.shortCode : props.item.id
+  const text = props.item.type === 'document' ? props.item.shortCode ?? props.item.id : props.item.id
   navigator.clipboard.writeText(text)
 }
 

@@ -27,7 +27,7 @@ export interface ActionEntity extends BaseEntity {
     label: string;
     // (undocumented)
     output?: unknown;
-    shortCode: ShortCode<'ACT'>;
+    shortCode: ShortCode<typeof SDK_SHORT_CODES.Action>;
     // (undocumented)
     updatedAt: number;
 }
@@ -167,7 +167,7 @@ export interface DocumentEntity extends BaseEntity {
 }
 
 // @public
-export type DocumentShortCode = ShortCode<'DOC'>;
+export type DocumentShortCode = ShortCode<typeof SDK_SHORT_CODES.Document>;
 
 // @public (undocumented)
 export namespace EARS {
@@ -248,7 +248,7 @@ export interface FlowEntity extends BaseEntity {
     flowType: 'workflow' | 'integration';
     // (undocumented)
     label: string;
-    shortCode: ShortCode<'F'>;
+    shortCode: ShortCode<typeof SDK_SHORT_CODES.Flow>;
 }
 
 // @public (undocumented)
@@ -309,7 +309,7 @@ export interface PromptEntity extends BaseEntity {
     // (undocumented)
     label: string;
     outputSchema?: unknown;
-    shortCode: ShortCode<'PROMPT'>;
+    shortCode: ShortCode<typeof SDK_SHORT_CODES.Prompt>;
     templateFn: string;
     // (undocumented)
     updatedAt: number;
@@ -355,27 +355,35 @@ export const SDK_ROLES: {
 // @public
 export const SDK_ROW_RULES: {
     readonly Flow: {
-        readonly required: readonly ["shortCode", "label", "flowType"];
-        readonly shortCode: "F";
+        readonly required: readonly ["label", "flowType"];
+        readonly shortCode: "FLW";
     };
     readonly Node: {
         readonly required: readonly ["nodeType", "label"];
     };
     readonly Action: {
-        readonly required: readonly ["label", "input", "actionFn", "shortCode"];
+        readonly required: readonly ["label", "input", "actionFn"];
         readonly shortCode: "ACT";
     };
     readonly Prompt: {
-        readonly required: readonly ["label", "inputs", "templateFn", "shortCode"];
-        readonly shortCode: "PROMPT";
+        readonly required: readonly ["label", "inputs", "templateFn"];
+        readonly shortCode: "PRM";
     };
     readonly Document: {
-        readonly required: readonly ["name", "content", "shortCode"];
+        readonly required: readonly ["name", "content"];
         readonly shortCode: "DOC";
     };
     readonly Collection: {
         readonly required: readonly ["name"];
     };
+};
+
+// @public
+export const SDK_SHORT_CODES: {
+    readonly Flow: "FLW";
+    readonly Action: "ACT";
+    readonly Prompt: "PRM";
+    readonly Document: "DOC";
 };
 
 // @public

@@ -210,7 +210,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PROMPT-1"
+        "shortCode": "PRM-1"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -225,7 +225,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PROMPT-2"
+        "shortCode": "PRM-2"
       }
     },
     "relations": [
@@ -475,7 +475,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PROMPT-3"
+        "shortCode": "PRM-3"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -490,7 +490,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PROMPT-4"
+        "shortCode": "PRM-4"
       }
     },
     "relations": [
@@ -733,7 +733,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PROMPT-5"
+        "shortCode": "PRM-5"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -748,7 +748,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PROMPT-6"
+        "shortCode": "PRM-6"
       }
     },
     "relations": [

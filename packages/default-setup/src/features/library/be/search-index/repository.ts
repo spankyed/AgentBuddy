@@ -2,7 +2,6 @@ import { query, create, write } from '#generated/ears.ts';
 import { Index } from 'usearch'
 
 import { EARS } from '#generated/ears.ts'
-import { randomId } from '@apackdev/sdk/utils'
 import { getIndexFilePath } from './paths.ts'
 import { createLogger } from '@apackdev/sdk/logger'
 import type {
@@ -26,11 +25,6 @@ const logger = createLogger('search-index')
 const indexCache = new Map<string, Index>()
 
 // Helper functions for IndexedDoc management
-function generateIndexedDocShortCode(): string {
-  // Use collision-resistant ID generation
-  return `IDOC-${randomId({ length: 8, counterSafe: true })}`
-}
-
 function findIndexedDoc(indexId: string, chunkKey: string): IndexedDocEntity | null {
   const results = query(EARS.Entity.IndexedDoc)
     .where('indexId', indexId)
@@ -45,7 +39,6 @@ function findIndexedDoc(indexId: string, chunkKey: string): IndexedDocEntity | n
 
 function createIndexedDoc(data: IndexedDocCreateData): EARS.EntityId {
   const id = create(EARS.Entity.IndexedDoc, {
-    shortCode: generateIndexedDocShortCode(),
     indexId: data.indexId,
     chunkKey: data.chunkKey,
     documentId: data.documentId,

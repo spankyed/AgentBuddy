@@ -54,6 +54,7 @@ order. `init`, `add` and the release version editor share this writer.
 | `extensions` | `object` | no | What the pack contributes to the app; see [Extensions](#extensions) |
 | `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |
 | `data.entities` | `Record<string, string \| null>` | no | Entities without a feature owner; see [Entities and relations](#entities-and-relations) |
+| `data.shortCodes` | `Record<string, string>` | no | Short code prefixes of entities in `data.entities`; the same rules as a feature's `shortCodes` |
 | `data.relations` | `string[]` | no | Pack-level snake_case relation wire names; see [Entities and relations](#entities-and-relations) |
 | `data.roles` | `string[]` | no | Pack-level snake_case role names; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack IDs mapped to a nonempty npm semver range, `github:owner/repo [range]`, or `file:path` |
@@ -175,6 +176,7 @@ unrepresentable.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `entities` | `Record<string, string \| null>` | no | Entity wire names owned by this feature, mapped to a TypeScript shape export or `null` for untyped entities. Paths remain pack-root-relative. |
+| `shortCodes` | `Record<string, string>` | no | Entities in this feature's `entities` whose rows are numbered, each mapped to its prefix: three uppercase letters (`THR`), unique across every pack. `create` numbers each row `<prefix>-<n>`, and the shape types `shortCode` as `ShortCode<prefix>`; see [Services and data](services-and-data.md) |
 | `designation` | `string` | no | Role played by this feature; it may differ from the feature ID. Duplicate claims are refused locally and across packs. |
 | `settings` | `object` | no | Declarative `schema`, explicit `defaults`, optional custom `form`, title, description and access policy; see [Feature settings](#feature-settings) |
 | `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@apackdev/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its surface receives is the contract's outgoing events; a surface that also takes events from another feature or another pack declares those itself, in its own `Contract` (`surface.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |

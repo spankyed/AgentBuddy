@@ -157,20 +157,28 @@ describe('generated EARS facade', () => {
     expect(entry).toContain('rowRules: {"Memo":{"required":["pinned","text"]}}');
   });
 
-  it('registers the prefix a shape numbers its short code with, read off a `<prefix>-${number}` type and no other', async () => {
+  it("numbers an entity with the prefix its manifest declares, beside it in the same block, and never requires the code", async () => {
+    write('src/memo.ts', 'export interface MemoEntity { shortCode: `MEM-${number}`; text: string }\n');
+    const entry = (await generate({ data: {
+      entities: { Memo: 'src/memo.ts#MemoEntity', Tag: null },
+      shortCodes: { Memo: 'MEM', Tag: 'TAG' },
+    } }))['src/__generated__/pack-entry.ts'];
+    expect(entry).toContain('"Memo":{"required":["text"],"shortCode":"MEM"}');
+    // An unshaped entity is numbered too, held to nothing else
+    expect(entry).toContain('"Tag":{"required":[],"shortCode":"TAG"}');
+  });
+
+  it("refuses a shape whose ShortCode and the manifest's prefix disagree, either way", async () => {
     write('src/memo.ts', [
-      'export interface MemoEntity { shortCode: `MEMO-${number}`; text: string }',
-      'export interface TagEntity { shortCode?: `T-${number}` }',
+      'export interface TypedEntity { shortCode: `MEM-${number}`; text: string }',
       'export interface PlainEntity { shortCode: string }',
-      'export interface LooseEntity { shortCode: `${string}-${number}` }',
     ].join('\n'));
-    const entry = (await generate({ data: { entities: {
-      Memo: 'src/memo.ts#MemoEntity', Tag: 'src/memo.ts#TagEntity', Plain: 'src/memo.ts#PlainEntity', Loose: 'src/memo.ts#LooseEntity',
-    } } }))['src/__generated__/pack-entry.ts'];
-    expect(entry).toContain('"Memo":{"required":["shortCode","text"],"shortCode":"MEMO"}');
-    expect(entry).toContain('"Tag":{"required":[],"shortCode":"T"}');
-    expect(entry).toContain('"Plain":{"required":["shortCode"]}');
-    expect(entry).toContain('"Loose":{"required":["shortCode"]}');
+    await expect(generate({ data: { entities: { Memo: 'src/memo.ts#TypedEntity' } } }))
+      .rejects.toThrow(/declares no short code for it/);
+    await expect(generate({ data: { entities: { Memo: 'src/memo.ts#TypedEntity' }, shortCodes: { Memo: 'MMO' } } }))
+      .rejects.toThrow(/ShortCode<'MMO'>, not ShortCode<'MEM'>/);
+    await expect(generate({ data: { entities: { Memo: 'src/memo.ts#PlainEntity' }, shortCodes: { Memo: 'MEM' } } }))
+      .rejects.toThrow(/types shortCode as ShortCode<'MEM'>/);
   });
 
   it('names the declared entities and passes them to the typed helpers, with the writes', async () => {
@@ -406,7 +414,7 @@ describe('the snapshot format', () => {
   };
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
-    description: true, entities: true, designation: true, surface: true, references: true, repositories: true, services: true,
+    description: true, entities: true, shortCodes: true, designation: true, surface: true, references: true, repositories: true, services: true,
     settings: true, system: true, types: true,
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };

@@ -39,6 +39,9 @@
         "Message": "src/features/threads/be/types.ts#MessageEntity",
         "Artifact": "src/features/threads/be/types.ts#ArtifactEntity"
       },
+      "shortCodes": {
+        "Thread": "THR"
+      },
       "designation": "threads",
       "settings": {
         "schema": {

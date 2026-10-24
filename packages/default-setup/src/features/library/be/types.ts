@@ -17,7 +17,8 @@ export interface DocumentDTO {
   id: EARS.EntityId
   name: string
   content: ContentSection[]
-  shortCode: DocumentShortCode
+  /** Its short code; absent for a file the library shows from disk (`isSymlinked`), which is no Document */
+  shortCode?: DocumentShortCode
   tags: string[]
   /**
    * What this document is: `commands` marks a slash-command list, which the `commands` designation's
@@ -69,7 +70,8 @@ export interface DocumentItem {
   type: 'document'
   id: EARS.EntityId
   name: string
-  shortCode: DocumentShortCode
+  /** Its short code; absent for a file the library shows from disk (`isSymlinked`), which is no Document */
+  shortCode?: DocumentShortCode
   parentId: EARS.EntityId | null
   content: ContentSection[]
   tags: string[]

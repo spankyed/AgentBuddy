@@ -1,4 +1,4 @@
-import { _packEntityTypes, _packRelationTypes, _packRoles } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes, _packRoles, _packShortCodes, _shortCodeTypes } from '@apackdev/sdk/framework';
 // The EARS names and partition policy of the packs installed in a data dir, read from validated builds without
 // running pack code: what a tool opening the data dir's database needs to hydrate and query it as the app does
 import * as fs from 'node:fs';
@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import type { AppEnvironment } from '@apackdev/sdk/env';
 import { parseManifest, parseSnapshot, type PackManifest } from '@apackdev/sdk/build';
 import { readInstalledPacks } from '../packs/installed.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROW_RULES, SDK_ROLES } from '@apackdev/sdk/types';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROW_RULES, SDK_ROLES, SDK_SHORT_CODES } from '@apackdev/sdk/types';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import type { RowRules } from '@apackdev/ears';
 import { PACK_LAYOUT } from '../packs/layout.ts';
@@ -22,7 +22,8 @@ export interface DatabaseSchema {
   getRegisteredRoles(): ReadonlySet<string>;
   /**
    * What an entity type's created row is held to. The app's registry knows every registered pack's; a data dir read
-   * from its manifests knows the SDK's, a pack's shapes being types no manifest carries
+   * from its manifests knows the SDK's whole, and of a pack's the short code prefix its manifest declares — not its
+   * required fields, which its shapes hold and no manifest carries
    */
   getRowRules?(type: string): RowRules | undefined;
 }
@@ -55,6 +56,8 @@ export interface InstalledSchema extends DatabaseSchema {
   degraded?: string;
   /** Things worth telling the user that are not degradation — a `--schema-from` that turned out unnecessary */
   notes: string[];
+  /** The entity type a short code belongs to, from the SDK's and the installed packs' prefixes, as the app answers it */
+  entityTypeOfShortCode(code: string): string | undefined;
 }
 
 /** The directories and files of a data dir the schema is read from */
@@ -211,12 +214,25 @@ export function readInstalledSchema(context: SchemaContext, options: { schemaFro
   const entityOwners = new Map<string, string>(Object.keys(entities).map((name) => [name, 'apack']));
   const relKindOwners = new Map<string, string>(Object.entries(relKinds).flatMap(([name, value]) => [[name, 'apack'], [value, 'apack']] as Array<[string, string]>));
   const roleOwners = new Map<string, string>(Object.entries(roles).flatMap(([name, value]) => [[name, 'apack'], [value, 'apack']] as Array<[string, string]>));
+  // A prefix numbers one entity type across the app, so a tool refuses two packs sharing one as the app's registry does
+  const prefixes: Record<string, string> = {};
+  const prefixOwners = new Map<string, string>(Object.values(SDK_SHORT_CODES).map((prefix) => [prefix, 'apack']));
   for (const manifest of packs) {
     addNames(entities, entityOwners, manifest.id, _packEntityTypes(manifest), 'entity type');
     addNames(relKinds, relKindOwners, manifest.id, _packRelationTypes(manifest), 'relation kind');
     addNames(roles, roleOwners, manifest.id, _packRoles(manifest), 'role');
+    for (const [type, prefix] of Object.entries(_packShortCodes(manifest))) {
+      const owner = prefixOwners.get(prefix);
+      if (owner !== undefined && owner !== manifest.id) throw new Error(`Two packs declare the short code prefix ${prefix}: "${owner}" and "${manifest.id}"`);
+      prefixOwners.set(prefix, manifest.id);
+      prefixes[type] = prefix;
+    }
   }
   const entityTypes = new Set(Object.values(entities));
+  const shortCodeTypes = _shortCodeTypes([
+    ...Object.entries(SDK_ROW_RULES as Record<string, RowRules>),
+    ...Object.entries(prefixes).map(([type, shortCode]) => [type, { shortCode }] as const),
+  ]);
   const relationKinds = new Set(Object.values(relKinds));
   const roleNames = new Set(Object.values(roles));
 
@@ -228,7 +244,10 @@ export function readInstalledSchema(context: SchemaContext, options: { schemaFro
     getRegisteredEntityTypes: () => entityTypes,
     getRegisteredRelationKinds: () => relationKinds,
     getRegisteredRoles: () => roleNames,
-    getRowRules: (type) => (SDK_ROW_RULES as Record<string, RowRules>)[type],
+    // A pack type's prefix, so a row created here is numbered as the app numbers it; its required fields stay unknown
+    getRowRules: (type) => (SDK_ROW_RULES as Record<string, RowRules>)[type]
+      ?? (prefixes[type] === undefined ? undefined : { required: [], shortCode: prefixes[type] }),
+    entityTypeOfShortCode: shortCodeTypes,
     ...(degraded !== undefined && { degraded }),
     notes,
   };

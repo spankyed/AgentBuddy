@@ -38,7 +38,7 @@
               :class="codeCopied ? 'text-green-400' : 'text-blue-400 hover:text-blue-300'"
               title="Click to copy"
               @click="copyShortCode"
-            >{{ codeCopied ? 'Copied!' : (selectedDocument.shortCode === 'DOC-0' ? '' : selectedDocument.shortCode) }}</span>
+            >{{ codeCopied ? 'Copied!' : (selectedDocument.shortCode ?? '') }}</span>
           </div>
         </div>
 
@@ -369,7 +369,7 @@ function getTagClass(count: number): string {
 const codeCopied = ref(false)
 const copyShortCode = () => {
   const code = selectedDocument.value?.shortCode
-  if (code && code !== 'DOC-0') {
+  if (code) {
     navigator.clipboard.writeText(code)
     codeCopied.value = true
     setTimeout(() => { codeCopied.value = false }, 1200)

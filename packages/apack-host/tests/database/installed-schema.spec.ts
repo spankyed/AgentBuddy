@@ -66,6 +66,29 @@ it('discovers feature-owned typed and untyped entities without authored source o
   expect(schema.relKinds.NOTE_LINK).toBe('note_link');
 });
 
+describe("a pack's short code prefixes, read from its manifest", () => {
+  const numbered = (id: string, entity: string, prefix: string) => ({
+    id, name: id, version: '1.0.0', data: { entities: { [entity]: null }, shortCodes: { [entity]: prefix } },
+  }) as Parameters<typeof writeInstalledPackFixture>[1];
+
+  it("number a pack's entity type outside the app, as the app numbers it, beside the SDK's rules", () => {
+    const dir = dataDirWithPacks();
+    writeInstalledPackFixture(path.dirname(manifestFile(dir, 'memos')), numbered('memos', 'Memo', 'MEM'));
+    const schema = readInstalledSchema(schemaContext(dir));
+    expect(schema.getRowRules?.('Memo')).toEqual({ required: [], shortCode: 'MEM' });
+    expect(schema.getRowRules?.('Document')).toMatchObject({ shortCode: 'DOC' });
+    expect(schema.getRowRules?.('Unnumbered')).toBeUndefined();
+    expect([schema.entityTypeOfShortCode('MEM-4'), schema.entityTypeOfShortCode('DOC-4'), schema.entityTypeOfShortCode('XYZ-4')]).toEqual(['Memo', 'Document', undefined]);
+  });
+
+  it('are refused when two packs share one, as the app refuses to register them', () => {
+    const dir = dataDirWithPacks();
+    writeInstalledPackFixture(path.dirname(manifestFile(dir, 'a')), numbered('a', 'Memo', 'MEM'));
+    writeInstalledPackFixture(path.dirname(manifestFile(dir, 'b')), numbered('b', 'Member', 'MEM'));
+    expect(() => readInstalledSchema(schemaContext(dir))).toThrow('Two packs declare the short code prefix MEM: "a" and "b"');
+  });
+});
+
 // `--schema-from` names a place, so one flag covers every pack behind it: a snapshot file, a pack directory, or a
 // directory of pack directories. Each shape in the wild supplies a different file, which is what the probe order is for.
 describe('--schema-from', () => {

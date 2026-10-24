@@ -388,6 +388,7 @@ export interface PackDataDeclarations {
     // (undocumented)
     data?: {
         entities?: Readonly<Record<string, string | null>>;
+        shortCodes?: Readonly<Record<string, string>>;
         relations?: readonly string[];
         roles?: readonly string[];
     };
@@ -423,6 +424,7 @@ export interface _PackEntityDeclaration {
     owner: string;
     // (undocumented)
     shape: string | null;
+    shortCode?: string;
 }
 
 // @internal
@@ -551,6 +553,9 @@ export function _packServiceSelection(pack: _PackServiceDeclarations, provider: 
     readonly packId: string;
     readonly name: string;
 }[];
+
+// @internal
+export function _packShortCodes(declaration: PackDataDeclarations): Record<string, string>;
 
 // @public
 export function packSystem(entry: SystemEntry, options: {
@@ -684,6 +689,12 @@ export interface SettingsValidator {
     // (undocumented)
     validate(value: unknown): SettingsProblem[];
 }
+
+// @internal
+export const _SHORT_CODE_PATTERN: RegExp;
+
+// @internal
+export function _shortCodeTypes(rules: Iterable<readonly [string, Partial<RowRules>]>): (code: string) => string | undefined;
 
 // @internal
 export function _stepBackendParts(entry: DeclarationData<Pick<StepEntry, 'build' | 'trigger'>>): {

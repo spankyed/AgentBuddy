@@ -21,6 +21,18 @@ export const SDK_ENTITIES = {
   Collection: 'Collection',
 } as const;
 
+/**
+ * The short code prefix of each SDK entity that is numbered, as a pack's manifest declares one (`shortCodes`): three
+ * uppercase letters, the word's common abbreviation where it has one (`DOC`) and otherwise its first letter and
+ * next two consonants (`FLW`, `PRM`). The shapes' `ShortCode` and `SDK_ROW_RULES` both take theirs from here
+ */
+export const SDK_SHORT_CODES = {
+  Flow: 'FLW',
+  Action: 'ACT',
+  Prompt: 'PRM',
+  Document: 'DOC',
+} as const;
+
 export const SDK_REL_KINDS = {
   CONTAINS: 'contains',
   TRANSITIONS_TO: 'transitions_to',
@@ -70,7 +82,7 @@ export interface NodeBase extends BaseEntity {
 export interface FlowEntity extends BaseEntity {
   entityType: typeof SDK_ENTITIES.Flow;
   /** Numbered by `create` */
-  shortCode: ShortCode<'F'>;
+  shortCode: ShortCode<typeof SDK_SHORT_CODES.Flow>;
   label: string;
   description?: string;
   flowType: 'workflow' | 'integration';
@@ -89,7 +101,7 @@ export interface ActionEntity extends BaseEntity {
   /** SHA256 hash of DSL source at the last apply. Absent on user-created actions. */
   contentHash?: string;
   /** Numbered by `create` */
-  shortCode: ShortCode<'ACT'>;
+  shortCode: ShortCode<typeof SDK_SHORT_CODES.Action>;
   createdAt: number;
   updatedAt: number;
 }
@@ -107,7 +119,7 @@ export interface PromptEntity extends BaseEntity {
   /** SHA256 hash of DSL source at the last apply. Absent on user-created prompts. */
   contentHash?: string;
   /** Numbered by `create` */
-  shortCode: ShortCode<'PROMPT'>;
+  shortCode: ShortCode<typeof SDK_SHORT_CODES.Prompt>;
   createdAt: number;
   updatedAt: number;
 }
@@ -123,7 +135,7 @@ export type ContentSection = FieldContent | ListContent | MarkdownContent | Text
 export type ContentType = ContentSection['type'];
 
 /** A document's human-readable code, which `create` numbers */
-export type DocumentShortCode = ShortCode<'DOC'>;
+export type DocumentShortCode = ShortCode<typeof SDK_SHORT_CODES.Document>;
 
 /**
  * A document: text a pack ships and the user edits.
@@ -197,16 +209,16 @@ type ShortCodePrefix<T> = T extends { shortCode: ShortCode<infer P> } ? P : neve
 
 /**
  * What each SDK entity's created row is held to (`RowRules`): the fields it must hold, which `create` refuses a row
- * without at runtime as its type refuses one at compile time, and the prefix it numbers a short code with. The rules
- * are the shapes' own: this fails to compile naming the field when a list misses or adds one, and when a prefix
- * isn't the one the shape's `ShortCode` names or a shape's prefix is missing.
+ * without at runtime as its type refuses one at compile time, and the prefix it numbers a short code with
+ * (`SDK_SHORT_CODES`). The required fields are the shapes' own: this fails to compile naming the field when a list
+ * misses or adds one, and when a shape's `ShortCode` and its prefix disagree.
  */
 export const SDK_ROW_RULES = {
-  Flow: { required: ['shortCode', 'label', 'flowType'], shortCode: 'F' },
+  Flow: { required: ['label', 'flowType'], shortCode: SDK_SHORT_CODES.Flow },
   Node: { required: ['nodeType', 'label'] },
-  Action: { required: ['label', 'input', 'actionFn', 'shortCode'], shortCode: 'ACT' },
-  Prompt: { required: ['label', 'inputs', 'templateFn', 'shortCode'], shortCode: 'PROMPT' },
-  Document: { required: ['name', 'content', 'shortCode'], shortCode: 'DOC' },
+  Action: { required: ['label', 'input', 'actionFn'], shortCode: SDK_SHORT_CODES.Action },
+  Prompt: { required: ['label', 'inputs', 'templateFn'], shortCode: SDK_SHORT_CODES.Prompt },
+  Document: { required: ['name', 'content'], shortCode: SDK_SHORT_CODES.Document },
   Collection: { required: ['name'] },
 } as const satisfies {
   [E in keyof SdkEntityShapes]: RowRules & {

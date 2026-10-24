@@ -133,6 +133,23 @@ describe('parseManifest', () => {
     ]);
   });
 
+  it('accepts a short code prefix beside the entity it numbers, and refuses one that breaks the rules', () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    const errorsOf = (data: object, features?: object) => messagesOf(parseManifest({ ...pack, data, ...(features && { features }) }));
+    expect(errorsOf({ entities: { Memo: null, Tag: null }, shortCodes: { Memo: 'MEM', Tag: 'TAG' } })).toEqual([]);
+    const refused = (data: object, features?: object) => errorsOf(data, features).join('\n');
+    // Three uppercase letters
+    expect(refused({ entities: { Memo: null }, shortCodes: { Memo: 'MEMO' } })).toContain('three uppercase letters');
+    expect(refused({ entities: { Memo: null }, shortCodes: { Memo: 'mem' } })).toContain('three uppercase letters');
+    // Beside an entity of the same block
+    expect(refused({ entities: { Memo: null }, shortCodes: { Note: 'NTE' } })).toContain('declares no entity of');
+    expect(refused({ shortCodes: { Memo: 'MEM' } }, { memos: { description: 'Feature validation fixture.', entities: { Memo: null } } }))
+      .toContain('declares no entity of');
+    // One entity per prefix, and the SDK's are taken
+    expect(refused({ entities: { Memo: null, Tag: null }, shortCodes: { Memo: 'MEM', Tag: 'MEM' } })).toContain('declared for both "Memo" and "Tag"');
+    expect(refused({ entities: { Memo: null }, shortCodes: { Memo: 'DOC' } })).toContain("the SDK's Document prefix");
+  });
+
   it('rejects malformed shape targets and names both duplicate owners', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     expect(messagesOf(parseManifest({ ...pack, data: { entities: { Memo: 'src/types.ts#' } } }))[0]).toContain('path#exportName');

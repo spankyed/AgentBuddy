@@ -1218,7 +1218,8 @@ interface DocumentDTO {
     id: EARS.EntityId;
     name: string;
     content: ContentSection[];
-    shortCode: DocumentShortCode;
+    /** Its short code; absent for a file the library shows from disk (`isSymlinked`), which is no Document */
+    shortCode?: DocumentShortCode;
     tags: string[];
     /**
      * What this document is: `commands` marks a slash-command list, which the `commands` designation's
@@ -1238,7 +1239,8 @@ interface DocumentItem {
     type: 'document';
     id: EARS.EntityId;
     name: string;
-    shortCode: DocumentShortCode;
+    /** Its short code; absent for a file the library shows from disk (`isSymlinked`), which is no Document */
+    shortCode?: DocumentShortCode;
     parentId: EARS.EntityId | null;
     content: ContentSection[];
     tags: string[];
@@ -5200,7 +5202,8 @@ interface ThreadTagOption {
     color?: string;
 }
 
-type ThreadTypeShortCode = ShortCode<'T'>;
+/** A thread's short code, `THR-<n>`: the prefix apack.json declares for Thread (`shortCodes`) */
+type ThreadTypeShortCode = ShortCode<'THR'>;
 
 type ThreadViewData = Simplify<ThreadCreateData & {
     id: ThreadEntity['id'];
@@ -6225,6 +6228,7 @@ declare const libraryCommands: {
 declare const libraryQueries: {
     readonly getDocuments: (collectionId?: string) => DocumentDTO[];
     readonly findDocument: (id: EARS.EntityId) => DocumentDTO | null;
+    /** The document a short code names, through the engine's one resolver; null when it names none, or another type */
     readonly findDocumentByShortCode: (shortCode: DocumentShortCode) => DocumentDTO | null;
     /** Every document and folder by name, for the reference picker and the panel's stats */
     readonly getIndex: () => LibraryIndex;

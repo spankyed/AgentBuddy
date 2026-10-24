@@ -7,6 +7,7 @@
 import type { AnyActorRef } from 'xstate';
 import { Ears } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
+import type { RowRules } from '@apackdev/ears';
 import { z } from 'zod';
 
 // @public (undocumented)
@@ -497,6 +498,7 @@ export const FEATURE_ID_PATTERN: RegExp;
 export const FeatureEntrySchema: z.ZodObject<{
     description: z.ZodString;
     entities: z.ZodOptional<z.ZodType<Record<string, string | null>, z.ZodTypeDef, Record<string, string | null>>>;
+    shortCodes: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     designation: z.ZodOptional<z.ZodString>;
     settings: z.ZodOptional<z.ZodEffects<z.ZodObject<{
         schema: z.ZodType<Record<string, unknown>, z.ZodTypeDef, Record<string, unknown>>;
@@ -557,11 +559,12 @@ export const FeatureEntrySchema: z.ZodObject<{
     references: z.ZodOptional<z.ZodType<ReferenceDeclarations, z.ZodTypeDef, ReferenceDeclarations>>;
 }, "strict", z.ZodTypeAny, {
     description: string;
-    entities?: Record<string, string | null> | undefined;
     references?: ReferenceDeclarations | undefined;
     types?: string | undefined;
     surface?: SurfaceDeclaration | undefined;
     services?: Record<string, string> | undefined;
+    entities?: Record<string, string | null> | undefined;
+    shortCodes?: Record<string, string> | undefined;
     designation?: string | undefined;
     settings?: {
         defaults: Record<string, unknown>;
@@ -581,11 +584,12 @@ export const FeatureEntrySchema: z.ZodObject<{
     repositories?: Record<string, string> | undefined;
 }, {
     description: string;
-    entities?: Record<string, string | null> | undefined;
     references?: ReferenceDeclarations | undefined;
     types?: string | undefined;
     surface?: SurfaceDeclaration | undefined;
     services?: Record<string, string> | undefined;
+    entities?: Record<string, string | null> | undefined;
+    shortCodes?: Record<string, string> | undefined;
     designation?: string | undefined;
     settings?: unknown;
     system?: {
@@ -696,24 +700,28 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     permissions: z.ZodOptional<z.ZodArray<z.ZodEnum<["ears", "llm", "filesystem", "network", "terminal"]>, "many">>;
     data: z.ZodOptional<z.ZodObject<{
         entities: z.ZodOptional<z.ZodType<Record<string, string | null>, z.ZodTypeDef, Record<string, string | null>>>;
+        shortCodes: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
         relations: z.ZodOptional<z.ZodEffects<z.ZodArray<z.ZodString, "many">, string[], string[]>>;
         roles: z.ZodOptional<z.ZodEffects<z.ZodArray<z.ZodString, "many">, string[], string[]>>;
     }, "strict", z.ZodTypeAny, {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     }, {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     }>>;
     features: z.ZodOptional<z.ZodType<Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -733,11 +741,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         repositories?: Record<string, string> | undefined;
     }>, z.ZodTypeDef, Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         system?: {
@@ -1290,9 +1299,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     name: string;
     version: string;
     data?: {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     } | undefined;
     description?: string | undefined;
     content?: {
@@ -1333,11 +1343,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -1470,9 +1481,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     name: string;
     version: string;
     data?: {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     } | undefined;
     description?: string | undefined;
     content?: {
@@ -1513,11 +1525,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         system?: {
@@ -1636,9 +1649,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     name: string;
     version: string;
     data?: {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     } | undefined;
     description?: string | undefined;
     content?: {
@@ -1679,11 +1693,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -1816,9 +1831,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     name: string;
     version: string;
     data?: {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     } | undefined;
     description?: string | undefined;
     content?: {
@@ -1859,11 +1875,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         system?: {
@@ -1982,9 +1999,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     name: string;
     version: string;
     data?: {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     } | undefined;
     description?: string | undefined;
     content?: {
@@ -2025,11 +2043,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         types?: string | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -2303,16 +2322,19 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     repositories: z.ZodOptional<z.ZodLazy<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>>;
     data: z.ZodOptional<z.ZodObject<{
         entities: z.ZodOptional<z.ZodType<Record<string, string | null>, z.ZodTypeDef, Record<string, string | null>>>;
+        shortCodes: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
         relations: z.ZodOptional<z.ZodEffects<z.ZodArray<z.ZodString, "many">, string[], string[]>>;
         roles: z.ZodOptional<z.ZodEffects<z.ZodArray<z.ZodString, "many">, string[], string[]>>;
     }, "strict", z.ZodTypeAny, {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     }, {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     }>>;
     lifecycle: z.ZodOptional<z.ZodLazy<z.ZodObject<{
         onInit: z.ZodOptional<z.ZodString>;
@@ -2489,10 +2511,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     appExtensions: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>>;
     features: z.ZodOptional<z.ZodType<Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -2505,10 +2528,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         repositories?: Record<string, string> | undefined;
     }>, z.ZodTypeDef, Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
@@ -2516,9 +2540,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
 }, "strict", z.ZodTypeAny, {
     id: string;
     data?: {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, {
@@ -2535,10 +2560,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     }> | undefined;
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -2650,9 +2676,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
 }, {
     id: string;
     data?: {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, {
@@ -2669,10 +2696,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     }> | undefined;
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
@@ -2770,9 +2798,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
 }>, {
     id: string;
     data?: {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, {
@@ -2789,10 +2818,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     }> | undefined;
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -2904,9 +2934,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
 }, {
     id: string;
     data?: {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, {
@@ -2923,10 +2954,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     }> | undefined;
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         repositories?: Record<string, string> | undefined;
@@ -3024,9 +3056,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
 }>, {
     id: string;
     data?: {
-        entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
         roles?: string[] | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, {
@@ -3043,10 +3076,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     }> | undefined;
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null> | undefined;
         references?: ReferenceDeclarations | undefined;
         surface?: SurfaceDeclaration | undefined;
         services?: Record<string, string> | undefined;
+        entities?: Record<string, string | null> | undefined;
+        shortCodes?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -3215,6 +3249,7 @@ export interface PackDataDeclarations {
     // (undocumented)
     data?: {
         entities?: Readonly<Record<string, string | null>>;
+        shortCodes?: Readonly<Record<string, string>>;
         relations?: readonly string[];
         roles?: readonly string[];
     };
@@ -3267,6 +3302,7 @@ export interface _PackEntityDeclaration {
     owner: string;
     // (undocumented)
     shape: string | null;
+    shortCode?: string;
 }
 
 // @internal
@@ -3318,6 +3354,9 @@ export function _packRelationTypes(declaration: PackDataDeclarations): Record<st
 
 // @internal
 export function _packRoles(declaration: PackDataDeclarations): Record<string, string>;
+
+// @internal
+export function _packShortCodes(declaration: PackDataDeclarations): Record<string, string>;
 
 // @public (undocumented)
 export interface PackSnapshot {
@@ -3497,6 +3536,12 @@ export function resolveTracks(entry: Track[] | FlowConfig): Track[];
 
 // @public (undocumented)
 export const SCRIPT_MODULE_EXTENSIONS: readonly [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
+
+// @internal
+export const _SHORT_CODE_PATTERN: RegExp;
+
+// @internal
+export function _shortCodeTypes(rules: Iterable<readonly [string, Partial<RowRules>]>): (code: string) => string | undefined;
 
 // @public (undocumented)
 export interface SkippedPackCheck {

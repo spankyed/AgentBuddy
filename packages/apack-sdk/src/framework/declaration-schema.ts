@@ -5,12 +5,12 @@ import { hasOwn } from '../utils/shared.ts';
 import { _eventContractsProblem } from './event-contracts.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 export { LIFECYCLE_HOOK_NAMES } from './lifecycle-declaration.ts';
-import { _packEntities, _packEntityTypes, _packRelationTypes, _packRoles, _WIRE_NAME_PATTERN, type PackDataDeclarations } from './data-declaration.ts';
+import { _packEntities, _packEntityTypes, _packRelationTypes, _packRoles, _SHORT_CODE_PATTERN, _WIRE_NAME_PATTERN, type PackDataDeclarations } from './data-declaration.ts';
 import { _MODULE_REFERENCE_PATTERN, _MODULE_PATH_PATTERN } from './module-reference.ts';
 import { z } from 'zod';
 import { _PACK_VERSION_PATTERN, _validPackVersion, _validPackRange, parsePackDependency } from './dependency-source.ts';
 import { PackChecksSchema } from './pack-checks.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from '../types/sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES, SDK_SHORT_CODES } from '../types/sdk-entities.ts';
 import { RESERVED_ENTITY_TYPES } from '@apackdev/ears';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { HOST_PACK_ID } from '../ids/refs.ts';
@@ -54,6 +54,18 @@ function checkDeclaredNames(raw: unknown, ctx: z.RefinementCtx): unknown {
         });
       }
     }
+    // A prefix names one entity type across every pack: the SDK's are taken everywhere
+    const sdkPrefixes = new Map(Object.entries(SDK_SHORT_CODES).map(([entity, prefix]) => [prefix as string, entity]));
+    for (const { name, owner, shortCode } of _packEntities(declaration)) {
+      const sdkEntity = shortCode === undefined ? undefined : sdkPrefixes.get(shortCode);
+      if (sdkEntity) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [...owner.split('.'), 'shortCodes', name],
+          message: `"${shortCode}" is the SDK's ${sdkEntity} prefix, which every pack has: choose another`,
+        });
+      }
+    }
   } catch (error) {
     ctx.addIssue({ code: 'custom', message: error instanceof Error ? error.message : String(error) });
   }
@@ -75,6 +87,8 @@ const ExportTargetSchema = z.string().regex(_MODULE_REFERENCE_PATTERN, 'Must be 
 
 const EntitiesSchema = declarationRecord(z.string().min(1), ExportTargetSchema.nullable())
   .describe('Entity wire names mapped to pack-root-relative TypeScript shape exports (path#exportName), or null for untyped entities.');
+const ShortCodesSchema = declarationRecord(z.string().min(1), z.string().regex(_SHORT_CODE_PATTERN, 'Must be three uppercase letters, e.g. "THR"'))
+  .describe('Entity types declared in this same block whose rows are numbered, each mapped to its short code prefix: three uppercase letters, unique across every pack. create numbers each row <prefix>-<n>, and the shape types its shortCode field ShortCode<prefix>.');
 const RelationsSchema = z.array(z.string().regex(_WIRE_NAME_PATTERN, 'Must be a snake_case relation wire name'))
   .superRefine((relations, ctx) => {
     try { notSdkOwned(SDK_REL_KINDS)(_packRelationTypes({ data: { relations } }), ctx); }
@@ -85,7 +99,7 @@ const RolesSchema = z.array(z.string().regex(_WIRE_NAME_PATTERN, 'Must be a snak
     try { notSdkOwned(SDK_ROLES)(_packRoles({ data: { roles } }), ctx); }
     catch (error) { ctx.addIssue({ code: 'custom', message: error instanceof Error ? error.message : String(error) }); }
   }).describe('Pack-level role names; generated EARS constants are their uppercase names. Do not repeat or redeclare SDK-owned roles.');
-const DataSchema = z.object({ entities: EntitiesSchema.optional(), relations: RelationsSchema.optional(), roles: RolesSchema.optional() }).strict()
+const DataSchema = z.object({ entities: EntitiesSchema.optional(), shortCodes: ShortCodesSchema.optional(), relations: RelationsSchema.optional(), roles: RolesSchema.optional() }).strict()
   .describe('Pack-level data declarations without a feature owner.');
 
 const FeatureDescriptionSchema = z.string().regex(/\S/, 'Feature description must not be blank')
@@ -176,7 +190,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   textEditor: z.lazy(() => FrontendConfigSchema.shape.textEditor),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
-    description: true, entities: true, designation: true, settings: true, surface: true, references: true, services: true, repositories: true,
+    description: true, entities: true, shortCodes: true, designation: true, settings: true, surface: true, references: true, services: true, repositories: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
   if (Object.keys(declaration.migrations?.pack ?? {}).length && declaration.version === undefined) {
@@ -668,6 +682,7 @@ const FEATURE_ID_SCHEMA = z.string()
 export const FeatureEntrySchema = z.object({
   description: FeatureDescriptionSchema,
   entities: EntitiesSchema.describe('Entity wire names owned by this feature, mapped to pack-root-relative TypeScript shape exports (path#exportName) or null for untyped entities. Placement does not change wire names.').optional(),
+  shortCodes: ShortCodesSchema.optional(),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: SettingsDefinitionSchema.describe('Declarative feature preferences: effective-value schema and explicit defaults.').optional(),
   types: z.string().min(1).regex(_MODULE_PATH_PATTERN, 'Must name a TypeScript module, not a single export').describe('Pack-root-relative TypeScript module whose public types are re-exported through #generated/types. Only declared modules contribute; no feature-path inference.').optional(),

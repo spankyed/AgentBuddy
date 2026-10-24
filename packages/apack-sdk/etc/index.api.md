@@ -32,7 +32,7 @@ export interface ActionEntity extends BaseEntity {
     label: string;
     // (undocumented)
     output?: unknown;
-    shortCode: ShortCode<'ACT'>;
+    shortCode: ShortCode<typeof SDK_SHORT_CODES.Action>;
     // (undocumented)
     updatedAt: number;
 }
@@ -103,7 +103,7 @@ export interface DocumentEntity extends BaseEntity {
 }
 
 // @public
-export type DocumentShortCode = ShortCode<'DOC'>;
+export type DocumentShortCode = ShortCode<typeof SDK_SHORT_CODES.Document>;
 
 // @public (undocumented)
 export namespace EARS {
@@ -184,7 +184,7 @@ export interface FlowEntity extends BaseEntity {
     flowType: 'workflow' | 'integration';
     // (undocumented)
     label: string;
-    shortCode: ShortCode<'F'>;
+    shortCode: ShortCode<typeof SDK_SHORT_CODES.Flow>;
 }
 
 // @public (undocumented)
@@ -241,7 +241,7 @@ export interface PromptEntity extends BaseEntity {
     // (undocumented)
     label: string;
     outputSchema?: unknown;
-    shortCode: ShortCode<'PROMPT'>;
+    shortCode: ShortCode<typeof SDK_SHORT_CODES.Prompt>;
     templateFn: string;
     // (undocumented)
     updatedAt: number;

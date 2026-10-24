@@ -581,10 +581,16 @@ from a typed helper (`newId(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookm
 so builders written with it (`query.ids(id)`, `write(id)`) are typed too;
 unbranded ids (`EARS.EntityId`) and `query.all()` read as undeclared.
 
-**A short code is numbered by `create`.** A shape that types its `shortCode` as `ShortCode<prefix>` (from
-`@apackdev/ears`) has every created row numbered `<prefix>-<n>` when the row brings none, and a typed `create` may
-leave the field out. A number is never handed out twice for a type, a destroyed row's included, and a row that brings
-its own code keeps it:
+**A short code is declared in the manifest and numbered by `create`.** Name the entity's prefix in `shortCodes`,
+beside the entity in the same block, and type the shape's `shortCode` as `ShortCode<prefix>` (from
+`@apackdev/ears`) with the same prefix; the build refuses the two disagreeing. A prefix is three uppercase letters —
+the word's common abbreviation where it has one (`DOC`, `MSG`), otherwise its first letter and next two distinct
+consonants (`THR`, `BKM`) — and unique across every pack, the SDK's `FLW`, `ACT`, `PRM` and `DOC` included.
+
+```json
+"entities": { "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkEntity" },
+"shortCodes": { "Bookmark": "BKM" }
+```
 
 ```typescript
 import type { ShortCode } from '@apackdev/ears';
@@ -594,6 +600,19 @@ export interface BookmarkEntity extends BaseEntity {
   url: string;
 }
 ```
+
+`create` numbers every row, and a number is never handed out twice for a type, a destroyed row's included. The code
+is the engine's, like the id: no write sets or deletes it, and a created row brings one only on import, as
+`create(type, { shortCode })` with a `BKM-<n>` no other row holds. A code is unique, so the typed query finds its row,
+and the value index answers it:
+
+```typescript
+const bookmark = query(EARS.Entity.Bookmark).where('shortCode', 'BKM-12').pickOne();
+```
+
+For a code whose type you don't know — one a user typed, or one found in text — `entityTypeOfShortCode(code)`
+(`@apackdev/sdk/services`) names it from every installed pack's prefixes (`'BKM-12'` → `'Bookmark'`), and the query
+follows.
 
 ### Entity ids
 

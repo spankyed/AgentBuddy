@@ -12,7 +12,8 @@ import type { ContentWriter } from '../content/writers.ts';
 import type { ContentApplier } from '../utils/apply.ts';
 import type { HelpArticle } from '../framework/pack-help.ts';
 import type { SettingsCatalog } from '../framework/pack-settings.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from '../types/sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES, SDK_ROW_RULES } from '../types/sdk-entities.ts';
+import { _shortCodeTypes } from '../framework/data-declaration.ts';
 
 /** What tests register without an app, each lookup keyed as the SDK looks it up */
 export interface TestPacks {
@@ -109,6 +110,8 @@ function ownStepBinding(definition: StepDefinition, entry: StepCatalogEntry): St
 
 /** The view `startTestRuntime` binds: `testPacks`, then the registry it was given */
 export function testPacksView(registered?: PackRegistryView): PackRegistryView {
+  // With no registry, the SDK's own prefixes are every one there is
+  const sdkShortCodeTypes = _shortCodeTypes(Object.entries(SDK_ROW_RULES));
   return {
     // A test names a role's id as it likes; it stands for a ref here
     designation: (role) => (testPacks.designations.get(role) as FeatureRef | undefined) ?? registered?.designation(role),
@@ -152,5 +155,6 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
         roles: { ...base.roles, ...Object.fromEntries(testPacks.earsRoles) },
       };
     },
+    entityTypeOfShortCode: (code) => (registered ? registered.entityTypeOfShortCode(code) : sdkShortCodeTypes(code)),
   };
 }

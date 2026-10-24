@@ -274,12 +274,10 @@ function compileFlow(
   flowRelations: Relation[];
   flowRoles: Array<{ entityId: string; role: string }>;
 } {
-  const shortCode = `F-${flowName.slice(0, 8).replace(/\s/g, '')}`;
-
+  // No short code: the engine numbers a flow when it is created, as it numbers every Flow
   const flowEntity = {
     id: flowId,
     entityType: EARS.Entity.Flow,
-    shortCode,
     label: flowName,
     flowType: 'workflow',
     createdAt: ts,

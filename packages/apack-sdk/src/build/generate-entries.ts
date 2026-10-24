@@ -21,6 +21,7 @@ import { createModuleExports, type ModuleExport, type ModuleExports } from './mo
 import { hasOwn } from '../utils/shared.ts';
 import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
+import type { RowRules } from '@apackdev/ears';
 import type { ComponentTarget } from '../framework/surface-declaration.ts';
 import type { PackEventContracts } from '../framework/event-contracts.ts';
 
@@ -2011,13 +2012,29 @@ export type { ImportMode } from '@apackdev/sdk/utils';
   }
 
   /**
-   * What each of this pack's own shaped entities holds a created row to, read off its shape: the fields the engine
-   * refuses a created row without, and the prefix it numbers a short code with. An entity with no shape is held to
-   * nothing, and a dependency's register their own.
+   * What each of this pack's own entities holds a created row to: the fields the engine refuses a created row without,
+   * read off its shape, and the prefix it numbers a short code with, which its manifest declares (`shortCodes`). A
+   * shape types `shortCode` as that same prefix (`ShortCode<prefix>`), checked here both ways, so the type and the
+   * numbering never disagree. An entity with neither a shape nor a prefix is held to nothing, and a dependency's
+   * register their own.
    */
   function rowRulesLiteral(): string {
-    return dataLiteral(Object.fromEntries(packShapes().map(({ entity, exportName, file }) =>
-      [entity, moduleReader().rowRulesOf(file, exportName)])));
+    const prefixes = new Map(_packEntities(manifest).flatMap(({ name, shortCode }) => (shortCode ? [[name, shortCode] as const] : [])));
+    const shaped = new Set<string>();
+    const rules: Record<string, RowRules> = {};
+    for (const { entity, exportName, source, file } of packShapes()) {
+      shaped.add(entity);
+      const { required, shortCode: typed } = moduleReader().rowRulesOf(file, exportName);
+      const declared = prefixes.get(entity);
+      if (typed !== declared) {
+        throw new Error(declared === undefined
+          ? `Entity "${entity}": ${source}#${exportName} types shortCode as ShortCode<'${typed}'>, but the manifest declares no short code for it: add "${typed}" to its block's shortCodes, or type the field otherwise`
+          : `Entity "${entity}": the manifest numbers it "${declared}", so ${source}#${exportName} types shortCode as ShortCode<'${declared}'>${typed === undefined ? '' : `, not ShortCode<'${typed}'>`}`);
+      }
+      rules[entity] = { required, ...(declared !== undefined && { shortCode: declared }) };
+    }
+    for (const [entity, shortCode] of prefixes) if (!shaped.has(entity)) rules[entity] = { required: [], shortCode };
+    return dataLiteral(rules);
   }
 
   /** This pack's own shaped entities, each shape checked to be a type its module exports */

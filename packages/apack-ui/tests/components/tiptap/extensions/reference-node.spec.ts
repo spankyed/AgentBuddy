@@ -43,7 +43,7 @@ const editor = (content: object | string) => {
   const instance = new Editor({ element, editable: false, extensions: [StarterKit, Markdown, ReferenceNode], content });
   editors.push(instance); return instance;
 };
-const reference = (id: string | null, refType = 'thread', label = 'Friendly label', shortCode = 'T-12') => ({
+const reference = (id: string | null, refType = 'thread', label = 'Friendly label', shortCode = 'THR-12') => ({
   type: 'reference', attrs: { refType, refId: id, shortCode, label },
 });
 const content = (...references: ReturnType<typeof reference>[]) => ({ type: 'doc', content: [{ type: 'paragraph', content: references }] });
@@ -54,7 +54,7 @@ const attrs = (instance: Editor) => {
 };
 const markdown = (instance: Editor): string => (instance.storage as unknown as { markdown: { getMarkdown(): string } }).markdown.getMarkdown();
 
-it.each([['thread', 'Thread-first', 'T-12'], ['document', 'Document-first', 'DOC-12']])(
+it.each([['thread', 'Thread-first', 'THR-12'], ['document', 'Document-first', 'DOC-12']])(
   'keeps the %s entity id through HTML and Markdown instead of its display code', (type, id, code) => {
     const original = editor(content(reference(id, type, 'Friendly label', code)));
     const href = `apack-ref://${type}/${id}`;

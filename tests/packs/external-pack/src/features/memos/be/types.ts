@@ -8,7 +8,7 @@ export interface MemoEntity extends BaseEntity {
   title?: string;
   text: string;
   /** Numbered by `create`, a pack shape's as the SDK's are */
-  shortCode: ShortCode<'MEMO'>;
+  shortCode: ShortCode<'MEM'>;
   createdAt: number;
   updatedAt: number;
 }

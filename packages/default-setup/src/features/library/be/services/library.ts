@@ -36,7 +36,6 @@ function makeSymlinkDocumentDTO(id: string, name: string, content: ContentSectio
     id,
     name,
     content,
-    shortCode: 'DOC-0' as DocumentShortCode,
     tags: [],
     displayOrder: 0,
     createdAt: new Date().toISOString(),
