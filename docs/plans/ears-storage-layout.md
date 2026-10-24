@@ -155,7 +155,8 @@ type when it began, so a `where` predicate that creates one doesn't extend its o
 With one copy of the data there is nothing to roll back, so the journal-commit rework, the adapter rewrite, the sink
 and hydration go in Step 10 instead of being reworked. Two of its pieces move into Step 10's cut-over: the
 durability flags, and reset and import as transactions. Until Step 10 lands, a dropped write is still reported only
-through `onWriteFailure`.
+through `onWriteFailure`. Its design is kept, with moving thread messages out of the engine, in
+[deferred/ears-in-memory-path.md](deferred/ears-in-memory-path.md), the path not taken.
 
 ### 9. Relations are not entities — the contract change only
 - A relation is a row in its own map, `Map<relId, RelationRow>`, beside today's relation index; the entity index no
