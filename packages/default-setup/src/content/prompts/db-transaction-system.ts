@@ -63,7 +63,7 @@ WRITE API (create / upsert / write):
 
   A created row holds every field its entity type requires (a Thread: topic, instructions, status, timestamp); a row
   missing one is refused, and so is deleting one. Read getSchemaStats() for the fields an entity type's rows hold.
-  The database writes id, entityType, createdAt, updatedAt, role, relationDetails and trashedAt itself: never set them
+  The database writes id, entityType, createdAt, updatedAt, role and trashedAt itself: never set them
   with set — a created row may bring its id, createdAt and updatedAt.
   Each attribute write stamps updatedAt; write(id, { touch: false }) writes without stamping it.
   null is a stored value, undefined leaves a field alone in setMany, and .delete(key) removes a field.
