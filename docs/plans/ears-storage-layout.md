@@ -55,10 +55,27 @@ Of the production data's 171 MB of values, `Message.blocks` (thread transcripts)
   B+tree's cheapest write. By-attribute wins only for one field set across many rows (a migration), which is rare.
 - **A write is committed when it returns.** A failure throws and leaves memory as it was, so there is nothing to
   `flush()`.
-- **Durability: safe from app crashes, up to ~1 s lost on an OS crash** (decided 2026-10-23). `transactionSync`
-  without a flush, `overlappingSync: false`, and a background `root.sync()` on an interval, on idle and on close;
-  SQLite WAL `synchronous=NORMAL` makes the same trade. Rejected: an fsync at each `transact` (~4–8 ms each on
-  macOS, on the API's main thread) and today's fsync on every commit.
+- **Durability: group commit, with durable points a caller asks for** (decided 2026-10-24, refining 2026-10-23's
+  background sync). Every write commits synchronously without a sync — `transactionSync` with `NO_SYNC_FLUSH`, the
+  environment opened with `overlappingSync: false` — so it is visible at once and survives the app crashing. One sync
+  makes every commit before it durable, and it runs on a short timer (100–250 ms), on idle and on close. A caller that
+  must survive an OS crash or power loss asks: `await durable()` resolves once everything committed so far is on disk,
+  and `transact(fn, { durable: true })` syncs as that unit commits. Saving what the user will be told is saved, backup,
+  export, import and the content apply ask; UI state and a run's step results don't. Postgres
+  (`synchronous_commit=off` with group commit, settable per transaction), SQLite (WAL, `synchronous=NORMAL`) and RocksDB
+  (WAL without sync by default) make the same trade.
+  - **Why the sync is the cost, and native code doesn't change it.** On macOS the LMDB lmdb-js vendors syncs with
+    `fcntl(F_FULLFSYNC)` (`mdb.c`'s `MDB_FDATASYNC`), which empties the drive's cache to the flash: 3.5–8 ms a
+    commit, on the API's main thread. A commit without a sync is 0.015–0.026 ms through lmdb-js, so neither the
+    binding nor a Rust adapter is where the time goes; how often a commit pays for a full sync is.
+  - **What it costs, against memory** (the spike, `goal-lmdb-only.md`): 1,000 creates, a commit each, 3.4 ms in
+    memory, 13,550 ms with a full sync per commit and 115 ms without; in one commit, 3.8 ms against 15.0 ms. Writes
+    lose more against memory than reads (2–10×). Memory's figure is not a durable write, though: today's comparable
+    cost is a full sync per microtask flush, which group commit beats for writes spread across turns. A burst in
+    one turn costs a commit per write, and `transact` is what batches one.
+  - **Rejected:** a full sync on every commit (today's) or at each `transact` (~4–8 ms each on macOS, on the main
+    thread); background sync with no way to ask for durability, which leaves a write the user was told is saved
+    exposed to an OS crash; and `noSync` with `useWritemap`, which can corrupt the database.
 
 ## Steps (in order of lift)
 
@@ -179,13 +196,26 @@ through `onWriteFailure`. Its design is kept, with moving thread messages out of
   engine on the seam: the app on LMDB, tests on `MemoryKV`. No relation-level seam above it.
 - The key layout by entity (`['v', id, kind]`, and adjacency keys holding the far end), per
   [goal-lmdb-only.md](../goals/goal-lmdb-only.md).
-- The durability flags, and reset and import as transactions (`replaceWith(dir)`).
+- The durability design above: commits with `NO_SYNC_FLUSH` on an environment opened with `overlappingSync: false`;
+  the group-commit sync on its timer, on idle and on close; `durable()` and `transact(fn, { durable: true })`; and
+  `durable` asked for by backup, export, import, the content apply and the saves the user is told about. Reset and
+  import as transactions (`replaceWith(dir)`).
+- **The write path profiled before anything native.** Without a sync the spike measured 115 µs a create against a
+  ~20 µs commit. The rest is write amplification: a put wrote 2–6 keys (the value, a length key, value-index diffs,
+  first-time type and kind keys), an update read the old value to diff the index, and each key was a crossing from
+  JavaScript into the binding. Format 4 drops the length keys; lmdb-js's batched writes take the rest. Profile a create
+  and an update on format 4 (`node --cpu-prof`, self time per package), and only if the binding's crossings still
+  dominate does a native layer earn its place — and then an existing binding (`heed` through napi-rs) before LMDB
+  bindings of our own.
 - Format 4, with a 3 → 4 step in `scripts/ears-convert.ts`. Only the developers' own data is in an older format, and
   it is converted explicitly, on a copy.
 - A development check that freezes returned values in tests, since a read returns a copy.
 - The host, API, CLI and SDK test runtime cut over; hydration, the sink, the adapter and the journal deleted.
 **Done when:** the contract suite passes unchanged on both backends; boot, heap, the test run's time and the bench
-are measured against the readings above and the Step 4 baseline, the `orderBy` regression from Step 6 included.
+are measured against the readings above and the Step 4 baseline, the `orderBy` regression from Step 6 included; a
+write survives a child killed with SIGKILL right after it returns; a write behind `durable()` is on disk when it
+resolves (the sync count observed through the backend), and one without it is not synced per commit; and the
+create and update profile is recorded.
 Narrowing the two locks for multi-process writes follows it.
 
 ## Out of scope

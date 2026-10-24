@@ -10,8 +10,10 @@ decision and the readings behind it. The spike (PR #261, closed unmerged) is rec
 - **Attributes are stored by entity** (plan Step 6), the disk layout's `['v', id, kind]` order.
 - **Relations are not entities** (Step 9): a relation is a row of its own, which the contract suite pins.
 - **Queries are lazy** (Step 7), so `first`, `exists`, `count` and `limit` stop reading early.
-- **Durability is decided:** `transactionSync` without a flush, `overlappingSync: false`, a background
-  `root.sync()`. Safe from app crashes, ~1 s lost on an OS crash (2026-10-23).
+- **Durability is decided** (2026-10-24, [ears-storage-layout.md](../plans/ears-storage-layout.md)): every commit is
+  synchronous without a sync (`transactionSync` without a flush, `overlappingSync: false`), so it survives an app crash;
+  a group-commit sync on a short timer, on idle and on close; and `durable()` / `transact(fn, { durable: true })` for a
+  write that must survive an OS crash or power loss.
 
 What is left is the engine itself: one copy of the data, in LMDB, behind an ordered key-value seam.
 
