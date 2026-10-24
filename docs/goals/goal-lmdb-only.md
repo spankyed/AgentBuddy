@@ -22,25 +22,9 @@ What is left is the engine itself: one copy of the data, in LMDB, behind an orde
 - **An ordered key-value seam.** `OrderedKV` (`get`, `put`, `del`, `range`, `commit`) under the whole engine, with a
   `MemoryKV` for tests and an LMDB backend for the app, and one contract spec both pass. The spike's
   `RelationIndexReader` and `composeEngine` were seams above it and are not built.
-- **Key layout** (one env, one named database, ordered-binary array keys, msgpack values, which keep Dates, nested
-  values and `undefined`):
-
-  | Key | Value | Serves |
-  |---|---|---|
-  | `['v', id, kind]` | the value | `getAttr` (one get), `getRow` (one range) |
-  | `['k', kind, id]` | list length | stats, `has(k)` |
-  | `['x', kind, value, seq]` | id | value index: strings up to 256 chars, finite numbers, booleans; keyed by the entity's sequence, so a match streams in insertion order (decided in [ears-storage-layout.md](../plans/ears-storage-layout.md)) |
-  | `['e', type, seq]` → id, `['i', id]` → seq | | entities by type in insertion order; existence |
-  | `['c', type]` | count | `count()` by type |
-  | `['T', seq]`/`['t', type]`, `['AK', seq]`/`['ak', kind]`, `['RK', seq]`/`['rk', kind]` | | catalogs in first-seen order |
-  | `['o', entity, kind, seq]`, `['n', entity, kind, seq]` | `[relId, farEnd]` | an entity's edges out / in, by kind: a hop never decodes details, and a destroy or `linkedWith` reads one range |
-  | `['r', relId]` | the relation row | `findRelations`, `outEdges` |
-  | `['m', 'seq']`, `['m', 'format']` | | sequence, store format |
-
-  Adjacency is keyed by entity first, as attributes are, so an entity's edges are one range; a read of every
-  relation of one kind (`findRelations({ kind })`) is then a walk of `['r', …]` or a kind index, decided in the
-  design. Insertion-order keys are required: the contract pins insertion order. By-entity keys also serve writes: a commit
-  costs about the B+tree pages it dirties, and an entity's fields share one or two.
+- **Key layout:** decided in [ears-storage-layout.md](../plans/ears-storage-layout.md#the-key-layout), the one copy
+  of it: by entity, with the trash as its own range, numbering as keys, declared indexes, and no list-length or
+  catalog keys.
 - **Values are copies.** Reads decode fresh values; pack code that mutated a returned value would silently stop
   persisting, so a development check freezes returned values in tests.
 - **Format 4.** Format 3 converts once, explicitly, with `scripts/ears-convert.ts` on a copy (the repo's rule for
