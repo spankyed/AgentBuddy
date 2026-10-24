@@ -87,6 +87,12 @@ export interface ContentWriterRegistry {
 export const _contentWriterRegistry: ContentWriterRegistry;
 
 // @public (undocumented)
+export function createCommandsApplier(options?: DocumentApplierOptions): ContentApplier;
+
+// @public (undocumented)
+export function createDocumentsApplier(options?: DocumentApplierOptions): ContentApplier;
+
+// @public (undocumented)
 export function createFlowApplier(options?: FlowApplierOptions): ContentApplier;
 
 // @public
@@ -94,6 +100,11 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 
 // @public
 export function describeContentKey(key: string): string;
+
+// @public (undocumented)
+export interface DocumentApplierOptions {
+    onUserEdit?: ContentEditPolicy;
+}
 
 // @public (undocumented)
 export const documentContentWriter: ContentWriter<DocumentItem>;
@@ -145,11 +156,17 @@ export interface PackContentPreviewItem {
     key: string;
 }
 
+// @public (undocumented)
+export function parseDocumentSections(body: string): ContentSection[];
+
 // @public
 export function previewPackContent(directory: string): PackContentPreview;
 
 // @public
 export function removeContentEntity(entityType: string, id: EARS_2.EntityId): void;
+
+// @public (undocumented)
+export function serializeDocumentSections(sections: ContentSection[]): string;
 
 // (No @packageDocumentation comment for this package)
 

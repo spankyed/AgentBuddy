@@ -1,5 +1,5 @@
-// Scaffolds a library document: markdown compiled by a `library` format into a Document the user reads and
-// edits in the Library, with directories under the source becoming the folders holding them.
+// Scaffolds a document: markdown compiled by the SDK's `documents` key into a Document the user reads and
+// edits, with directories under the source becoming the folders holding them.
 import { renderTemplate } from '../../templates.ts';
 import { writeContentDocument } from './content-document.ts';
 import { readManifest } from './manifest';
@@ -19,7 +19,7 @@ Example:
 `.trim();
 
 /** What the body says when the caller gave none: the convention a reader needs to write the rest */
-const EXPLAIN = `Write the document here. A \`<!-- section:<type> -->\` marker starts a section; the library reads each
+const EXPLAIN = `Write the document here. A \`<!-- section:<type> -->\` marker starts a section; the editor reads each
 one as its own block, so a document can hold several.`;
 
 export async function addDocument(args: string[], root: string) {
@@ -34,10 +34,10 @@ export async function addDocument(args: string[], root: string) {
   const manifest = readManifest(root);
   const section = parseFlag(args, '--section') || 'text';
   validateName(section, 'Section');
-  const { wrote } = writeContentDocument(root, manifest, { format: 'library', key: 'library' }, {
+  const { wrote } = writeContentDocument(root, manifest, 'documents', {
     name,
     folder: parseFlag(args, '--folder'),
-    body: renderTemplate('pack/src/content/library/document.md', {
+    body: renderTemplate('pack/src/content/documents/document.md', {
       LABEL: toLabel(name), TAG: parseFlag(args, '--tag') || 'default',
       SECTION: section, BODY: parseFlag(args, '--content') || EXPLAIN,
     }),
@@ -47,5 +47,5 @@ export async function addDocument(args: string[], root: string) {
     console.log(`\nThat document is already there; nothing written.`);
     return;
   }
-  console.log(`\nCreated library document "${toLabel(name)}".`);
+  console.log(`\nCreated document "${toLabel(name)}".`);
 }

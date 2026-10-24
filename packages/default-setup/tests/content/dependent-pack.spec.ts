@@ -1,8 +1,8 @@
-// A pack that depends on default-setup content Notes and library documents from its own markdown with
-// entries naming default-setup's formats (tests/_support/fixtures/dependent-pack): no field maps, compiler
-// modules or content writers of its own. Its notes go through default-setup's Note hooks and its library
-// through default-setup's bundled compiler module (dist/build/content-compilers.mjs) and library hooks,
-// so it gets the rows default-setup's own entries content from the same sources: NOTE shortCodes,
+// A pack that depends on default-setup content Notes and documents from its own markdown
+// (tests/_support/fixtures/dependent-pack): its notes through an entry naming default-setup's notes format, its
+// documents through the SDK's own `documents` key, and no field maps, compiler modules or content writers of
+// its own. Its notes go through default-setup's Note hooks and its documents through the SDK's compiler and
+// writers, so it gets the rows default-setup's own entries content from the same sources: NOTE shortCodes,
 // display order, nesting, REFERENCES links, DOC shortCodes, sections, media and contentHash.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -12,7 +12,7 @@ import {
   buildPackConfigFromManifest, compilePack, formatEntities, generatePackFiles, parseManifest, resolveContentSources,
   type PackManifest, type PackSnapshot, type ContentDependency,
 } from '@apackdev/sdk/build';
-import { createFormatApplier } from '@apackdev/sdk/content';
+import { createDocumentsApplier, createFormatApplier } from '@apackdev/sdk/content';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import type { EARS } from '#generated/ears.ts';
 import { PACK_DIR, resetDatabase, snapshot } from './harness.ts';
@@ -36,30 +36,30 @@ async function compile(packDir: string, pack: PackManifest, deps?: ReadonlyMap<s
   return outputDir;
 }
 
-/** Content each compiled format key the way the generated appliers.ts registers it */
+/** Content each compiled format key, and the documents key, the way the generated appliers.ts registers them */
 function importAll(compiledDir: string, pack: PackManifest, packDir: string, deps?: ReadonlyMap<string, ContentDependency>) {
   return Object.fromEntries(Object.entries(resolveContentSources(pack, packDir, deps)).flatMap(([key, content]) => {
+    if (key === 'documents') return [[key, createDocumentsApplier().apply({ compiledDir, log: () => {} })]];
     if (content.kind !== 'format') return [];
     const { identity, tree, media } = content.format;
     return [[key, createFormatApplier({ key, entities: formatEntities(content.format), identity, relKind: tree?.relKind, media: !!media }).apply({ compiledDir, log: () => {} })]];
   }));
 }
 
-describe('a pack depending on default-setup content with its formats', () => {
-  it("declares only a path and default-setup's format per entry, and registers no hooks", async () => {
+describe('a pack depending on default-setup content with its notes format and the SDK documents key', () => {
+  it("declares a path and default-setup's format for its notes, only a path for its documents, and no hooks", async () => {
     expect(messagesOf(parseManifest(manifest))).toEqual([]);
-    for (const entry of Object.values(manifest.content!.sources!)) {
-      expect(Object.keys(entry as object).sort()).toEqual(['format', 'path']);
-    }
+    expect(Object.keys(manifest.content!.sources!['team-notes'] as object).sort()).toEqual(['format', 'path']);
+    expect(manifest.content!.sources!.documents).toBe('src/content/documents');
     const files = await generatePackFiles(manifest, { packRoot: FIXTURE, depSnapshots: new Map([['default-setup', depSnapshot]]) });
     expect(files['src/__generated__/appliers.ts']).toContain('"key":"team-notes"');
-    expect(files['src/__generated__/appliers.ts']).toContain('"key":"team-docs"');
+    expect(files['src/__generated__/appliers.ts']).toContain('createDocumentsApplier()');
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('contentWriters');
     // Without the dependency, its formats can't be resolved
     await expect(generatePackFiles({ ...manifest, dependencies: {} }, { packRoot: FIXTURE })).rejects.toThrow(/default-setup/);
   });
 
-  it("gets DOC shortCodes, order, nesting, sections, media and REFERENCES from default-setup's format and hooks", async () => {
+  it('gets DOC shortCodes, order, nesting, sections, media and REFERENCES from the formats and writers', async () => {
     resetDatabase();
     // The note the handbook links to: a content note's id is made when it is written, so a link by id reaches a note
     // that is already there, and a reference is indexed only to a note that exists
@@ -67,7 +67,7 @@ describe('a pack depending on default-setup content with its formats', () => {
     const counts = importAll(await compile(FIXTURE, manifest, dependencies), manifest, FIXTURE, dependencies);
     expect(counts).toEqual({
       'team-notes': { created: 4, updated: 0, skipped: 0 },
-      'team-docs': { created: 2, updated: 0, skipped: 0 },
+      documents: { created: 2, updated: 0, skipped: 0 },
     });
 
     const { rows, relations, media } = snapshot();
@@ -105,7 +105,7 @@ describe('a pack depending on default-setup content with its formats', () => {
       content: {
         ...depSnapshot.manifest.content,
         artifacts: undefined,
-        sources: { 'team-notes': { path: source('team-notes'), format: 'notes' }, 'team-docs': { path: source('team-docs'), format: 'library' } },
+        sources: { 'team-notes': { path: source('team-notes'), format: 'notes' }, documents: source('documents') },
       },
     } as PackManifest;
     importAll(await compile(PACK_DIR, own), own, PACK_DIR);

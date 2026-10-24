@@ -2403,17 +2403,12 @@
         "path": "src/content/flows",
         "onUserEdit": "offer"
       },
-      "library": {
-        "path": "src/content/library",
-        "format": "library"
-      },
       "notes": {
         "path": "src/content/notes",
         "format": "notes"
       },
       "commands": {
         "path": "src/content/commands",
-        "format": "commands",
         "onUserEdit": "offer"
       }
     },
@@ -2456,27 +2451,6 @@
             "from": "body"
           }
         }
-      },
-      "library": {
-        "compiler": "src/content/_compilers/library.ts",
-        "entity": [
-          "Collection",
-          "Document"
-        ],
-        "identity": [
-          "name"
-        ],
-        "media": "media"
-      },
-      "commands": {
-        "compiler": "src/content/_compilers/commands.ts",
-        "entity": [
-          "Collection",
-          "Document"
-        ],
-        "identity": [
-          "name"
-        ]
       }
     },
     "writers": {

@@ -58,7 +58,7 @@ rather than denying it.
 [`document-in-the-core`](../plans/document-in-the-core.md) (whose second trigger is wanting
 `extensions.commands` back — this move is what makes it buildable),
 [`pack-published-app-facts`](../plans/pack-published-app-facts.md) and
-[`the-empty-library-source`](../../plans/deferred/the-empty-library-source.md), which records why the
+[`the-empty-library-source`](../plans/the-empty-library-source.md), which records why the
 obvious fix for it is wrong. A `Command` entity is dropped for good.
 
 **`npm run chain -- --strict` passes on `ad98fb23f`**: 31 steps ok, 0 failed, 1 cached — effectively a

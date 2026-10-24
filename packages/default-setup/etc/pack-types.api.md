@@ -1341,7 +1341,6 @@ declare namespace EARS {
         const Custom: <T extends string>(k: T) => T & AttrKind;
     }
     type AttrKind = _apackdev_ears.EARS.AttrKind;
-    type RelationDetail = _apackdev_ears.EARS.RelationDetail;
     type AttributePayloads = _apackdev_ears.EARS.AttributePayloads;
     type AttributeValue<K extends AttrKind = AttrKind> = _apackdev_ears.EARS.AttributeValue<K>;
     type AttributeTypeMap = _apackdev_ears.EARS.AttributeTypeMap;

@@ -17,7 +17,7 @@ import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { registerPack, startApp, unregisterPack, type TestApp } from '@apackdev/testing/harness'
 import { importCompiledContent } from '@apackdev/sdk/utils'
 import { commandsFromDocuments } from '@apackdev/sdk/commands'
-import { createFormatApplier } from '@apackdev/sdk/content'
+import { createCommandsApplier, createDocumentsApplier, createFormatApplier } from '@apackdev/sdk/content'
 import { repository } from '#generated/repository.ts'
 import manifest from '../../../../apack.json'
 
@@ -30,16 +30,16 @@ const field = (key: string, value: string) => [{ type: 'field' as const, fields:
 const documentNamed = (name: string) => repository.libraryQueries.getDocuments().find((document) => document.name === name)!
 
 /**
- * The dependent pack, registered as the app registers an installed pack: its appliers for default-setup's
- * formats, as its registration carries them. It declares no commands — a pack contributes them as content
- * now, with `"format": "default-setup:commands"`.
+ * The dependent pack, registered as the app registers an installed pack: the SDK's appliers for its
+ * `documents` and `commands` keys and one for default-setup's notes format, as its registration carries them.
+ * It declares no commands — a pack contributes them as content, under the SDK's `commands` key.
  */
 function registerTeamNotes(): void {
   registerPack({
     id: 'team-notes',
     appliers: [
-      createFormatApplier({ key: 'library', entities: ['Collection', 'Document'], identity: ['name'], media: true }),
-      createFormatApplier({ key: 'commands', entities: ['Collection', 'Document'], identity: ['name'] }),
+      createDocumentsApplier(),
+      createCommandsApplier(),
       createFormatApplier({ key: 'notes', entities: ['Note'], identity: ['title', 'parent'], relKind: 'contains' }),
     ],
   })
@@ -57,8 +57,8 @@ afterAll(() => {
   for (const dir of dependentDirs) fs.rmSync(dir, { recursive: true, force: true })
 })
 
-/** A pack depending on default-setup, with its library records compiled as its `library` format writes them */
-function dependentPack(records: unknown[], key = 'library'): string {
+/** A pack depending on default-setup, with its document records compiled as its `documents` key writes them */
+function dependentPack(records: unknown[], key = 'documents'): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dependent-commands-'))
   dependentDirs.push(dir)
   fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: 'team-notes', entries: [] }))
@@ -70,7 +70,7 @@ const document = (name: string, command: string) =>
   ({ entity: 'Document', name, content: field(command, 'Team argument'), tags: [],
     documentType: 'commands', contentHash: `team-${command}` })
 
-/** Its own command document, written with default-setup's `commands` format */
+/** Its own command document, written under the SDK's `commands` key */
 const dependentPackCommands = (documentName: string, command: string) =>
   dependentPack([document(documentName, command)], 'commands')
 

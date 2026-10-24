@@ -41,7 +41,7 @@ describe('core/content — appliers', () => {
     expect(keys).toContain('actions');
     expect(keys).toContain('prompts');
     expect(keys).toContain('flows');
-    expect(keys).toContain('library');
+    expect(keys).toContain('commands');
     expect(keys).toContain('notes');
     // Settings declarations supply defaults; applying content never writes preference overrides.
     expect(keys).not.toContain('settings');

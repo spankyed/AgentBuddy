@@ -9,7 +9,8 @@ import * as path from 'node:path'
 import { extractMediaRefs, rewriteMediaUrls, copyFlatMedia, toSlug, uniqueFilename } from '@apackdev/sdk/utils'
 import { ensureDirectoryExists, createExportDir } from '@apackdev/sdk/utils'
 import { buildExportTree } from './export-library.ts'
-import { buildFrontmatter, serializeContentToMarkdown } from './utils.ts'
+import { serializeDocumentSections } from '@apackdev/sdk/content'
+import { buildFrontmatter } from './utils.ts'
 
 function escapeQuotes(str: string): string {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
@@ -76,7 +77,7 @@ function writeItems(
       usedNames.add(filename)
 
       const frontmatter = buildFrontmatter(item.tags, item.name, item.id)
-      let body = serializeContentToMarkdown(item.content)
+      let body = serializeDocumentSections(item.content)
       body = rewriteMediaUrls(body, mediaFilenameMap)
 
       writeExportFile(dir, filename, frontmatter + body)

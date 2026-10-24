@@ -288,7 +288,7 @@ describe('content.formats, content.sources and content.datasets', () => {
   });
 
   it("treats settings as a pack's own content key: a source, in any pack", () => {
-    expect(errorsFor({ settings: 'src/content/default-settings.ts' })).toEqual([expect.stringMatching(/"content\.sources\.settings": Unknown content key "settings": only actions, prompts, flows take a path/)]);
+    expect(errorsFor({ settings: 'src/content/default-settings.ts' })).toEqual([expect.stringMatching(/"content\.sources\.settings": Unknown content key "settings": only actions, prompts, flows, documents, commands take a path/)]);
     expect(errorsFor({ settings: { path: 'src/content/settings.json', format: 'memos', applier: 'src/content/settings.ts' } })).toEqual([]);
   });
 

@@ -13,7 +13,7 @@ import { buildPackConfigFromManifest } from './manifest-bridge.ts';
 import { contentFile } from './manifest.ts';
 import { CONTENT_INDEX_FILE } from '../utils/apply.ts';
 import {
-  checkRecordEntities, compileBuiltinFormat, formatEntities, itemLabel, withContentHashes,
+  checkRecordEntities, compileBuiltinFormat, countRecords, formatEntities, itemLabel, withContentHashes,
   type ContentCompileContext, type ContentCompilerModule, type ContentItem,
 } from './content/items.ts';
 
@@ -55,6 +55,10 @@ export interface SpecialtyCompiler<T = unknown> {
   validate?(data: T, context: CompilationContext): ValidationResult;
   /** What `<key>.content.json` holds; the compiled data itself when omitted */
   output?(data: T): unknown;
+  /** The fields an item is matched on when its content key finds nothing; absent for a key matched only by content key */
+  identity?: string[];
+  /** A directory inside the source whose files are copied to `media/<key>/`, for items that link to them */
+  media?: string;
   /** Items compiled, for the build summary */
   count(data: T): number;
   /** The items the import dialog lists, named as include sets name them */
@@ -89,10 +93,6 @@ export { CONTENT_INDEX_FILE };
 // ============================================================================
 // Orchestrator
 // ============================================================================
-
-function countRecords(records: ContentItem[]): number {
-  return records.reduce((sum, record) => sum + 1 + countRecords(record.children ?? []), 0);
-}
 
 /** Ordinary media bytes use the same scoped reads as records; native copying bypasses captured inputs. */
 function copyMedia(source: string, destination: string, writeFile: (file: string, bytes: Uint8Array) => void): void {
@@ -210,11 +210,12 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       specialtyData.set(key, data);
       compiled.push({
         key,
+        ...(specialty.media && { media: path.join(sourcePath, specialty.media) }),
         output: specialty.output ? specialty.output(data) : data,
         index: {
           key,
           written: true,
-          ...((key === 'actions' || key === 'prompts') && { identity: ['label'] }),
+          ...(specialty.identity && { identity: specialty.identity }),
           count: specialty.count(data),
           items: specialty.items(data),
         },

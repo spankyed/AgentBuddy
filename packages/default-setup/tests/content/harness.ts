@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@apackdev/sdk/build';
+import { createDocumentsApplier } from '@apackdev/sdk/content';
 import { applyRecord, importCompiledContent, type ApplyRecord, type AppliedItem, type ImportMode, type ApplyResult, type ContentSelection } from '@apackdev/sdk/utils';
 import { type EARS } from '@apackdev/ears';
 import { findRelations, untypedQuery as query } from '@apackdev/sdk/ears';
@@ -30,11 +31,27 @@ export const applyAfter = (previous?: ApplyRecord): ApplyRecord => {
 /**
  * The content keys the parity gate covers.
  *
- * Two sides declare different ones and that is not a defect: the `v1`/`v2` fixtures exercise library
- * writing, which is a format any pack may name, while default-setup's own documents of that shape are
- * its commands. A key neither side has is skipped rather than compiled from nothing.
+ * Two sides declare different ones and that is not a defect: the `v1`/`v2` fixtures exercise the SDK's
+ * `documents` key, which any pack may declare, while default-setup's own documents are its commands. A key
+ * neither side has is skipped rather than compiled from nothing.
  */
-export const PARITY_KEYS = ['actions', 'prompts', 'library', 'notes', 'commands'] as const;
+export const PARITY_KEYS = ['actions', 'prompts', 'documents', 'notes', 'commands'] as const;
+
+/**
+ * default-setup ships no documents, so it registers no `documents` applier for the fixtures' documents to be
+ * applied with. The harness runs the SDK's own beside the pack's — the one codegen emits for a pack that
+ * declares the key — so what the fixtures exercise is what such a pack gets.
+ */
+const documentsApplier = createDocumentsApplier();
+
+function importParityContent(options: Parameters<typeof importCompiledContent>[0]): Record<string, ApplyResult> {
+  const result = importCompiledContent(options);
+  const include = options.include?.documents;
+  result.documents = include instanceof Set && include.size === 0
+    ? { created: 0, updated: 0, skipped: 0 }
+    : documentsApplier.apply({ compiledDir: options.compiledDir, include, mode: options.mode, applied: options.applied, log: () => {} });
+  return result;
+}
 const SNAPSHOT_TYPES = ['Action', 'Prompt', 'Document', 'Collection', 'Note'];
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'apack.json'), 'utf-8'));
@@ -60,7 +77,8 @@ export async function compileContent(sources: SourceSet): Promise<string> {
     }
     const fixtureDir = path.join(FIXTURES, sources, key);
     if (!fs.existsSync(fixtureDir)) continue;
-    entries[key] = withPath(entry ?? { format: key }, path.relative(PACK_DIR, fixtureDir));
+    // A key the pack doesn't declare is one of the SDK's, which takes a path alone
+    entries[key] = withPath(entry ?? path.relative(PACK_DIR, fixtureDir), path.relative(PACK_DIR, fixtureDir));
   }
   const pack = { ...manifest, steps: undefined, artifacts: undefined, blocks: undefined, content: { ...manifest.content, artifacts: undefined, sources: entries } };
   const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-parity-'));
@@ -80,7 +98,7 @@ export function resetDatabase(): void {
  * through — a scenario that content one fixture version over another is about the modes, not about a merge.
  */
 export function apply(compiledDir: string, options: { mode?: ImportMode; include?: Record<string, ContentSelection> } = {}): Record<string, ApplyResult> {
-  const result = importCompiledContent({ compiledDir, mode: options.mode, include: options.include });
+  const result = importParityContent({ compiledDir, mode: options.mode, include: options.include });
   return Object.fromEntries(PARITY_KEYS.map((key) => [key, result[key]]));
 }
 
@@ -95,7 +113,7 @@ export function applyContent(
   options: { mode?: ImportMode; include?: Record<string, ContentSelection> } = {},
 ): { counts: Record<string, ApplyResult>; record: ApplyRecord } {
   const record = applyAfter(previous);
-  const result = importCompiledContent({ compiledDir, mode: options.mode, include: options.include, applied: record });
+  const result = importParityContent({ compiledDir, mode: options.mode, include: options.include, applied: record });
   return { counts: Object.fromEntries(PARITY_KEYS.map((key) => [key, result[key]])), record };
 }
 

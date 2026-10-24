@@ -47,6 +47,11 @@ export function itemLabel(record: ContentItem, identity: readonly string[] = [])
   return String((field ? record[field] : undefined) ?? record.name ?? record.title ?? record.label ?? '');
 }
 
+/** How many items records hold, children included */
+export function countRecords(records: ContentItem[]): number {
+  return records.reduce((sum, record) => sum + 1 + countRecords(record.children ?? []), 0);
+}
+
 /** The entity types a format's items are written as */
 export function formatEntities(format: ContentFormatConfig): string[] {
   const own = format.entity === undefined ? [] : Array.isArray(format.entity) ? format.entity : [format.entity];

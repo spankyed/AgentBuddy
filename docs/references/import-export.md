@@ -63,7 +63,7 @@ Processing:
 - `.md` files → documents. Reads frontmatter for name/tags, otherwise `toDisplayName(basename)`
 - `_meta.md` files → skipped (reserved for collection metadata)
 - `media/` directory → skipped during traversal, media refs restored per-document
-- Frontmatter is stripped before parsing body into `ContentSection[]` via `parseMarkdownSections()`
+- Frontmatter is stripped before parsing body into `ContentSection[]` via `parseDocumentSections()` (`@apackdev/sdk/content`)
 - Backward compatible: files without frontmatter or section markers import as a single markdown section
 
 ### JSON export (`export-library.ts`)
@@ -194,7 +194,7 @@ JSON exports preserve the entity-based structure: `media/{entityId}/{filename}`.
 | `uniqueFilename(name, used)` | `@apackdev/sdk/utils` (`utils/export.ts`) | Dedup filenames (`foo.md` → `foo-2.md`) |
 | `buildFrontmatter(tags, name?)` | `library/be/utils.ts` | Build YAML frontmatter string |
 | `parseFrontmatter(content)` | `library/be/utils.ts` | Extract `{ tags, name?, description?, body }` |
-| `parseMarkdownSections(body)` | `library/be/utils.ts` | Parse `<!-- section:TYPE -->` markers into `ContentSection[]` |
-| `serializeContentToMarkdown(sections)` | `library/be/utils.ts` | `ContentSection[]` → markdown with section markers |
+| `parseDocumentSections(body)` | `@apackdev/sdk/content` | Parse `<!-- section:TYPE -->` markers into `ContentSection[]` |
+| `serializeDocumentSections(sections)` | `@apackdev/sdk/content` | `ContentSection[]` → markdown with section markers |
 | `importCompiledContent(options)` | `@apackdev/sdk/utils` (`utils/apply.ts`) | Run the registered appliers over a compiled content directory |
 | `computeManifestContentRevision(dir, files)` | `@apackdev/host/packs/runtime` (`apply.ts`, internal) | SHA-256 hash of a boot apply's compiled files |

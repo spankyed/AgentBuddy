@@ -56,10 +56,11 @@ export function addMigration(manifest: PackManifest, line: MigrationLine, versio
 }
 
 /**
- * Adds a content source, which is how a scaffold declares content it just wrote. `format` names a format
- * of this pack's own or a dependency's (`<dependency>:<name>`); the schema checks that it resolves.
+ * Adds a content source, which is how a scaffold declares content it just wrote: a path alone for a key the
+ * SDK compiles, or a path and a `format` of this pack's own or a dependency's (`<dependency>:<name>`); the
+ * schema checks that it resolves.
  */
-export function addContentSource(manifest: PackManifest, key: string, entry: { path: string; format: string }): void {
+export function addContentSource(manifest: PackManifest, key: string, entry: string | { path: string; format: string }): void {
   const content = manifest.content ?? (manifest.content = {});
   const sources = content.sources ?? (content.sources = {});
   if (hasOwn(sources, key)) throw new Error(`Content source "${key}" already exists in manifest`);

@@ -1,5 +1,5 @@
 // Parity gate for applying: does importing default-setup's content still produce the database it produced before?
-// It compiles the pack's library, notes, actions and prompts, imports them into a scratch database the test
+// It compiles the pack's documents, notes, actions and prompts, imports them into a scratch database the test
 // discards,
 // and compares the rows against the snapshots in `__golden__/`.
 //
@@ -183,7 +183,7 @@ describe('content parity (golden snapshots)', () => {
         name: 'fresh',
         sources: 'v1',
         include: {
-          library: new Set(['Guides']),
+          documents: new Set(['Guides']),
           notes: new Set(['Projects']),
           actions: new Set(['Set Instructions']),
           prompts: new Set<string>(),
@@ -193,7 +193,7 @@ describe('content parity (golden snapshots)', () => {
     checkGolden('include', steps);
   });
 
-  it("content default-setup's own library, notes, actions and prompts", async () => {
+  it("content default-setup's own notes, actions, prompts and commands", async () => {
     const steps = await run([{ name: 'fresh', sources: 'default-setup' }]);
     checkGolden('default-setup', steps);
   });

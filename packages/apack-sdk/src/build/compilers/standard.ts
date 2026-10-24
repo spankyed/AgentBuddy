@@ -4,6 +4,7 @@ import type { SpecialtyCompiler, CompilationContext, ValidationResult } from '..
 import type { CompiledEntry, CompileResult } from '../compile-utils.ts';
 import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows.ts';
 import type { FlowDSL } from './flow-types.ts';
+import { documentsCompiler, commandsCompiler } from './documents.ts';
 
 /** Entries from a source directory of DSL functions, with duplicate labels rejected */
 function uniqueEntries(kind: string, compiled: CompileResult): CompiledEntry[] {
@@ -30,6 +31,7 @@ const labelledItems = (data: DslCompiled) => data.records.map((record) => ({
 }));
 
 export const actionsCompiler: SpecialtyCompiler<DslCompiled> = {
+  identity: ['label'],
   async compile(dir) {
     const compiled = await compileSourceDir(dir, {
       functionName: 'action',
@@ -45,6 +47,7 @@ export const actionsCompiler: SpecialtyCompiler<DslCompiled> = {
 };
 
 export const promptsCompiler: SpecialtyCompiler<DslCompiled> = {
+  identity: ['label'],
   async compile(dir) {
     const compiled = await compileSourceDir(dir, {
       functionName: 'template',
@@ -90,4 +93,6 @@ export const SPECIALTY_COMPILERS: Record<string, SpecialtyCompiler> = {
   actions: actionsCompiler as SpecialtyCompiler,
   prompts: promptsCompiler as SpecialtyCompiler,
   flows: flowsCompiler as SpecialtyCompiler,
+  documents: documentsCompiler as SpecialtyCompiler,
+  commands: commandsCompiler as SpecialtyCompiler,
 };

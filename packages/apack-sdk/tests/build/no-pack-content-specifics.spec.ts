@@ -1,9 +1,10 @@
-// The SDK's build and apply modules know no pack's entity types: the library *format*, notes and FAQ
-// applying belong to default-setup (its content entries, compiler modules and content writers). A new
-// name here needs a reason in ALLOWED, not a quiet exception.
+// The SDK's build and apply modules know no pack's entity types: notes and FAQ applying belong to
+// default-setup (its content entries, format and content writer). A new name here needs a reason in
+// ALLOWED, not a quiet exception.
 //
 // `Document`, `Collection` and the sections they hold are deliberately absent from the list: they are
-// the SDK's own entities, so its writers name them (`content/document-writers.ts`). What stays forbidden
+// the SDK's own entities, so its compiler, section syntax and writers name them (`compilers/documents.ts`,
+// `content/document-sections.ts`, `content/document-writers.ts`). What stays forbidden
 // is default-setup's — `Note` and `Symlink`, the FAQ, the export DTOs, the `library`/`notes`/`faqs`
 // content keys and the repositories behind them. Adding a document type name back here would mean the
 // SDK could no longer write its own rows.

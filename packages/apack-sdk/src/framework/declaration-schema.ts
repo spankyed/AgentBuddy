@@ -312,16 +312,20 @@ export const DslEntrySchema = z.object({
   inline: z.array(z.string()).describe('Packages whose declarations are bundled into the editor definitions, besides @apackdev/* and the pack\'s own modules. The editor loads no node_modules, so a type it needs from another package belongs here.').optional(),
 }).strict();
 
-/** Content keys compiled by the SDK's own compilers; they take a path, as a string or `{ path }` */
-export const SPECIALTY_CONTENT_KEYS: readonly string[] = ['actions', 'prompts', 'flows'];
+/**
+ * Content keys compiled by the SDK's own compilers; they take a path, as a string or `{ path }`. Each writes
+ * entities the SDK owns: `documents` a tree of Documents in Collections, and `commands` the same tree with
+ * every Document a command list unless it says otherwise.
+ */
+export const SPECIALTY_CONTENT_KEYS: readonly string[] = ['actions', 'prompts', 'flows', 'documents', 'commands'];
 
 /**
  * The content key the commands a manifest declares are compiled under.
  *
  * It is reserved rather than named by the pack, because the pack never writes the entry: declaring
  * `extensions.commands` is what creates it. A pack may not declare a source of this name — it would be
- * two entries wanting one compiled file — and `commands` itself stays free, which matters because
- * default-setup already uses it for its own content directory.
+ * two entries wanting one compiled file — and it is not `commands`, which is the key a pack's own directory of
+ * command documents compiles under, so a pack may declare both.
  */
 export const DECLARED_COMMANDS_KEY = 'declared-commands';
 
@@ -617,7 +621,7 @@ export const ArtifactEntrySchema = z.object({
 
 export const ContentConfigSchema = z.object({
   sources: ContentSourcesSchema
-    .describe('Content this pack writes into the database. Keys name the content; the specialty keys (actions, prompts, flows) take a path, other keys an entry object.').optional(),
+    .describe('Content this pack writes into the database. Keys name the content; the specialty keys (actions, prompts, flows, documents, commands) take a path, other keys an entry object.').optional(),
   datasets: ContentDatasetsSchema
     .describe('Compiled datasets the pack reads back itself, never written to the database. Each names a format declaring no entity.').optional(),
   formats: declarationRecord(CONTENT_KEY_SCHEMA, ContentFormatSchema)

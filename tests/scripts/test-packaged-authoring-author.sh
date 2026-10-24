@@ -10,7 +10,7 @@
 # (docs/archive/goals/goal-external-pack-authoring.md):
 #   1. install @apackdev/cli + @apackdev/sdk (with @apackdev/ears) from tarballs
 #   2. apack pack init -> add feature -> a flow using keepAlive from default-setup -> content from a format with a
-#      .ts compiler module, default-setup's notes format, and its library format -> an llm flow and a
+#      .ts compiler module, default-setup's notes format, and the SDK's documents key -> an llm flow and a
 #      service calling services.inference
 #   3. apack pack build
 #   4. unit tests on the harness, with inference mocked by mockInference
@@ -118,7 +118,7 @@ export default {
 };
 EOF
 
-step "2. Content from apack.json: a format with a .ts compiler module, and default-setup's notes and library formats"
+step "2. Content from apack.json: a format with a .ts compiler module, default-setup's notes format and the SDK's documents"
 mkdir -p src/content/glossary src/content/notes
 printf -- '---\nterm: Pack\n---\nA bundle of features.\n' > src/content/glossary/pack.md
 mkdir -p src/content/compilers
@@ -130,18 +130,18 @@ export default function compileGlossary({ path }: ContentCompileContext): Conten
 }
 TS
 printf -- '---\ntitle: Demo notes\n---\nWritten by demo-pack.\n' > src/content/notes/demo.md
-mkdir -p src/content/library/guides
-printf -- '---\nname: Demo guides\n---\n' > src/content/library/guides/_meta.md
-printf -- '---\nname: Getting started\ntags: [demo]\n---\n<!-- section:text -->\nInstall demo-pack.\n' > src/content/library/guides/start.md
-# demo-notes and demo-library use default-setup's formats, compiled from this pack's markdown through the built
-# dependency; the library format's compiler module comes from default-setup's dist/build/content-compilers.mjs
+mkdir -p src/content/documents/guides
+printf -- '---\nname: Demo guides\n---\n' > src/content/documents/guides/_meta.md
+printf -- '---\nname: Getting started\ntags: [demo]\n---\n<!-- section:text -->\nInstall demo-pack.\n' > src/content/documents/guides/start.md
+# demo-notes uses default-setup's notes format, compiled from this pack's markdown through the built dependency;
+# documents is the SDK's own key, which needs no dependency at all
 node -e '
   const fs = require("fs");
   const m = JSON.parse(fs.readFileSync("apack.json", "utf8"));
   m.content.formats = { ...m.content.formats, glossary: { compiler: "src/content/compilers/glossary.ts", entity: "DemoPack", identity: ["term"] } };
   m.content.sources.glossary = { path: "src/content/glossary", format: "glossary" };
   m.content.sources["demo-notes"] = { path: "src/content/notes", format: "default-setup:notes" };
-  m.content.sources["demo-library"] = { path: "src/content/library", format: "default-setup:library" };
+  m.content.sources.documents = "src/content/documents";
   fs.writeFileSync("apack.json", JSON.stringify(m, null, 2) + "\n");
 '
 
@@ -212,11 +212,11 @@ node -e '
   const [note] = read("demo-notes");
   // A record carries only what its source sets: defaults are applied when the row is created, so they are not tracked as written
   if (note?.entity !== "Note" || note.title !== "Demo notes" || "noteType" in note || "favorite" in note || !note.contentHash) throw new Error("demo-notes: " + JSON.stringify(note));
-  // Sections and the _meta.md name come from the library compiler module of default-setup, not the generic walker
-  const [guides] = read("demo-library");
+  // Sections and the _meta.md name come from the SDK's documents compiler, not the generic walker
+  const [guides] = read("documents");
   const [doc] = guides?.children ?? [];
   if (guides?.entity !== "Collection" || guides.name !== "Demo guides" || doc?.entity !== "Document"
-    || JSON.stringify(doc.content) !== JSON.stringify([{ type: "text", text: "Install demo-pack." }])) throw new Error("demo-library: " + JSON.stringify(guides));
+    || JSON.stringify(doc.content) !== JSON.stringify([{ type: "text", text: "Install demo-pack." }])) throw new Error("documents: " + JSON.stringify(guides));
 ' || fail "the compiler modules and markdown content were not compiled"
 
 step "4. Unit tests through the harness, with default-setup's runtime"
@@ -238,8 +238,8 @@ describe('demo notes', () => {
     expect(note).toMatchObject({ title: 'Demo notes', noteType: 'document', lastSeen: 0, hideCompletedChildren: false });
   });
 
-  it("content a library with default-setup's bundled compiler module and hooks", async () => {
-    expect(await importContent({ keys: ['demo-library'] })).toEqual({ 'demo-library': { created: 2, updated: 0, skipped: 0 } });
+  it("content documents with the SDK's documents key", async () => {
+    expect(await importContent({ keys: ['documents'] })).toEqual({ documents: { created: 2, updated: 0, skipped: 0 } });
     const [guides] = query('Collection').pickAll();
     const [doc] = query('Document').pickAll();
     expect(doc.shortCode).toMatch(/^DOC-\d+$/);
@@ -286,7 +286,7 @@ TS
 # Check authored types before execution; keep the unit summary uncoloured for the check below.
 node_modules/.bin/tsc --noEmit
 NO_COLOR=1 FORCE_COLOR=0 node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log"
-# The scaffold's content test (2), the feature's system test, default-setup notes and library, the service and the flow
+# The scaffold's content test (2), the feature's system test, default-setup notes, documents, the service and the flow
 grep -qE "Tests +7 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
 # The build prints an apply-file count even with no flows; check the compiled flow itself
 node -e '

@@ -1,6 +1,6 @@
 # Content
 
-Content sources `apack pack build` compiles to JSON, as `apack.json` `content.formats` and `content.sources` describe them. `_compilers/` holds the formats' compiler modules and `hooks/` the content writers for Note, Document and Collection. Actions and prompts run in a sandboxed scope at runtime: no module system, their function bodies are extracted (with inlined helpers). Flows compile to Flow/Node graphs.
+Content sources `apack pack build` compiles to JSON, as `apack.json` `content.formats` and `content.sources` describe them. `writers/` holds the content writer for Note; Documents and Collections are the SDK's, compiled and written by its `commands` key. Actions and prompts run in a sandboxed scope at runtime: no module system, their function bodies are extracted (with inlined helpers). Flows compile to Flow/Node graphs.
 
 ## Actions
 
@@ -43,13 +43,13 @@ also belong to `AppState`. A feature with only navigation visibility needs no se
 
 Markdown under `notes/` (the welcome note), compiled with the `notes` format (`markdown-tree`, entity `Note`) and written through `hooks/notes.ts`. Frontmatter (YAML): `title` (default: the file name, dashes as spaces), `type` (`document` | `tasklist` | `task`), `icon`, `favorite`, `hideCompletedChildren`, `completed`. A directory is a parent note, its `index.md` giving the parent's frontmatter and content.
 
-## Library
+## Documents
 
-Markdown under `library/`, compiled with the `library` format (`_compilers/library.ts`) and written through `hooks/library.ts`. A directory is a Collection (`_meta.md` frontmatter: `name`, `description`); a file is a Document (frontmatter `name`, `tags: [a, b]`; `<!-- section:type -->` markers split its content into sections). `media/` is copied with the content, and `![alt](media/file)` links point at the document's media.
+This pack ships no documents but its commands. Documents are the SDK's: a pack's go under the SDK's `documents` key, which compiles a directory of markdown into Collections and Documents and writes them with nothing of this pack's ([Documents and commands](../../../../docs/public-facing/content.md#documents-and-commands)).
 
 ## Content writers
 
-`hooks/notes.ts` (`noteContentWriter`) and `hooks/library.ts` (`documentContentWriter`, `collectionContentWriter`) are `ContentWriter` from `@apackdev/sdk/content`, registered per entity through `apack.json` `content.writers` (`"Note": "src/content/writers/notes.ts#noteContentWriter"`). An entity type's hooks can be registered by one pack only. Collection sets `container: true`, so a folder this pack written is written into by other packs, not copied; both library `find`s match a name within `parentId`. Every member is optional; without one the format applier does it directly:
+`writers/notes.ts` (`noteWriter`) is a `ContentWriter` from `@apackdev/sdk/content`, registered through `apack.json` `content.writers` (`"Note": "src/content/writers/notes.ts#noteWriter"`). An entity type's writers come from the pack that declares it, so Document's and Collection's are the SDK's (`sdkContentWriters`). Collection sets `container: true`, so a folder one pack wrote is written into by other packs, not copied; both document `find`s match a name within `parentId`. Every member is optional; without one the format applier does it directly:
 
 - `find(record, ctx)` — the existing row for a record (`{ id, contentHash }`), replacing the entry's `identity` match. The applier first looks up the row by its content key and only falls back to `find` for rows no apply has claimed
 - `create(record, ctx)` — creates the row, returns its id (call the feature's repository commands, so written entities match app-created ones)
@@ -64,7 +64,7 @@ Written entities keep their item's `contentHash` and `contentKey`, and the app r
 
 ## Commands
 
-Slash commands (`/name` in chat) are content, in `commands/internal/` (`chat.md`, `claude-code.md`, `codex.md`, which the directory nests in an `internal` Library folder), compiled with the `commands` format, which defaults each one to `documentType: 'commands'` — so a file here need not declare it, a file that declares another type is what it says, and a `library` document declaring `type: commands` is served as one too. A `<!-- section:field -->` block of `**name**: placeholder` lines is the whole of one. One source, so there is nothing to merge; a name two documents define keeps the first. The `library` feature plays the `commands` designation and serves the list from whatever documents are in the database, so a user can edit any of them from the Library, and the app publishes the list to every window. To add one:
+Slash commands (`/name` in chat) are content, in `commands/internal/` (`chat.md`, `claude-code.md`, `codex.md`, which the directory nests in an `internal` Library folder), compiled by the SDK's `commands` key, which defaults each one to `documentType: 'commands'` — so a file here need not declare it, a file that declares another type is what it says, and a document under a `documents` key declaring `type: commands` is served as one too. A `<!-- section:field -->` block of `**name**: placeholder` lines is the whole of one. One source, so there is nothing to merge; a name two documents define keeps the first. The app serves the list from whatever command documents are in the database, so a user can edit any of them from the Library, and it publishes the list to every window. To add one:
 
 1. Create the action (its `category` only groups it in the Actions UI)
 2. Add an `on("user.command", ...)` branch in a flow (`command-listener-flow.ts` for standalone, the Claude Code and Codex flows for `cc-*`/`cdx-*`)

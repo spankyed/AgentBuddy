@@ -13,10 +13,7 @@
         "path": "src/content/team-notes",
         "format": "default-setup:notes"
       },
-      "team-docs": {
-        "path": "src/content/team-docs",
-        "format": "default-setup:library"
-      }
+      "documents": "src/content/documents"
     }
   }
 }

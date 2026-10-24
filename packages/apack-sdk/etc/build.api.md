@@ -3533,7 +3533,9 @@ export interface SpecialtyCompiler<T = unknown> {
     // (undocumented)
     compile(sourcePath: string, context: SpecialtyCompileContext): Promise<T>;
     count(data: T): number;
+    identity?: string[];
     items(data: T): PackContentPreviewItem[];
+    media?: string;
     output?(data: T): unknown;
     references?(data: T, context: CompilationContext): ContentReference[];
     // (undocumented)

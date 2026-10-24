@@ -1,7 +1,6 @@
 // Scaffolds a chat slash command, which is content: a document whose field section holds one
-// `**name**: placeholder` line per command, written with a `commands` format. A pack serving its own
-// commands plays the `commands` designation; a pack contributing them to whichever pack does — the usual
-// case — only ships the documents, which is all this writes.
+// `**name**: placeholder` line per command, compiled by the SDK's `commands` key. The app serves every such
+// document from its own rows, so shipping the document is all a pack does to contribute a command.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { renderTemplate } from '../../templates.ts';
@@ -68,7 +67,7 @@ export async function addCommand(args: string[], root: string) {
   const documentName = parseFlag(args, '--document') || 'commands';
   validateName(documentName, 'Document');
 
-  const { wrote, filePath } = writeContentDocument(root, manifest, { format: 'commands', key: 'commands' }, {
+  const { wrote, filePath } = writeContentDocument(root, manifest, 'commands', {
     name: documentName,
     folder: parseFlag(args, '--folder'),
     body: renderTemplate('pack/src/content/commands/commands.md', {

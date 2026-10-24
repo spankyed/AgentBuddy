@@ -1519,7 +1519,7 @@
           "propertyNames": {
             "pattern": "^[a-z][a-z0-9-]*$"
           },
-          "description": "Content this pack writes into the database. Keys name the content; the specialty keys (actions, prompts, flows) take a path, other keys an entry object."
+          "description": "Content this pack writes into the database. Keys name the content; the specialty keys (actions, prompts, flows, documents, commands) take a path, other keys an entry object."
         },
         "datasets": {
           "type": "object",

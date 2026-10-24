@@ -234,6 +234,8 @@ const SPECIALTY_APPLIERS: Record<string, { factory: string; options: Record<stri
   actions: { factory: 'createFormatApplier', options: { key: 'actions', entities: ['Action'], identity: ['label'] } },
   prompts: { factory: 'createFormatApplier', options: { key: 'prompts', entities: ['Prompt'], identity: ['label'] } },
   flows: { factory: 'createFlowApplier', options: {} },
+  documents: { factory: 'createDocumentsApplier', options: {} },
+  commands: { factory: 'createCommandsApplier', options: {} },
 };
 
 const COMPILED_DIR_ACCESSORS = `let _compiledDir = '';
@@ -1944,7 +1946,8 @@ ${featureBindings.join('\n')}
         const specialty = SPECIALTY_APPLIERS[key]!;
         applierImports.add(specialty.factory);
         const options = { ...specialty.options, ...(source.onUserEdit && { onUserEdit: source.onUserEdit }) };
-        // `createFlowApplier()` takes no options at all when the entry declares none, which is most packs
+        // A factory with a fixed key (`createFlowApplier()`, the document appliers) takes no options at all
+        // when the entry declares none, which is most packs
         registrations.push(`${specialty.factory}(${Object.keys(options).length > 0 ? dataLiteral(options) : ''})`);
         continue;
       }

@@ -75,7 +75,7 @@ describe('re-applying edited rows', () => {
     EDITS[key as keyof typeof EDITS]();
     const before = snapshot();
     const counts = apply(v2, { mode: 'replace-on-collision' });
-    expect([counts.notes.errors, counts.library.errors]).toEqual([undefined, undefined]);
+    expect([counts.notes.errors, counts.documents.errors]).toEqual([undefined, undefined]);
     const after = snapshot();
     expect(after.rows[edited(key)], 'the edited row').toEqual(before.rows[edited(key)]);
     expect(after.rows[untouched(key)], 'the unedited changed row').not.toEqual(before.rows[untouched(key)]);
@@ -161,7 +161,7 @@ describe('re-applying edited rows', () => {
     const before = snapshot();
     const counts = apply(v2, { mode: 'replace-on-collision' });
     const after = snapshot();
-    expect([counts.notes.errors, counts.library.errors]).toEqual([undefined, undefined]);
+    expect([counts.notes.errors, counts.documents.errors]).toEqual([undefined, undefined]);
     expect(after.rows['Note:Welcome'], 'no copy of the renamed note').toBeUndefined();
     expect(after.rows['Document:Getting Started'], 'no copy of the renamed document').toBeUndefined();
     expect(after.rows['Note:My welcome']).toEqual(before.rows['Note:My welcome']);

@@ -15,7 +15,8 @@ import { repository } from '#generated/repository.ts';
 import type { EARS } from '#generated/ears.ts'
 import { untypedQuery } from '@apackdev/sdk/ears';
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs, toDisplayName } from '@apackdev/sdk/utils'
-import { parseFrontmatter, parseMarkdownSections } from './utils.ts'
+import { parseDocumentSections } from '@apackdev/sdk/content'
+import { parseFrontmatter } from './utils.ts'
 import type { ContentSection } from '#features/library/be/types.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
@@ -306,7 +307,7 @@ function importMarkdownDir(
         }
 
         const content: ContentSection[] = body.trim()
-          ? parseMarkdownSections(body)
+          ? parseDocumentSections(body)
           : []
 
         const document = repository.libraryCommands.createDocument(

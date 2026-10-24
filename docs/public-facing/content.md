@@ -2,7 +2,7 @@
 
 A pack's content is source files compiled to JSON at build time and written into the database when the pack is installed or updated. `apack.json` `content.sources` names each one.
 
-A declared specialty source (`actions`, `prompts` or `flows`) must exist; a missing path fails the build.
+A declared specialty source (`actions`, `prompts`, `flows`, `documents` or `commands`) must exist; a missing path fails the build.
 Completed builds validate the content index against the manifest: compiled sources are written entries,
 datasets are non-written entries, and each has its compiled JSON file. Applier-only sources read their
 own data and have no compiled index entry. Build publication, staging and installation refuse missing
@@ -454,13 +454,27 @@ Point your manifest at the content directories:
     "sources": {
       "actions": "src/content/actions",
       "prompts": "src/content/prompts",
-      "flows": "src/content/flows"
+      "flows": "src/content/flows",
+      "documents": "src/content/documents",
+      "commands": "src/content/commands"
     }
   }
 }
 ```
 
 A specialty key takes its path as a string or `{ "path": … }`; any other key is a [content source](#writing-entities). `apack pack build` compiles each key into `<key>.content.json` (media into `media/<key>/`) and writes `content.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Content. Writing runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every written key's compiled file, so changing one key's source re-runs the pack's boot apply, its other rows still being skipped by their own hashes. At boot, packs content in dependency order, so a pack's content can reference what a pack it declares a dependency on written. An apply that reports errors fails: an external pack's error is recorded on its installed-packs entry, and the same output isn't retried until it changes — or until one of the packs it depends on content, since that is the other thing that can change the outcome. Installing the pack again is also a fresh attempt, even at the version already installed: an install replaces the compiled files, and what was last written is remembered as the files and not only their contents.
+
+### Documents and commands
+
+`documents` and `commands` compile a directory of markdown into the SDK's document model, so any pack ships
+documents with no format, writer or dependency of its own. A directory is a `Collection` (its `_meta.md`
+frontmatter gives `name` and `description`); a file is a `Document` (frontmatter `name`, `tags: [a, b]` and
+`type`). A `<!-- section:<type>[:<param>] -->` marker starts a section — `markdown`, `text`, `code:<language>`,
+`field` (`**key**: value` lines) or `list` (`- item` lines) — and a body with no marker is one markdown section.
+A `media/` directory at the source's root is copied beside the records, and a document's `media/<file>` links
+become its media. `parseDocumentSections` and `serializeDocumentSections` (`@apackdev/sdk/content`) read and
+write that syntax for code that imports or exports documents. The two keys differ in one default:
+under `commands` a document is a [command list](#slash-commands) unless its `type` says otherwise.
 
 ### Include sets
 
@@ -470,6 +484,7 @@ ContentAppliers take an include set per key (`ContentSelection = true | Readonly
 |---|---|
 | `actions`, `prompts` | The label |
 | `flows` | The flow name |
+| `documents`, `commands` | The top-level document's or folder's name |
 | A content source | The record's first `identity` field other than `parent`, else its `name`, `title` or `label` |
 
 ## Writing entities
@@ -601,8 +616,7 @@ An entry can name a format of a pack it depends on as `"<pack id>:<name>"`. It c
   "dependencies": { "default-setup": "*" },
   "content": {
     "sources": {
-      "team-notes": { "path": "src/content/notes", "format": "default-setup:notes" },
-      "team-docs": { "path": "src/content/docs", "format": "default-setup:library" }
+      "team-notes": { "path": "src/content/notes", "format": "default-setup:notes" }
     }
   }
 }
@@ -613,7 +627,6 @@ default-setup's formats:
 | Format | Content | Sources |
 |---|---|---|
 | `notes` | `Note` | Markdown notes; frontmatter `title`, `type` (`document`, `tasklist`, `task`), `icon`, `favorite`, `hideCompletedChildren`, `completed`. A directory is a parent note, its `index.md` giving the parent's frontmatter and content |
-| `library` | `Collection`, `Document` | A directory is a collection (`_meta.md` frontmatter `name`, `description`); a file is a document (frontmatter `name`, `tags: [a, b]`; `<!-- section:type -->` markers split its content). `media/` links become the document's media |
 | `faqs` | none (compiled only) | The Help tab's FAQs; not useful to other packs |
 
 Any pack can define a format for any entity type it can write (its own, a dependency's or the SDK's). Only the pack that declares an entity type defines its content writers.
@@ -662,7 +675,7 @@ export const memoContentWriter: ContentWriter<ContentItem & { title: string; tex
 | `update?(id, record, context)` | For a changed record whose row isn't edited | — |
 | `remove?(id)` | By `wipe-and-replace`, and to undo a create whose media copy or stamping failed | — |
 
-`container` is how two packs share a folder. An entity another item's apply claimed (another pack's, or another entry's of your pack) is normally not yours, whatever its name, so your item writes an entity of its own beside it. When the entity's hooks set `container: true`, your record's `find` match is reused as the parent instead: its children are written under it in every mode (`keep-existing` skips only the children that exist), and the row itself is never updated, stamped or re-keyed — it stays the item that wrote it. The run counts it as skipped. Whichever item creates the entity first owns it: the fields another item sets on it (a folder's description) are dropped. The entity is found by `find` on every apply, so if the user renames or moves it, the next apply creates the folder again where your records expect it. The SDK sets it on `Collection`, so a pack writing `internal/commands/mine.md` with default-setup's `library` format puts its document in the existing folders rather than forking them. Its `find` hooks match a name within `parentId`, so a folder of the same name elsewhere is a different entity.
+`container` is how two packs share a folder. An entity another item's apply claimed (another pack's, or another entry's of your pack) is normally not yours, whatever its name, so your item writes an entity of its own beside it. When the entity's hooks set `container: true`, your record's `find` match is reused as the parent instead: its children are written under it in every mode (`keep-existing` skips only the children that exist), and the row itself is never updated, stamped or re-keyed — it stays the item that wrote it. The run counts it as skipped. Whichever item creates the entity first owns it: the fields another item sets on it (a folder's description) are dropped. The entity is found by `find` on every apply, so if the user renames or moves it, the next apply creates the folder again where your records expect it. The SDK sets it on `Collection`, so a pack writing `internal/commands/mine.md` under its `documents` or `commands` key puts its document in the existing folders rather than forking them. Its `find` hooks match a name within `parentId`, so a folder of the same name elsewhere is a different entity.
 
 `ContentWriteContext`: `parentId?` (the tree parent's entity), `index` (the record's position among its siblings), `clearedFields: string[]` (on `update`, the fields the last apply set that the item no longer sets; empty for `find` and `create`). A missing hook falls back to the format applier's behavior. A hook that throws fails that record (reported in the run's errors) and writing moves on.
 
@@ -753,22 +766,23 @@ user edits them afterwards — with the three-way merge and the offers every oth
 no manifest key that lists commands, and nothing to merge: one source, so a name cannot shadow another.
 
 A command lives in a document whose field section is `**name**: placeholder` lines, and what makes it one is
-the document's own `documentType`. **A command is only a document with a type**, so any library document that
-says it is a command list is served as one, and a document that says nothing is just a document.
+the document's own `documentType`. **A command is only a document with a type**, so any document that says it
+is a command list is served as one, and a document that says nothing is just a document.
 
-A file declares it in frontmatter (`type: commands`), and the **format** supplies a default where a whole
-source is one kind — so a file in the `commands` format's source cannot fail to be a command list by saying
-nothing, while a file that declares something else is what it says:
+A file declares it in frontmatter (`type: commands`), and the **content key** supplies a default where a whole
+source is one kind — so a file in a `commands` source cannot fail to be a command list by saying nothing, while
+a file that declares something else is what it says:
 
-| source's format | the file's `type:` | `documentType` |
+| source's key | the file's `type:` | `documentType` |
 |---|---|---|
 | `commands` | absent | `commands` |
 | `commands` | `type: notes` | `notes` |
-| `library` | absent | none — just a document |
-| `library` | `type: commands` | `commands`, served with the rest | default-setup's are
-`src/content/commands/internal/*.md`, written with its `commands` format; a pack depending on it names that format
-(`{ "path": "src/content/commands", "format": "default-setup:commands" }`) and gets the same rows. A name two
-documents define keeps the first.
+| `documents` | absent | none — just a document |
+| `documents` | `type: commands` | `commands`, served with the rest |
+
+default-setup's are `src/content/commands/internal/*.md`, under its `commands` key. Any pack declares the same
+key (`"commands": "src/content/commands"`) and gets the same rows, with no dependency. A name two documents
+define keeps the first.
 
 **No feature owns them: the app reads its own rows.** `Document` is an SDK entity, so the commands are a
 derivation over the stored documents whose `documentType` is `commands` — there is no role to claim, no provider
@@ -811,9 +825,9 @@ document holding one field per command, named after your pack id. So everything 
 describes applies unchanged: the three-way merge, removal when you stop shipping a command, offers, and the
 import dialog. There is no second path for a command, and no second way the app serves one.
 
-Your own `content.sources` keys are untouched — including a key named `commands`, which is why the reserved
-one is spelled differently. A pack may use both: a directory for the commands it wants to lay out as
-documents, and the manifest for one or two more.
+Your own `content.sources` keys are untouched — including the `commands` key, which is why the reserved one
+is spelled differently. A pack may use both: a directory for the commands it wants to lay out as documents,
+and the manifest for one or two more.
 
 **Two things to know, because this key is weaker than it looks:**
 

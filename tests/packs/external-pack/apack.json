@@ -279,10 +279,7 @@
         "path": "src/content/quick-memos.txt",
         "format": "quick-memos"
       },
-      "commands": {
-        "path": "src/content/commands",
-        "format": "default-setup:commands"
-      }
+      "commands": "src/content/commands"
     },
     "formats": {
       "memos": {

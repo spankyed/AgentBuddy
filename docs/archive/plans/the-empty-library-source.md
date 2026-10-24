@@ -1,9 +1,10 @@
 # default-setup's `library` content source is declared and empty
 
-Status: deferred, and **the obvious fix is the wrong one** — which is most of what this records. The
-anomaly costs nothing today beyond a paragraph of explanation. **Revisit when it costs something real**:
-an author misreading it as an oversight, or a check that flags a `content.sources` path naming no
-directory.
+Status: **closed, 2026-10-23** — the entry is gone with the format it existed for. Documents became SDK
+content keys (`documents`, `commands`), compiled and applied by the SDK, so default-setup declares no
+library format or source, and `tests/content/harness.ts` applies its fixtures' documents with the SDK's
+`createDocumentsApplier()` — the fix proposed below under "What would actually fix it", with the
+factory removing the drift it warned of. What follows is the analysis as it stood.
 
 Compiled 2026-10-22 on `session/commands-to-the-editor`, after the commands moved out of
 `src/content/library/internal/commands/` and left that tree empty.

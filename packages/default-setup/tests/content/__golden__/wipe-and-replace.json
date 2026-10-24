@@ -252,7 +252,7 @@
         "updated": 0,
         "skipped": 0
       },
-      "library": {
+      "documents": {
         "created": 5,
         "updated": 0,
         "skipped": 0
@@ -518,7 +518,7 @@
         "updated": 0,
         "skipped": 0
       },
-      "library": {
+      "documents": {
         "created": 5,
         "updated": 0,
         "skipped": 0
@@ -778,7 +778,7 @@
         "updated": 0,
         "skipped": 0
       },
-      "library": {
+      "documents": {
         "created": 6,
         "updated": 0,
         "skipped": 0
