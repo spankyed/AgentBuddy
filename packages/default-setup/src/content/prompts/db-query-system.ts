@@ -82,7 +82,7 @@ Walk then pick (terminal):
 Iteration:
   .map(id => ...)         iterates entity IDs (NOT objects), returns Array<T>
   .forEach(id => ...)     iterates entity IDs, returns query (chainable)
-  .groupBy('field')       → Map<value, query>   group entities by field value
+  .groupBy('field')       → Map<value, ids>     group entities by field value
 
 After .pick()/.pickAll(), use standard Array methods (.map, .filter) on the result.
 

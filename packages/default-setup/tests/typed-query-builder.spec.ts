@@ -143,12 +143,12 @@ describe('Typed QueryBuilder — fluent chaining preserves type', () => {
   });
 });
 
-// ─── groupBy returns Map with typed builders ───────────────────────────
+// ─── groupBy returns typed ids per value ───────────────────────────────
 
-describe('Typed QueryBuilder — groupBy returns typed Map', () => {
-  it('groupBy returns Map<unknown, QueryBuilder<E>>', () => {
+describe('Typed QueryBuilder — groupBy returns typed ids', () => {
+  it('groupBy returns Map<unknown, EntityId<E>[]>', () => {
     type Result = ReturnType<PackQuery<'Thread'>['groupBy']>;
-    expectTypeOf<Result>().toEqualTypeOf<Map<unknown, PackQuery<'Thread'>>>();
+    expectTypeOf<Result>().toEqualTypeOf<Map<unknown, EARS.EntityId<'Thread'>[]>>();
   });
 });
 
