@@ -67,7 +67,7 @@
         </div>
 
         <p class="text-sm text-neutral-500 mb-4">
-          Import compiled actions, prompts, flows, library docs, and notes from a pack's compiled content directory.
+          Import compiled actions, prompts, flows, documents, commands and notes from a pack's compiled content directory.
         </p>
 
         <!-- Idle / previewing: show the select-directory button -->

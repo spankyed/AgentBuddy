@@ -7,8 +7,8 @@ import { repository } from '#generated/repository.ts';
 describe('memo content', () => {
   it('content memos from its markdown format and its compiler module format', async () => {
     const counts = await importContent();
-    // This pack's own content, exactly. The run also writes its command document through default-setup's
-    // `commands` format, whose count is that pack's business, so this matches rather than equals.
+    // This pack's memos, exactly. The run also writes its command documents under the SDK's `commands` and
+    // `declared-commands` keys, which the slash-command cases below pin, so this matches rather than equals.
     expect(counts).toMatchObject({
       memos: { created: 1, updated: 0, skipped: 0 },
       'quick-memos': { created: 1, updated: 0, skipped: 0 },
@@ -23,8 +23,8 @@ describe('memo content', () => {
   });
 });
 
-// A pack's slash commands are documents, and it has two ways to get them: a content directory compiled
-// with default-setup's `commands` format, or `extensions.commands` in its manifest. This pack uses both,
+// A pack's slash commands are documents, and it has two ways to get them: a content directory under the
+// SDK's `commands` key, or `extensions.commands` in its manifest. This pack uses both,
 // which is the case worth pinning — the shorthand compiles under its own reserved key, so it neither
 // collides with the pack's own `commands` source nor merges into its document.
 describe('slash commands', () => {

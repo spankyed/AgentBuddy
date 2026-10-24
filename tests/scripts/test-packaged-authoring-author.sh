@@ -212,7 +212,7 @@ node -e '
   const [note] = read("demo-notes");
   // A record carries only what its source sets: defaults are applied when the row is created, so they are not tracked as written
   if (note?.entity !== "Note" || note.title !== "Demo notes" || "noteType" in note || "favorite" in note || !note.contentHash) throw new Error("demo-notes: " + JSON.stringify(note));
-  // Sections and the _meta.md name come from the SDK's documents compiler, not the generic walker
+  // Sections and the _meta.md name come from the documents compiler of the SDK, not the generic walker
   const [guides] = read("documents");
   const [doc] = guides?.children ?? [];
   if (guides?.entity !== "Collection" || guides.name !== "Demo guides" || doc?.entity !== "Document"

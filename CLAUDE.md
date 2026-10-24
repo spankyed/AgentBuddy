@@ -22,7 +22,7 @@ apack is an Electron desktop app with an actor-based architecture. Both frontend
 - **Frontend** (`packages/renderer/`) — Vue 3 + Tailwind CSS surface system, each surface is an XState actor with designated UI areas (canvas, panel)
 - **Electron main** (`packages/main/`) — Module-based process manager that spawns the API server and manages windows
 - **Preload** (`packages/preload/`) — IPC bridge exposing safe APIs to renderer
-- **Default Setup** (`packages/default-setup/`) — the pack the app ships, installed into the data dir at first boot and loaded from there like any other: features, steps, and content sources (actions, prompts, flows, library, notes) that `apack pack build` compiles into `packages/default-setup/dist/` from `apack.json` `content.sources` (see `packages/default-setup/CLAUDE.md` and `docs/public-facing/content.md`)
+- **Default Setup** (`packages/default-setup/`) — the pack the app ships, installed into the data dir at first boot and loaded from there like any other: features, steps, and content sources (actions, prompts, flows, notes, commands) that `apack pack build` compiles into `packages/default-setup/dist/` from `apack.json` `content.sources` (see `packages/default-setup/CLAUDE.md` and `docs/public-facing/content.md`)
 - **Repo checks** (`packages/repo-checks/`) — the specs whose subject is the repo's own tooling: the chain's graph and cache keys, the recorded spec costs, and the scripts under `scripts/`. A workspace because a spec needs one, and because `npm run spec` routes a `scripts/` change here (see `packages/repo-checks/CLAUDE.md`)
 
 Monorepo using npm workspaces. Requires Node >= 23.5.0.

@@ -44,7 +44,7 @@ export interface SpecialtyCompileContext {
   importModule: PackModuleLoader;
 }
 
-/** The SDK's compiler for a specialty content key (actions, prompts, flows) */
+/** The SDK's compiler for a specialty content key (actions, prompts, flows, documents, commands) */
 export interface SpecialtyCompiler<T = unknown> {
   compile(sourcePath: string, context: SpecialtyCompileContext): Promise<T>;
   /**

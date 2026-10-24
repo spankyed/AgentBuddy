@@ -227,7 +227,8 @@ const KEY_META: Record<string, { icon: Component; hint?: string }> = {
     icon: GitBranch,
     hint: 'Flows reference actions and prompts by label. Any referenced action/prompt must already exist in the database (or be imported in the same run) or the flow will be skipped.',
   },
-  library: { icon: Library },
+  documents: { icon: Library },
+  commands: { icon: Library },
   notes: { icon: StickyNote },
   settings: { icon: Settings },
 }

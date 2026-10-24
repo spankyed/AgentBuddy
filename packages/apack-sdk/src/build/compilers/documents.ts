@@ -3,7 +3,7 @@
 // content parsed into sections. `commands` is the same compiler with a default document type.
 import { contentHash } from '../compile-utils.ts';
 import { compileMarkdownTree, type MarkdownItem } from '../content/markdown-tree.ts';
-import { checkRecordEntities, countRecords, itemLabel, type ContentItem } from '../content/items.ts';
+import { countRecords, itemLabel, type ContentItem } from '../content/items.ts';
 import { parseDocumentSections } from '../../content/document-sections.ts';
 import { COMMANDS_DOCUMENT_TYPE } from '../../commands/index.ts';
 import { SDK_ENTITIES } from '../../types/sdk-entities.ts';
@@ -48,20 +48,18 @@ export function compileDocumentTree(dir: string, defaultDocumentType?: string): 
 }
 
 interface DocumentsCompiled {
-  key: string;
   records: ContentItem[];
 }
 
 const IDENTITY = ['name'];
 
-function documentTreeCompiler(key: string, defaultDocumentType?: string): SpecialtyCompiler<DocumentsCompiled> {
+function documentTreeCompiler(defaultDocumentType?: string): SpecialtyCompiler<DocumentsCompiled> {
   return {
     identity: IDENTITY,
     media: MEDIA_DIR,
     async compile(dir) {
-      return { key, records: compileDocumentTree(dir, defaultDocumentType) };
+      return { records: compileDocumentTree(dir, defaultDocumentType) };
     },
-    collectErrors: (data) => checkRecordEntities(data.key, { entity: [SDK_ENTITIES.Collection, SDK_ENTITIES.Document] }, data.records),
     output: (data) => ({ records: data.records }),
     count: (data) => countRecords(data.records),
     items: (data) => data.records.map((record) => ({
@@ -72,5 +70,5 @@ function documentTreeCompiler(key: string, defaultDocumentType?: string): Specia
   };
 }
 
-export const documentsCompiler = documentTreeCompiler('documents');
-export const commandsCompiler = documentTreeCompiler('commands', COMMANDS_DOCUMENT_TYPE);
+export const documentsCompiler = documentTreeCompiler();
+export const commandsCompiler = documentTreeCompiler(COMMANDS_DOCUMENT_TYPE);

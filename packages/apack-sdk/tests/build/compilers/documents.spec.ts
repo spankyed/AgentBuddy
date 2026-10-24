@@ -62,5 +62,4 @@ it('compiles folders into collections holding their documents, with sections par
       contentHash: expect.any(String),
     }],
   }]);
-  expect(documentsCompiler.collectErrors!({ key: 'documents', records })).toEqual([]);
 });

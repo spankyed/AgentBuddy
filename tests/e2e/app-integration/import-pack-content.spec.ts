@@ -1,5 +1,5 @@
 // Settings → Import Pack Content end to end: a content directory compiled from default-setup's own content
-// entries (a notes markdown tree and the library compiler module), previewed from its content.json,
+// entries (a notes markdown tree and its commands, the SDK's document compiler), previewed from its content.json,
 // imported with an item deselected, then imported again in keep-existing mode. The imported document's image,
 // which the API copies into its media folder, loads through main's media:// protocol.
 import type { PackContentPreview } from '@apackdev/sdk/content';
@@ -31,19 +31,21 @@ function write(file: string, content: string): void {
   fs.writeFileSync(file, content);
 }
 
-/** Compiles default-setup's notes and library entries over fresh sources into a content directory */
+/** Compiles default-setup's notes and commands entries over fresh sources into a content directory */
 async function compileContent(work: string): Promise<string> {
   write(path.join(work, 'notes/e2e-plan/index.md'), `---\ntitle: E2E Plan ${RUN}\ntype: tasklist\n---\nThe plan.\n`);
   write(path.join(work, 'notes/e2e-plan/first-step.md'), `---\ntitle: E2E Step ${RUN}\ntype: task\n---\nDo it.\n`);
   write(path.join(work, 'notes/e2e-skipped.md'), `---\ntitle: E2E Skipped ${RUN}\n---\nNot imported.\n`);
-  write(path.join(work, 'library/e2e-guide.md'), `---\nname: "E2E Guide ${RUN}"\ntags: [e2e]\n---\nA guide.\n\n![pic](media/${PIC})\n`);
-  fs.mkdirSync(path.join(work, 'library/media'), { recursive: true });
-  fs.writeFileSync(path.join(work, 'library/media', PIC), PNG);
+  write(path.join(work, 'commands/e2e-guide.md'), `---\nname: "E2E Guide ${RUN}"\ntags: [e2e]\n---\nA guide.\n\n![pic](media/${PIC})\n`);
+  fs.mkdirSync(path.join(work, 'commands/media'), { recursive: true });
+  fs.writeFileSync(path.join(work, 'commands/media', PIC), PNG);
 
   const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'apack.json'), 'utf-8')) as PackManifest;
   const sources = manifest.content!.sources!;
   const entry = (key: string, source: string) => ({ ...(sources[key] as object), path: path.relative(PACK_DIR, source) });
-  const pack = { ...manifest, steps: undefined, content: { ...manifest.content, datasets: undefined, sources: { notes: entry('notes', path.join(work, 'notes')), library: entry('library', path.join(work, 'library')) } } } as PackManifest;
+  // Documents are written by an applier the pack registers for a key it declares, and commands is
+  // default-setup's one document key
+  const pack = { ...manifest, steps: undefined, content: { ...manifest.content, datasets: undefined, sources: { notes: entry('notes', path.join(work, 'notes')), commands: entry('commands', path.join(work, 'commands')) } } } as PackManifest;
   const outputDir = path.join(work, 'compiled');
   const { tsImport } = await import('tsx/esm/api');
   await compilePack({
@@ -84,11 +86,11 @@ test('previews a compiled content directory by its content.json and imports the 
     const previewed = await importState();
     expect(previewed.error).toBeNull();
     expect(previewed.preview!.content).toEqual({
-      library: [{ key: `E2E Guide ${RUN}` }],
+      commands: [{ key: `E2E Guide ${RUN}` }],
       notes: [{ key: `E2E Plan ${RUN}`, childCount: 1 }, { key: `E2E Skipped ${RUN}` }],
     });
     expect(previewed.preview!.unavailable).toEqual([]);
-    expect(previewed.selection).toEqual({ library: [`E2E Guide ${RUN}`], notes: [`E2E Plan ${RUN}`, `E2E Skipped ${RUN}`] });
+    expect(previewed.selection).toEqual({ commands: [`E2E Guide ${RUN}`], notes: [`E2E Plan ${RUN}`, `E2E Skipped ${RUN}`] });
 
     await send({ type: 'PACK_CONTENT.TOGGLE_ITEM', key: 'notes', item: `E2E Skipped ${RUN}` });
     await send({ type: 'PACK_CONTENT.CONFIRM_IMPORT' });
@@ -96,7 +98,7 @@ test('previews a compiled content directory by its content.json and imports the 
     const imported = await importState();
     expect(imported.error).toBeNull();
     expect(imported.result!.notes).toEqual({ created: 2, updated: 0, skipped: 0 });
-    expect(imported.result!.library).toEqual({ created: 1, updated: 0, skipped: 0 });
+    expect(imported.result!.commands).toEqual({ created: 1, updated: 0, skipped: 0 });
 
     // The API copied the image into the document's media folder, wherever it keeps media; main serves it from there
     const userData = await electronApp.evaluate(({ app: electron }) => electron.getPath('userData'));
@@ -120,7 +122,7 @@ test('previews a compiled content directory by its content.json and imports the 
     await waitForStatus('success');
     const kept = await importState();
     expect(kept.result!.notes).toEqual({ created: 0, updated: 0, skipped: 1 });
-    expect(kept.result!.library).toEqual({ created: 0, updated: 0, skipped: 1 });
+    expect(kept.result!.commands).toEqual({ created: 0, updated: 0, skipped: 1 });
   } finally {
     fs.rmSync(work, { recursive: true, force: true });
   }

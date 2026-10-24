@@ -1,6 +1,7 @@
 // `apack pack dev` and the built-in pack's watcher rebuild a pack and then POST /dev/reload. The reload has to
 // leave the pack as a boot would: its runtime pointed at the compiled content, and content a rebuild changed
-// imported. This drives the real endpoint against the running app, and the library's index is what shows it.
+// imported. This drives the real endpoint against the running app, and the library's index is what shows it:
+// the document it renames is one of default-setup's command documents, compiled under its `commands` key.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Page } from '@playwright/test';
@@ -9,7 +10,7 @@ import { test, expect } from '@apackdev/testing';
 import { PACK_LAYOUT, readPackBuild, sealPackBuild } from '@apackdev/host/packs';
 
 const DIST = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist');
-const CONTENT_FILE = path.join(DIST, 'runtime/content/library.content.json');
+const CONTENT_FILE = path.join(DIST, 'runtime/content/commands.content.json');
 const WRITTEN_DOCUMENT = 'Codex commands';
 const REBUILT_DOCUMENT = 'Codex commands after a rebuild';
 

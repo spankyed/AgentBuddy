@@ -27,7 +27,7 @@ function write(file: string, content: string): void {
 
 const read = (file: string) => JSON.parse(fs.readFileSync(path.join(out, file), 'utf-8'));
 
-it.each(['actions', 'prompts', 'flows'])('refuses a declared %s source that is missing instead of indexing nothing', async key => {
+it.each(['actions', 'prompts', 'flows', 'documents', 'commands'])('refuses a declared %s source that is missing instead of indexing nothing', async key => {
   await expect(compile({}, { [key]: 'missing' })).rejects.toThrow(`Content "${key}": source path does not exist`);
   expect(fs.existsSync(path.join(out, CONTENT_INDEX_FILE))).toBe(false);
 });
