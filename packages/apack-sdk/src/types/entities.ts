@@ -12,7 +12,7 @@ import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from './sdk-entities.ts';
 
 export namespace EARS {
   // ─── Entity ────────────────────────────────────────────────────────────
-  // The SDK's own entities (the engine's Relation among them); packs add theirs in their generated EARS
+  // The SDK's own entities; packs add theirs in their generated EARS
   export const Entity = SDK_ENTITIES;
 
   export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
@@ -23,9 +23,7 @@ export namespace EARS {
 
   export type RelKind = Core.RelKind;
 
-  // ─── Shared engine types ───────────────────────────────────────────────
-  export type RelationDetail = Core.RelationDetail;
-
+  // ─── RoleKind ──────────────────────────────────────────────────────────
   export const RoleKind = SDK_ROLES;
   export type RoleKind = Core.RoleKind;
 

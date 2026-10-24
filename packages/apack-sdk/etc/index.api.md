@@ -109,7 +109,6 @@ export type DocumentShortCode = ShortCode<'DOC'>;
 export namespace EARS {
     const // (undocumented)
     Entity: {
-        readonly Relation: "Relation";
         readonly Flow: "Flow";
         readonly Node: "Node";
         readonly Action: "Action";
@@ -130,34 +129,30 @@ export namespace EARS {
     };
     // (undocumented)
     export type AttributeType = EARS_2.AttributeType;
-    // (undocumented)
-    export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
     RoleKind: {
         readonly ROOT_FLOW: "root_flow";
         readonly ENTRY_EVENT: "entry_event";
     };
     // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
+    export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
     const // (undocumented)
     AttrKind: {
         readonly Custom: <T extends string>(k: T) => T & EARS_2.AttrKind;
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
+    // (undocumented)
+    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
     // (undocumented)
     export type AttrKind = EARS_2.AttrKind;
     // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
     // (undocumented)
     export type EntityId<E extends string = string> = EARS_2.EntityId<E>;
-    // (undocumented)
-    export type RelationDetail = EARS_2.RelationDetail;
     // (undocumented)
     export type RelKind = EARS_2.RelKind;
     // (undocumented)
@@ -252,12 +247,6 @@ export interface PromptEntity extends BaseEntity {
     updatedAt: number;
 }
 
-// @public (undocumented)
-export interface RelationEntity extends BaseEntity {
-    // (undocumented)
-    relationDetails: EARS.RelationDetail;
-}
-
 // @public
 export type RunNodeKind = RunNode['kind'];
 
@@ -268,7 +257,6 @@ export function safeEvents<TEvent extends {
 
 // @public
 export type SdkEntityShapes = {
-    Relation: RelationEntity;
     Flow: FlowEntity;
     Node: NodeBase;
     Action: ActionEntity;

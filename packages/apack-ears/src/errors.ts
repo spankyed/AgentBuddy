@@ -4,12 +4,16 @@ export type EarsErrorCode =
   | 'UNKNOWN_ENTITY_TYPE'
   /** `write` was given an id no entity in the engine has */
   | 'NO_SUCH_ENTITY'
+  /** A write to a relation's id other than `destroy()`: a relation holds no fields */
+  | 'NOT_AN_ENTITY'
   /** `create` was given an id an entity already has */
   | 'ID_IN_USE'
   /** `upsert` or `create` named a type the id's entity doesn't have */
   | 'TYPE_MISMATCH'
   /** A write named an attribute the engine owns */
   | 'RESERVED_ATTRIBUTE'
+  /** `create` or `upsert` named one of the engine's own types, which its ids are written with (`RESERVED_ENTITY_TYPES`) */
+  | 'RESERVED_ENTITY_TYPE'
   /** A `where` was given no value to compare with, or `set` none to store */
   | 'NO_VALUE'
   /** A list write (`append`, `removeAt`, `removeValue`) named an attribute whose value isn't a list */
@@ -33,11 +37,17 @@ export class EarsError extends Error {
 }
 
 /**
- * Attributes only the engine writes: its own kinds (a role is written by `grant`, a relation's details by
- * `link`, when an entity was trashed by `trash`) and an entity's identity, type, creation time and last change, which
+ * Attributes only the engine writes: its own kinds (a role is written by `grant`, when an entity was trashed by
+ * `trash`) and an entity's identity, type, creation time and last change, which
  * the engine stamps on every attribute write (`updatedAt`).
  */
-export const RESERVED_ATTRIBUTES = ['id', 'entityType', 'createdAt', 'updatedAt', 'role', 'relationDetails', 'trashedAt'] as const;
+export const RESERVED_ATTRIBUTES = ['id', 'entityType', 'createdAt', 'updatedAt', 'role', 'trashedAt'] as const;
+
+/**
+ * Entity types no pack declares: the engine's own ids are written with them — a relation's `Relation-<suffix>` and a
+ * numbering sequence's `Sequence-<key>` — and neither is an entity a query reaches
+ */
+export const RESERVED_ENTITY_TYPES = { relation: 'Relation', sequence: 'Sequence' } as const;
 
 /** Throws `RESERVED_ATTRIBUTE` for a name only the engine writes */
 export function refuseReserved(name: string, via: string): void {
@@ -47,7 +57,6 @@ export function refuseReserved(name: string, via: string): void {
       `${via}('${name}'): "${name}" is written by the engine, not through ${via}. ` +
         (name === 'createdAt' ? 'Pass it to create(type, { createdAt }).'
           : name === 'role' ? 'Use grant() and revoke().'
-            : name === 'relationDetails' ? 'Use link() and unlink().'
               : 'It is set when the entity is created.'),
     );
   }

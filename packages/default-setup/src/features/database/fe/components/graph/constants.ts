@@ -42,7 +42,6 @@ export const ENTITY_COLORS: Record<string, string> = {
   Message: '#10B981',
   Thread: '#F59E0B',
   Tag: '#EF4444',
-  Relation: '#6B7280',
   Artifact: '#14B8A6',
   Flow: '#EC4899',
   Node: '#6366F1',

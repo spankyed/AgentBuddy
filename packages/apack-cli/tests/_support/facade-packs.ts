@@ -152,7 +152,7 @@ const APP_PACK = {
 };
 
 const CONSUMER = `
-import { EARS as PackEARS, query, create, upsert, write, newId, type EntityShape, type EntityName } from '#generated/ears.ts';
+import { query, create, upsert, write, newId, type EntityShape, type EntityName } from '#generated/ears.ts';
 import { broadcastToSurface, sendToSystem } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
@@ -296,11 +296,10 @@ upsert('Memo', { id: plainId, text: 'x', pinned: 'yes' });
 // A dependency's entity is checked the same way
 // @ts-expect-error Tag.name is a string
 write(tags[0]!.id).set('name', 1);
-// Relation is the SDK's: available and shaped though neither pack declares it
-const kind: 'Relation' = PackEARS.Entity.Relation;
-const relation = query(kind).pickAll()[0]!;
-export type RelationShape = Expect<Equal<typeof relation.relationDetails.source, EARS.EntityId>>;
-// So is the flow model, without depending on default-setup
+// A relation is no entity type, so no query starts from one: findRelations reads them
+// @ts-expect-error 'Relation' names no entity
+query('Relation');
+// The flow model is the SDK's: available and shaped without depending on default-setup
 const action = query('Action').pickAll()[0]!;
 export type ActionShape = Expect<Equal<typeof action.actionFn, string>>;
 // Prompts too
@@ -548,7 +547,7 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
     const missing = (positions: string[], expected: string[]) =>
       positions.filter((position) => !expected.every((name) => at[position]?.includes(name)));
     expect(missing(FIELD_POSITIONS, ['text', 'pinned']), 'positions without Memo field completions').toEqual([]);
-    expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation', 'Prompt']), 'positions without entity-name completions').toEqual([]);
+    expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Flow', 'Prompt']), 'positions without entity-name completions').toEqual([]);
     expect(missing(WRITE_POSITIONS, ['text', 'pinned']), 'write positions without Memo field completions').toEqual([]);
     expect(at.where, 'a read offers the engine\'s fields').toContain('createdAt');
     expect(WRITE_POSITIONS.filter((position) => at[position]?.includes('createdAt')), 'write positions offering an engine field').toEqual([]);
@@ -579,7 +578,8 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
   it.each(['bundler', 'node16'] as const)('offers entity-name completions in query() under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
-    expect(at.query, 'entity-name completions in query()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Prompt']));
+    expect(at.query, 'entity-name completions in query()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Flow', 'Prompt']));
+    expect(at.query, 'a relation is no entity').not.toContain('Relation');
     expect(at.query, 'no completion for an entity no pack here declares').not.toContain('Settings');
   });
 

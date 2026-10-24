@@ -361,7 +361,7 @@ An attribute holds one value, and a list is one array value: a read gives back e
 one-element list as a list. `append`, `removeAt` and `removeValue` work on that array and refuse a value that isn't one
 (`NOT_A_LIST`); `where(k, v)` matches a value equal to `v` or a list holding it.
 
-`id`, `entityType`, `createdAt`, `updatedAt`, `role`, `relationDetails` and `trashedAt` are the engine's: every attribute write refuses
+`id`, `entityType`, `createdAt`, `updatedAt`, `role` and `trashedAt` are the engine's: every attribute write refuses
 them. `create` stamps `entityType` and `createdAt`; pass `createdAt` to keep an original time (an import).
 
 The write builder from `#generated/ears` checks a write when it knows the entity: started with an entity type,

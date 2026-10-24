@@ -114,7 +114,6 @@
             "minLength": 1,
             "not": {
               "enum": [
-                "Relation",
                 "Flow",
                 "Node",
                 "Action",
@@ -189,7 +188,6 @@
               "minLength": 1,
               "not": {
                 "enum": [
-                  "Relation",
                   "Flow",
                   "Node",
                   "Action",

@@ -112,8 +112,8 @@ describe('parseManifest', () => {
   it("rejects declaring the SDK's entities or relation kinds, by name or value, naming each", () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     const errorsOf = (field: object) => messagesOf(parseManifest({ ...pack, ...field }));
-    expect(errorsOf({ data: { entities: { Relation: null, Memo: null } } })).toEqual([
-      'apack.json "data.entities": "Relation" is defined by the SDK and available to every pack: remove it',
+    expect(errorsOf({ data: { entities: { Flow: null, Memo: null } } })).toEqual([
+      'apack.json "data.entities": "Flow" is defined by the SDK and available to every pack: remove it',
     ]);
     expect(errorsOf({ data: { relations: ['contains', 'transitions_to', 'holds', 'pinned'] } })).toEqual([
       'apack.json "data.relations": "CONTAINS": "contains", "TRANSITIONS_TO": "transitions_to" are defined by the SDK and available to every pack: remove them',
@@ -123,6 +123,14 @@ describe('parseManifest', () => {
     expect(errorsOf({ data: { entities: { constructor: null, toString: null } } })).toEqual([]);
     // Settings is not an SDK-reserved entity name
     expect(errorsOf({ data: { entities: { Memo: null, Note: null, Settings: null }, relations: ['pinned'] }, })).toEqual([]);
+  });
+
+  it("rejects an entity type the engine's own ids are written with: a relation's and a numbering sequence's", () => {
+    const errorsOf = (entities: object) => messagesOf(parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', data: { entities } }));
+    expect(errorsOf({ Relation: null, Sequence: null, Memo: null })).toEqual([
+      'apack.json "data.entities": "Relation" is the engine\'s own, which its ids are written with (Relation-…): name the entity type something else',
+      'apack.json "data.entities": "Sequence" is the engine\'s own, which its ids are written with (Sequence-…): name the entity type something else',
+    ]);
   });
 
   it('rejects malformed shape targets and names both duplicate owners', () => {

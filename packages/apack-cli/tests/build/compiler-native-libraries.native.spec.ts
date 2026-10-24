@@ -3,7 +3,7 @@ import path from 'node:path';
 import { expect, it, onTestFinished } from 'vitest';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import { createCompilerModuleLoader } from '../../src/build/compiler-modules.ts';
-import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { FIXTURE_DATA, FIXTURE_ENTITY, packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
 import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
@@ -86,7 +86,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
   checkpoint('fixtures ready');
   try {
     packFixture({ at: supported.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {},
-      ...(site === 'thread' ? { content: { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+      ...(site === 'thread' ? { data: FIXTURE_DATA, content: { formats: { rows: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY, identity: ['name'] } },
         sources: { rows: { path: 'src/value.txt', format: 'rows' } } } } : {}) },
       files: { 'src/value.txt': 'input', 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
     writeLoader(supported);
@@ -150,7 +150,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux')('retains
   try {
     fs.mkdirSync(search);
     packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {},
-      content: { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+      data: FIXTURE_DATA, content: { formats: { rows: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY, identity: ['name'] } },
         sources: { rows: { path: 'src/value.txt', format: 'rows' } } } },
       files: { 'src/compiler.ts': nativeWorkerCompiler(nativeLoad(fixture, proof)), 'src/value.txt': 'input',
         'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });

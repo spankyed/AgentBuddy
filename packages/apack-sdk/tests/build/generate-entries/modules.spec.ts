@@ -216,7 +216,9 @@ describe("the SDK's entities and relation kinds", () => {
     const names = ears.match(/export type EntityName = ([^;]*);/)![1];
     expect(names).toContain("'Memo'");
     expect(names).toContain("'Tag'");
-    expect(names).toContain("'Relation'");
+    expect(names).toContain("'Flow'");
+    // A relation is no entity, so no name stands for one
+    expect(names).not.toContain("'Relation'");
   });
 
   it("registers only the pack's own entities and relation kinds, not its dependencies' or the SDK's", async () => {
@@ -227,7 +229,7 @@ describe("the SDK's entities and relation kinds", () => {
   });
 
   it("rejects a pack's own declaration of the SDK's names", async () => {
-    await expect(generate({ data: { entities: { Relation: null } } })).rejects.toThrow(/entity "Relation" is defined by the SDK/);
+    await expect(generate({ data: { entities: { Flow: null } } })).rejects.toThrow(/entity "Flow" is defined by the SDK/);
     await expect(generate({ data: { entities: { Action: null } } })).rejects.toThrow(/entity "Action" is defined by the SDK/);
     await expect(generate({ data: { relations: ['transitions_to'] } })).rejects.toThrow(/relKind "TRANSITIONS_TO": "transitions_to" is defined by the SDK/);
   });

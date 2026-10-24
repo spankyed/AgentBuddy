@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { _PACK_VERSION_PATTERN, _validPackVersion, _validPackRange, parsePackDependency } from './dependency-source.ts';
 import { PackChecksSchema } from './pack-checks.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from '../types/sdk-entities.ts';
+import { RESERVED_ENTITY_TYPES } from '@apackdev/ears';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { HOST_PACK_ID } from '../ids/refs.ts';
 import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/refs.ts';
@@ -45,6 +46,13 @@ function checkDeclaredNames(raw: unknown, ctx: z.RefinementCtx): unknown {
         path: [...ctx.path, ...path],
         addIssue: issue => ctx.addIssue({ ...issue, path: [...path, ...(issue.path ?? [])] }),
       });
+      if ((Object.values(RESERVED_ENTITY_TYPES) as string[]).includes(name)) {
+        ctx.addIssue({
+          code: 'custom',
+          path,
+          message: `"${name}" is the engine's own, which its ids are written with (${name}-…): name the entity type something else`,
+        });
+      }
     }
   } catch (error) {
     ctx.addIssue({ code: 'custom', message: error instanceof Error ? error.message : String(error) });

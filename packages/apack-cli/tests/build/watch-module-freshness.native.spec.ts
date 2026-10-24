@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, it, vi } from 'vitest';
-import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { FIXTURE_DATA, FIXTURE_ENTITY, packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
 import { startTestPackBuildWatcher, WATCH_REBUILD_BUDGET_MS, type TestPackBuildWatcher } from '../_support/watch-builds.ts';
@@ -63,10 +63,10 @@ it('recompiles changed transitive content modules and retains the accepted build
   try {
     packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
       id: 'watched-content', name: 'Watched content', features: {},
-      content: { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } },
+      data: FIXTURE_DATA, content: { formats: { tags: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY } },
         sources: { tags: { path: 'src/data.ts', format: 'tags' } } },
     }, files: {
-      'src/compiler.ts': "import { label } from './value.ts'; export default function compile() { return [{ entity: 'Relation', label }]; }",
+      'src/compiler.ts': "import { label } from './value.ts'; export default function compile() { return [{ entity: " + JSON.stringify(FIXTURE_ENTITY) + ", label }]; }",
       'src/value.ts': "export const label = 'first';",
       'src/data.ts': 'export default [];',
     } });

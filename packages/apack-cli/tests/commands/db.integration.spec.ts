@@ -802,17 +802,20 @@ describe('apack db inspect', () => {
 });
 
 describe('apack db export', () => {
-  it('writes a file per entity type with entities, and a summary', async () => {
+  it('writes a file per entity type with entities, the relations, and a summary', async () => {
     const dir = await appDataDir();
     const out = path.join(dir, 'export');
     await ok(['export', '--out', out, '--data-dir', dir]);
     const notes = JSON.parse(fs.readFileSync(path.join(out, 'Note.json'), 'utf-8'));
     expect(notes.map((n: { id: string }) => n.id).sort()).toEqual(['Note-a', 'Note-b']);
     expect(notes.find((n: { id: string }) => n.id === 'Note-a')).toMatchObject({ title: 'Alpha', role: ['assistant_birth'] });
-    expect(fs.existsSync(path.join(out, 'Relation.json'))).toBe(true);
+    expect(JSON.parse(fs.readFileSync(path.join(out, 'Relation.json'), 'utf-8'))).toEqual([
+      expect.objectContaining({ kind: 'parent_of', source: 'Note-a', target: 'Note-b' }),
+    ]);
     expect(fs.existsSync(path.join(out, 'Flow.json'))).toBe(false);
     const summary = JSON.parse(fs.readFileSync(path.join(out, 'export.json'), 'utf-8'));
-    expect(summary).toMatchObject({ userDataDir: dir, format: 'json', counts: { Note: 2, Settings: 1, AppState: 1, Relation: 1 } });
+    expect(summary).toMatchObject({ userDataDir: dir, format: 'json', counts: { Note: 2, Settings: 1, AppState: 1 }, relations: 1 });
+    expect(summary.counts).not.toHaveProperty('relations');
   });
 
   it('exports the types asked, as CSV, and refuses a type no pack declares', async () => {

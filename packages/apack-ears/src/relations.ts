@@ -21,8 +21,8 @@ export function createRelationReads({ edgeStore, storage, names }: { edgeStore: 
   function findRelations(match: RelationMatch = {}): RelationRow[] {
     if (match.kind !== undefined) names.relationKinds(match.kind, 'findRelations');
     return edgeStore.relIds(match).flatMap((id) => {
-      const detail = storage.getAttr(id, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | undefined;
-      return detail ? [{ ...detail, id }] : [];
+      const row = storage.relationOf(id);
+      return row ? [row] : [];
     });
   }
 

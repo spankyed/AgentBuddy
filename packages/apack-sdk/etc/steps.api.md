@@ -161,7 +161,6 @@ export type RunTree = RunNode & {
 
 // @public
 export type SdkEntityShapes = {
-    Relation: RelationEntity;
     Flow: FlowEntity;
     Node: NodeBase;
     Action: ActionEntity;

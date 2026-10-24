@@ -39,6 +39,9 @@ a running app's files: copy `data.mdb`, convert the copy with `scripts/ears-conv
 through `onWriteFailure` after the writer has moved on, so memory runs ahead of disk with no signal to the code that
 wrote. A production app dropped 3,187 writes in one session that way. The main environment also opens with default
 sync, so every flush is an `F_FULLFSYNC` on the API's main thread (3.5–8 ms in the spike), twice for a `transact`.
+And a backup can miss a write: `copyTo` (`lmdb/store.ts`) starts LMDB's `backup` in the turn it is called, before
+the adapter's microtask flush, so a write made earlier in that same synchronous turn is not in the copy (anything
+from an earlier turn has been flushed already).
 
 **Design.**
 
@@ -61,6 +64,9 @@ sync, so every flush is an `F_FULLFSYNC` on the API's main thread (3.5–8 ms in
   `replaceWith(dir)` on both store kinds: open the candidate read-only, clear, copy its rows, one transaction; the
   rollback is `replaceWith` of the rollback copy. Removed: `reopen`, `heldForReset`, `openFailure` and the carried
   error stats; the running app's store never closes.
+- **A backup holds every write made before it.** With nothing buffered, `copyTo` copies what is committed, which is
+  every write that returned. Until Part A lands, the gap closes on its own with a flush of the adapter before
+  `backup` (three lines in `copyTo`); a spec writes and backs up in one turn and reads the write from the copy.
 
 **Costs.** Every write records an undo, as a `transact` write does today (1,000 creates: 4.5 ms alone against
 6.9 ms as one unit, an upper bound to measure). A full disk surfaces as an error in the system that wrote rather
@@ -68,7 +74,8 @@ than as silent loss. `PersistenceSink` (in the change-controlled `runtime.ts`, t
 packs see) loses `getErrorStats`; `api:update` moves.
 
 **Done when:** a child killed with SIGKILL right after a write returns reopens with it; a commit that fails leaves
-memory unchanged and throws; reset and import work while systems keep writing; each mutation-checked; the bench
+memory unchanged and throws; reset and import work while systems keep writing; a backup started in the turn of a
+write holds it; each mutation-checked; the bench
 records the implicit unit's cost.
 
 ## Part B — thread messages and their artifacts in a record store

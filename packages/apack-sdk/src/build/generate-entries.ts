@@ -204,17 +204,14 @@ ${roleMembers.join('\n')}
   /** Whether a role that arrived as data is one of them */
   export const isRole = (value: unknown): value is RoleKind => (ROLES as readonly unknown[]).includes(value);
 
-  export const AttrKindValues = { Role: 'role', RelationDetails: 'relationDetails' } as const;
+  export const AttrKindValues = { Role: 'role' } as const;
   export namespace AttrKind {
     export const Role = 'role';
     export type Role = typeof Role;
-    export const RelationDetails = 'relationDetails';
-    export type RelationDetails = typeof RelationDetails;
     export const Custom = <T extends string>(k: T) => k as T & AttrKind;
   }
   export type AttrKind = import('@apackdev/ears').EARS.AttrKind;
 
-  export type RelationDetail = import('@apackdev/ears').EARS.RelationDetail;
   export type AttributePayloads = import('@apackdev/ears').EARS.AttributePayloads;
   export type AttributeValue<K extends AttrKind = AttrKind> = import('@apackdev/ears').EARS.AttributeValue<K>;
   export type AttributeTypeMap = import('@apackdev/ears').EARS.AttributeTypeMap;
