@@ -1,7 +1,7 @@
 // apack db export: each entity type's entities, with their attributes, to a file per type, and the relations
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { EARS } from '@apackdev/ears';
+import { RESERVED_ENTITY_TYPES, type EARS } from '@apackdev/ears';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 import { toCSV, toJSON } from './output';
 
@@ -15,7 +15,7 @@ export const EXPORT_USAGE = [
   'Usage: apack db export --out <dir> [--type <Entity>...] [options]',
   '',
   'Writes each entity type\'s entities, with every attribute, to <dir>/<Entity>.json (or .csv), the relations to',
-  '<dir>/relations.json (each { id, kind, source, target, info }; not with --type), and a summary to <dir>/export.json.',
+  '<dir>/Relation.json (each { id, kind, source, target, info }; not with --type), and a summary to <dir>/export.json.',
   'Roles are an attribute, `role`.',
   '',
   'Options:',
@@ -52,22 +52,24 @@ export async function dbExport(args: string[], io: DbIo): Promise<void> {
       counts[type] = rows.length;
       io.out(`${type}: ${rows.length}`);
     }
-    // Relations are no entity type: every one, unless the export was narrowed to types
+    // Relations are no entity type: every one, unless the export was narrowed to types. Their file is named for the
+    // engine's own relation prefix, which no entity type can be, so it never takes an entity type's file
+    let relations: number | undefined;
     if (!requested) {
-      const relations = db.ears.findRelations();
-      fs.writeFileSync(path.join(outDir, `relations.${format}`), format === 'csv' ? toCSV(relations) : `${toJSON(relations)}\n`);
-      counts.relations = relations.length;
-      io.out(`relations: ${relations.length}`);
+      const rows = db.ears.findRelations();
+      fs.writeFileSync(path.join(outDir, `${RESERVED_ENTITY_TYPES.relation}.${format}`), format === 'csv' ? toCSV(rows) : `${toJSON(rows)}\n`);
+      relations = rows.length;
+      io.out(`relations: ${relations}`);
     }
     const summary = {
       exportedAt: new Date().toISOString(),
       userDataDir: db.userDataDir,
       format,
       counts,
+      ...(relations !== undefined && { relations }),
     };
     fs.writeFileSync(path.join(outDir, 'export.json'), `${toJSON(summary)}\n`);
-    const relations = counts.relations ?? 0;
-    const entities = Object.values(counts).reduce((sum, n) => sum + n, 0) - relations;
-    io.err(`Exported ${entities} entities${requested ? '' : ` and ${relations} relations`} to ${outDir}`);
+    const entities = Object.values(counts).reduce((sum, n) => sum + n, 0);
+    io.err(`Exported ${entities} entities${relations === undefined ? '' : ` and ${relations} relations`} to ${outDir}`);
   });
 }

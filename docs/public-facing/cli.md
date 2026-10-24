@@ -780,7 +780,7 @@ List the flow runs in the run history, newest first (20 unless `--limit` says ot
 
 #### `apack db export --out <dir> [--type <Entity>...] [--format json|csv]`
 
-Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json` (or `.csv`), and a summary (when it ran, the data dir, the format and the counts) to `<dir>/export.json`. Without `--type`, every type with entities and the relations, to `<dir>/relations.json` (each `{ id, kind, source, target, info }`). Roles are in each entity's `role` attribute.
+Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json` (or `.csv`), and a summary (when it ran, the data dir, the format and the counts) to `<dir>/export.json`. Without `--type`, every type with entities and the relations, to `<dir>/Relation.json` (each `{ id, kind, source, target, info }`; `Relation` is the engine's own name, which no entity type can take), with their count as the summary's `relations`. Roles are in each entity's `role` attribute.
 
 #### `apack db import <backup-dir> [--force] [--skip-unknown]` (names its data dir)
 
