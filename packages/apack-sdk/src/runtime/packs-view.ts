@@ -12,10 +12,11 @@ import type { ContentApplier } from '../utils/apply.ts';
 import type { SettingsCatalog } from '../framework/pack-settings.ts';
 import type { HelpCatalog } from '../framework/pack-help.ts';
 
-/** Entity types and relation kinds by the name they're declared under (`apack.json` `entities`, `relKinds`) */
+/** Entity types, relation kinds and roles by the name they're declared under (their EARS constants) */
 export interface EarsNames {
   entities: Record<string, string>;
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
 }
 import { _isHostBound, boundHost } from './host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from './fe-host.ts';
@@ -41,6 +42,8 @@ export interface PackRegistryView extends PackExtensionsView {
   stepBindings(): ReadonlyMap<string, StepBackendBinding>;
   /** Every registered pack's services, by name */
   getRegisteredServices(): Record<string, unknown>;
+  /** The repository a registered pack declares under `name`, or undefined */
+  repository(name: string): unknown;
   /** The refs of every registered system, the host's included */
   systemIds(): readonly FeatureRef[];
   /** The refs of every registered surface, the host's included */

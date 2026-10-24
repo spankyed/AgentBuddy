@@ -167,7 +167,7 @@ export const threadsSystem = setup({
     },
     updateThreadStatus: ({ event }) => {
       const { threadId, status } = threadsSpec.typeOf('UPDATE_THREAD_STATUS', event);
-      const updates = { status, updatedAt: Date.now() };
+      const updates = { status };
       try {
         repository.threadCommands.update(threadId as EARS.EntityId, updates);
       } catch (error) {
@@ -605,7 +605,7 @@ export const threadsSystem = setup({
         const sourceMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
         const sourceIndex = sourceMessages.findIndex((m: any) => m.id === messageId);
         const sourceUserMessagesAfterFork = sourceIndex >= 0
-          ? sourceMessages.slice(sourceIndex + 1).filter((m: any) => m.sender === 'user' && !m.deleted).length
+          ? sourceMessages.slice(sourceIndex + 1).filter((m: any) => m.sender === 'user').length
           : 0;
         const originalTopic = threadTopic || 'Untitled';
 

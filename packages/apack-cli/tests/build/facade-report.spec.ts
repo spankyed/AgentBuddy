@@ -140,7 +140,7 @@ describe('readBuiltFacadeReport', () => {
     fs.writeFileSync(path.join(directory, PACK_LAYOUT.runtimeEntry), 'throw new Error("Report activated runtime");');
     fs.writeFileSync(path.join(directory, PACK_LAYOUT.snapshot), JSON.stringify({
       manifest, declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
-      types: { entities: {}, relKinds: {} }, entityDestinations: {},
+      types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {},
       facades: { [PACK_TYPES_FACADE]: 'export interface Memo { title: string }' },
     }));
     writePackBuildInputs(directory, { compiler: 'a'.repeat(64), execution: 'b'.repeat(64), options: [], observations,

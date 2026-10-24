@@ -5,7 +5,6 @@ type ThreadMessage = {
   id?: string;
   text?: string;
   sender?: string;
-  deleted?: boolean;
   compacted?: boolean;
   isCommand?: boolean;
   status?: string | null;
@@ -24,7 +23,6 @@ export interface BootstrapPromptOptions {
 function shouldIncludeMessage(message: ThreadMessage, currentMessageId?: string): boolean {
   if (!message?.text?.trim()) return false;
   if (currentMessageId && message.id === currentMessageId) return false;
-  if (message.deleted) return false;
   if (message.status === 'queued' || message.status === 'cancelled') return false;
   if (message.sender === 'marker') return false;
   if (message.isCommand) return false;

@@ -43,9 +43,9 @@ For app contributors working in the apack source monorepo, see the
 
 `apack logs [--channel production|beta|preview] [--follow] [--lines <count>]` reads the installed app’s `main.log` (100 recent lines by default). Following waits for the file and follows rotation; Ctrl-C stops the reader.
 
-`apack db backup --out <new-directory> [--profile <name> | --data-dir <path>]` creates a full backup compatible with `apack db import`. Close the app first. Both database partitions and media are included; installed packs and secrets are excluded. The backup directory is accessible only to its owner. Existing destinations and destinations inside the source data directory are refused.
+`apack db backup --out <new-directory> [--profile <name> | --data-dir <path>]` creates a full backup compatible with `apack db import`. Close the app first. The database, the run history and media are included; installed packs and secrets are excluded. The backup directory is accessible only to its owner. Existing destinations and destinations inside the source data directory are refused.
 
-`apack db backup verify <directory> [--json]` checks database readability and listed partitions/media before restoration. It does not open your app data. It checks the backup format and completeness; entity-type compatibility depends on the packs installed when you import. Invalid backups exit nonzero; JSON reports include `valid: false` and the error.
+`apack db backup verify <directory> [--json]` checks that each listed store opens and that the listed media is there, before restoration. It does not open your app data. It checks the backup format and completeness; entity-type compatibility depends on the packs installed when you import. Invalid backups exit nonzero; JSON reports include `valid: false` and the error.
 
 `apack pack outdated [--profile <name>] [--json]` checks GitHub-installed packs for newer releases compatible with the profile’s recorded app version. Beta profiles include prereleases. Local/URL installs and app-shipped packs are reported as unmanaged. A failed check exits nonzero; finding an update alone does not. CLI GitHub installs record their source for subsequent checks; uninstall removes that record.
 
@@ -480,7 +480,7 @@ Checks:
 | `internal-package-imports` | an `@apackdev` export named `_x`: it is `@internal`, the app's own, and an app update is free to rename it | no |
 | `host-imports` | `@apackdev/host`, which is not installed for a pack | no |
 | `lmdb-imports` | `lmdb` or `@apackdev/ears/lmdb`: your data comes through the engine the app installs | no |
-| `untyped-sends` | `untypedBroadcastToSurface`, `untypedSendToSystem`, `registerRepository` — use the typed facades from `#generated/events` | yes |
+| `untyped-sends` | `untypedBroadcastToSurface`, `untypedSendToSystem` — use the typed facades from `#generated/events` | yes |
 | `raw-transport` | `_rootEvents`, `trpc.bus`, `@apackdev/sdk/rpc` | yes |
 | `backend-console` | `console.*` under `features/*/be/`, `migrations/` or `extensions/` — use `createLogger` from `@apackdev/sdk/logger` | yes |
 | `component-sends` | `sendToSurface` from a feature's `.vue`. A component runs in no delivery, so the send carries no `Message.sender` and the surface it reaches cannot answer it — emit to your own surface with `useSurface()` and let its machine send. An extension's component is exempt: it is rendered in no surface scope and by no single surface, so it addresses a surface by ref and `sendToSurface` is that route's send | no |
@@ -699,6 +699,7 @@ app afterwards.
 ```bash
 apack db query "return query(EARS.Entity.Note).count()"
 apack db inspect Flow-123 --depth 2
+apack db runs                               # the latest flow runs
 apack db export --out ./export
 apack db import ./apack-backup-2026-09-17 --profile production --force
 apack db reset --profile production        # lists what it would delete
@@ -715,7 +716,7 @@ pack runtimes.
 
 While a command changes the database it holds a lock on the data dir (`db-write.lock`), so a second `apack db` is refused and an apack started meanwhile refuses to open that database instead of overwriting the change. A lock left behind by a command that was killed is ignored once its process is gone.
 
-**The run history.** The database has two partitions: the app's data, and the run history (`TNode` rows, what each flow step did). Commands read the data only, as the app does, so a query for `TNode` comes back empty until you pass `--volatile`, which reads both. `reset` deletes both either way; its listing counts the run history only with `--volatile`.
+**The run history.** What each flow run did is not in the database: it is the run history, a store of its own beside it (`run-history`), which `apack db runs` reads. Backups, `import` and `reset` cover it with the database, and the app keeps 30 days of it.
 
 **Writing.** There is no apply command: apack content each pack's data when it starts (and `apack pack dev` re-applies a pack it rebuilds), so start the app rather than content a data dir by hand.
 
@@ -723,7 +724,7 @@ While a command changes the database it holds a lock on the data dir (`db-write.
 
 #### `apack db query <code> | --file <path> [-o pretty|json|csv] [--out <file>]`
 
-Run query code with the Database console's read helpers: `query`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `findEntitiesByAttribute`, `findEntitiesByRelationTo`, `findEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`apack db script`) can.
+Run query code with the Database console's read helpers: `query` (with `query.withTrashed` and `query.trashed`), `EARS`, `getRow`, `getAttr`, `getRoles`, `findRelations`, `getSchemaStats`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`apack db script`) can.
 
 ```bash
 apack db query "return query(EARS.Entity.Settings).pickAll()" -o json --out settings.json
@@ -732,7 +733,7 @@ apack db query --file ./report.js -o csv
 
 #### `apack db exec <code> | --file <path> [-o pretty|json|csv] [--out <file>]` (names its data dir)
 
-Run transaction code with the console's read and write helpers (`create`, `upsert`, `write`, `destroyEntity`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `createRelation`, `removeRelation`, `removeRelationById`, `grantRole`, `revokeRole`). The code runs as one transaction: if it throws part way, none of its writes are kept, and the failure says so. It is synchronous — `await` doesn't parse, and code returning a promise is refused — since an await would split the transaction. A write that fails to reach the files fails the command.
+Run transaction code with the console's read and write helpers (`create`, `upsert` and `write`; `write(id)` sets, links, grants, trashes and destroys, and `write(relationId).destroy()` removes one relation). The code runs as one transaction: if it throws part way, none of its writes are kept, and the failure says so. It is synchronous — `await` doesn't parse, and code returning a promise is refused — since an await would split the transaction. A write that fails to reach the files fails the command.
 
 ```bash
 apack db exec "write('Note-123').set('title', 'Renamed')"
@@ -749,9 +750,9 @@ Run a script file against the database, for work a one-liner can't do: it import
 ```ts
 // notes-report.ts
 export default async ({ db, EARS, args, log }) => {
-  const notes = db.ears.getEntitiesOfType(EARS.Entity.Note);
+  const notes = db.ears.query(EARS.Entity.Note).ids();
   log(`${notes.length} notes`);
-  return notes.map((id) => db.ears.getAll(id));
+  return notes.map((id) => db.ears.getRow(id));
 };
 ```
 
@@ -762,7 +763,7 @@ apack db script ./cleanup.ts --profile development -- --older-than 30
 
 | It receives | |
 |---|---|
-| `db` | the open database: `query` (`query`, `create`, `upsert`, `write`, the finders), `admin`, `store`, `schema`, `paths`, `userDataDir` |
+| `db` | the open database: `query` (`query`, `create`, `upsert`, `write`), `admin`, `store`, `schema`, `paths`, `userDataDir` |
 | `EARS` | the entity types and relation kinds of the packs installed in that data dir |
 | `args` | whatever follows `--` |
 | `log` | prints a line, like the script's own output |
@@ -773,17 +774,21 @@ The database is handed to the script rather than left for it to open: the publis
 
 Print an entity, its roles and its relations grouped by kind, following them `--depth` levels (default 1); `--incoming` or `--outgoing` shows one direction. `--type` prints the first five entities of a type. With neither, it prints entities and relations per entity type.
 
+#### `apack db runs [--run <id>] [--flow <id>] [--limit <n>] [--json]`
+
+List the flow runs in the run history, newest first (20 unless `--limit` says otherwise): each session's root and every flow it ran, one line each with its id, status, start time, label and the flow it ran. `--flow` lists one flow's runs, and `--json` prints the list as JSON. `--run <id>` prints that run node and everything under it — the events it heard, the steps they ran, each with what it was given and what it returned — as one JSON tree. It opens the run history read-only, so it works while apack runs (with the usual warning) and changes nothing.
+
 #### `apack db export --out <dir> [--type <Entity>...] [--format json|csv]`
 
-Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json` (or `.csv`), and a summary (when it ran, the data dir, the format and the counts) to `<dir>/export.json`. Without `--type`, every type with entities. Roles are in each entity's `role` attribute, and relations are the `Relation` entities (their `relationDetails`).
+Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json` (or `.csv`), and a summary (when it ran, the data dir, the format and the counts) to `<dir>/export.json`. Without `--type`, every type with entities and the relations, to `<dir>/Relation.json` (each `{ id, kind, source, target, info }`; `Relation` is the engine's own name, which no entity type can take), with their count as the summary's `relations`. Roles are in each entity's `role` attribute.
 
 #### `apack db import <backup-dir> [--force] [--skip-unknown]` (names its data dir)
 
-Replace the database, and the media folder when the backup has one, with a backup made in the Database settings' Backup & Restore. The backup is checked first: it has `metadata.json`, lists the app's main database, that folder is there, and every database it would put in place opens in a storage format this version reads — so a backup this apack can't read is refused before any of your data is replaced. A backup made by a newer apack may also hold stores this one doesn't have; importing it would replace your data with an incomplete copy, so it's refused unless you pass `--skip-unknown`, which imports it without them. If the backup lists a store it holds nothing for, the listing says so and that store comes back empty. Without `--force` it lists the backup, its contents and what it would replace, and changes nothing. The app migrates the data on its next start if the backup is from an earlier version.
+Replace the database and the run history the backup holds, and the media folder when it has one, with a backup made in the Database settings' Backup & Restore. The backup is checked first: it has `metadata.json`, lists the app's main database, that folder is there, and every database it would put in place opens in a storage format this version reads — so a backup this apack can't read is refused before any of your data is replaced. A backup made by a newer apack may also hold stores this one doesn't have; importing it would replace your data with an incomplete copy, so it's refused unless you pass `--skip-unknown`, which imports it without them. If the backup lists a store it holds nothing for, the listing says so and that store comes back empty. Without `--force` it lists the backup, its contents and what it would replace, and changes nothing. The app migrates the data on its next start if the backup is from an earlier version.
 
 #### `apack db reset [--force] [--keep-keys]` (names its data dir)
 
-Delete all of the app's data, as Reset Database in the Database settings does: both database partitions (the data and the run history) and the stored secrets. The app creates its default data (settings, written flows, the packs' content) on its next start and shows onboarding. Without `--force` it lists the entities per type and each stored secret it would delete.
+Delete all of the app's data, as Reset Database in the Database settings does: the database, the run history and the stored secrets. The app creates its default data (settings, written flows, the packs' content) on its next start and shows onboarding. Without `--force` it lists the entities per type and each stored secret it would delete.
 
 No backup holds the secrets — `export` and the Database settings' backups copy the databases and the media folder, never the secrets or the data key that encrypts them — so a deleted secret is entered again in Settings → Secrets. That's why the listing names each one by provider and label (never its value), and why `--keep-keys` leaves them where they are and deletes only the data.
 
@@ -791,7 +796,7 @@ No backup holds the secrets — `export` and the Database settings' backups copy
 
 Destroy every Settings row (the user's changes to the default settings); the app recreates the defaults on its next start. Without `--force` it lists each row and the settings it stores.
 
-In the apack repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return query.all().count()"`.
+In the apack repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:runs`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return query.all().count()"`.
 
 ### Cleanup
 

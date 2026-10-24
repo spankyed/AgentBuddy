@@ -2,7 +2,7 @@
 import { open, type Database, type RootDatabase } from 'lmdb';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Partition } from '../persistence/policy.ts';
+import { checkStamp } from './stamp.ts';
 
 /** The databases of one LMDB environment: entity records, attribute rows and relations */
 export type LmdbDbs = {
@@ -16,53 +16,13 @@ export type LmdbDbs = {
  * How this version of `@apackdev/ears` encodes rows in LMDB (keys, attribute and relation records). An environment
  * records the format it was written in; one in another format is refused rather than misread.
  *
- * Format 2 keeps one record of each fact: an entity's row holds only its type, written when it is created; a
- * relation is its row in the relations table, with no attribute copy and no entity row; `entityType` is read from
- * the id rather than stored. Format 1 also stored those copies, and they had drifted apart. There is no upgrade in
- * the app: `scripts/ears-format-2.ts` converts a copy of a format 1 data dir, once, explicitly.
+ * Format 3 keeps one record of each fact, and one row per attribute: an entity's row holds only its type, written
+ * when it is created; an attribute is one row keyed `kind␟entityId` holding its one value (a list is one array
+ * value); a relation is its row in the relations table, with no attribute copy and no entity row; `entityType` is
+ * read from the id rather than stored. There is no upgrade in the app: `scripts/ears-convert.ts` converts a copy of
+ * an older data dir, once, explicitly (`convertToCurrentFormat`).
  */
-export const LMDB_FORMAT_VERSION = 2;
-
-/** The environment's own records, beside its data: its storage format */
-const META_DB = 'meta';
-const FORMAT_KEY = 'format';
-
-/**
- * Checks the environment's storage format, and records it in a new, empty one unless it's read-only. Data that
- * records no format was written before formats were recorded, which is format 1. Throws for any format but this
- * one.
- */
-function checkFormat(root: RootDatabase, basePath: string, readOnly: boolean): void {
-  // A read-only environment has no database the writer never created, and one written before formats were recorded
-  // has none either
-  const meta = root.openDB({ name: META_DB, encoding: 'json' }) as Database<unknown> | undefined;
-  let format = meta?.get(FORMAT_KEY);
-  if (format === undefined) {
-    if (holdsData(root)) {
-      format = 1;
-    } else {
-      // An empty environment is stamped before anything is written to it, and a stamp that fails refuses the open:
-      // the next open would read this version's writes, unstamped, as format 1 and refuse them. Refusing now costs
-      // nothing, since there is nothing in it yet
-      if (!readOnly && meta) {
-        try {
-          meta.putSync(FORMAT_KEY, LMDB_FORMAT_VERSION);
-        } catch (error) {
-          throw new Error(`Couldn't record the storage format of ${basePath}, so it isn't opened: ${(error as Error).message}`);
-        }
-      }
-      return;
-    }
-  }
-  if (format !== LMDB_FORMAT_VERSION) {
-    const newer = typeof format === 'number' && format > LMDB_FORMAT_VERSION;
-    throw new Error(
-      `The database at ${basePath} is in storage format ${JSON.stringify(format)}, but this version reads format ${LMDB_FORMAT_VERSION}` +
-      (newer ? ': it was written by a newer apack, so update this one'
-        : format === 1 ? ': convert a copy of it with scripts/ears-format-2.ts' : ''),
-    );
-  }
-}
+export const LMDB_FORMAT_VERSION = 3;
 
 /** Whether any of the environment's data databases holds a row */
 function holdsData(root: RootDatabase): boolean {
@@ -93,7 +53,13 @@ export function openEnvAt(basePath: string, { readOnly = false }: { readOnly?: b
     readOnly,
   });
   try {
-    checkFormat(root, basePath, readOnly);
+    checkStamp(root, basePath, readOnly, {
+      format: LMDB_FORMAT_VERSION,
+      noun: 'database',
+      // Data that records no format was written before formats were recorded, which is format 1
+      unstamped: (env) => (holdsData(env) ? 1 : undefined),
+      older: 'convert a copy of it with scripts/ears-convert.ts',
+    });
   } catch (error) {
     root.close();
     throw error;
@@ -107,51 +73,21 @@ export function openEnvAt(basePath: string, { readOnly = false }: { readOnly?: b
   };
 }
 
-/** Each partition's database directory */
-export type LmdbPaths = Record<Partition, string>;
+/** Whether `error` says only that a database was already closed, which closing it again is allowed to meet */
+export const isAlreadyClosed = (error: unknown) =>
+  error instanceof Error && (error.message.includes('Dbi is not open') || error.message.includes('already been closed'));
 
-/** Opens each partition's environment; `readOnly` opens existing ones without writing */
-export function openShardedEnvs(paths: LmdbPaths, { readOnly = false }: { readOnly?: boolean } = {}): Record<Partition, LmdbDbs> {
-  const primary = openEnvAt(paths.primary, { readOnly });
+/**
+ * Closes an environment's databases, then its root, so the root closes even when a child was closed already.
+ * Throws anything else it meets: what to do with it is the caller's.
+ */
+export function closeEnv(dbs: LmdbDbs): void {
   try {
-    return { primary, volatileBackup: openEnvAt(paths.volatileBackup, { readOnly }) };
-  } catch (error) {
-    // Neither partition stays open when one of them can't be
-    closeEnv(primary, () => {});
-    // The volatile partition holds run history and nothing else, which is worth saying before someone despairs of a
-    // database that is otherwise fine
-    throw new Error(`${(error as Error).message}\n  It holds the run history only: deleting ${paths.volatileBackup} loses that and nothing else.`, { cause: error });
-  }
-}
-
-export function closeShardedEnvs(envs: Record<Partition, LmdbDbs>, log: (message: string) => void = console.log) {
-  closeEnv(envs.primary, log);
-  closeEnv(envs.volatileBackup, log);
-}
-
-export function closeEnv(dbs: LmdbDbs, log: (message: string) => void = console.log): void {
-  try {
-    // Close child databases first, then root
-    // This ensures clean shutdown even if root close fails
     dbs.entities?.close();
     dbs.attrs?.close();
     dbs.relations?.close();
     dbs.root?.close();
-    log('[LMDB] Environment closed successfully');
-  } catch (error: any) {
-    // Only log unexpected errors (not "already closed" errors)
-    if (!error?.message?.includes('Dbi is not open') &&
-        !error?.message?.includes('already been closed')) {
-      console.error('[LMDB] Error closing environment:', error);
-    }
-  }
-}
-
-/** Delete all LMDB database directories. Must be called after connections are closed. */
-export function deleteLmdbDirectories(paths: LmdbPaths): void {
-  for (const dbPath of [paths.primary, paths.volatileBackup]) {
-    if (fs.existsSync(dbPath)) {
-      fs.rmSync(dbPath, { recursive: true, force: true });
-    }
+  } catch (error) {
+    if (!isAlreadyClosed(error)) throw error;
   }
 }

@@ -13,7 +13,7 @@ props {
   onConfirm?: (() => any) | undefined;
   onUpdate:modelValue?: ((value: boolean) => any) | undefined;
   title?: string | undefined;
-  variant?: "danger" | "info" | "warning" | undefined;
+  variant?: ConfirmationVariant | undefined;
 }
 emits {
   (event: "cancel") => void;

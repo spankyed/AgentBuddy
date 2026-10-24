@@ -4,8 +4,9 @@
 
 ```ts
 import * as _apackdev_ears from '@apackdev/ears';
+import { ShortCode } from '@apackdev/ears';
 import * as _apackdev_sdk from '@apackdev/sdk';
-import { ActionEntity, ActionParameter, ContentSection, DocumentShortCode, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@apackdev/sdk';
+import { ActionEntity, ActionParameter, ContentSection, DocumentShortCode, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TemplateInput } from '@apackdev/sdk';
 import { ArtifactItem } from '@apackdev/sdk/artifacts';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
 import { HostSurfaceEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PublicSurfaceInboxOf, Qualified, Reply, SurfaceInboxOf, TypedSendToSurface, TypedSendToSystem, TypedSendToWindow } from '@apackdev/sdk/events';
@@ -15,7 +16,7 @@ import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@apackdev/sdk/mode
 import * as _apackdev_sdk_repositories from '@apackdev/sdk/repositories';
 import { FlowEdge } from '@apackdev/sdk/repositories';
 import { HostServices } from '@apackdev/sdk/services';
-import { ExecutionContext, FieldMapping, StepRuntimeError, TNodeEntity, TrackTree } from '@apackdev/sdk/steps';
+import { ExecutionContext, FieldMapping, RunNode, RunNodeId, RunStatus, RunTree, StepInput, StepRuntimeError } from '@apackdev/sdk/steps';
 import { BinaryOperator } from '@apackdev/sdk/utils';
 import { z } from 'zod';
 
@@ -390,17 +391,17 @@ interface Bookmark {
 }
 
 interface BrainContext {
-    flowTNodeId?: string;
-    tNodeTree?: TrackTree[];
-    normalizedTree?: NormalizedTNodeTree;
+    flowRunNodeId?: string;
+    runNodeTree?: RunTree[];
+    normalizedTree?: NormalizedRunNodeTree;
     possibleEvents: EventListenerEntity[];
     flowHierarchy: Array<{
-        flowTNodeId: string;
+        flowRunNodeId: string;
         label: string;
     }>;
     pulsingEventType?: string;
     showLeftPanel: boolean;
-    selectedStepNode?: TNodeEntity;
+    selectedStepNode?: RunNode;
     inspectEnabled: boolean;
     animationsEnabled: boolean;
     brainIsDead: boolean;
@@ -429,6 +430,8 @@ interface BrainContext$1 {
     clientConnected: boolean;
     /** The root flow the running brain started with; undefined while it's stopped */
     runningRootFlowId?: EARS.EntityId;
+    /** This session's root run in the run history: a new one each time the brain starts */
+    rootRunId?: RunNodeId;
 }
 
 type BrainEventCallback = (event: BrainEventPayload) => void | Promise<void>;
@@ -440,22 +443,22 @@ interface BrainEventPayload {
 }
 
 type BrainInternalEvents = {
-    type: 'TNODE_SPAWNED';
-    tNode: TNodeEntity;
+    type: 'RUN_NODE_SPAWNED';
+    runNode: RunNode;
     parentId?: EARS.EntityId;
-    eventTNodeId?: EARS.EntityId;
-    flowTNodeId: EARS.EntityId;
+    eventRunNodeId?: RunNodeId;
+    flowRunNodeId: EARS.EntityId;
 } | {
-    type: 'TNODE_UPDATED';
-    data: TNodeUpdate;
+    type: 'RUN_NODE_UPDATED';
+    data: RunNodeUpdate;
 } | {
     type: 'CHILD_COMPLETED';
     stepId?: EARS.EntityId;
-    tNodeId?: EARS.EntityId;
+    runNodeId?: RunNodeId;
     stepLabel?: string;
     result?: any;
     final?: boolean;
-    eventTNodeId?: EARS.EntityId;
+    eventRunNodeId?: RunNodeId;
     isFlow?: boolean;
 };
 
@@ -1149,14 +1152,14 @@ interface DatabaseContext {
     isAiQueryLoading: boolean;
     isRefreshing: boolean;
     settings: DatabaseSettings | null;
-    viewMode: 'database' | 'trace';
-    traceFlows: TNodeEntity$1[];
+    viewMode: 'database' | 'runs';
+    flowRuns: RunNode[];
     currentFlowId: string | null;
-    flowEvents: TNodeEntity$1[];
+    flowEvents: RunTree[];
     expandedNodes: Set<string>;
-    nodeDetails: Map<string, TNodeEntity$1>;
-    isLoadingTrace: boolean;
-    tracePagination: {
+    nodeDetails: Map<string, RunNode>;
+    isLoadingRuns: boolean;
+    runPagination: {
         offset: number;
         limit: number;
         hasMore: boolean;
@@ -1270,14 +1273,10 @@ declare namespace EARS {
         type SearchIndex = typeof SearchIndex;
         const IndexedDoc = "IndexedDoc";
         type IndexedDoc = typeof IndexedDoc;
-        const Relation = "Relation";
-        type Relation = typeof Relation;
         const Flow = "Flow";
         type Flow = typeof Flow;
         const Node = "Node";
         type Node = typeof Node;
-        const TNode = "TNode";
-        type TNode = typeof TNode;
         const Action = "Action";
         type Action = typeof Action;
         const Prompt = "Prompt";
@@ -1287,45 +1286,61 @@ declare namespace EARS {
         const Collection = "Collection";
         type Collection = typeof Collection;
     }
-    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt | Entity.Document | Entity.Collection;
+    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Flow | Entity.Node | Entity.Action | Entity.Prompt | Entity.Document | Entity.Collection;
     type EntityId<E extends string = string> = _apackdev_ears.EARS.EntityId<E>;
     namespace RelKind {
         const HAS = "has";
         type HAS = typeof HAS;
         const RELATES_TO = "relates_to";
         type RELATES_TO = typeof RELATES_TO;
+        const REFERENCES = "references";
+        type REFERENCES = typeof REFERENCES;
+        const FORKED_FROM = "forked_from";
+        type FORKED_FROM = typeof FORKED_FROM;
+        const COMPACTS = "compacts";
+        type COMPACTS = typeof COMPACTS;
+        const BLOCKS = "blocks";
+        type BLOCKS = typeof BLOCKS;
+        const BLOCKED_BY = "blocked_by";
+        type BLOCKED_BY = typeof BLOCKED_BY;
+        const DUPLICATES = "duplicates";
+        type DUPLICATES = typeof DUPLICATES;
         const CONTAINS = "contains";
         type CONTAINS = typeof CONTAINS;
         const TRANSITIONS_TO = "transitions_to";
         type TRANSITIONS_TO = typeof TRANSITIONS_TO;
         const INSTANCE_OF = "instance_of";
         type INSTANCE_OF = typeof INSTANCE_OF;
-        const SPAWNED = "spawned";
-        type SPAWNED = typeof SPAWNED;
-        const TRACKED = "tracked";
-        type TRACKED = typeof TRACKED;
         const PARENT_OF = "parent_of";
         type PARENT_OF = typeof PARENT_OF;
-        const Custom: <T extends string>(k: T) => T & RelKind;
     }
-    type RelKind = RelKind.HAS | RelKind.RELATES_TO | RelKind.CONTAINS | RelKind.TRANSITIONS_TO | RelKind.INSTANCE_OF | RelKind.SPAWNED | RelKind.TRACKED | RelKind.PARENT_OF | (string & {});
+    /** Every relation kind this pack may link with: its own, its dependencies' and the SDK's */
+    const RELATION_KINDS: readonly ["has", "relates_to", "references", "forked_from", "compacts", "blocks", "blocked_by", "duplicates", "contains", "transitions_to", "instance_of", "parent_of"];
+    type RelKind = (typeof RELATION_KINDS)[number];
+    /** Whether a kind that arrived as data (an event's field, a stored row) is one of them */
+    const isRelKind: (value: unknown) => value is RelKind;
     namespace RoleKind {
-        const Custom: <T extends string>(k: T) => T & RoleKind;
+        const ASSISTANT_BIRTH = "assistant_birth";
+        type ASSISTANT_BIRTH = typeof ASSISTANT_BIRTH;
+        const ROOT_FLOW = "root_flow";
+        type ROOT_FLOW = typeof ROOT_FLOW;
+        const ENTRY_EVENT = "entry_event";
+        type ENTRY_EVENT = typeof ENTRY_EVENT;
     }
-    type RoleKind = _apackdev_ears.EARS.RoleKind;
+    /** Every role this pack may grant: its own, its dependencies' and the SDK's */
+    const ROLES: readonly ["assistant_birth", "root_flow", "entry_event"];
+    type RoleKind = (typeof ROLES)[number];
+    /** Whether a role that arrived as data is one of them */
+    const isRole: (value: unknown) => value is RoleKind;
     const AttrKindValues: {
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
     namespace AttrKind {
         const Role = "role";
         type Role = typeof Role;
-        const RelationDetails = "relationDetails";
-        type RelationDetails = typeof RelationDetails;
         const Custom: <T extends string>(k: T) => T & AttrKind;
     }
     type AttrKind = _apackdev_ears.EARS.AttrKind;
-    type Blueprint = _apackdev_ears.EARS.Blueprint;
     type RelationDetail = _apackdev_ears.EARS.RelationDetail;
     type AttributePayloads = _apackdev_ears.EARS.AttributePayloads;
     type AttributeValue<K extends AttrKind = AttrKind> = _apackdev_ears.EARS.AttributeValue<K>;
@@ -1457,12 +1472,12 @@ interface FlowNode extends NodeBase {
     fieldMappings?: FieldMapping[];
 }
 
-interface FlowTNodeData {
-    flowTNodeId: EARS.EntityId;
-    tNodeTree: TrackTree[];
+interface FlowRunNodeData {
+    flowRunNodeId: EARS.EntityId;
+    runNodeTree: RunTree[];
     possibleEvents: EventListenerEntity[];
     flowHierarchy: Array<{
-        flowTNodeId: EARS.EntityId;
+        flowRunNodeId: EARS.EntityId;
         label: string;
     }>;
 }
@@ -1880,17 +1895,17 @@ type IncomingActionsEvents = {
 };
 
 type IncomingBrainEvents = {
-    type: 'OPEN_TNODE';
-    tNodeId: string;
+    type: 'OPEN_RUN_NODE';
+    runNodeId: string;
 } | {
-    type: 'GO_BACK_TNODE';
-    currentFlowTNodeId?: string;
+    type: 'GO_BACK_RUN_NODE';
+    currentFlowRunNodeId?: string;
 } | {
     type: 'REQUEST_SURFACE_DATA';
-    flowTNodeId?: string;
+    flowRunNodeId?: string;
 } | {
-    type: 'GET_TNODE_DETAILS';
-    tNodeId: string;
+    type: 'GET_RUN_NODE_DETAILS';
+    runNodeId: string;
 } | {
     type: 'TOGGLE_INSPECT';
 } | {
@@ -2032,7 +2047,7 @@ type IncomingDatabaseEvents = {
 } | {
     type: 'REFRESH_SCHEMA';
 } | {
-    type: 'GET_TRACE_FLOWS';
+    type: 'GET_FLOW_RUNS';
 } | {
     type: 'GET_FLOW_EVENTS';
     flowId: string;
@@ -2045,7 +2060,7 @@ type IncomingDatabaseEvents = {
     type: 'EXPORT_DATABASE';
     path: string;
     name?: string;
-    databases: ('lmdb' | 'volatileLmdb')[];
+    databases: ('lmdb' | 'runHistory')[];
 } | {
     type: 'IMPORT_DATABASE';
     path: string;
@@ -2489,7 +2504,7 @@ type IncomingThreadsEvents = {
     instructions: string;
     linkedThreads?: {
         id: string;
-        relation: 'blocked_by' | 'blocks' | 'duplicates' | 'parent_of';
+        relation: ThreadLinkRelation;
     }[];
     parentThreadId?: string;
 } | {
@@ -2896,10 +2911,6 @@ interface MessageEntity extends BaseEntity {
     asideContext?: string;
     /** When true, message is hidden because a marker message compacted it. */
     compacted?: boolean;
-    /** Soft-delete marker, written by the repository rather than removing the row. */
-    deleted?: boolean;
-    /** Epoch ms at which the soft delete happened. */
-    deletedAt?: number;
 }
 
 interface MessageReferences {
@@ -2916,8 +2927,8 @@ type NodeCreateInput = Partial<NodeEntity> & {
 /** Discriminated union (on `nodeType`) of this pack's step node entities. */
 type NodeEntity = ActionNode | LLMNode | FireNode | FlowNode | QueryNode | CreateNode | UpdateNode | TransformNode | KeepAliveNode | KillNode | SwitchNode | ScheduleNode | ListenerNode;
 
-interface NormalizedTNodeTree {
-    byId: Record<string, TNodeEntity>;
+interface NormalizedRunNodeTree {
+    byId: Record<string, RunNode>;
     rootIds: string[];
     childrenById: Record<string, string[]>;
 }
@@ -2938,7 +2949,8 @@ interface NoteDTO {
     updatedAt: number;
     lastSeen: number;
     favorite: boolean;
-    deletedAt?: number;
+    /** When the note was put in the trash, for a note listed from there */
+    trashedAt?: number;
 }
 
 interface NoteEntity extends BaseEntity {
@@ -2955,14 +2967,10 @@ interface NoteEntity extends BaseEntity {
     updatedAt: number;
     lastSeen: number;
     favorite?: boolean;
-    /** Auto-generated by createEntityWithDefaults. */
-    shortCode?: string;
-    /** Auto-generated by createEntityWithDefaults when not supplied. */
-    label?: string;
     /** Hash of the content source at the last apply. Absent on user-created notes. */
     contentHash?: string;
-    deleted?: boolean;
-    deletedAt?: number;
+    /** Every note id the content's links name, derived from it (`syncReferences`); absent when it links to none */
+    linkTargets?: string[];
 }
 
 interface NotesConnectedData {
@@ -3102,27 +3110,27 @@ type OutgoingActionsEvents = {
 
 type OutgoingBrainEvents = {
     type: 'RECEIVE_SURFACE_DATA';
-    data: FlowTNodeData;
+    data: FlowRunNodeData;
 } | {
-    type: 'TNODE_OPENED';
-    tNodeId: EARS.EntityId;
-    data: FlowTNodeData;
+    type: 'RUN_NODE_OPENED';
+    runNodeId: EARS.EntityId;
+    data: FlowRunNodeData;
 } | {
-    type: 'TNODE_SPAWNED';
-    tNode: TNodeEntity;
+    type: 'RUN_NODE_SPAWNED';
+    runNode: RunNode;
     parentId?: EARS.EntityId;
-    eventTNodeId?: EARS.EntityId;
-    flowTNodeId: EARS.EntityId;
+    eventRunNodeId?: RunNodeId;
+    flowRunNodeId: EARS.EntityId;
 } | {
-    type: 'TNODE_UPDATED';
-    data: TNodeUpdate;
+    type: 'RUN_NODE_UPDATED';
+    data: RunNodeUpdate;
 } | {
     type: 'EVENT_PULSE';
     eventType: string;
 } | {
-    type: 'TNODE_DETAILS';
-    tNodeId: EARS.EntityId;
-    details: TNodeEntity | null;
+    type: 'RUN_NODE_DETAILS';
+    runNodeId: RunNodeId;
+    details: RunNodeDetails | null;
 } | {
     type: 'BRAIN_RUNTIME_ERROR';
     error: StepRuntimeError;
@@ -3338,8 +3346,8 @@ type OutgoingDatabaseEvents = {
     type: 'AI_QUERY_ERROR';
     error: string;
 } | {
-    type: 'TRACE_FLOWS_RESULT';
-    flows: TNodeEntity[];
+    type: 'FLOW_RUNS_RESULT';
+    flows: RunNode[];
 }
 /**
  * `offset` is which page these events are, which is what tells two pages of one flow apart — the flow id
@@ -3348,13 +3356,13 @@ type OutgoingDatabaseEvents = {
  | {
     type: 'FLOW_EVENTS_RESULT';
     flowId: string;
-    events: TNodeEntity[];
+    events: RunTree[];
     hasMore: boolean;
     offset: number;
 } | {
     type: 'NODE_DETAILS_RESULT';
     nodeId: string;
-    details: TNodeEntity | null;
+    details: RunNode | null;
 } | {
     type: 'EXPORT_DATABASE_SUCCESS';
     path: string;
@@ -4744,6 +4752,20 @@ declare const ResultLineSchema: z.ZodObject<{
     errors: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
 }, z.ZodTypeAny, "passthrough">>;
 
+/** A run node as the Brain surface shows it: with where its blueprint is, to reveal it in the Flows surface */
+type RunNodeDetails = RunNode & {
+    revealIn?: {
+        flowId: EARS.EntityId;
+        nodeId: EARS.EntityId;
+    };
+};
+
+interface RunNodeUpdate {
+    runNodeId: RunNodeId;
+    status: RunStatus;
+    eventRunNodeId?: RunNodeId;
+}
+
 interface SavedBookmark {
     url: string;
     title: string;
@@ -4836,7 +4858,7 @@ type ServerStatus = 'error' | 'ready' | 'starting' | 'stopped';
  * The declared service selection: own services, the SDK baseline and explicitly consumed APIs.
  * The featureServices value itself stays feature-only.
  */
-type Services = typeof featureServices & Pick<HostServices, "appData" | "filesystem" | "inference" | "logger" | "onboarding" | "secrets" | "settings" | "traceStore"> & {
+type Services = typeof featureServices & Pick<HostServices, "appData" | "filesystem" | "inference" | "logger" | "onboarding" | "runHistory" | "secrets" | "settings"> & {
     repository: Repositories;
     emitter: PackEmitter;
 };
@@ -4982,12 +5004,6 @@ declare const SystemLineSchema: z.ZodObject<{
     subtype: z.ZodString;
 }, z.ZodTypeAny, "passthrough">>;
 
-interface TNodeUpdate {
-    tNodeId: EARS.EntityId;
-    status: TNodeEntity['status'];
-    eventTNodeId?: EARS.EntityId;
-}
-
 interface Tab {
     id: string;
     label: string;
@@ -5091,7 +5107,8 @@ interface ThreadEntity extends BaseEntity {
     timestamp: number;
     lastMessageTimestamp?: number;
     lastVisitedTimestamp?: number;
-    shortCode?: string;
+    /** Numbered by `create` */
+    shortCode: ThreadTypeShortCode;
     status: string;
     tags?: string[];
     forcedMode?: string;
@@ -5113,7 +5130,7 @@ type ThreadExtendedData = ThreadLinkedFields & {
     status?: string;
     pinned?: boolean;
     archived?: boolean;
-    shortCode?: string;
+    shortCode?: ThreadEntity['shortCode'];
     timestamp?: number;
     lastMessageTimestamp?: number;
 };
@@ -5155,6 +5172,7 @@ interface ThreadReadParams {
     includeTurns?: boolean;
 }
 
+/** The kinds a thread links to another thread with, which the link form offers */
 declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "duplicates"];
 
 interface ThreadRollbackParams {
@@ -5183,9 +5201,12 @@ interface ThreadTagOption {
     color?: string;
 }
 
+type ThreadTypeShortCode = ShortCode<'T'>;
+
 type ThreadViewData = Simplify<ThreadCreateData & {
     id: ThreadEntity['id'];
-    shortCode: ThreadEntity['shortCode'];
+    /** `''` while the view holds a thread not yet created */
+    shortCode: ThreadEntity['shortCode'] | '';
     status: ThreadEntity['status'];
     timestamp: ThreadEntity['timestamp'];
     archived?: ThreadEntity['archived'];
@@ -5761,58 +5782,60 @@ declare function addMessagesToThread(params: {
 }): void;
 
 declare const brainCommands: {
-    readonly createEventTNode: (eventNode: {
+    /** An event a flow run heard, with its payload as the node's attributes */
+    readonly createEventRunNode: (eventNode: {
         id?: string;
         label?: string;
         eventType?: string;
         triggerType?: string;
         cronExpression?: string;
-    }, flowTNodeId: EARS.EntityId) => TNodeEntity;
-    readonly createFlowTNode: (flowStepId: EARS.EntityId, eventTrackId?: EARS.EntityId, executionContext?: ExecutionContext) => {
-        flowTNode: TNodeEntity;
+    }, flowRunNodeId: RunNodeId, payload: unknown) => RunNode;
+    readonly createFlowRunNode: (flowStepId: EARS.EntityId, parentId?: RunNodeId, executionContext?: ExecutionContext) => {
+        flowRunNode: RunNode;
         flowId: EARS.EntityId;
+        input: StepInput;
     };
-    readonly createStepTNode: (stepId: EARS.EntityId, eventTrackId: EARS.EntityId, executionContext?: ExecutionContext) => {
-        tNode: TNodeEntity;
+    readonly createStepRunNode: (stepId: EARS.EntityId, parentId: RunNodeId, executionContext?: ExecutionContext) => {
+        runNode: RunNode;
         step: NodeEntity;
+        input: StepInput;
     };
-    readonly createRootFlowTNode: () => {
+    /** A new session's root run: the root flow the brain starts with, under a new id each time it starts */
+    readonly createRootFlowRunNode: () => {
         rootFlow: Pick<FlowEntity, "createdAt" | "flowType" | "id" | "label">;
-        rootFlowTNode: TNodeEntity;
+        rootFlowRunNode: RunNode;
     };
-    readonly updateTNodeStatus: (tNodeId: EARS.EntityId, status: TNodeEntity["status"]) => void;
-    /** Records a step's result on its TNode, truncated (the SDK's TNode repository) */
-    readonly updateTNodeResult: (tNodeId: _apackdev_sdk.EARS.EntityId, result: unknown) => void;
-    readonly updateTNodeAttributes: (tNodeId: EARS.EntityId, attributes: any) => void;
-    readonly clearVolatileData: () => void;
 };
 
 declare const brainQueries: {
-    readonly rootFlowTNode: () => EARS.EntityId<"TNode"> | undefined;
-    readonly tNodeById: (id: EARS.EntityId<"TNode">) => ({
-        id: `${string}-${string}` & {
-            readonly __entity?: "TNode" | undefined;
-        };
-    } & Pick<TNodeEntity & _apackdev_ears.BaseEntity & {
-        id: `${string}-${string}` & {
-            readonly __entity?: "TNode" | undefined;
-        };
-    }, "blueprint" | "completedAt" | "createdAt" | "cronExpression" | "entityType" | "eventType" | "id" | "label" | "nodeAttributes" | "startedAt" | "status" | "stepNodeType" | "tNodeType" | "triggerType">) | null;
+    readonly runNodeById: (id: RunNodeId) => RunNode | undefined;
     readonly eventAllSteps: (eventNodeId: EARS.EntityId) => NodeEntity[];
     readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
     readonly nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string) => NodeEntity | undefined;
-    readonly eventTracks: (flowTNodeId: EARS.EntityId<"TNode">) => TrackTree[];
-    readonly possibleEvents: (flowTNodeId: EARS.EntityId) => EventListenerEntity[];
+    /** The event tracks a flow node heard, each with the nodes it ran under it: a flow node's children are its events */
+    readonly eventTracks: (flowRunNodeId: RunNodeId) => RunTree[];
+    readonly possibleEvents: (flowRunNodeId: RunNodeId) => EventListenerEntity[];
+    /** The flow node a node ran under: the nearest flow above it, or undefined for a session's root */
+    readonly parentFlowOf: typeof parentFlowOf;
     /**
      * Builds flow hierarchy from current flow back to root
      * Returns array ordered from root → current flow
      */
-    readonly buildFlowHierarchy: (flowTNodeId: EARS.EntityId<"TNode">) => Array<{
-        flowTNodeId: EARS.EntityId;
+    readonly buildFlowHierarchy: (flowRunNodeId: RunNodeId) => Array<{
+        flowRunNodeId: EARS.EntityId;
         label: string;
     }>;
-    readonly extendedTNodeData: (tNodeId: EARS.EntityId<"TNode">) => FlowTNodeData;
-    readonly rootData: () => FlowTNodeData;
+    /**
+     * Where a run node's blueprint is, for revealing it in the Flows surface: the node it ran and the flow holding
+     * it. A subflow's node sits in the flow its parent runs, not in the flow it runs itself.
+     */
+    readonly revealIn: (id: RunNodeId) => {
+        flowId: EARS.EntityId;
+        nodeId: EARS.EntityId;
+    } | undefined;
+    readonly extendedRunNodeData: (runNodeId: RunNodeId) => FlowRunNodeData;
+    /** The session's root run, or nothing to show when the brain runs none */
+    readonly rootData: (rootRunId: RunNodeId | undefined) => FlowRunNodeData;
 };
 
 declare const browserCommands: {
@@ -6004,7 +6027,7 @@ declare function createMarkerMessage(params: {
  * const { id: threadId, shortCode, timestamp, status } = createThreadAndNotify({
  *   topic: 'Assistant Birth',
  *   instructions: 'Welcome!',
- *   role: EARS.RoleKind.Custom('assistant_birth'),
+ *   role: EARS.RoleKind.ASSISTANT_BIRTH,
  *   forcedMode: 'birth'
  * });
  */
@@ -6275,6 +6298,7 @@ declare const noteQueries: {
     readonly all: () => NoteEntity[];
     readonly allDTOs: () => NoteDTO[];
     readonly children: (parentId: EARS.EntityId) => NoteDTO[];
+    /** The notes above this one, its root first */
     readonly ancestorChain: (noteId: EARS.EntityId) => NoteDTO[];
     readonly referencedBy: (noteId: EARS.EntityId) => EARS.EntityId[];
     readonly trashedDTOs: () => NoteDTO[];
@@ -6314,6 +6338,9 @@ declare function paginatedMessages(threadId: EARS.EntityId, cursor?: string | nu
     hasMore: boolean;
     nextCursor: string | null;
 };
+
+/** The flow node a node ran under: the nearest flow above it, or undefined for a session's root */
+declare function parentFlowOf(id: RunNodeId): RunNode | undefined;
 
 declare const promptCommands: {
     create: (data: _apackdev_sdk_repositories.PromptInput) => _apackdev_sdk.PromptEntity;
@@ -6439,8 +6466,9 @@ declare function sendSystemMessage(options: {
 declare function storeHandle(key: string, handle: CodexTurnHandle): void;
 
 declare const terminalCommands: {
-    create: (terminalInfo: Partial<TerminalInfo> & {
-        id: EARS.EntityId;
+    /** Records a terminal the service started, under the id it took for it (`newId`) */
+    create: (terminal: Pick<TerminalEntity, "cols" | "cwd" | "pid" | "rows" | "shell" | "title"> & {
+        id: EARS.EntityId<"Terminal">;
     }) => EARS.EntityId;
     resize: (id: EARS.EntityId, cols: number, rows: number) => void;
     rename: (id: EARS.EntityId, customTitle: string) => void;
@@ -6497,7 +6525,7 @@ declare const threadQueries: {
     readonly all: () => ThreadEntity[];
     readonly allUnfiltered: () => ThreadEntity[];
     /** The first thread holding the role, e.g. the onboarding birth thread */
-    readonly idByRole: (role: EARS.RoleKind) => EARS.EntityId | null;
+    readonly idByRole: (role: EARS.RoleKind) => EARS.EntityId | undefined;
     readonly messages: (threadId: EARS.EntityId) => ({
         id: `${string}-${string}` & {
             readonly __entity?: "Message" | undefined;
@@ -6507,16 +6535,16 @@ declare const threadQueries: {
             readonly __entity?: "Message" | undefined;
         };
     }, "compacted" | "isCommand" | "sender" | "text" | "timestamp">)[];
-    readonly linkedThreads: (threadId: EARS.EntityId) => ({
+    readonly linkedThreads: (threadId: EARS.EntityId) => {
         id: `${string}-${string}` & {
             readonly __entity?: "Thread" | undefined;
         };
+        topic: string;
+        status: string;
+        shortCode: ThreadTypeShortCode;
+        timestamp: number;
         relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
-    } & Pick<ThreadEntity & _apackdev_ears.BaseEntity & {
-        id: `${string}-${string}` & {
-            readonly __entity?: "Thread" | undefined;
-        };
-    }, "shortCode" | "status" | "timestamp" | "topic">)[];
+    }[];
     readonly extendedData: (threadId: EARS.EntityId, include?: keyof ThreadExtendedData | (keyof ThreadExtendedData)[]) => ThreadExtendedData;
     readonly archivedThreads: () => Partial<ThreadEntity>[];
     readonly connectedData: () => ThreadConnectedData;

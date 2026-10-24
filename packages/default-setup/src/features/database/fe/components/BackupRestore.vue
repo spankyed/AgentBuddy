@@ -173,25 +173,25 @@
               </label>
               -->
 
-              <!-- Trace Database Card -->
+              <!-- Run History Card -->
               <label class="relative cursor-pointer group">
                 <input
                   type="checkbox"
-                  v-model="selectedDatabases.volatileLmdb"
+                  v-model="selectedDatabases.runHistory"
                   class="peer sr-only"
                 />
                 <div class="p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg transition-all duration-200 peer-checked:border-blue-500/50 peer-checked:bg-blue-500/5 hover:bg-neutral-800/70">
                   <div class="flex items-start gap-3">
                     <div class="relative mt-0.5">
                       <div class="w-5 h-5 rounded border-2 border-neutral-600 bg-neutral-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-500"></div>
-                      <Check v-if="selectedDatabases.volatileLmdb" class="absolute inset-0 w-5 h-5 text-white p-0.5" />
+                      <Check v-if="selectedDatabases.runHistory" class="absolute inset-0 w-5 h-5 text-white p-0.5" />
                     </div>
                     <div class="flex-1">
                       <div class="flex items-center gap-2">
                         <Activity class="w-4 h-4 text-green-400" />
-                        <span class="text-sm font-medium text-white">Trace Database</span>
+                        <span class="text-sm font-medium text-white">Run History</span>
                       </div>
-                      <p class="text-xs text-neutral-500 mt-1">Execution traces (ears-trace)</p>
+                      <p class="text-xs text-neutral-500 mt-1">Every flow run's record (run-history)</p>
                     </div>
                   </div>
                 </div>
@@ -329,7 +329,7 @@ const backupName = ref('');
 const selectedDatabases = ref({
   lmdb: true,
   // searchIndices: true, // [SEARCH_INDEX_FF]
-  volatileLmdb: false,
+  runHistory: false,
 });
 const toast = ref<InstanceType<typeof ToastNotification>>();
 
@@ -418,7 +418,7 @@ function handleExport() {
 
   const databases = Object.entries(selectedDatabases.value)
     .filter(([_, selected]) => selected)
-    .map(([key]) => key) as Array<'lmdb' | 'volatileLmdb'>; // 'searchIndices' removed [SEARCH_INDEX_FF]
+    .map(([key]) => key) as Array<'lmdb' | 'runHistory'>; // 'searchIndices' removed [SEARCH_INDEX_FF]
 
   actor.send({
     type: 'BACKUP.EXPORT',

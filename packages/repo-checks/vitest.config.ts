@@ -9,10 +9,10 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    // Small (`SIZE_MS`, scripts/lib/unit-suites.ts). A budget belongs to the size, not to each
+    // Small (`SIZE_MS` × `DEADLINE_FACTOR`, scripts/lib/unit-suites.ts). A budget belongs to the size, not to each
     // test that trips over vitest's 5s default.
-    testTimeout: 15_000,
-    hookTimeout: 15_000,
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     // The fast half. The specs that spawn a compiler are `*.integration.spec.ts` and run from
     // `vitest.integration.config.ts`, which gives them 60s and half the cores.
     include: ['tests/**/*.spec.ts'],

@@ -15,10 +15,10 @@ export default defineConfig({
   },
   ssr: { resolve: { conditions } },
   test: {
-    // Small (`SIZE_MS`, scripts/lib/unit-suites.ts). Declared rather than left to vitest's 5s default,
+    // Small (`SIZE_MS` × `DEADLINE_FACTOR`, scripts/lib/unit-suites.ts). Declared rather than left to vitest's 5s default,
     // which is *tighter* than the size allows and reports a hang where the size has headroom
-    testTimeout: 15_000,
-    hookTimeout: 15_000,
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     include: ['tests/**/*.spec.ts'],
   },
 });

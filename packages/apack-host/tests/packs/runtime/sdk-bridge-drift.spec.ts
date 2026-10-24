@@ -78,7 +78,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@apackdev/host/process-liveness', 'app plumbing: the locks, staging dirs and port file the app itself writes'],
   // The user's API keys with their values: only the API and host services use it, packs get services.secrets (no values)
   ['@apackdev/host/secrets', 'host store of API key values, never handed to packs'],
-  // The app's HostRuntime, which the API binds; packs reach its services through services (appData, traceStore, inference, secrets)
+  // The app's HostRuntime, which the API binds; packs reach its services through services (appData, runHistory, inference, secrets)
   ['@apackdev/host/services', 'host implementations of SDK services, bound by the API'],
   // The app's migrations runners: the API's boot and appData.reset() run them; packs declare migrations, never run them
   ['@apackdev/host/migrations', 'the app migrations runners, run by the host'],

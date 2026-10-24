@@ -58,7 +58,7 @@
                   "host/settings",
                   "host/onboarding",
                   "host/appData",
-                  "host/traceStore",
+                  "host/runHistory",
                   "host/inference",
                   "host/secrets",
                   "host/filesystem"
@@ -114,10 +114,8 @@
             "minLength": 1,
             "not": {
               "enum": [
-                "Relation",
                 "Flow",
                 "Node",
-                "TNode",
                 "Action",
                 "Prompt",
                 "Document",
@@ -137,13 +135,26 @@
                 "contains",
                 "transitions_to",
                 "instance_of",
-                "spawned",
-                "tracked",
                 "parent_of"
               ]
             }
           },
           "description": "Pack-level relation wire names; generated EARS constants are their uppercase names. Do not repeat or redeclare SDK-owned wires.",
+          "uniqueItems": true
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+            "not": {
+              "enum": [
+                "root_flow",
+                "entry_event"
+              ]
+            }
+          },
+          "description": "Pack-level role names; generated EARS constants are their uppercase names. Do not repeat or redeclare SDK-owned roles.",
           "uniqueItems": true
         }
       },
@@ -177,10 +188,8 @@
               "minLength": 1,
               "not": {
                 "enum": [
-                  "Relation",
                   "Flow",
                   "Node",
-                  "TNode",
                   "Action",
                   "Prompt",
                   "Document",

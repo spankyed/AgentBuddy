@@ -62,7 +62,7 @@ it('keeps disabled installed endpoint data discoverable without authored source 
   const registry = createPackRegistry();
   registry.catalog.replace([{ dir: '/nonexistent/pack', enabled: false, snapshot: {
     manifest, declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
-    types: { entities: {}, relKinds: {} }, facades: {}, entityDestinations: {}, eventContracts: { jobs: events },
+    types: { entities: {}, relKinds: {}, roles: {} }, facades: {}, entityDestinations: {}, eventContracts: { jobs: events },
   } }]);
   expect(registry.catalog.events()).toMatchObject([{ featureRef: 'offline/jobs', enabled: false, status: 'compiled', declaration: events }]);
   expect(registry.loadedPacks()).toEqual([]);

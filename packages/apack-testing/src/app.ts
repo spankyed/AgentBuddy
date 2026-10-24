@@ -4,11 +4,10 @@ import { createBusMachine, HOST } from '@apackdev/host/bus';
 import { resolveRegistered } from '@apackdev/sdk/ids';
 import type { PackLifecycleHooks } from '@apackdev/sdk/framework';
 import { newCall, type Message } from '@apackdev/sdk/events';
-import { testRootEvents } from '@apackdev/sdk/testing';
-import { type EARS } from '@apackdev/ears';
+import { testRootEvents, testRunHistory } from '@apackdev/sdk/testing';
+import type { RunNodeId } from '@apackdev/sdk/services';
 import { untypedQuery } from '@apackdev/sdk/ears';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
-import { ROOT_FLOW_ROLE } from '@apackdev/sdk/types';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { bindSettingsRequest } from '@apackdev/host/settings';
@@ -32,17 +31,20 @@ export interface StartAppOptions {
   systems: readonly string[] | '*';
 }
 
-/** A step a flow ran: its trace node (TNode) as it is in the database */
-export interface FlowStepTrace {
-  tNodeId: string;
+/** A step a flow ran: its node in the run history (`services.runHistory`) */
+export interface FlowRunStep {
+  runNodeId: string;
   label: string;
   /** `step` or `flow` (a subflow) */
-  tNodeType: string;
+  kind: string;
   status: string;
-  /** The step's configuration and, once it ran, its `result` */
-  nodeAttributes: Record<string, unknown>;
-  /** The inputs the step resolved from the flow's event and earlier steps */
-  params: Record<string, unknown>;
+  /**
+   * What the step was given — its settings, with what it mapped from the event and earlier steps — as its run node
+   * records it: bounded, so a long value is a `{ value, _truncated }` marker
+   */
+  input: Record<string, unknown>;
+  /** What the step returned, once it ran, or `{ error }` when it failed */
+  result?: unknown;
 }
 
 export interface RunFlowOptions {
@@ -54,10 +56,10 @@ export interface RunFlowOptions {
 }
 
 export interface FlowRun {
-  /** The trace nodes of the flow's tracks the event triggered */
-  eventTNodeIds: string[];
+  /** The run nodes of the flow's tracks the event triggered */
+  eventRunNodeIds: string[];
   /** The steps those tracks ran, in the order they started */
-  steps: FlowStepTrace[];
+  steps: FlowRunStep[];
 }
 
 export interface TestApp {
@@ -116,12 +118,12 @@ export interface TestApp {
    * left only waiting. Without `event`, resolves with the entry tracks the flow ran when it started.
    *
    * It returns the tracks the event itself triggered. Tracks started by events those tracks send (a `fire` step,
-   * a `TRIGGER_BRAIN_EVENT` sent to the brain's role) aren't in the result: `settle()` after it, then read them with `flowTrace`. It doesn't
+   * a `TRIGGER_BRAIN_EVENT` sent to the brain's role) aren't in the result: `settle()` after it, then read them with `flowSteps`. It doesn't
    * connect the app: flows run and report without a client, as they do in the app.
    */
   runFlow(label: string, options?: RunFlowOptions): Promise<FlowRun>;
   /** The steps a flow (the root flow or a subflow, by label) has run so far in this app. Readable after `stop` */
-  flowTrace(label: string): FlowStepTrace[];
+  flowSteps(label: string): FlowRunStep[];
   /** A running system's actor */
   system(systemId: string): AnyActorRef;
   /**
@@ -224,27 +226,30 @@ const resolveSurfaceId = (name: string): string =>
 /** One event loop turn, after zero-delay timers already queued (xstate's `raise(…, { delay: 0 })`) */
 const macrotask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-/** The brain's trace node for the root flow (default-setup's brain repository) */
-const ROOT_FLOW_TNODE = 'TNode-Root';
+type RunNodeSpawned = SurfaceEvent & { type: 'RUN_NODE_SPAWNED'; runNode: { id: string; label?: string; kind?: string; eventType?: string }; flowRunNodeId: string; eventRunNodeId?: string };
+type RunNodeUpdated = SurfaceEvent & { type: 'RUN_NODE_UPDATED'; data: { runNodeId: string; status: string } };
 
-type TNodeSpawned = SurfaceEvent & { type: 'TNODE_SPAWNED'; tNode: { id: string; label?: string; tNodeType?: string; eventType?: string }; flowTNodeId: string; eventTNodeId?: string };
-type TNodeUpdated = SurfaceEvent & { type: 'TNODE_UPDATED'; data: { tNodeId: string; status: string } };
+const isSpawn = (event: SurfaceEvent): event is RunNodeSpawned => event.type === 'RUN_NODE_SPAWNED';
+const isUpdate = (event: SurfaceEvent): event is RunNodeUpdated => event.type === 'RUN_NODE_UPDATED';
 
-const isSpawn = (event: SurfaceEvent): event is TNodeSpawned => event.type === 'TNODE_SPAWNED';
-const isUpdate = (event: SurfaceEvent): event is TNodeUpdated => event.type === 'TNODE_UPDATED';
+/** A run node as the run history holds it: the brain keeps every node there, a finished run's included */
+const readRunNode = (id: string) => testRunHistory().get(id as RunNodeId);
 
-const readTNode = (id: string) => (untypedQuery.ids(id as EARS.EntityId).pickAll() as Array<Record<string, unknown>>)[0];
+/** The label of the flow a flow node runs */
+const flowLabelOf = (flowRunNodeId: string): string | undefined => {
+  const flowId = readRunNode(flowRunNodeId)?.flowId;
+  return flowId === undefined ? undefined : String((untypedQuery.ids(flowId).pickAll() as Array<{ label?: string }>)[0]?.label ?? flowId);
+};
 
-function stepTrace(spawned: TNodeSpawned, lastSeen: ReadonlyMap<string, Record<string, unknown>>): FlowStepTrace {
-  // The brain clears its trace nodes when it stops (its root flow finished): fall back to the row as last reported
-  const row = readTNode(spawned.tNode.id) ?? lastSeen.get(spawned.tNode.id) ?? {};
+function runStep(spawned: RunNodeSpawned): FlowRunStep {
+  const node = readRunNode(spawned.runNode.id);
   return {
-    tNodeId: spawned.tNode.id,
-    label: String(row.label ?? spawned.tNode.label ?? ''),
-    tNodeType: String(row.tNodeType ?? spawned.tNode.tNodeType ?? ''),
-    status: String(row.status ?? ''),
-    nodeAttributes: (row.nodeAttributes as Record<string, unknown> | undefined) ?? {},
-    params: (row.resolvedParams as Record<string, unknown> | undefined) ?? {},
+    runNodeId: spawned.runNode.id,
+    label: String(node?.label ?? spawned.runNode.label ?? ''),
+    kind: String(node?.kind ?? spawned.runNode.kind ?? ''),
+    status: String(node?.status ?? ''),
+    input: node?.input ?? {},
+    ...(node?.result !== undefined && { result: node.result }),
   };
 }
 const SETTLE_LIMIT = 1000;
@@ -258,35 +263,24 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
 
   const emitted: Message[] = [];
   const taken = new Set<number>();
-  /** Pending waits for emitted events or trace reports: each checks again on every event, and ends when the app stops */
+  /** Pending waits for emitted events or run reports: each checks again on every event, and ends when the app stops */
   const waits = new Set<{ attempt(): boolean; end(error: Error): void }>();
   const wakeWaits = () => { for (const wait of waits) wait.attempt(); };
-  /** The brain's trace reports (TNODE_SPAWNED, TNODE_UPDATED), from its start: recorded before a client connects too */
-  const reports: Array<TNodeSpawned | TNodeUpdated> = [];
-  /** Trace node rows as they were when the brain last reported them */
-  const tNodeRows = new Map<string, Record<string, unknown>>();
-  /** The label of the flow each reported trace node ran in, kept after the brain clears its trace */
+  /** The brain's run reports (RUN_NODE_SPAWNED, RUN_NODE_UPDATED), from its start: recorded before a client connects too */
+  const reports: Array<RunNodeSpawned | RunNodeUpdated> = [];
+  /** The label of the flow each reported node ran in, and of the flow each flow node runs (`flow:<id>`) */
   const flowLabels = new Map<string, string>();
-  const rootFlowLabel = () => (untypedQuery.all().withRole(ROOT_FLOW_ROLE).pickAll() as Array<{ label?: string }>)[0]?.label;
   const record = (event: SurfaceEvent) => {
     if (!isSpawn(event) && !isUpdate(event)) return;
     reports.push(event);
-    const tNodeId = isSpawn(event) ? event.tNode.id : isUpdate(event) ? event.data.tNodeId : undefined;
     if (isSpawn(event)) {
-      const flowLabel = event.flowTNodeId === ROOT_FLOW_TNODE ? rootFlowLabel() : flowLabels.get(`flow:${event.flowTNodeId}`);
-      if (flowLabel !== undefined) flowLabels.set(event.tNode.id, flowLabel);
-      if (event.tNode.tNodeType === 'flow') {
-        // A subflow's trace node carries its step's label: the flow is the one that step runs (flowRef)
-        const stepNodeId = (readTNode(event.tNode.id)?.blueprint as { nodeId?: string } | undefined)?.nodeId;
-        const flowRef = stepNodeId === undefined ? undefined : readTNode(stepNodeId)?.flowRef;
-        const subflowLabel = typeof flowRef === 'string' ? String(readTNode(flowRef)?.label ?? flowRef) : undefined;
-        if (subflowLabel !== undefined) flowLabels.set(`flow:${event.tNode.id}`, subflowLabel);
+      const flowLabel = flowLabelOf(event.flowRunNodeId);
+      if (flowLabel !== undefined) flowLabels.set(event.runNode.id, flowLabel);
+      if (event.runNode.kind === 'flow') {
+        // A subflow's node carries its step's label: the flow it runs is its own label
+        const subflowLabel = flowLabelOf(event.runNode.id);
+        if (subflowLabel !== undefined) flowLabels.set(`flow:${event.runNode.id}`, subflowLabel);
       }
-    }
-    if (tNodeId) {
-      // The update can arrive after the brain cleared the row: keep the reported status on the last row seen
-      const row = readTNode(tNodeId) ?? tNodeRows.get(tNodeId) ?? {};
-      tNodeRows.set(tNodeId, isUpdate(event) ? { ...row, status: event.data.status } : row);
     }
     wakeWaits();
   };
@@ -297,19 +291,21 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     }),
   ];
 
-  const finished = (tNodeId: string) => reports.some((e) => isUpdate(e) && e.data.tNodeId === tNodeId && (e.data.status === 'completed' || e.data.status === 'failed'));
+  const finished = (runNodeId: string) => reports.some((e) => isUpdate(e) && e.data.runNodeId === runNodeId && (e.data.status === 'completed' || e.data.status === 'failed'));
   const brainRunning = () => {
     const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;
     const brain = brainId === undefined ? undefined : bus.system.get(brainId);
     return (brain?.getSnapshot() as { matches(state: string): boolean } | undefined)?.matches('running') === true;
   };
-  /** The running flows' trace nodes and labels: the root flow's, and each subflow's not yet finished */
-  const runningFlows = (): Array<{ tNodeId: string; label: string }> => [
-    ...(brainRunning() && rootFlowLabel() !== undefined ? [{ tNodeId: ROOT_FLOW_TNODE, label: rootFlowLabel()! }] : []),
-    ...reports.filter(isSpawn).filter((e) => e.tNode.tNodeType === 'flow' && !finished(e.tNode.id))
-      .map((e) => ({ tNodeId: e.tNode.id, label: flowLabels.get(`flow:${e.tNode.id}`) ?? '' })),
+  /** The running flows' run nodes and labels: the root flow's, and each subflow's not yet finished */
+  /** The brain's session root: the newest root run still active */
+  const rootRun = () => testRunHistory().findRuns().find((run) => run.parentId === undefined && run.status === 'active');
+  const runningFlows = (): Array<{ runNodeId: string; label: string }> => [
+    ...(brainRunning() && rootRun() ? [{ runNodeId: rootRun()!.id, label: flowLabelOf(rootRun()!.id) ?? '' }] : []),
+    ...reports.filter(isSpawn).filter((e) => e.runNode.kind === 'flow' && !finished(e.runNode.id))
+      .map((e) => ({ runNodeId: e.runNode.id, label: flowLabels.get(`flow:${e.runNode.id}`) ?? '' })),
   ];
-  const runningFlowTNodes = (label: string) => runningFlows().filter((flow) => flow.label === label).map((flow) => flow.tNodeId);
+  const runningFlowRunNodes = (label: string) => runningFlows().filter((flow) => flow.label === label).map((flow) => flow.runNodeId);
   const runningFlowLabels = () => runningFlows().map((flow) => flow.label);
 
   let activity = 0;
@@ -465,10 +461,10 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       if (!flows.some((flow) => flow.label === label)) {
         throw new Error(`No flow "${label}". Flows: ${flows.map((flow) => flow.label).join(', ') || 'none (apply the content first)'}`);
       }
-      const flowTNodeIds = runningFlowTNodes(label);
-      if (flowTNodeIds.length === 0) {
+      const flowRunNodeIds = runningFlowRunNodes(label);
+      if (flowRunNodeIds.length === 0) {
         const runningLabels = [...new Set(runningFlowLabels())];
-        const ranAndFinished = reports.some((e) => isSpawn(e) && e.tNode.tNodeType === 'flow' && flowLabels.get(`flow:${e.tNode.id}`) === label);
+        const ranAndFinished = reports.some((e) => isSpawn(e) && e.runNode.kind === 'flow' && flowLabels.get(`flow:${e.runNode.id}`) === label);
         const why = ranAndFinished
           ? 'it ran and finished'
           : 'the brain runs the root flow (root: true) and the subflows running flows spawn: make it one of those, and import flows before startApp';
@@ -480,52 +476,52 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       // An event's tracks are the ones it triggers from here; entry tracks ran when the flow started
       const cursor = event === undefined ? 0 : reports.length;
       const since = () => reports.slice(cursor);
-      const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event' && flowTNodeIds.includes(e.flowTNodeId)).map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}.`;
+      const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.runNode.kind !== 'event' && flowRunNodeIds.includes(e.flowRunNodeId)).map((e) => `${e.runNode.label} (${runStep(e).status})`).join(', ') || 'none'}.`;
       if (event !== undefined) {
         testRootEvents.emitIncoming({ to: brainId, event: { type: 'TRIGGER_BRAIN_EVENT', eventType: event, payload: data } });
         await settle(deadline, timedOut);
       }
 
-      const triggered = () => since().filter((e): e is TNodeSpawned =>
-        isSpawn(e) && flowTNodeIds.includes(e.flowTNodeId) && e.tNode.tNodeType === 'event' && e.tNode.eventType === eventType);
+      const triggered = () => since().filter((e): e is RunNodeSpawned =>
+        isSpawn(e) && flowRunNodeIds.includes(e.flowRunNodeId) && e.runNode.kind === 'event' && e.runNode.eventType === eventType);
       if (triggered().length === 0) {
         throw new Error(`Flow "${label}" has no track for "${eventType}".`);
       }
-      const done = (id: string) => since().some((e) => isUpdate(e) && e.data.tNodeId === id && (e.data.status === 'completed' || e.data.status === 'failed'));
+      const done = (id: string) => since().some((e) => isUpdate(e) && e.data.runNodeId === id && (e.data.status === 'completed' || e.data.status === 'failed'));
       /** Finished, or waiting by design: a waiting step, or a subflow whose own steps are all done or waiting */
-      const settledNode = (spawned: TNodeSpawned): boolean => {
-        if (done(spawned.tNode.id)) return true;
-        if (spawned.tNode.tNodeType === 'flow') {
-          const inner = since().filter((e): e is TNodeSpawned => isSpawn(e) && e.flowTNodeId === spawned.tNode.id && e.tNode.tNodeType !== 'event');
+      const settledNode = (spawned: RunNodeSpawned): boolean => {
+        if (done(spawned.runNode.id)) return true;
+        if (spawned.runNode.kind === 'flow') {
+          const inner = since().filter((e): e is RunNodeSpawned => isSpawn(e) && e.flowRunNodeId === spawned.runNode.id && e.runNode.kind !== 'event');
           return inner.length > 0 && inner.every(settledNode);
         }
-        const stepType = (untypedQuery.ids(spawned.tNode.id as EARS.EntityId).pickAll() as Array<{ stepNodeType?: string }>)[0]?.stepNodeType;
+        const stepType = readRunNode(spawned.runNode.id)?.stepNodeType;
         return stepType !== undefined && stepRegistry.get(stepType)?.runtime?.waits === true;
       };
-      const trackFinished = (eventTNodeId: string) =>
-        done(eventTNodeId) || since().filter((e): e is TNodeSpawned => isSpawn(e) && e.eventTNodeId === eventTNodeId && e.tNode.id !== eventTNodeId).every(settledNode);
+      const trackFinished = (eventRunNodeId: string) =>
+        done(eventRunNodeId) || since().filter((e): e is RunNodeSpawned => isSpawn(e) && e.eventRunNodeId === eventRunNodeId && e.runNode.id !== eventRunNodeId).every(settledNode);
       const finishedTracks = () => {
-        const ids = triggered().map((e) => e.tNode.id);
+        const ids = triggered().map((e) => e.runNode.id);
         return ids.every(trackFinished) ? ids : undefined;
       };
-      let eventTNodeIds: string[] | undefined;
+      let eventRunNodeIds: string[] | undefined;
       // A step reports completion before its flow starts the next step, so every started step can look settled
       // in between: check again once the systems have settled
-      while (!eventTNodeIds) {
+      while (!eventRunNodeIds) {
         await waitForEmitted(finishedTracks, Math.max(deadline - Date.now(), 0), timedOut);
         await settle(deadline, timedOut);
-        eventTNodeIds = finishedTracks();
+        eventRunNodeIds = finishedTracks();
       }
-      const tracks = new Set(eventTNodeIds);
+      const tracks = new Set(eventRunNodeIds);
       return {
-        eventTNodeIds,
-        steps: since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event' && e.eventTNodeId !== undefined && tracks.has(e.eventTNodeId)).map((e) => stepTrace(e, tNodeRows)),
+        eventRunNodeIds,
+        steps: since().filter(isSpawn).filter((e) => e.runNode.kind !== 'event' && e.eventRunNodeId !== undefined && tracks.has(e.eventRunNodeId)).map((e) => runStep(e)),
       };
     }),
-    flowTrace(label) {
+    flowSteps(label) {
       return reports.filter(isSpawn)
-        .filter((e) => e.tNode.tNodeType !== 'event' && flowLabels.get(e.tNode.id) === label)
-        .map((e) => stepTrace(e, tNodeRows));
+        .filter((e) => e.runNode.kind !== 'event' && flowLabels.get(e.runNode.id) === label)
+        .map((e) => runStep(e));
     },
     system(systemId) {
       if (stopped) throw stoppedError();

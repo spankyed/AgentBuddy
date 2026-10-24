@@ -10,7 +10,7 @@
     "services": [
       "host/onboarding",
       "host/appData",
-      "host/traceStore",
+      "host/runHistory",
       "host/inference",
       "host/secrets",
       "host/filesystem"
@@ -19,7 +19,16 @@
   "data": {
     "relations": [
       "has",
-      "relates_to"
+      "relates_to",
+      "references",
+      "forked_from",
+      "compacts",
+      "blocks",
+      "blocked_by",
+      "duplicates"
+    ],
+    "roles": [
+      "assistant_birth"
     ]
   },
   "features": {
@@ -2349,30 +2358,14 @@
         "globals": {
           "EARS": "typeof _dsl.EARS",
           "query": "typeof _dsl.query",
-          "getAllEntities": "typeof _dsl.getAllEntities",
-          "getAll": "typeof _dsl.getAll",
-          "findEntitiesByRelationTo": "typeof _dsl.findEntitiesByRelationTo",
+          "getRow": "typeof _dsl.getRow",
           "getAttr": "typeof _dsl.getAttr",
-          "getAttrs": "typeof _dsl.getAttrs",
           "getRoles": "typeof _dsl.getRoles",
-          "getEntitiesOfType": "typeof _dsl.getEntitiesOfType",
-          "findEntitiesByAttribute": "typeof _dsl.findEntitiesByAttribute",
-          "findEntitiesInRelationTo": "typeof _dsl.findEntitiesInRelationTo",
           "findRelations": "typeof _dsl.findRelations",
-          "getRelationStats": "typeof _dsl.getRelationStats",
           "getSchemaStats": "typeof _dsl.getSchemaStats",
           "create": "typeof _dsl.create",
           "upsert": "typeof _dsl.upsert",
-          "write": "typeof _dsl.write",
-          "destroyEntity": "typeof _dsl.destroyEntity",
-          "prepareEntity": "typeof _dsl.prepareEntity",
-          "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults",
-          "updateEntity": "typeof _dsl.updateEntity",
-          "createRelation": "typeof _dsl.createRelation",
-          "removeRelation": "typeof _dsl.removeRelation",
-          "removeRelationById": "typeof _dsl.removeRelationById",
-          "grantRole": "typeof _dsl.grantRole",
-          "revokeRole": "typeof _dsl.revokeRole"
+          "write": "typeof _dsl.write"
         }
       }
     },

@@ -46,7 +46,7 @@ function builtPack(dir: string, id = 'default-pack', version = '1.0.0', hostVers
   // Reading, replacing and restoring builds must not activate executable pack code.
   write('dist/runtime/index.cjs', 'throw new Error("pack execution is forbidden in this command fixture");');
   write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
-    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
   }));
   sealPackBuild(path.join(dir, 'dist'), manifest);
   return dir;
@@ -66,13 +66,13 @@ it('replaces deliberately, survives boot refresh, then restores a removed defaul
   const settingsId = 'Settings-app' as EARS.EntityId;
   const choices = { app: { personal: { name: 'Keep' } }, packs: { 'default-pack': { assistant: { name: 'Keep override' } } } };
   const paths = _appDataPaths(context.userDataDir);
-  const { store, engine } = openDatabaseStore({ paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
+  const { store, engine } = openDatabaseStore({ path: paths.lmdb,
     schema: readInstalledSchema(context), log: () => {},
   });
   const previousEngine = _bindEars(engine);
   try {
     await store.hydrate();
-    untypedUpsert('Settings', settingsId).set('data', choices);
+    untypedUpsert('Settings', { id: settingsId, data: choices });
   } finally {
     _bindEars(previousEngine);
     expect(store.close().errorCount).toBe(0);
@@ -93,7 +93,7 @@ it('replaces deliberately, survives boot refresh, then restores a removed defaul
   expect(readInstalledPacks(context.installedPacksFile)[0]).toMatchObject({ enabled: true, updatesWith: 'app' });
   expect(readInstalledPacks(context.installedPacksFile)[0]).not.toHaveProperty('suppressAppInstall');
   const reopened = await openAppDatabase({ env: context.env, userDataDir: context.userDataDir, readOnly: true, log: () => {} });
-  try { expect(reopened.ears.findById<{ data: typeof choices }>(settingsId)?.data).toEqual(choices); }
+  try { expect(reopened.ears.query.ids(settingsId).pickOne()?.data).toEqual(choices); }
   finally { reopened.close(); }
   expect(findDatabaseWriter(context.userDataDir)).toBeNull();
 });

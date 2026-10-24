@@ -2,45 +2,57 @@
 // type, `write` an entity that exists, and `upsert` a type and an id that is either free or that type's.
 import type { AttributeStorage } from './attribute-storage.ts';
 import type { Journal } from './journal.ts';
-import { createEntity, entityTypeOf } from './attribute-storage.ts';
+import { newId, entityTypeOf, TRASHED_AT } from './attribute-storage.ts';
 import type { EdgeStore } from './edge-store.ts';
-import type { createGraph } from './graph.ts';
+import type { createHierarchy } from './hierarchy.ts';
+import type { createEntityCounters } from './numbering.ts';
 import { EARS } from './entities.ts';
-import { EarsError, refuseReserved } from './errors.ts';
-import type { CreateOptions, LinkOptions, WriteBuilder } from './runtime.ts';
+import { EarsError, RESERVED_ENTITY_TYPES, refuseReserved } from './errors.ts';
+import type { NameChecks } from './names.ts';
+import type { LinkOptions, RowIdentity, RowRules, WriteBuilder, WriteOptions } from './runtime.ts';
 
-const LINK_OPTIONS: readonly string[] = ['info', 'replace', 'acyclicIn', 'symmetric'] satisfies Array<keyof LinkOptions>;
+/** When the entity last changed: stamped by the engine, never written by a caller */
+const UPDATED_AT = EARS.AttrKind.Custom('updatedAt');
+
+const LINK_OPTIONS: readonly string[] = ['info', 'replace', 'acyclicIn'] satisfies Array<keyof LinkOptions>;
 
 /** A string that is not shaped like an id: where a type is meant, an id fails to compile */
 export type TypeName<T extends string> = T extends `${string}-${string}` ? never : T;
 
-/** Creates an entity of a registered type, with a new id or the one given */
+/** Creates an entity of a registered type with its row: its fields, and its id and times when it brings them */
 export interface Create {
-  <E extends string>(type: TypeName<E>, options?: CreateOptions): WriteBuilder<E>;
+  <E extends string>(type: TypeName<E>, row?: Record<string, unknown> & RowIdentity): WriteBuilder<E>;
 }
 
-/** Writes to the entity with this id, creating it as `type` when no entity has it */
+/**
+ * Writes the row to the entity with its `id`, creating it as `type` with the row when no entity has it: the same row
+ * `create` takes, with the id it is written under always given
+ */
 export interface Upsert {
-  <E extends string>(type: TypeName<E>, id: EARS.EntityId): WriteBuilder<E>;
+  <E extends string>(type: TypeName<E>, row: Record<string, unknown> & RowIdentity & { id: EARS.EntityId }): WriteBuilder<E>;
 }
 
 /** Writes to the entity with this id, which must exist */
 export interface Write {
-  <E extends string>(id: EARS.EntityId<E>): WriteBuilder<E>;
+  <E extends string>(id: EARS.EntityId<E>, options?: WriteOptions): WriteBuilder<E>;
 }
 
-/** An engine's writes, over its storage, edge store and graph walks */
-export function createWrites({ storage, edgeStore, graph, isEntityType, journal }: {
+/** An engine's writes, over its storage, edge store and cycle check */
+export function createWrites({ storage, edgeStore, hierarchy, isEntityType, rowRules, counters, names, journal }: {
   storage: AttributeStorage;
   journal: Pick<Journal, 'atCommit' | 'open'>;
   edgeStore: EdgeStore;
-  graph: Pick<ReturnType<typeof createGraph>, 'wouldCreateCycle' | 'linkSymmetric'>;
+  hierarchy: Pick<ReturnType<typeof createHierarchy>, 'wouldCreateCycle'>;
   isEntityType: (name: string) => boolean;
+  rowRules: (type: string) => RowRules | undefined;
+  counters: Pick<ReturnType<typeof createEntityCounters>, 'generateShortCode'>;
+  names: NameChecks;
 }) {
+  const requiredFields = (type: string) => rowRules(type)?.required ?? [];
   const {
-    destroyEntity, entityCreated, hasEntity,
-    putAttr, addAttr, mergeAttr, dropAttr, deleteAttr, dropIf,
-    grantRole, revokeRole, getRoles, addRelation, findEntitiesByRelationTo, getAttr,
+    destroyEntity, entityCreated, hasEntity, isTrashed,
+    putAttr, appendAttr, mergeAttr, removeAt, removeValue, deleteAttr,
+    grantRole, revokeRole, getRoles, addRelation, findEntitiesByRelationTo, getRow,
   } = storage;
 
   /**
@@ -60,10 +72,15 @@ export function createWrites({ storage, edgeStore, graph, isEntityType, journal 
       if (!hasEntity(target) && findEntitiesByRelationTo(kind, target).includes(source)) throw missing();
     });
   }
-  const { wouldCreateCycle, linkSymmetric } = graph;
+  const { wouldCreateCycle } = hierarchy;
   const attr = (k: string) => EARS.AttrKind.Custom(k);
 
   function requireType(type: string, via: string): void {
+    // The engine's own, whatever its creator registers: a row of one would stand where a relation or a numbering
+    // sequence is kept
+    if ((Object.values(RESERVED_ENTITY_TYPES) as string[]).includes(type)) {
+      throw new EarsError('RESERVED_ENTITY_TYPE', `${via}(${JSON.stringify(type)}): the engine's own type, which its ids are written with: no entity is created as one`);
+    }
     if (typeof type === 'string' && isEntityType(type)) return;
     throw new EarsError(
       'UNKNOWN_ENTITY_TYPE',
@@ -72,46 +89,70 @@ export function createWrites({ storage, edgeStore, graph, isEntityType, journal 
     );
   }
 
-  function builder(id: EARS.EntityId): WriteBuilder {
+  /**
+   * The writes to one entity. Its attribute writes stamp `updatedAt` — once per builder, so a chain of them is one
+   * change — unless `touch` is off; links, roles and the trash don't.
+   */
+  function builder(id: EARS.EntityId, touch = true): WriteBuilder {
+    let stamped = !touch;
+    const changed = () => {
+      if (stamped) return;
+      stamped = true;
+      putAttr(id, UPDATED_AT, Date.now());
+    };
     const self: WriteBuilder = {
       set(k, v) {
         refuseReserved(k, 'set');
+        if (v === undefined) throw new EarsError('NO_VALUE', `set('${k}'): no value to store. delete('${k}') removes the attribute`);
         putAttr(id, attr(k), v);
+        changed();
         return self;
       },
       setMany(attrs) {
         for (const k of Object.keys(attrs)) refuseReserved(k, 'setMany');
-        for (const [k, v] of Object.entries(attrs)) putAttr(id, attr(k), v);
+        const defined = Object.entries(attrs).filter(([, v]) => v !== undefined);
+        for (const [k, v] of defined) putAttr(id, attr(k), v);
+        if (defined.length > 0) changed();
         return self;
       },
-      add(k, v) {
-        refuseReserved(k, 'add');
-        addAttr(id, attr(k), v);
+      append(k, v) {
+        refuseReserved(k, 'append');
+        appendAttr(id, attr(k), v);
+        changed();
         return self;
       },
-      merge(k, v, index) {
+      merge(k, v) {
         refuseReserved(k, 'merge');
-        mergeAttr(id, attr(k), v, index);
+        mergeAttr(id, attr(k), v);
+        changed();
         return self;
       },
       delete(k) {
         refuseReserved(k, 'delete');
+        if (requiredFields(entityTypeOf(id)).includes(k)) {
+          throw new EarsError('REQUIRED_FIELD', `delete(${JSON.stringify(k)}): every ${entityTypeOf(id)} holds it; set(${JSON.stringify(k)}, value) replaces it`);
+        }
         deleteAttr(id, attr(k));
+        changed();
         return self;
       },
-      deleteAt(k, index) {
-        refuseReserved(k, 'deleteAt');
-        dropAttr(id, attr(k), index);
+      removeAt(k, index) {
+        refuseReserved(k, 'removeAt');
+        removeAt(id, attr(k), index);
+        changed();
         return self;
       },
-      deleteValue(k, v) {
-        refuseReserved(k, 'deleteValue');
-        dropIf(id, attr(k), v);
+      removeValue(k, v) {
+        refuseReserved(k, 'removeValue');
+        removeValue(id, attr(k), v);
+        changed();
         return self;
       },
 
       link(kind, target, options: LinkOptions = {}) {
-        const { info, replace, acyclicIn, symmetric } = options;
+        const { info, replace, acyclicIn } = options;
+        names.relationKinds(kind, 'link');
+        if (acyclicIn) names.relationKinds(acyclicIn, 'link');
         // An edge's info is `{ info }`: an object with other keys is info passed where the options go
         const stray = Object.keys(options).filter((k) => !LINK_OPTIONS.includes(k));
         if (stray.length) throw new Error(`link(${kind}): unknown option ${stray.join(', ')}; an edge's info goes in { info }`);
@@ -122,46 +163,86 @@ export function createWrites({ storage, edgeStore, graph, isEntityType, journal 
             : `Cannot create a ${kind} relation that would form a cycle within [${acyclicIn.join(', ')}]`);
         }
         requireTarget(id, kind, target);
-        if (symmetric) linkSymmetric(id, target, kind, info);
-        else if (replace) edgeStore.linkOne(id, kind, target, info);
+        if (replace) edgeStore.linkOne(id, kind, target, info);
         else addRelation(id, kind, target, info);
         return self;
       },
       unlink(kind, target) {
-        edgeStore.unlink({ sourceEntity: id, relationType: kind, targetEntity: target });
+        names.relationKinds(kind, 'unlink');
+        edgeStore.unlink({ source: id, kind, target });
         return self;
       },
       unlinkAll() {
-        edgeStore.unlink({ sourceEntity: id });
+        edgeStore.unlink({ source: id });
         return self;
       },
 
       grant(role) {
+        names.role(role, 'grant');
         if (!getRoles(id).includes(role)) grantRole(id, role);
         return self;
       },
       revoke(role) {
+        names.role(role, 'revoke');
         if (getRoles(id).includes(role)) revokeRole(id, role);
         return self;
       },
       grantExclusive(role, among) {
+        names.role(role, 'grantExclusive');
         for (const other of among) {
           if (other !== id && getRoles(other).includes(role)) revokeRole(other, role);
         }
         return self.grant(role);
       },
 
-      destroy({ keepStored = false } = {}) {
-        destroyEntity(id, keepStored);
+      trash(at = Date.now()) {
+        if (!isTrashed(id)) putAttr(id, TRASHED_AT, at);
+        return self;
+      },
+      restore() {
+        deleteAttr(id, TRASHED_AT);
+        return self;
+      },
+
+      destroy() {
+        destroyEntity(id);
       },
 
       id: () => id,
+
+      // The builder's entity exists — write refuses an id no entity has, and destroy ends the chain
+      row: () => getRow(id) as ReturnType<WriteBuilder['row']>,
     };
     return self;
   }
 
-  const create = ((type: string, { id: given, createdAt }: CreateOptions = {}) => {
+  /**
+   * The writes to a relation by its id: `destroy()` removes it, as an unlink of that one edge would. A relation holds
+   * no fields, so every other write is refused; `updateRelation` changes its ends or info.
+   */
+  function relationBuilder(relId: EARS.EntityId): WriteBuilder {
+    const refuse = (via: string) => () => {
+      throw new EarsError('NOT_AN_ENTITY', `write(${JSON.stringify(relId)}).${via}(): a relation holds no fields. updateRelation changes it, destroy() removes it`);
+    };
+    const self = Object.fromEntries(Object.keys(builder(relId, false)).map((member) => [member, refuse(member)])) as unknown as WriteBuilder;
+    return Object.assign(self, {
+      destroy: () => storage.removeRelationById(relId),
+      id: () => relId,
+    });
+  }
+
+  const create = ((type: string, row: Record<string, unknown> & RowIdentity = {}) => {
     requireType(type, 'create');
+    // The row's id and times are the engine's to write; its other reserved names are refused before the entity
+    // exists, so a create that fails leaves nothing behind
+    const { id: given, createdAt, updatedAt, ...fields } = row;
+    for (const field of Object.keys(fields)) refuseReserved(field, 'create');
+    // A row that brings no short code is numbered, once every check has passed, so a refused create takes no number
+    const prefix = fields.shortCode === undefined ? rowRules(type)?.shortCode : undefined;
+    const missing = requiredFields(type).filter((field) => fields[field] === undefined && !(field === 'shortCode' && prefix));
+    if (missing.length > 0) {
+      throw new EarsError('REQUIRED_FIELD', `create(${JSON.stringify(type)}): the row lacks ${missing.map((field) => `"${field}"`).join(', ')}, which every ${type} holds`);
+    }
     let id: EARS.EntityId;
     if (given !== undefined) {
       // An id is the record of its entity's type (`entityTypeOf`), so it must name the type it is created as
@@ -173,27 +254,33 @@ export function createWrites({ storage, edgeStore, graph, isEntityType, journal 
       }
       id = given;
     } else {
-      id = createEntity(type);
+      id = newId(type);
     }
+    if (prefix) fields.shortCode = counters.generateShortCode(type, prefix);
     entityCreated(id, type);
-    putAttr(id, attr('createdAt'), createdAt ?? Date.now());
-    return builder(id);
+    const at = createdAt ?? Date.now();
+    putAttr(id, attr('createdAt'), at);
+    putAttr(id, UPDATED_AT, updatedAt ?? at);
+    // The creation is the entity's first change: its fields, and what the builder writes now, are part of it
+    return builder(id, false).setMany(fields);
   }) as Create;
 
-  const write = ((id: EARS.EntityId) => {
+  const write = ((id: EARS.EntityId, { touch = true }: WriteOptions = {}) => {
+    if (storage.hasRelation(id)) return relationBuilder(id);
     if (!hasEntity(id)) {
       throw new EarsError('NO_SUCH_ENTITY', `write(${JSON.stringify(id)}): no entity has this id. create(type) makes one; upsert(type, id) makes it when missing`);
     }
-    return builder(id);
+    return builder(id, touch);
   }) as Write;
 
-  const upsert = ((type: string, id: EARS.EntityId) => {
+  // An entity that exists keeps its times: setMany refuses a createdAt or updatedAt in the row, as any write of them
+  const upsert = ((type: string, { id, ...fields }: Record<string, unknown> & { id: EARS.EntityId }) => {
     requireType(type, 'upsert');
-    if (!hasEntity(id)) return create(type, { id });
+    if (!hasEntity(id)) return create(type, { ...fields, id });
     if (entityTypeOf(id) !== type) {
-      throw new EarsError('TYPE_MISMATCH', `upsert(${JSON.stringify(type)}, ${JSON.stringify(id)}): that entity is a ${entityTypeOf(id)}`);
+      throw new EarsError('TYPE_MISMATCH', `upsert(${JSON.stringify(type)}, { id: ${JSON.stringify(id)} }): that entity is a ${entityTypeOf(id)}`);
     }
-    return builder(id);
+    return builder(id, true).setMany(fields);
   }) as Upsert;
 
   /**
@@ -202,18 +289,18 @@ export function createWrites({ storage, edgeStore, graph, isEntityType, journal 
    * ends as they are then. `admin.updateRelation` stays unchecked, as `admin.addRelation` does: loading data is the
    * creator's to vouch for.
    */
-  function updateRelation(relId: EARS.EntityId, { sourceEntity, targetEntity, info }: { sourceEntity?: EARS.EntityId; targetEntity?: EARS.EntityId; info?: unknown }): void {
+  function updateRelation(relId: EARS.EntityId, { source, target, info }: { source?: EARS.EntityId; target?: EARS.EntityId; info?: unknown }): void {
     const missing = (end: EARS.EntityId) => new EarsError('NO_SUCH_ENTITY', `updateRelation(${JSON.stringify(relId)}): no entity has the id ${JSON.stringify(end)}`);
     if (!journal.open) {
-      for (const end of [sourceEntity, targetEntity]) if (end !== undefined && !hasEntity(end)) throw missing(end);
+      for (const end of [source, target]) if (end !== undefined && !hasEntity(end)) throw missing(end);
     } else {
       journal.atCommit(() => {
-        const details = getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | null;
+        const details = storage.relationOf(relId);
         if (!details) return;
-        for (const end of [details.sourceEntity, details.targetEntity]) if (!hasEntity(end)) throw missing(end);
+        for (const end of [details.source, details.target]) if (!hasEntity(end)) throw missing(end);
       });
     }
-    storage.updateRelation(relId, sourceEntity, targetEntity, info);
+    storage.updateRelation(relId, source, target, info);
   }
 
   return { create, upsert, write, updateRelation };

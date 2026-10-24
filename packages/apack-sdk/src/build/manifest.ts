@@ -1,4 +1,4 @@
-import { _packEntityTypes, _packRelationTypes, type PackDataDeclarations } from '../framework/data-declaration.ts';
+import { _packEntityTypes, _packRelationTypes, _packRoles, type PackDataDeclarations } from '../framework/data-declaration.ts';
 import * as path from 'path';
 import type { z } from 'zod';
 import { resolveName } from '../ids/refs.ts';
@@ -63,6 +63,7 @@ export const PACK_SNAPSHOT_FORMAT = 1;
 export interface PackTypeManifest {
   entities: Record<string, string>;
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
 }
 
 export interface PackSnapshot {
@@ -154,6 +155,7 @@ export function _cliFormatMismatchMessage({ problem }: SnapshotFormatMismatch): 
 export const PROVENANCE_KINDS = {
   entities: (m: ProvenanceManifest) => Object.keys(_packEntityTypes(m)),
   relKinds: (m: ProvenanceManifest) => Object.keys(_packRelationTypes(m)),
+  roles: (m: ProvenanceManifest) => Object.keys(_packRoles(m)),
   referenceTypes: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.types ?? {})),
   referenceCategories: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.categories ?? {})),
   tiptapExtensions: (m: ProvenanceManifest) => Object.values(m.extensions?.textEditor ?? {}).flatMap(surface => Object.keys(surface.extensions ?? {})),

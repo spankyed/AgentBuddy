@@ -11,11 +11,15 @@ import type { ContentWriter } from '../../src/content/writers.ts';
 import { _getMediaPath, applyRecord, type ApplyRecord, type ImportMode } from '../../src/utils/index.ts';
 import type { ContentItem } from '../../src/build/content/items.ts';
 import type { EARS } from '../../src/types/entities.ts';
+import { defineEars, type UntypedSchema } from '@apackdev/ears';
 
 type Memo = { id: EARS.EntityId; name: string; body: string; pinned?: boolean; mood?: string; contentHash?: string };
-const memos = (name: string) => ears().findWhere<Memo>('Memo' as EARS.Entity, 'name', name);
+type Folder = { id: EARS.EntityId; name: string; label?: string; contentKey?: string };
+/** The fixture's entities, typed by their shapes as a pack's facade types its own */
+const typed = defineEars<UntypedSchema & { shapes: { Memo: Memo; Folder: Folder }; names: 'Memo' | 'Folder' }>(ears);
+const memos = (name: string) => typed.query('Memo').where('name', name).pickAll();
 const memo = (name: string) => memos(name)[0];
-const edit = (name: string, fields: Partial<Memo>) => ears().updateEntity(memo(name).id, fields);
+const edit = (name: string, fields: Partial<Memo>) => ears().write(memo(name).id).setMany(fields);
 
 /** Content writers the entity's owning pack registers */
 const registerHooks = (entity: string, hooks: ContentWriter<ContentItem>) => testPacks.contentWriters.set(entity, hooks as ContentWriter);
@@ -197,7 +201,7 @@ describe('the applied content a run records', () => {
     const first = applyRecord();
     applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     const id = memo('Intro').id;
-    untypedWrite(id).set('deleted' as never, true);
+    untypedWrite(id).trash();
 
     const counts = offering.apply({
       compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]),
@@ -205,8 +209,8 @@ describe('the applied content a run records', () => {
     });
 
     expect(counts).toEqual({ created: 0, updated: 1, skipped: 0 });
-    expect(ears().getAttr(id, 'deleted' as never), 'out of the trash').toBeFalsy();
-    expect(ears().getAttr(id, 'body' as never)).toBe('Hello again');
+    expect(ears().getRow(id)?.['trashedAt' as never], 'out of the trash').toBeFalsy();
+    expect(ears().getRow(id)?.['body' as never]).toBe('Hello again');
   });
 
   /**
@@ -391,7 +395,7 @@ describe('an entity we wrote with no recorded parts', () => {
 
   /** An entity with no hash of ours is the user's by identity, which the adoption must not reach */
   it('is not adopted when it carries no hash of ours', () => {
-    ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'Intro', body: 'theirs' });
+    ears().create('Memo' as EARS.Entity, { name: 'Intro', body: 'theirs' });
 
     expect(apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), applyRecord()))
       .toEqual({ created: 0, updated: 0, skipped: 1 });
@@ -435,12 +439,12 @@ describe('content the pack has dropped', () => {
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
     const extraKey = [...first.written.keys()].find((key) => key.includes('Extra'))!;
     const extraId = memo('Extra').id;
-    untypedWrite(extraId).set('deleted' as never, true);
+    untypedWrite(extraId).trash();
 
     const second = after(first);
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
 
-    expect(ears().findByIdRaw(extraId), 'the trashed entity was destroyed').toBeTruthy();
+    expect(ears().query.withTrashed.ids(extraId).exists(), 'the trashed entity was destroyed').toBeTruthy();
     expect([...second.removed], 'and the entry goes, so nothing recomputes the removal').toEqual([extraKey]);
   });
 
@@ -528,9 +532,8 @@ describe("two packs' records with the same entry key and identity", () => {
 });
 
 describe("a folder another pack written", () => {
-  type Folder = { id: EARS.EntityId; name: string; label?: string; contentKey?: string };
-  const folders = () => ears().findWhere<Folder>('Folder' as EARS.Entity, 'name', 'internal');
-  const contents = (folder: Folder) => ears().query.ids(folder.id).linksTo('contains', 'Memo' as EARS.Entity, true).pick(['name']).map((row) => row.name as string).sort();
+  const folders = () => typed.query('Folder').where('name', 'internal').pickAll();
+  const contents = (folder: Folder) => ears().query.ids(folder.id).out('contains', 'Memo' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
 
   /** A pack's entry: one folder holding a memo per name, with the pack's own label on the folder */
   function tree(packId: string, memoNames: string[], entryKey = 'memos'): string {
@@ -678,7 +681,7 @@ describe("a folder another pack written", () => {
     applyOffering(emptied, second);
 
     expect(memo('guide.md').body, 'the item the user rewrote').toBe('mine');
-    expect(ears().findByIdRaw(folderId), 'the folder it is in went with the content').toBeTruthy();
+    expect(ears().query.withTrashed.ids(folderId).exists(), 'the folder it is in went with the content').toBeTruthy();
     expect(contents(folders()[0]), "the sibling nobody touched is gone, and the edited one isn't").toEqual(['guide.md']);
     expect([...second.offers.keys()].map((key) => key.includes('guide')), 'the edited item is offered').toEqual([true]);
   });
@@ -688,7 +691,7 @@ describe("a folder another pack written", () => {
     registerHooks('Folder', { container: false });
     const first = applyRecord();
     apply(tree('pack-a', ['welcome.md', 'guide.md']), first);
-    untypedWrite(folders()[0].id).set('deleted' as never, true);
+    untypedWrite(folders()[0].id).trash();
 
     const second = after(first);
     apply(tree('pack-a', ['welcome.md', 'guide.md']), second);
@@ -752,8 +755,8 @@ describe('wipe-and-replace', () => {
   const folderNames = () => ears().query('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
 
   it("removes rows of every entity type the entry content, even types its records don't hold", () => {
-    ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'old folder' });
-    ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
+    ears().create('Folder' as EARS.Entity, { name: 'old folder' });
+    ears().create('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
 
     // Only top-level memos: no Folder record, yet the entry content folders too
     expect(wipeImport(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]))).toEqual({ created: 1, updated: 0, skipped: 0 });
@@ -764,7 +767,7 @@ describe('wipe-and-replace', () => {
   });
 
   it('wipes when the entry has no records', () => {
-    ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
+    ears().create('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
 
     expect(wipeImport(compiled('pack-a', []))).toEqual({ created: 0, updated: 0, skipped: 0 });
 
@@ -773,7 +776,7 @@ describe('wipe-and-replace', () => {
 
   it("leaves entity types the entry doesn't content", () => {
     const memosOnly = createFormatApplier({ key: 'memos', entities: ['Memo'], identity: ['name'] });
-    ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'kept folder' });
+    ears().create('Folder' as EARS.Entity, { name: 'kept folder' });
 
     memosOnly.apply({ compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), mode: 'wipe-and-replace', log: () => {} });
 
@@ -785,11 +788,11 @@ describe('an update hook that fails part way', () => {
   it("reports the error and leaves the row updatable, not edited: the next content updates it", () => {
     let failing = true;
     registerHooks('Memo', {
-      create: (record) => ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: record.name, body: record.body, pinned: false }).id,
+      create: (record) => ears().create('Memo' as EARS.Entity, { name: record.name, body: record.body, pinned: false }).id(),
       update: (id, record) => {
-        ears().updateEntity(id, { body: record.body });
+        ears().write(id).setMany({ body: record.body });
         if (failing) throw new Error('disk full');
-        ears().updateEntity(id, { pinned: record.pinned });
+        ears().write(id).setMany({ pinned: record.pinned });
       },
     });
     const pinnedRecord = (version: string, pinned: boolean) => {
@@ -814,7 +817,7 @@ describe('an update hook that fails part way', () => {
   it("re-takes the item's entry over the fields it had: a field the record newly sets isn't recorded as ours", () => {
     registerHooks('Memo', {
       update: (id, record) => {
-        ears().updateEntity(id, { body: record.body });
+        ears().write(id).setMany({ body: record.body });
         throw new Error('disk full');
       },
     });
@@ -851,7 +854,7 @@ describe('a field a changed record no longer sets', () => {
     registerHooks('Memo', {
       update: (id, record, { clearedFields }) => {
         cleared.push(clearedFields);
-        ears().updateEntity(id, { body: record.body, ...(clearedFields.includes('pinned') && { pinned: false }) });
+        ears().write(id).setMany({ body: record.body, ...(clearedFields.includes('pinned') && { pinned: false }) });
       },
     });
     const first = applyRecord();
@@ -868,7 +871,7 @@ describe('a created row that fails before it is tracked', () => {
     registerHooks('Memo', {
       update: (id, record) => {
         if (failing) throw new Error('disk full');
-        ears().updateEntity(id, { body: record.body });
+        ears().write(id).setMany({ body: record.body });
       },
     });
     const mediaApplier = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], media: true });

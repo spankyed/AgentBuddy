@@ -114,7 +114,7 @@ The compiled body of `action` runs in one sandbox, whether a flow's action step 
 - `params`: the step's resolved input (or the params the caller passed)
 - `services`: the object below, with `services.logger` named `action:<label>`, so the Logs view shows which action logged
 - `z`: zod, for schemas
-- `flowId`: the running flow's trace node id when a flow step runs it; `undefined` otherwise
+- `flowId`: the running flow's run node id when a flow step runs it; `undefined` otherwise
 
 ### Available services
 
@@ -149,7 +149,7 @@ Ordinary pack source imports its own `services` and `Services` from `#generated/
 | `services.emitter` | Typed sends to surfaces and systems (`broadcastToSurface`, and `sendToSystem` naming a system `<pack>/<feature>`, such as `'my-pack/bookmarks'`, or a role, `{ role: 'brain' }`) |
 | `services.appData` | Reset, export and import app data, and inspect backup metadata |
 | `services.onboarding` | Read and complete onboarding (`isComplete`, `complete`) without granting whole-data administration |
-| `services.traceStore` | Read flow execution records |
+| `services.runHistory` | Flow runs: each run's tree of nodes, recorded while it runs and kept after |
 | `services.secrets` | The user's API keys as metadata (`list`, `select`, `rename`, `delete`, `status`); never values |
 | `services.filesystem` | Files and folders on disk, as UTF-8 text (`readFile`, `writeFile`, `readDir`, `mkdir`, `stat`, `exists`, `rename`, `remove`) |
 
@@ -176,7 +176,7 @@ The build keeps only the function's body, and the runtime calls it with fixed pa
 | `params` | The step's `params`, overridden by its resolved `map` (see [Mappings](#mappings)) | `params` |
 | `services` | The app's `services` | The app's `services` |
 | `z` | zod | `undefined` |
-| `flowId` | The running flow's trace node id | `undefined` |
+| `flowId` | The running flow's run node id | `undefined` |
 
 The function's return value is the step's result (`$.lastStep.result`).
 
@@ -394,7 +394,7 @@ default-setup's helpers:
 | `kill(label = 'Kill Flow')` | `kill` | — | Stops the flow running the step |
 | `query(prompt, opts?)` | `query` | `as?: string` (default `rows`, not `query`), `model?: ModelId` (default `anthropic:claude-opus-5`) | The model turns `prompt` into a read-only EARS query, instructed by the `DB Query System` prompt with `services.database.buildQueryContext()`, and the step runs it with the database console's read-only executor. Result `{ query, [as]: value }`. Fails when the model can't be called, returns no query, or the query fails or writes |
 | `create(entity, opts?)` | `create` | `map?`, `params?: Record<string, unknown>` (literal fields; mapped fields win), `inferLabel?: boolean` (default `true`) | Creates an entity of type `entity`, which must be registered in the running app (`isEntityType`: the SDK's or any registered pack's). Without a `label` field, the label comes from `title`, `name` or `topic`, else `New <Entity> <n>`. Result the created row |
-| `update(target, opts?)` | `update` | `map?`, `params?`, `onMissing?: 'fail' \| 'ignore' \| 'create'` (default `fail`), `entity?: string` | Writes the fields to the entity with id `target`: a `$.` path resolved when the step runs (`$.lastStep.result.id` after a `create`; `$.lastStep.id` is the trace node's id) or a literal id. A `null` field drops it. Result the row with `updated: true`. With no such entity, `fail` errors naming the id, `ignore` results `{ updated: false }`, and `create` creates an `entity` (required at build) with the fields, result the row with `updated: false, created: true` |
+| `update(target, opts?)` | `update` | `map?`, `params?`, `onMissing?: 'fail' \| 'ignore' \| 'create'` (default `fail`), `entity?: string` | Writes the fields to the entity with id `target`: a `$.` path resolved when the step runs (`$.lastStep.result.id` after a `create`; `$.lastStep.id` is the step's run-history node, not an entity, so an update to it finds none) or a literal id. A `null` field drops it. Result the row with `updated: true`. With no such entity, `fail` errors naming the id, `ignore` results `{ updated: false }`, and `create` creates an `entity` (required at build) with the fields, result the row with `updated: false, created: true` |
 | `transform(script, opts?)` | `transform` | `outputType?: 'json' \| 'text' \| 'custom'` (default `json`), `map?` | `script` is an async function body run as an action runs (`services.action.executeAction`), with `services` and `params`: `params.input` is the previous step's result, then the mapped fields (a mapped `input` replaces it). Result: `json` the returned value round-tripped through JSON (fails if it isn't serializable), `text` `String(value)`, `custom` the value as returned. A script error fails the step with `Transform step "<label>" script failed: <message>` |
 
 `action`, `llm`, `fire`, `subflow`, `create` and `update` option names come from their `DSL…Node` interfaces in `packages/default-setup/src/extensions/steps/<step>/types.ts`.
@@ -416,7 +416,7 @@ An `action` step's `params`, and a `create` or `update` step's fields, are the s
 | `$.event.data.payload` | A sent event's payload: what `fire`'s `payload` holds, or what a client or `runFlow` sent (`$.event.data.payload.text`) |
 | `$.event.data.<target>` | In a subflow's `flow.entry` track, the subflow step's mapped field, or, when it inherits, the parent event's field |
 | `$.lastStep.result` | The result of the step that ran before this one in the track (`$.lastStep.label` its label) |
-| `$.steps[label=<label>].result` | The result of an earlier step in this track, by label (`$.steps[id=<trace node id>]` by trace node) |
+| `$.steps[label=<label>].result` | The result of an earlier step in this track, by label (`$.steps[id=<run node id>]` by run node) |
 
 `$.steps` holds only the track's own steps, in the order they completed (a subflow that inherits starts its entry track with the parent track's).
 
@@ -694,7 +694,7 @@ Re-applying follows the same rules for every entry:
 
 Rows without a stored `contentHash` (rows users created) stay user-owned, in every mode. A row the app wrote but has no parts for — one written by a version from before it recorded them — is **adopted**: written once and recorded, after which its edits are honoured. That overwrites an edit made before the record existed, which is the trade for not freezing every such row for good.
 
-**A written entity the user threw away is not written again, and nor are its children.** An apply finds its own entity by `contentKey` whether or not it is marked deleted, so a trashed entity (`trash.move`, `deleted: true`) is one the user has taken ownership of: it is left alone, and its children are not visited — they would be created under a deleted parent. This is the same rule as the ones above, and it means a pack needs no policy to say "write this only on a first run".
+**A written entity the user threw away is not written again, and nor are its children.** An apply finds its own entity by `contentKey` whether or not it is in the trash (`query.withTrashed`), so a trashed entity (`write(id).trash()`) is one the user has taken ownership of: it is left alone, and its children are not visited — they would be created under a deleted parent. This is the same rule as the ones above, and it means a pack needs no policy to say "write this only on a first run".
 
 **An entity deleted outright is not written again either, because the app remembers writing it.** Nothing is left of it, so what answers for it is the pack's record of what it wrote: a key it wrote with no entity behind it now is one the user removed. The rule holds whatever your feature's delete does — a trashed entity is read directly, a destroyed one through the record.
 

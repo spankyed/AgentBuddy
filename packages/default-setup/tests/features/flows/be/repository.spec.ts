@@ -1,4 +1,4 @@
-import { RepositoryErrorCode } from '@apackdev/ears';
+import { RepositoryErrorCode } from '@apackdev/sdk/repositories';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { repository } from '#generated/repository.ts';
 

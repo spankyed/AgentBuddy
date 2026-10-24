@@ -1,6 +1,6 @@
 /*───────────────────────────────────────────────────────────────────────────
- * The SDK's EARS namespace: the engine's (@apackdev/ears) with the entity types
- * and relation kinds the SDK owns (sdk-entities.ts). Packs add theirs in their
+ * The SDK's EARS namespace: the engine's (@apackdev/ears) with the entity types,
+ * relation kinds and roles the SDK owns (sdk-entities.ts). Packs add theirs in their
  * generated EARS.
  *
  * CHANGE CONTROL: these types are a specified contract, and editor completions and error messages
@@ -8,28 +8,23 @@
  * Read packages/apack-sdk/TYPED-EARS.md (the contract and the pre-change checklist) first.
  *───────────────────────────────────────────────────────────────────────────*/
 import { EARS as Core } from '@apackdev/ears';
-import { SDK_ENTITIES, SDK_REL_KINDS } from './sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from './sdk-entities.ts';
 
 export namespace EARS {
   // ─── Entity ────────────────────────────────────────────────────────────
-  // The SDK's own entities (the engine's Relation among them); packs add theirs in their generated EARS
+  // The SDK's own entities; packs add theirs in their generated EARS
   export const Entity = SDK_ENTITIES;
 
   export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
   export type EntityId<E extends string = string> = Core.EntityId<E>;
 
   // ─── RelKind ───────────────────────────────────────────────────────────
-  export const RelKind = {
-    ...SDK_REL_KINDS,
-    Custom: Core.RelKind.Custom,
-  } as const;
+  export const RelKind = SDK_REL_KINDS;
 
   export type RelKind = Core.RelKind;
 
-  // ─── Shared engine types ───────────────────────────────────────────────
-  export type RelationDetail = Core.RelationDetail;
-
-  export const RoleKind = Core.RoleKind;
+  // ─── RoleKind ──────────────────────────────────────────────────────────
+  export const RoleKind = SDK_ROLES;
   export type RoleKind = Core.RoleKind;
 
   export const AttrKindValues = Core.AttrKindValues;
@@ -42,5 +37,4 @@ export namespace EARS {
   export type AttributeType = Core.AttributeType;
   export type AttributeStore = Core.AttributeStore;
 
-  export type Blueprint = Core.Blueprint;
 }

@@ -44,15 +44,16 @@ function findIndexedDoc(indexId: string, chunkKey: string): IndexedDocEntity | n
 }
 
 function createIndexedDoc(data: IndexedDocCreateData): EARS.EntityId {
-  const id = create(EARS.Entity.IndexedDoc)
-    .set('shortCode', generateIndexedDocShortCode())
-    .set('indexId', data.indexId)
-    .set('chunkKey', data.chunkKey)
-    .set('documentId', data.documentId)
-    .set('vectorId', data.vectorId)
-    .set('text', data.text)
-    .set('metadata', data.metadata)
-    .set('chunkInfo', data.chunkInfo || null)
+  const id = create(EARS.Entity.IndexedDoc, {
+    shortCode: generateIndexedDocShortCode(),
+    indexId: data.indexId,
+    chunkKey: data.chunkKey,
+    documentId: data.documentId,
+    vectorId: data.vectorId,
+    text: data.text,
+    metadata: data.metadata,
+    chunkInfo: data.chunkInfo || null,
+  })
     .id()
   return id
 }
@@ -273,7 +274,7 @@ export async function createSearchIndex(
 
   // Save to EARS
   // The engine holds the id and creation time; the row is the rest
-  const { id: _id, createdAt: _createdAt, ...fields } = searchIndex
+  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...fields } = searchIndex
   builder.setMany({
     ...fields,
     type: 'SearchIndex',
@@ -335,7 +336,7 @@ export async function updateSearchIndex(
   }
   
   // Update in EARS
-  const { id: _id, createdAt: _createdAt, ...fields } = updatedIndex
+  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...fields } = updatedIndex
   write(indexId).setMany(fields)
   
   // If embedding model changed, we need to re-index everything
@@ -603,7 +604,7 @@ async function getChildCollectionsRecursive(
   collectionId: EARS.EntityId
 ): Promise<EARS.EntityId[]> {
   const children = query.ids(collectionId)
-    .linksTo(EARS.RelKind.PARENT_OF, 'Collection' as any)
+    .out(EARS.RelKind.PARENT_OF, 'Collection' as any)
     .ids()
   
   const allChildren = [...children]

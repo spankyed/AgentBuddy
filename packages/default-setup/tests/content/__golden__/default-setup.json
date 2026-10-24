@@ -1737,11 +1737,10 @@
         "content": "# Welcome to apack\n\napack is an AI-development environment and work platform. It features persistent conversations — with rich artifacts, interactive permissions, and automation you can see and customize.\n\n---\n\n## ⚡ What You Can Do\n\n- **Chat with Claude Code** in threaded conversations that persist across sessions\n  - **Import existing sessions** from your Claude Code CLI history\n  - **Approve or deny** file edits, bash commands, and other tool requests inline\n  - **Fork, revert, and rewind** conversations — branch from any message or roll back changes\n  - **View diffs, plans, and session stats** as artifacts alongside your conversation\n- **Organize work** with threads, tags, statuses, and a kanban board\n- **Build automation flows** — write arbitrary javascript and orchestrate logic visually with a node-based editor\n- **Edit code** with a built-in code editor — including source control, a file explorer, and a terminal\n\n---\n\n## 🧭 How It Works\n\nThe interface has four areas:\n\n- **Toolbar** (left) — switch between surfaces: Threads, Notes, Code, Library, Flows, and more\n- **Canvas** (top) — the main content area, changes based on the active surface\n- **Chat** (bottom) — where you send messages and respond to permission requests\n- **Inspection panel** (right, toggleable) — contextual details for the active surface\n- **Recent bar** (bottom edge) — quick-switch between recent threads\n\n---\n\n## 🚀 Getting Started\n\n1. **Send your first message** — click `+ New thread` at the bottom of the chat, type a request, and hit Send\n2. **Set a project directory** — you'll be prompted to select a working directory\n3. **Handle permissions** — when an agent wants to edit files, you'll see an approve/deny prompt inline\n4. **Review artifacts** — diffs, plans, and session details appear as artifacts in the thread dashboard\n5. **Import past sessions** — use `/cc-import` to bring in existing Claude Code CLI sessions\n\n---\n\n## 🧠 Key Concepts\n\n- **Thread** — a conversation container. Each thread carries its own artifacts, tags, and status.\n- **Artifact** — rich content attached to a thread: code diffs, plans, session stats, notes, and more.\n- **Flow** — a visual, node-based automation. Flows define how the system reacts to events — routing messages, handling permissions, running actions.\n- **Action** — a reusable function invoked by flows. The actual logic behind each step.\n- **Mode** — threads operate in modes that determine how messages are routed and processed.\n\n---\n\n## 💡 Tips\n\n- **Resize the chat** by dragging the divider between canvas and chat. Right-click the divider to maximize chat.\n- **Use commands** like `/cc-resume`, `/cc-fork`, `/cc-compact`, and `/cc-context` directly in chat.\n- **Fork a conversation** from any message to explore a different approach without losing your original thread.\n- **Check the Brain surface** to see how flows execute in real time — useful for understanding and debugging automation.\n",
         "displayOrder": 0,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": "👋",
-        "label": "New Note 1",
         "lastSeen": 0,
         "noteType": "document",
-        "shortCode": "NOTE-1",
         "title": "welcome"
       },
       "Prompt:Commit Message": {
@@ -1769,7 +1768,7 @@
           }
         },
         "label": "Commit Message",
-        "shortCode": "PRO-1"
+        "shortCode": "PROMPT-1"
       },
       "Prompt:DB Query System": {
         "category": "database",
@@ -1790,7 +1789,7 @@
           }
         },
         "label": "DB Query System",
-        "shortCode": "PRO-2"
+        "shortCode": "PROMPT-2"
       },
       "Prompt:DB Transaction System": {
         "category": "database",
@@ -1811,7 +1810,7 @@
           }
         },
         "label": "DB Transaction System",
-        "shortCode": "PRO-3"
+        "shortCode": "PROMPT-3"
       },
       "Prompt:Edit Phase Tips System": {
         "category": "claude-code",
@@ -1819,7 +1818,7 @@
         "entityType": "Prompt",
         "inputs": {},
         "label": "Edit Phase Tips System",
-        "shortCode": "PRO-4"
+        "shortCode": "PROMPT-4"
       },
       "Prompt:Plan Phase Tips System": {
         "category": "claude-code",
@@ -1827,7 +1826,7 @@
         "entityType": "Prompt",
         "inputs": {},
         "label": "Plan Phase Tips System",
-        "shortCode": "PRO-5"
+        "shortCode": "PROMPT-5"
       },
       "Prompt:Recap System": {
         "category": "claude-code",
@@ -1835,7 +1834,7 @@
         "entityType": "Prompt",
         "inputs": {},
         "label": "Recap System",
-        "shortCode": "PRO-6"
+        "shortCode": "PROMPT-6"
       }
     },
     "relations": [

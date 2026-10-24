@@ -72,7 +72,7 @@ it('enables an explicitly reinstalled pack but preserves enablement on an ordina
     fs.writeFileSync(path.join(source, 'runtime/index.cjs'), 'throw new Error("Do not activate");');
     fs.writeFileSync(path.join(source, 'types/snapshot.json'), JSON.stringify({
       format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest,
-      types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+      types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
     }));
     sealPackBuild(source, manifest);
     await installPackFromLocal(source, context.packsDir, {

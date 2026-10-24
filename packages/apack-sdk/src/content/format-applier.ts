@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
-import { destroyEntity, findRelations, boundEars as ears, untypedWrite, untypedQuery as query } from '../ears/index.ts';
+import { findRelations, boundEars as ears, untypedCreate, untypedWrite, untypedQuery as query } from '../ears/index.ts';
 import type { QueryBuilder } from '@apackdev/ears';
 import { _getMediaPath, loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
@@ -10,7 +10,6 @@ import { contentPath } from '../build/manifest.ts';
 import { contentPackId } from '../utils/apply.ts';
 import { RECORD_KEYS, itemLabel, type CompiledContentFile, type ContentItem } from '../build/content/items.ts';
 import { _contentWriterRegistry, type ContentWriteContext, type ContentMatch, type ContentWriter } from './writers.ts';
-import { trash } from '../repositories/trash.ts';
 import { errorMessage } from '../utils/shared.ts';
 import type { ContentEditPolicy } from '../framework/declaration-schema.ts';
 
@@ -57,8 +56,12 @@ export function hashValues(values: unknown[]): string {
  * as our edit.
  */
 function fieldParts(id: EARS.EntityId, fields: string[]): Record<string, string> {
-  return Object.fromEntries(fields.map((field) => [field, hashValues([ears().getAttr(id, field as EARS.AttrKind) ?? null])]));
+  const row = ears().getRow(id);
+  return Object.fromEntries(fields.map((field) => [field, hashValues([row?.[field] ?? null])]));
 }
+
+/** The content key an entity was written under — read through the trash, as a row is — or undefined when none was */
+export const contentKeyOf = (id: EARS.EntityId): string | undefined => ears().getAttr(id, CONTENT_KEY) as string | undefined;
 
 /**
  * The parts of a recorded item whose value in the database is no longer what we wrote.
@@ -134,26 +137,25 @@ export function contentKeySelection(key: string): { entryKey: string; label: str
 export interface ContentEntity {
   id: EARS.EntityId;
   contentHash?: string;
-  deleted?: boolean;
+  trashedAt?: number;
 }
 
 /**
  * The entity one content key names, found the way a later apply finds one. An entity type of `undefined` is
  * an item nothing recorded one for, and names no entity.
  *
- * **The keyed lookup sees deleted rows, and that is the whole of how an apply knows the user removed one.**
- * `query` carries no filter where the finders do (`@apackdev/ears`' `query-helpers.ts`, `!isDeleted`), and a
- * soft-deleted row keeps the `contentKey` being searched for. Hide it and `findByIdentity` misses too, on the
- * same filter, so the record is created again: a fresh copy beside the one in the trash, every time the
- * pack's compiled content changes.
+ * **The keyed lookup sees trashed rows (`query.withTrashed`), and that is the whole of how an apply knows the user
+ * removed one.** A trashed row keeps the `contentKey` being searched for. Hide it and `findByIdentity` misses too,
+ * since every other read skips the trash, so the record is created again: a fresh copy beside the one in the
+ * trash, every time the pack's compiled content changes.
  *
  * **It reaches only as far as the feature's delete does.** A row destroyed rather than trashed leaves nothing
  * carrying a content key, so nothing here can tell that it ever existed — the entity's own delete is what
- * decides which it is (`trash.move` against `destroy()`).
+ * decides which it is (`trash()` against `destroy()`).
  */
 export function contentEntity(entityType: string | undefined, key: string): ContentEntity | undefined {
   if (!entityType) return undefined;
-  return (query(entityType as never) as QueryBuilder).where(CONTENT_KEY, key).pickAll()[0] as ContentEntity | undefined;
+  return (query.withTrashed(entityType) as QueryBuilder).where(CONTENT_KEY, key).pickAll()[0] as ContentEntity | undefined;
 }
 
 /**
@@ -222,13 +224,13 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
        * (`reused`): its children are written under it and the row itself is left alone.
        */
       const find = (record: ContentItem, contentKey: string, context: ContentWriteContext, hooks?: ContentWriter): { match?: ContentMatch; reused?: boolean; deleted?: boolean } => {
-        // Seeing a deleted row is how an apply knows the user removed one; `contentEntity` says why
+        // Seeing a trashed row is how an apply knows the user removed one; `contentEntity` says why
         const keyed = contentEntity(record.entity, contentKey);
-        if (keyed) return { match: { id: keyed.id, contentHash: keyed.contentHash }, deleted: keyed.deleted === true };
+        if (keyed) return { match: { id: keyed.id, contentHash: keyed.contentHash }, deleted: keyed.trashedAt !== undefined };
         const match = findByIdentity(record, context, hooks);
         if (!match) return {};
-        const owner = ears().getAttr(match.id, CONTENT_KEY) as string | null;
-        if (owner === null) return { match };
+        const owner = contentKeyOf(match.id);
+        if (owner === undefined) return { match };
         // The keyed lookup missed, so the row is another record's: a container holds this record's children too
         if (hooks?.container) return { match, reused: true };
         // A row carrying another record's content key (or another pack's) isn't this record's, whatever its name
@@ -240,25 +242,28 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
         const fields = identity.filter((name) => name !== 'parent');
         if (fields.length === 0) throw new Error(`Content "${key}": entity "${record.entity}" has no find hook, so the entry needs "identity"`);
         const [first, ...rest] = fields;
-        const candidates = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>(record.entity as EARS.Entity, first, record[first])
+        const candidates = (query(record.entity as EARS.Entity).where(first, record[first]).pickAll() as Array<Record<string, unknown> & { id: EARS.EntityId }>)
           .filter((row) => rest.every((name) => row[name] === record[name]));
         const match = identity.includes('parent')
-          ? candidates.find((row) => query.ids(row.id).linksTo(relKind, undefined, false).ids()[0] === context.parentId)
+          ? candidates.find((row) => query.ids(row.id).in(relKind).ids()[0] === context.parentId)
           : candidates[0];
         return match && { id: match.id, contentHash: match.contentHash };
       };
 
       const create = (record: ContentItem, context: ContentWriteContext, hooks?: ContentWriter): EARS.EntityId => {
         if (hooks?.create) return hooks.create(record, context);
-        const row = ears().createEntityWithDefaults(record.entity as EARS.Entity, fieldsOf(record));
-        if (context.parentId) untypedWrite(context.parentId).link(relKind, row.id);
-        return row.id;
+        const id = untypedCreate(record.entity as EARS.Entity, fieldsOf(record)).id();
+        if (context.parentId) untypedWrite(context.parentId).link(relKind, id);
+        return id;
       };
 
       /** Without a hook, fields the record no longer sets are dropped */
       const update = (id: EARS.EntityId, record: ContentItem, context: ContentWriteContext, hooks?: ContentWriter) => {
         if (hooks?.update) hooks.update(id, record, context);
-        else ears().updateEntity(id, { ...fieldsOf(record), ...Object.fromEntries(context.clearedFields.map((field) => [field, null])) });
+        else {
+          const builder = untypedWrite(id).setMany(fieldsOf(record));
+          for (const field of context.clearedFields) builder.delete(field);
+        }
       };
 
       /** Hooks' repository commands may not store contentHash; the merge needs it, the parts and the key */
@@ -318,7 +323,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
           stamp(id, record, contentKey);
         } catch (err) {
           if (hooks?.remove) hooks.remove(id);
-          else destroyEntity(id);
+          else untypedWrite(id).destroy();
           if (mediaDir) fs.rmSync(path.join(_getMediaPath(), id), { recursive: true, force: true });
           /**
            * The entity is gone, so the record must not name it: an entry with no entity is what a later apply
@@ -337,7 +342,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 
       const remove = (id: EARS.EntityId, hooks?: ContentWriter) => {
         if (hooks?.remove) hooks.remove(id);
-        else destroyEntity(id);
+        else untypedWrite(id).destroy();
       };
 
       /**
@@ -419,10 +424,10 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
                * **A forced write to an entity the user trashed puts it back.** Only `force` reaches here
                * with a trashed entity — every other path reads one as the user's deletion — and the user
                * asking for the pack's item back and being given one still in the trash is not an answer.
-               * The fields the write sets are the record's, and `deleted` is not one of them, so nothing
+               * The fields the write sets are the record's, and `trashedAt` is not one of them, so nothing
                * else would clear it.
                */
-              if (deleted === true) trash.restore([existing!.id]);
+              if (deleted === true) untypedWrite(existing!.id).restore();
               updateTracked(existing!, applied, record, context, contentKey, hooks);
               counts.updated++;
               ctx.log(`  ${key} updated: ${label}`);
@@ -461,9 +466,9 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
        * remove.
        */
       const holdsOthers = (id: EARS.EntityId, prefix: string): boolean =>
-        findRelations({ sourceEntity: id }).some((relation) => {
-          const childKey = ears().getAttr(relation.targetEntity as EARS.EntityId, CONTENT_KEY) as string | null;
-          return childKey === null || !childKey.startsWith(prefix);
+        findRelations({ source: id }).some((relation) => {
+          const childKey = contentKeyOf(relation.target as EARS.EntityId);
+          return childKey === undefined || !childKey.startsWith(prefix);
         });
 
       /**
@@ -485,7 +490,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
           const item = record.before.get(itemKey)!;
           const entity = contentEntity(item.entityType, itemKey);
           const hooks = item.entityType ? _contentWriterRegistry.get(item.entityType) : undefined;
-          const live: LiveEntity | undefined = entity && entity.deleted !== true
+          const live: LiveEntity | undefined = entity && entity.trashedAt === undefined
             ? {
               contentHash: entity.contentHash,
               ...(hooks?.container === true && holdsOthers(entity.id, prefix) && { foreignContainer: true }),
@@ -529,7 +534,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
             const entity = contentEntity(verdict.item.entityType, verdict.itemKey);
             // An entity the user has already thrown away is theirs to restore, so only the entry goes:
             // destroying the trashed copy would take the undo with it
-            if (entity && entity.deleted !== true) remove(entity.id, verdict.hooks);
+            if (entity && entity.trashedAt === undefined) remove(entity.id, verdict.hooks);
             record.removed.add(verdict.itemKey);
             ctx.log(`  ${key} removed (dropped from the content): ${verdict.itemKey}`);
           } catch (err) {
@@ -565,11 +570,12 @@ function wipe(entities: string[], records: ContentItem[]): void {
   const types = [...entities].sort((a, b) => rank(b) - rank(a));
   for (const entity of types) {
     const hooks = _contentWriterRegistry.get(entity);
-    for (const row of ears().findAll<{ id: EARS.EntityId }>(entity as EARS.Entity)) {
+    // The trashed ones too: wiping is removing every entity of the types, whoever made it and wherever it is
+    for (const id of ears().query.withTrashed(entity).ids()) {
       // Removing a parent may already have removed this row
-      if (!ears().findByIdRaw(row.id)) continue;
-      if (hooks?.remove) hooks.remove(row.id);
-      else destroyEntity(row.id);
+      if (!ears().query.withTrashed.ids(id).exists()) continue;
+      if (hooks?.remove) hooks.remove(id);
+      else untypedWrite(id).destroy();
     }
   }
 }

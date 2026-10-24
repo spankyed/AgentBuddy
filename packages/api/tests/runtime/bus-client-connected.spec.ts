@@ -8,6 +8,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 import type { Message } from '@apackdev/sdk/events';
+import { _memoryRunHistoryStore } from '@apackdev/sdk/testing';
 
 vi.mock('@apackdev/host/app-state', async (importOriginal) => ({
   ...await importOriginal<typeof import('@apackdev/host/app-state')>(),
@@ -26,7 +27,7 @@ const { createHostRuntime } = await import('@apackdev/host/services');
 const { createEarsEngine } = await import('@apackdev/ears');
 const { untypedBroadcastToSurface } = await import('@apackdev/sdk/events');
 type LmdbStore = import('@apackdev/ears/lmdb').LmdbStore;
-bindHost(createHostRuntime({ store: {} as LmdbStore, engine: createEarsEngine({ isEntityType: () => false }), transport: { rootEvents }, appVersion: '1.0.0', packs: registry }));
+bindHost(createHostRuntime({ runHistory: _memoryRunHistoryStore(), store: {} as LmdbStore, engine: createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: () => false }), transport: { rootEvents }, appVersion: '1.0.0', packs: registry }));
 const backendSystem = createAppBus(registry);
 
 const received: string[] = [];

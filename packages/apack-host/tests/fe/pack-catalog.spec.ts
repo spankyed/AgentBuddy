@@ -44,7 +44,7 @@ describe('window declaration catalog', () => {
     catalog.setNative([{ id: 'native-pack', dsl, dslDefinitions: { rows: definitions } }]);
     const manifest = { id: 'installed-pack', name: 'Installed', version: '1.0.0', extensions: { dsl } };
     catalog.replace([{ dir: '/no-executable-pack', enabled: false, snapshot: { format: PACK_SNAPSHOT_FORMAT,
-      declarationRevision: _declarationRevision(manifest), manifest, eventContracts: eventContractsFixture(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+      declarationRevision: _declarationRevision(manifest), manifest, eventContracts: eventContractsFixture(manifest), types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
       dslDefinitions: { rows: definitions } } }]);
     const source = { ...manifest, id: 'source-pack' };
     catalog.setSources([{ dir: '/no-authored-modules', manifest: source, declarationRevision: _declarationRevision(source) }]);
@@ -74,7 +74,7 @@ describe('window declaration catalog', () => {
       view: { description: 'Open actions', surface: { label: 'View', state: 'missing.ts' } },
     } };
     const snapshot = { manifest, eventContracts: eventContractsFixture(manifest), declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
-      types: { entities: {}, relKinds: {} }, facades: {}, entityDestinations: { Action: 'view' } };
+      types: { entities: {}, relKinds: {}, roles: {} }, facades: {}, entityDestinations: { Action: 'view' } };
     catalog.replace([{ dir: '/missing/installed', enabled: false, snapshot }]);
     reader.connect(); sessions[0].receive(wire());
     expect(reader.surfaces()).toEqual(catalog.surfaces());
@@ -130,7 +130,7 @@ describe('window declaration catalog', () => {
     const installed = { ...manifest, id: 'installed-pack' };
     catalog.replace([{ dir: '/isolated/installed', enabled: false, snapshot: {
       format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(installed), manifest: installed, eventContracts: eventContractsFixture(installed),
-      types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+      types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
     } }]);
     reader.connect(); sessions[0].receive(wire());
     const entries = reader.catalog.references();
@@ -297,7 +297,7 @@ it('uses the common step projection and retains current immutable steps across s
   const manifest = { id: 'installed', name: 'Installed', version: '1.0.0', extensions: { steps: { memo: step } } };
   catalog.replace([{ dir: '/unavailable/installed', enabled: false, snapshot: {
     format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest),
-    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+    types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
   } }]);
   const source = { ...manifest, id: 'source' };
   catalog.setSources([{ dir: '/unavailable/source', manifest: source, declarationRevision: _declarationRevision(source) }]);

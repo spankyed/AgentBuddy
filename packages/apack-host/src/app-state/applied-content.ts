@@ -106,9 +106,7 @@ export const appliedContent = {
       if (item) items[key] = { ...item, offer };
     }
     for (const key of next.dropped ?? []) delete items[key];
-    const write = untypedUpsert(APPLIED_CONTENT_ENTITY, idOf(packId));
-    if (next.revision !== undefined) write.set('revision', next.revision);
-    write.set('items', items);
+    untypedUpsert(APPLIED_CONTENT_ENTITY, { id: idOf(packId), items, ...(next.revision !== undefined && { revision: next.revision }) });
   },
 
   /**

@@ -26,6 +26,8 @@ import { timeoutMsFor, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 import { asDuration, durationsOf, halfTotal, markedSpecs, trendOf, placementOf, pruneDurationCache, slowestFiles, tailBar, uncheckedNote, UNMARKED_NOTE, writeDurations } from './lib/spec-durations.ts';
 import { readReportedRun, SPEC_DURATIONS_FILE } from './lib/spec-durations-reporter.ts';
+import { overBudgetLine, overBudgetPasses } from './lib/over-budget.ts';
+import { timeoutOverrides } from './lib/test-timeouts.ts';
 import { HALVES } from './lib/spec-halves.ts';
 import { parseShard, shardArg } from './lib/chain-only.ts';
 
@@ -247,6 +249,10 @@ async function main(): Promise<void> {
           throw new Error(`${kind} pool asked vitest for ${covered.length} projects and ${absent.join(', ')} never reported — a --project filter matched nothing, so their names and vitest's project names have diverged`);
         }
         reportDurations(kind, covered, reported);
+        // A pass past its budget is a reading, never a failure: printed one line each, for the chain to show
+        for (const pass of overBudgetPasses(reported, covered, (file) => timeoutOverrides(path.join(REPO_ROOT, file), REPO_ROOT))) {
+          console.log(overBudgetLine(pass));
+        }
       },
       shard === undefined ? process.env : { ...process.env, [DIAGNOSTIC_RUN_ENV]: '1' },
     );

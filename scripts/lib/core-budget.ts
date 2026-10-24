@@ -90,6 +90,10 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   // Both producers run actual pack builds; authoring also repeats one for release preflight.
   'test:external-pack:contract': PACK_BUILD_WIDTH,
   'test:packaged-authoring:author': PACK_BUILD_WIDTH,
+  // Each fixture pack's Playwright suite, one worker per three cores, each worker an Electron app of three
+  // processes. **Measured as CPU time over wall time, 2026-10-23, two runs on a ten-core box**: 263.1s of CPU
+  // in 82.4s and 265.4s in 82.8s, so 3.2 cores, which rounds to three
+  'test:external-pack:app': { cores: 3 },
   // **`build:runtime` was re-measured on 2026-10-06, when it stopped running its four builds in series**:
   // 2.57, 2.57, 2.56, 2.49, 2.44 cores over five readings, median 2.56, against 2.2 when it was serial.
   //

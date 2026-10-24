@@ -38,7 +38,7 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
 
   // Add child collections
   const childCollections = query.ids(collectionId)
-    .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+    .out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
     .pickAll()
 
   for (const child of childCollections) {
@@ -47,7 +47,7 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
 
   // Add documents in this collection
   const documents = query.ids(collectionId)
-    .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+    .out(EARS.RelKind.CONTAINS, EARS.Entity.Document)
     .pickAll()
 
   for (const doc of documents) {

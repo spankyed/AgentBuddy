@@ -9,7 +9,8 @@ import { getAppVersion } from '../../src/env/index.ts';
 import { createLogger, reportError } from '../../src/logger/index.ts';
 import { boundHost, unbindHost } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
-import { registerRepository, repository, untypedCreate } from '@apackdev/sdk/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
+import { repository } from '@apackdev/sdk/services';
 
 process.env.APACK_ENV ??= 'test';
 process.env.APACK_USER_DATA_DIR ??= os.tmpdir();
@@ -54,25 +55,38 @@ describe('the test host', () => {
     vi.restoreAllMocks();
   });
 
-  it('has a test version, the engine, an appData that resets the database, and a trace store over it', async () => {
+  it('has a test version, the engine, and an appData that resets the database', async () => {
     expect(getAppVersion()).toBe('0.0.0-test');
-    expect(boundHost().ears.repository).toBe(ears().repository);
-    registerRepository('memoQueries', { all: () => [] });
+    const memoQueries = { all: () => [] };
+    testPacks.repositories.set('memoQueries', memoQueries);
     const id = untypedCreate('Memo').set('text', 'hello').id();
-    expect(boundHost().services.traceStore.getAttr('text', id)).toBe('hello');
+    expect(ears().getRow(id)?.text).toBe('hello');
     expect(entityIds()).toContain(id);
     dropAttribute(id, 'text');
-    expect(ears().getAttr(id, 'text')).toBeNull();
+    expect(ears().getRow(id)?.text).toBeUndefined();
     const before = ears();
     await boundHost().services.appData.reset();
     expect(entityIds()).toEqual([]);
-    // A reset replaces the engine, keeping the registered repositories
+    // A reset replaces the engine; the repositories are the registered packs', which it keeps
     expect(ears()).not.toBe(before);
-    expect(boundHost().ears.repository).toBe(ears().repository);
-    expect(repository.memoQueries).toBe(before.repository.memoQueries);
-    expect(before.getAllEntities()).toContain(id);
+    expect(repository.memoQueries).toBe(memoQueries);
+    expect(before.query.ids(id).exists()).toBe(true);
     await expect(boundHost().services.appData.exportBackup('/tmp')).rejects.toThrow("isn't supported in unit tests");
     resetTestData();
+    testPacks.repositories.delete('memoQueries');
+  });
+
+  it.each(['memoQueries', '__proto__', 'constructor', 'toString'])('reads the repository named %s from the registered packs, and names one nobody declares', (name) => {
+    expect(() => repository[name]).toThrow(`[repository] "${name}" is not registered: a pack declares its repositories in apack.json`);
+    const value = { owner: name };
+    testPacks.repositories.set(name, value);
+    try {
+      expect(repository[name]).toBe(value);
+      expect(() => repository.owner).toThrow('is not registered');
+      expect((repository as Record<symbol, unknown>)[Symbol.iterator]).toBeUndefined();
+    } finally {
+      testPacks.repositories.delete(name);
+    }
   });
 
   it('keeps the packs and version it was first started with', () => {

@@ -2,10 +2,9 @@
  * Tests verifying that default-setup imports from @apackdev/sdk and @apackdev/ears resolve to the
  * runtime the harness binds.
  */
-import { untypedCreate, exists } from '@apackdev/sdk/ears';
+import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  findById, findByIdRaw, findAll, findWhere,
-  createEntityWithDefaults, updateEntity, getAttr,
+  query, write, create
 } from '#generated/ears.ts';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { EARS } from '#generated/ears.ts';
@@ -14,72 +13,53 @@ describe('Tier 1 — EARS delegates', () => {
   beforeEach(() => resetTestData());
 
   it('create creates and retrieves an entity', () => {
-    const id = untypedCreate(EARS.Entity.Action)
-      .set('label', 'test-action')
-      .id();
+    const id = untypedCreate(EARS.Entity.Action, { label: 'test-action', input: {}, actionFn: 'return 1' }).id();
     expect(id).toBeDefined();
     expect(id).toMatch(/^Action-/);
 
-    const label = getAttr(id, 'label');
+    const label = query.ids(id).pickOne(['label'])?.label;
     expect(label).toBe('test-action');
   });
 
-  it('createEntityWithDefaults produces a complete entity', () => {
-    const entity = createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'SDK Test', actionFn: 'noop()' } as any,
-      'ACT',
-    );
+  it('create numbers an Action with its short code', () => {
+    const entity = create(EARS.Entity.Action, { input: {}, label: 'SDK Test', actionFn: 'noop()' }).row();
     expect(entity.id).toMatch(/^Action-/);
     expect(entity.label).toBe('SDK Test');
     expect(entity.shortCode).toMatch(/^ACT-/);
     expect(entity.createdAt).toBeTypeOf('number');
   });
 
-  it('findById / findAll / findWhere round-trip', () => {
-    const entity = createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'Findable', actionFn: 'fn()', category: 'test' } as any,
-      'ACT',
-    );
+  it('a row by id, by type and by a field reads back', () => {
+    const entity = create(EARS.Entity.Action, { input: {}, label: 'Findable', actionFn: 'fn()', category: 'test' }).row();
 
-    expect(findById(entity.id)).toBeDefined();
-    expect(findAll(EARS.Entity.Action as any).length).toBe(1);
-    expect(findWhere(EARS.Entity.Action as any, 'category', 'test').length).toBe(1);
+    expect(query.ids(entity.id).pickOne()).toBeDefined();
+    expect(query(EARS.Entity.Action as any).pickAll().length).toBe(1);
+    expect(query(EARS.Entity.Action as any).where('category', 'test').pickAll().length).toBe(1);
   });
 
-  it('findByIdRaw returns entity including after soft-delete', () => {
-    const entity = createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'ToDelete', actionFn: 'fn()' } as any,
-      'ACT',
-    );
-    updateEntity(entity.id, { deleted: true });
+  it('query.withTrashed reaches an entity in the trash, which a plain query does not', () => {
+    const entity = create(EARS.Entity.Action, { input: {}, label: 'ToDelete', actionFn: 'fn()' }).row();
+    write(entity.id).trash(5);
 
-    const raw = findByIdRaw(entity.id);
-    expect(raw).toBeDefined();
-    expect((raw as any).deleted).toBe(true);
+    expect(query.ids(entity.id).pickOne()).toBeUndefined();
+    expect(query.withTrashed.ids(entity.id).pickOne(['trashedAt'])?.trashedAt).toBe(5);
   });
 
-  it('exists returns true for existing entities', () => {
-    const entity = createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'Exists', actionFn: 'fn()' } as any,
-      'ACT',
-    );
-    expect(exists(entity.id)).toBe(true);
-    expect(exists('Action-nonexistent' as any)).toBe(false);
+  it('query.ids(id).exists() answers for existing entities', () => {
+    const entity = create(EARS.Entity.Action, { input: {}, label: 'Exists', actionFn: 'fn()' }).row();
+    expect(query.ids(entity.id).exists()).toBe(true);
+    expect(query.ids('Action-nonexistent' as any).exists()).toBe(false);
   });
 
 });
 
 describe('Tier 2 — EARS types', () => {
-  it('SDK EARS namespace exports core Entity and helpers', async () => {
+  it('SDK EARS namespace exports its entities and helpers, a relation being none', async () => {
     const { EARS: sdkEARS } = await import('@apackdev/sdk/types');
-    expect(sdkEARS.Entity).toBeDefined();
-    expect(sdkEARS.Entity.Relation).toBe('Relation');
+    expect(sdkEARS.Entity.Flow).toBe('Flow');
+    expect('Relation' in sdkEARS.Entity).toBe(false);
     expect(typeof sdkEARS.AttrKind.Custom).toBe('function');
-    expect(typeof sdkEARS.RelKind.Custom).toBe('function');
+    expect(sdkEARS.RelKind.CONTAINS).toBe('contains');
   });
 
   it('generated EARS registry has domain entities', () => {

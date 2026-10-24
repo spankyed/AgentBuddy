@@ -52,7 +52,7 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
   write('dist/runtime/fe.js', 'export default {};');
   write('dist/runtime/content/actions.content.json', '[]');
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8'));
-  write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {}, manifest, eventContracts: eventContractsFixture(manifest), format: PACK_SNAPSHOT_FORMAT }));
+  write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {}, manifest, eventContracts: eventContractsFixture(manifest), format: PACK_SNAPSHOT_FORMAT }));
   write('src/ignored.ts', 'not part of the pack');
   sealBuild(root);
   return root;
@@ -727,7 +727,7 @@ describe('installPackFromLocal (pack layout path)', () => {
     expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(false);
 
     const source = builtPack();
-    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {}, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), format: appFormat }));
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {}, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), format: appFormat }));
     sealBuild(source);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {

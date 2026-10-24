@@ -5,8 +5,7 @@
  * entities through `services.repository`; pack code imports `query`/`create`/`write` from `#generated/ears`.
  */
 
-import { EARS } from '#generated/ears.ts';
-import { getEntitiesOfType, getAllEntityTypes, getAll } from '@apackdev/sdk/ears';
+import { getRow, getSchemaStats, isEntityType, untypedQuery } from '@apackdev/sdk/ears';
 import { findRelations } from '@apackdev/sdk/ears';
 
 /**
@@ -17,11 +16,14 @@ import { findRelations } from '@apackdev/sdk/ears';
 export function buildQueryContext(): { schema: string; topology: string } {
   // Sample entities
   const schemaLines: string[] = [];
-  for (const type of getAllEntityTypes()) {
-    const ids = getEntitiesOfType(type as EARS.Entity);
-    if (ids.length === 0) continue;
+  for (const type of Object.keys(getSchemaStats().entities)) {
+    // The engine's own numbering rows are no type a query can name
+    if (!isEntityType(type)) continue;
+    const first = untypedQuery.withTrashed(type).first();
+    if (!first) continue;
 
-    const raw = getAll(ids[0]);
+    // The schema is the attributes; the id is the entity's, not a field
+    const { id: _id, ...raw } = getRow(first)!;
     const fields: string[] = [];
     const sample: Record<string, unknown> = {};
 
@@ -40,13 +42,13 @@ export function buildQueryContext(): { schema: string; topology: string } {
 
     const sampleStr = JSON.stringify(sample);
     const truncated = sampleStr.length > 200 ? sampleStr.slice(0, 200) + '…}' : sampleStr;
-    schemaLines.push(`${type} (${ids.length})\n  fields: ${fields.join(', ')}\n  sample: ${truncated}`);
+    schemaLines.push(`${type} (${untypedQuery.withTrashed(type).count()})\n  fields: ${fields.join(', ')}\n  sample: ${truncated}`);
   }
 
   // Build topology: relation counts by source type, kind and target type
   const edges = new Map<string, number>();
-  for (const { sourceEntity, relationType, targetEntity } of findRelations()) {
-    const edgeKey = `${sourceEntity.split('-')[0]} --${relationType}--> ${targetEntity.split('-')[0]}`;
+  for (const { source, kind, target } of findRelations()) {
+    const edgeKey = `${source.split('-')[0]} --${kind}--> ${target.split('-')[0]}`;
     edges.set(edgeKey, (edges.get(edgeKey) ?? 0) + 1);
   }
 

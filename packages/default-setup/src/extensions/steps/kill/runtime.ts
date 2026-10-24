@@ -1,9 +1,9 @@
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 
-export function handler(_tNode: TNodeEntity, _node: unknown, ctx: ExecutionContext, actor: unknown): void {
+export function handler(_input: StepInput, _node: unknown, ctx: ExecutionContext, actor: unknown): void {
   const a = actor as { send: (event: any) => void };
 
-  const flowActor = ctx.runtime.getFlowActor(ctx.flowTNodeId);
+  const flowActor = ctx.runtime.getFlowActor(ctx.flowRunNodeId);
   if (flowActor) {
     flowActor.send({ type: 'KILL_FLOW' });
   }

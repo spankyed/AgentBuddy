@@ -9,10 +9,10 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    // Large (`SIZE_MS`): each of these npm-packs three packages into a temp consumer and compiles
+    // Large (`SIZE_MS` × `DEADLINE_FACTOR`): each of these npm-packs three packages into a temp consumer and compiles
     // it across the TypeScript matrix, which is tens of seconds of work in a handful of tests.
-    testTimeout: 60_000,
-    hookTimeout: 60_000,
+    testTimeout: 120_000,
+    hookTimeout: 120_000,
     setupFiles: ['./tests/_support/turn-event-loop.ts'],
     include: ['tests/**/*.integration.spec.ts'],
     exclude: ['**/node_modules/**'],

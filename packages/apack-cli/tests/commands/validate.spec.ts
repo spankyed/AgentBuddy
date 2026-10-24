@@ -47,7 +47,7 @@ describe('pack authoring validation', () => {
       { id: 'provider', spec: '*', status: 'resolved' }, { id: 'other', spec: '*', status: 'unavailable', problem: 'Offline' },
     ], files: new Map([['provider', { directory: '/missing', kind: 'type-data', revision: 'test', snapshot: {
       manifest: provider, declarationRevision: _declarationRevision(provider),
-      types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+      types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
     } }]]) });
     const report = await validatePack(root);
     expect(report.status).toBe('invalid');

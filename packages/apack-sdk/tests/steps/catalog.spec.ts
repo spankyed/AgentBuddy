@@ -18,7 +18,7 @@ function fixture() {
     binding: { type: 'memo', node: { label: 'Memo', defaults: { tags: ['draft'] } }, runtime: { handler } } };
   const state = { entries: [entry] };
   const bindings = new Map([['memo', accepted]]);
-  bindHost({ ears: createEarsEngine({ isEntityType: () => true }), appVersion: '1.0.0', services: {} as never,
+  bindHost({ ears: createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: () => true }), appVersion: '1.0.0', services: {} as never,
     transport: {} as never, packs: { stepDeclarations: () => state.entries, stepBindings: () => bindings,
       step: (type: string) => bindings.get(type)?.binding, steps: () => [...bindings.values()].map(value => value.binding) } as never });
   return { entry, accepted, state, bindings, handler };

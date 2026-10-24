@@ -7,20 +7,36 @@
 import type { AnyActorRef } from 'xstate';
 import type { BaseEntity } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
+import type { ShortCode } from '@apackdev/ears';
 import { z } from 'zod';
 
 // @public
 export function collapseRecord(entries: FieldMapping[] | undefined): Record<string, MapEntry> | undefined;
 
-// @public (undocumented)
-export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
+// @public
+export interface EventRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: string;
+    // (undocumented)
+    eventType: string;
+    // (undocumented)
+    input?: never;
+    // (undocumented)
+    kind: 'event';
+    payload?: unknown;
+    // (undocumented)
+    result?: never;
+    // (undocumented)
+    stepNodeType?: never;
+    triggerType: string;
+}
 
 // @public (undocumented)
 export interface ExecutionContext {
     // (undocumented)
     event: ExecutionEvent;
     // (undocumented)
-    flowTNodeId: EARS.EntityId;
+    flowRunNodeId: EARS.EntityId;
     // (undocumented)
     lastStep?: Omit<StepRun, 'timestamp'>;
     // (undocumented)
@@ -55,6 +71,23 @@ export interface FieldMapping {
 }
 
 // @public
+export interface FlowRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: never;
+    // (undocumented)
+    eventType?: never;
+    input?: Record<string, unknown>;
+    // (undocumented)
+    kind: 'flow';
+    // (undocumented)
+    payload?: never;
+    result?: unknown;
+    stepNodeType?: string;
+    // (undocumented)
+    triggerType?: never;
+}
+
+// @public
 export function getStepBinding(type: string): StepBackendBinding | undefined;
 
 // @public (undocumented)
@@ -81,20 +114,55 @@ export function mapProblems(map: unknown, path: string): Array<{
 // @internal
 export function _mergeStepDefinitions(existing: StepDefinition, def: StepDefinition): StepDefinition;
 
+// @public
+export type RunNode = FlowRunNode | EventRunNode | StepRunNode;
+
+// @public
+export interface RunNodeBase {
+    // (undocumented)
+    completedAt?: number;
+    // (undocumented)
+    final?: boolean;
+    flowId?: EARS.EntityId;
+    // (undocumented)
+    id: RunNodeId;
+    // (undocumented)
+    label: string;
+    nodeId?: EARS.EntityId;
+    parentId?: RunNodeId;
+    rootId: RunNodeId;
+    // (undocumented)
+    startedAt: number;
+    // (undocumented)
+    status: RunStatus;
+}
+
+// @public
+export type RunNodeId = `RunNode-${string}`;
+
+// @public
+export type RunNodeKind = RunNode['kind'];
+
+// @public
+export type RunStatus = 'active' | 'completed' | 'failed' | 'stopped';
+
 // @public (undocumented)
 export interface RuntimeServices {
     // (undocumented)
-    getFlowActor: (flowTNodeId: EARS.EntityId) => AnyActorRef | undefined;
+    getFlowActor: (flowRunNodeId: EARS.EntityId) => AnyActorRef | undefined;
     // (undocumented)
     servicesForAction: PackServiceAccess['servicesForAction'];
 }
 
 // @public
+export type RunTree = RunNode & {
+    children: RunTree[];
+};
+
+// @public
 export type SdkEntityShapes = {
-    Relation: RelationEntity;
     Flow: FlowEntity;
     Node: NodeBase;
-    TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
     Document: DocumentEntity;
@@ -207,6 +275,13 @@ export interface StepFEFacet {
     nodeConfig: StepNodeConfig;
 }
 
+// @public
+export interface StepInput {
+    params: Record<string, unknown>;
+    runNodeId: RunNodeId;
+    settings: Record<string, unknown>;
+}
+
 // @public (undocumented)
 export interface StepLayoutDescriptor {
     // (undocumented)
@@ -277,6 +352,24 @@ export interface StepRun {
     timestamp: TimestampMs;
 }
 
+// @public
+export interface StepRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: never;
+    // (undocumented)
+    eventType?: never;
+    input?: Record<string, unknown>;
+    // (undocumented)
+    kind: 'step';
+    // (undocumented)
+    payload?: never;
+    result?: unknown;
+    // (undocumented)
+    stepNodeType: string;
+    // (undocumented)
+    triggerType?: never;
+}
+
 // @public (undocumented)
 export interface StepRuntimeError {
     // (undocumented)
@@ -286,11 +379,11 @@ export interface StepRuntimeError {
     // (undocumented)
     errorId: string;
     // (undocumented)
-    eventTNodeId?: EARS.EntityId;
+    eventRunNodeId?: EARS.EntityId;
     // (undocumented)
     eventType?: string;
     // (undocumented)
-    flowTNodeId?: EARS.EntityId;
+    flowRunNodeId?: EARS.EntityId;
     // (undocumented)
     message: string;
     // (undocumented)
@@ -302,18 +395,18 @@ export interface StepRuntimeError {
     // (undocumented)
     phase: string;
     // (undocumented)
+    runNodeId?: EARS.EntityId;
+    // (undocumented)
     source: string;
     // (undocumented)
     stack?: string;
     // (undocumented)
     timestamp: TimestampMs;
-    // (undocumented)
-    tNodeId?: EARS.EntityId;
 }
 
 // @public (undocumented)
 export interface StepRuntimeFacet {
-    handler?: (tNode: TNodeEntity, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
+    handler?: (input: StepInput, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
     // (undocumented)
     isAsync?: boolean;
     spawnsSubflow?: boolean;
@@ -348,50 +441,6 @@ export interface StepValidationError {
 export type TimestampMs = number;
 
 // @public (undocumented)
-export interface TNodeEntity extends BaseEntity {
-    // (undocumented)
-    blueprint?: {
-        nodeId: EARS.EntityId;
-        flowId: EARS.EntityId;
-    };
-    // (undocumented)
-    completedAt?: TimestampMs;
-    // (undocumented)
-    cronExpression?: string;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    eventType?: string;
-    // (undocumented)
-    final?: boolean;
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    nodeAttributes?: Record<string, unknown>;
-    // (undocumented)
-    resolvedParams?: Record<string, unknown>;
-    // (undocumented)
-    startedAt: TimestampMs;
-    // (undocumented)
-    status: EntityStatus;
-    // (undocumented)
-    stepNodeType?: string;
-    // (undocumented)
-    tNodeType: TNodeKind;
-    // (undocumented)
-    triggerType?: string;
-}
-
-// @public (undocumented)
-export type TNodeKind = 'flow' | 'event' | 'step';
-
-// @public
-export interface TrackTree extends TNodeEntity {
-    // (undocumented)
-    children: TrackTree[];
-}
-
-// @public (undocumented)
 export interface TriggerFacet {
     compile(track: Record<string, unknown>, trackId: string, ts: number, trackKey: string): Record<string, unknown>;
     decompile(node: Record<string, unknown>): Record<string, unknown>;
@@ -412,7 +461,7 @@ export interface TriggerFacet {
 // @public (undocumented)
 export interface TriggerRuntimeContext {
     // (undocumented)
-    flowTNodeId: EARS.EntityId;
+    flowRunNodeId: EARS.EntityId;
     sendToSystem: (target: {
         role: string;
     }, event: {

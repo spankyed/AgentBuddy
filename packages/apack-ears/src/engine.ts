@@ -3,21 +3,18 @@
 // the faces define the contract, not a security boundary (packs run in-process).
 import type { EARS } from './entities.ts';
 import { noopSink, type EARSRuntimeDeps } from './runtime.ts';
-import { createRelationIndex, type RelationIndex } from './relation-index.ts';
-import { createAttributeStorage } from './attribute-storage.ts';
-import { createEdgeStore, type EdgeStore } from './edge-store.ts';
+import { createRelationIndex } from './relation-index.ts';
+import { createAttributeStorage, type EntityRow, type SchemaStats } from './attribute-storage.ts';
+import { createEdgeStore } from './edge-store.ts';
 import { createQuery, type Query } from './query.ts';
-import { createGraph } from './graph.ts';
+import { createHierarchy } from './hierarchy.ts';
 import { createWrites, type Create, type Upsert, type Write } from './write.ts';
-import { createQueryHelpers } from './query-helpers.ts';
-import { createEntityCounters } from './entity-utils.ts';
-import { createEntityHelpers, type CreatedEntityFields } from './entity-helpers.ts';
-import { createRelationReads, type RelationMatch, type RelationRow, type RelationStats } from './relations.ts';
-import { createSpawn, type Blueprint } from './blueprint.ts';
-import { createRepositoryRegistry } from './repository.ts';
+import { createEntityCounters } from './numbering.ts';
+import { createRelationReads, type RelationMatch, type RelationRow } from './relations.ts';
 import { createJournal } from './journal.ts';
+import { createNameChecks } from './names.ts';
 
-/** An engine's operations — its queries, writes, transactions and repository registry: what a program is handed */
+/** An engine's operations — its queries, writes and transactions: what a program is handed */
 export interface Ears {
   /** Queries the engine, untyped (a pack's `#generated/ears` types it) */
   query: Query;
@@ -35,94 +32,46 @@ export interface Ears {
   transact<T>(fn: () => T): T;
   /** Whether `name` is an entity type the engine's creator registered */
   isEntityType(name: string): boolean;
-  findById<T = unknown>(id: EARS.EntityId): T | undefined;
-  findByIdRaw<T = unknown>(id: EARS.EntityId): T | undefined;
-  findAll<T = unknown>(entityType: EARS.Entity): T[];
-  findWhere<T = unknown>(entityType: EARS.Entity, field: string, value: unknown): T[];
-  findFirst<T = unknown>(entityType: EARS.Entity, field: string, value: unknown): T | undefined;
-  findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
-  findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
-  findWithRole<T>(entityType: EARS.Entity, role: string): T[];
-  findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
-  countEntities(entityType: EARS.Entity): number;
-  exists(id: EARS.EntityId): boolean;
-  hasIdCollision(providedId: string | undefined): boolean;
-  createEntityWithDefaults<T extends Record<string, unknown> = Record<string, unknown>>(
-    entityType: EARS.Entity, data: Partial<T>, prefix?: string, providedId?: EARS.EntityId,
-  ): T & CreatedEntityFields;
-  updateEntity(id: EARS.EntityId, updates: Record<string, unknown>, skipTimestamp?: boolean): void;
-  createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
-  removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
-  getAttr(id: EARS.EntityId, kind: EARS.AttrKind, index?: number): EARS.AttributeValue | null;
-  getAttrs(id: EARS.EntityId, kind: EARS.AttrKind): EARS.AttributeValue[];
-  getAll(id: EARS.EntityId): Record<string, unknown>;
+  /** Whether `name` is a relation kind the engine's creator registered */
+  isRelationKind(name: string): boolean;
+  /** Whether `name` is a role the engine's creator registered */
+  isRole(name: string): boolean;
+  /** The entity's row — its id, type and every attribute, each exactly as written, the trash included — or undefined */
+  getRow(id: EARS.EntityId): EntityRow | undefined;
+  /** One field of the entity's row, read as `getRow` reads it (the trash included), or undefined when it holds none */
+  getAttr(id: EARS.EntityId, field: EARS.AttrKind): EARS.AttributeValue | undefined;
   getRoles(id: EARS.EntityId): string[];
-  grantRole(id: EARS.EntityId, role: string): void;
-  revokeRole(id: EARS.EntityId, role: string): void;
-  getAllEntities(): EARS.EntityId[];
-  getEntitiesOfType(type: EARS.Entity): EARS.EntityId[];
-  getAllEntityTypes(): EARS.Entity[];
-  getAllAttributeKinds(): EARS.AttrKind[];
-  getAllRelationKinds(): string[];
-  getAttributeStats(kind: EARS.AttrKind): { entityCount: number; totalValues: number };
-  getSchemaStats(): { entities: Record<string, number>; attributes: Record<string, number>; relations: Record<string, number> };
-  findEntitiesByAttribute(kind: EARS.AttrKind, value?: unknown): EARS.EntityId[];
-  findEntitiesByRelationTo(relKind: string, id: EARS.EntityId, asSource?: boolean): EARS.EntityId[];
-  findEntitiesInRelationTo(target: EARS.EntityId): EARS.EntityId[];
-  destroyEntity(id: EARS.EntityId, skipPersistence?: boolean): void;
-  removeRelationById(relId: EARS.EntityId): void;
+  /** What the engine holds, keyed by the names its data holds: entities per type, attribute, relation and role use */
+  getSchemaStats(): SchemaStats;
   /** Moves a relation to new ends, or replaces its info, keeping its id */
-  updateRelation(relId: EARS.EntityId, patch: { sourceEntity?: EARS.EntityId; targetEntity?: EARS.EntityId; info?: unknown }): void;
+  updateRelation(relId: EARS.EntityId, patch: { source?: EARS.EntityId; target?: EARS.EntityId; info?: unknown }): void;
   findRelations(match?: RelationMatch): RelationRow[];
-  getRelationStats(kind: EARS.RelKind): RelationStats;
-  descendants(start: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId[];
-  ancestors(start: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId[];
-  rootParent(start: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId;
-  wouldCreateCycle(src: EARS.EntityId, tgt: EARS.EntityId, kinds: readonly EARS.RelKind[]): boolean;
-  linkSymmetric(a: EARS.EntityId, b: EARS.EntityId, kind: EARS.RelKind, info?: unknown): void;
-  topoSort(roots: EARS.EntityId[], kind: EARS.RelKind, filterType?: EARS.Entity): EARS.EntityId[];
-  shortestPath(src: EARS.EntityId, tgt: EARS.EntityId, kinds: EARS.RelKind[]): EARS.EntityId[] | null;
-  leaves(kind: EARS.RelKind, filterType?: EARS.Entity): EARS.EntityId[];
-  lowestCommonAncestor(a: EARS.EntityId, b: EARS.EntityId, treeKind: EARS.RelKind): EARS.EntityId | null;
-  spawn(root: Blueprint, options?: { dedupe?: boolean }): EARS.EntityId;
-  generateShortCode(entityType: EARS.Entity, prefix: string): string;
-  generateLabelWithCount(baseLabel: string, entityType: EARS.Entity): string;
-  /** The registered repositories; reading an unregistered name throws */
-  repository: Record<string, unknown>;
-  registerRepository(name: string, value: unknown): void;
-  unregisterRepository(name: string): void;
+  /** Whether linking `source` to `target` would close a cycle through `kinds` */
+  wouldCreateCycle(source: EARS.EntityId, target: EARS.EntityId, kinds: readonly EARS.RelKind[]): boolean;
+  /** `<base> <n>`, numbered per type and base and never handed out twice: a default label that must be unique */
+  nextLabel(type: EARS.Entity, base: string): string;
 }
 
 /** An engine's data lifecycle and direct writes: for the code that created it (the app's composition root, tests, tooling) */
 export interface EarsAdmin {
   /** Empties the engine's attributes, entity index and relation index */
   clear(): void;
-  /** An attribute's value at an index (the first by default), or null */
-  getAttr(id: EARS.EntityId, kind: EARS.AttrKind, index?: number): EARS.AttributeValue | null;
-  /** Loads a stored attribute value (merging objects at an index), without telling persistence */
-  bulkLoadAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown, index?: number): void;
+  /** Every entity's id, the engine's numbering sequences and those in the trash included: a raw listing */
+  getAllEntities(): EARS.EntityId[];
+  /** Every id of a type, the engine's own types and those in the trash included: a raw listing */
+  getEntitiesOfType(type: EARS.Entity): EARS.EntityId[];
+  /** Loads a stored attribute value, without telling persistence */
+  bulkLoadAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
+  /** Writes an attribute's value, any kind the engine owns included */
   putAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
-  addAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
-  mergeAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown, index?: number): void;
-  dropAttr(id: EARS.EntityId, kind: EARS.AttrKind, index?: number): void;
-  dropIf(id: EARS.EntityId, kind: EARS.AttrKind, criterion: unknown): void;
-  /** Removes every value of an attribute */
+  /** Removes an attribute */
   deleteAttr(id: EARS.EntityId, kind: EARS.AttrKind): void;
-  updateAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
-  addRelation(src: EARS.EntityId, kind: string, tgt: EARS.EntityId, info?: unknown): EARS.EntityId;
-  updateRelation(relId: EARS.EntityId, newSource?: EARS.EntityId, newTarget?: EARS.EntityId, info?: unknown): void;
-  findEntitiesByRole(role: string): EARS.EntityId[];
-  edgeStore: EdgeStore;
-  /** The relation index, by kind (read it; write through the index functions) */
-  readonly relationIndex: Readonly<RelationIndex>;
-  /** Indexes a stored relation, without telling persistence */
-  addToIndex(kind: string, source: EARS.EntityId, target: EARS.EntityId, relId: EARS.EntityId): void;
-  removeFromIndex(kind: string, source: EARS.EntityId, target: EARS.EntityId, relId: EARS.EntityId): void;
-  updateIndex(kind: string, relId: EARS.EntityId, oldSource: EARS.EntityId, oldTarget: EARS.EntityId, newSource?: EARS.EntityId, newTarget?: EARS.EntityId): void;
-  /** The engine's entity-type checker */
-  isEntityType(name: string): boolean;
-  /** A copy of the registered repositories, by name */
-  repositories(): Record<string, unknown>;
+  /** Links any kind between any ids, either end missing included: unchecked, as loaded data is */
+  addRelation(source: EARS.EntityId, kind: string, target: EARS.EntityId, info?: unknown): EARS.EntityId;
+  /** `updateRelation` without its checks: any relation, to any ends */
+  updateRelation(relId: EARS.EntityId, patch: { source?: EARS.EntityId; target?: EARS.EntityId; info?: unknown }): void;
+  /** Loads a stored relation, without telling persistence */
+  bulkLoadRelation(relId: EARS.EntityId, kind: string, source: EARS.EntityId, target: EARS.EntityId, info?: unknown): void;
 }
 
 /** An EARS engine as its creator holds it: its operations, and the creator's privileges in `admin` */
@@ -131,77 +80,45 @@ export interface EarsEngine extends Ears {
 }
 
 /**
- * A new, empty engine. `isEntityType` says which names are entity types `create` and `query` accept;
- * `persistence` receives every write (nothing by default). Whoever holds the engine calls its operations on it;
+ * A new, empty engine. `isEntityType` says which names are entity types `create` and `query` accept, and
+ * `isRelationKind` which are relation kinds a link, and a read or walk over links, may name, and `isRole` which are roles
+ * a role write or a query by role may name; `persistence` receives every write (nothing by default). Whoever holds the engine calls its operations on it;
  * the app's is the SDK's bound engine (`boundEars`, `@apackdev/sdk/ears`).
  */
-export function createEarsEngine({ persistence = noopSink, isEntityType }: EARSRuntimeDeps): EarsEngine {
+export function createEarsEngine({ persistence = noopSink, isEntityType, isRelationKind, isRole, rowRules = () => undefined }: EARSRuntimeDeps): EarsEngine {
+  const names = createNameChecks({ isRelationKind, isRole });
   const { journal, unitSink, transact } = createJournal(persistence);
   const relations = createRelationIndex(journal);
   const storage = createAttributeStorage({ relations, persistence: unitSink, journal });
   const edgeStore = createEdgeStore({ relations, storage });
-  const query = createQuery({ storage, relations, isEntityType });
-  const graph = createGraph({ query, edgeStore });
-  const { create, upsert, write, updateRelation } = createWrites({ storage, edgeStore, graph, isEntityType, journal });
-  const finders = createQueryHelpers(query);
-  const counters = createEntityCounters(query);
-  const entityHelpers = createEntityHelpers({ create, write, counters });
-  const relationReads = createRelationReads({ edgeStore, relations, storage });
-  const repositories = createRepositoryRegistry();
+  const query = createQuery({ storage, isEntityType, names });
+  const hierarchy = createHierarchy({ query, names });
+  const counters = createEntityCounters(storage);
+  const { create, upsert, write, updateRelation } = createWrites({ storage, edgeStore, hierarchy, isEntityType, rowRules, counters, names, journal });
+  const relationReads = createRelationReads({ edgeStore, storage, names });
 
   const operations: Ears = {
-    query, create, upsert, write, transact, isEntityType,
-    ...finders,
-    ...entityHelpers,
-    ...counters,
+    query, create, upsert, write, transact, isEntityType, isRelationKind, isRole,
+    nextLabel: counters.nextLabel,
     ...relationReads,
-    ...graph,
-    spawn: createSpawn({ create, query }),
-    getAttr: storage.getAttr,
-    getAttrs: storage.getAttrs,
-    getAll: storage.getAll,
+    ...hierarchy,
+    getRow: storage.getRow,
+    getAttr: (id, field) => (storage.hasAttr(id, field) ? storage.getAttr(id, field) : undefined),
     getRoles: storage.getRoles,
-    grantRole: storage.grantRole,
-    revokeRole: storage.revokeRole,
-    getAllEntities: storage.getAllEntities,
-    getEntitiesOfType: storage.getEntitiesOfType,
-    getAllEntityTypes: storage.getAllEntityTypes,
-    getAllAttributeKinds: storage.getAllAttributeKinds,
-    getAllRelationKinds: storage.getAllRelationKinds,
-    getAttributeStats: storage.getAttributeStats,
     getSchemaStats: storage.getSchemaStats,
-    findEntitiesByAttribute: storage.findEntitiesByAttribute,
-    findEntitiesByRelationTo: storage.findEntitiesByRelationTo,
-    findEntitiesInRelationTo: storage.findEntitiesInRelationTo,
-    destroyEntity: storage.destroyEntity,
-    removeRelationById: storage.removeRelationById,
     updateRelation,
-    repository: repositories.repository,
-    registerRepository: repositories.registerRepository,
-    unregisterRepository: repositories.unregisterRepository,
   };
 
   const admin: EarsAdmin = {
     clear: storage.clear,
-    getAttr: storage.getAttr,
+    getAllEntities: storage.getAllEntities,
+    getEntitiesOfType: storage.getEntitiesOfType,
     bulkLoadAttr: storage.bulkLoadAttr,
     putAttr: storage.putAttr,
-    addAttr: storage.addAttr,
-    mergeAttr: storage.mergeAttr,
-    dropAttr: storage.dropAttr,
-    dropIf: storage.dropIf,
     deleteAttr: storage.deleteAttr,
-    updateAttr: storage.updateAttr,
     addRelation: storage.addRelation,
-    updateRelation: storage.updateRelation,
-    findEntitiesByRole: storage.findEntitiesByRole,
-    edgeStore,
-    relationIndex: relations.index,
-    addToIndex: relations.addToIndex,
-    removeFromIndex: relations.removeFromIndex,
-    updateIndex: relations.updateIndex,
-    isEntityType,
-    repositories: repositories.entries,
+    updateRelation: (relId, { source, target, info }) => storage.updateRelation(relId, source, target, info),
+    bulkLoadRelation: storage.bulkLoadRelation,
   };
 
   return { ...operations, admin };

@@ -38,7 +38,7 @@ function fixture(options: string[] = []) {
   fs.writeFileSync(runtime, 'throw new Error("Prebuilt checks must not activate the pack");');
   fs.writeFileSync(path.join(dist, 'types/snapshot.json'), JSON.stringify({
     format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest,
-    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+    types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
   }));
   const view = createPackCompilerInputView(root);
   view.readBytes(source);

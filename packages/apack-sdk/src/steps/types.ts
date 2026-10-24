@@ -30,7 +30,7 @@ export interface StepRelation {
  *
  * One declaration because there were eight, and they had already drifted: four typed `default` as `any` and
  * three as `unknown`, and four of those reached dependent packs through the published facade. The runtime
- * (`node-attribute-mappers.ts`), the step compilers and the editor forms all describe the same record.
+ * (`step-input.ts`), the step compilers and the editor forms all describe the same record.
  */
 export interface FieldMapping {
   target: string;
@@ -85,54 +85,22 @@ export interface StepBuildFacet {
 /*─────────────────────────────────────────────────────────────────
  * Brain Runtime Types
  *
- * Shared types for execution context, trace nodes, and runtime
+ * Shared types for execution context, run nodes, and runtime
  * services. These live in the SDK so step handlers and external
  * packs get real types instead of `unknown` casts.
  *─────────────────────────────────────────────────────────────────*/
 
 import type { AnyActorRef } from 'xstate';
-import type { BaseEntity } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
+import type { RunNode, RunNodeId } from '../services/run-history.ts';
 
 export type TimestampMs = number;
-export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
-export type TNodeKind = 'flow' | 'event' | 'step';
-
-export interface TNodeEntity extends BaseEntity {
-  entityType: EARS.Entity;
-  tNodeType: TNodeKind;
-  label: string;
-  status: EntityStatus;
-  startedAt: TimestampMs;
-  completedAt?: TimestampMs;
-  eventType?: string;
-  triggerType?: string;
-  cronExpression?: string;
-  stepNodeType?: string;
-  final?: boolean;
-  nodeAttributes?: Record<string, unknown>;
-  resolvedParams?: Record<string, unknown>;
-  blueprint?: {
-    nodeId: EARS.EntityId;
-    flowId: EARS.EntityId;
-  };
-}
+/** What a run node ran: a flow, an event it heard, or a step */
+export type RunNodeKind = RunNode['kind'];
 
 // Kept here for packs whose built types import it from @apackdev/sdk/steps
 export type { SdkEntityShapes } from '../types/sdk-entities.ts';
 
-/**
- * One track's execution, as a tree: a persisted TNode with its SPAWNED children
- * hydrated in memory.
- *
- * Deliberately not named `TrackEntity` — `Track` is not a declared entity type,
- * and in this codebase an `XEntity` suffix means "shape of a persisted EARS
- * entity" (i.e. an entity in a pack's PackShapes). Not to be confused with `Track`
- * in build/compilers/flow-types.ts, which is the static DSL track definition.
- */
-export interface TrackTree extends TNodeEntity {
-  children: TrackTree[];
-}
 
 export interface ExecutionEvent {
   type: string;
@@ -149,16 +117,29 @@ export interface StepRun {
 }
 
 export interface RuntimeServices {
-  getFlowActor: (flowTNodeId: EARS.EntityId) => AnyActorRef | undefined;
+  getFlowActor: (flowRunNodeId: EARS.EntityId) => AnyActorRef | undefined;
   servicesForAction: import('../services/index.ts').PackServiceAccess['servicesForAction'];
 }
 
 export interface ExecutionContext {
-  flowTNodeId: EARS.EntityId;
+  flowRunNodeId: EARS.EntityId;
   event: ExecutionEvent;
   steps: StepRun[];
   lastStep?: Omit<StepRun, 'timestamp'>;
   runtime: RuntimeServices;
+}
+
+/**
+ * What a step runs on, whole. Never the run history's record of it: the history keeps a bounded copy for display,
+ * and a step running on that copy runs on cut-off strings and truncation markers.
+ */
+export interface StepInput {
+  /** The step's node in the run history, to report against */
+  runNodeId: RunNodeId;
+  /** The node's settings — a prompt, a model, an event type — with its field mappings applied */
+  settings: Record<string, unknown>;
+  /** The params it runs on: the node's own, and those mapped from the event and earlier steps */
+  params: Record<string, unknown>;
 }
 
 export interface StepRuntimeError {
@@ -167,9 +148,9 @@ export interface StepRuntimeError {
   stack?: string;
   source: string;
   phase: string;
-  flowTNodeId?: EARS.EntityId;
-  eventTNodeId?: EARS.EntityId;
-  tNodeId?: EARS.EntityId;
+  flowRunNodeId?: EARS.EntityId;
+  eventRunNodeId?: EARS.EntityId;
+  runNodeId?: EARS.EntityId;
   nodeId?: EARS.EntityId;
   nodeLabel?: string;
   nodeType?: string;
@@ -190,11 +171,11 @@ export interface StepRuntimeFacet {
    * Generic conventions the brain honours from handler results:
    * - **Branching**: `{ sourceHandle: 'branch-N' }` → routes to named branch
    * - **No-match**: `{ noMatch: true }` → terminates the current chain
-   * - **Kill**: send `KILL_FLOW` to `ctx.runtime.getFlowActor(flowTNodeId)`
+   * - **Kill**: send `KILL_FLOW` to `ctx.runtime.getFlowActor(flowRunNodeId)`
    * - **Keep-alive**: never send COMPLETE → actor stays in executing state
    * - **Final**: set `final: true` on the compiled node → triggers flow completion
    */
-  handler?: (tNode: TNodeEntity, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
+  handler?: (input: StepInput, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
   isAsync?: boolean;
   /** When true, the brain spawns a sub-flow machine instead of a step machine. */
   spawnsSubflow?: boolean;
@@ -283,7 +264,7 @@ export interface TriggerRuntimeNode {
 }
 
 export interface TriggerRuntimeContext {
-  flowTNodeId: EARS.EntityId;
+  flowRunNodeId: EARS.EntityId;
   /** Fires a flow event at the brain: `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType, … })` */
   sendToSystem: (target: { role: string }, event: { type: string; [key: string]: unknown }, options?: CallOptions) => string;
 }

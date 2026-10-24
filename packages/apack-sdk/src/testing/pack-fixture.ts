@@ -23,6 +23,16 @@ const DEFAULT_MANIFEST = {
   },
 };
 
+/**
+ * The entity type a fixture's content format writes, which the fixture declares itself (`data: FIXTURE_DATA`):
+ * a spec about building content names its own type rather than borrowing one the SDK declares, so a change to the
+ * SDK's entities never reaches it
+ */
+export const FIXTURE_ENTITY = 'Row';
+
+/** The `data` a fixture writing content declares: its one entity type, with no shape */
+export const FIXTURE_DATA = { entities: { [FIXTURE_ENTITY]: null } };
+
 export interface PackFixtureOptions {
   /** Where to write it. A fresh temp directory by default, which the caller owns and removes. */
   readonly at?: string;

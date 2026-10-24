@@ -119,7 +119,7 @@ describe('a feature whose settings change', () => {
   it('tells each feature its settings with no changes after a backup import, and not a diff across it later', async () => {
     mockService('appData', {
       importBackup: () => getTestSettings().whileReplacingData(async () => {
-        untypedUpsert('Settings', 'Settings-app' as EARS.EntityId).set('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } })
+        untypedUpsert('Settings', { id: 'Settings-app' as EARS.EntityId, data: { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } } })
         return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] }
       }),
     });
@@ -142,7 +142,7 @@ describe('a feature whose settings change', () => {
         // Before the import's first await, and after it: the writes tell nothing whenever they happen
         getTestSettings().set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['tags'], [{ name: 'early' }]);
         await Promise.resolve();
-        untypedUpsert('Settings', 'Settings-app' as EARS.EntityId).set('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
+        untypedUpsert('Settings', { id: 'Settings-app' as EARS.EntityId, data: { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } } });
         getTestSettings().set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['tags'], [{ name: 'migrated' }]);
         if (outcome === 'fails') throw new Error('backup unreadable');
         return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] };
@@ -217,7 +217,7 @@ describe('a feature whose settings change', () => {
       const heardBefore = heardBy(app).length;
       const { finish } = await importing(app);
 
-      untypedUpsert('Settings', 'Settings-app' as EARS.EntityId).set('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
+      untypedUpsert('Settings', { id: 'Settings-app' as EARS.EntityId, data: { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } } });
       await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'memo-pack' }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
       expect(heardBy(app)).toHaveLength(heardBefore);
 

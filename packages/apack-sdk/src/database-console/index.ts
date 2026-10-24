@@ -9,48 +9,18 @@
 import { boundHost } from '../runtime/host-runtime.ts';
 import type { EarsNames } from '../runtime/packs-view.ts';
 import { EARS as EARS_NAMES } from '../types/index.ts';
-import { defineEars, prepareEntity, type EARS } from '@apackdev/ears';
-import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, destroyEntity, getAll, getRoles, grantRole, revokeRole, createRelation, removeRelation, removeRelationById, getAllEntities, getEntitiesOfType, getAllEntityTypes, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations, findEntitiesByAttribute, findEntitiesByRelationTo, findEntitiesInRelationTo } from '../ears/index.ts';
+import { boundEars, transact, untypedQuery, untypedCreate, untypedUpsert, untypedWrite, getRow, getRoles, findRelations, getSchemaStats } from '../ears/index.ts';
+import { defineEars } from '@apackdev/ears';
 import { errorMessage } from '../utils/shared.ts';
 
-/** Entities per type, and each attribute kind's and relation kind's use, over the whole database */
-export interface SchemaStats {
-  entities: Record<string, number>;
-  attributes: Record<string, { entityCount: number; totalValues: number }>;
-  relations: Record<string, { totalRelations: number; uniqueSources: number; uniqueTargets: number }>;
-}
-
-/** The installed engine's data, counted per entity type, attribute kind and relation kind */
-export function getSchemaStats(): SchemaStats {
-  const stats: SchemaStats = { entities: {}, attributes: {}, relations: {} };
-  for (const entityType of getAllEntityTypes()) {
-    stats.entities[entityType] = getEntitiesOfType(entityType).length;
-  }
-  for (const kind of getAllAttributeKinds()) {
-    stats.attributes[String(kind)] = getAttributeStats(kind);
-  }
-  for (const kind of getAllRelationKinds()) {
-    const { total, uniqueSources, uniqueTargets } = getRelationStats(kind as EARS.RelKind);
-    stats.relations[kind] = { totalRelations: total, uniqueSources, uniqueTargets };
-  }
-  return stats;
-}
-
-const { getAttr, getAttrs, createEntityWithDefaults, updateEntity } = /*#__PURE__*/ defineEars(boundEars);
+const { getAttr } = /*#__PURE__*/ defineEars(boundEars);
 
 const readHelpers = {
   query: untypedQuery,
-  getAllEntities,
-  getAll,
-  findEntitiesByRelationTo,
+  getRow,
   getAttr,
-  getAttrs,
   getRoles,
-  getEntitiesOfType,
-  findEntitiesByAttribute,
-  findEntitiesInRelationTo,
   findRelations,
-  getRelationStats,
   getSchemaStats,
 };
 
@@ -58,15 +28,6 @@ const writeHelpers = {
   create: untypedCreate,
   upsert: untypedUpsert,
   write: untypedWrite,
-  destroyEntity,
-  prepareEntity,
-  createEntityWithDefaults,
-  updateEntity,
-  createRelation,
-  removeRelation,
-  removeRelationById,
-  grantRole,
-  revokeRole,
 };
 
 /**
@@ -130,6 +91,7 @@ export function consoleEars(names: EarsNames, { hint }: { hint?: string } = {}):
     ...EARS_NAMES,
     Entity: accountedFor('an entity type', { ...EARS_NAMES.Entity, ...names.entities }, hint),
     RelKind: accountedFor('a relation kind', { ...EARS_NAMES.RelKind, ...names.relKinds }, hint),
+    RoleKind: accountedFor('a role', { ...EARS_NAMES.RoleKind, ...names.roles }, hint),
   };
 }
 

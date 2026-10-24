@@ -1,11 +1,11 @@
 import { nativePackDeclarationFixture } from '../../src/testing/index.ts';
 // The repositories of the SDK's entities, on the in-memory runtime: imported flows with their root role,
-// nodes and edges, step results on TNodes, and actions and prompts
+// nodes and edges, step results on RunNodes, and actions and prompts
 import * as os from 'node:os';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, type PersistenceSink } from '@apackdev/ears';
 import { findRelations, _bindEars, boundEars, untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
-import { actionRepository, flowRepository, promptRepository, tnodeRepository, trash } from '../../src/repositories/index.ts';
+import { actionRepository, flowRepository, promptRepository } from '../../src/repositories/index.ts';
 import { compile as compileFlowDSL } from '../../src/build/compilers/flow-compiler.ts';
 import { resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { EARS } from '../../src/types/entities.ts';
@@ -81,7 +81,7 @@ describe('flowRepository', () => {
     expect(flowRepository.rootFlow()).toBeUndefined();
     expect(untypedQuery(EARS.Entity.Flow).ids()).toEqual([]);
     for (const id of nodeIds) expect(untypedQuery.ids([id]).count()).toBe(0);
-    expect(findRelations({ sourceEntity: flowId })).toEqual([]);
+    expect(findRelations({ source: flowId })).toEqual([]);
   });
 
   it('moves the root role to the flow granted it', () => {
@@ -89,7 +89,7 @@ describe('flowRepository', () => {
     const second = flowRepository.createFlow({ label: 'Second' });
     flowRepository.grantRootFlowRole(first.id);
     flowRepository.grantRootFlowRole(second.id);
-    expect(untypedQuery.all().withRole(EARS.RoleKind.Custom('root_flow')).ids()).toEqual([second.id]);
+    expect(untypedQuery.all().withRole(EARS.RoleKind.ROOT_FLOW).ids()).toEqual([second.id]);
   });
 
   it("connects nodes, refusing a trigger target and a busy handle, and renumbers a node's handles", () => {
@@ -104,7 +104,7 @@ describe('flowRepository', () => {
     expect(() => flowRepository.createEdge(step.id, other.id, { sourceHandle: 'case-0' })).toThrow('Edge already exists');
 
     flowRepository.reindexHandles(step.id, 'case', 0, 1);
-    expect(findRelations({ sourceEntity: step.id, relationType: EARS.RelKind.TRANSITIONS_TO }).map((rel) => (rel.info as { sourceHandle: string }).sourceHandle)).toEqual(['case-1']);
+    expect(findRelations({ source: step.id, kind: EARS.RelKind.TRANSITIONS_TO }).map((rel) => (rel.info as { sourceHandle: string }).sourceHandle)).toEqual(['case-1']);
 
     flowRepository.deleteNode(other.id);
     expect(flowRepository.flowEdges(flow.id)).toEqual([]);
@@ -119,8 +119,8 @@ describe('flowRepository', () => {
     const c = flowRepository.createNode(flow.id, { nodeType: 'action' });
     const { relId } = flowRepository.createEdge(a.id, b.id, { sourceHandle: 'case-0' });
     flowRepository.createEdge(a.id, c.id, { sourceHandle: 'case-1' });
-    const edges = () => findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO })
-      .map((rel) => ({ id: rel.id, target: rel.targetEntity, sourceHandle: (rel.info as { sourceHandle?: string }).sourceHandle }));
+    const edges = () => findRelations({ source: a.id, kind: EARS.RelKind.TRANSITIONS_TO })
+      .map((rel) => ({ id: rel.id, target: rel.target, sourceHandle: (rel.info as { sourceHandle?: string }).sourceHandle }));
 
     // Onto another handle and target: the same edge, its own handle not counted as busy
     flowRepository.updateEdge(relId, { source: a.id, target: c.id, sourceHandle: 'case-2' });
@@ -138,14 +138,14 @@ describe('flowRepository', () => {
   // Two edges between the same pair of nodes, one per handle, are two edges: listed apart and removed together.
   // Removed as links, not left to the node's destroy: a partition keeping history keeps what a destroy took
   it('lists two edges between the same two nodes on different handles, and deletes both with the node', () => {
-    const unlinked: string[] = [];
+    const removed: string[] = [];
     const sink: PersistenceSink = {
-      onCreateEntity() {}, onDestroyEntity() {}, onDropAttr() {}, onPutAttrArray() {}, onAddRelation() {},
+      onCreateEntity() {}, onDestroyEntity() {}, onDropAttr() {}, onPutAttr() {}, onAddRelation() {},
       onUpdateRelation() {}, onUnitStart() {}, onUnitEnd() {},
-      onRemoveRelation(relId, destroyed) { if (!destroyed) unlinked.push(relId); },
+      onRemoveRelation(relId) { removed.push(relId); },
     };
     const sdkTypes = new Set<string>(Object.values(EARS.Entity));
-    _bindEars(createEarsEngine({ persistence: sink, isEntityType: (name) => sdkTypes.has(name) }));
+    _bindEars(createEarsEngine({ isRelationKind: () => true, isRole: () => true, persistence: sink, isEntityType: (name) => sdkTypes.has(name) }));
     const flow = flowRepository.createFlow();
     const a = flowRepository.createNode(flow.id, { nodeType: 'action' });
     const b = flowRepository.createNode(flow.id, { nodeType: 'action' });
@@ -158,10 +158,11 @@ describe('flowRepository', () => {
         { source: a.id, target: b.id, sourceHandle: 'case-1' },
       ]);
 
-    const handleEdges = findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO }).map((rel) => rel.id);
+    const handleEdges = findRelations({ source: a.id, kind: EARS.RelKind.TRANSITIONS_TO }).map((rel) => rel.id);
     flowRepository.deleteNode(b.id);
-    expect(findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO })).toEqual([]);
-    expect(unlinked).toEqual(expect.arrayContaining(handleEdges));
+    expect(findRelations({ source: a.id, kind: EARS.RelKind.TRANSITIONS_TO })).toEqual([]);
+    // Both reach persistence: an edge is stored in its nodes' partition, which a node's deletion empties of its links
+    expect(removed).toEqual(expect.arrayContaining(handleEdges));
     expect(flowRepository.flowEdges(flow.id)).toEqual([]);
   });
 
@@ -180,7 +181,7 @@ describe('flowRepository', () => {
     });
     const nodeIds = (flowId: EARS.EntityId) => flowRepository.flowNodes(flowId).map((node) => node.id).sort();
     const edgeIds = (flowId: EARS.EntityId) => flowRepository.flowEdges(flowId).map((edge) => edge.id).sort();
-    const rows = (flowId: EARS.EntityId) => [flowId, ...nodeIds(flowId)].map((id) => [id, boundEars().getAll(id)]);
+    const rows = (flowId: EARS.EntityId) => [flowId, ...nodeIds(flowId)].map((id) => [id, boundEars().getRow(id)]);
 
     it('refuses a file linking from something it does not write, before changing anything', () => {
       const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
@@ -192,10 +193,10 @@ describe('flowRepository', () => {
 
     it('changes nothing when the file is the same', () => {
       const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
-      const before = { rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ sourceEntity: flowId }).map((r) => r.id) };
+      const before = { rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ source: flowId }).map((r) => r.id) };
 
       expect(flowRepository.importFromDSL(demo(['Greet', 'Wave'])).flowIds).toEqual([flowId]);
-      expect({ rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ sourceEntity: flowId }).map((r) => r.id) }).toEqual(before);
+      expect({ rows: rows(flowId), edges: edgeIds(flowId), relations: findRelations({ source: flowId }).map((r) => r.id) }).toEqual(before);
     });
 
     it('removes a dropped node with its edges, and keeps the ids of what stays', () => {
@@ -217,15 +218,15 @@ describe('flowRepository', () => {
     it('keeps what points into the flow and its nodes, and the fields the file does not declare', () => {
       const { flowIds: [flowId] } = flowRepository.importFromDSL(demo(['Greet', 'Wave']));
       const greetNode = flowRepository.flowNodes(flowId).find((node) => node.actionId === ids.get('Greet'))!;
-      // A run of the flow, and another flow's node naming it
-      const run = untypedCreate(EARS.Entity.TNode).link(EARS.RelKind.INSTANCE_OF, flowId).link(EARS.RelKind.TRACKED, greetNode.id).id();
+      // Another flow's node, naming the flow and wired to one of its nodes
+      const outside = untypedCreate(EARS.Entity.Node, { nodeType: 'subflow', label: 'Run Demo' }).link(EARS.RelKind.INSTANCE_OF, flowId).link(EARS.RelKind.TRANSITIONS_TO, greetNode.id).id();
       boundEars().write(flowId).set('contentKey', 'pack:flows/Demo').set('description', 'mine');
 
       flowRepository.importFromDSL(demo(['Greet']));
-      expect(findRelations({ sourceEntity: run }).map((r) => [r.relationType, r.targetEntity]).sort()).toEqual(
-        [[EARS.RelKind.INSTANCE_OF, flowId], [EARS.RelKind.TRACKED, greetNode.id]].sort(),
+      expect(findRelations({ source: outside }).map((r) => [r.kind, r.target]).sort()).toEqual(
+        [[EARS.RelKind.INSTANCE_OF, flowId], [EARS.RelKind.TRANSITIONS_TO, greetNode.id]].sort(),
       );
-      expect(boundEars().getAll(flowId)).toMatchObject({ contentKey: 'pack:flows/Demo', description: 'mine', label: 'Demo' });
+      expect(boundEars().getRow(flowId)).toMatchObject({ contentKey: 'pack:flows/Demo', description: 'mine', label: 'Demo' });
     });
 
     it('keeps a step\'s node when its type changes, but none of the old type\'s fields', () => {
@@ -238,7 +239,7 @@ describe('flowRepository', () => {
       expect(before).toMatchObject({ actionId: ids.get('Greet'), params: { n: 1 } });
 
       flowRepository.importFromDSL(flow({ type: 'llm', model: 'x:y' }));
-      const after = boundEars().getAll(before.id) as Record<string, unknown>;
+      const after = boundEars().getRow(before.id) as Record<string, unknown>;
       expect(after).toMatchObject({ nodeType: 'llm', model: 'x:y', label: 'S' });
       expect(after).not.toHaveProperty('actionId');
       expect(after).not.toHaveProperty('params');
@@ -266,25 +267,6 @@ describe('flowRepository', () => {
   });
 });
 
-describe('tnodeRepository', () => {
-  it("records a step's result on its TNode, truncated, beside what's there", () => {
-    const tNodeId = 'TNode-1' as EARS.EntityId;
-    untypedCreate(EARS.Entity.TNode, { id: tNodeId }).set('nodeAttributes', { input: 'hi' });
-
-    tnodeRepository.updateTNodeResult(tNodeId, { text: 'x'.repeat(20000) });
-
-    expect(untypedQuery.ids(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
-      input: 'hi',
-      result: { text: expect.objectContaining({ _truncated: true, _type: 'string', _originalLength: 20000 }) },
-    });
-  });
-
-  it('leaves a TNode that does not exist alone', () => {
-    tnodeRepository.updateTNodeResult('TNode-missing' as EARS.EntityId, { ok: true });
-    expect(untypedQuery.ids(['TNode-missing' as EARS.EntityId]).count()).toBe(0);
-  });
-});
-
 describe('actionRepository and promptRepository', () => {
   it('create, find by label, update and soft-delete', () => {
     const action = actionRepository.create({ label: 'Greet', actionFn: 'return 1' });
@@ -300,7 +282,7 @@ describe('actionRepository and promptRepository', () => {
     promptRepository.delete(prompt.id);
     expect(actionRepository.all()).toEqual([]);
     expect(promptRepository.all()).toEqual([]);
-    expect(untypedQuery.ids([action.id]).pickOne(['deleted'])?.deleted).toBe(true);
+    expect(untypedQuery.withTrashed.ids([action.id]).pickOne(['trashedAt'])?.trashedAt).toEqual(expect.any(Number));
   });
 
   it('refuse an action or prompt without its label or body, and a missing id', () => {
@@ -308,41 +290,6 @@ describe('actionRepository and promptRepository', () => {
     expect(() => promptRepository.create({ label: 'P', templateFn: '' })).toThrow('Template is required');
     expect(() => actionRepository.update('Action-missing' as EARS.EntityId, {})).toThrow('Action Action-missing not found');
     expect(() => promptRepository.delete('Prompt-missing' as EARS.EntityId)).toThrow('Prompt Prompt-missing not found');
-  });
-});
-
-describe('trash', () => {
-  // Any entity type: prompts here
-  const note = (title: string) => untypedCreate('Prompt', { id: `Prompt-${title}` as EARS.EntityId }).set('title', title).id();
-  const findById = (id: EARS.EntityId) => boundEars().findById<Record<string, unknown>>(id);
-  const findByIdRaw = (id: EARS.EntityId) => boundEars().findByIdRaw(id);
-
-  it('moves entities to the trash, where finders skip them, and restores them unmarked', () => {
-    const [a, b] = [note('a'), note('b')];
-
-    expect(trash.move([a, b, 'Prompt-missing' as EARS.EntityId], 1000)).toEqual([a, b]);
-    expect(trash.move([a], 2000)).toEqual([]);
-    expect(findById(a)).toBeUndefined();
-    expect(boundEars().findAll('Prompt')).toEqual([]);
-    expect(findByIdRaw(a)).toMatchObject({ deleted: true, deletedAt: 1000 });
-    expect(trash.isTrashed(a)).toBe(true);
-    expect(trash.list('Prompt').map((n) => n.id).sort()).toEqual([a, b].sort());
-
-    expect(trash.restore([a, 'Prompt-missing' as EARS.EntityId])).toEqual([a]);
-    expect(trash.restore([a])).toEqual([]);
-    const restored = findById(a);
-    expect(restored).toMatchObject({ title: 'a' });
-    expect(restored).not.toHaveProperty('deleted');
-    expect(restored).not.toHaveProperty('deletedAt');
-    expect(trash.isTrashed(a)).toBe(false);
-    expect(trash.list('Prompt').map((n) => n.id)).toEqual([b]);
-  });
-
-  it('lists the entities trashed longer ago than an age', () => {
-    const [old, recent] = [note('old'), note('recent')];
-    trash.move([old], 1_000);
-    trash.move([recent], 9_000);
-    expect(trash.olderThan('Prompt', 5_000, 10_000).map((n) => n.id)).toEqual([old]);
   });
 });
 

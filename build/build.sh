@@ -33,6 +33,8 @@ validate_api_package() {
   fi
   # electron-builder's dependency collector has silently dropped modules before
   node build/prod/verify-node-modules.mjs "$1"
+  # A native module can be present and still not load in this platform's packaged runtime
+  node build/prod/smoke-native.mjs "$1"
 }
 
 # Colors for output

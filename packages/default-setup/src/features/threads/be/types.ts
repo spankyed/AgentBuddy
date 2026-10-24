@@ -1,4 +1,5 @@
 export type * from './export-types.ts';
+import type { ShortCode } from '@apackdev/ears';
 import { type BaseEntity, EARS } from '#generated/ears.ts';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "#features/code/be/services/claude-code/types.ts";
@@ -157,10 +158,6 @@ export interface MessageEntity extends BaseEntity {
   asideContext?: string;
   /** When true, message is hidden because a marker message compacted it. */
   compacted?: boolean;
-  /** Soft-delete marker, written by the repository rather than removing the row. */
-  deleted?: boolean;
-  /** Epoch ms at which the soft delete happened. */
-  deletedAt?: number;
 }
 
 /**
@@ -198,7 +195,8 @@ export interface ThreadEntity extends BaseEntity {
   timestamp: number;
   lastMessageTimestamp?: number;
   lastVisitedTimestamp?: number;
-  shortCode?: string;
+  /** Numbered by `create` */
+  shortCode: ThreadTypeShortCode;
   status: string; // Dynamic statuses from settings
   tags?: string[]; // Tag names from settings
   forcedMode?: string; // Forced mode name for this thread
@@ -218,7 +216,8 @@ export interface ArtifactEntity extends BaseEntity {
   artifactType: ArtifactType;
 }
 
-export const ThreadRelations = ['parent_of', 'blocks', 'blocked_by', 'duplicates'] as const;
+/** The kinds a thread links to another thread with, which the link form offers */
+export const ThreadRelations = [EARS.RelKind.PARENT_OF, EARS.RelKind.BLOCKS, EARS.RelKind.BLOCKED_BY, EARS.RelKind.DUPLICATES] as const;
 export type ThreadLinkRelation = typeof ThreadRelations[number];
 
 export type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic'> & {
@@ -248,7 +247,8 @@ export type ThreadViewData = Simplify<
   ThreadCreateData
   & {
     id: ThreadEntity['id'];
-    shortCode: ThreadEntity['shortCode'];
+    /** `''` while the view holds a thread not yet created */
+    shortCode: ThreadEntity['shortCode'] | '';
     status: ThreadEntity['status'];
     timestamp: ThreadEntity['timestamp'];
     archived?: ThreadEntity['archived'];
@@ -268,12 +268,12 @@ export type ThreadExtendedData = ThreadLinkedFields & {
   status?: string;
   pinned?: boolean;
   archived?: boolean;
-  shortCode?: string;
+  shortCode?: ThreadEntity['shortCode'];
   timestamp?: number;
   lastMessageTimestamp?: number;
 }
 
-export type ThreadTypeShortCode = `T-${number}`;
+export type ThreadTypeShortCode = ShortCode<'T'>;
 
 export type ThreadConnectedData = {
   threads: ThreadExtended[];
@@ -462,7 +462,7 @@ export type AgentSettings = ThreadsSettings['chat'];
 
 export type IncomingThreadsEvents =
   // Thread management events
-  | { type: 'CREATE_THREAD'; topic: string; tags?: string[]; instructions: string; linkedThreads?: { id: string; relation: 'parent_of' | 'blocks' | 'blocked_by' | 'duplicates' }[]; parentThreadId?: string }
+  | { type: 'CREATE_THREAD'; topic: string; tags?: string[]; instructions: string; linkedThreads?: { id: string; relation: ThreadLinkRelation }[]; parentThreadId?: string }
   | { type: 'VIEW_THREAD'; threadId: string }
   | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: string }
   | { type: 'UPDATE_THREAD_FIELD'; threadId: string; key: string; value: any }

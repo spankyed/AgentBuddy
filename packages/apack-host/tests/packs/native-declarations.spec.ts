@@ -93,10 +93,10 @@ it('admits native feature-owned entities statically and checks their runtime wir
   expect(registry.catalog.getSnapshot().native[0].features!.notes.entities).toEqual({
     NativeNote: 'src/types.ts#NoteShape', NativeIndex: null,
   });
-  expect(() => registry.registerPack({ id: 'native', features: { notes: {} }, ears: { entities: {}, relKinds: {} } }))
+  expect(() => registry.registerPack({ id: 'native', features: { notes: {} }, ears: { entities: {}, relKinds: {}, roles: {} } }))
     .toThrow('runtime does not match its admitted declarations');
   registry.registerPack({ id: 'native', features: { notes: {} },
-    ears: { entities: { NativeNote: 'NativeNote', NativeIndex: 'NativeIndex' }, relKinds: {} } });
+    ears: { entities: { NativeNote: 'NativeNote', NativeIndex: 'NativeIndex' }, relKinds: {}, roles: {} } });
   expect(registry.earsNames().entities.NativeNote).toBe('NativeNote');
 });
 

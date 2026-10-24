@@ -100,10 +100,8 @@ export function createAppState(ears: Pick<Ears, 'query' | 'upsert'>) {
 
     /** Writes the given fields, creating the row on the first write */
     update: (changes: Partial<AppState>): void => {
-      const write = ears.upsert(APP_STATE_ENTITY, APP_STATE_ID);
-      for (const [field, value] of Object.entries(changes)) {
-        if (value !== undefined) write.set(field, value);
-      }
+      // A field given as undefined is left alone, as setMany leaves one
+      ears.upsert(APP_STATE_ENTITY, { id: APP_STATE_ID, ...changes });
     },
 
     /** Records one pack's entry in a per-pack field, or with `undefined` removes it, leaving the others' alone */

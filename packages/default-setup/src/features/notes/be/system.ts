@@ -1,6 +1,7 @@
 import { featureSettings } from '#generated/settings.ts';
 
 import { query } from '#generated/ears.ts';
+import { wouldCreateCycle } from '@apackdev/sdk/ears';
 import { broadcastToSurface } from '#generated/events.ts';
 import { setup } from 'xstate';
 import type { Reply } from '@apackdev/sdk/events';
@@ -32,14 +33,9 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('notes');
 
-function isDescendantOf(noteId: EARS.EntityId, ancestorId: EARS.EntityId): boolean {
-  const childIds = query.ids(ancestorId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-  for (const childId of childIds) {
-    if (childId === noteId) return true;
-    if (isDescendantOf(noteId, childId)) return true;
-  }
-  return false;
-}
+/** Whether putting `noteId` under `newParentId` would put a note inside itself */
+const wouldNestInItself = (noteId: EARS.EntityId, newParentId: EARS.EntityId) =>
+  wouldCreateCycle(newParentId, noteId, [EARS.RelKind.CONTAINS]);
 
 export const notesSpec = defineSystem<Contract>();
 
@@ -120,8 +116,9 @@ export const notesSystem = setup({
       repository.noteCommands.update(noteId, updates);
 
       // When uncompleting: restore saved position
-      if (ev.completed === false && noteBeforeUpdate.savedDisplayOrder !== undefined) {
-        const parentIds = query.ids(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+      // A cleared position is stored as null
+      if (ev.completed === false && noteBeforeUpdate.savedDisplayOrder != null) {
+        const parentIds = query.ids(noteId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
         const parentId = parentIds.length > 0 ? parentIds[0] : null;
         const { affectedIds } = repository.noteCommands.reorder(
           noteId,
@@ -176,12 +173,12 @@ export const notesSystem = setup({
       }
     },
 
+    // Every note's links, in the trash or not, derived again from its text: data written before a note recorded
+    // its link targets gets them here, and data replaced wholesale is indexed afresh
     bootstrapReferences: () => {
-      const allNotes = repository.noteQueries.all();
+      const allNotes = query.withTrashed(EARS.Entity.Note).pick(['content']);
       for (const note of allNotes) {
-        if (note.content) {
-          syncReferences(note.id as EARS.EntityId, note.content);
-        }
+        syncReferences(note.id as EARS.EntityId, (note.content as string | undefined) ?? '');
       }
       logger.info(`Bootstrapped REFERENCES relations for ${allNotes.length} notes`);
     },
@@ -200,8 +197,8 @@ export const notesSystem = setup({
       // Update parent's childCount
       const noteEntity = repository.noteQueries.byId(ev.id as EARS.EntityId);
       if (!noteEntity) {
-        // Note is soft-deleted, look up parent via relations
-        const parentIds = query.ids(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        // The note is in the trash: its parent is found through its relations, which the trash keeps
+        const parentIds = query.withTrashed.ids(ev.id as EARS.EntityId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
         if (parentIds.length > 0) {
           const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
           if (parentDTO) {
@@ -229,7 +226,7 @@ export const notesSystem = setup({
       }
 
       // Update parent's childCount
-      const parentIds = query.ids(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+      const parentIds = query.ids(ev.id as EARS.EntityId).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
       if (parentIds.length > 0) {
         const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
         if (parentDTO) {
@@ -262,14 +259,11 @@ export const notesSystem = setup({
       for (const noteId of ev.ids) {
         const id = noteId as EARS.EntityId;
 
-        // Skip self-drop
-        if (newParentId === id) continue;
-
-        // Skip descendant-drop (would create circular reference)
-        if (newParentId && isDescendantOf(newParentId, id)) continue;
+        // Skip a drop onto itself or into its own subtree
+        if (newParentId && wouldNestInItself(id, newParentId)) continue;
 
         // Find current parent to skip same-parent no-op
-        const currentParentIds = query.ids(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const currentParentIds = query.ids(id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
         const currentParentId = currentParentIds.length > 0 ? currentParentIds[0] : null;
         if (currentParentId === newParentId) continue;
 
@@ -305,11 +299,8 @@ export const notesSystem = setup({
       const noteId = ev.id as EARS.EntityId;
       const newParentId = ev.newParentId as EARS.EntityId | null;
 
-      // Skip self-drop
-      if (newParentId === noteId) return;
-
-      // Skip descendant-drop
-      if (newParentId && isDescendantOf(newParentId, noteId)) return;
+      // Skip a drop onto itself or into its own subtree
+      if (newParentId && wouldNestInItself(noteId, newParentId)) return;
 
       const { oldParentId, affectedIds } = repository.noteCommands.reorder(noteId, newParentId, ev.newIndex);
 

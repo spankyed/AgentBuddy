@@ -17,7 +17,7 @@ const manifest = ManifestSchema.parse({
 
 function binding(): Record<string, unknown> {
   return {
-    ears: { entities: { Item: 'Item' }, relKinds: { ITEM_LINK: 'item_link' } },
+    ears: { entities: { Item: 'Item' }, relKinds: { ITEM_LINK: 'item_link' }, roles: {} },
     steps: [{ type: 'execute', node: { label: 'Execute' }, build: { compile() {}, validate() {}, getLabel() {} }, runtime: { handler() {}, waits: true } }],
     blocks: [{ type: 'answer', kind: 'input', be: {} }], artifacts: [{ type: 'item' }],
     contentWriters: { Item: {} }, appliers: [{ key: 'items', apply() {} }],
@@ -40,8 +40,8 @@ it.each(['steps', 'blocks', 'artifacts', 'appliers'])('refuses missing, extra an
 });
 
 it.each([
-  ['ears.entities', { ears: { entities: { Item: 'Other' }, relKinds: { ITEM_LINK: 'item_link' } } }],
-  ['ears.relKinds', { ears: { entities: { Item: 'Item' }, relKinds: {} } }],
+  ['ears.entities', { ears: { entities: { Item: 'Other' }, relKinds: { ITEM_LINK: 'item_link' }, roles: {} } }],
+  ['ears.relKinds', { ears: { entities: { Item: 'Item' }, relKinds: {}, roles: {} } }],
   ['contentWriters', { contentWriters: { Other: {} } }],
   ['artifacts.item.fe', { artifacts: [{ type: 'item', fe: {} }] }],
   ['blocks.answer.kind', { blocks: [{ type: 'answer', kind: 'display', be: {} }] }],

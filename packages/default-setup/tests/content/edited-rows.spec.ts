@@ -5,15 +5,15 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { findWhere } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 import { apply as importContent, applyContent, compileContent, resetDatabase, snapshot } from './harness.ts';
 import type { ApplyRecord } from '@apackdev/sdk/utils';
-// No local row type: `findWhere` already returns the entity with its branded id and declared fields, and a
+// No local row type: a typed query already returns the entity with its branded id and declared fields, and a
 // `{ id: never; [field: string]: unknown }` alias discarded both — `never` is assignable to every parameter,
 // so an id typed that way reaches any call unchecked.
-const note = (title: string) => findWhere('Note', 'title', title)[0];
-const document = (name: string) => findWhere('Document', 'name', name)[0];
+const note = (title: string) => query('Note').where('title', title).pickAll()[0];
+const document = (name: string) => query('Document').where('name', name).pickAll()[0];
 
 const EDITS = {
   "a note's content": () => repository.noteCommands.update(note('Welcome').id, { content: 'My own words' }),
@@ -184,7 +184,7 @@ describe('re-applying edited rows', () => {
 
     // The renamed document is still the one Getting Started's content wrote, found by its key and not by
     // its name; and the one the user deleted stays deleted, because the last apply wrote it
-    const named = findWhere('Document', 'name', '2024');
+    const named = query('Document').where('name', '2024').pickAll();
     expect(named.map((row) => row.id)).toEqual([renamed]);
 
     /**
@@ -195,9 +195,9 @@ describe('re-applying edited rows', () => {
      */
     importContent(v2, { mode: 'replace-on-collision' });
 
-    expect(findWhere('Document', 'name', '2024').map((row) => row.id), 'the deleted document, created again')
+    expect(query('Document').where('name', '2024').pickAll().map((row) => row.id), 'the deleted document, created again')
       .not.toEqual([renamed]);
-    expect(findWhere('Document', 'name', 'Getting Started').map((row) => row.id), 'the renamed one, back to its own name')
+    expect(query('Document').where('name', 'Getting Started').pickAll().map((row) => row.id), 'the renamed one, back to its own name')
       .toEqual([renamed]);
   });
 });

@@ -7,7 +7,8 @@
 // so an entity that moved without them would sort differently depending on who wrote it. What stays with
 // the feature that draws the tree is everything a view wants: paths, counts, child shapes, the index,
 // search, symlink resolution. These return rows and ids; a DTO is the editor's.
-import { boundEars as ears, findRelations, untypedCreate, untypedQuery as query, untypedWrite as write } from '../ears/index.ts';
+import { findRelations, untypedCreate, untypedQuery as query, untypedWrite as write } from '../ears/index.ts';
+import { sdkEntities } from '../ears/sdk-entities.ts';
 import { EARS } from '../types/entities.ts';
 import type { CollectionEntity, ContentSection, DocumentEntity } from '../types/sdk-entities.ts';
 
@@ -45,24 +46,22 @@ export function displayOrderOf(row: unknown): number {
 
 /** The folder holding `childId`, or none when it is at the root */
 export function parentCollectionOf(childId: EARS.EntityId): EARS.EntityId | null {
-  const [relation] = findRelations({ relationType: EARS.RelKind.PARENT_OF, targetEntity: childId });
-  return (relation?.sourceEntity as EARS.EntityId) ?? null;
+  const [relation] = findRelations({ kind: EARS.RelKind.PARENT_OF, target: childId });
+  return (relation?.source as EARS.EntityId) ?? null;
 }
 
 /** The folder holding `documentId`, or none when it is at the root */
 export function collectionOfDocument(documentId: EARS.EntityId): EARS.EntityId | null {
-  const [relation] = findRelations({ relationType: EARS.RelKind.CONTAINS, targetEntity: documentId });
-  return (relation?.sourceEntity as EARS.EntityId) ?? null;
+  const [relation] = findRelations({ kind: EARS.RelKind.CONTAINS, target: documentId });
+  return (relation?.source as EARS.EntityId) ?? null;
 }
 
 /** A folder's names from the root down to it */
 export function collectionPath(collectionId: EARS.EntityId): string[] {
-  const path: string[] = [];
-  for (let id: EARS.EntityId | null = collectionId; id !== null; id = parentCollectionOf(id)) {
+  return [collectionId, ...query.ids(collectionId).ancestors(EARS.RelKind.PARENT_OF).ids()].reverse().flatMap((id) => {
     const [row] = query.ids(id).pickAll() as Array<Record<string, unknown>>;
-    if (row) path.unshift(String(row.name));
-  }
-  return path;
+    return row ? [String(row.name)] : [];
+  });
 }
 
 /**
@@ -74,23 +73,21 @@ export function collectionPath(collectionId: EARS.EntityId): string[] {
 export function nextDisplayOrder(parentId: EARS.EntityId | null): number {
   const siblings = parentId === null
     ? [
-      ...(query(EARS.Entity.Collection).pickAll() as Array<Record<string, unknown>>)
-        .filter((row) => parentCollectionOf(row.id as EARS.EntityId) === null),
-      ...(query(EARS.Entity.Document).pickAll() as Array<Record<string, unknown>>)
-        .filter((row) => collectionOfDocument(row.id as EARS.EntityId) === null),
+      ...(query(EARS.Entity.Collection).unlinkedFrom(EARS.RelKind.PARENT_OF).pickAll() as Array<Record<string, unknown>>),
+      ...(query(EARS.Entity.Document).unlinkedFrom(EARS.RelKind.CONTAINS).pickAll() as Array<Record<string, unknown>>),
     ]
     : [
-      ...(query.ids(parentId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll() as Array<Record<string, unknown>>),
-      ...(query.ids(parentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll() as Array<Record<string, unknown>>),
+      ...(query.ids(parentId).out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll() as Array<Record<string, unknown>>),
+      ...(query.ids(parentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll() as Array<Record<string, unknown>>),
     ];
   return Math.max(0, ...siblings.map(displayOrderOf)) + ORDER_GAP;
 }
 
 /** Rows of documents, which no write announcement wraps */
 const documentReads = {
-  byId: (id: EARS.EntityId): DocumentEntity | undefined => ears().findById<DocumentEntity>(id) ?? undefined,
+  byId: (id: EARS.EntityId): DocumentEntity | undefined => sdkEntities.query.ids(id).ofType(EARS.Entity.Document).pickOne() ?? undefined,
 
-  all: (): DocumentEntity[] => ears().findAll<DocumentEntity>(EARS.Entity.Document),
+  all: (): DocumentEntity[] => sdkEntities.query(EARS.Entity.Document).pickAll(),
 
   /**
    * Every document of `documentType`, in the order the tree shows them: display order, then name.
@@ -136,21 +133,17 @@ const documentWrites = {
   create: (data: DocumentInput): DocumentEntity => {
     const { parentId, id, tags, documentType, contentHash, ...fields } = data;
     const now = Date.now();
-    // Both are read before the row exists: creating the builder creates it, and it would then count
-    // itself as a document and sort as its own sibling
-    const shortCode = `DOC-${query(EARS.Entity.Document).count() + 1}`;
+    // Read before the row exists, which would then sort as its own sibling; `create` numbers its short code
     const displayOrder = nextDisplayOrder(parentId ?? null);
-    const builder = untypedCreate(EARS.Entity.Document, { createdAt: now, ...(id && { id: id as EARS.EntityId }) });
-    const documentId = builder.id();
-    builder.setMany({
+    const documentId = untypedCreate(EARS.Entity.Document, {
+      ...(id && { id: id as EARS.EntityId }),
+      createdAt: now,
       ...fields,
-      shortCode,
       displayOrder,
       tags: tags ?? [],
       ...(documentType !== undefined && { documentType }),
       ...(contentHash && { contentHash }),
-      updatedAt: now,
-    });
+    }).id();
     if (parentId) write(parentId).link(EARS.RelKind.CONTAINS, documentId);
     return (query.ids(documentId).pickAll() as unknown as DocumentEntity[])[0];
   },
@@ -167,7 +160,6 @@ const documentWrites = {
       ...(tags && { tags }),
       ...(documentType !== undefined && { documentType }),
       ...(contentHash && { contentHash }),
-      updatedAt: Date.now(),
     });
     if (parentId === undefined) return;
     const current = collectionOfDocument(id);
@@ -204,34 +196,33 @@ export const documentRepository = {
 
 /** Rows and writes of the folders documents sit in */
 export const collectionRepository = {
-  byId: (id: EARS.EntityId): CollectionEntity | undefined => ears().findById<CollectionEntity>(id) ?? undefined,
+  byId: (id: EARS.EntityId): CollectionEntity | undefined => sdkEntities.query.ids(id).ofType(EARS.Entity.Collection).pickOne() ?? undefined,
 
-  all: (): CollectionEntity[] => ears().findAll<CollectionEntity>(EARS.Entity.Collection),
+  all: (): CollectionEntity[] => sdkEntities.query(EARS.Entity.Collection).pickAll(),
 
   /** The folders directly inside `parentId`, or the root ones */
   children: (parentId: EARS.EntityId | null): CollectionEntity[] => (parentId === null
-    ? collectionRepository.all().filter((row) => parentCollectionOf(row.id as EARS.EntityId) === null)
-    : query.ids(parentId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll() as unknown as CollectionEntity[]),
+    ? sdkEntities.query(EARS.Entity.Collection).unlinkedFrom(EARS.RelKind.PARENT_OF).pickAll()
+    : query.ids(parentId).out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll() as unknown as CollectionEntity[]),
 
   /** The documents directly inside `parentId` */
   documents: (parentId: EARS.EntityId): DocumentEntity[] =>
-    query.ids(parentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll() as unknown as DocumentEntity[],
+    query.ids(parentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll() as unknown as DocumentEntity[],
 
   create: (data: CollectionInput): CollectionEntity => {
     const { parentId, id, description, contentHash, ...fields } = data;
     const now = Date.now();
     // Read before the row exists, which would otherwise sort as its own sibling
     const displayOrder = nextDisplayOrder(parentId ?? null);
-    const builder = untypedCreate(EARS.Entity.Collection, { createdAt: now, ...(id && { id: id as EARS.EntityId }) });
-    const collectionId = builder.id();
-    builder.setMany({
+    const collectionId = untypedCreate(EARS.Entity.Collection, {
+      ...(id && { id: id as EARS.EntityId }),
+      createdAt: now,
       ...fields,
       displayOrder,
       ...(contentHash && { contentHash }),
       // A folder is named, not numbered: it has no shortCode, so an empty description is simply absent
       ...(description ? { description } : {}),
-      updatedAt: now,
-    });
+    }).id();
     if (parentId) write(parentId).link(EARS.RelKind.PARENT_OF, collectionId);
     return (query.ids(collectionId).pickAll() as unknown as CollectionEntity[])[0];
   },
@@ -243,7 +234,6 @@ export const collectionRepository = {
       ...fields,
       ...(contentHash && { contentHash }),
       ...(description !== undefined && { description }),
-      updatedAt: Date.now(),
     });
   },
 

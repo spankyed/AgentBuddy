@@ -6,8 +6,8 @@
  * packs compose with concrete values.
  *
  * Entity and RelKind are open by design:
- *   Entity  — the engine owns Relation; the SDK adds its entities
- *             (@apackdev/sdk's EARS) and packs declare theirs.
+ *   Entity  — the engine owns no entity type (a relation is not an entity);
+ *             the SDK adds its entities (@apackdev/sdk's EARS) and packs declare theirs.
  *   RelKind — the engine provides the Custom() helper and open type; the SDK
  *             and packs add their relation kinds.
  *
@@ -18,13 +18,8 @@
 
 export namespace EARS {
   // ─── Entity ────────────────────────────────────────────────────────────
-  // The engine's own entity; the SDK and packs add theirs
-  export const Entity = {
-    /** Every link between two entities */
-    Relation: 'Relation',
-  } as const;
-
-  export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
+  // An entity type's name. The engine declares none: the SDK and packs declare theirs, each as an `Entity` constant
+  export type Entity = string & {};
   /**
    * An entity id, tagged with its entity type when that's known (`EntityId<'Note'>`). A plain id
    * (`EntityId`) carries no tag, so it's accepted wherever a tagged one is expected; only an id tagged
@@ -43,14 +38,6 @@ export namespace EARS {
 
   export type RelKind = string & {};
 
-  // ─── Relations ─────────────────────────────────────────────────────────
-  export interface RelationDetail {
-    sourceEntity : EntityId;
-    targetEntity : EntityId;
-    relationType : RelKind;
-    info?        : AttributeValue;
-  }
-
   // ─── RoleKind ──────────────────────────────────────────────────────────
   const _roleCustom = <T extends string>(k: T) => k as T & RoleKind;
 
@@ -63,7 +50,6 @@ export namespace EARS {
   // ─── AttrKind ──────────────────────────────────────────────────────────
   export const AttrKindValues = {
     Role            : 'role',
-    RelationDetails : 'relationDetails',
   } as const;
 
   const _attrCustom = <T extends string>(k: T) => k as T & AttrKind;
@@ -78,7 +64,6 @@ export namespace EARS {
   // ─── Attribute payloads ────────────────────────────────────────────────
   export interface AttributePayloads {
     [AttrKindValues.Role]            : RoleKind;
-    [AttrKindValues.RelationDetails] : RelationDetail;
     [key: string]                    : unknown;
   }
 
@@ -90,14 +75,6 @@ export namespace EARS {
   export type AttributeType  = AttrKind;
   export type AttributeStore = Record<string, AttributeTypeMap>;
 
-  // ─── Blueprint ─────────────────────────────────────────────────────────
-  export type Blueprint = {
-    entity : EARS.Entity;
-    attrs? : Record<string, unknown>;
-    roles? : EARS.RoleKind[];
-    uniqueRoles? : EARS.RoleKind[];
-    rels?  : { kind: EARS.RelKind; target: Blueprint | EARS.EntityId; info?: unknown }[];
-  };
 }
 
 export interface BaseEntity {
@@ -105,6 +82,8 @@ export interface BaseEntity {
   entityType: EARS.Entity;
   createdAt: number;
   updatedAt?: number;
+  /** When the entity was put in the trash: only a read that reaches the trash (`query.withTrashed`, `query.trashed`) finds one */
+  trashedAt?: number;
 }
 
 /**
@@ -140,10 +119,10 @@ export type ShapeOf<S extends EntityShapes, E extends string> =
  * inside the helper only the fields every entity has are known:
  *
  * ```ts
- * import { findAll, type EntityName } from '#generated/ears';
+ * import { query, type EntityName } from '#generated/ears';
  *
  * function newestOf<E extends EntityName>(entityType: E) {
- *   return findAll(entityType).sort((a, b) => b.createdAt - a.createdAt);
+ *   return query(entityType).pickAll().sort((a, b) => b.createdAt - a.createdAt);
  * }
  * newestOf('Note')[0].title; // typed with the Note shape
  * ```

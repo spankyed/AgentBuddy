@@ -8,6 +8,7 @@ import {
   collectionPath, collectionRepository, displayOrderOf, documentRepository, nextDisplayOrder, parentCollectionOf,
 } from '@apackdev/sdk/repositories'
 import { formatFileSize, getContentLength } from './helpers.ts'
+import { wouldCreateCycle } from '@apackdev/sdk/ears'
 import type { ContentSection } from '#features/library/be/types.ts';
 
 
@@ -89,26 +90,16 @@ const writers = {
     id?: string,
     contentHash?: string,
   ): CollectionDTO {
-    // Create collection entity
     const now = Date.now()
-    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId, createdAt: now }) : create(EARS.Entity.Collection, { createdAt: now })
-    const collectionId = builder.id()
-    
-    // Get display order
     const displayOrder = nextDisplayOrder(parentId || null)
-
-    const attrs: Record<string, any> = {
+    const collectionId = create(EARS.Entity.Collection, {
+      ...(id && { id: id as EARS.EntityId }),
+      createdAt: now,
       name,
       displayOrder,
       ...(contentHash && { contentHash }),
-      updatedAt: now,
-    }
-
-    if (description) {
-      attrs.description = description
-    }
-
-    builder.setMany(attrs)
+      ...(description && { description }),
+    }).id()
     if (parentId) {
       write(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }
@@ -136,12 +127,10 @@ const writers = {
     contentHash?: string,
   ): CollectionDTO {
     const collectionId = id
-    const now = Date.now()
 
     const attrs: Record<string, any> = {
       name,
       ...(contentHash && { contentHash }),
-      updatedAt: now,
     }
 
     if (description !== undefined) {
@@ -152,11 +141,11 @@ const writers = {
     const collections = query.ids(collectionId).pickAll()
     const collection = collections[0]
     const documentCount = (query.ids(collectionId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+      .out(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pickAll()).length
 
     const childCollections = query.ids(collectionId)
-      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+      .out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
     const path = collectionPath(collectionId)
@@ -167,8 +156,8 @@ const writers = {
         name: child.name as string,
         description: child.description as string | undefined,
         path: collectionPath(child.id as EARS.EntityId),
-        documentCount: query.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
-        childCollections: buildChildren(query.ids(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
+        documentCount: query.ids(child.id as EARS.EntityId).out(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
+        childCollections: buildChildren(query.ids(child.id as EARS.EntityId).out(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
         displayOrder: displayOrderOf(child),
         createdAt: new Date(child.createdAt as number).toISOString(),
         updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),
@@ -267,9 +256,10 @@ const writers = {
       if (id.startsWith('Document-')) {
         this.moveDocument(id, targetFolderId || undefined)
       } else if (id.startsWith('Collection-')) {
-        // Move collection to new parent
+        // Move collection to new parent, unless that would put the folder inside itself
         const collectionId = id
-        
+        if (targetFolderId && wouldCreateCycle(targetFolderId, collectionId, [EARS.RelKind.PARENT_OF])) continue
+
         const currentParent = parentCollectionOf(collectionId)
         
         // Remove from current parent if exists
@@ -296,17 +286,14 @@ const writers = {
     id?: string,
   ): CollectionDTO {
     const now = Date.now()
-    const builder = id ? create(EARS.Entity.Collection, { id: id as EARS.EntityId, createdAt: now }) : create(EARS.Entity.Collection, { createdAt: now })
-    const collectionId = builder.id()
-
     const displayOrder = nextDisplayOrder(parentId || null)
-
-    builder.setMany({
+    const collectionId = create(EARS.Entity.Collection, {
+      ...(id && { id: id as EARS.EntityId }),
+      createdAt: now,
       name,
       symlinkPath,
       displayOrder,
-      updatedAt: now,
-    })
+    }).id()
 
     if (parentId) {
       write(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
@@ -331,9 +318,7 @@ const writers = {
   updateSymlinkPath(collectionId: EARS.EntityId, newPath: string): CollectionDTO {
     const now = Date.now()
     const newName = path.basename(newPath) || 'Symlink'
-    write(collectionId).set('symlinkPath', newPath)
-    write(collectionId).set('name', newName)
-    write(collectionId).set('updatedAt', now)
+    write(collectionId).setMany({ symlinkPath: newPath, name: newName })
 
     const col = query.ids(collectionId).pickAll()[0]
     const colPath = collectionPath(collectionId)

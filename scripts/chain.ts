@@ -54,6 +54,7 @@ import { schedule } from './lib/chain-schedule.ts';
 import { measurementsFrom, willNotCache } from './lib/step-timing.ts';
 import { briefly, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
+import { overBudgetLines } from './lib/over-budget.ts';
 import { CHAIN_RUN_ENV, CHAIN_CORES_ENV, poolWorkerLimit, poolForStep, poolDurationLines } from './lib/unit-pool.ts';
 import { parseShard, selectOnly, shardArg, STRICT_JOBS, strictJobSteps, type Shard, type StrictJob } from './lib/chain-only.ts';
 import { TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
@@ -558,6 +559,11 @@ async function main(): Promise<void> {
       // In the step's own time column, so every time on the screen lines up and these read as its contents
       for (const slow of slowestTests(result.output)) {
         console.log(dim(`${' '.repeat(TIME_COLUMN)}${secs(slow.ms).padStart(6)}  ${oneLine(REASON_COLUMN, slow.name)}`));
+      }
+      // The tests that passed past their size budget: reported, never failed, since load inflates a duration
+      // and never deflates one (`DEADLINE_FACTOR`). Not dimmed, being a finding rather than a profile.
+      for (const over of overBudgetLines(result.output)) {
+        console.log(`${' '.repeat(TIME_COLUMN)}${secs(over.ms).padStart(6)}  ${oneLine(REASON_COLUMN, `over its ${secs(over.budgetMs)} budget: ${over.test}`)}`);
       }
       // And the same for whole files, which is the unit a half is decided in. It reads what the run wrote
       // rather than its output: a step's output is buffered and printed only on failure, so until this

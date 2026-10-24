@@ -121,7 +121,7 @@ describe('artifacts and blocks', () => {
   });
 
   it("aren't found when their pack's content declarations are refused", () => {
-    add({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: {} } });
+    add({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {}, roles: {} }, contentWriters: { Memo: {} } });
     expect(() => add({ id: 'card-pack', artifacts: [cardView], blocks: [choice], contentWriters: { Memo: {} } })).toThrow('A content writer for "Memo": only entity types this pack declares');
     expect(artifactRegistry.has('card-view')).toBe(false);
     expect(blockRegistry.has('choice')).toBe(false);
@@ -305,7 +305,7 @@ describe('a pack whose registration is refused', () => {
       steps: [noteStep],
       artifacts: [{ type: 'note-view' }],
       blocks: [{ type: 'note-block' }],
-      ears: { entities: { Note: 'Note' }, relKinds: {} },
+      ears: { entities: { Note: 'Note' }, relKinds: {}, roles: {} },
       contentWriters: { Note: {} },
       appliers: [anApplier('notes')],
       features: { notes: { designation: 'notebook', surface: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
@@ -317,7 +317,7 @@ describe('a pack whose registration is refused', () => {
       steps: [tickTrigger],
       artifacts: [{ type: 'card-view' }],
       blocks: [{ type: 'card-block' }],
-      ears: { entities: { Card: 'Card' }, relKinds: {} },
+      ears: { entities: { Card: 'Card' }, relKinds: {}, roles: {} },
       contentWriters: { Card: {} },
       appliers: [anApplier('cards')],
       features: { cards: { designation: 'notebook', surface: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },

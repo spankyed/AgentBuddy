@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, type EARS } from '@apackdev/ears';
-import { getEntitiesOfType, _bindEars, boundEars, untypedQuery } from '@apackdev/sdk/ears';
+import { _bindEars, boundEars, untypedQuery } from '@apackdev/sdk/ears';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
@@ -15,7 +15,7 @@ import { _appDirOf } from '@apackdev/sdk/env';
 
 function writeSnapshot(file: string, manifest: PackManifest): void {
   fs.writeFileSync(file, JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
-    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {} }));
 }
 
 afterEach(removeTempDirs);
@@ -34,8 +34,10 @@ describe('readInstalledSchema', () => {
     });
     const schema = readInstalledSchema(schemaContext(dir));
     const types = schema.getRegisteredEntityTypes();
-    for (const type of ['Note', 'Trace', 'Bookmark', 'Pin', 'Flow', 'Relation', 'AppState']) expect(types.has(type)).toBe(true);
+    for (const type of ['Note', 'Trace', 'Bookmark', 'Pin', 'Flow', 'AppState']) expect(types.has(type)).toBe(true);
     expect(types.has('Hidden')).toBe(false);
+    // A relation is no entity type
+    expect(types.has('Relation')).toBe(false);
     expect(schema.relKinds.MENTIONS).toBe('mentions');
     expect(schema.packs).toEqual([
       { id: 'bookmarks' },
@@ -94,24 +96,6 @@ describe('readInstalledSchema', () => {
 });
 
 describe('findAppDataPaths', () => {
-  it('refuses a data dir holding only one of the two partitions, whether it reads or writes', async () => {
-    const dir = dataDirWithPacks();
-    await writeData(dir, () => {});
-    const paths = _appDataPaths(dir);
-    fs.rmSync(paths.volatileLmdb, { recursive: true });
-    const missingHistory = new RegExp(`missing the run history \\(${paths.volatileLmdb}\\): copy the whole data dir`);
-    expect(() => findAppDataPaths(dir)).toThrow(missingHistory);
-    await expect(openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet })).rejects.toThrow(missingHistory);
-    // A write doesn't quietly make the missing partition either
-    await expect(openAppDatabase({ env: 'test', userDataDir: dir, ...quiet })).rejects.toThrow(missingHistory);
-    expect(fs.existsSync(paths.volatileLmdb)).toBe(false);
-
-    const onlyHistory = dataDirWithPacks();
-    await writeData(onlyHistory, () => {});
-    fs.rmSync(_appDataPaths(onlyHistory).lmdb, { recursive: true });
-    expect(() => findAppDataPaths(onlyHistory)).toThrow(/missing the data \(/);
-  });
-
   it('refuses a data dir with no database', async () => {
     const dir = dataDirWithPacks();
     expect(() => findAppDataPaths(dir)).toThrow(`No apack database in ${dir}`);
@@ -177,27 +161,19 @@ describe('openAppDatabase', () => {
     await writeData(dir, () => {
       untypedCreate('Note', { id: id('Note-2') }).set('title', 'other');
       untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept').grant('pinned').link('mentions', id('Note-2'));
-      untypedCreate('TNode', { id: id('TNode-1') }).set('step', 'volatile');
     });
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
     expect(boundEars()).toBe(db.ears);
     expect(db.paths).toEqual(_appDataPaths(dir));
-    expect(getEntitiesOfType('Note').sort()).toEqual(['Note-1', 'Note-2']);
+    expect(untypedQuery.withTrashed('Note').ids().sort()).toEqual(['Note-1', 'Note-2']);
     expect(untypedQuery('Note').ids()).toHaveLength(2);
     expect(db.ears.getRoles(id('Note-1'))).toEqual(['pinned']);
-    expect(db.ears.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);
-    // The volatile partition isn't hydrated, as in the app
-    expect(db.ears.getAttr(id('TNode-1'), 'step')).toBeNull();
+    expect(db.ears.findRelations({ source: id('Note-1') })).toHaveLength(1);
     db.close();
 
-    const withHistory = await openAppDatabase({ env: 'test', userDataDir: dir, includeVolatile: true, ...quiet });
-    expect(withHistory.ears.getAttr(id('TNode-1'), 'step')).toBe('volatile');
-    expect(withHistory.ears.getAttr(id('Note-1'), 'title')).toBe('kept');
-    withHistory.close();
-
     const db2 = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(db2.ears.getAttr(id('TNode-1'), 'step')).toBeNull();
+    expect(db2.ears.getRow(id('Note-1'))?.title).toBe('kept');
     // An entity type creates an entity
     const created = db2.ears.create('Note').set('title', 'new').id();
     expect(created.startsWith('Note-')).toBe(true);
@@ -205,7 +181,7 @@ describe('openAppDatabase', () => {
     expect(() => boundEars()).toThrow();
 
     const again = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
-    expect(again.ears.getAttr(created, 'title')).toBe('new');
+    expect(again.ears.getRow(created)?.title).toBe('new');
     again.close();
   });
 
@@ -216,7 +192,7 @@ describe('openAppDatabase', () => {
     expect(() => db.ears.write(id('Note-1')).set('title', 'changed')).toThrow(/open read-only/);
     db.close();
     const again = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
-    expect(again.ears.getAttr(id('Note-1'), 'title')).toBe('kept');
+    expect(again.ears.getRow(id('Note-1'))?.title).toBe('kept');
     again.close();
   });
 
@@ -234,7 +210,7 @@ describe('openAppDatabase', () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => { untypedCreate('Note', { id: id('Note-1') }).set('title', 'kept'); });
     // A process that already has an engine: the app, or a test file that started a runtime
-    const outer = createEarsEngine({ isEntityType: (name) => name === 'Note' });
+    const outer = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => name === 'Note' });
     _bindEars(outer);
     try {
       const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });

@@ -123,10 +123,8 @@
         "entityType": "Note",
         "hideCompletedChildren": true,
         "icon": null,
-        "label": "New Note 1",
         "lastSeen": 0,
         "noteType": "tasklist",
-        "shortCode": "NOTE-1",
         "title": "Projects"
       },
       "Note:Projects/2024": {
@@ -134,11 +132,10 @@
         "content": "A title YAML reads as a number.\n",
         "displayOrder": 3,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 6",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-6",
         "title": "2024"
       },
       "Note:Projects/Archive": {
@@ -146,11 +143,10 @@
         "content": "Old work.\n",
         "displayOrder": 0,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 2",
         "lastSeen": 0,
         "noteType": "tasklist",
-        "shortCode": "NOTE-2",
         "title": "Archive"
       },
       "Note:Projects/Archive/Old Task": {
@@ -158,11 +154,10 @@
         "content": "Archived task.\n",
         "displayOrder": 0,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 3",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-3",
         "title": "Old Task"
       },
       "Note:Projects/task one": {
@@ -170,11 +165,10 @@
         "content": "Done task.\n",
         "displayOrder": 1,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 4",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-4",
         "title": "task one"
       },
       "Note:Projects/Task Two": {
@@ -182,11 +176,10 @@
         "content": "Open task.\n",
         "displayOrder": 2,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 5",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-5",
         "title": "Task Two"
       },
       "Note:Welcome": {
@@ -195,11 +188,13 @@
         "displayOrder": 1,
         "entityType": "Note",
         "favorite": true,
+        "hideCompletedChildren": false,
         "icon": "👋",
-        "label": "New Note 7",
         "lastSeen": 0,
+        "linkTargets": [
+          "Note-external-plan"
+        ],
         "noteType": "document",
-        "shortCode": "NOTE-7",
         "title": "Welcome"
       },
       "Prompt:Greeting": {
@@ -215,7 +210,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PRO-1"
+        "shortCode": "PROMPT-1"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -230,7 +225,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PRO-2"
+        "shortCode": "PROMPT-2"
       }
     },
     "relations": [
@@ -283,7 +278,7 @@
           }
         },
         "label": "Echo",
-        "shortCode": "ACT-1"
+        "shortCode": "ACT-3"
       },
       "Action:Set Instructions": {
         "category": "commands",
@@ -297,7 +292,7 @@
           }
         },
         "label": "Set Instructions",
-        "shortCode": "ACT-2"
+        "shortCode": "ACT-4"
       },
       "Collection:advanced": {
         "contentHash": "08f76a29861feea7",
@@ -323,7 +318,7 @@
         "displayOrder": 2000,
         "entityType": "Document",
         "name": "2024",
-        "shortCode": "DOC-3",
+        "shortCode": "DOC-6",
         "tags": [
           "year"
         ]
@@ -339,7 +334,7 @@
         "displayOrder": 1000,
         "entityType": "Document",
         "name": "deep dive",
-        "shortCode": "DOC-1",
+        "shortCode": "DOC-4",
         "tags": [
           "default"
         ]
@@ -380,7 +375,7 @@
         "displayOrder": 2000,
         "entityType": "Document",
         "name": "Getting Started",
-        "shortCode": "DOC-2",
+        "shortCode": "DOC-5",
         "tags": [
           "intro",
           "docs"
@@ -393,10 +388,8 @@
         "entityType": "Note",
         "hideCompletedChildren": true,
         "icon": null,
-        "label": "New Note 1",
         "lastSeen": 0,
         "noteType": "tasklist",
-        "shortCode": "NOTE-1",
         "title": "Projects"
       },
       "Note:Projects/2024": {
@@ -404,11 +397,10 @@
         "content": "A title YAML reads as a number.\n",
         "displayOrder": 3,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 6",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-6",
         "title": "2024"
       },
       "Note:Projects/Archive": {
@@ -416,11 +408,10 @@
         "content": "Old work.\n",
         "displayOrder": 0,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 2",
         "lastSeen": 0,
         "noteType": "tasklist",
-        "shortCode": "NOTE-2",
         "title": "Archive"
       },
       "Note:Projects/Archive/Old Task": {
@@ -428,11 +419,10 @@
         "content": "Archived task.\n",
         "displayOrder": 0,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 3",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-3",
         "title": "Old Task"
       },
       "Note:Projects/task one": {
@@ -440,11 +430,10 @@
         "content": "Done task.\n",
         "displayOrder": 1,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 4",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-4",
         "title": "task one"
       },
       "Note:Projects/Task Two": {
@@ -452,11 +441,10 @@
         "content": "Open task.\n",
         "displayOrder": 2,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 5",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-5",
         "title": "Task Two"
       },
       "Note:Welcome": {
@@ -465,11 +453,13 @@
         "displayOrder": 1,
         "entityType": "Note",
         "favorite": true,
+        "hideCompletedChildren": false,
         "icon": "👋",
-        "label": "New Note 7",
         "lastSeen": 0,
+        "linkTargets": [
+          "Note-external-plan"
+        ],
         "noteType": "document",
-        "shortCode": "NOTE-7",
         "title": "Welcome"
       },
       "Prompt:Greeting": {
@@ -485,7 +475,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PRO-1"
+        "shortCode": "PROMPT-3"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -500,7 +490,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PRO-2"
+        "shortCode": "PROMPT-4"
       }
     },
     "relations": [
@@ -554,7 +544,7 @@
           }
         },
         "label": "Echo",
-        "shortCode": "ACT-1"
+        "shortCode": "ACT-5"
       },
       "Action:Set Instructions": {
         "category": "commands",
@@ -568,7 +558,7 @@
           }
         },
         "label": "Set Instructions",
-        "shortCode": "ACT-2"
+        "shortCode": "ACT-6"
       },
       "Collection:advanced": {
         "contentHash": "62a5dc465126ce53",
@@ -594,7 +584,7 @@
         "displayOrder": 2000,
         "entityType": "Document",
         "name": "2024",
-        "shortCode": "DOC-4",
+        "shortCode": "DOC-10",
         "tags": [
           "year"
         ]
@@ -610,7 +600,7 @@
         "displayOrder": 1000,
         "entityType": "Document",
         "name": "deep dive",
-        "shortCode": "DOC-1",
+        "shortCode": "DOC-7",
         "tags": [
           "default"
         ]
@@ -626,7 +616,7 @@
         "displayOrder": 2000,
         "entityType": "Document",
         "name": "Getting Started",
-        "shortCode": "DOC-2",
+        "shortCode": "DOC-8",
         "tags": [
           "intro",
           "docs",
@@ -644,7 +634,7 @@
         "displayOrder": 3000,
         "entityType": "Document",
         "name": "New Doc",
-        "shortCode": "DOC-3",
+        "shortCode": "DOC-9",
         "tags": [
           "default"
         ]
@@ -656,10 +646,8 @@
         "entityType": "Note",
         "hideCompletedChildren": true,
         "icon": null,
-        "label": "New Note 1",
         "lastSeen": 0,
         "noteType": "tasklist",
-        "shortCode": "NOTE-1",
         "title": "Projects"
       },
       "Note:Projects/2024": {
@@ -667,11 +655,10 @@
         "content": "A title YAML reads as a number.\n",
         "displayOrder": 3,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 6",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-6",
         "title": "2024"
       },
       "Note:Projects/Archive": {
@@ -679,11 +666,10 @@
         "content": "Old work.\n",
         "displayOrder": 0,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 2",
         "lastSeen": 0,
         "noteType": "tasklist",
-        "shortCode": "NOTE-2",
         "title": "Archive"
       },
       "Note:Projects/Archive/Old Task": {
@@ -691,11 +677,10 @@
         "content": "Archived task.\n",
         "displayOrder": 0,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 3",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-3",
         "title": "Old Task"
       },
       "Note:Projects/task one": {
@@ -703,11 +688,10 @@
         "content": "Done task.\n",
         "displayOrder": 1,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 4",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-4",
         "title": "task one"
       },
       "Note:Projects/Task Two": {
@@ -715,11 +699,10 @@
         "content": "Open task.\n",
         "displayOrder": 2,
         "entityType": "Note",
+        "hideCompletedChildren": false,
         "icon": null,
-        "label": "New Note 5",
         "lastSeen": 0,
         "noteType": "task",
-        "shortCode": "NOTE-5",
         "title": "Task Two"
       },
       "Note:Welcome": {
@@ -728,11 +711,13 @@
         "displayOrder": 1,
         "entityType": "Note",
         "favorite": true,
+        "hideCompletedChildren": false,
         "icon": "👋",
-        "label": "New Note 7",
         "lastSeen": 0,
+        "linkTargets": [
+          "Note-external-plan"
+        ],
         "noteType": "document",
-        "shortCode": "NOTE-7",
         "title": "Welcome"
       },
       "Prompt:Greeting": {
@@ -748,7 +733,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PRO-1"
+        "shortCode": "PROMPT-5"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -763,7 +748,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PRO-2"
+        "shortCode": "PROMPT-6"
       }
     },
     "relations": [

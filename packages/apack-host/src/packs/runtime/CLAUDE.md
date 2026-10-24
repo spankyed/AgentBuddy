@@ -2,7 +2,7 @@
 
 The pack runtime the app runs: loading built-in and external packs, the SDK bridge, activation and teardown, reload, writing, and the host `packs` system. It works on the registry it's given (`PackRegistry`, `createPackRegistry()` from `../registry.ts`): every function that registers, unregisters or reads packs takes it as its first argument, and the host `packs` system is `createPacksSystem(registry)`. Discovery, the registered packs (`createPackRegistry()`, with the shutdown hooks), the install registry, the installer and the pack layout live one level up in `@apackdev/host/packs` (`packages/apack-host/src/packs/`). That barrel, which the CLI imports, never imports this folder, and neither does `@apackdev/host/bus` (`tests/boundaries.spec.ts`).
 
-The API calls this runtime (`packages/api/src/runtime/index.ts`, `setup/websocket.ts`, `transport/packs.ts`), and so do the db scripts. What only the API has, it reaches through the SDK's bound runtime: logging through `createLogger` (`@apackdev/sdk/logger`) and the app version through `getAppVersion()` (`@apackdev/sdk/env`). Unbound (the CLI), loggers write to the console. The partition policy the app's store routes by is a constant (`appPartitionPolicy()`), so nothing here touches it. Modules here import each other and the rest of host by relative `.ts` path.
+The API calls this runtime (`packages/api/src/runtime/index.ts`, `setup/websocket.ts`, `transport/packs.ts`), and so do the db scripts. What only the API has, it reaches through the SDK's bound runtime: logging through `createLogger` (`@apackdev/sdk/logger`) and the app version through `getAppVersion()` (`@apackdev/sdk/env`). Unbound (the CLI), loggers write to the console. Modules here import each other and the rest of host by relative `.ts` path.
 
 ## Architecture
 
@@ -95,7 +95,7 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
 ```
 0. initializeLogCapture()          — console calls become log events, each printed once
    openAppStore()                  — (runtime/index.ts) createPackRegistry(), the app's registered packs; open the LMDB store
-                                     (@apackdev/ears/lmdb) with appPartitionPolicy(), createEarsEngine({ persistence: store.sink }),
+                                     (@apackdev/ears/lmdb) and the run history's, createEarsEngine({ persistence: store.sink }),
                                      bindHost(createHostRuntime({ ..., packs })), which binds the engine
                                      and binds the registry for the SDK's lookups; every step below works on it
 1. registerPack(hostRegistration) — the app's own features as the pack `host`: the application and packs systems and surfaces
@@ -116,7 +116,7 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
 9. start the bus actor             — createAppBus(registry) (@apackdev/host/bus) with systemId `HOST.bus`, which spawns every registered system
 ```
 
-Every pack registers before hydration, so its entity types are visible to the partition policy resolver.
+Every pack registers before hydration, so the engine knows its entity types when their rows are loaded.
 
 ## Pack entry contract
 
@@ -152,7 +152,7 @@ Designations come from the manifest's `features[].designation`, which generate-e
 | EARS entity type values | The SDK's and the host's, and all registered packs' entity values | Throws (blocks registration) |
 | EARS relation kind values | The SDK's, and all registered packs' relation values | Throws (blocks registration) |
 | Designation roles | All registered packs' roles | Throws (blocks registration) |
-| Service keys | Host service names (`logger`, `emitter`, `repository`, `onboarding`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`, `settings`) and all registered packs' keys | Throws (blocks registration) |
+| Service keys | Host service names (`logger`, `emitter`, `repository`, `onboarding`, `appData`, `runHistory`, `inference`, `secrets`, `filesystem`, `settings`) and all registered packs' keys | Throws (blocks registration) |
 | Repository names | All registered packs' repository names | Throws (blocks registration) |
 | Content writers | Another pack's hooks for the entity type | Throws before candidate publication |
 | ContentAppliers | Two appliers for one content key in the pack | Throws before candidate publication |

@@ -460,7 +460,7 @@ const EVERY_SOURCE = [...ROOT, ...Object.values(CONFIG_BY_HALF), ...EVERY_WORKSP
   // The drive layer's one tracked file. The driving scripts beside it are gitignored and ad-hoc, so naming
   // the directory would re-run a typecheck every time someone poked at the app
   'drive/playwright.config.ts',
-  'build/prod/verify-node-modules.mjs',
+  'build/prod/verify-node-modules.mjs', 'build/prod/smoke-native.mjs',
   'packages/apack-cli/bin',
   'packages/apack-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
   'packages/dev-mode.js', 'packages/entry-point.mjs'];
@@ -545,7 +545,8 @@ const APP_RUNNER = ['scripts/build-runtime.ts', 'scripts/lib/runtime-build-legs.
  * pool a suite is even in, `with-source.mjs` supplies the `@apackdev/source` condition the host suites
  * resolve under, the bounded runner bounds the spawn, and `spec-durations.ts` and `spec-halves.ts` decide
  * what the run then *accepts* — a `@slow:` marker that is no longer true fails the step, so they are as
- * much a part of the verdict as the runner is. A pass recorded before one of them changed is not evidence
+ * much a part of the verdict as the runner is. `over-budget.ts` and `test-timeouts.ts` say which of a run's passes it
+ * reports as slow. A pass recorded before one of them changed is not evidence
  * about the pass after it, so a project whose runner moved is stale.
  *
  * **Every project declares them, not only the pool step.** Declared on the step alone, a runner edit makes
@@ -555,7 +556,7 @@ const SOURCE_RUNNER = ['scripts/with-source.mjs', 'packages/apack-host/src/build
   'packages/apack-host/src/build/node-options.d.ts'];
 const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-pool.ts', 'scripts/lib/unit-suites.ts',
   'scripts/lib/exit-on-epipe.ts', ...SOURCE_RUNNER, 'scripts/lib/spec-durations.ts',
-  'scripts/lib/spec-durations-reporter.ts',
+  'scripts/lib/spec-durations-reporter.ts', 'scripts/lib/over-budget.ts', 'scripts/lib/test-timeouts.ts',
   'scripts/lib/spec-halves.ts', 'scripts/lib/chain-only.ts', ...BOUNDED_RUNNER];
 /**
  * What `build:default-setup` writes. `src/__generated__` is under the `src` it also reads, so it has to be declared:

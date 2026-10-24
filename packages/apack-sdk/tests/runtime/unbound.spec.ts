@@ -6,6 +6,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { createEarsEngine } from '@apackdev/ears';
 import { untypedQuery, untypedCreate } from '@apackdev/sdk/ears';
+import { repository } from '@apackdev/sdk/services';
 import { bindHost, unbindHost, boundHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
 import { onConnected, onIncoming, untypedBroadcastToSurface, untypedSendToSystem } from '../../src/events/index.ts';
@@ -30,7 +31,7 @@ import { testPacksView } from '../../src/testing/packs.ts';
 const serviceAccess = (settings: SettingsService): PackServiceAccess => ({ services: { settings }, servicesForAction: () => ({ settings }) });
 
 const unused = () => { throw new Error('unused'); };
-const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });
+const engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => name === 'Memo' });
 const runtime: HostRuntime = {
   transport: { rootEvents: _rootEvents },
   ears: engine,
@@ -39,7 +40,7 @@ const runtime: HostRuntime = {
   services: {
     onboarding: { isComplete: unused, complete: unused },
     appData: { reset: unused, exportBackup: unused, importBackup: unused, readBackupSummary: unused },
-    traceStore: { entities: unused, getEntityMeta: unused, getAttr: unused, relations: unused },
+    runHistory: { start: unused, finish: unused, update: unused, get: unused, findChildren: unused, tree: unused, findRuns: unused, stopActive: unused, prune: unused },
     inference: {
       generateText: unused, streamText: unused, createAgent: unused, embed: unused, embedMany: unused,
       generateImage: unused, generateSpeech: unused, transcribe: unused, rerank: unused,
@@ -75,10 +76,10 @@ describe('with no app bound', () => {
       ['services.inference', () => boundHost().services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })],
       ['services.appData', () => boundHost().services.appData.reset()],
       ['services.onboarding', () => boundHost().services.onboarding.isComplete()],
-      ['services.traceStore', () => boundHost().services.traceStore.entities()],
+      ['services.runHistory', () => boundHost().services.runHistory.findRuns()],
       ['services.secrets', () => boundHost().services.secrets.list()],
       ['services.filesystem', () => boundHost().services.filesystem.readFile('/tmp/x')],
-      ['services.repository', () => boundHost().ears.repository],
+      ['repository', () => repository.memoQueries],
     ];
     for (const [name, use] of [['untypedQuery', () => untypedQuery('Memo')], ['untypedCreate', () => untypedCreate('Memo')]] as const) {
       expect(use, name).toThrow('No EARS engine is bound');
@@ -155,7 +156,7 @@ describe('bindHost', () => {
   it("binds the app's engine for the SDK's engine operations, until unbound", () => {
     bindHost(runtime);
     const id = untypedCreate('Memo').set('title', 'bound').id();
-    expect(engine.findById(id)).toMatchObject({ title: 'bound' });
+    expect(engine.query.ids(id).pickOne()).toMatchObject({ title: 'bound' });
     expect(untypedQuery('Memo').ids()).toEqual([id]);
     unbindHost();
     expect(() => untypedQuery('Memo')).toThrow('No EARS engine is bound');
@@ -163,7 +164,6 @@ describe('bindHost', () => {
 
   it("reads the bound app's services on each call", () => {
     bindHost(runtime);
-    expect(boundHost().ears.repository).toBe(engine.repository);
     expect(() => boundHost().services.secrets.list()).toThrow('unused');
   });
 });

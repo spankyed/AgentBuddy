@@ -1,3 +1,4 @@
+import type { RowRules } from '@apackdev/ears';
 import type { ContentWriter } from '../content/writers.ts';
 
 /** Generated content bindings used without activating a pack's systems or services. */
@@ -7,6 +8,9 @@ export interface ContentRuntime {
   declarationRevision: string;
   entities: Record<string, string>;
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
+  /** What each of the pack's shaped entities' created rows is held to, read off its shape; none when absent */
+  rowRules?: Record<string, RowRules>;
   repositories: Record<string, unknown>;
   contentWriters: Record<string, ContentWriter>;
 }

@@ -11,6 +11,7 @@ import type { EventObject } from 'xstate';
 import type { MachineContext } from 'xstate';
 import type { Mapper } from 'xstate';
 import type { ParameterizedObject } from 'xstate';
+import type { ShortCode } from '@apackdev/ears';
 
 // @public (undocumented)
 export interface ActionEntity extends BaseEntity {
@@ -21,8 +22,6 @@ export interface ActionEntity extends BaseEntity {
     contentHash?: string;
     // (undocumented)
     createdAt: number;
-    deleted?: boolean;
-    deletedAt?: number;
     // (undocumented)
     description?: string;
     // (undocumented)
@@ -33,7 +32,7 @@ export interface ActionEntity extends BaseEntity {
     label: string;
     // (undocumented)
     output?: unknown;
-    shortCode?: string;
+    shortCode: ShortCode<'ACT'>;
     // (undocumented)
     updatedAt: number;
 }
@@ -104,16 +103,14 @@ export interface DocumentEntity extends BaseEntity {
 }
 
 // @public
-export type DocumentShortCode = `DOC-${number}`;
+export type DocumentShortCode = ShortCode<'DOC'>;
 
 // @public (undocumented)
 export namespace EARS {
     const // (undocumented)
     Entity: {
-        readonly Relation: "Relation";
         readonly Flow: "Flow";
         readonly Node: "Node";
-        readonly TNode: "TNode";
         readonly Action: "Action";
         readonly Prompt: "Prompt";
         readonly Document: "Document";
@@ -125,45 +122,37 @@ export namespace EARS {
     export type AttributeStore = EARS_2.AttributeStore;
     const // (undocumented)
     RelKind: {
-        readonly Custom: <T extends string>(k: T) => T & EARS_2.RelKind;
         readonly CONTAINS: "contains";
         readonly TRANSITIONS_TO: "transitions_to";
         readonly INSTANCE_OF: "instance_of";
-        readonly SPAWNED: "spawned";
-        readonly TRACKED: "tracked";
         readonly PARENT_OF: "parent_of";
     };
     // (undocumented)
     export type AttributeType = EARS_2.AttributeType;
+    const // (undocumented)
+    RoleKind: {
+        readonly ROOT_FLOW: "root_flow";
+        readonly ENTRY_EVENT: "entry_event";
+    };
     // (undocumented)
     export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
-    RoleKind: {
-        readonly Custom: <T extends string>(k: T) => T & EARS_2.RoleKind;
-    };
-    // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
-    const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
     const // (undocumented)
     AttrKind: {
         readonly Custom: <T extends string>(k: T) => T & EARS_2.AttrKind;
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
     // (undocumented)
-    export type AttrKind = EARS_2.AttrKind;
+    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
     // (undocumented)
-    export type Blueprint = EARS_2.Blueprint;
+    export type AttrKind = EARS_2.AttrKind;
     // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
     // (undocumented)
     export type EntityId<E extends string = string> = EARS_2.EntityId<E>;
-    // (undocumented)
-    export type RelationDetail = EARS_2.RelationDetail;
     // (undocumented)
     export type RelKind = EARS_2.RelKind;
     // (undocumented)
@@ -195,8 +184,7 @@ export interface FlowEntity extends BaseEntity {
     flowType: 'workflow' | 'integration';
     // (undocumented)
     label: string;
-    // (undocumented)
-    shortCode: string;
+    shortCode: ShortCode<'F'>;
 }
 
 // @public (undocumented)
@@ -244,8 +232,6 @@ export interface PromptEntity extends BaseEntity {
     contentHash?: string;
     // (undocumented)
     createdAt: number;
-    deleted?: boolean;
-    deletedAt?: number;
     // (undocumented)
     description?: string;
     // (undocumented)
@@ -255,20 +241,14 @@ export interface PromptEntity extends BaseEntity {
     // (undocumented)
     label: string;
     outputSchema?: unknown;
-    shortCode?: string;
+    shortCode: ShortCode<'PROMPT'>;
     templateFn: string;
     // (undocumented)
     updatedAt: number;
 }
 
-// @public (undocumented)
-export interface RelationEntity extends BaseEntity {
-    // (undocumented)
-    relationDetails: EARS.RelationDetail;
-}
-
 // @public
-export const ROOT_FLOW_ROLE = "root_flow";
+export type RunNodeKind = RunNode['kind'];
 
 // @public
 export function safeEvents<TEvent extends {
@@ -277,10 +257,8 @@ export function safeEvents<TEvent extends {
 
 // @public
 export type SdkEntityShapes = {
-    Relation: RelationEntity;
     Flow: FlowEntity;
     Node: NodeBase;
-    TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
     Document: DocumentEntity;
@@ -388,44 +366,6 @@ export interface TextContent {
     // (undocumented)
     type: 'text';
 }
-
-// @public (undocumented)
-export interface TNodeEntity extends BaseEntity {
-    // (undocumented)
-    blueprint?: {
-        nodeId: EARS.EntityId;
-        flowId: EARS.EntityId;
-    };
-    // (undocumented)
-    completedAt?: TimestampMs;
-    // (undocumented)
-    cronExpression?: string;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    eventType?: string;
-    // (undocumented)
-    final?: boolean;
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    nodeAttributes?: Record<string, unknown>;
-    // (undocumented)
-    resolvedParams?: Record<string, unknown>;
-    // (undocumented)
-    startedAt: TimestampMs;
-    // (undocumented)
-    status: EntityStatus;
-    // (undocumented)
-    stepNodeType?: string;
-    // (undocumented)
-    tNodeType: TNodeKind;
-    // (undocumented)
-    triggerType?: string;
-}
-
-// @public (undocumented)
-export type TNodeKind = 'flow' | 'event' | 'step';
 
 // (No @packageDocumentation comment for this package)
 

@@ -15,7 +15,8 @@ const { getAppVersion } = await import('@apackdev/sdk/env');
 const { createActionEmitter } = await import('@apackdev/sdk/services');
 const { services } = boundHost();
 const { untypedSendToSystem } = await import('@apackdev/sdk/events');
-const { boundEars, repository } = await import('@apackdev/sdk/ears');
+const { boundEars } = await import('@apackdev/sdk/ears');
+const { repository } = await import('@apackdev/sdk/services');
 const { registerPack, unregisterPack } = packs;
 const { rootEvents } = await import('../../src/transport/emitter.ts');
 /** The app version the composition binds: the root package.json's */
@@ -33,13 +34,12 @@ describe('the bound app', () => {
     expect(boundHost().ears).toBe(engine);
     expect(boundHost().packs).toBe(packs);
     expect(boundEars()).toBe(engine);
-    expect(boundHost().ears.repository).toBe(engine.repository);
-    engine.registerRepository('boundQueries', { all: () => [] });
-    expect(repository.boundQueries).toBe(engine.repository.boundQueries);
+    // The repositories are the registered packs': none is registered here, so a read names the one asked for
+    expect(() => repository.boundQueries).toThrow('"boundQueries" is not registered');
   });
 
   it('has the host services over the opened store', async () => {
-    expect(services.traceStore.entities()).toEqual([]);
+    expect(services.runHistory.findRuns()).toEqual([]);
     expect(services.secrets.status().protection).toBeDefined();
     expect(services.secrets.list()).toEqual([]);
     await expect(services.appData.readBackupSummary(dataDir)).resolves.toBeNull();

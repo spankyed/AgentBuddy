@@ -9,7 +9,6 @@ import type {
 } from '../types.ts';
 import { availableModels } from '@apackdev/sdk/models';
 import { repository } from '#generated/repository.ts';
-import { ROOT_FLOW_ROLE } from '@apackdev/sdk';
 import type { FlowEntity } from '@apackdev/sdk';
 
 /**
@@ -18,11 +17,6 @@ import type { FlowEntity } from '@apackdev/sdk';
  * this pack's step nodes, the connected data the surface shows (the root flow included: the flow with the root role,
  * which is the only record of it), and a flow created with its entry node.
  */
-
-export const FLOW_ROLES = {
-  ROOT_FLOW: EARS.RoleKind.Custom(ROOT_FLOW_ROLE),
-  ENTRY_EVENT: "entry_event",
-} as const;
 
 const FLOW_ENTRY_NODE = {
   TYPE: 'listener' as const,
@@ -70,7 +64,7 @@ export const flowsQueries = {
       .pick(FLOW_QUERY_FIELDS.LIST);
 
     const rootFlow = query(EARS.Entity.Flow)
-      .withRole(FLOW_ROLES.ROOT_FLOW)
+      .withRole(EARS.RoleKind.ROOT_FLOW)
       .pickOne(FLOW_QUERY_FIELDS.LIST) ?? undefined;
       
     const flowId = rootFlow?.id ?? 'Flow-1';
@@ -114,7 +108,7 @@ export const flowsCommands = {
       scope: FLOW_ENTRY_NODE.SCOPE,
       eventType: FLOW_ENTRY_NODE.EVENT_TYPE,
     } as Partial<NodeEntity>);
-    write(entryNode.id).grant(FLOW_ROLES.ENTRY_EVENT);
+    write(entryNode.id).grant(EARS.RoleKind.ENTRY_EVENT);
     return { flow: newFlow, entryNode };
   },
 

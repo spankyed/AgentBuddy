@@ -1,4 +1,4 @@
-import { findAll, createEntityWithDefaults, EARS } from '#generated/ears.ts';
+import { query, create, EARS } from '#generated/ears.ts';
 import type { MemoDTO, MemoEntity } from './types.ts';
 
 function toDTO(memo: MemoEntity): MemoDTO {
@@ -7,9 +7,9 @@ function toDTO(memo: MemoEntity): MemoDTO {
 
 // Declared in apack.json (features[].repositories); systems use them through #generated/repository
 export const memoQueries = {
-  all: (): MemoDTO[] => findAll(EARS.Entity.Memo).map(toDTO),
+  all: (): MemoDTO[] => query(EARS.Entity.Memo).pickAll().map(toDTO),
 };
 
 export const memoCommands = {
-  add: (text: string): MemoDTO => toDTO(createEntityWithDefaults(EARS.Entity.Memo, { text }, 'MEMO')),
+  add: (text: string): MemoDTO => toDTO(create(EARS.Entity.Memo, { text }).row()),
 };

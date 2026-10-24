@@ -9,7 +9,7 @@ import { afterAll, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine, type EARS } from '@apackdev/ears';
 import { _bindEars } from '@apackdev/sdk/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
-import { testRootEvents } from '@apackdev/sdk/testing';
+import { _memoryRunHistoryStore, testRootEvents } from '@apackdev/sdk/testing';
 import { createHostRuntime } from '../../src/services/index.ts';
 import { inference } from '../../src/services/inference.ts';
 import { secrets } from '../../src/services/secrets.ts';
@@ -39,7 +39,7 @@ afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
 // The host's own rows (settings, onboarding) and a pack's `Memo`
 const entityTypes = new Set([...HOST_ENTITY_TYPES, 'Memo']);
-const newEngine = () => createEarsEngine({ isEntityType: (name) => entityTypes.has(name) });
+const newEngine = () => createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => entityTypes.has(name) });
 
 /** An external pack the app loaded: where it came from, as the loader records it */
 const externalOrigin = (id: string, name: string) => ({ declarationRevision: 'fixture-revision',
@@ -52,7 +52,7 @@ describe('createHostRuntime', () => {
     let finish!: () => void;
     const reset = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
     const store = { reset } as unknown as LmdbStore;
-    const runtime = createHostRuntime({ store, engine: newEngine(), transport: { rootEvents: testRootEvents },
+    const runtime = createHostRuntime({ runHistory: _memoryRunHistoryStore(), store, engine: newEngine(), transport: { rootEvents: testRootEvents },
       appVersion: '1.2.3', packs: createNativePackTestRegistry() });
     const first = runtime.services.appData.reset();
     try {
@@ -67,7 +67,7 @@ describe('createHostRuntime', () => {
     let finish!: () => void;
     const store = { reset: vi.fn(() => new Promise<void>(resolve => { finish = resolve; })) } as unknown as LmdbStore;
     const packs = createNativePackTestRegistry();
-    const runtime = createHostRuntime({ store, engine: newEngine(), transport: { rootEvents: testRootEvents },
+    const runtime = createHostRuntime({ runHistory: _memoryRunHistoryStore(), store, engine: newEngine(), transport: { rootEvents: testRootEvents },
       appVersion: '1.2.3', packs });
     const resetting = runtime.services.appData.reset();
     try {
@@ -86,7 +86,7 @@ describe('createHostRuntime', () => {
   it('keeps settings and onboarding on the owning engine when another engine is installed', () => {
     const firstEngine = newEngine();
     const secondEngine = newEngine();
-    const runtime = (engine: ReturnType<typeof newEngine>) => createHostRuntime({
+    const runtime = (engine: ReturnType<typeof newEngine>) => createHostRuntime({ runHistory: _memoryRunHistoryStore(),
       store: {} as LmdbStore, engine, transport: { rootEvents: testRootEvents },
       appVersion: '1.2.3', packs: createNativePackTestRegistry(),
     });
@@ -108,14 +108,14 @@ describe('createHostRuntime', () => {
     // The services reach the store only when called
     const engine = newEngine();
     const packs = createNativePackTestRegistry();
-    const runtime = createHostRuntime({ store: {} as LmdbStore, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
+    const runtime = createHostRuntime({ runHistory: _memoryRunHistoryStore(), store: {} as LmdbStore, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
     // What log redaction masks: the host's own check over the values its secrets store has handled
     expect(runtime.redaction).toBe(secretRedaction);
     expect(runtime.transport.rootEvents).toBe(testRootEvents);
     expect(runtime.appVersion).toBe('1.2.3');
     expect(runtime.ears).toBe(engine);
     expect(runtime.packs).toBe(packs);
-    expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'filesystem', 'inference', 'onboarding', 'secrets', 'settings', 'traceStore']);
+    expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'filesystem', 'inference', 'onboarding', 'runHistory', 'secrets', 'settings']);
     expect(runtime.services.inference).toBe(inference);
     expect(runtime.services.secrets).toBe(secrets);
     expect(runtime.services.filesystem).toBe(filesystem);
@@ -139,7 +139,7 @@ describe('createHostRuntime', () => {
     const clear = engine.admin.clear;
     engine.admin.clear = () => { order.push('engine cleared'); clear(); };
     const packs = createNativePackTestRegistry();
-    const runtime = createHostRuntime({ store, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
+    const runtime = createHostRuntime({ runHistory: _memoryRunHistoryStore(), store, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
     secretsStore.add('openai', 'Work', 'sk-proj-resetspec1234567890');
     // An external pack the app loaded, holding something open between its onInit and onShutdown
     const boot = { onInit: () => order.push(`onInit (${secretsStore.list().length} keys)`), onShutdown: () => order.push('onShutdown') };
@@ -161,7 +161,7 @@ describe('createHostRuntime', () => {
       'onShutdown', 'engine cleared', 'store reset', 'onInit (0 keys)',
       'migrations', 'pack migrations (reset-pack)', 'pack content (reset-pack,written-pack)',
     ]);
-    expect(engine.getAttr(id, 'title')).toBeNull();
+    expect(engine.getRow(id)?.title).toBeUndefined();
   });
 });
 

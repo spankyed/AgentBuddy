@@ -5,7 +5,7 @@ import type { DeclarationData } from '@apackdev/sdk/framework';
 import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
-import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes, _packRoles } from '@apackdev/sdk/framework';
 import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
 import { eventBindingProblem } from './event-binding.ts';
 import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
@@ -20,6 +20,7 @@ import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/frame
 import { isDeepStrictEqual } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import type { AnyStateMachine } from 'xstate';
+import type { RowRules } from '@apackdev/ears';
 import type { PackRegistration, PackLifecycleHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
 import { _packDeclarationProblem, type ContentRuntime } from '@apackdev/sdk/framework';
 import type { MigrationLine, PackManifest } from '@apackdev/sdk/build';
@@ -30,10 +31,9 @@ import { assertPackServiceRequirements, packServiceDeclaration, type PackService
 import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
-import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apackdev/sdk/types';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROW_RULES, SDK_ROLES, _reservedEntries } from '@apackdev/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, SURFACE_EVENT_TYPES } from '@apackdev/sdk/events';
 import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
-import { boundEars } from '@apackdev/sdk/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { readInstalledPackBuilds, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
@@ -54,6 +54,7 @@ const RESERVED_ENTITIES: readonly string[] = [...Object.values(SDK_ENTITIES), ..
 const appEARS = (): PackEARS => ({
   entities: { ...SDK_ENTITIES, ...Object.fromEntries(HOST_ENTITY_TYPES.map((type) => [type, type])) },
   relKinds: SDK_REL_KINDS,
+  roles: SDK_ROLES,
 });
 
 /** A registration's features, each with the ref it runs at, `<packId>/<featureId>` */
@@ -94,6 +95,7 @@ export interface PackExtensions {
   artifacts: string[];
   blocks: string[];
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
   migrationCount: number;
   lifecycleHooks: string[];
   features: PackFeatureSummary[];
@@ -122,6 +124,7 @@ export interface InstalledPackSummary extends PackExtensions {
   description?: string;
   entities: Record<string, string>;
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
   permissions: string[];
   dir?: string;
   installedAt?: string;
@@ -249,6 +252,12 @@ export interface PackRegistry extends PackRegistryView {
   getSurfaceEventValidationMap(): Map<string, SurfaceEventTypes>;
   /** The SDK's entity types, the host's and the registered packs' */
   getRegisteredEntityTypes(): ReadonlySet<string>;
+  /** The SDK's relation kinds and the registered packs' */
+  getRegisteredRelationKinds(): ReadonlySet<string>;
+  /** The SDK's roles and the registered packs' */
+  getRegisteredRoles(): ReadonlySet<string>;
+  /** What an entity type's created row is held to, by its shape: the SDK's and the registered packs' */
+  getRowRules(type: string): RowRules | undefined;
   /** Lifecycle hooks of the currently registered packs, in registration order. */
   getLifecycleHooks(): PackLifecycleHooks[];
   /** A registered pack's registration, as it was registered */
@@ -351,28 +360,6 @@ function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
   return tables;
 }
 
-/** Repository publication never runs an incumbent's disposal callback. */
-function publishRepositories(before: ReadonlyMap<string, unknown>, next: ReadonlyMap<string, unknown>): void {
-  const names = [...new Set([...before.keys(), ...next.keys()])]
-    .filter(name => before.has(name) !== next.has(name) || before.get(name) !== next.get(name));
-  if (!names.length) return;
-  const engine = boundEars();
-  const write = (values: ReadonlyMap<string, unknown>, name: string) => values.has(name)
-    ? engine.registerRepository(name, values.get(name)) : engine.unregisterRepository(name);
-  const attempted: string[] = [];
-  try {
-    for (const name of names) { attempted.push(name); write(next, name); }
-  } catch (error) {
-    const failures: unknown[] = [];
-    for (const name of attempted.reverse()) {
-      try { write(before, name); }
-      catch (failure) { failures.push(failure); }
-    }
-    if (failures.length) throw new AggregateError([error, ...failures], 'Repository publication and rollback failed');
-    throw error;
-  }
-}
-
 /** A new, empty registry */
 export interface PackRegistryOptions {
   /** Native data is admitted before executable registration and survives runtime unload. */
@@ -468,6 +455,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     const kinds = [
       ['entity type', (ears: PackEARS) => ears.entities],
       ['relation kind', (ears: PackEARS) => ears.relKinds],
+      ['role', (ears: PackEARS) => ears.roles],
     ] as const;
     for (const [kind, namesOf] of kinds) {
       const declared = namesOf(registration.ears);
@@ -522,7 +510,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       settings: manifest.extensions?.settings,
       features: Object.fromEntries(Object.entries(manifest.features ?? {})
         .filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, { settings: feature.settings }])),
-      ears: { entities: runtime.entities, relKinds: runtime.relKinds },
+      ears: { entities: runtime.entities, relKinds: runtime.relKinds, roles: runtime.roles, ...(runtime.rowRules && { rowRules: runtime.rowRules }) },
       repositories: runtime.repositories, contentWriters: runtime.contentWriters, appliers,
     }, origin, manifest => contentBindingProblem(manifest, runtime, appliers)));
   }
@@ -564,6 +552,9 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (apiProblem) throw new Error(`Native pack "${registration.id}" runtime ${apiProblem} does not match its admitted declarations`);
       if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
         throw new Error(`Native pack "${registration.id}" runtime ears.relKinds does not match its admitted declarations`);
+      }
+      if (!isDeepStrictEqual(registration.ears?.roles ?? {}, _packRoles(declaration))) {
+        throw new Error(`Native pack "${registration.id}" runtime ears.roles does not match its admitted declarations`);
       }
       const migrationProblem = migrationBindingProblem(declaration.migrations, registration.migrations);
       if (migrationProblem) throw new Error(`Native pack "${registration.id}" runtime ${migrationProblem} does not match its admitted declarations`);
@@ -669,7 +660,6 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
           },
         });
       }
-      publishRepositories(tables.repositories, nextTables.repositories);
     } catch (error) {
       const failures = binding?.dispose() ?? [];
       if (failures.length) throw new AggregateError([error, ...failures.map(message => new Error(message))], 'Pack admission and provisional cleanup failed');
@@ -703,7 +693,6 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       const candidate = new Map(admitted);
       candidate.delete(packId);
       const nextTables = buildContributionTables(candidate.values());
-      publishRepositories(tables.repositories, nextTables.repositories);
       const binding = bindings.get(packId);
       bindings.delete(packId);
       registrations = new Map(registrations);
@@ -758,6 +747,18 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
   const entityTypes = derived((): ReadonlySet<string> => new Set<string>([
     ...RESERVED_ENTITIES,
     ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.entities ?? {})),
+  ]));
+  const relationKinds = derived((): ReadonlySet<string> => new Set<string>([
+    ...Object.values(SDK_REL_KINDS),
+    ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.relKinds ?? {})),
+  ]));
+  const roles = derived((): ReadonlySet<string> => new Set<string>([
+    ...Object.values(SDK_ROLES),
+    ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.roles ?? {})),
+  ]));
+  const rowRules = derived((): ReadonlyMap<string, RowRules> => new Map<string, RowRules>([
+    ...Object.entries(SDK_ROW_RULES),
+    ...[...registrations.values()].flatMap((reg) => Object.entries(reg.ears?.rowRules ?? {})),
   ]));
   const services = derived((): Record<string, unknown> =>
     Object.fromEntries([...admitted.values()].flatMap(pack => [...pack.services])));
@@ -819,16 +820,20 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     getSurfaceEventValidationMap: surfaceEventValidationMap,
 
     earsNames() {
-      const { entities, relKinds } = appEARS();
-      const names = { entities: { ...entities }, relKinds: { ...relKinds } };
+      const { entities, relKinds, roles } = appEARS();
+      const names = { entities: { ...entities }, relKinds: { ...relKinds }, roles: { ...roles } };
       for (const reg of registrations.values()) {
         Object.assign(names.entities, reg.ears?.entities ?? {});
         Object.assign(names.relKinds, reg.ears?.relKinds ?? {});
+        Object.assign(names.roles, reg.ears?.roles ?? {});
       }
       return names;
     },
 
     getRegisteredEntityTypes: entityTypes,
+    getRegisteredRelationKinds: relationKinds,
+    getRegisteredRoles: roles,
+    getRowRules: (type) => rowRules().get(type),
     getRegisteredServices: services,
 
     getLifecycleHooks: () => [...registrations.values()].flatMap((reg) => (reg.lifecycle ? [reg.lifecycle] : [])),
@@ -861,6 +866,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     block: key => tables.blocks.get(key),
     blocks: () => [...tables.blocks.values()],
     contentWriters: key => tables.contentWriters.get(key),
+    repository: name => tables.repositories.get(name),
     appliers: key => tables.appliers.get(key),
     settingsCatalog: catalog.settings,
     onCatalogChanged: catalog.onChanged,

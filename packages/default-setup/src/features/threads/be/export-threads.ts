@@ -22,13 +22,9 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
   const exportedThreads: ExportedThread[] = []
 
   for (const thread of threads) {
-    // Get full message data (all fields, filter deleted)
+    // Full message data; a link reaches no message in the trash
     const messages = (query.ids(thread.id)
-      .linksPick(
-        EARS.RelKind.CONTAINS,
-        ['id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse', 'responseTimestamp', 'forkable', 'references', 'isCommand', 'command', 'deleted'] as const,
-        EARS.Entity.Message,
-      ) ?? []).filter(m => !m.deleted) as Partial<MessageEntity>[]
+      .out(EARS.RelKind.CONTAINS, EARS.Entity.Message).pick(['id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse', 'responseTimestamp', 'forkable', 'references', 'isCommand', 'command'] as const) ?? []) as Partial<MessageEntity>[]
 
     const linkedThreads = repository.threadQueries.linkedThreads(thread.id)
 
@@ -59,7 +55,7 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
 
     // Query fork source
     const forkedFromIds = query.ids(thread.id)
-      .linksTo(EARS.RelKind.Custom('forked_from'), EARS.Entity.Thread, true)
+      .out(EARS.RelKind.FORKED_FROM, EARS.Entity.Thread)
       .ids()
     let forkedFrom: string | undefined
     if (forkedFromIds.length > 0) {

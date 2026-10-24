@@ -17,7 +17,7 @@ props {
   isEditing?: boolean | undefined;
   isValidSourcePos?: import("@vue-flow/core/dist/index").ValidConnectionFunc | undefined;
   isValidTargetPos?: import("@vue-flow/core/dist/index").ValidConnectionFunc | undefined;
-  label?: import("vue/dist/vue").ComponentOptions<any, any, any, import("vue/dist/vue").ComputedOptions, import("vue/dist/vue").MethodOptions, any, any, any, string, {}, {}, string, {}, {}, {}, string, import("vue/dist/vue").ComponentProvideOptions> | import("vue/dist/vue").FunctionalComponent<any, {}, any, {}> | import("vue/dist/vue").VNode<import("vue/dist/vue").RendererNode, import("vue/dist/vue").RendererElement, { [key: string]: any; }> | object | string | undefined | { new (...args: any[]): any; __isFragment?: never; __isTeleport?: never; __isSuspense?: never; };
+  label?: import("vue/dist/vue").Component | import("vue/dist/vue").VNode<import("vue/dist/vue").RendererNode, import("vue/dist/vue").RendererElement, { [key: string]: any; }> | object | string | undefined;
   onCreate-connected?: ((nodeType: string, sourceHandle?: string | undefined) => any) | undefined;
   onEdge-select?: ((nodeId: string, handleId?: string | undefined) => any) | undefined;
   onHandle-select?: ((nodeId: string, handleId?: string | undefined) => any) | undefined;
@@ -33,9 +33,9 @@ props {
   showStatusIndicator?: boolean | undefined;
   showTargetHandle?: boolean | undefined;
   sourceHandles?: HandleConfig[] | undefined;
-  sourcePosition?: import("@vue-flow/core/dist/index").Position.Bottom | import("@vue-flow/core/dist/index").Position.Left | import("@vue-flow/core/dist/index").Position.Right | import("@vue-flow/core/dist/index").Position.Top | undefined;
+  sourcePosition?: import("@vue-flow/core/dist/index").Position | undefined;
   targetHandles?: HandleConfig[] | undefined;
-  targetPosition?: import("@vue-flow/core/dist/index").Position.Bottom | import("@vue-flow/core/dist/index").Position.Left | import("@vue-flow/core/dist/index").Position.Right | import("@vue-flow/core/dist/index").Position.Top | undefined;
+  targetPosition?: import("@vue-flow/core/dist/index").Position | undefined;
   type: string;
   zIndex: number;
 }

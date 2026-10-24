@@ -18,7 +18,7 @@ const SnapshotShape = {
   manifest: ManifestSchema,
   help: _HelpDocumentsSchema.optional(),
   dslDefinitions: declarationRecord(z.string()).optional(),
-  types: z.object({ entities: declarationRecord(z.string()), relKinds: declarationRecord(z.string()) }).strict(),
+  types: z.object({ entities: declarationRecord(z.string()), relKinds: declarationRecord(z.string()), roles: declarationRecord(z.string()) }).strict(),
   facades: declarationRecord(z.string().regex(/^[a-z][a-z0-9-]*$/, 'Facade names must be lowercase identifiers with hyphens, suitable for cache filenames'), z.string()),
   entityDestinations: declarationRecord(z.string().min(1), z.string().min(1)),
   eventContracts: _EventContractsSchema.optional(),

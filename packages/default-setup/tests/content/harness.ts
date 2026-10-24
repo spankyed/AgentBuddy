@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@apackdev/sdk/build';
 import { applyRecord, importCompiledContent, type ApplyRecord, type AppliedItem, type ImportMode, type ApplyResult, type ContentSelection } from '@apackdev/sdk/utils';
 import { type EARS } from '@apackdev/ears';
-import { untypedQuery as query } from '@apackdev/sdk/ears';
+import { findRelations, untypedQuery as query } from '@apackdev/sdk/ears';
 import { entityIds } from '@apackdev/sdk/testing';
 import { resetTestData, testMediaPath } from '@apackdev/testing/harness';
 
@@ -113,16 +113,12 @@ const DROPPED_FIELDS = new Set(['id', 'createdAt', 'updatedAt', 'contentKey']);
 export function snapshot(): Snapshot {
   const ids = entityIds() as string[];
   const rows = new Map<string, Record<string, unknown>>();
-  const relations: Array<{ source: string; kind: string; target: string }> = [];
+  const relations: Array<{ source: string; kind: string; target: string }> = findRelations()
+    .map(({ source, kind, target }) => ({ source, kind, target }));
   for (const id of ids) {
-    const row = (query.ids(id as EARS.EntityId).pickAll() as Array<Record<string, unknown>>)[0];
-    if (!row) continue;
-    if (typeOf(id) === 'Relation') {
-      const details = row.relationDetails as { sourceEntity: string; targetEntity: string; relationType: string } | undefined;
-      if (details) relations.push({ source: details.sourceEntity, kind: details.relationType, target: details.targetEntity });
-    } else if (SNAPSHOT_TYPES.includes(typeOf(id))) {
-      rows.set(id, row);
-    }
+    if (!SNAPSHOT_TYPES.includes(typeOf(id))) continue;
+    const row = (query.withTrashed.ids(id as EARS.EntityId).pickAll() as Array<Record<string, unknown>>)[0];
+    if (row) rows.set(id, row);
   }
 
   // Stable aliases: type plus identity (a note's is its parent chain)

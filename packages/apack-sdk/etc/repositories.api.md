@@ -6,6 +6,7 @@
 
 import type { BaseEntity } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
+import type { ShortCode } from '@apackdev/ears';
 
 // @public
 export interface ActionInput {
@@ -184,34 +185,21 @@ export const promptRepository: {
 };
 
 // @public
-export const ROOT_FLOW: "root_flow";
-
-// @public
-export const tnodeRepository: {
-    updateTNodeResult: (tNodeId: EARS.EntityId, result: unknown) => void;
-};
-
-// @public
-export const trash: {
-    move(ids: readonly EARS.EntityId[], at?: number): EARS.EntityId[];
-    restore(ids: readonly EARS.EntityId[]): EARS.EntityId[];
-    isTrashed: (id: EARS.EntityId) => boolean;
-    list<T extends object = object>(entityType: string): Trashed<T>[];
-    olderThan<T extends object = object>(entityType: string, maxAgeMs: number, now?: number): Trashed<T>[];
-};
-
-// @public
-export type Trashed<T extends object = object> = T & TrashFields & {
-    id: EARS.EntityId;
-};
-
-// @public
-export interface TrashFields {
+export class RepositoryError extends Error {
+    constructor(message: string, code: RepositoryErrorCode);
     // (undocumented)
-    deleted?: boolean;
-    // (undocumented)
-    deletedAt?: number;
+    code: RepositoryErrorCode;
 }
+
+// @public
+export const RepositoryErrorCode: {
+    readonly NOT_FOUND: "NOT_FOUND";
+    readonly VALIDATION_ERROR: "VALIDATION_ERROR";
+    readonly OPERATION_FAILED: "OPERATION_FAILED";
+};
+
+// @public (undocumented)
+export type RepositoryErrorCode = typeof RepositoryErrorCode[keyof typeof RepositoryErrorCode];
 
 // (No @packageDocumentation comment for this package)
 

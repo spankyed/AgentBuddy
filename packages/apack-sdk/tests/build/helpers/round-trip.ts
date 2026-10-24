@@ -20,7 +20,7 @@ export function createRoundTrip(rootFlowRole: string, steps?: StepDefinition[]) 
 
   return {
     beforeEach() {
-      engine = createEarsEngine({ isEntityType: (value) => entityTypes.has(value) });
+      engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (value) => entityTypes.has(value) });
       tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsl-rt-'));
     },
     afterEach() {

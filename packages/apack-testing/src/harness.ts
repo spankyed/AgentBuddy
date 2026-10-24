@@ -57,7 +57,7 @@ export function resetTestData(): void {
   resetSdkTestData();
   fs.rmSync(testMediaPath(), { recursive: true, force: true });
 }
-export { startApp, type StartAppOptions, type TestApp, type Message, type SurfaceEvent, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
+export { startApp, type StartAppOptions, type TestApp, type Message, type SurfaceEvent, type FlowRun, type FlowRunStep, type RunFlowOptions } from './app.ts';
 
 const serviceMocks = new Map<string, unknown>();
 /**
@@ -296,6 +296,8 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   startTestRuntime({
     // The host's entity types (AppState) too: the app's state lives in the database, as in the app
     entityTypes: [...HOST_ENTITY_TYPES, ...[...dependencies.values()].flatMap(({ snapshot }) => Object.values(snapshot.types.entities))],
+    relationKinds: [...dependencies.values()].flatMap(({ snapshot }) => Object.values(snapshot.types.relKinds)),
+    roles: [...dependencies.values()].flatMap(({ snapshot }) => Object.values(snapshot.types.roles)),
     packs: runtimePacks,
     serviceOverrides: serviceMocks,
     onboarding: {
@@ -317,11 +319,11 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
         throw new Error(`Dependency "${depId}" has no ${CONTENT_RUNTIME_FILE}; rebuild it, or update apack for built-in packs, then run \`apack pack build\` again`);
       }
       const { contentRuntime } = await import(pathToFileURL(file).href) as { contentRuntime: ContentRuntime };
-      startTestRuntime({ entityTypes: Object.values(contentRuntime.entities) });
+      startTestRuntime({ entityTypes: Object.values(contentRuntime.entities), relationKinds: Object.values(contentRuntime.relKinds), roles: Object.values(contentRuntime.roles), rowRules: contentRuntime.rowRules });
       registry.registerContentRuntime(contentRuntime, originOf(dependency.manifest, dependency.dir));
       declareFeatures(dependency.manifest);
     }
-    startTestRuntime({ entityTypes: Object.values(options.contentRuntime.entities) });
+    startTestRuntime({ entityTypes: Object.values(options.contentRuntime.entities), relationKinds: Object.values(options.contentRuntime.relKinds), roles: Object.values(options.contentRuntime.roles), rowRules: options.contentRuntime.rowRules });
     registry.registerContentRuntime(options.contentRuntime, originOf(manifest, packDir), options.appliers);
     declareFeatures(manifest);
     setAppPacks(registry, manifest.id);
@@ -386,10 +388,10 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
     }
     const contentDir = path.join(dependency.dir, 'runtime', 'content');
     const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(contentDir) ? contentDir : undefined);
-    startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}) });
+    startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}), relationKinds: Object.values(runtime.registration.ears?.relKinds ?? {}), roles: Object.values(runtime.registration.ears?.roles ?? {}), rowRules: runtime.registration.ears?.rowRules });
     registry.registerPack(runtime.registration, originOf(dependency.manifest, dependency.dir, dependency.snapshot.eventContracts));
   }
-  startTestRuntime({ entityTypes: Object.values(registration.ears?.entities ?? {}) });
+  startTestRuntime({ entityTypes: Object.values(registration.ears?.entities ?? {}), relationKinds: Object.values(registration.ears?.relKinds ?? {}), roles: Object.values(registration.ears?.roles ?? {}), rowRules: registration.ears?.rowRules });
   registry.registerPack(registration, originOf(manifest, packDir, eventContracts));
   setAppPacks(registry, manifest.id);
 }

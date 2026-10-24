@@ -1,32 +1,24 @@
 // Opening an app's database: the one composition of the LMDB store and the engine, which the API's boot and tools
 // (apack db) share, so both hydrate a data dir the same way
-import { createEarsEngine, makePolicy, type EarsAdmin, type EarsEngine, type Ears, type PartitionPolicy } from '@apackdev/ears';
+import { createEarsEngine, type EarsAdmin, type EarsEngine, type Ears, type RecordStore } from '@apackdev/ears';
 import { _bindEars } from '@apackdev/sdk/ears';
-import { openLmdbStore, type LmdbPaths, type LmdbStore, type WriteFailure } from '@apackdev/ears/lmdb';
+import { openLmdbStore, openRecordStore, type LmdbStore, type WriteFailure } from '@apackdev/ears/lmdb';
+import { _RUN_HISTORY_INDEXES, type RunNode } from '@apackdev/sdk/services';
 import { resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import type { _AppDataPaths } from '@apackdev/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
 import { readInstalledSchema, type DatabaseSchema, type InstalledSchema } from './schema.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
-import { SDK_EXCLUDED_ENTITY_TYPES } from '@apackdev/sdk/types';
+import { createLogger } from '@apackdev/sdk/logger';
+import * as fs from 'node:fs';
 
-/**
- * Which partition an entity type lives in: the SDK's volatile types in the volatile partition, everything
- * else persisted. It takes no arguments and nothing contributes to it — a partition is the engine's
- * business, and a pack has no way to ask for one of its types to be kept out of the database.
- *
- * So it is a constant rather than registry state, which is why it is here, at the one call that opens a
- * store, instead of being carried on whatever the caller passed as its schema.
- */
-export function appPartitionPolicy(): PartitionPolicy {
-  return makePolicy({ excludedEntityTypes: new Set(SDK_EXCLUDED_ENTITY_TYPES) });
-}
+const logger = createLogger('run-history');
 
 export interface DatabaseStoreOptions {
   /** Told when a write is dropped, with the row it was for (`openLmdbStore`'s port) */
   onWriteFailure?: (failure: WriteFailure) => void;
-  /** Each partition's database directory */
-  paths: LmdbPaths;
+  /** The database directory */
+  path: string;
   /** The entity types: the app's registered packs, or the installed packs' manifests */
   schema: DatabaseSchema;
   readOnly?: boolean;
@@ -35,13 +27,38 @@ export interface DatabaseStoreOptions {
 }
 
 /**
- * The LMDB store at `paths` and a new engine persisting to it, which checks entity types against `schema`. Nothing is
+ * The LMDB store at `path` and a new engine persisting to it, which checks entity types against `schema`. Nothing is
  * hydrated or installed: the caller hydrates (`store.hydrate()`) once `schema` holds every entity type.
  */
-export function openDatabaseStore({ paths, schema, readOnly, log, onWriteFailure }: DatabaseStoreOptions): { store: LmdbStore; engine: EarsEngine } {
-  const store = openLmdbStore({ paths, policy: appPartitionPolicy(), onWriteFailure, engine: () => engine.admin, readOnly, log });
-  const engine = createEarsEngine({ persistence: store.sink, isEntityType: (name) => schema.getRegisteredEntityTypes().has(name) });
+export function openDatabaseStore({ path, schema, readOnly, log, onWriteFailure }: DatabaseStoreOptions): { store: LmdbStore; engine: EarsEngine } {
+  const store = openLmdbStore({ path, onWriteFailure, engine: () => engine.admin, readOnly, log });
+  const engine = createEarsEngine({
+    persistence: store.sink,
+    isEntityType: (name) => schema.getRegisteredEntityTypes().has(name),
+    isRelationKind: (name) => schema.getRegisteredRelationKinds().has(name),
+    isRole: (name) => schema.getRegisteredRoles().has(name),
+    rowRules: (type) => schema.getRowRules?.(type),
+  });
   return { store, engine };
+}
+
+/**
+ * The run history's store at `dir`, indexed as `services.runHistory` looks its records up. Opened to write, a store
+ * that can't be opened — another format, another kind of files, damaged — is moved aside, to
+ * `<dir>.unreadable-<time>`, and a new one is started: the history is a log, so what that costs is past runs, and
+ * refusing would keep the whole app from starting over it. Opened read-only, it refuses as any store does.
+ */
+export function openRunHistoryStore(dir: string, { readOnly }: { readOnly?: boolean } = {}): RecordStore<RunNode> {
+  const open = () => openRecordStore<RunNode>({ path: dir, indexes: _RUN_HISTORY_INDEXES, readOnly });
+  try {
+    return open();
+  } catch (error) {
+    if (readOnly || !fs.existsSync(dir)) throw error;
+    const aside = `${dir}.unreadable-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    fs.renameSync(dir, aside);
+    logger.warn(`The run history at ${dir} couldn't be opened (${errorMessage(error)}): it was moved to ${aside}, and a new one started`);
+    return open();
+  }
 }
 
 /** An app's database opened outside the app */
@@ -67,11 +84,6 @@ export interface OpenAppDatabaseOptions {
   userDataDir: string;
   /** Opens the files without writing to them: writes through the engine throw */
   readOnly?: boolean;
-  /**
-   * Loads the volatile partition (the run history) too. The app leaves it out, reading it directly instead, so a
-   * tool that wants those rows in its queries asks for them.
-   */
-  includeVolatile?: boolean;
   /** Where the store's progress lines go; `console.log` by default */
   log?: (message: string) => void;
   /**
@@ -84,11 +96,10 @@ export interface OpenAppDatabaseOptions {
 
 /**
  * Opens the database in `userDataDir` as the app does: the installed packs' schema (their manifests; no pack code
- * runs), the store in the layout the data dir uses, and the primary partition hydrated. The engine is bound,
- * so `@apackdev/sdk/ears`'s operations act on it until `close()`. The volatile partition (the run history)
- * is left out, as in the app, unless `includeVolatile` asks for it.
+ * runs), the store in the layout the data dir uses, hydrated. The engine is bound, so `@apackdev/sdk/ears`'s
+ * operations act on it until `close()`. The run history is a store of its own (`openRunHistoryStore`).
  */
-export async function openAppDatabase({ env, userDataDir, readOnly = false, includeVolatile = false, log, schemaFrom }: OpenAppDatabaseOptions): Promise<AppDatabase> {
+export async function openAppDatabase({ env, userDataDir, readOnly = false, log, schemaFrom }: OpenAppDatabaseOptions): Promise<AppDatabase> {
   const context = resolveAppEnvironment({ env, userDataDir });
   const paths = findAppDataPaths(userDataDir);
   const schema = readInstalledSchema(context, { schemaFrom });
@@ -106,16 +117,23 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   // `getRegisteredEntityTypes` is a backup's yardstick for "no installed pack declares this"
   // (`apack-cli/src/commands/db/destructive.ts:190`), which an observed set would answer wrongly.
   const knownToEngine = new Set(schema.getRegisteredEntityTypes());
+  const kindsKnownToEngine = new Set(schema.getRegisteredRelationKinds());
+  const rolesKnownToEngine = new Set(schema.getRegisteredRoles());
   const { store, engine } = openDatabaseStore({
-    paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
-    schema: { getRegisteredEntityTypes: () => knownToEngine },
+    path: paths.lmdb,
+    schema: {
+      getRegisteredEntityTypes: () => knownToEngine,
+      getRegisteredRelationKinds: () => kindsKnownToEngine,
+      getRegisteredRoles: () => rolesKnownToEngine,
+      ...(schema.getRowRules && { getRowRules: schema.getRowRules }),
+    },
     readOnly,
     log,
   });
   try {
     // Hydration fills the engine it was given, not the installed one, so nothing is installed until it succeeds:
     // an open that fails leaves this process's engine exactly as it was
-    await store.hydrate({ includeVolatile });
+    await store.hydrate();
   } catch (error) {
     store.close();
     throw error;
@@ -123,7 +141,11 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   // Hydration indexes an entity by its type, so this is the set of types the data turned out to hold. It runs
   // after hydration and not during it: nothing hydration does consults the check (a bulk load doesn't), so the
   // set it would be widening from is the data it is reading.
-  for (const type of engine.getAllEntityTypes()) knownToEngine.add(type);
+  const held = engine.getSchemaStats();
+  for (const type of Object.keys(held.entities)) knownToEngine.add(type);
+  // Relation kinds and roles the same way: links and roles a removed pack left are still there to read
+  for (const kind of Object.keys(held.relations)) kindsKnownToEngine.add(kind);
+  for (const role of Object.keys(held.roles)) rolesKnownToEngine.add(role);
   // Bound so the SDK's engine operations (`@apackdev/sdk/ears`) read this database until `close()`, which
   // puts back whatever was bound before rather than leaving none. `apack db`, the one caller today, has no
   // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command

@@ -65,7 +65,7 @@ const BASE_PACK = {
   'tsconfig.json': tsconfig,
   'apack.json': JSON.stringify({
     id: 'base-pack', name: 'Base', version: '1.0.0',
-    data: { entities: { Tag: "src/types.ts#TagEntity", Item: "src/types.ts#ItemEntity" } },
+    data: { entities: { Tag: "src/types.ts#TagEntity", Item: "src/types.ts#ItemEntity" }, relations: ['tagged'], roles: ['featured'] },
 
     features: {
       calendar: { description: 'Feature declaration fixture.',
@@ -117,8 +117,8 @@ const BASE_PACK = {
   'src/inbox-surface.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'inbox' } as unknown as AnyStateMachine;\n",
   'src/search.ts': 'export const searchService = { query: (q: string): string[] => [q] };\n',
   'src/repository.ts': [
-    "import { findAll, EARS } from '#generated/ears.ts';",
-    'export const tagQueries = { names: (): string[] => findAll(EARS.Entity.Tag).map((tag) => tag.name) };',
+    "import { query, EARS } from '#generated/ears.ts';",
+    'export const tagQueries = { names: (): string[] => query(EARS.Entity.Tag).pickAll().map((tag) => tag.name) };',
   ].join('\n'),
 };
 
@@ -129,12 +129,12 @@ const APP_PACK = {
     id: 'app-pack', name: 'App', version: '1.0.0',
     dependencies: { 'base-pack': 'file:../base-pack' },
     consumes: { services: ['base-pack/search'] },
-    data: { entities: { Memo: "src/types.ts#ItemEntity" } },
+    data: { entities: { Memo: "src/types.ts#ItemEntity" }, relations: ['related'], roles: ['pinned'] },
     // Same type name as the dependency's Item shape
 
     features: { memos: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, surface: { label: 'Fixture', state: 'src/surface.ts' } } },
   }),
-  'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
+  'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean; note?: string }\n',
   'src/surface.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'memos' } as unknown as AnyStateMachine;\n",
   'src/system.contract.ts': [
     "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
@@ -152,7 +152,7 @@ const APP_PACK = {
 };
 
 const CONSUMER = `
-import { EARS as PackEARS, query, create, upsert, write, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.ts';
+import { query, create, upsert, write, newId, type EntityShape, type EntityName } from '#generated/ears.ts';
 import { broadcastToSurface, sendToSystem } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
@@ -162,19 +162,19 @@ type Expect<T extends true> = T;
 type Equal<A, B> = (<X>() => X extends A ? 1 : 2) extends (<X>() => X extends B ? 1 : 2) ? true : false;
 
 declare const memoId: EARS.EntityId<'Memo'>;
-const memo = findById(memoId)!;
+const memo = query.ids(memoId).pickOne()!;
 export type OwnField = Expect<Equal<typeof memo.text, string>>;
 export type NotAny = Expect<Equal<IsAny<typeof memo.pinned>, false>>;
 
-const tags = findAll('Tag');
+const tags = query('Tag').pickAll();
 export type DependencyField = Expect<Equal<(typeof tags)[number]['name'], string>>;
 // The dependency's ItemEntity is a different type from this pack's
-const items = findAll('Item');
+const items = query('Item').pickAll();
 export type DependencyItem = Expect<Equal<(typeof items)[number]['title'], string>>;
 
 const picked = query('Memo').pickOne(['text'] as const);
 export type PickedField = Expect<Equal<NonNullable<typeof picked>['text'], string>>;
-export type Branded = Expect<Equal<ReturnType<typeof createEntity<'Memo'>>, EARS.EntityId<'Memo'>>>;
+export type Branded = Expect<Equal<ReturnType<typeof newId<'Memo'>>, EARS.EntityId<'Memo'>>>;
 
 export type DependencyService = Expect<Equal<ReturnType<typeof services.search.query>, string[]>>;
 export type DependencyRepository = Expect<Equal<ReturnType<typeof repository.tagQueries.names>, string[]>>;
@@ -227,36 +227,33 @@ services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO' });
 export type Undeclared = Expect<Equal<EntityShape<'Nope'>['anything'], unknown>>;
 // An entity name only known at runtime is accepted, and reads as unknown values
 declare const runtimeName: string;
-const other = findAll(runtimeName)[0]!;
+const other = query(runtimeName).pickAll()[0]!;
 // @ts-expect-error unknown field can't be used without narrowing
 other.anything.length;
-query('Memo').linksTo('contains', runtimeName).pickAll();
-findAll<{ title: string }>('Item');
-// An explicit shape reads rows of an entity named only at runtime
-const shaped = findAll<{ title: string }>(runtimeName);
-export type ExplicitShape = Expect<Equal<(typeof shaped)[number]['title'], string>>;
+query('Memo').out('contains', runtimeName).pickAll();
 // A generic helper constrained to the declared names is checked, and its rows typed
-export function memosOf<E extends EntityName>(entityType: E) { return findAll(entityType); }
+export function memosOf<E extends EntityName>(entityType: E) { return query(entityType).pickAll(); }
 export type GenericHelper = Expect<Equal<ReturnType<typeof memosOf<'Memo'>>[number]['text'], string>>;
 
 // A literal must name an entity this pack or its dependency declares
-// @ts-expect-error undeclared entity name
-findAll('Nope');
 // @ts-expect-error a generic over any string can't be checked (constrain it to EntityName)
-export function anyOf<E extends string>(entityType: E) { return findAll(entityType); }
+export function anyOf<E extends string>(entityType: E) { return query(entityType).pickAll(); }
 // @ts-expect-error undeclared entity name
 query('Nope');
 // @ts-expect-error undeclared entity name in an apply list
 query(['Memo', 'Nope']);
 // @ts-expect-error undeclared relation target
-query('Memo').linksTo('contains', 'Nope');
+query('Memo').out('contains', 'Nope');
 // @ts-expect-error undeclared entity name
-createEntity('Nope');
+newId('Nope');
 
 // Ids from queries and rows carry their entity type, so the next lookup is typed
 const firstMemo = query('Memo').first()!;
 export type QueryIdTagged = Expect<Equal<typeof firstMemo, EARS.EntityId<'Memo'>>>;
-const memoFromQuery = findById(firstMemo)!;
+const memoFromQuery = query.ids(firstMemo).pickOne()!;
+// And a created row, read back from its write
+const created = create('Memo', { text: 'x', pinned: false }).row();
+export type CreatedRow = Expect<Equal<typeof created.text, string>>;
 export type LookupFromQueryId = Expect<Equal<typeof memoFromQuery.text, string>>;
 export type RowIdTagged = Expect<Equal<(typeof tags)[number]['id'], EARS.EntityId<'Tag'>>>;
 // A plain id is accepted where a tagged one is expected; another entity's id is not
@@ -268,54 +265,66 @@ openMemo(plainId);
 openMemo(tags[0]!.id);
 // A tagged link result passed straight to a generic function still infers the target's shape
 const uniqueById = <T extends { id?: EARS.EntityId }>(nodes: T[]): T[] => nodes;
-const linkedMemos = uniqueById(query.ids(memoId).linksPick('related', ['text'], ['Memo']));
+const linkedMemos = uniqueById(query.ids(memoId).out('related', ['Memo']).pick(['text']));
 export type ContextualLinkPick = Expect<Equal<(typeof linkedMemos)[number]['text'], string>>;
 
-// Writes check the values of declared fields when they know the entity; other fields are free
-write(memoId).set('text', 'x').set('pinned', true).set('undeclared', 42);
+// Writes that know the entity name only its declared fields and store their declared types
+write(memoId).set('text', 'x').set('pinned', true);
 write(firstMemo).set('pinned', false);
-create('Memo').setMany({ text: 'x', extra: 1 });
-upsert('Memo', plainId).set('text', 'x');
-const createdMemo = create('Memo').id();
+// A created row has every field its shape requires, and may bring its id and times
+create('Memo', { text: 'x', pinned: false });
+create('Memo', { id: plainId, createdAt: 1, text: 'x', pinned: true, note: 'n' });
+// @ts-expect-error pinned is required
+create('Memo', { text: 'x' });
+// @ts-expect-error and so is the row
+create('Memo');
+// @ts-expect-error an undeclared field
+write(memoId).set('undeclared', 42);
+// @ts-expect-error in a created row too
+create('Memo', { text: 'x', pinned: false, extra: 1 });
+// @ts-expect-error the engine writes updatedAt
+write(memoId).set('updatedAt', 1);
+upsert('Memo', { id: plainId, text: 'x', pinned: false });
+const createdMemo = create('Memo', { text: 'x', pinned: false }).id();
 export type CreateIdTagged = Expect<Equal<typeof createdMemo, EARS.EntityId<'Memo'>>>;
 // @ts-expect-error a declared field's value is checked
 write(memoId).set('text', 42);
-// @ts-expect-error in batch writes too
-create('Memo').setMany({ pinned: 'yes' });
+// @ts-expect-error in a created row too
+create('Memo', { text: 'x', pinned: 'yes' });
 // @ts-expect-error and through upsert, which names the type
-upsert('Memo', plainId).set('pinned', 'yes');
+upsert('Memo', { id: plainId, text: 'x', pinned: 'yes' });
 // A dependency's entity is checked the same way
 // @ts-expect-error Tag.name is a string
 write(tags[0]!.id).set('name', 1);
-// Relation is the SDK's: available and shaped though neither pack declares it
-const relationType: 'Relation' = PackEARS.Entity.Relation;
-const relation = findAll(relationType)[0]!;
-export type RelationShape = Expect<Equal<typeof relation.relationDetails.sourceEntity, EARS.EntityId>>;
-// So is the flow model, without depending on default-setup
-const action = findAll('Action')[0]!;
+// A relation is no entity type, so no query starts from one: findRelations reads them
+// @ts-expect-error 'Relation' names no entity
+query('Relation');
+// The flow model is the SDK's: available and shaped without depending on default-setup
+const action = query('Action').pickAll()[0]!;
 export type ActionShape = Expect<Equal<typeof action.actionFn, string>>;
 // Prompts too
-const prompt = findAll('Prompt')[0]!;
+const prompt = query('Prompt').pickAll()[0]!;
 export type PromptShape = Expect<Equal<typeof prompt.templateFn, string>>;
 // Settings belong to default-setup, and the app's state (AppState) to the host: neither is the SDK's
 // @ts-expect-error Settings isn't declared by either pack or the SDK
-findAll('Settings');
+query('Settings');
 // @ts-expect-error AppState isn't an entity packs see
-findAll('AppState');
+query('AppState');
 // API keys aren't graph data: the host keeps them, packs see services.secrets
 // Library and notes entities belong to default-setup, not the SDK
-const tNodes = query(PackEARS.Entity.TNode).linksTo(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
-export type TNodeShape = Expect<Equal<(typeof tNodes)[number]['tNodeType'], 'flow' | 'event' | 'step'>>;
+// A flow run is a record in the run history (services.runHistory), not an entity
+// @ts-expect-error RunNode isn't an entity type
+query('RunNode');
 // Node rows are the dependency's step node types (app-pack defines none), a hand-written one that doesn't
 // narrow nodeType, and adds no required field, included
-const node = findAll('Node')[0]!;
+const node = query('Node').pickAll()[0]!;
 export type DependencyStepNode = Expect<Equal<Extract<typeof node, { nodeType: 'ping' }>['target'], string>>;
 // A plain id leaves writes unchecked
 write(plainId).set('text', 42);
 // @ts-expect-error undeclared entity name
 create('Nope');
 // @ts-expect-error undeclared entity name
-upsert('Nope', plainId);
+upsert('Nope', { id: plainId });
 `;
 
 /** The two packs, built, in a temp dir; node_modules link the workspace or the packed packages */
@@ -364,14 +373,14 @@ async function buildPacks(published: boolean, dependencyStamp?: { format?: numbe
  * Incidents), so these positions are checked directly. `|name|` marks a position in the source.
  */
 const COMPLETIONS = `
-import { EARS, query, getAttr, getAttrs, findAll, findWithFields, findByIdWithFields, createEntity } from '#generated/ears.ts';
+import { EARS, query, getAttr, newId, write, create } from '#generated/ears.ts';
 import { sendToSystem } from '#generated/events.ts';
 declare const memoId: EARS.EntityId<'Memo'>;
 sendToSystem('|systemId|', { type: 'CLEAR_MEMOS' });
 sendToSystem('memos', { type: '|eventType|' });
 query('Memo').pick(['|pick|']);
 query('Memo').pickOne(['|pickOne|']);
-query.ids(memoId).linksPick('related', ['|linksPick|'], 'Memo');
+query.ids(memoId).out('related', 'Memo').pick(['|outPick|']);
 query('Memo').where('|where|');
 query('Memo').has('|has|');
 query('Memo').lacks('|lacks|');
@@ -379,18 +388,38 @@ query('Memo').orderBy('|orderBy|');
 query('Memo').distinct('|distinct|');
 query('Memo').groupBy('|groupBy|');
 getAttr(memoId, '|getAttr|');
-getAttrs(memoId, '|getAttrs|');
-findWithFields('Memo', ['|findWithFields|']);
-findByIdWithFields(memoId, ['|findByIdWithFields|']);
-findAll('|findAll|');
-createEntity('|createEntity|');
-query.ids(memoId).linksTo('related', '|linksTo|');
+newId('|newId|');
+query.ids(memoId).out('related', '|out|');
+query.ids(memoId).in('related', '|in|');
+query.ids(memoId).ancestors('related', '|ancestors|');
+query.ids(memoId).descendants('related', '|descendants|');
 query.all().ofType('|ofType|');
 query('|query|');
 query('Memo').has('txet');
+write(memoId).set('|set|', true);
+write(memoId).append('|append|', true);
+write(memoId).delete('|delete|');
+write(memoId).removeAt('|removeAt|', 0);
+write(memoId).set('pinnd', true);
+query.ids(memoId).out('|outKind|');
+query.ids(memoId).ancestors('|ancestorsKind|');
+query.ids(memoId).descendants('|descendantsKind|');
+write(memoId).link('|linkKind|', memoId);
+query('Memo').linkedTo('|linkedToKind|', memoId);
+write(memoId).link('relatd', memoId);
+write(memoId).grant('|grantRole|');
+query.all().withRole('|withRole|');
+write(memoId).grant('pinnned');
+create('Memo', { |createRow| });
 `;
-const FIELD_POSITIONS = ['pick', 'pickOne', 'linksPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr', 'getAttrs', 'findWithFields', 'findByIdWithFields'];
-const NAME_POSITIONS = ['findAll', 'createEntity', 'linksTo', 'ofType'];
+const FIELD_POSITIONS = ['pick', 'pickOne', 'outPick', 'where', 'has', 'lacks', 'orderBy', 'distinct', 'groupBy', 'getAttr'];
+/** The fields a write may name: the declared ones, without the engine's own (`createdAt`, `updatedAt`, …) */
+const WRITE_POSITIONS = ['set', 'append', 'removeAt'];
+/** Relation kinds: the pack's own, its dependency's and the SDK's */
+const KIND_POSITIONS = ['outKind', 'linkKind', 'linkedToKind', 'ancestorsKind', 'descendantsKind'];
+/** Roles: the pack's own, its dependency's and the SDK's */
+const ROLE_POSITIONS = ['grantRole', 'withRole'];
+const NAME_POSITIONS = ['query', 'newId', 'out', 'in', 'ancestors', 'descendants', 'ofType'];
 
 /** String completions at each marked position of COMPLETIONS, and the file's diagnostics */
 function completionsIn(app: string, tsconfig: string): { at: Record<string, string[]>; diagnostics: string[] } {
@@ -421,7 +450,9 @@ function completionsIn(app: string, tsconfig: string): { at: Record<string, stri
   });
   const at = Object.fromEntries(Object.entries(markers).map(([name, position]) => [
     name,
-    (service.getCompletionsAtPosition(file, position, {})?.entries ?? []).filter((entry) => entry.kind === ts.ScriptElementKind.string).map((entry) => entry.name),
+    (service.getCompletionsAtPosition(file, position, {})?.entries ?? [])
+      .filter((entry) => entry.kind === ts.ScriptElementKind.string || entry.kind === ts.ScriptElementKind.memberVariableElement)
+      .map((entry) => entry.name),
   ]));
   const diagnostics = service.getSemanticDiagnostics(file).map((d) => ts.flattenDiagnosticMessageText(d.messageText, ' '));
   return { at, diagnostics };
@@ -516,9 +547,23 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
     const missing = (positions: string[], expected: string[]) =>
       positions.filter((position) => !expected.every((name) => at[position]?.includes(name)));
     expect(missing(FIELD_POSITIONS, ['text', 'pinned']), 'positions without Memo field completions').toEqual([]);
-    expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation', 'Prompt']), 'positions without entity-name completions').toEqual([]);
-    // A typo's error lists the fields it could have been
+    expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Flow', 'Prompt']), 'positions without entity-name completions').toEqual([]);
+    expect(missing(WRITE_POSITIONS, ['text', 'pinned']), 'write positions without Memo field completions').toEqual([]);
+    expect(at.where, 'a read offers the engine\'s fields').toContain('createdAt');
+    expect(WRITE_POSITIONS.filter((position) => at[position]?.includes('createdAt')), 'write positions offering an engine field').toEqual([]);
+    // delete offers the optional fields alone: a required one is replaced with set
+    expect(at.delete, 'delete completions').toContain('note');
+    expect(at.delete, 'delete completions').not.toContain('text');
+    // A typo's error lists the fields it could have been, for a read and a write
     expect(diagnostics.find((message) => message.includes('"txet"'))).toMatch(/"text"/);
+    expect(diagnostics.find((message) => message.includes('"pinnd"'))).toMatch(/"pinned"/);
+    expect(missing(KIND_POSITIONS, ['related', 'tagged', 'contains']), 'positions without relation-kind completions').toEqual([]);
+    expect(diagnostics.find((message) => message.includes('"relatd"'))).toMatch(/"related"/);
+    expect(missing(ROLE_POSITIONS, ['pinned', 'featured', 'root_flow']), 'positions without role completions').toEqual([]);
+    expect(diagnostics.find((message) => message.includes('"pinnned"'))).toMatch(/"pinned"/);
+    // A created row offers the shape's fields and the identity it may bring, and never the engine's other fields
+    expect(at.createRow, 'created-row completions').toEqual(expect.arrayContaining(['text', 'pinned', 'note', 'id', 'createdAt']));
+    expect(at.createRow, 'created-row completions').not.toContain('entityType');
   });
 
   it.each(['bundler', 'node16'] as const)('offers system-id and event-type completions for sendToSystem under moduleResolution %s', (moduleResolution) => {
@@ -533,7 +578,8 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
   it.each(['bundler', 'node16'] as const)('offers entity-name completions in query() under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
-    expect(at.query, 'entity-name completions in query()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Prompt']));
+    expect(at.query, 'entity-name completions in query()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Flow', 'Prompt']));
+    expect(at.query, 'a relation is no entity').not.toContain('Relation');
     expect(at.query, 'no completion for an entity no pack here declares').not.toContain('Settings');
   });
 

@@ -19,7 +19,7 @@ const feature = { description: 'Open actions', surface: { label: 'Actions', stat
 function source(id: string, enabled = true) {
   const manifest = { id, name: id, version: '1.0.0', features: { view: feature } };
   return { dir: `/missing/${id}`, enabled, snapshot: { manifest, declarationRevision: _declarationRevision(manifest),
-    format: PACK_SNAPSHOT_FORMAT, types: { entities: {}, relKinds: {} }, facades: {}, eventContracts: eventContractsFixture(manifest), entityDestinations: { Action: 'view' } } };
+    format: PACK_SNAPSHOT_FORMAT, types: { entities: {}, relKinds: {}, roles: {} }, facades: {}, eventContracts: eventContractsFixture(manifest), entityDestinations: { Action: 'view' } } };
 }
 
 it('projects compiled claims without source or activation, leaving source previews unbuilt', () => {
@@ -113,7 +113,7 @@ function referencing(id: string, enabled = true) {
   const references = { types: {}, categories: { files: { label: 'Files', icon: 'File', useItems: 'src/files.ts#useItems' } } };
   const manifest = { id, name: id, version: '1.0.0', features: { view: { ...feature, references } } };
   return { dir: `/missing/${id}`, enabled, snapshot: { manifest, declarationRevision: _declarationRevision(manifest),
-    format: PACK_SNAPSHOT_FORMAT, types: { entities: {}, relKinds: {} }, facades: {}, eventContracts: eventContractsFixture(manifest), entityDestinations: {} } };
+    format: PACK_SNAPSHOT_FORMAT, types: { entities: {}, relKinds: {}, roles: {} }, facades: {}, eventContracts: eventContractsFixture(manifest), entityDestinations: {} } };
 }
 
 it('refuses an enabled reference-name conflict atomically, as it does a destination conflict', () => {

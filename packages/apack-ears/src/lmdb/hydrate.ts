@@ -1,6 +1,4 @@
 import { EARS } from '../entities.ts';
-import type { PartitionPolicy, Partition } from '../persistence/policy.ts';
-import type { ShardedPersistence } from '../persistence/sharded-router.ts';
 import type { LmdbDbs } from './envs.ts';
 import type { EarsAdmin } from '../engine.ts';
 
@@ -12,84 +10,55 @@ function dec(e: { t: string; v: unknown }): unknown {
   return e.v;
 }
 
-/**
- * Loads the partitions `policy` hydrates (and `volatileBackup` with `includeVolatile`) into `engine`,
- * filling `shardedPersistence`'s relation metadata.
- */
-export async function hydrateSharded(params: {
+/** Loads the environment's attributes and relations into `engine` */
+export async function hydrate(params: {
   engine: EarsAdmin;
-  envs: Record<Partition, LmdbDbs>;
-  policy: PartitionPolicy;
-  includeVolatile?: boolean;
-  shardedPersistence?: ShardedPersistence;
-  /** Where the partition counts go; `console.log` by default */
+  env: LmdbDbs;
+  /** Where the counts and the relations it skips go; `console.log` by default */
   log?: (message: string) => void;
 }) {
-  const { engine, envs, policy, includeVolatile = false, shardedPersistence, log = console.log } = params;
+  const { engine, env, log = console.log } = params;
 
-  const partitionsToHydrate: Partition[] = [];
-  if (policy.hydrate.has('primary')) {
-    partitionsToHydrate.push('primary');
+  // The entity table is the record of which entities exist: an attribute row is loaded only for one of them, since
+  // a flush that fell back to row by row can have stored an entity's attributes and lost its row
+  const entities = new Set<string>();
+  for (const key of env.entities.getKeys()) entities.add(String(key));
+
+  // Hydrate attributes
+  let attrCount = 0;
+  let orphaned = 0;
+  for (const { key, value } of env.attrs.getRange()) {
+    // kind␟entityId: one row per attribute
+    const keyStr = String(key);
+    const sep = keyStr.indexOf(SEP);
+    const id = keyStr.substring(sep + 1);
+    if (!entities.has(id)) { orphaned++; continue; }
+    engine.bulkLoadAttr(id as EARS.EntityId, keyStr.substring(0, sep) as EARS.AttrKind, dec(value));
+    attrCount++;
   }
-  if (includeVolatile || policy.hydrate.has('volatileBackup')) {
-    partitionsToHydrate.push('volatileBackup');
-  }
+  if (orphaned) log(`[Hydrate] Skipped ${orphaned} attribute rows of entities with no entity row`);
 
-  log(`[LMDB] Hydrating partitions: ${partitionsToHydrate.join(', ')}`);
+  // Hydrate relations
+  let relCount = 0;
+  for (const { key: relId, value: r } of env.relations.getRange()) {
+    const relIdStr = String(relId);
 
-  for (const partition of partitionsToHydrate) {
-    const env = envs[partition];
-
-    // Hydrate attributes
-    let attrCount = 0;
-    for (const { key, value } of env.attrs.getRange()) {
-      const keyStr = String(key);
-      const sep1 = keyStr.indexOf(SEP);
-      const sep2 = keyStr.indexOf(SEP, sep1 + 1);
-      const kind = keyStr.substring(0, sep1);
-      const entityId = keyStr.substring(sep1 + 1, sep2);
-
-      const idx = Number(keyStr.substring(sep2 + 1));
-      engine.bulkLoadAttr(entityId as EARS.EntityId, kind as EARS.AttrKind, dec(value), idx);
-      attrCount++;
+    if (!r.src || typeof r.src !== 'string' || r.src.length === 0) {
+      log(`[Hydrate] Skipping relation with invalid src: relId=${relIdStr}, src=${r.src}`);
+      continue;
+    }
+    if (!r.tgt || typeof r.tgt !== 'string' || r.tgt.length === 0) {
+      log(`[Hydrate] Skipping relation with invalid tgt: relId=${relIdStr}, tgt=${r.tgt}`);
+      continue;
+    }
+    if (!r.kind || typeof r.kind !== 'string') {
+      log(`[Hydrate] Skipping relation with invalid kind: relId=${relIdStr}, kind=${r.kind}`);
+      continue;
     }
 
-    // Hydrate relations
-    let relCount = 0;
-    for (const { key: relId, value: r } of env.relations.getRange()) {
-      const relIdStr = String(relId);
-
-      if (!r.src || typeof r.src !== 'string' || r.src.length === 0) {
-        console.warn(`[Hydrate] Skipping relation with invalid src: relId=${relIdStr}, src=${r.src}`);
-        continue;
-      }
-      if (!r.tgt || typeof r.tgt !== 'string' || r.tgt.length === 0) {
-        console.warn(`[Hydrate] Skipping relation with invalid tgt: relId=${relIdStr}, tgt=${r.tgt}`);
-        continue;
-      }
-      if (!r.kind || typeof r.kind !== 'string') {
-        console.warn(`[Hydrate] Skipping relation with invalid kind: relId=${relIdStr}, kind=${r.kind}`);
-        continue;
-      }
-
-      if (shardedPersistence) {
-        shardedPersistence.hydrateRelationMetadata(relIdStr, r.kind, r.src, r.tgt);
-      }
-
-      engine.bulkLoadAttr(
-        relIdStr as EARS.EntityId,
-        EARS.AttrKind.RelationDetails,
-        {
-          sourceEntity: r.src,
-          targetEntity: r.tgt,
-          relationType: r.kind,
-          info: r.info ?? undefined,
-        } satisfies EARS.RelationDetail
-      );
-      engine.addToIndex(r.kind, r.src, r.tgt, relIdStr as EARS.EntityId);
-      relCount++;
-    }
-
-    log(`[LMDB] Hydrated ${partition}: ${attrCount} attributes, ${relCount} relations`);
+    engine.bulkLoadRelation(relIdStr as EARS.EntityId, r.kind, r.src, r.tgt, r.info ?? undefined);
+    relCount++;
   }
+
+  log(`[LMDB] Hydrated ${attrCount} attributes, ${relCount} relations`);
 }

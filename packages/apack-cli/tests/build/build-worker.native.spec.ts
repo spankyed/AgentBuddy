@@ -9,7 +9,7 @@ import { execFile, fork, spawn, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createRequire } from 'node:module';
 import { afterEach, expect, it, vi } from 'vitest';
-import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { FIXTURE_DATA, FIXTURE_ENTITY, packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
@@ -68,7 +68,7 @@ function fixture(files: Record<string, string> = {}, content = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-worker-'));
   roots.push(root);
   packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'),
-    manifest: { id: 'fresh-worker', name: 'Fresh worker', features: {}, content }, files });
+    manifest: { id: 'fresh-worker', name: 'Fresh worker', features: {}, data: FIXTURE_DATA, content }, files });
   return root;
 }
 
@@ -154,10 +154,10 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
       const executable = process.env.ESBUILD_BINARY_PATH;
       if (!executable || executable === ${JSON.stringify(executable)} || !fs.existsSync(executable)
         || (fs.statSync(executable).mode & 0o222)) throw new Error('Compiler did not receive its owned executable');
-      return [{entity: 'Relation', name: 'Paths', source: __filename, directory: __dirname}];
+      return [{entity: ${JSON.stringify(FIXTURE_ENTITY)}, name: 'Paths', source: __filename, directory: __dirname}];
     };`,
     'src/value.txt': 'OWNED',
-  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
+  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: FIXTURE_ENTITY, identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   const build = async () => {
     const builder = createPackBuilder(root);
@@ -224,7 +224,7 @@ it('records external inputs read by content compiler worker threads', async ({ s
           const exited = once(worker, 'exit');
           try {
             const [name] = await once(worker, 'message');
-            rows.push({entity: 'Relation', name});
+            rows.push({entity: ${JSON.stringify(FIXTURE_ENTITY)}, name});
             console.info('Worker input mode completed', mode);
           } finally {
             if (mode === 'natural') await exited;
@@ -233,7 +233,7 @@ it('records external inputs read by content compiler worker threads', async ({ s
         }
         return rows;
       };`,
-  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
+  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: FIXTURE_ENTITY, identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   vi.spyOn(process, 'cwd').mockReturnValue(root);
   await buildFixture(root, { args: ['--skip-fe'], signal }, { captureCompiler: sharedCompiler.capture });
@@ -259,9 +259,9 @@ it('refuses publication when a compiler worker cannot return its observations', 
         const worker = new Worker("require('node:worker_threads').parentPort.postMessage('started'); while (true) {}", {eval: true});
         await once(worker, 'message');
         await worker.terminate();
-        return [{entity: 'Relation', name: 'unverified'}];
+        return [{entity: ${JSON.stringify(FIXTURE_ENTITY)}, name: 'unverified'}];
       };`,
-  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
+  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: FIXTURE_ENTITY, identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   const marker = path.join(root, 'dist', 'incumbent.txt');
   fs.mkdirSync(path.dirname(marker));
@@ -284,10 +284,10 @@ it('compiles content through the captured worker and invalidates changed loader 
         let value;
         try { value = cachedRead(payload, 'utf8'); } finally { fs.writeFileSync(payload, original); }
         if (value !== original) throw new Error('Cached preload read escaped its compiler frame');
-        return [{entity: 'Relation', name: [fs.readFileSync(path, 'utf8'), <marker />, Reflect.get(globalThis, 'apackPreloadProbe'), Reflect.get(globalThis, 'apackImportProbe'), Reflect.get(globalThis, 'apackLoaderProbe')].join(':'), source: import.meta.filename, origin: import.meta.url, requireSource: Reflect.get(globalThis, 'apackRequireSource'), importSource: Reflect.get(globalThis, 'apackImportSource')}];
+        return [{entity: ${JSON.stringify(FIXTURE_ENTITY)}, name: [fs.readFileSync(path, 'utf8'), <marker />, Reflect.get(globalThis, 'apackPreloadProbe'), Reflect.get(globalThis, 'apackImportProbe'), Reflect.get(globalThis, 'apackLoaderProbe')].join(':'), source: import.meta.filename, origin: import.meta.url, requireSource: Reflect.get(globalThis, 'apackRequireSource'), importSource: Reflect.get(globalThis, 'apackImportSource')}];
       }`,
     'src/value.txt': 'OWNED',
-  }, { formats: { rows: { compiler: 'src/compiler.tsx', entity: 'Relation', identity: ['name'] } },
+  }, { formats: { rows: { compiler: 'src/compiler.tsx', entity: FIXTURE_ENTITY, identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   const preload = path.join(root, '.apack/pre load  file.cjs');
   const imported = path.join(root, '.apack/preload.mjs');
@@ -345,10 +345,10 @@ it('refuses publication when a loader-only external input changes during compila
   fs.writeFileSync(payload, 'ORIGINAL');
   const root = fixture({
     'src/compiler.cjs': `const fs = require('node:fs'); module.exports = () => {
-      fs.writeFileSync(${JSON.stringify(payload)}, 'CHANGED'); return [{entity: 'Relation', name: 'Changed'}];
+      fs.writeFileSync(${JSON.stringify(payload)}, 'CHANGED'); return [{entity: ${JSON.stringify(FIXTURE_ENTITY)}, name: 'Changed'}];
     };`,
     'src/value.txt': 'DATA',
-  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
+  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: FIXTURE_ENTITY, identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   const loader = path.join(outside, 'loader.mjs');
   fs.writeFileSync(loader, `import fs from 'node:fs'; fs.readFileSync(${JSON.stringify(payload)}, 'utf8');
@@ -379,9 +379,9 @@ it('terminates pack-created background work before accepting its candidate', asy
         child.unref();
       }
       setInterval(() => {}, 1000);
-      export default () => [{entity: 'Relation', name: 'COMPLETE'}];`,
+      export default () => [{entity: ${JSON.stringify(FIXTURE_ENTITY)}, name: 'COMPLETE'}];`,
     'src/value.txt': 'DATA',
-  }, { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+  }, { formats: { rows: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY, identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   await buildFixture(root, { args: ['--skip-fe'], signal }, { captureCompiler: sharedCompiler.capture });
   const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
@@ -400,9 +400,9 @@ it('refuses candidate output changed by a compiler exit handler and retains the 
         fs.writeFileSync('.apack/exit-state', fs.existsSync('.apack/build/integrity.json') ? 'SEALED' : 'UNSEALED');
         fs.writeFileSync('.apack/build/runtime/content/rows.content.json', 'LATE EXIT WRITE');
       });
-      export default () => [{entity: 'Relation', name: 'COMPLETE'}];`,
+      export default () => [{entity: ${JSON.stringify(FIXTURE_ENTITY)}, name: 'COMPLETE'}];`,
     'src/value.txt': 'DATA',
-  }, { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+  }, { formats: { rows: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY, identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   fs.mkdirSync(path.join(root, 'dist'));
   fs.writeFileSync(path.join(root, 'dist/incumbent.txt'), 'ACCEPTED');
@@ -472,7 +472,7 @@ it('terminates a compiling worker when its parent IPC disconnects without publis
         fs.writeFileSync('ready', 'ready'); await new Promise(() => {}); return [];
       }`,
     'src/data.ts': 'export default [];',
-  }, { formats: { waiting: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { waiting: { path: 'src/data.ts', format: 'waiting' } } });
+  }, { formats: { waiting: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY } }, sources: { waiting: { path: 'src/data.ts', format: 'waiting' } } });
   ensureCheckoutPackages(REPO_ROOT);
   const compiler = await sharedCompiler.installation();
   const inputs = path.join(root, '.apack/compiler-inputs');
@@ -536,7 +536,7 @@ it.each([
       return [];
     }`,
     'src/data.ts': 'export default [];',
-  }, { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } });
+  }, { formats: { tags: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } });
   if (phase === 'compiling') fs.writeFileSync(path.join(root, 'hold-build'), '');
   const args = release ? ['pack', 'release', '--dry-run', '--skip-tests', '--skip-e2e'] : ['pack', 'build', ...(watch ? ['--watch'] : [])];
   const child = fork(cliBin(), args, { cwd: root, execArgv: [],

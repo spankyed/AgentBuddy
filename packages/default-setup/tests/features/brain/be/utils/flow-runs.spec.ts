@@ -1,12 +1,12 @@
 import { featureSettings } from '#generated/settings.ts';
 // Flows on the brain through @apackdev/testing, run as the app runs them: the brain starts the root flow (root: true)
 // and the subflows it spawns, runFlow sends an event and waits for one flow's tracks. Also waiting steps, schedule
-// ticks through the scheduler service, the trace of a flow's steps, and how the brain starts.
+// ticks through the scheduler service, the steps a flow ran, and how the brain starts.
 import { describe, expect, it, vi } from 'vitest'
 import { importFlows, mockService, startApp, takeSystemErrors, type TestApp } from '@apackdev/testing/harness'
 import { action, entry, on, keepAlive, schedule, subflow, transform } from '#generated/flow-helpers.ts'
 import { repository } from '#generated/repository.ts'
-import type { Services } from '#generated/services.ts'
+import { services, type Services } from '#generated/services.ts'
 import { isBrainPaused } from '#features/brain/be/utils/brain-pause.ts'
 
 const step = (label: string) => transform('return true', { label })
@@ -29,7 +29,7 @@ describe('runFlow', () => {
     const run = await app.runFlow('Chain', { event: 'go' })
 
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['first', 'completed'], ['second', 'completed'], ['third', 'completed']])
-    expect(app.flowTrace('Chain').map((s) => s.label)).toEqual(['first', 'second', 'third'])
+    expect(app.flowSteps('Chain').map((s) => s.label)).toEqual(['first', 'second', 'third'])
   })
 
   it('runs an event through a subflow the root flow spawned, as the app runs its work modes', async () => {
@@ -43,7 +43,7 @@ describe('runFlow', () => {
     const run = await app.runFlow('Listener', { event: 'ping' })
 
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['pong', 'completed']])
-    expect(app.flowTrace('Listener').map((s) => s.label)).toEqual(['listening', 'pong'])
+    expect(app.flowSteps('Listener').map((s) => s.label)).toEqual(['listening', 'pong'])
   })
 
   it('runs a flow imported earlier as a subflow of a root flow imported after it, as a pack test hosts its flows', async () => {
@@ -54,7 +54,7 @@ describe('runFlow', () => {
     expect((await app.runFlow('Listener', { event: 'ping' })).steps.map((s) => [s.label, s.status])).toEqual([['pong', 'completed']])
   })
 
-  it("traces a subflow's steps under the flow's label, not the subflow step's", async () => {
+  it("lists a subflow's steps under the flow's label, not the subflow step's", async () => {
     importFlows({
       Outer: { root: true, tracks: [on('go', [[subflow('Inner', { label: 'run inner' })]])] },
       Inner: [entry([step('i1'), step('i2')])],
@@ -63,8 +63,8 @@ describe('runFlow', () => {
 
     await app.runFlow('Outer', { event: 'go' })
 
-    expect(app.flowTrace('Inner').map((s) => s.label)).toEqual(['i1', 'i2'])
-    expect(app.flowTrace('run inner')).toEqual([])
+    expect(app.flowSteps('Inner').map((s) => s.label)).toEqual(['i1', 'i2'])
+    expect(app.flowSteps('run inner')).toEqual([])
     await expect(app.runFlow('Inner', { event: 'go' })).rejects.toThrow(/Flow "Inner" isn't running/)
   })
 
@@ -249,11 +249,14 @@ describe('schedule triggers', () => {
     await app.connect()
     await scheduled
 
-    expect([...ticks.keys()]).toEqual([expect.stringMatching(/^TNode-Root:/)])
-    expect(app.flowTrace('Nightly')).toEqual([])
+    // Keyed by the flow run that registered it: the session's root run
+    const root = services.runHistory.findRuns().find((run) => run.parentId === undefined && run.status === 'active')
+    expect(root).toBeDefined()
+    expect([...ticks.keys()]).toEqual([expect.stringMatching(new RegExp(`^${root!.id}:`))])
+    expect(app.flowSteps('Nightly')).toEqual([])
 
     for (const tick of ticks.values()) tick()
     await app.settle()
-    expect(app.flowTrace('Nightly').map((s) => [s.label, s.status])).toEqual([['cleanup', 'completed']])
+    expect(app.flowSteps('Nightly').map((s) => [s.label, s.status])).toEqual([['cleanup', 'completed']])
   })
 })

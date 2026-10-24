@@ -1,8 +1,8 @@
-// Bounds what a step records on its TNode, so a large result can't grow memory without limit. A
+// Bounds what a step records on its run node, so a large result can't grow memory without limit. A
 // truncated value becomes `{ value, _truncated: true, ... }` describing what was cut.
 //
-// What it produces is written to the TNode (`@apackdev/sdk/repositories`' `tnodeRepository`), so it has to be a
-// value JSON can hold: a BigInt becomes its digits and a loop is cut where it closes. Neither may fail the
+// What it produces is written to the run history (`services.runHistory`, which bounds every value it is given), so
+// it has to be a value JSON can hold: a BigInt becomes its digits and a loop is cut where it closes. Neither may fail the
 // result — a step's row is the only record of what it returned.
 
 const MAX_STRING_LENGTH = 10240;  // 10KB for string values
@@ -23,7 +23,7 @@ const UNREADABLE = '[Unreadable]';
  * An estimate rather than the output, which is why it may cut corners the walk below does not: it counts a
  * BigInt as its digits and a repeated object once. **It must not throw.** `JSON.stringify` does on a BigInt or
  * a loop, and measuring with a bare one is what used to discard the whole result and persist
- * `_error: 'serialization_failed'` to the TNode in place of the row.
+ * `_error: 'serialization_failed'` to the RunNode in place of the row.
  */
 /** A replacer that counts a BigInt as its digits and a repeated object once. Stateful, so one per pass. */
 function sizeReplacer(): (key: string, value: unknown) => unknown {

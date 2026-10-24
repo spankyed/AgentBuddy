@@ -18,91 +18,45 @@ export interface BaseEntity {
     entityType: EARS.Entity;
     // (undocumented)
     id: EARS.EntityId;
+    trashedAt?: number;
     // (undocumented)
     updatedAt?: number;
 }
 
-// @public (undocumented)
-export interface Blueprint {
-    // (undocumented)
-    attrs?: Record<string, unknown>;
-    // (undocumented)
-    entity: EARS.Entity;
-    // (undocumented)
-    rels?: Array<{
-        kind: EARS.RelKind;
-        target: Blueprint | EARS.EntityId;
-        info?: unknown;
-    }>;
-    // (undocumented)
-    roles?: EARS.RoleKind[];
-    // (undocumented)
-    uniqueRoles?: EARS.RoleKind[];
-}
-
-// @public
-export interface BlueprintBuilder {
-    // (undocumented)
-    attr(k: string, v: unknown): BlueprintBuilder;
-    // (undocumented)
-    build(): Blueprint;
-    // (undocumented)
-    ensure(r: EARS.RoleKind): BlueprintBuilder;
-    // (undocumented)
-    grant(r: EARS.RoleKind): BlueprintBuilder;
-    // (undocumented)
-    link(kind: EARS.RelKind, target: Blueprint | EARS.EntityId, info?: unknown): BlueprintBuilder;
-}
-
-// @public (undocumented)
-export const bp: (entity: EARS.Entity) => BlueprintBuilder;
-
 // @public
 export interface Create {
     // (undocumented)
-    <E extends string>(type: TypeName<E>, options?: CreateOptions): WriteBuilder<E>;
-}
-
-// @public
-export interface CreatedEntityFields {
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    id: EARS.EntityId;
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    shortCode: string;
-    // (undocumented)
-    updatedAt: number;
+    <E extends string>(type: TypeName<E>, row?: Record<string, unknown> & RowIdentity): WriteBuilder<E>;
 }
 
 // @public
 export function createEarsEngine(input: EARSRuntimeDeps): EarsEngine;
 
 // @public
-export interface CreateOptions {
-    createdAt?: number;
-    id?: EARS.EntityId;
-}
+export type CreateFields<S extends EntityShapes, E extends string> = [
+E
+] extends [keyof S] ? {
+    [K in keyof ShapeOf<S, E> as K extends Exclude<RequiredField<S, E>, NumberedField<S, E>> ? K : never]: ShapeOf<S, E>[K];
+} & {
+    [K in keyof ShapeOf<S, E> as K extends OptionalField<S, E> | NumberedField<S, E> ? K : never]?: ShapeOf<S, E>[K];
+} : Record<string, unknown>;
 
 // @public
-export function defineEars<S extends EntityShapes, N extends string = string>(engine: () => Ears): TypedEars<S, N>;
+export function createMemoryRecordStore<R extends {
+    id: string;
+} = StoredRecord>(input: {
+    indexes: RecordIndexes<R>;
+}): RecordStore<R>;
+
+// @public
+export function defineEars<D extends EarsSchema>(engine: () => Ears): TypedEars<D>;
 
 // @public (undocumented)
 export namespace EARS {
-    const // (undocumented)
-    Entity: {
-        readonly Relation: "Relation";
-    };
     // (undocumented)
     export interface AttributePayloads {
         // (undocumented)
         [key: string]: unknown;
-        // (undocumented)
-        [AttrKindValues.RelationDetails]: RelationDetail;
         // (undocumented)
         [AttrKindValues.Role]: RoleKind;
     }
@@ -114,55 +68,30 @@ export namespace EARS {
     };
     // (undocumented)
     export type AttributeType = AttrKind;
-    // (undocumented)
-    export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
     const // (undocumented)
     RoleKind: {
         readonly Custom: <T extends string>(k: T) => T & RoleKind;
     };
     // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : unknown;
+    export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
     const // (undocumented)
     AttrKind: {
         readonly Custom: <T extends string>(k: T) => T & AttrKind;
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
+    // (undocumented)
+    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : unknown;
     // (undocumented)
     export type AttrKind = typeof AttrKindValues[keyof typeof AttrKindValues] | (string & {});
     // (undocumented)
-    export type Blueprint = {
-        entity: EARS.Entity;
-        attrs?: Record<string, unknown>;
-        roles?: EARS.RoleKind[];
-        uniqueRoles?: EARS.RoleKind[];
-        rels?: {
-            kind: EARS.RelKind;
-            target: Blueprint | EARS.EntityId;
-            info?: unknown;
-        }[];
-    };
-    // (undocumented)
-    export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
+    export type Entity = string & {};
     export type EntityId<E extends string = string> = string extends E ? `${string}-${string}` : `${string}-${string}` & {
         readonly __entity?: E;
     };
-    // (undocumented)
-    export interface RelationDetail {
-        // (undocumented)
-        info?: AttributeValue;
-        // (undocumented)
-        relationType: RelKind;
-        // (undocumented)
-        sourceEntity: EntityId;
-        // (undocumented)
-        targetEntity: EntityId;
-    }
     // (undocumented)
     export type RelKind = string & {};
     // (undocumented)
@@ -171,163 +100,45 @@ export namespace EARS {
 
 // @public
 export interface Ears {
-    // (undocumented)
-    ancestors(start: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId[];
-    // (undocumented)
-    countEntities(entityType: EARS.Entity): number;
     create: Create;
     // (undocumented)
-    createEntityWithDefaults<T extends Record<string, unknown> = Record<string, unknown>>(entityType: EARS.Entity, data: Partial<T>, prefix?: string, providedId?: EARS.EntityId): T & CreatedEntityFields;
-    // (undocumented)
-    createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
-    // (undocumented)
-    descendants(start: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId[];
-    // (undocumented)
-    destroyEntity(id: EARS.EntityId, skipPersistence?: boolean): void;
-    // (undocumented)
-    exists(id: EARS.EntityId): boolean;
-    // (undocumented)
-    findAll<T = unknown>(entityType: EARS.Entity): T[];
-    // (undocumented)
-    findById<T = unknown>(id: EARS.EntityId): T | undefined;
-    // (undocumented)
-    findByIdRaw<T = unknown>(id: EARS.EntityId): T | undefined;
-    // (undocumented)
-    findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
-    // (undocumented)
-    findEntitiesByAttribute(kind: EARS.AttrKind, value?: unknown): EARS.EntityId[];
-    // (undocumented)
-    findEntitiesByRelationTo(relKind: string, id: EARS.EntityId, asSource?: boolean): EARS.EntityId[];
-    // (undocumented)
-    findEntitiesInRelationTo(target: EARS.EntityId): EARS.EntityId[];
-    // (undocumented)
-    findFirst<T = unknown>(entityType: EARS.Entity, field: string, value: unknown): T | undefined;
-    // (undocumented)
-    findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
-    // (undocumented)
     findRelations(match?: RelationMatch): RelationRow[];
-    // (undocumented)
-    findWhere<T = unknown>(entityType: EARS.Entity, field: string, value: unknown): T[];
-    // (undocumented)
-    findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
-    // (undocumented)
-    findWithRole<T>(entityType: EARS.Entity, role: string): T[];
-    // (undocumented)
-    generateLabelWithCount(baseLabel: string, entityType: EARS.Entity): string;
-    // (undocumented)
-    generateShortCode(entityType: EARS.Entity, prefix: string): string;
-    // (undocumented)
-    getAll(id: EARS.EntityId): Record<string, unknown>;
-    // (undocumented)
-    getAllAttributeKinds(): EARS.AttrKind[];
-    // (undocumented)
-    getAllEntities(): EARS.EntityId[];
-    // (undocumented)
-    getAllEntityTypes(): EARS.Entity[];
-    // (undocumented)
-    getAllRelationKinds(): string[];
-    // (undocumented)
-    getAttr(id: EARS.EntityId, kind: EARS.AttrKind, index?: number): EARS.AttributeValue | null;
-    // (undocumented)
-    getAttributeStats(kind: EARS.AttrKind): {
-        entityCount: number;
-        totalValues: number;
-    };
-    // (undocumented)
-    getAttrs(id: EARS.EntityId, kind: EARS.AttrKind): EARS.AttributeValue[];
-    // (undocumented)
-    getEntitiesOfType(type: EARS.Entity): EARS.EntityId[];
-    // (undocumented)
-    getRelationStats(kind: EARS.RelKind): RelationStats;
+    getAttr(id: EARS.EntityId, field: EARS.AttrKind): EARS.AttributeValue | undefined;
     // (undocumented)
     getRoles(id: EARS.EntityId): string[];
-    // (undocumented)
-    getSchemaStats(): {
-        entities: Record<string, number>;
-        attributes: Record<string, number>;
-        relations: Record<string, number>;
-    };
-    // (undocumented)
-    grantRole(id: EARS.EntityId, role: string): void;
-    // (undocumented)
-    hasIdCollision(providedId: string | undefined): boolean;
+    getRow(id: EARS.EntityId): EntityRow | undefined;
+    getSchemaStats(): SchemaStats;
     isEntityType(name: string): boolean;
-    // (undocumented)
-    leaves(kind: EARS.RelKind, filterType?: EARS.Entity): EARS.EntityId[];
-    // (undocumented)
-    linkSymmetric(a: EARS.EntityId, b: EARS.EntityId, kind: EARS.RelKind, info?: unknown): void;
-    // (undocumented)
-    lowestCommonAncestor(a: EARS.EntityId, b: EARS.EntityId, treeKind: EARS.RelKind): EARS.EntityId | null;
+    isRelationKind(name: string): boolean;
+    isRole(name: string): boolean;
+    nextLabel(type: EARS.Entity, base: string): string;
     query: Query;
-    // (undocumented)
-    registerRepository(name: string, value: unknown): void;
-    // (undocumented)
-    removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
-    // (undocumented)
-    removeRelationById(relId: EARS.EntityId): void;
-    repository: Record<string, unknown>;
-    // (undocumented)
-    revokeRole(id: EARS.EntityId, role: string): void;
-    // (undocumented)
-    rootParent(start: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId;
-    // (undocumented)
-    shortestPath(src: EARS.EntityId, tgt: EARS.EntityId, kinds: EARS.RelKind[]): EARS.EntityId[] | null;
-    // (undocumented)
-    spawn(root: Blueprint, options?: {
-        dedupe?: boolean;
-    }): EARS.EntityId;
-    // (undocumented)
-    topoSort(roots: EARS.EntityId[], kind: EARS.RelKind, filterType?: EARS.Entity): EARS.EntityId[];
     transact<T>(fn: () => T): T;
-    // (undocumented)
-    unregisterRepository(name: string): void;
-    // (undocumented)
-    updateEntity(id: EARS.EntityId, updates: Record<string, unknown>, skipTimestamp?: boolean): void;
     updateRelation(relId: EARS.EntityId, patch: {
-        sourceEntity?: EARS.EntityId;
-        targetEntity?: EARS.EntityId;
+        source?: EARS.EntityId;
+        target?: EARS.EntityId;
         info?: unknown;
     }): void;
     upsert: Upsert;
-    // (undocumented)
-    wouldCreateCycle(src: EARS.EntityId, tgt: EARS.EntityId, kinds: readonly EARS.RelKind[]): boolean;
+    wouldCreateCycle(source: EARS.EntityId, target: EARS.EntityId, kinds: readonly EARS.RelKind[]): boolean;
     write: Write;
 }
 
 // @public
 export interface EarsAdmin {
-    // (undocumented)
-    addAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
-    // (undocumented)
-    addRelation(src: EARS.EntityId, kind: string, tgt: EARS.EntityId, info?: unknown): EARS.EntityId;
-    addToIndex(kind: string, source: EARS.EntityId, target: EARS.EntityId, relId: EARS.EntityId): void;
-    bulkLoadAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown, index?: number): void;
+    addRelation(source: EARS.EntityId, kind: string, target: EARS.EntityId, info?: unknown): EARS.EntityId;
+    bulkLoadAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
+    bulkLoadRelation(relId: EARS.EntityId, kind: string, source: EARS.EntityId, target: EARS.EntityId, info?: unknown): void;
     clear(): void;
     deleteAttr(id: EARS.EntityId, kind: EARS.AttrKind): void;
-    // (undocumented)
-    dropAttr(id: EARS.EntityId, kind: EARS.AttrKind, index?: number): void;
-    // (undocumented)
-    dropIf(id: EARS.EntityId, kind: EARS.AttrKind, criterion: unknown): void;
-    // (undocumented)
-    edgeStore: EdgeStore;
-    // (undocumented)
-    findEntitiesByRole(role: string): EARS.EntityId[];
-    getAttr(id: EARS.EntityId, kind: EARS.AttrKind, index?: number): EARS.AttributeValue | null;
-    isEntityType(name: string): boolean;
-    // (undocumented)
-    mergeAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown, index?: number): void;
-    // (undocumented)
+    getAllEntities(): EARS.EntityId[];
+    getEntitiesOfType(type: EARS.Entity): EARS.EntityId[];
     putAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
-    readonly relationIndex: Readonly<RelationIndex>;
-    // (undocumented)
-    removeFromIndex(kind: string, source: EARS.EntityId, target: EARS.EntityId, relId: EARS.EntityId): void;
-    repositories(): Record<string, unknown>;
-    // (undocumented)
-    updateAttr(id: EARS.EntityId, kind: EARS.AttrKind, value: unknown): void;
-    // (undocumented)
-    updateIndex(kind: string, relId: EARS.EntityId, oldSource: EARS.EntityId, oldTarget: EARS.EntityId, newSource?: EARS.EntityId, newTarget?: EARS.EntityId): void;
-    // (undocumented)
-    updateRelation(relId: EARS.EntityId, newSource?: EARS.EntityId, newTarget?: EARS.EntityId, info?: unknown): void;
+    updateRelation(relId: EARS.EntityId, patch: {
+        source?: EARS.EntityId;
+        target?: EARS.EntityId;
+        info?: unknown;
+    }): void;
 }
 
 // @public
@@ -349,39 +160,52 @@ export type EarsErrorCode =
 'UNKNOWN_ENTITY_TYPE'
 /** `write` was given an id no entity in the engine has */
 | 'NO_SUCH_ENTITY'
+/** A write to a relation's id other than `destroy()`: a relation holds no fields */
+| 'NOT_AN_ENTITY'
 /** `create` was given an id an entity already has */
 | 'ID_IN_USE'
 /** `upsert` or `create` named a type the id's entity doesn't have */
 | 'TYPE_MISMATCH'
 /** A write named an attribute the engine owns */
 | 'RESERVED_ATTRIBUTE'
-/** A `where` was given no value to compare with */
-| 'NO_VALUE';
+/** `create` or `upsert` named one of the engine's own types, which its ids are written with (`RESERVED_ENTITY_TYPES`) */
+| 'RESERVED_ENTITY_TYPE'
+/** A `where` was given no value to compare with, or `set` none to store */
+| 'NO_VALUE'
+/** A list write (`append`, `removeAt`, `removeValue`) named an attribute whose value isn't a list */
+| 'NOT_A_LIST'
+/** A link, or a read or walk over links, named a relation kind that is not registered */
+| 'UNKNOWN_RELATION_KIND'
+/** A role write, or a query by role, named a role that is not registered */
+| 'UNKNOWN_ROLE'
+/** A created row lacked a field its type requires, or a delete named one */
+| 'REQUIRED_FIELD';
 
 // @public
 export interface EARSRuntimeDeps {
     isEntityType: (v: string) => boolean;
+    isRelationKind: (v: string) => boolean;
+    isRole: (v: string) => boolean;
     persistence?: PersistenceSink;
+    rowRules?: (type: string) => RowRules | undefined;
 }
 
 // @public
-export type EdgeMatch = Partial<Pick<EARS.RelationDetail, 'sourceEntity' | 'relationType' | 'targetEntity'>>;
-
-// @public
-export interface EdgeStore {
-    find(w: Partial<EARS.RelationDetail>): EARS.RelationDetail[];
-    linkOne(src: EARS.EntityId, kind: EARS.RelKind, tgt: EARS.EntityId, info?: unknown): EARS.EntityId;
-    patchOne(w: Partial<EARS.RelationDetail>, u: {
-        newSource?: EARS.EntityId;
-        newTarget?: EARS.EntityId;
-        newInfo?: unknown;
-    }): boolean;
-    relIds(w: EdgeMatch): EARS.EntityId[];
-    unlink(w: Partial<EARS.RelationDetail>): void;
+export interface EarsSchema {
+    names: string;
+    relKinds: string;
+    roles: string;
+    shapes: EntityShapes;
 }
 
 // @public
 export type EntityNameArg<N extends string, E extends string> = string extends E ? E : [E] extends [N] ? E : N;
+
+// @public
+export type EntityRow = {
+    id: EARS.EntityId;
+    entityType: EARS.Entity;
+} & Record<string, unknown>;
 
 // @public
 export type EntityShapes = {
@@ -400,47 +224,57 @@ E
 export type FieldValues<S extends EntityShapes, E extends string> = [
 E
 ] extends [keyof S] ? {
-    [K in keyof ShapeOf<S, E>]?: ShapeOf<S, E>[K];
-} & Record<string, unknown> : Record<string, unknown>;
+    [K in keyof ShapeOf<S, E> as K extends (typeof RESERVED_ATTRIBUTES)[number] ? never : K]?: ShapeOf<S, E>[K];
+} : Record<string, unknown>;
 
-// @public (undocumented)
-export function filterSystemFields<T extends object>(updates: T, additionalExcludes?: string[]): Partial<T>;
+// @public
+export interface FindByOptions {
+    cursor?: string;
+    // (undocumented)
+    limit?: number;
+    reverse?: boolean;
+}
 
 // @public (undocumented)
 export function getTimestamp(): number;
 
+// @internal
+export function _idClock(): (prefix: string) => string;
+
+// @internal
+export function _indexEntries<R extends {
+    id: string;
+}>(indexes: RecordIndexes<R>, record: R): Array<[string, IndexValue]>;
+
 // @public
-export interface LinkOptions {
-    acyclicIn?: readonly EARS.RelKind[];
+export type IndexValue = string | number | boolean;
+
+// @public
+export interface LinkOptions<R extends string = string> {
+    acyclicIn?: readonly R[];
     info?: unknown;
     replace?: boolean;
-    symmetric?: boolean;
 }
 
 // @public
-export function makePolicy(config: {
-    excludedEntityTypes: ReadonlySet<EARS.Entity>;
-    hydratePartitions?: ReadonlySet<Partition>;
-}): PartitionPolicy;
-
-// @public
-export function makeShardedPersistence(policy: PartitionPolicy, sinks: Record<Partition, PersistenceSink>, relationDetails?: RelationDetailsReader): ShardedPersistence;
+export type ListElement<T> = [T] extends [readonly (infer U)[]] ? U : unknown;
 
 // @public
 export const noopSink: PersistenceSink;
 
 // @public
-export type Partition = 'primary' | 'volatileBackup';
+export type NumberedField<S extends EntityShapes, E extends string> = [
+E
+] extends [keyof S] ? 'shortCode' extends RequiredField<S, E> ? (ShapeOf<S, E> extends {
+    shortCode: ShortCode<string>;
+} ? 'shortCode' : never) : never : never;
 
-// @public (undocumented)
-export interface PartitionPolicy {
-    readonly hydrate: ReadonlySet<Partition>;
-    routeEntity(entityType: EARS.Entity): Partition;
-    routeRelation(params: {
-        srcType: EARS.Entity;
-        tgtType: EARS.Entity;
-    }): Partition;
-}
+// @public
+export type OptionalField<S extends EntityShapes, E extends string> = [
+E
+] extends [keyof S] ? Extract<{
+    [K in keyof ShapeOf<S, E>]-?: {} extends Pick<ShapeOf<S, E>, K> ? K : never;
+}[keyof ShapeOf<S, E>], WritableField<S, E>> : string;
 
 // @public
 export interface PersistenceErrorStats {
@@ -457,144 +291,146 @@ export interface PersistenceSink {
     // (undocumented)
     getErrorStats?(): PersistenceErrorStats;
     // (undocumented)
-    onAddRelation(relId: string, kind: string, src: string, tgt: string, info: unknown): void;
+    onAddRelation(relId: string, kind: string, source: string, target: string, info: unknown): void;
     onCreateEntity(entityId: string, entityType: string): void;
     // (undocumented)
     onDestroyEntity(entityId: string): void;
-    // (undocumented)
-    onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]): void;
-    onPutAttrArray(kind: string, entityId: string, values: unknown[]): void;
-    onRemoveRelation(relId: string, destroyed?: string): void;
+    onDropAttr(kind: string, entityId: string): void;
+    onPutAttr(kind: string, entityId: string, value: unknown): void;
+    onRemoveRelation(relId: string): void;
     // (undocumented)
     onUnitEnd(): void;
     onUnitStart(): void;
     // (undocumented)
     onUpdateRelation(relId: string, patch: {
-        src?: string;
-        tgt?: string;
+        source?: string;
+        target?: string;
         info?: unknown;
     }): void;
 }
 
-// @public (undocumented)
-export function prepareEntity<T extends {
-    entityType: EARS.Entity;
-}>(entityType: EARS.Entity, data: Partial<T>, defaults?: Partial<T>): Omit<T, 'id'>;
-
 // @public
-export interface Query {
+export interface Query extends QueryEntries {
     // (undocumented)
-    <E extends string>(type: TypeName<E>): QueryBuilder<E>;
+    trashed: QueryEntries;
     // (undocumented)
-    <E extends string>(types: readonly TypeName<E>[]): QueryBuilder<string>;
-    // (undocumented)
-    all(): QueryBuilder<string>;
-    // (undocumented)
-    ids<E extends string>(ids: EARS.EntityId<E> | readonly EARS.EntityId<E>[]): QueryBuilder<E>;
+    withTrashed: QueryEntries;
 }
 
 // @public
-export interface QueryBuilder<E extends string = string, S extends EntityShapes = {}, N extends string = string> {
+export interface QueryBuilder<E extends string = string, D extends EarsSchema = UntypedSchema> {
+    ancestors<T extends string>(kinds: D['relKinds'] | readonly D['relKinds'][], type: EntityNameArg<D['names'], T> | readonly EntityNameArg<D['names'], T>[] | undefined): QueryBuilder<T, D>;
+    // (undocumented)
+    ancestors(kinds: D['relKinds'] | readonly D['relKinds'][], type?: undefined): QueryBuilder<string, D>;
     // (undocumented)
     count(): number;
+    descendants<T extends string>(kinds: D['relKinds'] | readonly D['relKinds'][], type: EntityNameArg<D['names'], T> | readonly EntityNameArg<D['names'], T>[] | undefined): QueryBuilder<T, D>;
     // (undocumented)
-    distinct(field?: keyof ShapeOf<S, E> & string): QueryBuilder<E, S, N>;
+    descendants(kinds: D['relKinds'] | readonly D['relKinds'][], type?: undefined): QueryBuilder<string, D>;
     // (undocumented)
-    edgeIds(kinds?: string | readonly string[], asSrc?: boolean): EARS.EntityId[];
+    distinct(field?: keyof ShapeOf<D['shapes'], E> & string): QueryBuilder<E, D>;
     // (undocumented)
     exists(): boolean;
+    first(): EARS.EntityId<E> | undefined;
     // (undocumented)
-    first(): EARS.EntityId<E> | null;
-    // (undocumented)
-    forEach(fn: (id: EARS.EntityId<E>) => void): QueryBuilder<E, S, N>;
-    // (undocumented)
-    groupBy(field: keyof ShapeOf<S, E> & string): Map<unknown, QueryBuilder<E, S, N>>;
-    has<K extends keyof ShapeOf<S, E> & string>(k: K): QueryBuilder<E, S, N>;
-    // (undocumented)
-    id(): EARS.EntityId<E> | null;
+    forEach(fn: (id: EARS.EntityId<E>) => void): QueryBuilder<E, D>;
+    groupBy(field: keyof ShapeOf<D['shapes'], E> & string): Map<unknown, EARS.EntityId<E>[]>;
+    has<K extends keyof ShapeOf<D['shapes'], E> & string>(k: K): QueryBuilder<E, D>;
     // (undocumented)
     ids(): EARS.EntityId<E>[];
+    in<T extends string>(kinds: D['relKinds'] | readonly D['relKinds'][], type: EntityNameArg<D['names'], T> | readonly EntityNameArg<D['names'], T>[] | undefined): QueryBuilder<T, D>;
     // (undocumented)
-    inIds(sub: readonly EARS.EntityId[]): QueryBuilder<E, S, N>;
-    lacks<K extends keyof ShapeOf<S, E> & string>(k: K): QueryBuilder<E, S, N>;
+    in(kinds: D['relKinds'] | readonly D['relKinds'][], type?: undefined): QueryBuilder<string, D>;
+    inEdges<K extends D['relKinds'], T extends string = string>(kinds: K | readonly K[], type?: EntityNameArg<D['names'], T> | EntityNameArg<D['names'], T>[]): Array<RelationEdge<K, NoInferType<T>, E>>;
+    lacks<K extends keyof ShapeOf<D['shapes'], E> & string>(k: K): QueryBuilder<E, D>;
+    last(): EARS.EntityId<E> | undefined;
     // (undocumented)
-    last(): EARS.EntityId<E> | null;
-    // (undocumented)
-    limit(n: number): QueryBuilder<E, S, N>;
-    // (undocumented)
-    links<K extends string, T extends string = string>(relKinds: K | readonly K[], tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[], asSrc?: boolean): Array<{
-        relation: K;
-        id: EARS.EntityId<NoInferType<T>>;
-    }>;
-    linksPick<K extends string, T extends string, A extends readonly (keyof ShapeOf<S, T> & string)[]>(relKinds: readonly [K, K, ...K[]], fields: A, tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[]): ({
-        id: EARS.EntityId<NoInferType<T>>;
-        relation: K;
-    } & Pick<ShapeOf<S, T>, A[number]>)[];
-    // (undocumented)
-    linksPick<K extends string, T extends string, A extends readonly (keyof ShapeOf<S, T> & string)[]>(relKinds: K | readonly [K], fields: A, tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[]): ({
-        id: EARS.EntityId<NoInferType<T>>;
-    } & Pick<ShapeOf<S, T>, A[number]>)[];
-    linksTo<T extends string>(relKinds: string | readonly string[], tgtType: EntityNameArg<N, T> | readonly EntityNameArg<N, T>[] | undefined, asSrc?: boolean): QueryBuilder<T, S, N>;
-    // (undocumented)
-    linksTo(relKinds: string | readonly string[], tgtType?: undefined, asSrc?: boolean): QueryBuilder<string, S, N>;
+    limit(n: number): QueryBuilder<E, D>;
+    linkedFrom(kind: D['relKinds'], other?: EARS.EntityId): QueryBuilder<E, D>;
+    linkedTo(kind: D['relKinds'], other?: EARS.EntityId): QueryBuilder<E, D>;
+    linkedWith(other: EARS.EntityId): QueryBuilder<E, D>;
     // (undocumented)
     map<T>(fn: (id: EARS.EntityId<E>) => T): T[];
     // (undocumented)
-    ofType<T extends string>(t: EntityNameArg<N, T>): QueryBuilder<T, S, N>;
+    ofType<T extends string>(t: EntityNameArg<D['names'], T>): QueryBuilder<T, D>;
     // (undocumented)
-    orderBy(field: keyof ShapeOf<S, E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E, S, N>;
+    orderBy(field: keyof ShapeOf<D['shapes'], E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E, D>;
+    out<T extends string>(kinds: D['relKinds'] | readonly D['relKinds'][], type: EntityNameArg<D['names'], T> | readonly EntityNameArg<D['names'], T>[] | undefined): QueryBuilder<T, D>;
     // (undocumented)
-    pick<A extends readonly (keyof ShapeOf<S, E> & string)[]>(fields: A): ({
+    out(kinds: D['relKinds'] | readonly D['relKinds'][], type?: undefined): QueryBuilder<string, D>;
+    outEdges<K extends D['relKinds'], T extends string = string>(kinds: K | readonly K[], type?: EntityNameArg<D['names'], T> | EntityNameArg<D['names'], T>[]): Array<RelationEdge<K, E, NoInferType<T>>>;
+    // (undocumented)
+    pick<A extends readonly (keyof ShapeOf<D['shapes'], E> & string)[]>(fields: A): ({
         id: EARS.EntityId<E>;
-    } & Pick<ShapeOf<S, E>, A[number]>)[];
+    } & Pick<ShapeOf<D['shapes'], E>, A[number]>)[];
     // (undocumented)
-    pickAll(): ShapeOf<S, E>[];
-    // (undocumented)
-    pickOne<A extends readonly (keyof ShapeOf<S, E> & string)[]>(f: A): ({
+    pickAll(): ShapeOf<D['shapes'], E>[];
+    pickOne<A extends readonly (keyof ShapeOf<D['shapes'], E> & string)[]>(f: A): ({
         id: EARS.EntityId<E>;
-    } & Pick<ShapeOf<S, E>, A[number]>) | null;
+    } & Pick<ShapeOf<D['shapes'], E>, A[number]>) | undefined;
+    pickOne(): ShapeOf<D['shapes'], E> | undefined;
     // (undocumented)
     reduce<T>(fn: (acc: T, id: EARS.EntityId<E>) => T, init: T): T;
     // (undocumented)
-    related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder<E, S, N>;
+    reverse(): QueryBuilder<E, D>;
+    unlinkedFrom(kind: D['relKinds'], other?: EARS.EntityId): QueryBuilder<E, D>;
+    unlinkedTo(kind: D['relKinds'], other?: EARS.EntityId): QueryBuilder<E, D>;
+    where<K extends keyof ShapeOf<D['shapes'], E> & string>(k: K, v: WhereValue<D['shapes'], E, K>): QueryBuilder<E, D>;
+    within(ids: readonly EARS.EntityId[]): QueryBuilder<E, D>;
     // (undocumented)
-    relatedTo(target: EARS.EntityId): QueryBuilder<E, S, N>;
-    // (undocumented)
-    reverse(): QueryBuilder<E, S, N>;
-    where<K extends keyof ShapeOf<S, E> & string>(k: K, v: ShapeOf<S, E>[K] | ((value: ShapeOf<S, E>[K]) => boolean)): QueryBuilder<E, S, N>;
-    // (undocumented)
-    withRole(r: string): QueryBuilder<E, S, N>;
+    withRole(r: D['roles']): QueryBuilder<E, D>;
 }
 
 // @public
-export type RelationDetailsReader = (relId: EARS.EntityId) => EARS.RelationDetail | null;
+export type RecordIndexes<R extends {
+    id: string;
+} = StoredRecord> = Readonly<Record<string, (record: R) => unknown>>;
 
 // @public
-export type RelationIndex = Record<string, RelationIndexEntry>;
+export interface RecordStore<R extends {
+    id: string;
+} = StoredRecord> {
+    close(): void;
+    copyTo(targetDir: string): Promise<void>;
+    delete(id: string): void;
+    findBy(index: string, value: IndexValue, options?: FindByOptions): R[];
+    get(id: string): R | undefined;
+    newId(prefix: string): string;
+    readonly path: string;
+    put(record: R): void;
+    // (undocumented)
+    readonly readOnly: boolean;
+    // (undocumented)
+    reopen(): void;
+    reset(): Promise<void>;
+}
 
 // @public
-export interface RelationIndexEntry {
+export interface RelationEdge<K extends string = string, Source extends string = string, Target extends string = string> {
     // (undocumented)
-    bySource: DirectionLists;
+    id: EARS.EntityId;
     // (undocumented)
-    byTarget: DirectionLists;
+    info?: EARS.AttributeValue;
+    // (undocumented)
+    kind: K;
+    // (undocumented)
+    source: EARS.EntityId<Source>;
+    // (undocumented)
+    target: EARS.EntityId<Target>;
 }
 
 // @public
 export interface RelationMatch {
     // (undocumented)
-    relationType?: EARS.RelKind;
+    kind?: EARS.RelKind;
     // (undocumented)
-    sourceEntity?: EARS.EntityId;
+    source?: EARS.EntityId;
     // (undocumented)
-    targetEntity?: EARS.EntityId;
+    target?: EARS.EntityId;
 }
 
 // @public
-export interface RelationRow extends EARS.RelationDetail {
-    // (undocumented)
-    id: EARS.EntityId;
-}
+export type RelationRow = RelationEdge;
 
 // @public
 export interface RelationStats {
@@ -603,31 +439,43 @@ export interface RelationStats {
     uniqueTargets: number;
 }
 
-// @public (undocumented)
-export class RepositoryError extends Error {
-    constructor(message: string, code?: RepositoryErrorCode, details?: unknown | undefined);
-    // (undocumented)
-    code: RepositoryErrorCode;
-    // (undocumented)
-    details?: unknown | undefined;
-}
-
-// @public (undocumented)
-export const RepositoryErrorCode: {
-    readonly NOT_FOUND: "NOT_FOUND";
-    readonly VALIDATION_ERROR: "VALIDATION_ERROR";
-    readonly CONSTRAINT_VIOLATION: "CONSTRAINT_VIOLATION";
-    readonly PERMISSION_DENIED: "PERMISSION_DENIED";
-    readonly CONCURRENCY_ERROR: "CONCURRENCY_ERROR";
-    readonly OPERATION_FAILED: "OPERATION_FAILED";
-    readonly UNKNOWN: "UNKNOWN";
-};
-
-// @public (undocumented)
-export type RepositoryErrorCode = typeof RepositoryErrorCode[keyof typeof RepositoryErrorCode];
+// @public
+export type RequiredField<S extends EntityShapes, E extends string> = [
+E
+] extends [keyof S] ? Exclude<WritableField<S, E>, OptionalField<S, E>> : never;
 
 // @public
-export const RESERVED_ATTRIBUTES: readonly ["id", "entityType", "createdAt", "role", "relationDetails"];
+export const RESERVED_ATTRIBUTES: readonly ["id", "entityType", "createdAt", "updatedAt", "role", "trashedAt"];
+
+// @public
+export const RESERVED_ENTITY_TYPES: {
+    readonly relation: "Relation";
+    readonly sequence: "Sequence";
+};
+
+// @public
+export interface RowIdentity {
+    createdAt?: number;
+    id?: EARS.EntityId;
+    updatedAt?: number;
+}
+
+// @public
+export interface RowRules {
+    required: readonly string[];
+    shortCode?: string;
+}
+
+// @public
+export interface SchemaStats {
+    attributes: Record<string, {
+        entityCount: number;
+        totalValues: number;
+    }>;
+    entities: Record<string, number>;
+    relations: Record<string, RelationStats>;
+    roles: Record<string, number>;
+}
 
 // @public
 export type ShapeOf<S extends EntityShapes, E extends string> = [
@@ -637,200 +485,135 @@ E
 } : BaseEntity & Record<string, unknown>;
 
 // @public
-export interface ShardedPersistence extends PersistenceSink {
+export type ShortCode<P extends string> = `${P}-${number}`;
+
+// @public
+export type StoredRecord = {
+    id: string;
+} & Record<string, unknown>;
+
+// @public
+export interface TypedCreate<D extends EarsSchema> {
     // (undocumented)
-    getRelMeta(): Map<string, {
-        kind: string;
-        src: string;
-        tgt: string;
-    }>;
-    // (undocumented)
-    hydrateRelationMetadata(relId: string, kind: string, src: string, tgt: string): void;
+    <E extends string>(type: Name<D['names'], E>, ...row: RowArg<D['shapes'], E, CreateFields<D['shapes'], E> & RowIdentity>): WriteBuilder<E, D>;
 }
-
-// @public
-export interface TypedCreate<S extends EntityShapes, N extends string = string> {
-    // (undocumented)
-    <E extends string>(type: Name<N, E>, options?: CreateOptions): WriteBuilder<E, S>;
-}
-
-// @public
-export type TypedCreateEntity<S extends EntityShapes, N extends string = string> = <E extends string>(t: Name<N, E>) => EARS.EntityId<E extends keyof S ? E : string>;
-
-// @public
-export type TypedCreateEntityWithDefaults<S extends EntityShapes, N extends string = string> = <E extends string>(entityType: Name<N, E>, data: Partial<ShapeOf<S, E>>, prefix?: string, providedId?: EARS.EntityId) => ShapeOf<S, E> & CreatedEntityFields;
 
 // @public (undocumented)
-export interface TypedEars<S extends EntityShapes, N extends string = string> {
+export interface TypedEars<D extends EarsSchema> {
     // (undocumented)
-    create: TypedCreate<S, N>;
+    create: TypedCreate<D>;
     // (undocumented)
-    createEntity: TypedCreateEntity<S, N>;
+    getAttr: TypedGetAttr<D>;
     // (undocumented)
-    createEntityWithDefaults: TypedCreateEntityWithDefaults<S, N>;
+    newId: TypedNewId<D>;
     // (undocumented)
-    findAll: TypedFindAll<S, N>;
-    // (undocumented)
-    findById: TypedFindById<S>;
-    // (undocumented)
-    findByIdRaw: TypedFindById<S>;
-    // (undocumented)
-    findByIdWithFields: TypedFindByIdWithFields<S>;
-    // (undocumented)
-    findFirst: TypedFindFirst<S, N>;
-    // (undocumented)
-    findFirstWithRole: TypedFindFirstWithRole<S, N>;
-    // (undocumented)
-    findWhere: TypedFindWhere<S, N>;
-    // (undocumented)
-    findWithFields: TypedFindWithFields<S, N>;
-    // (undocumented)
-    findWithRole: TypedFindWithRole<S, N>;
-    // (undocumented)
-    getAttr: TypedGetAttr<S>;
-    // (undocumented)
-    getAttrs: TypedGetAttrs<S>;
-    // (undocumented)
-    query: TypedQuery<S, N>;
+    query: TypedQuery<D>;
     // (undocumented)
     transact: Ears['transact'];
     // (undocumented)
-    updateEntity: TypedUpdateEntity<S>;
+    upsert: TypedUpsert<D>;
     // (undocumented)
-    upsert: TypedUpsert<S, N>;
-    // (undocumented)
-    write: TypedWrite<S>;
-}
-
-// @public (undocumented)
-export interface TypedFindAll<S extends EntityShapes, N extends string = string> {
-    // (undocumented)
-    <E extends string>(entityType: Name<N, E>): ShapeOf<S, E>[];
-    // (undocumented)
-    <T, E extends string = string>(entityType: Name<N, E>): T[];
-}
-
-// @public (undocumented)
-export interface TypedFindById<S extends EntityShapes> {
-    // (undocumented)
-    <E extends string>(id: EARS.EntityId<E>): ShapeOf<S, E> | undefined;
-    // (undocumented)
-    <T>(id: EARS.EntityId): T | undefined;
-}
-
-// @public (undocumented)
-export type TypedFindByIdWithFields<S extends EntityShapes> = <E extends string, K extends keyof ShapeOf<S, E> & string>(id: EARS.EntityId<E>, fields: readonly K[]) => Pick<ShapeOf<S, E>, K> | undefined;
-
-// @public (undocumented)
-export interface TypedFindFirst<S extends EntityShapes, N extends string = string> {
-    // (undocumented)
-    <E extends string>(entityType: Name<N, E>, field: string, value: unknown): ShapeOf<S, E> | undefined;
-    // (undocumented)
-    <T, E extends string = string>(entityType: Name<N, E>, field: string, value: unknown): T | undefined;
-}
-
-// @public (undocumented)
-export type TypedFindFirstWithRole<S extends EntityShapes, N extends string = string> = <E extends string>(entityType: Name<N, E>, role: string) => ShapeOf<S, E> | undefined;
-
-// @public (undocumented)
-export interface TypedFindWhere<S extends EntityShapes, N extends string = string> {
-    // (undocumented)
-    <E extends string>(entityType: Name<N, E>, field: string, value: unknown): ShapeOf<S, E>[];
-    // (undocumented)
-    <T, E extends string = string>(entityType: Name<N, E>, field: string, value: unknown): T[];
-}
-
-// @public (undocumented)
-export type TypedFindWithFields<S extends EntityShapes, N extends string = string> = <E extends string, K extends keyof ShapeOf<S, E> & string>(entityType: Name<N, E>, fields: readonly K[]) => Pick<ShapeOf<S, E>, K>[];
-
-// @public (undocumented)
-export type TypedFindWithRole<S extends EntityShapes, N extends string = string> = <E extends string>(entityType: Name<N, E>, role: string) => ShapeOf<S, E>[];
-
-// @public
-export interface TypedGetAttr<S extends EntityShapes> {
-    // (undocumented)
-    <E extends string, K extends keyof ShapeOf<S, E> & string>(id: EARS.EntityId<E>, field: K, index?: number): ShapeOf<S, E>[K] | null;
-    // (undocumented)
-    (id: EARS.EntityId, field: string, index?: number): unknown;
+    write: TypedWrite<D>;
 }
 
 // @public
-export interface TypedGetAttrs<S extends EntityShapes> {
+export interface TypedGetAttr<D extends EarsSchema> {
     // (undocumented)
-    <E extends string, K extends keyof ShapeOf<S, E> & string>(id: EARS.EntityId<E>, field: K): ShapeOf<S, E>[K][];
+    <E extends string, K extends keyof ShapeOf<D['shapes'], E> & string>(id: EARS.EntityId<E>, field: K): ShapeOf<D['shapes'], E>[K] | undefined;
     // (undocumented)
-    (id: EARS.EntityId, field: string): unknown[];
+    (id: EARS.EntityId, field: string): unknown;
 }
 
 // @public
-export interface TypedQuery<S extends EntityShapes, N extends string = string> {
+export type TypedNewId<D extends EarsSchema> = <E extends string>(t: Name<D['names'], E>) => EARS.EntityId<E extends keyof D['shapes'] ? E : string>;
+
+// @public
+export interface TypedQuery<D extends EarsSchema> extends TypedQueryEntries<D> {
     // (undocumented)
-    <E extends string>(type: Name<N, E>): QueryBuilder<E, S, N>;
+    trashed: TypedQueryEntries<D>;
     // (undocumented)
-    <E extends string>(types: readonly Name<N, E>[]): QueryBuilder<string, S, N>;
-    // (undocumented)
-    all(): QueryBuilder<string, S, N>;
-    // (undocumented)
-    ids<E extends string>(ids: EARS.EntityId<E> | readonly EARS.EntityId<E>[]): QueryBuilder<E, S, N>;
+    withTrashed: TypedQueryEntries<D>;
 }
 
 // @public
-export interface TypedUpdateEntity<S extends EntityShapes> {
+export interface TypedUpsert<D extends EarsSchema> {
     // (undocumented)
-    <E extends string>(id: EARS.EntityId<E>, updates: {
-        [K in keyof ShapeOf<S, E>]?: ShapeOf<S, E>[K] | null;
-    }, skipTimestamp?: boolean): void;
+    <E extends string>(type: Name<D['names'], E>, row: CreateFields<D['shapes'], E> & RowIdentity & {
+        id: EARS.EntityId;
+    }): WriteBuilder<E, D>;
 }
 
 // @public
-export interface TypedUpsert<S extends EntityShapes, N extends string = string> {
+export interface TypedWrite<D extends EarsSchema> {
     // (undocumented)
-    <E extends string>(type: Name<N, E>, id: EARS.EntityId): WriteBuilder<E, S>;
-}
-
-// @public
-export interface TypedWrite<S extends EntityShapes> {
-    // (undocumented)
-    <E extends string>(id: EARS.EntityId<E>): WriteBuilder<E, S>;
+    <E extends string>(id: EARS.EntityId<E>, options?: WriteOptions): WriteBuilder<E, D>;
 }
 
 // @public
 export type TypeName<T extends string> = T extends `${string}-${string}` ? never : T;
 
 // @public
+export interface UntypedSchema extends EarsSchema {
+    // (undocumented)
+    names: string;
+    // (undocumented)
+    relKinds: string;
+    // (undocumented)
+    roles: string;
+    // (undocumented)
+    shapes: {};
+}
+
+// @public
 export interface Upsert {
     // (undocumented)
-    <E extends string>(type: TypeName<E>, id: EARS.EntityId): WriteBuilder<E>;
+    <E extends string>(type: TypeName<E>, row: Record<string, unknown> & RowIdentity & {
+        id: EARS.EntityId;
+    }): WriteBuilder<E>;
 }
+
+// @public
+export type WhereValue<S extends EntityShapes, E extends string, K extends keyof ShapeOf<S, E>> = ShapeOf<S, E>[K] | (NonNullable<ShapeOf<S, E>[K]> extends readonly (infer U)[] ? U : never) | ((value: ShapeOf<S, E>[K]) => boolean);
+
+// @public
+export type WritableField<S extends EntityShapes, E extends string> = [
+E
+] extends [keyof S] ? Exclude<keyof ShapeOf<S, E> & string, (typeof RESERVED_ATTRIBUTES)[number]> : string;
 
 // @public
 export interface Write {
     // (undocumented)
-    <E extends string>(id: EARS.EntityId<E>): WriteBuilder<E>;
+    <E extends string>(id: EARS.EntityId<E>, options?: WriteOptions): WriteBuilder<E>;
 }
 
 // @public
-export interface WriteBuilder<E extends string = string, S extends EntityShapes = {}> {
-    add<K extends string>(k: K, v: FieldValue<S, E, K>): WriteBuilder<E, S>;
-    delete(k: string): WriteBuilder<E, S>;
-    deleteAt(k: string, index: number): WriteBuilder<E, S>;
-    deleteValue<K extends string>(k: K, v: FieldValue<S, E, K>): WriteBuilder<E, S>;
-    destroy(options?: {
-        keepStored?: boolean;
-    }): void;
+export interface WriteBuilder<E extends string = string, D extends EarsSchema = UntypedSchema> {
+    append<K extends WritableField<D['shapes'], E>>(k: K, v: ListElement<FieldValue<D['shapes'], E, K>>): WriteBuilder<E, D>;
+    delete(k: OptionalField<D['shapes'], E>): WriteBuilder<E, D>;
+    destroy(): void;
     // (undocumented)
-    grant(role: string): WriteBuilder<E, S>;
-    grantExclusive(role: string, among: readonly EARS.EntityId[]): WriteBuilder<E, S>;
+    grant(role: D['roles']): WriteBuilder<E, D>;
+    grantExclusive(role: D['roles'], among: readonly EARS.EntityId[]): WriteBuilder<E, D>;
     // (undocumented)
     id(): EARS.EntityId<E>;
-    link(kind: string, target: EARS.EntityId, options?: LinkOptions): WriteBuilder<E, S>;
-    merge<K extends string>(k: K, v: Partial<FieldValue<S, E, K>>, index?: number): WriteBuilder<E, S>;
+    link(kind: D['relKinds'], target: EARS.EntityId, options?: LinkOptions<D['relKinds']>): WriteBuilder<E, D>;
+    merge<K extends WritableField<D['shapes'], E>>(k: K, v: Partial<FieldValue<D['shapes'], E, K>>): WriteBuilder<E, D>;
+    removeAt(k: WritableField<D['shapes'], E>, index: number): WriteBuilder<E, D>;
+    removeValue<K extends WritableField<D['shapes'], E>>(k: K, v: ListElement<FieldValue<D['shapes'], E, K>>): WriteBuilder<E, D>;
+    restore(): WriteBuilder<E, D>;
     // (undocumented)
-    revoke(role: string): WriteBuilder<E, S>;
-    set<K extends string>(k: K, v: FieldValue<S, E, K>): WriteBuilder<E, S>;
-    setMany(attrs: FieldValues<S, E>): WriteBuilder<E, S>;
-    unlink(kind: string, target?: EARS.EntityId): WriteBuilder<E, S>;
-    unlinkAll(): WriteBuilder<E, S>;
+    revoke(role: D['roles']): WriteBuilder<E, D>;
+    row(): ShapeOf<D['shapes'], E>;
+    set<K extends WritableField<D['shapes'], E>>(k: K, v: FieldValue<D['shapes'], E, K>): WriteBuilder<E, D>;
+    setMany(attrs: FieldValues<D['shapes'], E>): WriteBuilder<E, D>;
+    trash(at?: number): WriteBuilder<E, D>;
+    unlink(kind: D['relKinds'], target?: EARS.EntityId): WriteBuilder<E, D>;
+    unlinkAll(): WriteBuilder<E, D>;
+}
+
+// @public
+export interface WriteOptions {
+    touch?: boolean;
 }
 
 // (No @packageDocumentation comment for this package)

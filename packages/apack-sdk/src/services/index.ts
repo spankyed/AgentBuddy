@@ -1,11 +1,10 @@
-import type { repository } from '../ears/index.ts';
 import { boundHost, _boundHostGeneration, type HostRuntimeServices } from '../runtime/host-runtime.ts';
 import { createSends, untypedBroadcastToSurface, untypedSendToWindow, untypedSendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
 import type { OnboardingService } from './onboarding.ts';
-import type { TraceStore } from './trace-store.ts';
+import type { RunHistory } from './run-history.ts';
 import type { InferenceService } from './inference.ts';
 import type { SecretsService } from './secrets.ts';
 import type { FilesystemService } from './filesystem.ts';
@@ -17,7 +16,10 @@ import { _settingsHandle } from './settings-handle.ts';
 export type { AppDataService, BackupDatabase, BackupSummary } from './app-data.ts';
 export type { OnboardingService } from './onboarding.ts';
 export { UnknownBackupDatabasesError } from './app-data.ts';
-export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
+export {
+  _createRunHistory, _RUN_HISTORY_INDEXES, type RunHistory, type RunPage, type RunStatus, type RunTree,
+  type RunNode, type RunNodeBase, type FlowRunNode, type EventRunNode, type StepRunNode, type RunNodeId, type RunNodeStart, type RunNodePatch,
+} from './run-history.ts';
 export { _createInferenceService, type _InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type _ResolveModel } from './inference.ts';
 export type { FileEntry, FileStat, FilesystemService } from './filesystem.ts';
 export type { SettingsChange, SettingsService, SettingsAdmin } from './settings.ts';
@@ -26,6 +28,18 @@ export { _secretRules, _secretProviderLabel, _toSecretMetadata } from './secrets
 export type { ModelId, ProviderName } from './models.ts';
 
 const logger = createLogger('log-service');
+
+/** The bound app's registered packs' repositories, by name; reading one no pack declares throws */
+export const repository: Record<string, unknown> = new Proxy({}, {
+  get(_target, name) {
+    if (typeof name !== 'string') return undefined;
+    const value = boundHost().packs.repository(name);
+    if (value === undefined) {
+      throw new Error(`[repository] "${name}" is not registered: a pack declares its repositories in apack.json (features[].repositories)`);
+    }
+    return value;
+  },
+});
 
 /**
  * Supported host APIs. Generated Services selects the baseline and explicitly consumed members;
@@ -64,8 +78,8 @@ export interface HostServices {
   onboarding: OnboardingService;
   /** Reset, back up and restore the app's stored data */
   appData: AppDataService;
-  /** Read the volatile trace store (flow execution records) */
-  traceStore: TraceStore;
+  /** Flow runs: each run's tree of nodes, recorded while it runs and kept after it ends */
+  runHistory: RunHistory;
   /** Model calls (text, agents, embeddings, images, speech, transcription, reranking) with the user's provider keys */
   inference: InferenceService;
   /** The user's API keys, without their values: list, select, rename, delete */
@@ -138,7 +152,7 @@ export function _captureHostServices() {
     get(name: string): unknown {
       if (name === 'logger') return logger;
       if (name === 'emitter') return emitter;
-      if (name === 'repository') return runtime.ears.repository;
+      if (name === 'repository') return repository;
       return runtime.services[name as keyof HostRuntimeServices];
     },
   };

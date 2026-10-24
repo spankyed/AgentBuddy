@@ -28,14 +28,14 @@ export const browserCommands = {
     }
 
     for (const tab of normalized.tabs) {
-      upsert(EARS.Entity.BrowserTab, tab.id).setMany({
+      upsert(EARS.Entity.BrowserTab, {
+        id: tab.id,
         url: tab.url,
         title: tab.title,
         favicon: tab.favicon,
         displayOrder: tab.displayOrder,
         isMuted: tab.isMuted,
         groupId: tab.groupId ?? '',
-        updatedAt: Date.now(),
       });
     }
   },
@@ -46,12 +46,11 @@ export const browserCommands = {
     }
 
     for (const bm of bookmarks) {
-      create(EARS.Entity.BrowserBookmark).setMany({
+      create(EARS.Entity.BrowserBookmark, {
         url: bm.url,
         title: bm.title,
         favicon: bm.favicon,
         displayOrder: bm.displayOrder,
-        updatedAt: Date.now(),
       });
     }
   },

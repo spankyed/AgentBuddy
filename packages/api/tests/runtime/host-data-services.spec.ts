@@ -1,5 +1,5 @@
 // The pack-facing replacements for @apackdev/host in pack code: relation reads in @apackdev/ears,
-// and the host-implemented services.appData and services.traceStore, as the API's host init registers them.
+// and the host-implemented services.appData, as the API's host init registers it.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -17,7 +17,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-host-data-services-')
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('../../src/runtime/index.ts');
-const { store, engine, packs } = openAppStore();
+const { store, runHistory, engine, packs } = openAppStore();
 const { untypedQuery, untypedCreate, untypedUpsert, untypedWrite } = await import('@apackdev/sdk/ears');
 const { boundHost } = await import('@apackdev/sdk/runtime/internals');
 const { services } = boundHost();
@@ -25,40 +25,8 @@ const settingsAdmin = () => boundHost().services.settings;
 
 afterAll(() => {
   store.close();
+  runHistory.close();
   fs.rmSync(dataDir, { recursive: true, force: true });
-});
-
-describe('services.traceStore', () => {
-  const US = '\x1F';
-  const ids = { flow: 'TNode-trace-flow', event: 'TNode-trace-event', later: 'TNode-trace-later' } as const;
-
-  afterAll(() => {
-    const dbs = store.envs.volatileBackup;
-    for (const id of Object.values(ids)) dbs.entities.removeSync(id);
-    dbs.attrs.removeSync(`label${US}${ids.flow}${US}0`);
-    dbs.relations.removeSync('Relation-trace-1');
-    dbs.relations.removeSync('Relation-trace-2');
-  });
-
-  it("reads the volatile store's entities, attributes and relations", () => {
-    const dbs = store.envs.volatileBackup;
-    dbs.entities.putSync(ids.flow, { type: 'TNode', createdAt: 1 });
-    dbs.entities.putSync(ids.event, { type: 'TNode', createdAt: 2 });
-    dbs.entities.putSync(ids.later, { type: 'TNode', createdAt: 3 });
-    dbs.attrs.putSync(`label${US}${ids.flow}${US}0`, { t: 'string', v: 'Run' });
-    dbs.relations.putSync('Relation-trace-1', { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 });
-    dbs.relations.putSync('Relation-trace-2', { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 });
-
-    const traces = services.traceStore;
-    expect(traces.entities().filter((e) => e.id.startsWith('TNode-trace-')).map((e) => e.id).sort()).toEqual(Object.values(ids).sort());
-    expect(traces.getEntityMeta(ids.flow)).toEqual({ type: 'TNode', createdAt: 1 });
-    expect(traces.getAttr('label', ids.flow)).toBe('Run');
-    expect(traces.relations({ kind: 'tracked', src: ids.flow })).toEqual([
-      { id: 'Relation-trace-1', rel: { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 } },
-      { id: 'Relation-trace-2', rel: { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 } },
-    ]);
-    expect(traces.relations({ kind: 'tracked', src: ids.flow, limit: 1 })).toHaveLength(1);
-  });
 });
 
 describe('services.appData', () => {
@@ -74,14 +42,14 @@ describe('services.appData', () => {
 
     version.current = '0.4.1';
     try {
-      const backup = await services.appData.exportBackup(dir, 'probe', ['volatileLmdb']);
+      const backup = await services.appData.exportBackup(dir, 'probe', ['lmdb']);
       expect(backup).toBe(path.join(dir, 'probe'));
       // What made it, so a backup folder says where it came from without opening its databases
       expect(await services.appData.readBackupSummary(backup)).toEqual({
-        timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false, appVersion: '0.4.1',
+        timestamp: expect.any(Number), databases: ['lmdb'], size: expect.any(Number), hasMedia: false, appVersion: '0.4.1',
       });
       const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
-      expect(metadata).toMatchObject({ appVersion: '0.4.1', storageFormat: expect.any(Number) });
+      expect(metadata).toMatchObject({ appVersion: '0.4.1', storageFormats: { lmdb: expect.any(Number) } });
     } finally {
       version.current = undefined;
     }
@@ -95,30 +63,18 @@ describe('services.appData', () => {
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
     fs.writeFileSync(metadataPath, JSON.stringify({ ...metadata, databases: ['lmdb', 'unknownLmdb'] }));
     fs.mkdirSync(path.join(backup, 'unknownLmdb'));
-    untypedCreate('Prompt', { id: 'Prompt-kept' }).set('title', 'still here');
+    untypedCreate('Prompt', { id: 'Prompt-kept', label: 'still here', inputs: {}, templateFn: 'return ""' });
 
     // A partial restore of a backup a newer apack made would cost the user their data to learn that
     const refused = services.appData.importBackup(backup);
     await expect(refused).rejects.toThrow("The backup holds data this apack doesn't have: unknownLmdb");
     await expect(refused).rejects.toMatchObject({ name: 'UnknownBackupDatabasesError', databases: ['unknownLmdb'] });
-    expect(untypedQuery.ids('Prompt-kept').pickOne(['title'])).toMatchObject({ title: 'still here' });
+    expect(untypedQuery.ids('Prompt-kept').pickOne(['label'])).toMatchObject({ label: 'still here' });
 
     // The app asks the user first, and imports it without that store when they say to
     expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true }))
       .toEqual({ databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] });
-    expect(untypedQuery.ids('Prompt-kept').pickOne(['title'])).toBeNull();
-  });
-
-  it('restores a backup whose listed store it holds nothing for, and says which', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-empty-db-backup-'));
-    dirs.push(dir);
-    // exportBackup lists volatileLmdb but copies no folder when there is nothing in it
-    const backup = await services.appData.exportBackup(dir, 'sparse', ['lmdb', 'volatileLmdb']);
-    fs.rmSync(path.join(backup, 'volatileLmdb'), { recursive: true, force: true });
-
-    // Reported, so the app can tell the user that store came back empty rather than dropping it silently
-    expect(await services.appData.importBackup(backup))
-      .toEqual({ databases: ['lmdb'], missingDatabases: ['volatileLmdb'], unknownEntityTypes: [] });
+    expect(untypedQuery.ids('Prompt-kept').pickOne(['label'])).toBeUndefined();
   });
 
   it('restores current preferences, onboarding completion and unavailable feature overrides', async () => {
@@ -134,7 +90,7 @@ describe('services.appData', () => {
       features: { 'removed/feature': { retained: true } },
     };
     appState.update({ hasOnboarded: true, version: '0.4.0' });
-    untypedUpsert('Settings', 'Settings-app').set('data', settings);
+    untypedUpsert('Settings', { id: 'Settings-app', data: settings });
     await new Promise((resolve) => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'current', ['lmdb']);
 
@@ -163,7 +119,7 @@ describe('services.appData', () => {
     packs.catalog.setNative([...packs.catalog.getSnapshot().native, { id: 'bookmarks', data: { entities: { Bookmark: null, Tag: null } } }, { id: 'tags', data: { entities: { Tag: null } } }]);
     packs.registerPack({
       id: 'bookmarks',
-      ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {} },
+      ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {}, roles: {} },
     });
     const bookmark = untypedCreate('Bookmark').set('url', 'https://example.com').id();
     untypedCreate('Tag').set('name', 'reading');
@@ -171,7 +127,7 @@ describe('services.appData', () => {
     const backup = await services.appData.exportBackup(dir, 'with-pack', ['lmdb']);
     packs.unregisterPack('bookmarks');
     // Still installed, so its rows are not reported: only what nothing declares is
-    packs.registerPack({ id: 'tags', ears: { entities: { Tag: 'Tag' }, relKinds: {} } });
+    packs.registerPack({ id: 'tags', ears: { entities: { Tag: 'Tag' }, relKinds: {}, roles: {} } });
 
     try {
       // Restored without the other pack: the rows come back, and the app is told so it can say why nothing shows them
@@ -193,7 +149,7 @@ describe('services.appData', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-invalid-settings-'));
     dirs.push(dir);
     const settingsId = 'Settings-app';
-    untypedUpsert('Settings', settingsId).set('data', data);
+    untypedUpsert('Settings', { id: settingsId, data });
     await new Promise(resolve => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'invalid', ['lmdb']);
     // The fixture wrote an invalid row directly to create the candidate; seed valid live data independently.
@@ -209,9 +165,41 @@ describe('services.appData', () => {
     } finally { off(); }
   });
 
+  it('restores a backup whose listed store it holds nothing for, and says which', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-empty-db-backup-'));
+    dirs.push(dir);
+    const backup = await services.appData.exportBackup(dir, 'sparse', ['lmdb', 'runHistory']);
+    fs.rmSync(path.join(backup, 'runHistory'), { recursive: true, force: true });
+
+    // Reported, so the app can tell the user that store came back empty rather than dropping it silently
+    expect(await services.appData.importBackup(backup)).toMatchObject({ databases: ['lmdb'], missingDatabases: ['runHistory'] });
+  });
+
+  it('brings back the run history a backup holds, with what was running then stopped', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-history-backup-'));
+    dirs.push(dir);
+    const { id } = services.runHistory.start({ kind: 'flow', label: 'Running at the backup' });
+    const backup = await services.appData.exportBackup(dir, 'history', ['lmdb', 'runHistory']);
+    services.runHistory.update(id, { label: 'Changed since' });
+
+    await services.appData.importBackup(backup);
+
+    expect(services.runHistory.get(id)).toMatchObject({ label: 'Running at the backup', status: 'stopped' });
+  });
+
   it('rejects an import of a directory that is not a backup', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-not-backup-'));
     dirs.push(dir);
     await expect(services.appData.importBackup(dir)).rejects.toThrow(`${dir} isn't a backup: it has no metadata.json`);
+  });
+});
+
+describe('a reset', () => {
+  it('empties the run history with the database', async () => {
+    const { id } = services.runHistory.start({ kind: 'flow', label: 'Before the reset' });
+
+    await services.appData.reset();
+
+    expect(services.runHistory.get(id)).toBeUndefined();
   });
 });

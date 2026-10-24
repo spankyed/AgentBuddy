@@ -1,33 +1,30 @@
 // The engine operations pack code calls without holding an engine act on the one this process bound, and with none
 // bound they throw naming how to bind one
 import { afterEach, describe, expect, it } from 'vitest';
-import { createEarsEngine, defineEars, type EARS } from '@apackdev/ears';
+import { createEarsEngine, defineEars, type EARS, type UntypedSchema } from '@apackdev/ears';
 import {
-  _bindEars, boundEars, findRelations, isEntityType, registerRepository, repository, spawn, transact,
+  _bindEars, boundEars, findRelations, isEntityType, transact, wouldCreateCycle,
   untypedCreate, untypedQuery, untypedUpsert, untypedWrite,
 } from '../../src/ears/index.ts';
-import { bp } from '@apackdev/ears';
 
-const engineWith = (types: ReadonlySet<string>) => createEarsEngine({ isEntityType: (name) => types.has(name) });
+const engineWith = (types: ReadonlySet<string>) => createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => types.has(name) });
 
 afterEach(() => { _bindEars(undefined); });
 
 describe('with no engine bound', () => {
   it('every operation throws, naming how to bind one', () => {
-    const typed = defineEars<{ Note: { title: string } }, 'Note'>(boundEars);
+    const typed = defineEars<UntypedSchema & { shapes: { Note: { title: string } }; names: 'Note' }>(boundEars);
     const uses: Array<[string, () => unknown]> = [
       ['untypedQuery', () => untypedQuery('Note')],
       ['untypedQuery.ids', () => untypedQuery.ids('Note-1' as EARS.EntityId)],
       ['untypedQuery.all', () => untypedQuery.all()],
       ['untypedCreate', () => untypedCreate('Note')],
-      ['untypedUpsert', () => untypedUpsert('Note', 'Note-1' as EARS.EntityId)],
+      ['untypedUpsert', () => untypedUpsert('Note', { id: 'Note-1' as EARS.EntityId })],
       ['untypedWrite', () => untypedWrite('Note-1' as EARS.EntityId)],
       ['transact', () => transact(() => 1)],
       ['findRelations', () => findRelations()],
       ['isEntityType', () => isEntityType('Note')],
-      ['spawn', () => spawn(bp('Note').build())],
-      ['registerRepository', () => registerRepository('noteQueries', {})],
-      ['repository', () => repository.noteQueries],
+      ['wouldCreateCycle', () => wouldCreateCycle('Note-1' as EARS.EntityId, 'Note-2' as EARS.EntityId, ['contains'])],
       ['a typed facade', () => typed.query('Note')],
       ['boundEars', () => boundEars()],
     ];
@@ -49,16 +46,7 @@ describe('_bindEars', () => {
     expect(boundEars()).toBe(second);
 
     _bindEars(first);
-    expect(defineEars<{ Note: { title: string } }, 'Note'>(boundEars).findAll('Note').map((row) => row.title)).toEqual(['first']);
-    expect(first.findById(id)).toMatchObject({ title: 'first' });
-  });
-
-  it('reads the bound engine\'s repositories through repository', () => {
-    const engine = engineWith(new Set());
-    _bindEars(engine);
-    const noteQueries = { name: 'notes' };
-    registerRepository('noteQueries', noteQueries);
-    expect(repository.noteQueries).toBe(noteQueries);
-    expect(() => repository.missing).toThrow('"missing" is not registered');
+    expect(defineEars<UntypedSchema & { shapes: { Note: { title: string } }; names: 'Note' }>(boundEars).query('Note').pickAll().map((row) => row.title)).toEqual(['first']);
+    expect(first.query.ids(id).pickOne()).toMatchObject({ title: 'first' });
   });
 });

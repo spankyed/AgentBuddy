@@ -20,7 +20,7 @@ describe('the kill step, on the brain', () => {
   it('completes itself, rather than leaving the chain hanging', async () => {
     const flow = await run('Kills and completes', [kill()])
 
-    expect(flow.steps.find((step) => step.label === 'Kill Flow')?.nodeAttributes.result).toEqual({ killed: true })
+    expect(flow.steps.find((step) => step.label === 'Kill Flow')?.result).toEqual({ killed: true })
   })
 })
 

@@ -2,7 +2,7 @@ import { hasOwn } from '../utils/shared.ts';
 
 /** Declarative entity ownership/shapes and the pack-level relation wire vocabulary. */
 export interface PackDataDeclarations {
-  data?: { entities?: Readonly<Record<string, string | null>>; relations?: readonly string[] };
+  data?: { entities?: Readonly<Record<string, string | null>>; relations?: readonly string[]; roles?: readonly string[] };
   features?: Readonly<Record<string, object>>;
 }
 
@@ -35,16 +35,27 @@ export function _packEntityTypes(declaration: PackDataDeclarations): Record<stri
   return Object.fromEntries(_packEntities(declaration).map(({ name }) => [name, name]));
 }
 
-export const _RELATION_WIRE_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
+/** A relation kind's or a role's stored name: snake_case, its generated EARS constant the same in uppercase */
+export const _WIRE_NAME_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 
-/** @internal Derive the flat EARS constants once; refuse invalid or repeated wire identities. */
-export function _packRelationTypes(declaration: PackDataDeclarations): Record<string, string> {
-  const types: Record<string, string> = {};
-  for (const wire of declaration.data?.relations ?? []) {
-    if (!_RELATION_WIRE_PATTERN.test(wire)) throw new Error(`Relation "${wire}" must be a snake_case wire name`);
+/** The flat EARS constants of a list of wire names, refusing an invalid or repeated one */
+function wireConstants(wires: readonly string[], what: 'Relation' | 'Role', key: 'relations' | 'roles'): Record<string, string> {
+  const constants: Record<string, string> = {};
+  for (const wire of wires) {
+    if (!_WIRE_NAME_PATTERN.test(wire)) throw new Error(`${what} "${wire}" must be a snake_case wire name`);
     const name = wire.toUpperCase();
-    if (hasOwn(types, name)) throw new Error(`Relation "${wire}" is declared twice in data.relations`);
-    types[name] = wire;
+    if (hasOwn(constants, name)) throw new Error(`${what} "${wire}" is declared twice in data.${key}`);
+    constants[name] = wire;
   }
-  return types;
+  return constants;
+}
+
+/** @internal The pack's relation kinds as EARS constants (`tagged_with` → `TAGGED_WITH`) */
+export function _packRelationTypes(declaration: PackDataDeclarations): Record<string, string> {
+  return wireConstants(declaration.data?.relations ?? [], 'Relation', 'relations');
+}
+
+/** @internal The pack's roles as EARS constants (`entry_event` → `ENTRY_EVENT`) */
+export function _packRoles(declaration: PackDataDeclarations): Record<string, string> {
+  return wireConstants(declaration.data?.roles ?? [], 'Role', 'roles');
 }

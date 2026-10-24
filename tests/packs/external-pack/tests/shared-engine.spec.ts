@@ -9,7 +9,7 @@ import { repository } from '#generated/repository.ts';
 
 describe('the engine a pack imports', () => {
   it("is the one the SDK and its dependencies' runtimes use", () => {
-    const id = untypedCreate('Note').setMany({ title: 'Written through @apackdev/ears', content: '' }).id();
+    const id = untypedCreate('Note', { title: 'Written through @apackdev/ears', content: '', noteType: 'document', icon: null, completed: false, hideCompletedChildren: false, displayOrder: 0, lastSeen: 0 }).id();
     // Typed, through the facade codegen writes: this pack's repositories and its dependencies'
     expect(repository.noteQueries.byIdDTO(id)).toMatchObject({ id, title: 'Written through @apackdev/ears' });
     expect(services.repository.noteQueries.byIdDTO(id)).toEqual(repository.noteQueries.byIdDTO(id));

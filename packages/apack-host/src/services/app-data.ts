@@ -1,8 +1,9 @@
 // services.appData: reset, back up and restore the app's stored data
-import type { AppDataService, BackupDatabase, SettingsAdmin } from '@apackdev/sdk/services';
+import type { AppDataService, BackupDatabase, RunHistory, SettingsAdmin, RunNode } from '@apackdev/sdk/services';
 import type { EarsAdmin } from '@apackdev/ears';
+import type { RecordStore } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
-import { exportDatabase, readBackupSummary, importDatabase } from '../backup/index.ts';
+import { exportDatabase, readBackupSummary, importDatabase, type BackupStores } from '../backup/index.ts';
 import { secretsStore } from '../secrets/index.ts';
 import { _getMediaPath } from '@apackdev/sdk/utils';
 import { getAppVersion } from '@apackdev/sdk/env';
@@ -16,9 +17,13 @@ import { createSettingsBackupValidator } from '../features/settings/be/backup.ts
  * has already cleared the engine and reloaded what it put back. What it does with that is the caller's —
  * replacing the data is this service's job, and telling the app is not.
  */
-export function createAppData({ store, engine, registry, settings, onReplaced }: {
-  store: LmdbStore; engine: EarsAdmin; registry: PackRegistry; settings: SettingsAdmin; onReplaced: () => void;
+export function createAppData({ store, history, engine, registry, settings, onReplaced }: {
+  store: LmdbStore;
+  /** The run history and its record store, which a backup copies and a reset empties with the database */
+  history: { service: RunHistory; store: RecordStore<RunNode> };
+  engine: EarsAdmin; registry: PackRegistry; settings: SettingsAdmin; onReplaced: () => void;
 }): AppDataService {
+  const stores: BackupStores = { lmdb: store, runHistory: history.store };
   let replacing = false;
   /** One replacement at a time, and none while a pack is being installed or changed: both write the same data */
   async function exclusive<T>(operation: () => Promise<T>): Promise<T> {
@@ -32,9 +37,9 @@ export function createAppData({ store, engine, registry, settings, onReplaced }:
     }
   }
 
-  async function reloadMemory(includeVolatile = false): Promise<void> {
+  async function reloadMemory(): Promise<void> {
     engine.clear();
-    await store.hydrate({ includeVolatile });
+    await store.hydrate();
   }
 
   async function replaceData<T>(replace: () => Promise<T>): Promise<T> {
@@ -50,26 +55,29 @@ export function createAppData({ store, engine, registry, settings, onReplaced }:
         registry.runShutdownHooks();
         engine.clear();
         await store.reset();
+        await history.store.reset();
         // Stored API keys go too, with their data keys; after the database reopens, since the settings system hears of it
         secretsStore.clearAll();
         startPacks(registry);
       }));
     },
     exportBackup: (targetPath, name, databases) =>
-      exportDatabase(store, targetPath, { name, databases, mediaPath: _getMediaPath(), appVersion: getAppVersion() }),
+      exportDatabase(stores, targetPath, { name, databases, mediaPath: _getMediaPath(), appVersion: getAppVersion() }),
     async importBackup(backupPath, options) {
       return exclusive(async () => {
         const entityTypes = registry.getRegisteredEntityTypes();
         const validate = createSettingsBackupValidator(registry.settingsCatalog());
-        return importDatabase(store, backupPath, _getMediaPath(), {
+        return importDatabase(stores, backupPath, _getMediaPath(), {
           ...options, entityTypes, validate,
           withReplacement: replaceData,
-          accept: async result => {
-            await reloadMemory(result.databases.includes('volatileLmdb'));
+          accept: async () => {
+            await reloadMemory();
+            // What a restored history left running can't be running now
+            history.service.stopActive();
             // Run declared versioned data changes after restore, before notifying consumers.
             if (runAppMigrations(registry)) runPackMigrations(registry.packMigrationTargets('pack'));
           },
-          // The data before the import, hydrated as boot hydrates it: the run history stays on disk
+          // The data before the import, hydrated again
           restored: () => reloadMemory(),
         });
       });

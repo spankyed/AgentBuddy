@@ -7,7 +7,7 @@ export interface ActionRun {
   params: Record<string, unknown>;
   /** The accepted executing runtime supplies named views without expanding its API selection. */
   servicesForAction: PackServiceAccess['servicesForAction'];
-  /** The running flow's TNode, when a flow step runs the action */
+  /** The running flow's RunNode, when a flow step runs the action */
   flowId?: string;
 }
 

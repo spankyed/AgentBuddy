@@ -59,6 +59,19 @@ it('opens a nested note by canonical identity from welcome and another editor', 
   } finally { actor.stop(); }
 });
 
+it('opens a note selected in the tree and one reached through a link', () => {
+  const actor = createActor(notes).start();
+  try {
+    actor.send({ type: 'NOTES_CONNECTED', data: { notes: [note('Note-parent'), note('Note-child', 'Note-parent')] } });
+    actor.send({ type: 'NOTE.SELECT', noteId: 'Note-child' });
+    expect(actor.getSnapshot().hasTag('editor')).toBe(true);
+    expect(actor.getSnapshot().context.currentNote?.id).toBe('Note-child');
+    expect(sendToSystem).toHaveBeenLastCalledWith('notes', { type: 'VIEW_NOTE', id: 'Note-child' });
+    actor.send({ type: 'NOTE.LINK_CLICKED', noteId: 'Note-parent' });
+    expect(actor.getSnapshot().context.currentNote?.id).toBe('Note-parent');
+  } finally { actor.stop(); }
+});
+
 it('opens an unlisted thread and fills only the current target without replaying navigation', () => {
   const actor = createActor(threads).start();
   try {

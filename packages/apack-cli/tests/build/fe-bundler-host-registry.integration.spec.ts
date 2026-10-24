@@ -158,8 +158,8 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     // Shape of #generated/ears: the EARS namespace plus the pure typed-helpers factory call
     fs.writeFileSync(path.join(packDir, 'src', 'ears.ts'), [
       "export namespace EARS { export namespace Entity { export const Memo = 'Memo'; } }",
-      "import { defineEars } from '@apackdev/ears';",
-      "export const { query, findById, findAll } = /*#__PURE__*/ defineEars<{ Memo: { text: string } }>();",
+      "import { defineEars, type UntypedSchema } from '@apackdev/ears';",
+      "export const { query, newId } = /*#__PURE__*/ defineEars<UntypedSchema & { shapes: { Memo: { text: string } } }>();",
     ].join('\n'));
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });

@@ -26,8 +26,8 @@ function fixture() {
   fs.outputFileSync(path.join(backup, 'media', 'asset'), 'candidate media');
   fs.writeJsonSync(path.join(backup, 'metadata.json'), { databases: ['lmdb'] });
   const store = {
-    paths: { primary, volatileBackup: path.join(root, 'volatile') },
-    copyTo: (_partition: string, dest: string) => fs.copy(primary, dest),
+    path: primary,
+    copyTo: (dest: string) => fs.copy(primary, dest),
     close: vi.fn(), reopen: vi.fn(),
   } as unknown as LmdbStore;
   return { root, primary, backup, media, store };
@@ -37,7 +37,7 @@ it('retains incumbent files through acceptance and restores them before rehydrat
   const { root, primary, backup, media, store } = fixture();
   const read = () => fs.readFileSync(path.join(primary, 'data.mdb'), 'utf8');
   const restored = vi.fn(async () => { expect(read()).toBe('incumbent'); });
-  await expect(importDatabase(store, backup, media, { log, restored, accept: async () => {
+  await expect(importDatabase({ lmdb: store }, backup, media, { log, restored, accept: async () => {
     expect(read()).toBe('candidate');
     const pending = fs.readdirSync(root).find(name => name.startsWith('.apack-import-'))!;
     expect(fs.readFileSync(path.join(root, pending, 'rollback/lmdb/data.mdb'), 'utf8')).toBe('incumbent');
@@ -53,7 +53,7 @@ it('preserves both failures and the durable recovery path if restored data canno
   const { root, backup, media, store } = fixture();
   let failure: unknown;
   try {
-    await importDatabase(store, backup, media, { log,
+    await importDatabase({ lmdb: store }, backup, media, { log,
       accept: async () => { throw new Error('candidate hydration'); },
       restored: async () => { throw new Error('incumbent hydration'); },
     });

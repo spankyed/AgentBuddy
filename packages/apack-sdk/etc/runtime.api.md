@@ -7,7 +7,6 @@
 import type { AnyActorRef } from 'xstate';
 import type { AnyExtension } from '@tiptap/vue-3';
 import type { AnyStateMachine } from 'xstate';
-import type { BaseEntity } from '@apackdev/ears';
 import type { Component } from 'vue';
 import type { DeepPartial } from 'ai';
 import { Ears } from '@apackdev/ears';
@@ -94,9 +93,9 @@ export interface HostRuntimeServices {
     filesystem: FilesystemService;
     inference: InferenceService;
     onboarding: OnboardingService;
+    runHistory: RunHistory;
     secrets: SecretsService;
     settings: SettingsAdmin;
-    traceStore: TraceStore;
 }
 
 // @internal
@@ -127,6 +126,7 @@ export interface PackRegistryView extends PackExtensionsView {
     help(): HelpCatalog;
     // (undocumented)
     onCatalogChanged(listener: () => void): () => void;
+    repository(name: string): unknown;
     // (undocumented)
     settingsCatalog(): SettingsCatalog;
     // (undocumented)

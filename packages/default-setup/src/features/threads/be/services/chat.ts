@@ -343,7 +343,7 @@ export function addMessagesToThread(params: {
  * const { id: threadId, shortCode, timestamp, status } = createThreadAndNotify({
  *   topic: 'Assistant Birth',
  *   instructions: 'Welcome!',
- *   role: EARS.RoleKind.Custom('assistant_birth'),
+ *   role: EARS.RoleKind.ASSISTANT_BIRTH,
  *   forcedMode: 'birth'
  * });
  */

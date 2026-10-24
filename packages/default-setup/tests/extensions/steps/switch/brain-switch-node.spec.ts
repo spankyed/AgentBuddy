@@ -11,7 +11,7 @@ import { importFlows, startApp, type FlowRun } from '@apackdev/testing/harness'
 import { on, transform } from '#generated/flow-helpers.ts'
 import { branch } from '#extensions/steps/switch/helpers.ts'
 import { repository } from '#generated/repository.ts'
-import { EARS, findWhere } from '#generated/ears.ts'
+import { EARS, query } from '#generated/ears.ts'
 import type { DSLStepNode } from '@apackdev/sdk/build'
 import type { Condition } from '#extensions/steps/switch/types.ts'
 
@@ -30,12 +30,12 @@ async function runCommand(flow: string, data: Record<string, unknown>): Promise<
   return app.runFlow(flow, { event: 'command', data })
 }
 
-const switchResult = (run: FlowRun) => run.steps.find((s) => s.label === 'Switch')?.nodeAttributes.result as Record<string, unknown>
+const switchResult = (run: FlowRun) => run.steps.find((s) => s.label === 'Switch')?.result as Record<string, unknown>
 const ranAfterSwitch = (run: FlowRun) => run.steps.filter((s) => s.label !== 'Switch').map((s) => s.label)
 
 /** Replaces the flow's switch conditions, as the flow editor can (code-mode predicates, none at all) */
 function setConditions(flowLabel: string, conditions: Condition[]): void {
-  const flowId = findWhere(EARS.Entity.Flow, 'label', flowLabel)[0].id
+  const flowId = query(EARS.Entity.Flow).where('label', flowLabel).pickAll()[0].id
   const node = repository.flowsQueries.flowNodes(flowId).find((n: { nodeType: string }) => n.nodeType === 'switch')!
   repository.flowsCommands.updateNode(node.id, { conditions })
 }
@@ -104,7 +104,7 @@ describe('switch step', () => {
 
       const switchStep = run.steps.find((s) => s.label === 'Switch')
       expect(switchStep?.status).toBe('failed')
-      expect(switchStep?.nodeAttributes.result).toEqual({
+      expect(switchStep?.result).toEqual({
         error: expect.objectContaining({ source: 'brain-switch', phase: 'switch.validate', message: expect.stringMatching(/no conditions/i) }),
       })
       expect(ranAfterSwitch(run)).toEqual([])

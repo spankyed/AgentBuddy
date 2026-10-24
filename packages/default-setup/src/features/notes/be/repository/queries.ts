@@ -1,18 +1,16 @@
-import { findById, findAll, query } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import { trash } from '@apackdev/sdk/repositories';
 
 import type { NoteDTO } from '../types.ts';
-import { REFERENCES } from '../types.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
 
 function toDTO(note: NoteEntity): NoteDTO {
   // Find parent: who CONTAINS this note?
-  const parents = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+  const parents = query.ids(note.id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
   const parentId = parents.length > 0 ? parents[0] : null;
 
   // Count children: what does this note CONTAIN?
-  const childCount = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().length;
+  const childCount = query.ids(note.id).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().length;
 
   return {
     id: note.id,
@@ -30,61 +28,48 @@ function toDTO(note: NoteEntity): NoteDTO {
     updatedAt: note.updatedAt,
     lastSeen: note.lastSeen ?? 0,
     favorite: note.favorite ?? false,
-    ...(note.deletedAt ? { deletedAt: note.deletedAt } : {}),
+    ...(note.trashedAt ? { trashedAt: note.trashedAt } : {}),
   };
 }
 
 export const noteQueries = {
-  byId: (id: EARS.EntityId) =>
-    findById<NoteEntity>(id),
+  byId: (id: EARS.EntityId): NoteEntity | undefined =>
+    query.ids(id).ofType(EARS.Entity.Note).pickOne() ?? undefined,
 
   byIdDTO: (id: EARS.EntityId): NoteDTO | undefined => {
-    const note = findById<NoteEntity>(id);
+    const note = query.ids(id).ofType(EARS.Entity.Note).pickOne();
     return note ? toDTO(note) : undefined;
   },
 
-  all: () =>
-    findAll<NoteEntity>(EARS.Entity.Note),
+  all: (): NoteEntity[] =>
+    query(EARS.Entity.Note).pickAll(),
 
   allDTOs: (): NoteDTO[] => {
-    const notes = findAll<NoteEntity>(EARS.Entity.Note);
+    const notes = query(EARS.Entity.Note).pickAll();
     return notes.map(toDTO);
   },
 
   children: (parentId: EARS.EntityId): NoteDTO[] => {
-    const childIds = query.ids(parentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    const childIds = query.ids(parentId).out(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     return childIds
-      .map(id => findById<NoteEntity>(id))
+      .map(id => query.ids(id).ofType(EARS.Entity.Note).pickOne())
       .filter((n): n is NoteEntity => n !== undefined)
       .map(toDTO);
   },
 
-  ancestorChain: (noteId: EARS.EntityId): NoteDTO[] => {
-    const chain: NoteDTO[] = [];
-    let currentId: EARS.EntityId | null = noteId;
-
-    while (currentId) {
-      const parents = query.ids(currentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
-      if (parents.length === 0) break;
-      currentId = parents[0];
-      const note = findById<NoteEntity>(currentId);
-      if (note) {
-        chain.unshift(toDTO(note));
-      } else {
-        break;
-      }
-    }
-
-    return chain;
-  },
+  /** The notes above this one, its root first */
+  ancestorChain: (noteId: EARS.EntityId): NoteDTO[] =>
+    query.ids(noteId).ancestors(EARS.RelKind.CONTAINS, EARS.Entity.Note).pickAll().reverse().map(toDTO),
 
   referencedBy: (noteId: EARS.EntityId): EARS.EntityId[] =>
-    query.ids(noteId).linksTo(REFERENCES, EARS.Entity.Note, false).ids(),
+    query.ids(noteId).in(EARS.RelKind.REFERENCES, EARS.Entity.Note).ids(),
 
-  trashedDTOs: (): NoteDTO[] => trash.list<NoteEntity>(EARS.Entity.Note).map(toDTO),
+  trashedDTOs: (): NoteDTO[] => (query.trashed(EARS.Entity.Note).pickAll() as NoteEntity[]).map(toDTO),
 
   expiredSoftDeleted: (maxAgeDays: number): NoteEntity[] =>
-    trash.olderThan<NoteEntity>(EARS.Entity.Note, maxAgeDays * 24 * 60 * 60 * 1000),
+    query.trashed(EARS.Entity.Note)
+      .where('trashedAt', (at) => typeof at === 'number' && at < Date.now() - maxAgeDays * 24 * 60 * 60 * 1000)
+      .pickAll() as NoteEntity[],
 
   connectedData: () => ({
     notes: noteQueries.allDTOs(),

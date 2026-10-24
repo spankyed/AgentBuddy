@@ -1,9 +1,9 @@
-import { findWhere, query } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '#generated/repository.ts';
 import { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@apackdev/sdk/ears';
+import { untypedQuery } from '@apackdev/sdk/ears';
 
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@apackdev/sdk/utils'
 import { toDisplayName } from '@apackdev/sdk/utils'
@@ -23,9 +23,9 @@ interface ImportResult {
  * Find an existing note by title within a given parent (or at root level).
  */
 function findExistingNote(title: string, parentId: string | undefined): NoteEntity | undefined {
-  const candidates = findWhere<NoteEntity>(EARS.Entity.Note, 'title', title)
+  const candidates = query(EARS.Entity.Note).where('title', title).pickAll()
   return candidates.find(note => {
-    const parents = query.ids(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()
+    const parents = query.ids(note.id).in(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
     const noteParentId = parents.length > 0 ? parents[0] : undefined
     return noteParentId === parentId
   })
@@ -132,7 +132,7 @@ function importNoteNodes(
     }
 
     // Skip entity if its ID already exists in the database
-    if (node.id && hasIdCollision(node.id as EARS.EntityId)) {
+    if (node.id && untypedQuery.withTrashed.ids(node.id as EARS.EntityId).exists()) {
       result.errors.push(`Skipped note "${node.title}": entity ID already exists (${node.id})`)
       result.skipped++
       continue
@@ -279,7 +279,7 @@ function importMarkdownDir(
         }
 
         // Skip entity if its ID already exists in the database
-        if (oldId && hasIdCollision(oldId as EARS.EntityId)) {
+        if (oldId && untypedQuery.withTrashed.ids(oldId as EARS.EntityId).exists()) {
           result.errors.push(`Skipped note "${name}": entity ID already exists (${oldId})`)
           result.skipped++
           continue
@@ -329,7 +329,7 @@ function importMarkdownDir(
         name = parsed.title || name
 
         // Skip entity if its ID already exists in the database
-        if (parsed.id && hasIdCollision(parsed.id as EARS.EntityId)) {
+        if (parsed.id && untypedQuery.withTrashed.ids(parsed.id as EARS.EntityId).exists()) {
           result.errors.push(`Skipped note "${name}": entity ID already exists (${parsed.id})`)
           result.skipped++
           continue

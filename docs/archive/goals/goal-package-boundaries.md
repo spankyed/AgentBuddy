@@ -488,6 +488,23 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
     | batch of 1,000 `create`s | 3.58 ms | 3.70 ms (unchanged code) |
 
     The chained-steps case measured 24.0 ms in a single run of the fix; 3 runs of the fix before the stale-id check was added also give a median of 26.6 ms, so the check costs nothing when nothing was destroyed.
+
+    **Value index** (2026-10-23, after the goal; Apple silicon, Node 23.11, the median of 3 runs' means, both engines run on the same machine within the same hour): the engine's lazy multikey value index answers `where(k, v)` and `withRole` on a start from types, and short codes skip a taken number through it. Three cases were added (a unique-value lookup, `withRole`, short codes), and the hydration gives 1 entity in 100 a role and 1 in 1,000 a short code. "Before" is the engine one commit earlier (`ce5b6d350e`). This is the baseline from here on, with the same +10% tolerance:
+
+    | Case | Before | After |
+    |---|---|---|
+    | bulk load 50k entities, 200k attributes, 100k relations | 168.7 ms | 172.5 ms |
+    | `query('Task').where('status', …).pickAll()` | 20.3 ms | 16.1 ms |
+    | 1,000 `where` lookups by a unique value | 6,693 ms | 0.78 ms |
+    | 100 `withRole` lookups | 618 ms | 11.9 ms |
+    | 1,000 `query.ids(id)` lookups | 0.20 ms | 0.21 ms |
+    | `query('Task')` with 3 chained steps | 27.6 ms | 24.7 ms |
+    | relation traversal | 0.0027 ms | 0.0027 ms |
+    | 1,000 short codes | 1,416 ms | 0.26 ms |
+    | batch of 1,000 `create`s | 3.91 ms | 4.29 ms |
+    | `transact`: 1,000 `create`s as one unit | 5.34 ms | 6.31 ms |
+
+    The two write cases are over the tolerance, and investigated: the benchmark's write cases run after its query cases, so every `create` also keeps the indexes those built, `title`'s among them — a value per entity, which is what indexing a unique field costs. With the unique-value case left out, so that `title` is never indexed, they measure 4.10 ms (+5%) and 5.80 ms (+9%). An index is built for a kind only once something queries it by value, and the index keeps a value held once as its id rather than a set of one.
 - **Factory underneath, same behaviour:** convert each engine module to a factory closing over its state and compose `createEarsEngine` from them, keeping a temporary installed default so no caller changes. Pass cross-module dependencies (persistence, entity-type checker, relation index) through the factory.
 - **The app owns the instance:** the api's composition root creates the engine with the LMDB sinks and policy, keeps `admin` for hydration and `createHostRuntime`, and binds `query` as `HostRuntime.ears`. `appData`, `traceStore` and `@apackdev/ears/lmdb` take `admin`. The api's `scripts/db/*` and default-setup's database feature and tests move off imported write functions onto `admin`.
 - **Tooling and tests go explicit:** the CLI flow compiler and decompiler use a private engine per compile. SDK and ears tests and default-setup tests stop calling `clearMemory`/`initEARSRuntime` and get fresh engines. Run the default-setup, SDK and ears suites with file parallelism enabled, and keep it where it holds.

@@ -7,7 +7,7 @@ import { readInstalledContributionCatalog, disabledPackIds } from '@apackdev/hos
 import { createSettingsBackupValidator } from '@apackdev/host/settings';
 import type { EARS } from '@apackdev/ears';
 import { importDatabase, readBackup, type BackupLog } from '@apackdev/host/backup';
-import type { AppDatabase } from '@apackdev/host/database';
+import { openRunHistoryStore, type AppDatabase } from '@apackdev/host/database';
 import { createSecretsStore } from '@apackdev/host/secrets';
 import { _secretProviderLabel } from '@apackdev/sdk/services';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
@@ -28,7 +28,7 @@ const backupLog = (io: DbIo): BackupLog => ({
 /** Entities per type in the hydrated database, for the types that have some */
 function entityCounts(db: AppDatabase): Array<[string, number]> {
   return [...db.schema.getRegisteredEntityTypes()].sort()
-    .map((type) => [type, db.ears.getEntitiesOfType(type as EARS.Entity).length] as [string, number])
+    .map((type) => [type, db.admin.getEntitiesOfType(type as EARS.Entity).length] as [string, number])
     .filter(([, count]) => count > 0);
 }
 
@@ -79,9 +79,10 @@ export async function dbReset(args: string[], io: DbIo): Promise<void> {
   const done = await withDatabase(db, async () => {
     const secrets = secretsStoreAt(db);
     const keys = fs.existsSync(db.paths.secretsFile) ? keyLines(secrets) : [];
-    io.out(`${force ? 'Deleting' : 'Would delete'} the database (${db.paths.lmdb} and ${db.paths.volatileLmdb}):`);
+    io.out(`${force ? 'Deleting' : 'Would delete'} the database (${db.paths.lmdb}):`);
     countLines(entityCounts(db)).forEach((line) => io.out(line));
-    io.out(`  and the volatile partition (run history)`);
+    const hasHistory = fs.existsSync(db.paths.runHistory);
+    if (hasHistory) io.out(`${force ? 'Deleting' : 'Would delete'} the run history (${db.paths.runHistory})`);
     if (keepKeys) {
       io.out(`Keeping ${keys.length} stored API key(s) (--keep-keys)`);
     } else {
@@ -95,6 +96,8 @@ export async function dbReset(args: string[], io: DbIo): Promise<void> {
     }
     db.admin.clear();
     await db.store.reset();
+    // The write lock is held and no app runs on the data dir, so nothing has the run history open
+    if (hasHistory) fs.rmSync(db.paths.runHistory, { recursive: true, force: true });
     if (!keepKeys) secrets.clearAll();
     return '\nReset. apack creates its default data on its next start.';
   });
@@ -123,7 +126,8 @@ export interface SettingsRow {
 }
 
 function describeSettingsRow(db: AppDatabase, id: EARS.EntityId): SettingsRow {
-  const attributes = db.ears.getAll(id);
+  // A listed Settings row is in the engine
+  const attributes = db.ears.getRow(id)!;
   const data = attributes.data;
   return {
     id,
@@ -140,7 +144,7 @@ export async function dbClearSettings(args: string[], io: DbIo): Promise<void> {
   // Without --force nothing is destroyed, so the database opens read-only
   const db = await openTarget(target, { write: force, command: 'clear-settings' }, io);
   const done = await withDatabase(db, () => {
-    const rows = db.ears.getEntitiesOfType(SETTINGS_ENTITY as EARS.Entity).map((id) => describeSettingsRow(db, id));
+    const rows = db.admin.getEntitiesOfType(SETTINGS_ENTITY as EARS.Entity).map((id) => describeSettingsRow(db, id));
     if (rows.length === 0) {
       io.out('No Settings rows: nothing to destroy.');
       return null;
@@ -214,7 +218,12 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
     }
     // Its progress lines go to stderr with everything else that isn't the result, so `apack db import > file` holds
     // only what the command was asked for
-    await importDatabase(db.store, backupDir, db.paths.media, { skipUnknownDatabases: skipUnknown, log: backupLog(io), validate });
+    const runHistory = openRunHistoryStore(db.paths.runHistory);
+    try {
+      await importDatabase({ lmdb: db.store, runHistory }, backupDir, db.paths.media, { skipUnknownDatabases: skipUnknown, log: backupLog(io), validate });
+    } finally {
+      runHistory.close();
+    }
     return '\nImported.';
   });
   if (done) io.out(done);

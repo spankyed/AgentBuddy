@@ -10,7 +10,8 @@ export interface MemoNoteDTO {
 }
 
 export function addMemoNote(text: string): MemoNoteDTO | null {
-  const id = untypedCreate('Note').setMany({ title: text, content: '', noteType: 'document' }).id();
+  // A row holds every field its type requires, a dependency's type included
+  const id = untypedCreate('Note', { title: text, content: '', noteType: 'document', icon: null, completed: false, hideCompletedChildren: false, displayOrder: 0, lastSeen: 0 }).id();
   const note = services.repository.noteQueries.byIdDTO(id);
   return note ? { id: note.id, title: note.title } : null;
 }

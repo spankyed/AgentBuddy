@@ -13,7 +13,7 @@ export type FlowTriggerNode = {
 export interface TriggerDedupeWarning {
   kind: 'duplicate-track-key';
   flowId: EARS.EntityId;
-  flowTNodeId: EARS.EntityId;
+  flowRunNodeId: EARS.EntityId;
   eventType?: string;
   label?: string;
   triggerType: string;
@@ -24,14 +24,14 @@ export interface TriggerDedupeWarning {
 
 export function dedupeMatchingTriggerNodes(
   nodes: FlowTriggerNode[],
-  details: { flowId: EARS.EntityId; flowTNodeId: EARS.EntityId; eventType: string },
+  details: { flowId: EARS.EntityId; flowRunNodeId: EARS.EntityId; eventType: string },
 ): { nodes: FlowTriggerNode[]; warnings: TriggerDedupeWarning[] } {
   return dedupeTriggerNodes(nodes, details);
 }
 
 export function dedupeTriggerNodes(
   nodes: FlowTriggerNode[],
-  details: { flowId: EARS.EntityId; flowTNodeId: EARS.EntityId; eventType?: string },
+  details: { flowId: EARS.EntityId; flowRunNodeId: EARS.EntityId; eventType?: string },
 ): { nodes: FlowTriggerNode[]; warnings: TriggerDedupeWarning[] } {
   const byTrackKey = new Map<string, FlowTriggerNode>();
   const skippedByTrackKey = new Map<string, FlowTriggerNode[]>();
@@ -60,7 +60,7 @@ export function dedupeTriggerNodes(
     return {
       kind: 'duplicate-track-key',
       flowId: details.flowId,
-      flowTNodeId: details.flowTNodeId,
+      flowRunNodeId: details.flowRunNodeId,
       eventType: details.eventType ?? retained.eventType,
       label: retained.label,
       triggerType: retained.triggerType,

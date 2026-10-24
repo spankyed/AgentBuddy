@@ -12,10 +12,11 @@ import { create, write } from '#generated/ears.ts';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@apackdev/sdk/ears';
+import { untypedQuery } from '@apackdev/sdk/ears';
 import { restoreJsonMediaRefs } from '@apackdev/sdk/utils'
 import { repository } from '#generated/repository.ts';
 import type { ExportedThreadsData } from './export-types.ts'
+import { ThreadRelations, type ThreadLinkRelation } from './types.ts'
 
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
@@ -73,7 +74,7 @@ export function importThreads(importDir: string): ImportResult {
       const tags = thread.tags.filter(t => validTags.has(t))
 
       // Skip entity if its ID already exists in the database
-      if (hasIdCollision(thread.id as EARS.EntityId)) {
+      if (untypedQuery.withTrashed.ids(thread.id as EARS.EntityId).exists()) {
         result.errors.push(`Skipped thread "${thread.topic}": entity ID already exists (${thread.id})`)
         result.skipped++
         continue
@@ -119,11 +120,7 @@ export function importThreads(importDir: string): ImportResult {
       // Create messages with full fields
       let lastMessageTimestamp = 0
       for (const msg of thread.messages) {
-        const messageTx = create(EARS.Entity.Message, { createdAt: msg.timestamp })
-          .set('text', msg.text)
-          .set('timestamp', msg.timestamp)
-          .set('sender', msg.sender)
-          .set('updatedAt', msg.timestamp)
+        const messageTx = create(EARS.Entity.Message, { text: msg.text, timestamp: msg.timestamp, sender: msg.sender, createdAt: msg.timestamp })
 
         if (msg.responseTimestamp) messageTx.set('responseTimestamp', msg.responseTimestamp)
         if (msg.blocks) messageTx.set('blocks', msg.blocks)
@@ -215,9 +212,14 @@ export function importThreads(importDir: string): ImportResult {
     const sourceId = shortCodeMap.get(thread.shortCode)
     if (!sourceId) continue
 
-    const linkedThreads: { id: string; relation: string }[] = []
+    const linkedThreads: { id: string; relation: ThreadLinkRelation }[] = []
 
     for (const link of thread.linkedThreads) {
+      // A file is data: its relation is checked here, where the type can't be
+      if (!(ThreadRelations as readonly string[]).includes(link.relation)) {
+        result.errors.push(`Thread "${thread.topic}": "${link.relation}" isn't a kind of thread link (${ThreadRelations.join(', ')})`)
+        continue
+      }
       const targetId = shortCodeMap.get(link.shortCode)
       if (!targetId) {
         result.errors.push(`Thread "${thread.topic}": linked thread with shortCode "${link.shortCode}" not found in import`)

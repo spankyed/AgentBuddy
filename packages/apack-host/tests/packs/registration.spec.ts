@@ -3,7 +3,8 @@ import { _createPackServices } from '@apackdev/sdk/services';
 import { createSettingsStore, createSettingsService } from '../../src/features/settings/be/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine } from '@apackdev/ears';
-import { _bindEars, boundEars, repository } from '@apackdev/sdk/ears';
+import { _bindEars, boundEars } from '@apackdev/sdk/ears';
+import { repository } from '@apackdev/sdk/services';
 import { getSettingsCatalog, type PackFeatureSystem, type PackRegistration } from '@apackdev/sdk/framework';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
@@ -18,7 +19,7 @@ import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 const registry = createNativePackTestRegistry();
 startTestRuntime({ packs: registry });
 const {
-  getPackRegistration, getRegisteredEntityTypes, getRegisteredServices,
+  getPackRegistration, getRegisteredEntityTypes, getRegisteredRoles, getRegisteredServices,
   registerPack, systemIds, surfaceIds, unregisterPack,
 } = registry;
 
@@ -60,51 +61,41 @@ describe('registerPack services', () => {
 });
 
 describe('registerPack repositories', () => {
-  const testEngine = boundEars();
-  afterEach(() => { _bindEars(testEngine); });
-
-  it("registers a pack's repositories with the installed engine (the app's), where repository and services read them", () => {
-    const engine = createEarsEngine({ isEntityType: () => false });
-    _bindEars(engine);
+  it("holds a pack's repositories, where repository and services read them", () => {
     const noteQueries = { all: () => [] };
     registerPack({ id: 'repo-pack', repositories: { noteQueries } });
     registered.push('repo-pack');
-    expect(engine.repository.noteQueries).toBe(noteQueries);
+    expect(registry.repository('noteQueries')).toBe(noteQueries);
     expect(repository.noteQueries).toBe(noteQueries);
-    expect(engine.admin.repositories()).toEqual({ noteQueries });
   });
 
   it('removes them when the pack is unregistered', () => {
-    const engine = createEarsEngine({ isEntityType: () => false });
-    _bindEars(engine);
     registerPack({ id: 'repo-pack', repositories: { noteQueries: {} } });
 
     unregisterPack('repo-pack');
 
-    expect(engine.admin.repositories()).toEqual({});
+    expect(registry.repository('noteQueries')).toBeUndefined();
+    expect(() => repository.noteQueries).toThrow('"noteQueries" is not registered');
   });
 
   it('rejects a repository name another pack registered, keeping that pack\'s', () => {
-    const engine = createEarsEngine({ isEntityType: () => false });
-    _bindEars(engine);
     const theirs = { name: 'theirs' };
     registerPack({ id: 'first-pack', repositories: { settingsQueries: theirs } });
     registered.push('first-pack');
 
     expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {}, settingsQueries: {} } }))
       .toThrow(/"settingsQueries"[\s\S]*"second-pack"[\s\S]*"first-pack"/);
-    expect(engine.admin.repositories()).toEqual({ settingsQueries: theirs });
+    expect(registry.repository('settingsQueries')).toBe(theirs);
+    expect(registry.repository('memoQueries')).toBeUndefined();
   });
 
-  it("removes a pack's repositories when a later part of its registration is refused", () => {
-    const engine = createEarsEngine({ isEntityType: () => false });
-    _bindEars(engine);
+  it("holds none of a pack's repositories when a later part of its registration is refused", () => {
     registerPack({ id: 'first-pack', features: { chat: { designation: 'standup' } } } as unknown as PackRegistration);
     registered.push('first-pack');
 
     expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {} }, features: { chat: { designation: 'standup' } } } as unknown as PackRegistration))
       .toThrow('Designation collision');
-    expect(engine.admin.repositories()).toEqual({});
+    expect(registry.repository('memoQueries')).toBeUndefined();
   });
 });
 
@@ -178,14 +169,22 @@ describe('registered addresses', () => {
 });
 
 describe('registerPack entities', () => {
-  const registerEntities = (id: string, entities: Record<string, string>, relKinds: Record<string, string> = {}) => {
-    registerPack({ id, ears: { entities, relKinds } } as unknown as PackRegistration);
+  const registerEntities = (id: string, entities: Record<string, string>, relKinds: Record<string, string> = {}, roles: Record<string, string> = {}) => {
+    registerPack({ id, ears: { entities, relKinds, roles } } as unknown as PackRegistration);
     registered.push(id);
   };
 
   it('rejects an entity type another pack registered', () => {
     registerEntities('first-pack', { Memo: 'Memo' });
     expect(() => registerEntities('second-pack', { Memo: 'Memo' })).toThrow('EARS collision: entity type "Memo" — pack "second-pack" vs "first-pack"');
+  });
+
+  it('rejects a role another pack registered, and refuses one the SDK declares', () => {
+    registerEntities('first-pack', {}, {}, { STARRED: 'starred' });
+    expect(getRegisteredRoles()).toContain('starred');
+    expect(() => registerEntities('second-pack', {}, {}, { STARRED: 'starred' })).toThrow('EARS collision: role "STARRED": "starred" — pack "second-pack" vs "first-pack"');
+    expect(() => registerEntities('second-pack', {}, {}, { ROOT_FLOW: 'root_flow' })).toThrow('root_flow');
+    expect(getPackRegistration('second-pack')).toBeNull();
   });
 
   it("rejects a relation kind another pack registered, by its name or its value", () => {
@@ -238,7 +237,7 @@ describe('registerPack feature settings', () => {
   const memos = { surface: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
 
   it("rejects invalid feature defaults, registering none of the pack", () => {
-    const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: {} } };
+    const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {}, roles: {} }, contentWriters: { Memo: {} } };
     const invalid = { ...memos, settings: { defaults: { hidden: true }, schema: {"type":"object","properties":{"hidden":{"type":"string"}},"required":["hidden"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} } };
     expect(() => registerPack({ id: 'bad-pack', ...hooks, features: { memos: invalid } } as unknown as PackRegistration))
       .toThrow(/defaults/);
@@ -252,12 +251,12 @@ describe('registerPack content writers', () => {
   const memoHooks = { find: () => undefined };
 
   it('rejects hooks for an entity another pack owns, preserving existing lookups', () => {
-    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: memoHooks } } as unknown as PackRegistration);
+    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {}, roles: {} }, contentWriters: { Memo: memoHooks } } as unknown as PackRegistration);
     registered.push('memo-pack');
 
     const other = {
       id: 'other-pack',
-      ears: { entities: { Card: 'Card' }, relKinds: {} },
+      ears: { entities: { Card: 'Card' }, relKinds: {}, roles: {} },
       artifacts: [{ type: 'card-view' }],
       contentWriters: { Card: {}, Memo: {} },
     };
@@ -271,12 +270,12 @@ describe('registerPack content writers', () => {
   });
 
   it("drops a pack's hooks when it unregisters, freeing the entity for another pack", () => {
-    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: memoHooks } } as unknown as PackRegistration);
+    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {}, roles: {} }, contentWriters: { Memo: memoHooks } } as unknown as PackRegistration);
     unregisterPack('memo-pack');
     expect(_contentWriterRegistry.get('Memo')).toBeUndefined();
 
     const theirs = {};
-    registerPack({ id: 'other-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: theirs } } as unknown as PackRegistration);
+    registerPack({ id: 'other-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {}, roles: {} }, contentWriters: { Memo: theirs } } as unknown as PackRegistration);
     registered.push('other-pack');
     expect(_contentWriterRegistry.get('Memo')).toBe(theirs);
   });
@@ -375,7 +374,7 @@ describe('runtime settings admission', () => {
 
 describe('registered settings authority', () => {
   const previousEngine = boundEars();
-  beforeEach(() => { _bindEars(createEarsEngine({ isEntityType: name => name === 'Settings' })); });
+  beforeEach(() => { _bindEars(createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: name => name === 'Settings' })); });
   afterEach(() => { _bindEars(previousEngine); });
 
   it('binds the accepted pack and revokes retained access when it unregisters', () => {

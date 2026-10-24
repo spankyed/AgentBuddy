@@ -7,7 +7,6 @@
 import type { AnyActorRef } from 'xstate';
 import type { AnyExtension } from '@tiptap/vue-3';
 import type { AnyStateMachine } from 'xstate';
-import type { BaseEntity } from '@apackdev/ears';
 import type { Component } from 'vue';
 import type { DeepPartial } from 'ai';
 import { EARS as EARS_2 } from '@apackdev/ears';
@@ -22,8 +21,10 @@ import type { InferSchema } from 'ai';
 import type { JSONSchema7 } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import { RecordStore } from '@apackdev/ears';
 import type { Ref } from 'vue';
 import type { rerank } from 'ai';
+import { RowRules } from '@apackdev/ears';
 import type { SnapshotFrom } from 'xstate';
 import type { streamText } from 'ai';
 import type { ToolLoopAgent } from 'ai';
@@ -143,6 +144,9 @@ export interface FakeTextCall {
 export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {
 }
 
+// @internal
+export function _memoryRunHistoryStore(): RecordStore<RunNode>;
+
 // @public
 export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): NativePackDeclaration;
 
@@ -182,8 +186,10 @@ export interface TestPacks {
     readonly designations: Map<string, string>;
     readonly earsEntities: Map<string, string>;
     readonly earsRelKinds: Map<string, string>;
+    readonly earsRoles: Map<string, string>;
     // (undocumented)
     readonly help: Map<string, HelpArticle[]>;
+    readonly repositories: Map<string, unknown>;
     readonly services: Map<string, unknown>;
     readonly stepDeclarations: Map<string, StepCatalogEntry>;
     readonly steps: Map<string, StepDefinition>;
@@ -206,11 +212,17 @@ export interface TestRootEvents extends RootEvents {
 export const testRootEvents: TestRootEvents;
 
 // @public
+export const testRunHistory: () => RunHistory;
+
+// @public
 export interface TestRuntimeStartOptions {
     appVersion?: string;
     entityTypes?: readonly string[];
     onboarding?: OnboardingService;
     packs?: PackRegistryView;
+    relationKinds?: readonly string[];
+    roles?: readonly string[];
+    rowRules?: Readonly<Record<string, RowRules>>;
     serviceOverrides?: ReadonlyMap<string, unknown>;
     settings?: SettingsAdmin;
 }

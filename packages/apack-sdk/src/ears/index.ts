@@ -40,12 +40,29 @@ export function boundEars(): Ears {
 const onBound = <K extends keyof Ears>(name: K) =>
   ((...args: unknown[]) => (boundEars()[name] as (...a: unknown[]) => unknown)(...args)) as unknown as Ears[K];
 
-/** The unchecked query entry points on the bound engine: `untypedQuery(type)`, `.ids(ids)`, `.all()` */
+/**
+ * The unchecked query entry points on the bound engine: `untypedQuery(type)`, `.ids(ids)`, `.all()`, which reach no
+ * entity in the trash, `.withTrashed` reaching those too, and `.trashed` only those
+ */
 export const untypedQuery: Query = Object.assign(
   ((start: unknown) => boundEars().query(start as never)) as unknown as Query,
   {
     ids: ((ids) => boundEars().query.ids(ids)) as Query['ids'],
     all: (() => boundEars().query.all()) as Query['all'],
+    withTrashed: Object.assign(
+      ((start: unknown) => boundEars().query.withTrashed(start as never)) as unknown as Query['withTrashed'],
+      {
+        ids: ((ids) => boundEars().query.withTrashed.ids(ids)) as Query['ids'],
+        all: (() => boundEars().query.withTrashed.all()) as Query['all'],
+      },
+    ),
+    trashed: Object.assign(
+      ((start: unknown) => boundEars().query.trashed(start as never)) as unknown as Query['trashed'],
+      {
+        ids: ((ids) => boundEars().query.trashed.ids(ids)) as Query['ids'],
+        all: (() => boundEars().query.trashed.all()) as Query['all'],
+      },
+    ),
   },
 );
 /** `create` on the bound engine, unchecked against any pack's shapes */
@@ -58,45 +75,9 @@ export const untypedWrite: Write = onBound('write');
 export const transact = onBound('transact');
 export const isEntityType = onBound('isEntityType');
 export const updateRelation = onBound('updateRelation');
-export const removeRelationById = onBound('removeRelationById');
-export const createRelation = onBound('createRelation');
-export const removeRelation = onBound('removeRelation');
 export const findRelations = onBound('findRelations');
-export const getRelationStats = onBound('getRelationStats');
-export const destroyEntity = onBound('destroyEntity');
-export const getAll = onBound('getAll');
+export const getRow = onBound('getRow');
 export const getRoles = onBound('getRoles');
-export const grantRole = onBound('grantRole');
-export const revokeRole = onBound('revokeRole');
-export const exists = onBound('exists');
-export const countEntities = onBound('countEntities');
-export const hasIdCollision = onBound('hasIdCollision');
-export const getAllEntities = onBound('getAllEntities');
-export const getEntitiesOfType = onBound('getEntitiesOfType');
-export const getAllEntityTypes = onBound('getAllEntityTypes');
-export const getAllAttributeKinds = onBound('getAllAttributeKinds');
-export const getAllRelationKinds = onBound('getAllRelationKinds');
-export const getAttributeStats = onBound('getAttributeStats');
 export const getSchemaStats = onBound('getSchemaStats');
-export const findEntitiesByAttribute = onBound('findEntitiesByAttribute');
-export const findEntitiesByRelationTo = onBound('findEntitiesByRelationTo');
-export const findEntitiesInRelationTo = onBound('findEntitiesInRelationTo');
-export const generateShortCode = onBound('generateShortCode');
-export const generateLabelWithCount = onBound('generateLabelWithCount');
-export const spawn = onBound('spawn');
-export const descendants = onBound('descendants');
-export const ancestors = onBound('ancestors');
-export const rootParent = onBound('rootParent');
-export const linkSymmetric = onBound('linkSymmetric');
+export const nextLabel = onBound('nextLabel');
 export const wouldCreateCycle = onBound('wouldCreateCycle');
-export const topoSort = onBound('topoSort');
-export const shortestPath = onBound('shortestPath');
-export const leaves = onBound('leaves');
-export const lowestCommonAncestor = onBound('lowestCommonAncestor');
-export const registerRepository = onBound('registerRepository');
-export const unregisterRepository = onBound('unregisterRepository');
-
-/** The bound engine's registered repositories; reading one that isn't registered throws */
-export const repository: Record<string, unknown> = new Proxy({}, {
-  get: (_target, name) => (typeof name === 'string' ? boundEars().repository[name] : undefined),
-});

@@ -1,5 +1,5 @@
 // reportError and createLogger on the test host: what a system or step reports reaches the log, the
-// user and, for a step, its TNode.
+// user and, for a step, its RunNode.
 //
 // Its sends carry `via` and no `from`. A report is made on behalf of whoever called `reportError`, and what it is
 // told about that caller is a source (`'brain-llm'`, `'notes'`) — the same string its logger is named, and never a
@@ -7,9 +7,8 @@
 import * as os from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLogger, reportError, setDebugEnabled, type LogEvent } from '../../src/logger/index.ts';
-import { startTestRuntime, takeSystemErrors, testPacks, testRootEvents } from '../../src/testing/index.ts';
-import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
-import { untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
+import { startTestRuntime, takeSystemErrors, testPacks, testRootEvents, testRunHistory } from '../../src/testing/index.ts';
+import { RepositoryError, RepositoryErrorCode } from '../../src/repositories/repository-error.ts';
 import type { Message } from '../../src/events/index.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
@@ -43,24 +42,23 @@ afterEach(() => {
 });
 
 describe('reportError', () => {
-  const tNodeId = 'TNode-1' as EARS.EntityId;
-
-  it("with step context logs the error, sends it to the surface playing the brain role and records it on the step's TNode", () => {
+  it("with step context logs the error, sends it to the surface playing the brain role and records it on the step's run node", () => {
     const printed = vi.spyOn(console, 'error').mockImplementation(() => {});
     testPacks.designations.set('brain', 'default-setup/brain');
-    // The step's TNode, holding what the step ran with
-    untypedCreate('TNode', { id: tNodeId }).set('nodeAttributes', { input: 'hello' });
+    // The step's run node, holding what the step ran with
+    const history = testRunHistory();
+    const runNodeId = history.start({ kind: 'step', label: 'Step', stepNodeType: 'llm', input: { prompt: 'hello' } }).id;
     let returned: ReturnType<typeof reportError>;
     const { logs, toSurfaces, outgoing } = capture(() => {
       returned = reportError({
         error: new Error('model failed'),
         source: 'brain-llm',
-        step: { phase: 'llm.execute', tNodeId, nodeId: 'Node-1' as EARS.EntityId, nodeType: 'llm', eventType: 'user.message' },
+        step: { phase: 'llm.execute', runNodeId, nodeId: 'Node-1' as EARS.EntityId, nodeType: 'llm', eventType: 'user.message' },
       });
     });
 
     const { errorId, stack } = returned!;
-    expect(returned!).toMatchObject({ source: 'brain-llm', phase: 'llm.execute', tNodeId, message: 'model failed' });
+    expect(returned!).toMatchObject({ source: 'brain-llm', phase: 'llm.execute', runNodeId, message: 'model failed' });
     expect(logs).toEqual([expect.objectContaining({ level: 'error', source: 'step-runtime', message: 'model failed', stack })]);
     // A log event, printed once as every log event is; the flow shows it, so there's no system error
     expect(printed).toHaveBeenCalledTimes(1);
@@ -68,8 +66,8 @@ describe('reportError', () => {
     // so a drop names the step rather than nothing; there is no pack here to put in `from`.
     expect(toSurfaces).toEqual([{ to: 'default-setup/brain', call: expect.any(String), event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! }, via: 'brain-llm' }]);
     expect(outgoing).toEqual([]);
-    expect(untypedQuery.ids(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
-      input: 'hello',
+    expect(history.get(runNodeId)).toMatchObject({
+      input: { prompt: 'hello' },
       result: { error: { message: 'model failed', source: 'brain-llm', phase: 'llm.execute', errorId, stack } },
     });
     expect(takeSystemErrors()).toEqual([]);

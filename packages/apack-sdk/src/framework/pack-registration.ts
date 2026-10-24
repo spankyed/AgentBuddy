@@ -6,6 +6,7 @@
  */
 
 import type { AnyStateMachine } from 'xstate';
+import type { RowRules } from '@apackdev/ears';
 
 /** A versioned change: declared target/description with a checked executable function. */
 export interface PackMigration {
@@ -45,6 +46,12 @@ export interface PackLifecycleHooks {
 export interface PackEARS {
   entities: Record<string, string>;
   relKinds: Record<string, string>;
+  roles: Record<string, string>;
+  /**
+   * What each of the pack's shaped entities' created rows is held to, read off its shape: the fields the engine refuses
+   * a created row without, and the prefix it numbers a short code with; none when absent
+   */
+  rowRules?: Record<string, RowRules>;
 }
 
 /** A feature's backend system, which the app runs at the feature's ref, `<packId>/<featureId>` */

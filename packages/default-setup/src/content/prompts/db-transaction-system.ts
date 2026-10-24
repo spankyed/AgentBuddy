@@ -26,29 +26,25 @@ ${topology}
 GLOBALS:
 
 query(...)               query builder (read-only, for finding entities before mutating)
-create(type, opts?)   create a new entity of a type → write builder
-upsert(type, id)      the entity with this id, created as type when missing → write builder
+create(type, row)     create a new entity of a type with its row → write builder; a type with a
+                      numbered shortCode (Flow, Action, Prompt, Document, Thread) gets one when the row has none
+upsert(type, { id, ...row })  the entity with the row's id written with it, or created as type with it → write builder
 write(id)             an existing entity → write builder (throws when no entity has the id)
 EARS.Entity.*         entity type enum (e.g. EARS.Entity.Thread)
-EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains')
-getAll(id)            Record<string, any> — all attributes for a single entity
-getAllEntities()       string[] — all entity IDs in the database
+EARS.RelKind.*        relation kind constants (e.g. EARS.RelKind.CONTAINS = 'contains'); a kind not declared here is refused
+EARS.RoleKind.*       role constants (e.g. EARS.RoleKind.ROOT_FLOW = 'root_flow'); a role not declared here is refused
+getRow(id)            { id, entityType, ...attributes } for a single entity, or undefined
 getRoles(id)          string[] — roles on an entity
-destroyEntity(id)     delete an entity
-createEntityWithDefaults(type, attrs)   create with auto-generated fields
-updateEntity(id, attrs)                 update entity attributes
-createRelation(sourceId, kind, targetId)   create a relation
-removeRelation(sourceId, kind, targetId?)  remove matching relation(s)
-removeRelationById(relationId)             remove one relation by its own id
 
 QUERY API (query) — use to find entities before mutating:
 
   query(EARS.Entity.Thread)                          all of a type (a type name only, never an id)
   query.ids('Thread-1')  /  query.ids([id1, id2])        entities by id (absent ids are dropped)
   query.all()                                         every entity
-  .where('field', value)                           filter by attribute value
+  query.withTrashed(...) / query.trashed(...)         the same, reaching the trash too / only the trash
+  .where('field', value)                           filter by attribute value, or a list holding it
   .has('field')  /  .lacks('field')                filter by presence / absence
-  .linksTo('contains', EARS.Entity.Message)        follow outgoing relations
+  .out('contains', EARS.Entity.Message)        walk outgoing edges ( .in(...) walks incoming ones )
   .pick(['f1', 'f2'])     → Array<{ id, f1, f2 }>
   .pickAll()              → Array<{ id, ...allAttrs }>
   .pickOne(['f1'])        → { id, f1 } | null
@@ -60,21 +56,27 @@ QUERY API (query) — use to find entities before mutating:
 WRITE API (create / upsert / write):
 
   Start:
-    create(EARS.Entity.Thread)                     new entity, new id
-    create(EARS.Entity.Thread, { id, createdAt })  new entity with a given id and/or creation time
-    upsert(EARS.Entity.Thread, 'Thread-1')         get-or-create by id
+    create(EARS.Entity.Thread, { topic, ... })     new entity, new id, with its row
+    create(EARS.Entity.Thread, { id, createdAt, topic, ... })   the same with a given id and/or creation time
+    upsert(EARS.Entity.Thread, { id: 'Thread-1', topic, ... })  written, or created when no entity has the id
     write('Thread-1')                              existing entity
 
-  The database writes id, entityType, createdAt, role and relationDetails itself: never set them.
+  A created row holds every field its entity type requires (a Thread: topic, instructions, status, timestamp); a row
+  missing one is refused, and so is deleting one. Read getSchemaStats() for the fields an entity type's rows hold.
+  The database writes id, entityType, createdAt, updatedAt, role and trashedAt itself: never set them
+  with set — a created row may bring its id, createdAt and updatedAt.
+  Each attribute write stamps updatedAt; write(id, { touch: false }) writes without stamping it.
+  null is a stored value, undefined leaves a field alone in setMany, and .delete(key) removes a field.
+  An attribute holds one value; a list is one array value.
 
   Attributes (chainable):
     .set(key, value)                               set attribute (replaces existing)
     .setMany({ key1: val1, key2: val2 })           set several attributes
-    .add(key, value)                               append a value to a multi-valued attribute
+    .append(key, value)                            append an element to a list attribute
     .merge(key, value)                             merge into existing object
-    .delete(key)                                   remove attribute (every value)
-    .deleteAt(key, index)                          remove one value by index
-    .deleteValue(key, value)                       remove values equal to value
+    .delete(key)                                   remove the field
+    .removeAt(key, index)                          remove a list's element by index
+    .removeValue(key, value)                       remove a list's first element equal to value
 
   Relations (chainable):
     .link(EARS.RelKind.CONTAINS, targetId)         add relation
@@ -90,33 +92,32 @@ WRITE API (create / upsert / write):
     .grantExclusive(role, amongIds)                grant role, revoke it from the others in amongIds
 
   Lifecycle:
-    .destroy()                                     delete entity (not chainable)
+    .trash() / .restore()                          move to / out of the trash (queries skip trashed entities)
+    .destroy()                                     delete entity (not chainable); on a relation's id (from
+                                                   findRelations), remove that one relation
     .id()                                          get entity ID (terminal)
 
 PATTERNS:
 
 // Create a new entity with attributes
-const threadId = create(EARS.Entity.Thread)
-  .set('topic', 'New Discussion')
-  .set('status', 'active')
-  .id();
+const threadId = create(EARS.Entity.Thread, {
+  topic: 'New Discussion',
+  instructions: '',
+  status: 'active',
+  timestamp: Date.now(),
+}).id();
 return { created: threadId };
 
 // Update an existing entity
 const threadId = query(EARS.Entity.Thread).first();
 if (!threadId) return { updated: null };
 write(threadId)
-  .set('status', 'resolved')
-  .set('updatedAt', Date.now());
+  .set('status', 'resolved');
 return query.ids(threadId).pickAll();
 
 // Create entity with relations
-const flowId = create(EARS.Entity.Flow)
-  .setMany({ label: 'My Flow', description: 'A workflow' })
-  .id();
-const nodeId = create(EARS.Entity.Node)
-  .setMany({ type: 'action', label: 'Step 1' })
-  .id();
+const flowId = create(EARS.Entity.Flow, { shortCode: 'FLOW-9', label: 'My Flow', flowType: 'workflow', description: 'A workflow' }).id();
+const nodeId = create(EARS.Entity.Node, { nodeType: 'action', label: 'Step 1' }).id();
 write(flowId).link(EARS.RelKind.CONTAINS, nodeId);
 return { flowId, nodeId };
 
@@ -128,9 +129,10 @@ const ids = query(EARS.Entity.Thread)
 ids.forEach(id => write(id).destroy());
 return { deleted: ids.length };
 
-// Grant/revoke roles
-const noteId = query(EARS.Entity.Note).first();
-if (!noteId) return { noteId: null };
-write(noteId).grant('primary').revoke('inactive');
-return { noteId, roles: getRoles(noteId) };`;
+// Move a role: make another flow the root flow, taking the role from the one holding it
+const current = query.all().withRole(EARS.RoleKind.ROOT_FLOW).first();
+const next = query(EARS.Entity.Flow).ids().find((id) => id !== current);
+if (!next) return { moved: false };
+write(next).grantExclusive(EARS.RoleKind.ROOT_FLOW, query.all().withRole(EARS.RoleKind.ROOT_FLOW).ids());
+return { previous: current, current: next };`;
 }

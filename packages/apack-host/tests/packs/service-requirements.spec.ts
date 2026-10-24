@@ -14,7 +14,7 @@ const provider: PackManifest = { id: 'provider', name: 'Provider', version: '1.2
 function installed(manifest: PackManifest, enabled = true): PackCatalogEntry {
   return { dir: `/unavailable/${manifest.id}`, enabled, snapshot: {
     format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest,
-    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+    types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
   } };
 }
 function check(changes: Partial<PackCatalogSnapshot>, manifest = consumer, origin: 'installed' | 'source' = 'installed') {

@@ -1,4 +1,4 @@
-// What a step runs on is `{ ...params, ...mapped }` (`node-attribute-mappers.ts`), so the two can name the same
+// What a step runs on is `{ ...params, ...mapped }` (`step-input.ts`), so the two can name the same
 // field and the mapping wins. These pin what happens when the mapping's source resolves to nothing — the case
 // where "the mapping wins" is a question rather than an answer, since there is no mapped value to win with.
 //
@@ -8,7 +8,7 @@ import { importFlows, startApp } from '@apackdev/testing/harness'
 import { entry, fire, keepAlive, on } from '#generated/flow-helpers.ts'
 import { untypedQuery } from '@apackdev/sdk/ears'
 
-const notes = () => untypedQuery('Note').pickAll() as Array<Record<string, unknown>>
+const notes = () => untypedQuery('SearchIndex').pickAll() as Array<Record<string, unknown>>
 
 /** A create step that sets `content` literally *and* maps it, so the two overlap on one field */
 async function runWithBoth(map: Record<string, unknown>) {
@@ -18,7 +18,7 @@ async function runWithBoth(map: Record<string, unknown>) {
       tracks: [
         entry([keepAlive()]),
         on('go', [[
-          { type: 'create', entity: 'Note', label: 'mk', params: { content: 'the literal' }, map },
+          { type: 'create', entity: 'SearchIndex', label: 'mk', params: { content: 'the literal' }, map },
         ]]),
       ],
     },
@@ -71,8 +71,8 @@ describe('a fire step whose payload mapping resolves to nothing', () => {
     const app = await startApp({ systems: ['brain'] })
     await app.runFlow('Outer', { event: 'go', data: { present: 'from the event' } })
     await app.settle()
-    const step = app.flowTrace('Outer').find((s) => s.label === 'ping')
-    return (step?.nodeAttributes.result as { payload?: unknown } | undefined)?.payload
+    const step = app.flowSteps('Outer').find((s) => s.label === 'ping')
+    return (step?.result as { payload?: unknown } | undefined)?.payload
   }
 
   it('fires the payload set beside the mapping', async () => {

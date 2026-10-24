@@ -194,6 +194,7 @@
         <span v-if="pack.features.length">{{ pack.features.length }} features</span>
         <span v-if="entityEntries.length">{{ entityEntries.length }} entities</span>
         <span v-if="relKindEntries.length">{{ relKindEntries.length }} relations</span>
+        <span v-if="roleEntries.length">{{ roleEntries.length }} roles</span>
         <span v-if="pack.steps.length">{{ pack.steps.length }} steps</span>
         <span v-if="pack.artifacts.length">{{ pack.artifacts.length }} artifacts</span>
         <span v-if="pack.blocks.length">{{ pack.blocks.length }} blocks</span>
@@ -319,6 +320,18 @@
         </div>
       </section>
 
+      <!-- Roles -->
+      <section v-if="roleEntries.length > 0">
+        <SectionHeader label="Roles" :count="roleEntries.length" />
+        <div class="flex flex-wrap gap-1.5">
+          <span
+            v-for="[, value] in roleEntries"
+            :key="value"
+            class="chip"
+          >{{ value }}</span>
+        </div>
+      </section>
+
       <!-- Steps -->
       <section v-if="pack.steps.length > 0">
         <SectionHeader label="Steps" :count="pack.steps.length" />
@@ -404,6 +417,7 @@ defineEmits<{
 
 const entityEntries = computed(() => Object.entries(props.pack.entities));
 const relKindEntries = computed(() => Object.entries(props.pack.relKinds));
+const roleEntries = computed(() => Object.entries(props.pack.roles));
 
 const featureServiceNames = computed(() => {
   const names = new Set<string>();

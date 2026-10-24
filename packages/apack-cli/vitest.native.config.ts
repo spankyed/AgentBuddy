@@ -13,10 +13,10 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    // Enormous (`SIZE_MS`): a native case composes cold compiler captures, builds and watcher cycles. A case
+    // Enormous (`SIZE_MS` × `DEADLINE_FACTOR`): a native case composes cold compiler captures, builds and watcher cycles. A case
     // that needs longer still declares a reviewed per-test budget.
-    testTimeout: 300_000,
-    hookTimeout: 300_000,
+    testTimeout: 600_000,
+    hookTimeout: 600_000,
     setupFiles: ['./tests/_support/turn-event-loop.ts', './tests/_support/compiler-store.ts'],
     globalSetup: ['./tests/_support/compiler-store-run.ts'],
     include: ['tests/**/*.native.spec.ts'],

@@ -45,7 +45,7 @@ import { definePackTestConfig } from '@apackdev/testing/vitest';
 export default definePackTestConfig({ dataDirPrefix: 'harness-setup-' });`);
   write(root, 'tests/setup.ts', `
 import { setupPackTests } from '@apackdev/testing/harness';
-await setupPackTests({ contentRuntime: { id: 'data-pack', declarationRevision: ${JSON.stringify(_declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))))}, entities: {}, relKinds: {}, repositories: {}, contentWriters: {} } });`);
+await setupPackTests({ contentRuntime: { id: 'data-pack', declarationRevision: ${JSON.stringify(_declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))))}, entities: {}, relKinds: {}, roles: {}, repositories: {}, contentWriters: {} } });`);
   write(root, 'tests/pack.spec.ts', spec);
   return root;
 }

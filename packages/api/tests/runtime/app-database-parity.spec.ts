@@ -26,12 +26,13 @@ const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
 /** Every entity with its attributes and roles, and every relation, in a stable order */
-function snapshot(query: Ears) {
-  const ids = [...query.getAllEntities()].sort();
+function snapshot(ears: Ears) {
+  // Every entity, the trash included, and every relation's row
+  const ids = [...ears.query.withTrashed.all().ids(), ...ears.findRelations().map((r) => r.id)].sort();
   return {
-    entities: ids.map((id) => ({ id, attributes: query.getAll(id), roles: [...query.getRoles(id)].sort() })),
-    relations: query.findRelations()
-      .map(({ id, relationType, sourceEntity, targetEntity, info }) => ({ id, relationType, sourceEntity, targetEntity, info }))
+    entities: ids.map((id) => ({ id, attributes: ears.getRow(id), roles: [...ears.getRoles(id)].sort() })),
+    relations: ears.findRelations()
+      .map(({ id, kind, source, target, info }) => ({ id, kind, source, target, info }))
       .sort((a, b) => a.id.localeCompare(b.id)),
   };
 }
@@ -61,11 +62,11 @@ function closeApi(app: Awaited<ReturnType<typeof bootApi>>) {
  */
 async function installExternalPack(id: string, entityType: string): Promise<void> {
   const source = fs.mkdtempSync(path.join(os.tmpdir(), `${id}-`));
-  const ears = { entities: { [entityType]: entityType }, relKinds: {} };
+  const ears = { entities: { [entityType]: entityType }, relKinds: {}, roles: {} };
   fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', data: { entities: { [entityType]: null }, relations: [] }, }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {} }));
   fs.writeFileSync(
     path.join(source, 'dist', 'runtime', 'index.cjs'),
     (`module.exports = { registration: { id: ${JSON.stringify(id)}, ears: ${JSON.stringify(ears)} } };`) + `
@@ -78,13 +79,11 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 
 describe('a data dir opened by the API and by openAppDatabase', () => {
   it('hydrates to the same entities, relations and roles', async () => {
-    // A first run content the app's data; the user adds a note with a role and a relation, and a run leaves a trace in
-    // the volatile partition, which neither hydrates
+    // A first run applies the app's content; the user adds a note with a role and a relation
     const first = await bootApi();
     startPacks(first.packs);
-    untypedCreate('Note', { id: 'Note-child' }).set('title', 'child');
-    untypedCreate('Note', { id: 'Note-parity' }).set('title', 'mine').grant('pinned').link('parent_of', 'Note-child');
-    untypedCreate('TNode', { id: 'TNode-parity' }).set('status', 'done');
+    untypedCreate('Note', { id: 'Note-child', title: 'child', content: '', icon: null, noteType: 'document', completed: false, hideCompletedChildren: false, displayOrder: 0, lastSeen: 0 });
+    untypedCreate('Note', { id: 'Note-parity', title: 'mine', content: '', icon: null, noteType: 'document', completed: false, hideCompletedChildren: false, displayOrder: 0, lastSeen: 0 }).grant('assistant_birth').link('parent_of', 'Note-child');
     closeApi(first);
 
     const api = await bootApi();
@@ -99,12 +98,9 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     expect(fromApi.entities.length).toBeGreaterThan(10);
     expect(fromApi.relations.length).toBeGreaterThan(0);
     expect(fromApi.entities.some(({ roles }) => roles.length > 0)).toBe(true);
-    expect(fromApi.entities.find(({ id }) => id === 'Note-parity')).toMatchObject({ roles: ['pinned'] });
-    expect(fromApi.entities.find(({ id }) => id === 'TNode-parity')).toBeUndefined();
+    expect(fromApi.entities.find(({ id }) => id === 'Note-parity')).toMatchObject({ roles: ['assistant_birth'] });
     expect(fromTool).toEqual(fromApi);
-    // The tool knows the built-in pack's entity types. Which partition each lands in is not compared here:
-    // both sides call the one `appPartitionPolicy()`, so an equality between them cannot fail —
-    // tests/database/partition-policy.spec.ts is where that routing is asserted
+    // The tool knows the built-in pack's entity types
     expect(db.schema.getRegisteredEntityTypes()).toEqual(types);
   });
 });
@@ -112,23 +108,19 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
 // The tool writes through the schema it reconstructs, so a row it creates has to land in the partition the API reads
 // it from — the direction a schema drift would corrupt
 describe('what the tool writes', () => {
-  it('lands where the API reads it, the excluded types in the volatile partition', async () => {
+  it('lands where the API reads it', async () => {
     const booted = await bootApi();
     closeApi(booted);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, log: () => {} });
-    untypedCreate('Note', { id: 'Note-tool' }).set('title', 'from the tool').grant('pinned');
-    untypedCreate('TNode', { id: 'TNode-tool' }).set('status', 'done');
+    untypedCreate('Note', { id: 'Note-tool' }).set('title', 'from the tool').grant('assistant_birth');
     db.close();
 
     const api = await bootApi();
     try {
       // The note is in the data the API hydrates, with its role
-      expect(api.engine.getAttr('Note-tool', 'title')).toBe('from the tool');
-      expect([...api.engine.getRoles('Note-tool')]).toEqual(['pinned']);
-      // The run history isn't hydrated, and is in the partition the app keeps it in
-      expect(api.engine.getAttr('TNode-tool', 'status')).toBeNull();
-      expect(api.store.read('volatileBackup').getFirstAttr('status', 'TNode-tool')).toBe('done');
+      expect(api.engine.getRow('Note-tool')?.title).toBe('from the tool');
+      expect([...api.engine.getRoles('Note-tool')]).toEqual(['assistant_birth']);
     } finally {
       closeApi(api);
     }

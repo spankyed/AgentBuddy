@@ -13,7 +13,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '#generated/repository.ts';
 import type { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@apackdev/sdk/ears';
+import { untypedQuery } from '@apackdev/sdk/ears';
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs, toDisplayName } from '@apackdev/sdk/utils'
 import { parseFrontmatter, parseMarkdownSections } from './utils.ts'
 import type { ContentSection } from '#features/library/be/types.ts';
@@ -114,7 +114,7 @@ function importSymlink(item: any, parentId: EARS.EntityId | undefined, result: I
   }
 
   // Skip entity if its ID already exists in the database
-  if (hasIdCollision(item.id)) {
+  if (untypedQuery.withTrashed.ids(item.id as EARS.EntityId).exists()) {
     result.errors.push(`Skipped symlink "${item.name}": entity ID already exists (${item.id})`)
     result.skipped++
     return
@@ -148,7 +148,7 @@ function importCollection(
   }
 
   // Skip entity if its ID already exists in the database
-  if (hasIdCollision(item.id)) {
+  if (untypedQuery.withTrashed.ids(item.id as EARS.EntityId).exists()) {
     result.errors.push(`Skipped collection "${item.name}": entity ID already exists (${item.id})`)
     result.skipped++
     return
@@ -187,7 +187,7 @@ function importDocument(
   }
 
   // Skip entity if its ID already exists in the database
-  if (hasIdCollision(item.id)) {
+  if (untypedQuery.withTrashed.ids(item.id as EARS.EntityId).exists()) {
     result.errors.push(`Skipped document "${item.name}": entity ID already exists (${item.id})`)
     result.skipped++
     return
@@ -271,7 +271,7 @@ function importMarkdownDir(
       }
 
       // Skip entity if its ID already exists in the database
-      if (oldId && hasIdCollision(oldId as EARS.EntityId)) {
+      if (oldId && untypedQuery.withTrashed.ids(oldId as EARS.EntityId).exists()) {
         result.errors.push(`Skipped collection "${name}": entity ID already exists (${oldId})`)
         result.skipped++
         continue
@@ -299,7 +299,7 @@ function importMarkdownDir(
         const name = frontmatterName || toDisplayName(basename)
 
         // Skip entity if its ID already exists in the database
-        if (oldId && hasIdCollision(oldId as EARS.EntityId)) {
+        if (oldId && untypedQuery.withTrashed.ids(oldId as EARS.EntityId).exists()) {
           result.errors.push(`Skipped document "${name}": entity ID already exists (${oldId})`)
           result.skipped++
           continue

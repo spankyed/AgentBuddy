@@ -19,18 +19,15 @@ export const relationQueryTemplate = (value: string) =>
 `// Query entities with ${value} relations
 // This returns the source entities that have the specified relation type
 const sources = [];
-const allIds = getAllEntities();
+const allIds = query.all().ids();
 
 for (const sourceId of allIds) {
-  const targets = query.ids(sourceId).related('${value}', sourceId, true).ids();
+  const targets = query.ids(sourceId).out('${value}').ids();
   if (targets.length > 0) {
-    const sourceData = getAll(sourceId);
     sources.push({
-      id: sourceId,
-      type: sourceId.split('-')[0],
+      ...getRow(sourceId),
       targetCount: targets.length,
       targets: targets.slice(0, 3), // Show first 3 targets
-      ...sourceData
     });
   }
 }
@@ -45,7 +42,6 @@ export const ENTITY_COLORS: Record<string, string> = {
   Message: '#10B981',
   Thread: '#F59E0B',
   Tag: '#EF4444',
-  Relation: '#6B7280',
   Artifact: '#14B8A6',
   Flow: '#EC4899',
   Node: '#6366F1',

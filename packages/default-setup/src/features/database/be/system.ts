@@ -11,7 +11,7 @@ import type { Contract } from './contract.ts';
 import { executeQuery } from './execute/query.ts';
 import { executeTransaction } from './execute/transaction.ts';
 import { generateSchemaInfo } from './repository/schema.ts';
-import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query.ts';
+import type { RunNodeId } from '@apackdev/sdk/steps';
 import { createLogger } from '@apackdev/sdk/logger';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
@@ -111,18 +111,19 @@ export const databaseSystem = setup({
         payload: { prompt: prompt.trim(), mode: mode ?? 'query', provider },
       });
     },
-    getTraceFlows: () => {
+    getFlowRuns: () => {
       try {
-        const flows = getTraceFlows(100);
-        logger.info('Retrieved trace flows', { count: flows.length });
+        // A session's root and every subflow it ran, newest first
+        const flows = services.runHistory.findRuns({ limit: 100 });
+        logger.info('Retrieved flow runs', { count: flows.length });
         broadcastToSurface('database', { 
-          type: 'TRACE_FLOWS_RESULT',
+          type: 'FLOW_RUNS_RESULT',
           flows
         });
       } catch (error: unknown) {
-        logger.error('Failed to get trace flows:', { error: errorMessage(error) });
+        logger.error('Failed to get flow runs:', { error: errorMessage(error) });
         broadcastToSurface('database', { 
-          type: 'TRACE_FLOWS_RESULT',
+          type: 'FLOW_RUNS_RESULT',
           flows: []
         });
       }
@@ -131,13 +132,16 @@ export const databaseSystem = setup({
       const { flowId, offset = 0, limit = 50 } = databaseSpec.typeOf('GET_FLOW_EVENTS', event);
       
       try {
-        const result = getFlowEvents(flowId, offset, limit);
-        logger.info('Retrieved events for flow', { count: result.events.length, flowId });
+        // The events a flow run heard are its children: a page of them, newest first, each with what it ran. The
+        // index is asked for no more than the page and one beyond it, which says whether there is more
+        const heard = services.runHistory.findChildren(flowId as RunNodeId, { reverse: true, limit: offset + limit + 1 });
+        const events = heard.slice(offset, offset + limit).map((node) => services.runHistory.tree(node.id)!);
+        logger.info('Retrieved events for flow', { count: events.length, flowId });
         broadcastToSurface('database', { 
           type: 'FLOW_EVENTS_RESULT',
           flowId,
-          events: result.events,
-          hasMore: result.hasMore,
+          events,
+          hasMore: heard.length > offset + limit,
           offset
         });
       } catch (error: unknown) {
@@ -155,7 +159,7 @@ export const databaseSystem = setup({
       const { nodeId } = databaseSpec.typeOf('GET_NODE_DETAILS', event);
       
       try {
-        const details = getNodeDetails(nodeId);
+        const details = services.runHistory.get(nodeId as RunNodeId) ?? null;
         logger.info('Retrieved node details', { nodeId });
         broadcastToSurface('database', { 
           type: 'NODE_DETAILS_RESULT',
@@ -302,8 +306,8 @@ export const databaseSystem = setup({
         REFRESH_SCHEMA: {
           actions: 'sendDatabaseRefresh',
         },
-        GET_TRACE_FLOWS: {
-          actions: 'getTraceFlows',
+        GET_FLOW_RUNS: {
+          actions: 'getFlowRuns',
         },
         GET_FLOW_EVENTS: {
           actions: 'getFlowEvents',

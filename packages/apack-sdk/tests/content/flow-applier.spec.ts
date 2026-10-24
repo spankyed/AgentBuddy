@@ -23,7 +23,7 @@ const { contentPath } = await import('../../src/build/manifest.ts');
 let tmp: string | undefined;
 // The applier reads and writes the installed engine: a fresh one per test
 beforeEach(() => {
-  _bindEars(createEarsEngine({ isEntityType: (name) => ['Flow', 'Node', 'Action', 'Prompt', 'Relation'].includes(name) }));
+  _bindEars(createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => ['Flow', 'Node', 'Action', 'Prompt'].includes(name) }));
 });
 afterEach(() => {
   _bindEars(undefined);
@@ -50,7 +50,7 @@ describe('flow applier', () => {
 
   /** The Flow entities with this label, through the installed engine's finder as the writer reads them */
   const flows = (label: string) =>
-    boundEars().findWhere<{ id: string; label: string }>('Flow' as never, 'label', label);
+    (boundEars().query('Flow' as never).where('label', label).pickAll() as Array<{ id: string; label: string }>);
 
   /**
    * One apply, with the record `applyPacks` builds; with none it is an import.
@@ -96,7 +96,7 @@ describe('flow applier', () => {
     const [[, item]] = [...record.written];
     const flowId = flows('Demo Flow')[0].id as never;
 
-    const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
+    const nodeId = findRelations({ source: flowId, kind: 'contains' as never })[0].target;
     untypedWrite(flowId).link('transitions_to' as never, nodeId as never, { info: { sourceHandle: 'branch-9' } });
 
     expect(driftedGraphParts(item, flowId)).toEqual(['edges']);
@@ -113,9 +113,9 @@ describe('flow applier', () => {
     apply(compiledFlows('Demo Flow'), record);
     const [[, item]] = [...record.written];
     const flowId = flows('Demo Flow')[0].id as never;
-    const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
+    const nodeId = findRelations({ source: flowId, kind: 'contains' as never })[0].target;
 
-    const added = boundEars().createEntityWithDefaults('Node' as never, { label: 'mine' }).id;
+    const added = boundEars().create('Node' as never, { label: 'mine' }).id();
     untypedWrite(flowId).link('contains' as never, added as never);
     // Both, and that is right: a node arrives with the `contains` edge that holds it, so the wiring moved too
     expect(driftedGraphParts(item, flowId), 'a node the user added').toEqual(['edges', `node:${added}`]);

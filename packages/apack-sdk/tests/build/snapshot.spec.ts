@@ -7,7 +7,7 @@ const snapshot = (): PackSnapshot => ({
   declarationRevision: _declarationRevision({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0' }),
   format: PACK_SNAPSHOT_FORMAT,
   manifest: { id: 'fixture-pack', name: 'Fixture', version: '1.0.0' },
-  types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+  types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {},
 });
 
 describe('snapshot data reader', () => {
@@ -119,7 +119,7 @@ describe('snapshot data reader', () => {
     ['manifest', { id: 'fixture-pack', version: '1.0.0' }, ['manifest', 'name']],
     ['manifest', { id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features: { notes: { surface: {} } } }, ['manifest', 'features', 'notes', 'surface', 'label']],
     ['types', {}, ['types', 'entities']],
-    ['types', { entities: { Memo: 1 }, relKinds: {} }, ['types', 'entities', 'Memo']],
+    ['types', { entities: { Memo: 1 }, relKinds: {}, roles: {} }, ['types', 'entities', 'Memo']],
     ['facades', { 'pack-types': false }, ['facades', 'pack-types']],
     ['flowHelpers', { exports: [], module: '' }, ['flowHelpers', 'types']],
     ['provenance', { unknownKind: {} }, ['provenance', 'unknownKind']],
@@ -166,7 +166,7 @@ describe('dependency type-data reader', () => {
   it('uses the same current grammar, names, declaration revision and help checks', () => {
     const { format: _format, ...data } = snapshot();
     for (const fields of [{ facades: { '../escape': 'export {};' } }, { declarationRevision: '0'.repeat(64) },
-      { types: { entities: {}, relKinds: { bad: false } } }, { extra: true },
+      { types: { entities: {}, relKinds: { bad: false }, roles: {} } }, { extra: true },
       { manifest: { ...data.manifest, extensions: { help: { path: 'help' } } } }]) {
       const result = parseDependencySnapshot({ ...data, ...fields });
       expect(result.status).toBe('invalid');

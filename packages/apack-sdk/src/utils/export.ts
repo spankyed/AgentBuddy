@@ -7,7 +7,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
-const INTERNAL_FIELDS = ['id', 'entityType', 'createdAt', 'updatedAt', 'deleted', 'deletedAt'] as const
+const INTERNAL_FIELDS = ['id', 'entityType', 'createdAt', 'updatedAt', 'trashedAt'] as const
 
 export function stripInternalFields<T extends object>(items: T[]): Record<string, unknown>[] {
   return items.map(item => {

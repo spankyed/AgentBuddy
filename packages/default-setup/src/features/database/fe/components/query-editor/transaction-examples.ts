@@ -27,9 +27,9 @@ const threadId = threads[0];
 const before = query.ids(threadId).pickOne(['status', 'updatedAt']);
 
 // Update the thread
+// Every attribute write stamps updatedAt
 write(threadId)
   .set('status', 'resolved')
-  .set('updatedAt', Date.now())
   .set('resolvedBy', 'admin');
 
 const after = query.ids(threadId).pickOne(['status', 'updatedAt', 'resolvedBy']);
@@ -39,32 +39,16 @@ return { threadId, before, after };`
 
   // Roles
   {
-    title: 'Grant and Revoke Roles',
-    description: 'Manage entity roles',
-    query: `const noteId = create(EARS.Entity.Note)
-  .set('title', 'Role Test Note')
-  .grant('assistant')
-  .grant('analyzer')
-  .id();
+    title: 'Move a Role',
+    description: 'Grant a role to one entity, taking it from the others (roles are declared in apack.json)',
+    query: `// The root flow is the flow holding the root_flow role; a role a pack didn't declare is refused
+const current = query.all().withRole(EARS.RoleKind.ROOT_FLOW).first();
+const next = query(EARS.Entity.Flow).ids().find((id) => id !== current);
+if (!next) return { current, moved: false };
 
-// Check initial roles
-const initialRoles = getRoles(noteId);
+write(next).grantExclusive(EARS.RoleKind.ROOT_FLOW, query.all().withRole(EARS.RoleKind.ROOT_FLOW).ids());
 
-// Revoke one role and grant another
-write(noteId)
-  .revoke('assistant')
-  .grant('supervisor');
-
-// Make this the only note with the 'primary' role
-write(noteId).grantExclusive('primary', query(EARS.Entity.Note).ids());
-
-const finalRoles = getRoles(noteId);
-
-return {
-  noteId,
-  initialRoles,
-  finalRoles
-};`
+return { previous: current, current: next, roles: getRoles(next) };`
   },
 
   // Complex Operations
@@ -72,23 +56,16 @@ return {
     title: 'Create Entity with Relations',
     description: 'Create an entity with attributes, roles, and relations',
     query: `// Create the nodes
-const startId = create(EARS.Entity.Node)
-  .setMany({ type: 'start', label: 'Begin Onboarding' })
-  .id();
-const actionId = create(EARS.Entity.Node)
-  .setMany({ type: 'action', label: 'Collect Information' })
-  .id();
+const startId = create(EARS.Entity.Node, { nodeType: 'listener', label: 'Begin Onboarding' }).id();
+const actionId = create(EARS.Entity.Node, { nodeType: 'action', label: 'Collect Information' }).id();
 
-// Create a flow holding them
-const flowId = create(EARS.Entity.Flow)
-  .setMany({
-    name: 'Customer Onboarding',
-    description: 'Automated customer onboarding flow',
-    status: 'draft',
-    version: '1.0.0'
-  })
-  .grant('template')
-  .grant('featured')
+// Create a flow holding them: a created row holds every field its type requires
+const flowId = create(EARS.Entity.Flow, {
+  shortCode: 'FLOW-ONB',
+  label: 'Customer Onboarding',
+  flowType: 'workflow',
+  description: 'Automated customer onboarding flow',
+})
   .link(EARS.RelKind.CONTAINS, startId)
   .link(EARS.RelKind.CONTAINS, actionId)
   .id();
@@ -97,27 +74,18 @@ return query.ids(flowId).pickAll();`
   },
 
 
-  // Repository Helpers
+  // Numbered rows
   {
-    title: 'Use Repository Helpers',
-    description: 'Create entities with auto-generated fields',
-    query: `// Create entity with defaults (auto-generates shortCode, label, etc.)
-const note = createEntityWithDefaults(EARS.Entity.Note, {
-  title: 'Smart Note',
-  content: 'AI-powered helper'
-});
+    title: 'Create a Numbered Row',
+    description: "A row whose type declares a short code is numbered when it brings none",
+    query: `// A Document's shortCode is numbered by create: DOC-<n>
+const docId = create(EARS.Entity.Document, { name: 'Smart Doc', content: [] }).id();
 
-// Update with automatic timestamp
-updateEntity(note.id, {
-  noteType: 'document',
-  lastSeen: Date.now()
-});
+// Update several fields; { touch: false } writes without stamping updatedAt
+write(docId).setMany({ tags: ['ai'] });
+write(docId, { touch: false }).set('displayOrder', 0);
 
-// Create relation with helper
-const threadId = query(EARS.Entity.Thread).first();
-if (threadId) createRelation(note.id, EARS.RelKind.SPAWNED, threadId);
-
-return query.ids(note.id).pickAll();`
+return query.ids(docId).pick(['shortCode', 'name', 'tags']);`
   },
 
   // Safe Operations
@@ -125,17 +93,10 @@ return query.ids(note.id).pickAll();`
     title: 'Safe Link Creation',
     description: 'Create relations with cycle prevention',
     query: `// Create a hierarchy
-const root = create(EARS.Entity.Thread)
-  .set('title', 'Root Thread')
-  .id();
-
-const child = create(EARS.Entity.Thread)
-  .set('title', 'Child Thread')
-  .id();
-
-const grandchild = create(EARS.Entity.Thread)
-  .set('title', 'Grandchild Thread')
-  .id();
+const thread = (topic) => create(EARS.Entity.Thread, { topic, instructions: '', status: 'active', timestamp: Date.now() }).id();
+const root = thread('Root Thread');
+const child = thread('Child Thread');
+const grandchild = thread('Grandchild Thread');
 
 // Link, refusing any link that would form a parent_of cycle
 const acyclicIn = [EARS.RelKind.PARENT_OF];

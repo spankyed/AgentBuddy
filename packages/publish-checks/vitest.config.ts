@@ -11,10 +11,10 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    // Small (`SIZE_MS`, scripts/lib/unit-suites.ts), declared rather than left to vitest's 5s
+    // Small (`SIZE_MS` × `DEADLINE_FACTOR`, scripts/lib/unit-suites.ts), declared rather than left to vitest's 5s
     // default, which is tighter than the size allows (`suite-timeouts.spec.ts`).
-    testTimeout: 15_000,
-    hookTimeout: 15_000,
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     include: ['tests/**/*.spec.ts'],
     exclude: ['**/*.integration.spec.ts', '**/node_modules/**'],
   },

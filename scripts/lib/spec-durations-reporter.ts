@@ -28,6 +28,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Reporter } from 'vitest/reporters';
+import { DEADLINE_FACTOR } from './unit-suites.ts';
 
 /** The environment variable the pool puts the destination in */
 export const SPEC_DURATIONS_FILE = 'SPEC_DURATIONS_FILE';
@@ -94,6 +95,15 @@ export interface ReportedModule {
    * quantile bar down with files that never executed.
    */
   readonly skipped: boolean;
+  /**
+   * The tests that passed past their size budget: the project's `testTimeout` over `DEADLINE_FACTOR`, which is
+   * what every config declares. A slow pass is reported rather than failed, and this is where it is recorded.
+   *
+   * A test with a timeout of its own is recorded too, against the project's budget, because vitest's reporter
+   * API exposes no test's own timeout; the pool leaves those out, having the overrides from the spec's syntax
+   * tree (`timeoutOverrides`).
+   */
+  readonly overBudget: readonly { readonly name: string; readonly ms: number; readonly budgetMs: number }[];
 }
 
 export interface ReportedRun {
@@ -127,6 +137,19 @@ function workspaceName(name: string, root: string): string {
   }
 }
 
+type ReportedModuleTask = Modules[number];
+
+/** The passing tests of a module that ran past the project's budget */
+function overBudget(module: ReportedModuleTask): ReportedModule['overBudget'] {
+  const budget = module.project.config.testTimeout / DEADLINE_FACTOR;
+  const over: { name: string; ms: number; budgetMs: number }[] = [];
+  for (const test of module.children.allTests()) {
+    const ms = test.diagnostic()?.duration;
+    if (test.result().state === 'passed' && ms !== undefined && ms > budget) over.push({ name: test.name, ms, budgetMs: budget });
+  }
+  return over;
+}
+
 export default class SpecDurationsReporter implements Reporter {
   readonly #started = new Set<string>();
 
@@ -148,6 +171,7 @@ export default class SpecDurationsReporter implements Reporter {
       overheadMs: diagnostic.collectDuration + diagnostic.setupDuration
         + diagnostic.environmentSetupDuration + diagnostic.prepareDuration,
       skipped: !RAN.has(module.state()),
+      overBudget: overBudget(module),
       });
     });
     // The union, not the started set alone: a run whose start hook never fired would otherwise report no

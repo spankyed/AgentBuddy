@@ -48,7 +48,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
   function defaults(): SettingsDocument { declarations(); return validation.defaults; }
   function rawStored(): unknown {
     const row = ears().query.ids(SETTINGS_ID).pickOne(['data']);
-    if (row === null) return {};
+    if (row === undefined) return {};
     return structuredClone(row.data);
   }
   function stored(): SettingsOverrides {
@@ -100,7 +100,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     declarations();
     validation.validate(next, rawStored());
     const database = ears();
-    database.upsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', structuredClone(next)).set('updatedAt', Date.now());
+    database.upsert(SETTINGS_ENTITY, { id: SETTINGS_ID, data: structuredClone(next) });
     revision++;
     tell('written');
   }

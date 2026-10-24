@@ -30,15 +30,15 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "import '@apackdev/sdk/fe';",
     "export const popout = window.electronAPI?.surfaces.popout;",
     // Typed data access and events come only from the factories a pack's facade uses
-    "import { defineEars } from '@apackdev/ears';",
+    "import { defineEars, type UntypedSchema } from '@apackdev/ears';",
     "import { boundEars } from '@apackdev/sdk/ears';",
     "import { defineEvents } from '@apackdev/sdk/events';",
     "import type { EARS } from '@apackdev/sdk';",
     "type IsAny<T> = 0 extends 1 & T ? true : false;",
     "interface MemoEntity { entityType: 'Memo'; text: string }",
-    "const { findById } = defineEars<{ Memo: MemoEntity }>(boundEars);",
+    "const { query } = defineEars<UntypedSchema & { shapes: { Memo: MemoEntity }; names: 'Memo' }>(boundEars);",
     "declare const memoId: EARS.EntityId<'Memo'>;",
-    "const memo = findById(memoId)!;",
+    "const memo = query.ids(memoId).pickOne()!;",
     "export const text: string = memo.text;",
     "export const textNotAny: IsAny<typeof memo.text> = false;",
     "const { broadcastToSurface, sendToSystem } = defineEvents<{ memos: { type: 'MEMO_ADDED'; id: string } }, { memos: { type: 'ADD_MEMO'; text: string } }>('demo');",
@@ -52,7 +52,7 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "export { findAll } from '@apackdev/ears';",
     // An engine is an instance a test or tool creates; its admin face comes only with it
     "import { createEarsEngine } from '@apackdev/ears';",
-    "const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });",
+    "const engine = createEarsEngine({ isRelationKind: () => true, isRole: () => true, isEntityType: (name) => name === 'Memo' });",
     "engine.create('Memo').set('title', 'held');",
     "engine.admin.clear();",
     // Host-only modules live in the private @apackdev/host
@@ -155,10 +155,10 @@ describe.skipIf(!PACKAGES_BUILT)('published @apackdev/sdk', () => {
     // The SDK's EARS namespace and its repositories import the engine: a plain Node process resolves it from the consumer
     const { stdout: output } = await execFileAsync(
       process.execPath,
-      ['--input-type=module', '-e', "const { EARS } = await import('@apackdev/sdk/types'); const { flowRepository } = await import('@apackdev/sdk/repositories'); process.stdout.write(EARS.Entity.Flow + ' ' + typeof EARS.RelKind.Custom + ' ' + typeof flowRepository)"],
+      ['--input-type=module', '-e', "const { EARS } = await import('@apackdev/sdk/types'); const { flowRepository } = await import('@apackdev/sdk/repositories'); process.stdout.write(EARS.Entity.Flow + ' ' + EARS.RelKind.CONTAINS + ' ' + typeof flowRepository)"],
       { cwd: consumer!, env: { PATH: process.env.PATH }, encoding: 'utf8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024 },
     );
-    expect(output).toBe('Flow function object');
+    expect(output).toBe('Flow contains object');
     const ears = fs.readdirSync(path.join(consumer!, 'node_modules', '@apackdev', 'ears')).sort();
     expect(ears).toEqual(['dist', 'package.json']);
   });

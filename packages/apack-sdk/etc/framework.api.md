@@ -7,12 +7,12 @@
 import type { ActionArgs } from 'xstate';
 import type { AnyActorRef } from 'xstate';
 import type { AnyStateMachine } from 'xstate';
-import type { BaseEntity } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
 import type { EventObject } from 'xstate';
 import type { MachineContext } from 'xstate';
 import type { Mapper } from 'xstate';
 import type { ParameterizedObject } from 'xstate';
+import type { RowRules } from '@apackdev/ears';
 import { z } from 'zod';
 
 // @public
@@ -85,6 +85,9 @@ export interface ContentRuntime {
     relKinds: Record<string, string>;
     // (undocumented)
     repositories: Record<string, unknown>;
+    // (undocumented)
+    roles: Record<string, string>;
+    rowRules?: Record<string, RowRules>;
 }
 
 // @public
@@ -290,7 +293,7 @@ export interface HelpTarget {
 }
 
 // @internal
-export const _HOST_SERVICE_NAMES: readonly ["logger", "emitter", "repository", "settings", "onboarding", "appData", "traceStore", "inference", "secrets", "filesystem"];
+export const _HOST_SERVICE_NAMES: readonly ["logger", "emitter", "repository", "settings", "onboarding", "appData", "runHistory", "inference", "secrets", "filesystem"];
 
 // @public
 export const LIFECYCLE_HOOK_NAMES: readonly ["onInit", "onShutdown"];
@@ -386,6 +389,7 @@ export interface PackDataDeclarations {
     data?: {
         entities?: Readonly<Record<string, string | null>>;
         relations?: readonly string[];
+        roles?: readonly string[];
     };
     // (undocumented)
     features?: Readonly<Record<string, object>>;
@@ -403,6 +407,9 @@ export interface PackEARS {
     entities: Record<string, string>;
     // (undocumented)
     relKinds: Record<string, string>;
+    // (undocumented)
+    roles: Record<string, string>;
+    rowRules?: Record<string, RowRules>;
 }
 
 // @internal
@@ -499,6 +506,9 @@ export interface PackRegistration {
 
 // @internal
 export function _packRelationTypes(declaration: PackDataDeclarations): Record<string, string>;
+
+// @internal
+export function _packRoles(declaration: PackDataDeclarations): Record<string, string>;
 
 // @internal
 export interface _PackServiceDeclaration {

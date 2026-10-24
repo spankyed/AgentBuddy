@@ -3,13 +3,12 @@ import type { LmdbStore } from '@apackdev/ears/lmdb';
 import { storedSettings } from '../../src/database/settings.ts';
 
 it.each([
-  { attributes: 0, entity: null, value: null, expected: {} },
-  { attributes: 0, entity: { type: 'Settings' }, value: null, expected: null },
-  { attributes: 1, entity: { type: 'Settings' }, value: null, expected: null },
-  { attributes: 1, entity: null, value: { app: { projects: 'invalid' } }, expected: { app: { projects: 'invalid' } } },
-])('distinguishes absent preferences from malformed stored data before hydration: %j', ({ attributes, entity, value, expected }) => {
-  const reader = { getAttrCount: vi.fn(() => attributes), getEntityMeta: vi.fn(() => entity), getFirstAttr: vi.fn(() => value) };
+  { entity: null, value: undefined, expected: {} },
+  { entity: { type: 'Settings' }, value: null, expected: null },
+  { entity: null, value: { app: { projects: 'invalid' } }, expected: { app: { projects: 'invalid' } } },
+])('distinguishes absent preferences from malformed stored data before hydration: %j', ({ entity, value, expected }) => {
+  const reader = { getEntityMeta: vi.fn(() => entity), getAttr: vi.fn(() => value) };
   const store = { read: vi.fn(() => reader) } as unknown as LmdbStore;
   expect(storedSettings(store)).toEqual(expected);
-  expect(store.read).toHaveBeenCalledWith('primary');
+  expect(store.read).toHaveBeenCalledWith();
 });

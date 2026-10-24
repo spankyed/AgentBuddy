@@ -1,8 +1,8 @@
 // The Database console's code runners, which the Database surface and `apack db query`/`exec` share
 import * as os from 'node:os';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
-import { consoleEars, getSchemaStats, installedEars, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
+import { getSchemaStats, untypedCreate, untypedQuery } from '@apackdev/sdk/ears';
+import { consoleEars, installedEars, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
 import { testPacks } from '../../src/testing/packs.ts';
 import { EARS } from '../../src/types/index.ts';
 import { resetTestData, startTestRuntime } from '../../src/testing/index.ts';
@@ -20,9 +20,7 @@ describe('the helpers console code sees', () => {
   // `apack db query`/`exec` all rest on what a query can and cannot reach
   it('gives a query these, and nothing that writes', async () => {
     expect([...READ_HELPER_NAMES].sort()).toEqual([
-      'findEntitiesByAttribute', 'findEntitiesByRelationTo', 'findEntitiesInRelationTo', 'findRelations', 'getAll',
-      'getAllEntities', 'getAttr', 'getAttrs', 'getEntitiesOfType', 'getRelationStats', 'getRoles', 'getSchemaStats',
-      'query',
+      'findRelations', 'getAttr', 'getRoles', 'getRow', 'getSchemaStats', 'query',
     ]);
     for (const name of READ_HELPER_NAMES) {
       await expect(runQueryCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -31,8 +29,7 @@ describe('the helpers console code sees', () => {
 
   it('gives a transaction the write helpers as well', async () => {
     expect([...WRITE_HELPER_NAMES].sort()).toEqual([
-      'create', 'createEntityWithDefaults', 'createRelation', 'destroyEntity', 'grantRole', 'prepareEntity', 'removeRelation',
-      'removeRelationById', 'revokeRole', 'updateEntity', 'upsert', 'write',
+      'create', 'upsert', 'write',
     ]);
     for (const name of [...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES]) {
       await expect(runTransactionCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
@@ -42,9 +39,9 @@ describe('the helpers console code sees', () => {
 
 describe('runQueryCode', () => {
   it('returns what the code returns, reading the installed engine and the EARS it is given', async () => {
-    untypedCreate('Flow', { id: 'Flow-1' }).set('label', 'Main');
+    untypedCreate('Flow', { id: 'Flow-1', shortCode: 'FLOW-1', label: 'Main', flowType: 'workflow' });
     await expect(runQueryCode("return query(EARS.Entity.Flow).pickAll().map((f) => f.label)", scope)).resolves.toEqual(['Main']);
-    await expect(runQueryCode('return getAttr("Flow-1", "label")', scope)).resolves.toBe('Main');
+    await expect(runQueryCode('return getRow("Flow-1")?.label', scope)).resolves.toBe('Main');
     await expect(runQueryCode('return getSchemaStats().entities', scope)).resolves.toEqual({ Flow: 1 });
   });
 
@@ -66,26 +63,26 @@ describe('runQueryCode', () => {
 
 describe('runTransactionCode', () => {
   it('writes with the write helpers and reads with the read helpers', async () => {
-    const id = await runTransactionCode("const id = create(EARS.Entity.Flow).set('label', 'New').id(); return getAttr(id, 'label')", scope);
+    const id = await runTransactionCode("const id = create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'New', flowType: 'workflow' }).id(); return getRow(id)?.label", scope);
     expect(id).toBe('New');
     expect(untypedQuery('Flow').ids()).toHaveLength(1);
   });
 
   it('keeps none of its writes when it throws part way, and prefixes its error', async () => {
-    await expect(runTransactionCode("create(EARS.Entity.Flow).set('label', 'Lost'); throw new Error('boom')", scope)).rejects
+    await expect(runTransactionCode("create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'Lost', flowType: 'workflow' }); throw new Error('boom')", scope)).rejects
       .toThrow('Transaction failed: boom\n  Nothing it wrote was kept: a transaction is undone as a whole.');
     expect(untypedQuery('Flow').ids()).toEqual([]);
   });
 
   it('refuses code that would split the unit: an await, or a returned promise, keeping nothing', async () => {
-    await expect(runTransactionCode("await 1; create(EARS.Entity.Flow)", scope)).rejects.toThrow(/^Transaction failed:/);
-    await expect(runTransactionCode("create(EARS.Entity.Flow).set('label', 'Lost'); return Promise.resolve(3)", scope)).rejects
+    await expect(runTransactionCode("await 1; create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'Lost', flowType: 'workflow' })", scope)).rejects.toThrow(/^Transaction failed:/);
+    await expect(runTransactionCode("create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'Lost', flowType: 'workflow' }); return Promise.resolve(3)", scope)).rejects
       .toThrow(/^Transaction failed: transaction code must be synchronous, and this returned a promise/);
     expect(untypedQuery('Flow').ids()).toEqual([]);
   });
 
   it('says what a returned promise kept: the writes after its first await, outside the unit', async () => {
-    const code = "return (async () => { create(EARS.Entity.Flow).set('label', 'Undone'); await 0; create(EARS.Entity.Flow).set('label', 'Kept'); })()";
+    const code = "return (async () => { create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'Undone', flowType: 'workflow' }); await 0; create(EARS.Entity.Flow, { shortCode: 'FLOW-1', label: 'Kept', flowType: 'workflow' }); })()";
     await expect(runTransactionCode(code, scope)).rejects
       .toThrow(/What it wrote before its first await was undone; what it writes after that runs outside the transaction and is kept/);
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -94,13 +91,14 @@ describe('runTransactionCode', () => {
 });
 
 describe('getSchemaStats', () => {
-  it('counts entities, attribute kinds and relation kinds', () => {
-    untypedCreate('Flow', { id: 'Flow-1' }).set('label', 'a');
-    untypedCreate('Flow', { id: 'Flow-2' }).set('label', 'b').link('contains', 'Flow-1');
+  it('counts entities, attribute kinds, relation kinds and roles', () => {
+    untypedCreate('Flow', { id: 'Flow-1', shortCode: 'FLOW-1', label: 'a', flowType: 'workflow' });
+    untypedCreate('Flow', { id: 'Flow-2', shortCode: 'FLOW-2', label: 'b', flowType: 'workflow' }).link('contains', 'Flow-1').grant('root_flow');
     const stats = getSchemaStats();
     expect(stats.entities.Flow).toBe(2);
     expect(stats.attributes.label).toEqual({ entityCount: 2, totalValues: 2 });
-    expect(stats.relations.contains).toEqual({ totalRelations: 1, uniqueSources: 1, uniqueTargets: 1 });
+    expect(stats.relations.contains).toEqual({ total: 1, uniqueSources: 1, uniqueTargets: 1 });
+    expect(stats.roles).toEqual({ root_flow: 1 });
   });
 });
 
@@ -108,11 +106,11 @@ describe('getSchemaStats', () => {
 // console: the Database surface and `apack db` read the same names
 describe('the EARS console code sees', () => {
   it("adds the packs' entity types and relation kinds to the SDK's, keeping the SDK's own", () => {
-    const ears = consoleEars({ entities: { Memo: 'Memo' }, relKinds: { mentions: 'mentions' } }) as
+    const ears = consoleEars({ entities: { Memo: 'Memo' }, relKinds: { mentions: 'mentions' }, roles: {} }) as
       { Entity: Record<string, string>; RelKind: Record<string, string> };
 
     expect(ears.Entity).toMatchObject({ Memo: 'Memo', Flow: 'Flow' });
-    expect(ears.RelKind).toMatchObject({ mentions: 'mentions', Custom: EARS.RelKind.Custom });
+    expect(ears.RelKind).toMatchObject({ mentions: 'mentions', CONTAINS: 'contains' });
   });
 
   it("names a registered pack's entity type, not only the pack whose console it is", async () => {
@@ -150,7 +148,7 @@ describe('a name the database cannot account for', () => {
     expect(() => ears().Entity.Bookmark).toThrow(/Known: .*\bMemo\b/);
     expect(() => ears().RelKind.REFERENCES).toThrow('"REFERENCES" is not a relation kind this database can account for');
 
-    const withHint = consoleEars({ entities: { Memo: 'Memo' }, relKinds: {} }, { hint: 'Try --schema-from.' }) as Record<string, Record<string, string>>;
+    const withHint = consoleEars({ entities: { Memo: 'Memo' }, relKinds: {}, roles: {} }, { hint: 'Try --schema-from.' }) as Record<string, Record<string, string>>;
     expect(() => withHint.Entity.Bookmark).toThrow('Try --schema-from.');
   });
 

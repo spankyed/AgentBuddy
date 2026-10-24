@@ -167,8 +167,6 @@ describe('findRawPackHelpers', () => {
     ["import { untypedBroadcastToSurface as toSurface } from '@apackdev/sdk/events';", 'untypedBroadcastToSurface from @apackdev/sdk/events'],
     ["import onConnected, { untypedSendToSystem } from '@apackdev/sdk/events';", 'untypedSendToSystem from @apackdev/sdk/events'],
     ["import { untypedBroadcastToSurface, createActionEmitter } from '@apackdev/sdk/services';", 'untypedBroadcastToSurface from @apackdev/sdk/services'],
-    ["import { registerRepository, untypedWrite } from '@apackdev/sdk/ears';", 'registerRepository from @apackdev/sdk/ears'],
-    ["import { unregisterRepository } from '@apackdev/sdk/ears';", 'unregisterRepository from @apackdev/sdk/ears'],
     ["export type { untypedBroadcastToSurface } from '@apackdev/sdk/events';", 'untypedBroadcastToSurface from @apackdev/sdk/events'],
     ["import * as events from '@apackdev/sdk/events';", '* from @apackdev/sdk/events (import the names)'],
     ["export * from '@apackdev/sdk/events';", '* from @apackdev/sdk/events (import the names)'],
@@ -179,7 +177,7 @@ describe('findRawPackHelpers', () => {
 
   it('allows comments, strings and the generated facades, and exempts generated files', () => {
     write('pack/feature.ts', ALLOWED);
-    write('pack/__generated__/repositories.ts', "import { registerRepository } from '@apackdev/sdk/ears';\n");
+    write('pack/__generated__/events.ts', "import { untypedSendToSystem } from '@apackdev/sdk/events';\n");
     expect(findRawPackHelpers(['src/pack'], root)).toEqual([]);
   });
 
@@ -500,7 +498,7 @@ describe('findLmdbImports', () => {
   });
 
   it.each([
-    ['packages/apack-host/src/services/trace-store.ts', "import { open } from 'lmdb';"],
+    ['packages/apack-host/src/services/run-history.ts', "import { open } from 'lmdb';"],
     ['packages/apack-host/tests/store.spec.ts', "const lmdb = await import('lmdb');"],
     ['packages/api/src/setup/backend.ts', "import type { Database } from 'lmdb';"],
     ['packages/api/scripts/db/fix.ts', "const { open } = require('lmdb/dist/index.cjs');"],
@@ -689,7 +687,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
       dirs: rule.dirs.map((dir) => `src/${dir}`),
       except: rule.except && `src/${rule.except}`,
     }));
-    write('packages/apack-host/src/services/trace-store.ts', "import { open } from 'lmdb';");
+    write('packages/apack-host/src/services/run-history.ts', "import { open } from 'lmdb';");
     return findLmdbImports(rules, root);
   },
   findRawGitListings: () => {
@@ -1874,7 +1872,7 @@ describe('findCrossFeatureImports', () => {
 
 describe('findRepositoryCasts', () => {
   it.each([
-    ['packages/apack-sdk/src/content/format-applier.ts', "import { repository } from '@apackdev/sdk/ears';\nexport const flows = repository as unknown as { flowsCommands: object };"],
+    ['packages/apack-sdk/src/content/format-applier.ts', "import { repository } from '@apackdev/sdk/services';\nexport const flows = repository as unknown as { flowsCommands: object };"],
     ['packages/apack-host/src/settings/index.ts', 'export const settings = (repository as unknown) as Settings;'],
     ['packages/default-setup/src/features/notes/be/system.ts', 'const notes = (services.repository as unknown as Record<string, unknown>).noteQueries;'],
     ['packages/renderer/src/view.vue', '<script setup lang="ts">\nconst r = repository as unknown as Repos;\n</script>'],

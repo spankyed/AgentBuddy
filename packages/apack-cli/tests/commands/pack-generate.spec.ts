@@ -131,11 +131,12 @@ describe('apack pack generate-entries', () => {
 
     const output = readGenerated();
     expect(output).toContain('export type Entity = string');
-    // Relation kinds stay open; the SDK's own are named
-    expect(output).toMatch(/export type RelKind =[\s\S]*\(string & \{\}\)/);
+    // Relation kinds are closed even with none of the pack's own: the SDK's are named
+    expect(output).toContain('export const RELATION_KINDS = [RelKind.CONTAINS,');
+    expect(output).toContain('export type RelKind = (typeof RELATION_KINDS)[number];');
   });
 
-  it('includes AttrKind namespace with Role and RelationDetails', async () => {
+  it('includes AttrKind namespace with Role', async () => {
     writeManifest({
       id: 'test-pack',
       name: 'Test Pack',
@@ -147,7 +148,7 @@ describe('apack pack generate-entries', () => {
 
     const output = readGenerated();
     expect(output).toContain("export const Role = 'role'");
-    expect(output).toContain("export const RelationDetails = 'relationDetails'");
+    expect(output).not.toContain('RelationDetails');
   });
 
   it('merges dependency type manifests into generated output', async () => {
@@ -165,7 +166,7 @@ describe('apack pack generate-entries', () => {
       format: PACK_SNAPSHOT_FORMAT,
       types: {
         entities: { DepWidget: 'DepWidget' },
-        relKinds: { DEP_REL: 'dep_rel' },
+        relKinds: { DEP_REL: 'dep_rel' }, roles: {},
       },
       entityDestinations: {}, facades: {},
       manifest: depManifest,

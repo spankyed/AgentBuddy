@@ -4,7 +4,6 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { ManifestSchema, _declarationRevision } from '@apackdev/sdk/build';
 import type { ContentRuntime } from '@apackdev/sdk/framework';
 import { startTestRuntime, resetTestData } from '@apackdev/sdk/testing';
-import { boundEars } from '@apackdev/sdk/ears';
 import { contentBindingProblem } from '../../src/packs/declaration-binding.ts';
 
 const manifest = ManifestSchema.parse({
@@ -22,7 +21,7 @@ const origin = { id: manifest.id, name: manifest.name, version: manifest.version
 const queries = { count: () => 42 };
 const writer = { find: () => undefined };
 const runtime: ContentRuntime = { id: manifest.id, declarationRevision,
-  entities: _packEntityTypes(manifest)!, relKinds: {}, repositories: { contentQueries: queries },
+  entities: _packEntityTypes(manifest)!, relKinds: {}, roles: {}, repositories: { contentQueries: queries },
   contentWriters: { ContentThing: writer } };
 
 let registry: ReturnType<typeof createNativePackTestRegistry>;
@@ -43,23 +42,23 @@ it('binds content while retaining declarations without backend activation', () =
   expect(registry.designation('notes')).toBeUndefined();
   expect(registry.getRegisteredServices()).toEqual({});
   expect(registry.contentWriters('ContentThing')).toBe(writer);
-  expect(boundEars().repository.contentQueries).toBe(queries);
+  expect(registry.repository('contentQueries')).toBe(queries);
   expect(registry.settingsCatalog().features['content-pack/notes'].defaults).toEqual({ count: 0 });
   registry.unregisterPack(manifest.id);
   expect(registry.contentWriters('ContentThing')).toBeUndefined();
-  expect(() => boundEars().repository.contentQueries).toThrow('is not registered');
+  expect(registry.repository('contentQueries')).toBeUndefined();
   expect(registry.settingsCatalog().features).toHaveProperty('content-pack/notes');
 });
 
 it('refuses a stale content identity before contributing repositories', () => {
   expect(() => registry.registerContentRuntime({ ...runtime, declarationRevision: 'stale' }, origin)).toThrow('rebuild');
   expect(registry.getPackRegistration(manifest.id)).toBeNull();
-  expect(() => boundEars().repository.contentQueries).toThrow('is not registered');
+  expect(registry.repository('contentQueries')).toBeUndefined();
 });
 
 it.each([
   ['entities', { entities: { Other: 'Other' } }],
-  ['relKinds', { relKinds: { Extra: 'extra' } }],
+  ['relKinds', { relKinds: { Extra: 'extra' }, roles: {} }],
   ['repositories', { repositories: { ghost: {} } }],
   ['contentWriters', { contentWriters: {} }],
 ] as const)('refuses content %s that disagrees with its declaration', (path, change) => {
@@ -67,7 +66,7 @@ it.each([
   expect(contentBindingProblem(manifest, candidate)).toContain(`runtime ${path}`);
   expect(() => registry.registerContentRuntime(candidate, origin)).toThrow(`runtime ${path}`);
   expect(registry.getPackRegistration(manifest.id)).toBeNull();
-  expect(() => boundEars().repository.contentQueries).toThrow('is not registered');
+  expect(registry.repository('contentQueries')).toBeUndefined();
 });
 
 it('accepts a declared source applier instance and removes it with the content binding', () => {
@@ -87,6 +86,6 @@ it('refuses an undeclared or duplicate applier before registering content', () =
   for (const appliers of [[{ key: 'ghost', apply }], [{ key: 'things', apply }, { key: 'things', apply }]]) {
     expect(() => registry.registerContentRuntime(runtime, origin, appliers)).toThrow('runtime appliers');
     expect(registry.getPackRegistration(manifest.id)).toBeNull();
-    expect(() => boundEars().repository.contentQueries).toThrow('is not registered');
+    expect(registry.repository('contentQueries')).toBeUndefined();
   }
 });

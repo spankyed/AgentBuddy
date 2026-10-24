@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { importContent } from '@apackdev/testing/harness';
-import { EARS, findAll } from '#generated/ears.ts';
+import { EARS, query } from '#generated/ears.ts';
 
 describe('__NAME__', () => {
   it('should have a valid manifest', async () => {
@@ -10,6 +10,6 @@ describe('__NAME__', () => {
 
   it('content the examples entry', async () => {
     expect(await importContent({ keys: ['__CONTENT_KEY__'] })).toEqual({ __CONTENT_KEY__: { created: 1, updated: 0, skipped: 0 } });
-    expect(findAll(EARS.Entity.__PASCAL__).map((row) => row.title)).toEqual(['Hello']);
+    expect(query(EARS.Entity.__PASCAL__).pickAll().map((row) => row.title)).toEqual(['Hello']);
   });
 });

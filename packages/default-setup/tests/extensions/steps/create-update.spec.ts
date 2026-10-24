@@ -3,20 +3,22 @@ import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@apackdev/testing/harness'
 import { startTestRuntime } from '@apackdev/sdk/testing'
 import { create, on, update } from '#generated/flow-helpers.ts'
-import { createEntityWithDefaults, findAll, findById, type EARS } from '#generated/ears.ts'
+import { query, type EARS } from '#generated/ears.ts'
+import { repository } from '#generated/repository.ts'
+import { noteRow } from '../../_support/rows.ts'
 import * as createCompiler from '#extensions/steps/create/build.ts'
 import * as updateCompiler from '#extensions/steps/update/build.ts'
 
 const startBrain = () => startApp({ systems: ['brain'] })
-const result = (step: { nodeAttributes: Record<string, unknown> }) => step.nodeAttributes.result as Record<string, unknown>
-const errorMessage = (step: { nodeAttributes: Record<string, unknown> }) => (result(step).error as { message: string }).message
+const result = (step: { result?: unknown }) => step.result as Record<string, unknown>
+const errorMessage = (step: { result?: unknown }) => (result(step).error as { message: string }).message
 
 describe('create step', () => {
   it('creates an entity of its type with the mapped and literal fields, labelled from its title, and completes with the row', async () => {
     importFlows({
       Notes: {
         root: true,
-        tracks: [on('note', [[create('Note', { label: 'add', map: { title: '$.event.data.payload.title' }, params: { content: 'body', favorite: false } })]])],
+        tracks: [on('note', [[create('Note', { label: 'add', map: { title: '$.event.data.payload.title' }, params: noteRow({ content: 'body', favorite: false }) })]])],
       },
     })
     const app = await startBrain()
@@ -26,16 +28,18 @@ describe('create step', () => {
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['add', 'completed']])
     const created = result(run.steps[0])
     expect(created).toMatchObject({ entityType: 'Note', title: 'Groceries', content: 'body', favorite: false, label: 'Groceries' })
-    expect(findById(created.id as EARS.EntityId<'Note'>)).toMatchObject({ title: 'Groceries', content: 'body', label: 'Groceries' })
+    expect(query.ids(created.id as EARS.EntityId<'Note'>).pickOne()).toMatchObject({ title: 'Groceries', content: 'body', label: 'Groceries' })
   })
 
   it("doesn't label the entity from its title when inferLabel is false", async () => {
-    importFlows({ Notes: { root: true, tracks: [on('note', [[create('Note', { label: 'add', map: { title: '$.event.data.payload' }, inferLabel: false })]])] } })
+    importFlows({ Notes: { root: true, tracks: [on('note', [[create('Note', { label: 'add', map: { title: '$.event.data.payload' }, params: noteRow(), inferLabel: false })]])] } })
     const app = await startBrain()
 
     const run = await app.runFlow('Notes', { event: 'note', data: 'Groceries' })
 
-    expect(result(run.steps[0]).label).toMatch(/^New Note/)
+    // Nothing invents one in its place: a Note has no label unless the flow maps one
+    expect(result(run.steps[0])).toMatchObject({ title: 'Groceries' })
+    expect(result(run.steps[0]).label).toBeUndefined()
   })
 
   it("creates an entity type the running app registered that this pack's own facade doesn't know (another pack's)", async () => {
@@ -53,13 +57,13 @@ describe('create step', () => {
   it("fails naming an entity type that isn't registered, and writes nothing", async () => {
     importFlows({ Notes: { root: true, tracks: [on('note', [[create('Nope', { label: 'add', params: { title: 'x' } })]])] } })
     const app = await startBrain()
-    const before = findAll('Note').length
+    const before = query('Note').pickAll().length
 
     const run = await app.runFlow('Notes', { event: 'note' })
 
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['add', 'failed']])
     expect(errorMessage(run.steps[0])).toMatch(/Step "add"[\s\S]*"Nope"/)
-    expect(findAll('Note').length).toBe(before)
+    expect(query('Note').pickAll().length).toBe(before)
   })
 })
 
@@ -69,7 +73,7 @@ describe('update step', () => {
       Notes: {
         root: true,
         tracks: [on('note', [[
-          create('Note', { label: 'add', map: { title: '$.event.data.payload' } }),
+          create('Note', { label: 'add', map: { title: '$.event.data.payload' }, params: noteRow() }),
           update('$.lastStep.result.id', { label: 'change', map: { content: '$.steps[label=add].result.title' }, params: { favorite: true } }),
         ]])],
       },
@@ -81,17 +85,17 @@ describe('update step', () => {
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['add', 'completed'], ['change', 'completed']])
     const id = result(run.steps[0]).id as EARS.EntityId<'Note'>
     expect(result(run.steps[1])).toMatchObject({ id, updated: true, content: 'Groceries', favorite: true })
-    expect(findById(id)).toMatchObject({ title: 'Groceries', content: 'Groceries', favorite: true })
+    expect(query.ids(id).pickOne()).toMatchObject({ title: 'Groceries', content: 'Groceries', favorite: true })
   })
 
   it('updates an entity by a literal id', async () => {
-    const note = createEntityWithDefaults('Note', { content: 'original' }).id
+    const note = repository.noteCommands.create({ title: 'Note', content: 'original' }).id
     importFlows({ Notes: { root: true, tracks: [on('edit', [[update(note, { label: 'change', params: { content: 'changed' } })]])] } })
     const app = await startBrain()
 
     await app.runFlow('Notes', { event: 'edit' })
 
-    expect(findById(note)).toMatchObject({ content: 'changed' })
+    expect(query.ids(note).pickOne()).toMatchObject({ content: 'changed' })
   })
 
   describe('onMissing', () => {
@@ -107,18 +111,18 @@ describe('update step', () => {
     })
 
     it('completes without writing with ignore', async () => {
-      const before = findAll('Note').length
+      const before = query('Note').pickAll().length
       const run = await missing('ignore')
       expect(run.steps.map((s) => [s.status, result(s)])).toEqual([['completed', { updated: false }]])
-      expect(findAll('Note').length).toBe(before)
+      expect(query('Note').pickAll().length).toBe(before)
     })
 
     it('creates an entity of its entity type with create', async () => {
-      const run = await missing('create', { entity: 'Note' })
+      const run = await missing('create', { entity: 'Note', params: noteRow({ title: 'Made' }) })
       expect(run.steps.map((s) => s.status)).toEqual(['completed'])
       const row = result(run.steps[0])
       expect(row).toMatchObject({ entityType: 'Note', title: 'Made', updated: false, created: true })
-      expect(findById(row.id as EARS.EntityId<'Note'>)).toMatchObject({ title: 'Made' })
+      expect(query.ids(row.id as EARS.EntityId<'Note'>).pickOne()).toMatchObject({ title: 'Made' })
     })
   })
 })

@@ -40,7 +40,7 @@ describe('definitions and explicit choices', () => {
     expect(store.get(app)).toMatchObject({ projects: [], personal: {} });
     expect(store.get(assistant)).toEqual({ name: '' });
     expect(store.get(feature)).toEqual({ limit: 10, sort: 'newest' });
-    expect(untypedQuery.ids(SETTINGS_ID).pickOne(['data'])).toBeNull();
+    expect(untypedQuery.ids(SETTINGS_ID).pickOne(['data'])).toBeUndefined();
   });
 
   it('keeps an explicit default-equal value until reset while following untouched defaults', () => {
@@ -115,7 +115,7 @@ describe('one validated writer', () => {
 
   it('retains current-format unavailable overrides but refuses edits and allows host removal', () => {
     const orphan = { packs: { absent: { assistant: { name: 'Keep' } } }, features: { 'absent/code': { limit: 2 } } };
-    untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', orphan);
+    untypedUpsert(SETTINGS_ENTITY, { id: SETTINGS_ID, data: orphan });
     store.set(assistant, ['name'], 'Ada');
     expect(store.getOverrides()).toMatchObject(orphan);
     const replacement = store.getAll();
@@ -128,7 +128,7 @@ describe('one validated writer', () => {
 
   it('refuses retaining invalid declared data and permits replacing the invalid slice', () => {
     const data = { features: { [THREADS]: { unknown: true, limit: 'invalid' } } };
-    untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', data);
+    untypedUpsert(SETTINGS_ENTITY, { id: SETTINGS_ID, data });
     expect(() => store.set(assistant, ['name'], 'Ada')).toThrow(SettingsRefusedError);
     expect(store.getOverrides()).toEqual(data);
     store.set(feature, [], { sort: 'oldest' });
@@ -264,8 +264,8 @@ it('permits replacement initialization while refusing unrelated pack writers', a
 });
 
 
-it.each([null, undefined, [], 'invalid'])('refuses a malformed stored row rather than treating %j as missing preferences', data => {
-  untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', data);
+it.each([null, [], 'invalid'])('refuses a malformed stored row rather than treating %j as missing preferences', data => {
+  untypedUpsert(SETTINGS_ENTITY, { id: SETTINGS_ID, data });
   const before = rowData();
   expect(() => store.getAll()).toThrow('Stored settings must be a JSON object');
   expect(() => store.set(app, ['personal', 'name'], 'Ada')).toThrow('Stored settings must be a JSON object');
@@ -306,13 +306,13 @@ it('does not let detached initialization work retain write access during a later
 
 describe('explicit settings recovery', () => {
   function corrupt(data: unknown) {
-    untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', data);
+    untypedUpsert(SETTINGS_ENTITY, { id: SETTINGS_ID, data });
     store.enterRecovery();
     return store.getRecovery()!;
   }
 
   it('reports nothing and reads normally until boot enters recovery', () => {
-    untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', { features: { [THREADS]: { limit: 5 } } });
+    untypedUpsert(SETTINGS_ENTITY, { id: SETTINGS_ID, data: { features: { [THREADS]: { limit: 5 } } } });
     expect(store.getRecovery()).toBeUndefined();
     expect(store.get(feature)).toMatchObject({ limit: 5 });
   });
@@ -338,7 +338,7 @@ describe('explicit settings recovery', () => {
   });
 
   it('validates typed reads even before boot explicitly enters recovery', () => {
-    untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', { features: { [THREADS]: { limit: 'invalid' } } });
+    untypedUpsert(SETTINGS_ENTITY, { id: SETTINGS_ID, data: { features: { [THREADS]: { limit: 'invalid' } } } });
     expect(store.getRecovery()).toBeUndefined();
     expect(() => store.get(feature)).toThrow('limit');
     expect(() => store.getAll()).toThrow('limit');
@@ -404,7 +404,7 @@ describe('explicit settings recovery', () => {
       expect(() => store.recover({ version: recovery.version, reset: 'all' })).toThrow('being replaced');
       expect(rowData()).toEqual(before);
       // The replacement's own data arrives by hydration, which bypasses the writer
-      untypedUpsert(SETTINGS_ENTITY, SETTINGS_ID).set('data', {});
+      untypedUpsert(SETTINGS_ENTITY, { id: SETTINGS_ID, data: {} });
     });
   });
 

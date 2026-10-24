@@ -12,7 +12,7 @@ import type { ContentWriter } from '../content/writers.ts';
 import type { ContentApplier } from '../utils/apply.ts';
 import type { HelpArticle } from '../framework/pack-help.ts';
 import type { SettingsCatalog } from '../framework/pack-settings.ts';
-import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_ROLES } from '../types/sdk-entities.ts';
 
 /** What tests register without an app, each lookup keyed as the SDK looks it up */
 export interface TestPacks {
@@ -34,6 +34,8 @@ export interface TestPacks {
   readonly services: Map<string, unknown>;
   /** Content writers by entity type */
   readonly contentWriters: Map<string, ContentWriter>;
+  /** Repositories by name, over the registered packs' */
+  readonly repositories: Map<string, unknown>;
   /** Appliers by pack id */
   readonly appliers: Map<string, ContentApplier[]>;
   readonly help: Map<string, HelpArticle[]>;
@@ -41,6 +43,8 @@ export interface TestPacks {
   readonly earsEntities: Map<string, string>;
   /** Relation kinds by the name they're declared under, over the registered packs' */
   readonly earsRelKinds: Map<string, string>;
+  /** Roles by the name they're declared under, over the registered packs' */
+  readonly earsRoles: Map<string, string>;
   /** Empties every lookup */
   clear(): void;
 }
@@ -56,10 +60,12 @@ function createTestPacks(): TestPacks {
     blocks: new Map<string, BlockDefinition>(),
     services: new Map<string, unknown>(),
     contentWriters: new Map<string, ContentWriter>(),
+    repositories: new Map<string, unknown>(),
     appliers: new Map<string, ContentApplier[]>(),
     help: new Map<string, HelpArticle[]>(),
     earsEntities: new Map<string, string>(),
     earsRelKinds: new Map<string, string>(),
+    earsRoles: new Map<string, string>(),
   };
   return {
     ...lookups,
@@ -128,6 +134,7 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     block: (type) => testPacks.blocks.get(type) ?? registered?.block(type),
     blocks: () => withOwn(registered?.blocks(), testPacks.blocks),
     getRegisteredServices: () => ({ ...registered?.getRegisteredServices(), ...Object.fromEntries(testPacks.services) }),
+    repository: (name) => testPacks.repositories.get(name) ?? registered?.repository(name),
     // A test names a ref as it likes, as it does a role's
     systemIds: () => [...new Set([...(registered?.systemIds() ?? []), ...testPacks.systems])] as FeatureRef[],
     surfaceIds: () => [...new Set([...(registered?.surfaceIds() ?? []), ...testPacks.surfaces])] as FeatureRef[],
@@ -138,10 +145,11 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     surfaceDefaults: () => registered?.surfaceDefaults() ?? {},
     help: () => ({ articles: [...(registered?.help().articles ?? []), ...[...testPacks.help.values()].flat()], problems: registered?.help().problems ?? [] }),
     earsNames: () => {
-      const base = registered?.earsNames() ?? { entities: { ...SDK_ENTITIES }, relKinds: { ...SDK_REL_KINDS } };
+      const base = registered?.earsNames() ?? { entities: { ...SDK_ENTITIES }, relKinds: { ...SDK_REL_KINDS }, roles: { ...SDK_ROLES } };
       return {
         entities: { ...base.entities, ...Object.fromEntries(testPacks.earsEntities) },
         relKinds: { ...base.relKinds, ...Object.fromEntries(testPacks.earsRelKinds) },
+        roles: { ...base.roles, ...Object.fromEntries(testPacks.earsRoles) },
       };
     },
   };

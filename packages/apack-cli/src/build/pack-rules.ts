@@ -291,7 +291,7 @@ const RULE_LIST = [
   {
     key: 'untyped-sends',
     rule: 'Pack code uses the typed facades: broadcastToSurface, sendToSurface and sendToSystem from '
-      + '#generated/events, repositories declared in apack.json',
+      + '#generated/events',
     check(view, place) {
       if (place.generated) return [];
       return view.visit((node) => {
@@ -305,9 +305,7 @@ const RULE_LIST = [
           return namespace && imported.module === '@apackdev/sdk/events'
             ? ['* from @apackdev/sdk/events (import the names)'] : undefined;
         }
-        const raw = imported.module === '@apackdev/sdk/ears'
-          ? [...EVENT_SENDS, 'registerRepository', 'unregisterRepository'] : EVENT_SENDS;
-        return imported.names.filter((name) => raw.includes(name)).map((name) => `${name} from ${imported.module}`);
+        return imported.names.filter((name) => EVENT_SENDS.includes(name)).map((name) => `${name} from ${imported.module}`);
       });
     },
   },

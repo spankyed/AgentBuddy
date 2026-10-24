@@ -227,24 +227,25 @@ mkdir -p tests/content/flows tests/features/notes/be/services
 cat > tests/content/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { importContent } from '@apackdev/testing/harness';
-import { findAll } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { findRelations } from '@apackdev/sdk/ears';
 
 describe('demo notes', () => {
   it("content notes with default-setup's format and hooks", async () => {
     expect(await importContent({ keys: ['demo-notes'] })).toEqual({ 'demo-notes': { created: 1, updated: 0, skipped: 0 } });
-    const [note] = findAll('Note');
-    expect(note).toMatchObject({ title: 'Demo notes', noteType: 'document', lastSeen: 0 });
-    expect(note.shortCode).toMatch(/^NOTE-\d+$/);
+    const [note] = query('Note').pickAll();
+    // hideCompletedChildren and lastSeen are what default-setup's note hooks write and a bare record doesn't carry
+    expect(note).toMatchObject({ title: 'Demo notes', noteType: 'document', lastSeen: 0, hideCompletedChildren: false });
   });
 
   it("content a library with default-setup's bundled compiler module and hooks", async () => {
     expect(await importContent({ keys: ['demo-library'] })).toEqual({ 'demo-library': { created: 2, updated: 0, skipped: 0 } });
-    const [guides] = findAll('Collection');
-    const [doc] = findAll('Document');
+    const [guides] = query('Collection').pickAll();
+    const [doc] = query('Document').pickAll();
+    expect(doc.shortCode).toMatch(/^DOC-\d+$/);
     expect(guides).toMatchObject({ name: 'Demo guides' });
     expect(doc).toMatchObject({ name: 'Getting started', tags: ['demo'], content: [{ type: 'text', text: 'Install demo-pack.' }] });
-    expect(findRelations({ sourceEntity: guides.id, targetEntity: doc.id }).length).toBeGreaterThan(0);
+    expect(findRelations({ source: guides.id, target: doc.id }).length).toBeGreaterThan(0);
   });
 });
 TS
@@ -277,7 +278,7 @@ describe('notes summary flow', () => {
     const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
 
     expect(run.steps).toEqual([expect.objectContaining({ label: 'summarize', status: 'completed' })]);
-    expect(run.steps[0].nodeAttributes.result).toMatchObject({ text: 'Buy milk' });
+    expect(run.steps[0].result).toMatchObject({ text: 'Buy milk' });
     expect(inference.calls).toEqual([expect.objectContaining({ model: 'openai:gpt-4o-mini', messages: [{ role: 'user', text: 'Summarize this note: Remember to buy milk' }] })]);
   });
 });

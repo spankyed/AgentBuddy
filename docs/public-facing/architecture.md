@@ -13,8 +13,8 @@ Every process resolves its environment and data paths through `resolveAppEnviron
 |---|---|
 | `packs/` | Installed packs, one directory per pack id — every pack, the ones the app ships included |
 | `installed-packs.json` | Installed packs' install state and their `enabled` state |
-| `ears-db/` | Primary LMDB database |
-| `ears-trace/` | Volatile LMDB database (flow execution records) |
+| `ears-db/` | The LMDB database the engine's data is kept in |
+| `run-history/` | The run history: every flow run's record, kept 30 days |
 | `secrets.json` | API keys: metadata plain, values encrypted |
 | `media/` | Media assets |
 | `api-port` | The API's port (development only) |
@@ -75,7 +75,7 @@ The source directory must be built first: installing a directory with neither a 
 4. Installs the packs the app ships into `packs/<id>`, each being a directory under `SHIPPED_PACKS_DIR` that holds an `apack.json`. Missing defaults are installed unless deliberately suppressed. Existing user-managed replacements are preserved; explicitly app-managed copies refresh when the shipped source revision changes. This is before loading, not beside it: a pack is loaded from `packs/`, so it has to be there to be found.
 5. Loads packs — one path for all of them, the ones the app ships included. Discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed), the shipped ones ordered first so a pack depending on one finds it registered. For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, and `runtime/index.cjs` loaded from its own installed directory through the module bridge. A pack with no built runtime, or one whose load throws, has a load problem recorded and the rest load. Each pack's systems register as `<packId>/<featureId>`, and the registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 7. Wires each pack's `onShutdown` hook, keyed by pack id.
-8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.
+8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the engine knows them all.
 9. Runs every pack's `onInit`.
 10. Runs app migrations (`runAppMigrations`: the host's own, then the built-in packs', against the app version), then external pack migrations (`runPackMigrations`, each against its own pack version).
 11. Content: each built-in pack's declarative `content.sources`, then external packs' compiled content, skipped when a pack's content revision hasn't changed.
@@ -290,7 +290,7 @@ bound once per process with `bindHost`. It supplies the event transport, EARS en
 app version and host service implementations. `createHostRuntime(...)` in `@apackdev/host/services`
 assembles it; `setupBackend()` in `packages/api/src/runtime/index.ts` opens and binds the app store.
 Packs receive their accepted service selection rather than this internal port: logger, emitter,
-repository and caller-bound settings are implicit; onboarding, app data, trace store, inference,
+repository and caller-bound settings are implicit; onboarding, app data, run history, inference,
 secrets and filesystem require `consumes.services` declarations. Onboarding is separate from app data.
 Reset clears stored data and keys, then runs `onInit`, app-line migrations, pack-line migrations and
 content application in dependency order, as startup does. Failed app-line migrations stop later stages.
@@ -308,24 +308,24 @@ The user's API keys live in `@apackdev/host/secrets`, which is host-only and not
 - Values enter only through the API's `secrets.*` tRPC procedures, never the event bus. Inference reads a provider's selected key with `secretsStore.keyFor(provider)`.
 - Packs see metadata only, through `services.secrets` (list, select, rename, delete).
 
-## Persistence partitions
+## Persistence
 
-EARS persists through a sharded router (`makeShardedPersistence`, `@apackdev/ears`) over two LMDB environments. The app opens them with `openLmdbStore({ paths, policy })` from `@apackdev/ears/lmdb` and makes the store's sink the engine's persistence; `lmdb` is an optional peer of `@apackdev/ears` that only the app installs, so packs and pack tests never load it:
+The app keeps two LMDB stores, both opened from `@apackdev/ears/lmdb`; `lmdb` is an optional peer of `@apackdev/ears` that only the app installs, so packs and pack tests never load it:
 
-| Partition | Directory | Holds | Hydrated at boot |
+| Store | Directory | Holds | In memory |
 |---|---|---|---|
-| `primary` | `ears-db/` | Everything not excluded | Yes |
-| `volatileBackup` | `ears-trace/` | The SDK's volatile entity types (`TNode`), and relations touching them | No |
+| The database (`openLmdbStore({ path, engine })`) | `ears-db/` | Every entity and relation | Yes: hydrated into the engine at boot, and the store's sink is the engine's persistence |
+| The run history (`openRecordStore`) | `run-history/` | Every flow run's record: each node a run made, with what it was given and returned | No: `services.runHistory` reads and writes it directly |
 
-The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant over the SDK's volatile types. No pack contributes to it, so every pack's data goes to `primary`. `services.traceStore` reads `volatileBackup` directly.
+A flow run is not an entity: the engine never holds one, so a run's record is never undone by a unit (`transact`) that throws and never waits on one. As the run history opens it marks what the last session left running as `stopped`, and removes every session that ended more than 30 days ago, with everything it ran.
 
 ## Backups
 
 `@apackdev/host/backup`, reached by packs through `services.appData` (`@apackdev/host/services/app-data.ts`):
 
-- **Export** (`exportBackup(targetPath, name?, databases?)`): copies the chosen databases (`lmdb`, `volatileLmdb`; default `lmdb`) into `<targetPath>/<name>` (default `apack-backup-<timestamp>`), with a `metadata.json` and, when `lmdb` is included, `media/`.
-- **Import** (`importBackup(path)`): requires `metadata.json`; restores only databases the app has. It copies the current files aside, closes persistence, replaces the files and media, reopens LMDB and reloads memory. On failure the previous files are put back and reloaded.
-- **Reset** (`reset()`): clears the engine's memory, deletes both LMDB databases and reopens them, clears the stored API keys, then runs `onInit`, app-line migrations, pack-line migrations and content application in dependency order, leaving the app as a fresh boot does.
+- **Export** (`exportBackup(targetPath, name?, databases?)`): copies the chosen stores (`lmdb`, the database, and `runHistory`; default `lmdb`) into `<targetPath>/<name>` (default `apack-backup-<timestamp>`), with a `metadata.json` and, when `lmdb` is included, `media/`.
+- **Import** (`importBackup(path)`): requires `metadata.json`; restores only databases the app has. It copies the current files aside, closes the stores, replaces their files and media, reopens them and reloads memory; a restored run history's running nodes are marked `stopped`. On failure the previous files are put back and reloaded.
+- **Reset** (`reset()`): clears the engine's memory, deletes the database and the run history and reopens them, clears the stored API keys, then runs `onInit`, app-line migrations, pack-line migrations and content application in dependency order, leaving the app as a fresh boot does.
 
 ## Generated files
 
@@ -335,7 +335,7 @@ The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant ove
 |---|---|
 | `pack-entry.ts` | BE registration: systems, services, repositories, steps, artifacts, blocks, EARS, lifecycle hooks, migrations, content writers, appliers, commands, features |
 | `pack-entry-fe.ts` | FE registration: surfaces keyed by feature (the host registers each at its address), the default surface and designations by feature, step/artifact/block FE, settings forms, tiptap and app extensions. DSL definitions are discoverable snapshot data |
-| `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `query`/`find*`/`createEntity` facade |
+| `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `query`/`find*`/`newId` facade |
 | `ref.ts` | `ref(name)`: the ref (`<packId>/<featureId>`) a name in this pack's code stands for, its own features by id and any other by ref, bound to the pack so its code never passes its own pack id |
 | `fe.ts` | `openSurface(name, event?)`, taking the names pack code writes, and the `SurfaceName` type, which lists exactly those names (the pack's own surfaces by feature id, its dependencies' by `<packId>/<featureId>`). Only packs with surfaces get it |
 | `system-specs.ts` | Type-only: `specs`, the events each system receives and sends, keyed by feature id, read from its entry's spec. `events.ts` imports it; only packs with systems get it |
@@ -347,7 +347,7 @@ The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant ove
 | `runtime-services.ts` | Shared runtime service binding used by the generated facade and registration |
 | `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the host-selected `services` facade and `servicesForAction(label)` factory. `Services` types `services.emitter` as `PackEmitter`, with this pack's surface and system events |
 | `repository.ts` | `repository`, typed with the repositories declared in `features.<id>.repositories` and dependencies' |
-| `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the host registers them with the app's engine) |
+| `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the app holds them with the pack's other contributions) |
 | `pack-types.ts` | The facade types `apack pack build` bundles into `dist/types/pack-types.d.ts` for dependents |
 | `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot. Its header names the version (`// <id>@<version> facade types`); `apack pack build` warns when the dependency it builds with is another version |
 | `deps/<id>.flow-helpers.js`, `.d.ts` | Each dependency's flow helpers module and declarations, from its snapshot |

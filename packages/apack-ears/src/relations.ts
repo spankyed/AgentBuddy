@@ -1,45 +1,30 @@
 import { EARS } from './entities.ts';
 import type { EdgeStore } from './edge-store.ts';
-import type { RelationIndexStore } from './relation-index.ts';
 import type { AttributeStorage } from './attribute-storage.ts';
+import type { NameChecks } from './names.ts';
+import type { RelationEdge } from './runtime.ts';
 
-/** Which relations to match: any combination of source, relation kind and target */
+/** Which relations to match: any combination of kind, source and target */
 export interface RelationMatch {
-  sourceEntity?: EARS.EntityId;
-  relationType?: EARS.RelKind;
-  targetEntity?: EARS.EntityId;
+  kind?: EARS.RelKind;
+  source?: EARS.EntityId;
+  target?: EARS.EntityId;
 }
 
-/** A relation row: its id (what removeRelationById takes) and its details, including its info */
-export interface RelationRow extends EARS.RelationDetail {
-  id: EARS.EntityId;
-}
+/**
+ * A relation row: its id (`write(id).destroy()` removes that one relation), kind, ends and info. The row
+ * `RelationEdge` types, with its kind and ends untyped
+ */
+export type RelationRow = RelationEdge;
 
-/** Counts for one relation kind */
-export interface RelationStats {
-  /** Relations of the kind */
-  total: number;
-  /** Distinct entities that are a source of one */
-  uniqueSources: number;
-  /** Distinct entities that are a target of one */
-  uniqueTargets: number;
-}
-
-export function createRelationReads({ edgeStore, relations, storage }: { edgeStore: EdgeStore; relations: RelationIndexStore; storage: AttributeStorage }) {
+export function createRelationReads({ edgeStore, storage, names }: { edgeStore: EdgeStore; storage: AttributeStorage; names: NameChecks }) {
   function findRelations(match: RelationMatch = {}): RelationRow[] {
+    if (match.kind !== undefined) names.relationKinds(match.kind, 'findRelations');
     return edgeStore.relIds(match).flatMap((id) => {
-      const detail = storage.getAttr(id, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | undefined;
-      return detail ? [{ ...detail, id }] : [];
+      const row = storage.relationOf(id);
+      return row ? [row] : [];
     });
   }
 
-  function getRelationStats(kind: EARS.RelKind): RelationStats {
-    const entry = relations.index[kind];
-    if (!entry) return { total: 0, uniqueSources: 0, uniqueTargets: 0 };
-    const ids = new Set<string>();
-    for (const relIds of Object.values(entry.bySource)) relIds.forEach((id) => ids.add(id));
-    return { total: ids.size, uniqueSources: Object.keys(entry.bySource).length, uniqueTargets: Object.keys(entry.byTarget).length };
-  }
-
-  return { findRelations, getRelationStats };
+  return { findRelations };
 }

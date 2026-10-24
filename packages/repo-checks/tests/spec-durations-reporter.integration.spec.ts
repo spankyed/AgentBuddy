@@ -9,7 +9,7 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { boundedSpawn } from '../../../scripts/lib/bounded-spawn.ts';
 import { readReportedRun, SPEC_DURATIONS_FILE } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { durationsOf } from '../../../scripts/lib/spec-durations.ts';
-import { SIZE_MS } from '../../../scripts/lib/unit-suites.ts';
+import { DEADLINE_FACTOR, SIZE_MS } from '../../../scripts/lib/unit-suites.ts';
 import { CONFIG_BY_HALF } from '../../../scripts/lib/spec-halves.ts';
 import { POOLS, type Pool } from '../../../scripts/lib/unit-pool.ts';
 
@@ -240,4 +240,27 @@ it('attributes qualified subprojects to their confirmed workspace without hiding
     .toEqual(['backend.spec.ts', 'frontend.spec.ts']);
   expect(report.modules.find(module => module.file === 'foreign.spec.ts')?.project).toBe('foreign:frontend');
   expect(() => durationsOf(report, [{ workspace, dir: 'fixture', kind: 'pack' }])).toThrow('none of the');
+});
+
+it('records a test that passed past its budget, and only that one, against the budget the deadline implies', async () => {
+  const root = path.join(temp, 'over-budget'); fs.mkdirSync(root);
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: '@fixture/over-budget', type: 'module' }));
+  linkVitest(root);
+  // A deadline of 400ms is a budget of 200ms: the slow test passes inside the one and past the other
+  fs.writeFileSync(path.join(root, 'timing.spec.ts'), `import { it } from 'vitest';
+    it('slow', () => new Promise((resolve) => setTimeout(resolve, 300)));
+    it('quick', () => {});`);
+  fs.writeFileSync(path.join(root, 'vitest.config.ts'),
+    `export default { cacheDir: ${JSON.stringify(path.join(root, '.cache'))}, test: { include: ['timing.spec.ts'], testTimeout: ${2 * DEADLINE_FACTOR * 100} } };`);
+  const out = path.join(root, 'durations.json');
+  const child = boundedSpawn(process.execPath, [path.join(REPO_ROOT, 'node_modules/vitest/vitest.mjs'), 'run',
+    '--config', path.join(root, 'vitest.config.ts'),
+    `--reporter=${path.join(REPO_ROOT, 'scripts/lib/spec-durations-reporter.ts')}`, '--maxWorkers=1', '--minWorkers=1'], SIZE_MS.small,
+    { cwd: root, env: { ...process.env, [SPEC_DURATIONS_FILE]: out }, signal: lifetime.signal });
+  children.push(child);
+  const result = await child;
+  expect(result.code, result.output).toBe(0);
+  const [module] = readReportedRun(out)!.modules;
+  expect(module.overBudget).toEqual([{ name: 'slow', ms: expect.any(Number), budgetMs: 200 }]);
+  expect(module.overBudget[0].ms).toBeGreaterThan(200);
 });

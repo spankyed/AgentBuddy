@@ -1,7 +1,7 @@
-import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import type { ExecutionContext, StepInput } from '@apackdev/sdk/steps';
 import { createLogger } from '@apackdev/sdk/logger';
 import { extractValueByPath } from '@apackdev/sdk/utils';
-import { findById, updateEntity, type EARS } from '#generated/ears.ts';
+import { query, write, type EARS } from '#generated/ears.ts';
 import { assertEntityType, createEntityRow, reportStepError, stepFields } from '../create/runtime.ts';
 import type { UpdateNode } from './types.ts';
 
@@ -14,7 +14,7 @@ function resolveTarget(target: string, ctx: ExecutionContext): unknown {
   return target.startsWith('$.') ? extractValueByPath(ctx, target) : target;
 }
 
-export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+export async function handler(input: StepInput, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as UpdateNode;
   const a = actor as StepActor;
   try {
@@ -23,12 +23,12 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       throw new Error(`Update step "${n.label}": target "${n.target}" resolved to ${JSON.stringify(resolved)}, not an entity id`);
     }
     const id = (resolved || undefined) as EARS.EntityId | undefined;
-    const fields = stepFields(t);
+    const fields = stepFields(input);
 
-    if (id && findById(id)) {
-      updateEntity(id, fields);
+    if (id && query.ids(id).pickOne()) {
+      write(id).setMany(fields);
       brainLogger.debug(`Updated ${id} in node: ${n.label}`, { fields });
-      a.send({ type: 'COMPLETE', result: { ...findById(id), updated: true } });
+      a.send({ type: 'COMPLETE', result: { ...query.ids(id).pickOne(), updated: true } });
       return;
     }
 
@@ -49,6 +49,6 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
         throw new Error(`Update step "${n.label}": ${missing}`);
     }
   } catch (error) {
-    a.send({ type: 'ERROR', error: reportStepError(error, t, n, ctx) });
+    a.send({ type: 'ERROR', error: reportStepError(error, input, n, ctx) });
   }
 }

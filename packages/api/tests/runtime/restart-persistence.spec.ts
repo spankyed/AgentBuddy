@@ -9,7 +9,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-restart-persistence-'
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('../../src/runtime/index.ts');
-const { untypedCreate, getEntitiesOfType } = await import('@apackdev/sdk/ears');
+const { untypedCreate, untypedQuery } = await import('@apackdev/sdk/ears');
 const { _getLmdbPath } = await import('@apackdev/sdk/utils');
 const { unbindHost } = await import('@apackdev/sdk/runtime/internals');
 
@@ -22,7 +22,7 @@ describe('the API store across a restart', () => {
   it('hydrates what the previous run wrote', async () => {
     const first = openAppStore();
     expect(_getLmdbPath().startsWith(dataDir)).toBe(true);
-    untypedCreate('Prompt', { id: 'Prompt-restart' }).set('title', 'written before the restart');
+    untypedCreate('Prompt', { id: 'Prompt-restart', label: 'written before the restart', inputs: {}, templateFn: 'return ""' });
     await flushed();
     first.store.close();
     // A new process starts with nothing bound, and a new, empty engine
@@ -31,10 +31,10 @@ describe('the API store across a restart', () => {
     const second = openAppStore();
     try {
       expect(second.engine).not.toBe(first.engine);
-      expect(getEntitiesOfType('Prompt')).toEqual([]);
+      expect(untypedQuery.withTrashed('Prompt').ids()).toEqual([]);
       await second.store.hydrate();
-      expect(getEntitiesOfType('Prompt')).toEqual(['Prompt-restart']);
-      expect(second.engine.getAttr('Prompt-restart', 'title')).toBe('written before the restart');
+      expect(untypedQuery.withTrashed('Prompt').ids()).toEqual(['Prompt-restart']);
+      expect(second.engine.getRow('Prompt-restart')?.label).toBe('written before the restart');
     } finally {
       second.store.close();
     }

@@ -9,7 +9,7 @@ import { CONTENT_INDEX_FILE, contentFile } from '@apackdev/sdk/build';
 import { createFlowApplier, createFormatApplier } from '@apackdev/sdk/content';
 import { importCompiledContent, type ApplyRecord } from '@apackdev/sdk/utils';
 import { registerPack, unregisterPack } from '@apackdev/testing/harness';
-import { findWhere } from '#generated/ears.ts';
+import { query } from '#generated/ears.ts';
 import { dropAttribute } from '@apackdev/sdk/testing';
 import { findRelations, untypedWrite } from '@apackdev/sdk/ears';
 import { repository } from '#generated/repository.ts';
@@ -17,7 +17,7 @@ import { PACK_DIR, applyAfter, resetDatabase } from './harness.ts';
 import type { EARS } from '@apackdev/ears';
 
 type FlowRow = { id: EARS.EntityId; label: string; contentHash?: string };
-const flow = (label: string) => findWhere('Flow', 'label', label) as FlowRow[];
+const flow = (label: string) => query('Flow').where('label', label).pickAll() as FlowRow[];
 const nodesOf = (label: string) => repository.flowsQueries.flowNodes(flow(label)[0].id);
 
 const dirs: string[] = [];
@@ -113,10 +113,10 @@ describe('re-applying edited flows', () => {
 
   it("doesn't count relations stored in another order as an edit", () => {
     // Relinking a transition (as loading relations from disk in another order would) keeps its content
-    const [transition] = nodesOf('Codex').flatMap((node) => findRelations({ sourceEntity: node.id, relationType: 'transitions_to' }));
-    untypedWrite(transition.sourceEntity)
-      .unlink('transitions_to', transition.targetEntity)
-      .link('transitions_to', transition.targetEntity, { info: transition.info });
+    const [transition] = nodesOf('Codex').flatMap((node) => findRelations({ source: node.id, kind: 'transitions_to' }));
+    untypedWrite(transition.source)
+      .unlink('transitions_to', transition.target)
+      .link('transitions_to', transition.target, { info: transition.info });
     expect(contentFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
   });
 

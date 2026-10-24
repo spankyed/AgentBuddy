@@ -55,6 +55,7 @@ order. `init`, `add` and the release version editor share this writer.
 | `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |
 | `data.entities` | `Record<string, string \| null>` | no | Entities without a feature owner; see [Entities and relations](#entities-and-relations) |
 | `data.relations` | `string[]` | no | Pack-level snake_case relation wire names; see [Entities and relations](#entities-and-relations) |
+| `data.roles` | `string[]` | no | Pack-level snake_case role names; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack IDs mapped to a nonempty npm semver range, `github:owner/repo [range]`, or `file:path` |
 | `checks` | `{ allow?: string[] }` | no | Development conventions this pack allows; schema completion lists supported rule names. See [source checks](cli.md#apack-pack-validate---json). |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
@@ -179,7 +180,7 @@ unrepresentable.
 | `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@apackdev/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its surface receives is the contract's outgoing events; a surface that also takes events from another feature or another pack declares those itself, in its own `Contract` (`surface.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
 | `surface` | `{ label, state, icon?, canvas?, panel?, chat?, contract?, default? }` | no | Declarative frontend surface. State and views name modules; paths use default exports, or `path#exportName` for named exports. Codegen assembles the binding. Icons name Lucide exports or a custom component target. Contract is a leaf `path#exportName` containing published state/inbox types. `default: true` declares the startup default; a pack without a claim has none. See [surface declarations](features.md#defining-a-surface). |
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
-| `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
+| `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app holds them with the pack's other contributions) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
 | `description` | `string` | yes | Nonblank feature purpose, independent of surface display labels |
 | `types` | `string` | no | Pack-root-relative TypeScript module re-exported through `#generated/types`; optional `.ts` or directory `index.ts` resolution. No undeclared files are inferred. |
 | `references` | `object` | no | Keyed reference identities and presentation metadata, with reactive item-provider exports; entity navigation uses declared surface destinations |
@@ -685,12 +686,15 @@ Duplicate entity declarations name both owners and fail validation.
 
 Keys become TypeScript constants in generated `ears.ts`. Entity constants equal their keys; a relation
 wire is declared once in `data.relations`, shared across the pack's features. Its constant name is
-uppercase (`tagged_with` → `TAGGED_WITH`). Duplicate and SDK-owned relation wires are refused.
+uppercase (`tagged_with` → `TAGGED_WITH`). Duplicate and SDK-owned relation wires are refused. Every kind
+the pack links with is declared: the generated `EARS.RelKind` is closed over the pack's, its dependencies' and
+the SDK's, and the engine refuses any other at runtime. Roles work the same way: `data.roles` lists every role the
+pack grants (`entry_event` → `ENTRY_EVENT`), `EARS.RoleKind` is closed over them, and an undeclared role is refused.
 Shapes type attributes without changing stored identities.
 
 No two packs may use the same name: a key or a value another installed pack declares fails `apack pack build` (for a dependency) and the app's registration of the pack.
 
-The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` and `Prompt`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`), `SPAWNED` (`spawned`) and `TRACKED` (`tracked`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `apack.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
+The SDK defines the entity types `Relation`, `Flow`, `Node`, `Action`, `Prompt`, `Document` and `Collection`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`) and `PARENT_OF` (`parent_of`), and the roles `ROOT_FLOW` (`root_flow`) and `ENTRY_EVENT` (`entry_event`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `apack.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
 
 ## DSL definitions
 

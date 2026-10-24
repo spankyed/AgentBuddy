@@ -13,11 +13,9 @@ import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { type QueryBuilder, type WriteBuilder } from '@apackdev/ears';
 import { untypedCreate } from '@apackdev/sdk/ears';
 import {
-  query, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
-  type EntityShape,
+  query, create, upsert, newId, write, type EntityShape
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
-import { filterSystemFields } from '@apackdev/ears';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { createLogger, type Logger } from '@apackdev/sdk/logger';
 import {
@@ -48,8 +46,8 @@ describe('Type inference — EARS runtime', () => {
     expectTypeOf(untypedCreate<'Action'>).returns.toEqualTypeOf<WriteBuilder<'Action'>>();
   });
 
-  it('createEntity() brands the id with a declared entity type', () => {
-    expectTypeOf(createEntity(EARS.Entity.Action)).toEqualTypeOf<EARS.EntityId<'Action'>>();
+  it('newId() brands the id with a declared entity type', () => {
+    expectTypeOf(newId(EARS.Entity.Action)).toEqualTypeOf<EARS.EntityId<'Action'>>();
   });
 
   it('QueryBuilder.map() is generic over its return type', () => {
@@ -68,57 +66,138 @@ describe('Type inference — EARS runtime', () => {
 describe('Type inference — typed EARS helpers', () => {
   const actionId = 'Action-1' as EARS.EntityId<'Action'>;
 
-  it('findById with a branded id reads the declared shape', () => {
-    expectTypeOf(() => findById(actionId)!.actionFn).returns.toEqualTypeOf<string>();
+  it('the row with a branded id reads the declared shape', () => {
+    expectTypeOf(() => query.ids(actionId).pickOne()!.actionFn).returns.toEqualTypeOf<string>();
   });
 
-  it('findAll, findWhere and findFirst read the declared shape', () => {
+  it('a query by type, and by a field, reads the declared shape', () => {
     // Wrapped in functions: only their types are checked
-    expectTypeOf(() => findAll(EARS.Entity.Prompt)[0].templateFn).returns.toEqualTypeOf<string>();
-    expectTypeOf(() => findWhere(EARS.Entity.Thread, 'status', 'active')[0].topic).returns.toEqualTypeOf<string>();
-    expectTypeOf(() => findFirst(EARS.Entity.Thread, 'status', 'active')!.status).returns.toEqualTypeOf<string>();
-  });
-
-  it('createEntityWithDefaults returns the declared shape with the created fields', () => {
-    const result = createEntityWithDefaults(EARS.Entity.Action, { label: 'test', actionFn: 'fn()' });
-    expectTypeOf(result.actionFn).toEqualTypeOf<string>();
-    expectTypeOf(result.shortCode).toEqualTypeOf<string>();
-    // @ts-expect-error not a field of Action
-    createEntityWithDefaults(EARS.Entity.Action, { notAField: 1 });
-  });
-
-  it('updateEntity accepts only declared fields', () => {
-    // Type-level only: never called, since no entity has this id
+    expectTypeOf(() => query(EARS.Entity.Prompt).pickAll()[0].templateFn).returns.toEqualTypeOf<string>();
+    expectTypeOf(() => query(EARS.Entity.Thread).where('status', 'active').pickAll()[0].topic).returns.toEqualTypeOf<string>();
     const check = () => {
-      updateEntity(actionId, { label: 'renamed', description: null });
-      // @ts-expect-error wrong type for a declared field
-      updateEntity(actionId, { label: 42 });
+      // @ts-expect-error not a field of Thread
+      query(EARS.Entity.Thread).where('statsu', 'active').pickAll();
+      // @ts-expect-error a field's value is checked as where checks it
+      query(EARS.Entity.Thread).where('topic', 42).pickAll();
     };
     expectTypeOf(check).toBeFunction();
   });
 
-  it('getAttr reads a declared field of a branded id, unknown otherwise', () => {
-    expectTypeOf(getAttr(actionId, 'actionFn')).toEqualTypeOf<string | null>();
-    expectTypeOf(getAttr('x' as EARS.EntityId, 'actionFn')).toBeUnknown();
+  it('create may leave out the short code a shape numbers, which reads back as its type\'s', () => {
+    const action = create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()' }).row();
+    expectTypeOf(action.shortCode).toEqualTypeOf<`ACT-${number}`>();
+    expect(action.shortCode).toMatch(/^ACT-\d+$/);
+    // Type-level only: the engine refuses these rows at runtime too
+    const check = () => {
+      create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()', shortCode: 'ACT-40' });
+      // @ts-expect-error a short code is its type's, ACT-<n>
+      create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()', shortCode: 'X-1' });
+      // @ts-expect-error a field the shape requires, and doesn't number, is still required
+      create(EARS.Entity.Action, { input: {}, actionFn: 'fn()' });
+      // @ts-expect-error not a field of Action
+      create(EARS.Entity.Action, { label: 'test', input: {}, actionFn: 'fn()', notAField: 1 });
+    };
+    expectTypeOf(check).toBeFunction();
   });
 
-  it('findWithFields picks the requested fields', () => {
-    expectTypeOf(findWithFields(EARS.Entity.Action, ['label', 'actionFn'])[0]).toEqualTypeOf<Pick<EntityShape<'Action'>, 'label' | 'actionFn'>>();
+  it('creates a row with every field its shape requires, and its identity in the same object', () => {
+    // Type-level only: never called
+    const check = (givenId: EARS.EntityId<'Action'>) => {
+      create(EARS.Entity.Action, { label: 'a', input: {}, actionFn: 'fn()' });
+      create(EARS.Entity.Action, { id: givenId, createdAt: 1, label: 'a', input: {}, actionFn: 'fn()', category: 'c' });
+      upsert(EARS.Entity.Action, { id: givenId, label: 'a', input: {}, actionFn: 'fn()' });
+      // @ts-expect-error actionFn is required
+      create(EARS.Entity.Action, { label: 'a', input: {} });
+      // @ts-expect-error a row is required where the shape requires fields
+      create(EARS.Entity.Action);
+      // @ts-expect-error not a field of Action
+      create(EARS.Entity.Action, { label: 'a', input: {}, actionFn: 'fn()', labl: 'x' });
+      // @ts-expect-error the type argument is the row's entity type; a row never carries its own
+      create(EARS.Entity.Action, { label: 'a', input: {}, actionFn: 'fn()', entityType: 'Action' });
+      // @ts-expect-error upsert may create, so it is held to the same row
+      upsert(EARS.Entity.Action, { id: givenId, label: 'a' });
+      // @ts-expect-error upsert's row always names the id it is written under
+      upsert(EARS.Entity.Action, { label: 'a', input: {}, actionFn: 'fn()' });
+    };
+    expectTypeOf(check).toBeFunction();
+  });
+
+  it('names only declared relation kinds, in a link and in a read or walk over links', () => {
+    // Type-level only: never called
+    const check = (noteId: EARS.EntityId<'Note'>, otherId: EARS.EntityId, fromData: string) => {
+      write(noteId).link(EARS.RelKind.REFERENCES, otherId).unlink('references', otherId);
+      query.ids(noteId).out(EARS.RelKind.CONTAINS, EARS.Entity.Message);
+      expectTypeOf(query.ids(noteId).outEdges(['references', 'contains'])[0].kind).toEqualTypeOf<'references' | 'contains'>();
+      // @ts-expect-error not a declared relation kind
+      write(noteId).link('refrences', otherId);
+      // @ts-expect-error in a walk too
+      query.ids(noteId).out('contians');
+      // @ts-expect-error and in a filter
+      query(EARS.Entity.Note).linkedTo('refrences', otherId);
+      // @ts-expect-error a kind that arrives as data is narrowed first
+      write(noteId).link(fromData, otherId);
+      if (EARS.isRelKind(fromData)) write(noteId).link(fromData, otherId);
+      // @ts-expect-error no escape from the pack's facade: an undeclared kind is declared in apack.json
+      EARS.RelKind.Custom('anything');
+    };
+    expectTypeOf(check).toBeFunction();
+  });
+
+  it('names only declared roles, in a role write and a query by role', () => {
+    // Type-level only: never called
+    const check = (flowId: EARS.EntityId<'Flow'>, fromData: string) => {
+      write(flowId).grant(EARS.RoleKind.ROOT_FLOW).revoke('entry_event');
+      query.all().withRole(EARS.RoleKind.ASSISTANT_BIRTH);
+      // @ts-expect-error not a declared role
+      write(flowId).grant('root_flw');
+      // @ts-expect-error in a query by role too
+      query.all().withRole('pinned');
+      // @ts-expect-error a role that arrives as data is narrowed first
+      write(flowId).grantExclusive(fromData, []);
+      if (EARS.isRole(fromData)) write(flowId).grantExclusive(fromData, []);
+      // @ts-expect-error no escape from the pack's facade: an undeclared role is declared in apack.json
+      EARS.RoleKind.Custom('anything');
+    };
+    expectTypeOf(check).toBeFunction();
+  });
+
+  it('write names only declared fields, checks their values, and takes an options argument', () => {
+    // Type-level only: never called, since no entity has this id
+    const check = () => {
+      write(actionId, { touch: false }).setMany({ label: 'renamed' });
+      write(actionId).set('label', 'renamed').delete('description');
+      // @ts-expect-error wrong type for a declared field
+      write(actionId).setMany({ label: 42 });
+      // @ts-expect-error not a field of Action
+      write(actionId).setMany({ labl: 'renamed' });
+      // @ts-expect-error not a field of Action
+      write(actionId).set('labl', 'renamed');
+      // @ts-expect-error not a field of Action
+      write(actionId).delete('labl');
+      // @ts-expect-error a required field is replaced with set, never removed
+      write(actionId).delete('label');
+      // @ts-expect-error the engine writes updatedAt
+      write(actionId).set('updatedAt', 1);
+      // A plain id names no entity type, so its writes are unchecked
+      write('Action-x' as EARS.EntityId).set('anything', 1);
+    };
+    expectTypeOf(check).toBeFunction();
+  });
+
+  it('a field picked by a branded id is typed by its shape, and none answers undefined', () => {
+    expectTypeOf(query.ids(actionId).pickOne(['actionFn'])?.actionFn).toEqualTypeOf<string | undefined>();
+  });
+
+  it('pick picks the requested fields', () => {
+    expectTypeOf(query(EARS.Entity.Action).pick(['label', 'actionFn'])[0]).toEqualTypeOf<{ id: EARS.EntityId<'Action'> } & Pick<EntityShape<'Action'>, 'label' | 'actionFn'>>();
     // @ts-expect-error not a field of Action
-    findWithFields(EARS.Entity.Action, ['notAField']);
+    query(EARS.Entity.Action).pick(['notAField']);
   });
 
-  it('filterSystemFields<T> preserves the generic shape', () => {
-    type Entity = { label: string; status: string; entityType: string };
-    expectTypeOf(filterSystemFields<Entity>).returns.toEqualTypeOf<Partial<Entity>>();
-  });
-
-  it('filterSystemFields takes an interface, as a pack declares its entities', () => {
-    // A `Record<string, …>` constraint would reject this: an interface has no implicit index
-    // signature, while the object-literal alias above has one
-    interface TerminalEntity { id: string; title: string; pid: number }
-    const terminal = {} as TerminalEntity;
-    expectTypeOf(filterSystemFields(terminal)).toEqualTypeOf<Partial<TerminalEntity>>();
+  it('where takes an element of a declared list field', () => {
+    // Type-level only
+    const check = () => query(EARS.Entity.Note).where('linkTargets', 'Note-x');
+    expectTypeOf(check).toBeFunction();
   });
 });
 
@@ -202,72 +281,41 @@ describe('Generated repository', () => {
 describe('Generic flow — runtime verification', () => {
   beforeEach(() => resetTestData());
 
-  it('findById<T> returns typed result with T properties', () => {
-    type ActionEntity = {
-      label: string;
-      actionFn: string;
-      category: string;
-      entityType: EARS.Entity;
-    };
+  it("create's row() and pickOne() read the entity back typed by its id, with no shape to name", () => {
+    const entity = create(EARS.Entity.Action, { input: {}, label: 'TypedAction', actionFn: 'fn()', category: 'test' }).row();
+    expectTypeOf(entity.actionFn).toEqualTypeOf<string>();
 
-    const entity = createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'TypedAction', actionFn: 'fn()', category: 'test' } as any,
-      'ACT',
-    );
-
-    const found = findById<ActionEntity>(entity.id);
-    expect(found).toBeDefined();
-    expect(found!.label).toBe('TypedAction');
-    expect(found!.category).toBe('test');
+    const found = query.ids(entity.id).pickOne();
+    expectTypeOf(found).toEqualTypeOf<EntityShape<'Action'> | undefined>();
+    expect(found).toEqual(entity);
+    // An id with no type in it is narrowed by ofType, which checks the entity's type rather than asserting it
+    const plain: EARS.EntityId = entity.id;
+    expect(query.ids(plain).ofType(EARS.Entity.Action).pickOne()?.label).toBe('TypedAction');
+    expect(query.ids(plain).ofType(EARS.Entity.Prompt).pickOne()).toBeUndefined();
   });
 
-  it('findAll<T> returns typed array', () => {
-    type ActionEntity = { label: string; actionFn: string };
+  it('a query by type returns every row of it', () => {
+    create(EARS.Entity.Action, { input: {}, label: 'A1', actionFn: 'fn1()' });
+    create(EARS.Entity.Action, { input: {}, label: 'A2', actionFn: 'fn2()' });
 
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'A1', actionFn: 'fn1()' } as any,
-      'ACT',
-    );
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'A2', actionFn: 'fn2()' } as any,
-      'ACT',
-    );
-
-    const all = findAll<ActionEntity>(EARS.Entity.Action as any);
+    const all = query(EARS.Entity.Action).pickAll();
     expect(all).toHaveLength(2);
     expect(all[0].label).toBeDefined();
     expect(all[0].actionFn).toBeDefined();
   });
 
-  it('findWhere<T> returns typed filtered results', () => {
-    type ActionEntity = { label: string; category: string };
+  it('a query by a field returns the declared shape', () => {
+    create(EARS.Entity.Action, { input: {}, label: 'CatA', actionFn: 'fn()', category: 'alpha' });
+    create(EARS.Entity.Action, { input: {}, label: 'CatB', actionFn: 'fn()', category: 'beta' });
 
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'CatA', actionFn: 'fn()', category: 'alpha' } as any,
-      'ACT',
-    );
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'CatB', actionFn: 'fn()', category: 'beta' } as any,
-      'ACT',
-    );
-
-    const results = findWhere<ActionEntity>(EARS.Entity.Action as any, 'category', 'alpha');
+    const results = query(EARS.Entity.Action).where('category', 'alpha').pickAll();
     expect(results).toHaveLength(1);
     expect(results[0].label).toBe('CatA');
     expect(results[0].category).toBe('alpha');
   });
 
   it('query() fluent chain produces typed results', () => {
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'Chain', actionFn: 'fn()' } as any,
-      'ACT',
-    );
+    create(EARS.Entity.Action, { input: {}, label: 'Chain', actionFn: 'fn()' });
 
     const ids = query(EARS.Entity.Action as any).ids();
     expect(Array.isArray(ids)).toBe(true);
@@ -284,11 +332,7 @@ describe('Generic flow — runtime verification', () => {
 
   it('query().map() returns correctly typed array', () => {
     // The row map() then walks
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'MapTest', actionFn: 'fn()' } as any,
-      'ACT',
-    );
+    create(EARS.Entity.Action, { input: {}, label: 'MapTest', actionFn: 'fn()' });
 
     const labels = query(EARS.Entity.Action as any).map(
       (entityId) => `prefix-${entityId}`
@@ -298,10 +342,7 @@ describe('Generic flow — runtime verification', () => {
   });
 
   it('create() fluent chain writes the entity it created', () => {
-    const id = untypedCreate(EARS.Entity.Action)
-      .set('label', 'TxChain')
-      .set('status', 'active')
-      .id();
+    const id = untypedCreate(EARS.Entity.Action, { label: 'TxChain', input: {}, actionFn: 'return 1', status: 'active' }).id();
 
     expect(id).toMatch(/^Action-/);
     const label = query.ids(id).pickOne(['label'] as const);
@@ -314,14 +355,6 @@ describe('Generic flow — runtime verification', () => {
     expect(result).toBeNull();
   });
 
-
-  it('filterSystemFields<T> returns Partial<T>', () => {
-    type Entity = { label: string; status: string; entityType: string };
-    const input: Entity = { label: 'test', status: 'active', entityType: 'Action' };
-    const filtered = filterSystemFields(input);
-    expect(filtered).toBeDefined();
-    expect(typeof filtered).toBe('object');
-  });
 
   it('createLogger returns Logger with callable methods', () => {
     const logger = createLogger('type-test');

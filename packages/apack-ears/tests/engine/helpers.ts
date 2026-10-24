@@ -1,15 +1,23 @@
 import type { EARS, PersistenceSink } from '../../src/index.ts';
 import { freshEngine, type EngineUnderTest } from './engine-under-test.ts';
 
-export const TYPES = new Set(['Task', 'Project', 'Person', 'Relation']);
+export const TYPES = new Set(['Task', 'Project', 'Person']);
 
 export const isEntityType = (name: string) => TYPES.has(name);
 
+export const KINDS = new Set(['about', 'assigned', 'blocks', 'child', 'contains', 'instance_of', 'lead', 'mentions', 'owner', 'owns', 'parent', 'peer', 'refers', 'refs', 'x']);
+
+export const isRelationKind = (name: string) => KINDS.has(name);
+
+export const ROLES = new Set(['current', 'focus', 'free', 'lead', 'member', 'owner', 'pinned']);
+
+export const isRole = (name: string) => ROLES.has(name);
+
 export type Id = EARS.EntityId;
 
-/** An engine with the contract specs' entity types, and no persistence unless given */
+/** An engine with the contract specs' entity types, relation kinds and roles, and no persistence unless given */
 export function engine(persistence?: PersistenceSink): EngineUnderTest {
-  return freshEngine({ isEntityType, persistence });
+  return freshEngine({ isEntityType, isRelationKind, isRole, persistence });
 }
 
 export type SinkCall = [method: string, ...args: unknown[]];
@@ -35,7 +43,7 @@ export function recordingSink(): { sink: PersistenceSink; calls: SinkCall[] } {
     onCreateEntity: record('onCreateEntity'),
     onDestroyEntity: record('onDestroyEntity'),
     onDropAttr: record('onDropAttr'),
-    onPutAttrArray: record('onPutAttrArray'),
+    onPutAttr: record('onPutAttr'),
     onAddRelation: record('onAddRelation'),
     onUpdateRelation: record('onUpdateRelation'),
     onRemoveRelation: record('onRemoveRelation'),

@@ -9,10 +9,10 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    // Small (`SIZE_MS`, scripts/lib/unit-suites.ts). A budget belongs to the size, not to each
+    // Small (`SIZE_MS` × `DEADLINE_FACTOR`, scripts/lib/unit-suites.ts). A budget belongs to the size, not to each
     // test that trips over vitest's 5s default.
-    testTimeout: 15_000,
-    hookTimeout: 15_000,
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     // One half, because every spec here builds its own fixture in a temp directory and none reads the
     // built packages. A spec that needs a 60s budget or a capped worker pool needs a second config first.
     include: ['tests/**/*.spec.ts'],

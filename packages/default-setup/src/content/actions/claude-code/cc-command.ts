@@ -290,7 +290,7 @@ async function generateTitle(services: Services, threadId: string): Promise<stri
   if (messages.length === 0) return 'Untitled';
 
   const serialized = messages
-    .filter((m: any) => !m.compacted && m.status !== 'cancelled' && !m.deleted && m.text
+    .filter((m: any) => !m.compacted && m.status !== 'cancelled' && m.text
       && !(m.sender === 'user' && /^\/\S+/.test(m.text)))
     .slice(-10)
     .map((m: any) => {

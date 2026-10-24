@@ -22,7 +22,7 @@ Whichever `apack` you run, inside a pack it hands off to the `@apackdev/cli` ver
 | Package | What it is |
 |---|---|
 | `@apackdev/sdk` | Pack-facing API and types (`@apackdev/sdk/fe`, `/steps`, `/events`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) and the AI SDK (`ai` 7, whose types `services.inference` uses) are peer dependencies, and so is TypeScript (5.7 or later). |
-| `@apackdev/ears` | The EARS data engine and its types: what the generated `#generated/ears` and `#generated/repository` build on (`RepositoryError`, `EarsError`; `createEarsEngine` for tests and tooling). The untyped operations over the app's engine — `untypedQuery`, `untypedWrite`, `findRelations`, the graph and blueprint helpers — are `@apackdev/sdk/ears`. The app shares one instance with every pack, as it does `@apackdev/sdk`. A dependency of every pack. |
+| `@apackdev/ears` | The EARS data engine and its types: what the generated `#generated/ears` and `#generated/repository` build on (`EarsError`; `createEarsEngine` for tests and tooling). The untyped operations over the app's engine — `untypedQuery`, `untypedWrite`, `findRelations`, `wouldCreateCycle` — are `@apackdev/sdk/ears`, and `RepositoryError`, which a repository throws, is `@apackdev/sdk/repositories`. The app shares one instance with every pack, as it does `@apackdev/sdk`. A dependency of every pack. |
 | `@apackdev/ui` | Vue components, tiptap and Monaco editors and UI composables (`@apackdev/ui/design/button`, `@apackdev/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `build.bundleUi` in the manifest docs). |
 | `@apackdev/cli` | The `apack` command and build toolchain. A devDependency of every pack. |
 | `@apackdev/testing` | Pack tests: `@apackdev/testing/harness` runs a pack's content, systems, services and flows in unit tests without the app, `@apackdev/testing/vitest` configures Vitest for it (`isolatedDataDir`), and `@apackdev/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
@@ -159,7 +159,7 @@ apack pack clean      # Remove dist/, .apack/, __generated__/
 ## Constraints
 
 - External packs declare feature preferences in `features.<id>.settings`, pack preferences in `extensions.settings`, and references in `features.<id>.references`. Host preferences belong to the host; see [settings declarations](manifest.md#feature-settings).
-- Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `settings`, `onboarding`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`).
+- Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `settings`, `onboarding`, `appData`, `runHistory`, `inference`, `secrets`, `filesystem`).
 - The app must be restarted after installing or uninstalling a pack.
 
 ## Next steps

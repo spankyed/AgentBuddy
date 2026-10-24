@@ -1,23 +1,24 @@
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { promptRepository } from '../repositories/prompt-repository.ts';
 import { findRelations, boundEars as ears, untypedWrite } from '../ears/index.ts';
+import { sdkEntities } from '../ears/sdk-entities.ts';
 import { loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { contentPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
 import { validate } from '../build/compilers/flow-dsl-validator.ts';
 import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
-import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
+import type { FlowEntity } from '../types/sdk-entities.ts';
 import type { ContentEditPolicy } from '../framework/declaration-schema.ts';
-import { childContentKey, defineKey, hashValues, recordApplied, CONTENT_KEY, contentKeyPrefix, CONTENT_HASH } from './format-applier.ts';
+import { childContentKey, contentKeyOf, defineKey, hashValues, recordApplied, CONTENT_KEY, contentKeyPrefix, CONTENT_HASH } from './format-applier.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
 import { contentPackId } from '../utils/apply.ts';
 
 /**
- * What a flow's parts are **not** over: an entity's own id, when it was written, and the two attributes the
+ * What a flow's parts are **not** over: an entity's own id, when it was written and last changed, and the two attributes the
  * apply stamps on it. Everything else a flow or one of its nodes holds is content.
  */
-const ROW_KEYS = new Set(['id', 'createdAt', 'contentHash', 'contentKey']);
+const ROW_KEYS = new Set(['id', 'createdAt', 'updatedAt', 'contentHash', 'contentKey']);
 
 /**
  * The relation kinds a flow's structure is made of. `flow-compiler.ts` emits these two and no others, which
@@ -29,9 +30,9 @@ export const GRAPH_REL_KINDS: readonly string[] = [EARS.RelKind.CONTAINS, EARS.R
 /** A flow's three parts as stored now: its own values, each node's, and its edges */
 type GraphState = [Array<[string, unknown]>, Array<[string, Array<[string, unknown]>]>, string[]];
 
-/** An entity's content as stored now: every attribute but the four that say which or when */
+/** An entity's content as stored now: every attribute but the five that say which or when */
 function contentOf(id: EARS.EntityId): Array<[string, unknown]> {
-  const row = ears().findByIdRaw(id) as Record<string, unknown> | null;
+  const row = ears().query.withTrashed.ids(id).pickAll()[0] as Record<string, unknown> | undefined;
   return Object.entries(row ?? {}).filter(([field]) => !ROW_KEYS.has(field)).sort(([a], [b]) => (a < b ? -1 : 1));
 }
 
@@ -44,11 +45,11 @@ function contentOf(id: EARS.EntityId): Array<[string, unknown]> {
  * catching — a field the user added to a node was not in the list, so it was not in the digest.
  */
 function graphState(flowId: EARS.EntityId): GraphState {
-  const nodeIds = findRelations({ sourceEntity: flowId, relationType: EARS.RelKind.CONTAINS }).map((r) => r.targetEntity as string).sort();
+  const nodeIds = findRelations({ source: flowId, kind: EARS.RelKind.CONTAINS }).map((r) => r.target as string).sort();
   const relations = [flowId, ...nodeIds]
-    .flatMap((source) => findRelations({ sourceEntity: source as EARS.EntityId }))
-    .filter((r) => GRAPH_REL_KINDS.includes(r.relationType))
-    .map((r) => JSON.stringify([r.sourceEntity, r.relationType, r.targetEntity, r.info ?? null]))
+    .flatMap((source) => findRelations({ source: source as EARS.EntityId }))
+    .filter((r) => GRAPH_REL_KINDS.includes(r.kind))
+    .map((r) => JSON.stringify([r.source, r.kind, r.target, r.info ?? null]))
     .sort();
   return [contentOf(flowId), nodeIds.map((id) => [id, contentOf(id as EARS.EntityId)]), relations];
 }
@@ -109,7 +110,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
       const packId = contentPackId(ctx.compiledDir);
 
       if (ctx.mode === 'wipe-and-replace') {
-        for (const flow of ears().findAll<FlowEntity>(EARS.Entity.Flow)) {
+        for (const flow of sdkEntities.query(EARS.Entity.Flow).pickAll()) {
           try { flowRepository.deleteFlow(flow.id); } catch {}
         }
         ctx.log('  flows wiped');
@@ -121,11 +122,11 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
        */
       const lookupWritten = (flows: FlowEntity[], name: string): FlowEntity | undefined => {
         const contentKey = flowContentKey(packId, name);
-        return flows.find((flow) => ears().getAttr(flow.id, CONTENT_KEY) === contentKey)
-          ?? flows.find((flow) => flow.label === name && ears().getAttr(flow.id, CONTENT_KEY) === null);
+        return flows.find((flow) => contentKeyOf(flow.id) === contentKey)
+          ?? flows.find((flow) => flow.label === name && contentKeyOf(flow.id) === undefined);
       };
-      const existingFlows = ears().findAll<FlowEntity>(EARS.Entity.Flow);
-      const actionMap = buildLabelMap(ears().findAll<ActionEntity>(EARS.Entity.Action));
+      const existingFlows = sdkEntities.query(EARS.Entity.Flow).pickAll();
+      const actionMap = buildLabelMap(sdkEntities.query(EARS.Entity.Action).pickAll());
       const promptMap = buildLabelMap(promptRepository.all());
 
       /**
@@ -135,13 +136,13 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
        */
       const collidingOwner = (name: string, entry: FlowDSL[string], replacing: FlowEntity | undefined): string | undefined => {
         const ownIds = new Set<string>(replacing
-          ? [replacing.id, ...findRelations({ sourceEntity: replacing.id, relationType: EARS.RelKind.CONTAINS }).map((r) => r.targetEntity)]
+          ? [replacing.id, ...findRelations({ source: replacing.id, kind: EARS.RelKind.CONTAINS }).map((r) => r.target)]
           : []);
         const ids = (compileFlowDSL({ [name]: entry }, { actions: actionMap, prompts: promptMap }).entity as Array<{ id: string }>).map((row) => row.id);
-        const taken = ids.find((id) => !ownIds.has(id) && ears().findByIdRaw(id as EARS.EntityId));
+        const taken = ids.find((id) => !ownIds.has(id) && ears().query.withTrashed.ids(id as EARS.EntityId).exists());
         if (!taken) return undefined;
-        const flowId = findRelations({ targetEntity: taken as EARS.EntityId, relationType: EARS.RelKind.CONTAINS })[0]?.sourceEntity ?? taken;
-        const contentKey = ears().getAttr(flowId as EARS.EntityId, CONTENT_KEY) as string | null;
+        const flowId = findRelations({ target: taken as EARS.EntityId, kind: EARS.RelKind.CONTAINS })[0]?.source ?? taken;
+        const contentKey = contentKeyOf(flowId as EARS.EntityId);
         return contentKey ? `written by ${contentKey.slice(0, contentKey.indexOf(':'))}` : 'created by the user';
       };
 
@@ -250,12 +251,12 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
        * resolve by label.
        */
       const subflowTargets = (): Map<string, string> => {
-        const flows = ears().findAll<FlowEntity>(EARS.Entity.Flow);
+        const flows = sdkEntities.query(EARS.Entity.Flow).pickAll();
         const writtenIds = new Set<string>();
         const targets = new Map<string, string>();
         for (const name of Object.keys(flowsDSL)) {
           const contentKey = flowContentKey(packId, name);
-          const written = flows.find((flow) => ears().getAttr(flow.id, CONTENT_KEY) === contentKey);
+          const written = flows.find((flow) => contentKeyOf(flow.id) === contentKey);
           if (!written) continue;
           targets.set(name, written.id);
           writtenIds.add(written.id);
@@ -278,7 +279,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         const prefix = `${contentKeyPrefix(packId)}flows/`;
         for (const itemKey of [...record.before.keys()].filter((k) => k.startsWith(prefix) && !record.defined.has(k))) {
           const item = record.before.get(itemKey)!;
-          const flow = ears().findAll<FlowEntity>(EARS.Entity.Flow).find((f) => ears().getAttr(f.id, CONTENT_KEY) === itemKey);
+          const flow = sdkEntities.query(EARS.Entity.Flow).pickAll().find((f) => contentKeyOf(f.id) === itemKey);
           const { resolution, parts, offer } = resolveRemoval({
             applied: item,
             ...(flow !== undefined && { live: { contentHash: flow.contentHash } as LiveEntity }),

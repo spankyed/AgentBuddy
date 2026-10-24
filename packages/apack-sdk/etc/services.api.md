@@ -19,6 +19,8 @@ import type { JSONSchema7 } from 'ai';
 import type { LanguageModel } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import type { RecordIndexes } from '@apackdev/ears';
+import type { RecordStore } from '@apackdev/ears';
 import type { rerank } from 'ai';
 import type { RerankingModel } from 'ai';
 import type { SpeechModel } from 'ai';
@@ -50,7 +52,7 @@ export interface AppDataService {
 }
 
 // @public
-export type BackupDatabase = 'lmdb' | 'volatileLmdb';
+export type BackupDatabase = 'lmdb' | 'runHistory';
 
 // @public (undocumented)
 export interface BackupSummary {
@@ -94,6 +96,27 @@ export function _createPackServices(): {
     bindServices(services: PackServiceAccess): () => void;
 };
 
+// @internal
+export function _createRunHistory(records: RecordStore<RunNode>): RunHistory;
+
+// @public
+export interface EventRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: string;
+    // (undocumented)
+    eventType: string;
+    // (undocumented)
+    input?: never;
+    // (undocumented)
+    kind: 'event';
+    payload?: unknown;
+    // (undocumented)
+    result?: never;
+    // (undocumented)
+    stepNodeType?: never;
+    triggerType: string;
+}
+
 // @public
 export interface FileEntry {
     // (undocumented)
@@ -124,6 +147,23 @@ export interface FilesystemService {
 }
 
 // @public
+export interface FlowRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: never;
+    // (undocumented)
+    eventType?: never;
+    input?: Record<string, unknown>;
+    // (undocumented)
+    kind: 'flow';
+    // (undocumented)
+    payload?: never;
+    result?: unknown;
+    stepNodeType?: string;
+    // (undocumented)
+    triggerType?: never;
+}
+
+// @public
 export interface HostServices {
     appData: AppDataService;
     emitter: {
@@ -138,9 +178,9 @@ export interface HostServices {
     onboarding: OnboardingService;
     // (undocumented)
     repository: typeof repository;
+    runHistory: RunHistory;
     secrets: SecretsService;
     settings: SettingsService;
-    traceStore: TraceStore;
 }
 
 // @internal
@@ -213,8 +253,93 @@ export interface PackServiceAccess {
 // @public
 export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
+// @public
+export const repository: Record<string, unknown>;
+
 // @internal
 export type _ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => _InferenceModels[K] | Promise<_InferenceModels[K]>;
+
+// @internal
+export const _RUN_HISTORY_INDEXES: RecordIndexes<RunNode>;
+
+// @public
+export interface RunHistory {
+    findChildren(id: RunNodeId, page?: RunPage): RunNode[];
+    findRuns(options?: {
+        flowId?: EARS.EntityId;
+        limit?: number;
+        cursor?: RunNodeId;
+    }): RunNode[];
+    finish(id: RunNodeId, status: 'completed' | 'failed'): void;
+    // (undocumented)
+    get(id: RunNodeId): RunNode | undefined;
+    prune(options: {
+        before: number;
+    }): number;
+    start(node: RunNodeStart): RunNode;
+    stopActive(): void;
+    tree(id: RunNodeId): RunTree | undefined;
+    update(id: RunNodeId, patch: RunNodePatch): void;
+}
+
+// @public
+export type RunNode = FlowRunNode | EventRunNode | StepRunNode;
+
+// @public
+export interface RunNodeBase {
+    // (undocumented)
+    completedAt?: number;
+    // (undocumented)
+    final?: boolean;
+    flowId?: EARS.EntityId;
+    // (undocumented)
+    id: RunNodeId;
+    // (undocumented)
+    label: string;
+    nodeId?: EARS.EntityId;
+    parentId?: RunNodeId;
+    rootId: RunNodeId;
+    // (undocumented)
+    startedAt: number;
+    // (undocumented)
+    status: RunStatus;
+}
+
+// @public
+export type RunNodeId = `RunNode-${string}`;
+
+// @public
+export interface RunNodePatch {
+    // (undocumented)
+    input?: Record<string, unknown>;
+    // (undocumented)
+    label?: string;
+    // (undocumented)
+    payload?: unknown;
+    // (undocumented)
+    result?: unknown;
+}
+
+// @public
+export type RunNodeStart = Omit<FlowRunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'> | Omit<EventRunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'> | Omit<StepRunNode, 'id' | 'rootId' | 'status' | 'startedAt' | 'completedAt'>;
+
+// @public
+export interface RunPage {
+    // (undocumented)
+    cursor?: RunNodeId;
+    // (undocumented)
+    limit?: number;
+    // (undocumented)
+    reverse?: boolean;
+}
+
+// @public
+export type RunStatus = 'active' | 'completed' | 'failed' | 'stopped';
+
+// @public
+export type RunTree = RunNode & {
+    children: RunTree[];
+};
 
 // @public
 export interface SecretMetadata {
@@ -322,50 +447,26 @@ export interface SettingsService {
     set(target: SettingsTarget, path: readonly string[], value: unknown, condition?: SettingsWriteCondition): void;
 }
 
+// @public
+export interface StepRunNode extends RunNodeBase {
+    // (undocumented)
+    cronExpression?: never;
+    // (undocumented)
+    eventType?: never;
+    input?: Record<string, unknown>;
+    // (undocumented)
+    kind: 'step';
+    // (undocumented)
+    payload?: never;
+    result?: unknown;
+    // (undocumented)
+    stepNodeType: string;
+    // (undocumented)
+    triggerType?: never;
+}
+
 // @internal
 export const _toSecretMetadata: (input: SecretMetadata) => SecretMetadata;
-
-// @public
-export interface TraceEntityMeta {
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    type: string;
-}
-
-// @public (undocumented)
-export interface TraceRelation {
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    info?: unknown;
-    // (undocumented)
-    kind: string;
-    // (undocumented)
-    src: EARS.EntityId;
-    // (undocumented)
-    tgt: EARS.EntityId;
-}
-
-// @public
-export interface TraceStore {
-    entities(): Array<{
-        id: EARS.EntityId;
-        meta: TraceEntityMeta;
-    }>;
-    getAttr(kind: string, id: EARS.EntityId): unknown;
-    // (undocumented)
-    getEntityMeta(id: EARS.EntityId): TraceEntityMeta | null;
-    relations(filter?: {
-        kind?: string;
-        src?: EARS.EntityId;
-        tgt?: EARS.EntityId;
-        limit?: number;
-    }): Array<{
-        id: string;
-        rel: TraceRelation;
-    }>;
-}
 
 // @public
 export class UnknownBackupDatabasesError extends Error {

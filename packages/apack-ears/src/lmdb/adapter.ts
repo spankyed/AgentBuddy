@@ -15,26 +15,20 @@ function enc(value: unknown): Encoded {
 // Use same separator throughout for consistency
 const SEP = '\x1F';
 
-function attrKey(kind: string, entityId: string, idx: number) {
+/** A buffered attribute write that removes the row */
+const DROPPED = Symbol('dropped');
+
+/** An attribute's row: one per `(kind, entityId)`, holding its one value */
+function attrKey(kind: string, entityId: string) {
   validateKey(kind, 'kind');
   validateKey(entityId, 'entityId');
-  return `${kind}${SEP}${entityId}${SEP}${idx}`;
+  return `${kind}${SEP}${entityId}`;
 }
 
 function validateKey(value: string, name: string) {
   if (value.includes(SEP)) {
     throw new Error(`Invalid ${name}: contains forbidden separator character \\x1F`);
   }
-}
-
-function prefix(kind: string, entityId: string) {
-  const p = `${kind}${SEP}${entityId}${SEP}`;
-  // End bound: any key with this prefix sorts before prefix+\xFF
-  return { start: p, end: p + '\xFF' };
-}
-
-function arrayRewriteKey(kind: string, entityId: string) {
-  return `${kind}${SEP}${entityId}`;
 }
 
 /** The attribute kinds stored in `attrs`: keys sort by kind, so each lookup skips past the kind before it */
@@ -45,29 +39,29 @@ function* storedKinds(attrs: LmdbDbs['attrs']): Iterable<string> {
     if (key === undefined) return;
     const kind = String(key).split(SEP)[0];
     yield kind;
-    // Past every `kind␟…` key (ids sort below \xFF, as in prefix())
+    // Past every `kind␟…` key (ids sort below \xFF)
     start = `${kind}${SEP}\xFF`;
   }
 }
 
 /** What the app is told when a write is dropped. The engine reports; the app decides what to do about it. */
 export interface WriteFailure {
-  /** `entity` | `entity-remove` | `attrs` | `relation` | `relation-remove`, or `destroy` for a unit's destroy */
+  /** `entity` | `entity-remove` | `attrs` | `relation` | `relation-remove`, or `destroy` for an entity's destroy */
   op: string;
   /** The row the dropped write was for, which is what a diagnosis needs and the logs never had */
   key: string;
   error: unknown;
 }
 
-export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFailure) => void): PersistenceSink {
+export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFailure) => void): Required<PersistenceSink> {
   const { entities, attrs, relations } = dbs;
 
   // Error tracking
   let errorCount = 0;
   let lastError: { op: string; key?: string; error: any } | null = null;
 
-  // Keyed buffers for coalescing writes
-  const arrayRewrites = new Map<string, unknown[]>(); // kind\x1FentityId -> final array
+  // Keyed buffers for coalescing writes: an attribute row's last value, or DROPPED
+  const attrWrites = new Map<string, unknown>();
   const relUpserts = new Map<string, any>();
   const relDeletes = new Set<string>();
   // An entity's row holds its type, written once, when the entity is created
@@ -95,14 +89,13 @@ export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFa
     for (const [id, type] of createdRows) steps.push({ op: 'entity', key: id, run: () => { entities.put(id, { type }); } });
     createdRows.clear();
 
-    for (const [key, arr] of arrayRewrites) {
-      const [kind, entityId] = key.split(SEP);
+    for (const [key, value] of attrWrites) {
       steps.push({ op: 'attrs', key, run: () => {
-        removeAttrRange(kind, entityId);
-        for (let i = 0; i < arr.length; i++) attrs.put(attrKey(kind, entityId, i), enc(arr[i]));
+        if (value === DROPPED) attrs.remove(key);
+        else attrs.put(key, enc(value));
       } });
     }
-    arrayRewrites.clear();
+    attrWrites.clear();
 
     for (const id of relDeletes) steps.push({ op: 'relation-remove', key: id, run: () => { relations.remove(id); } });
     relDeletes.clear();
@@ -111,19 +104,6 @@ export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFa
     relUpserts.clear();
 
     return steps;
-  }
-
-  /**
-   * Every attribute row of one `(kind, entityId)`.
-   *
-   * The copy is the point: the body removes exactly the keys this walks, and an lmdb range is a live cursor.
-   * `onDestroyEntity` said so in a comment of its own; saying it twice in one file is how the two drifted.
-   */
-  function removeAttrRange(kind: string, entityId: string): void {
-    // The spread is the whole point, so the lint rule calling it useless is wrong here: an lmdb range is a
-    // live cursor, and the body removes exactly the keys it walks
-    // eslint-disable-next-line no-useless-spread
-    for (const key of [...attrs.getKeys(prefix(kind, entityId))]) attrs.remove(key);
   }
 
   /** Runs the steps in one transaction, falling back to one transaction each so a failure is isolated. */
@@ -160,13 +140,13 @@ export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFa
     }
   }
 
-  /** An entity's row and its attributes, read per kind (keys are kind␟id␟index); its relations went before */
+  /** An entity's row and its attributes, one row per kind (keys are kind␟id); its relations went before */
   function removeEntityRows(entityId: string): void {
     entities.remove(entityId);
-    // `storedKinds` reads the same store this loop removes from, inside one transaction, so it is materialised
-    // for the same reason `removeAttrRange` materialises: a live cursor the body invalidates
+    // `storedKinds` reads the same store this loop removes from, inside one transaction, so it is materialised:
+    // an lmdb range is a live cursor the body would invalidate
     // eslint-disable-next-line no-useless-spread
-    for (const kind of [...storedKinds(attrs)]) removeAttrRange(kind, entityId);
+    for (const kind of [...storedKinds(attrs)]) attrs.remove(attrKey(kind, entityId));
   }
 
   function scheduleFlush() {
@@ -180,27 +160,22 @@ export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFa
     });
   }
 
-  function bufferArrayRewrite(kind: string, entityId: string, array: unknown[]) {
-    // Validate keys early to fail fast
-    validateKey(kind, 'kind');
-    validateKey(entityId, 'entityId');
-    
-    const key = arrayRewriteKey(kind, entityId);
-    // Store only the final state of the array
-    arrayRewrites.set(key, [...array]); // Clone to avoid mutations
+  /** Buffers an attribute row's value (or its removal), keeping only the last; the key is checked now, to fail fast */
+  function bufferAttr(kind: string, entityId: string, value: unknown) {
+    attrWrites.set(attrKey(kind, entityId), value);
     scheduleFlush();
   }
 
   /** Drops the writes buffered for an entity, so a flush after its hard delete doesn't write it back */
   function discardBuffered(entityId: string) {
     createdRows.delete(entityId);
-    for (const key of arrayRewrites.keys()) {
-      if (key.slice(key.indexOf(SEP) + 1) === entityId) arrayRewrites.delete(key);
+    for (const key of attrWrites.keys()) {
+      if (key.slice(key.indexOf(SEP) + 1) === entityId) attrWrites.delete(key);
     }
   }
 
   const buffered = () =>
-    createdRows.size + arrayRewrites.size + relDeletes.size + relUpserts.size > 0;
+    createdRows.size + attrWrites.size + relDeletes.size + relUpserts.size > 0;
 
   function close() {
     if (closed) return;
@@ -213,14 +188,12 @@ export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFa
     runSteps(takeSteps(), 'final flush');
   }
 
-  /**
-   * A relation write this adapter refuses: counted like any other failed write, so `close()` reports it instead of
-   * the write disappearing with a line in the console
-   */
+  /** A relation write this adapter refuses: counted and reported like any other dropped write */
   function dropRelation(relId: string, reason: string): void {
+    const error = new Error(reason);
     errorCount++;
-    lastError = { op: 'relation', key: relId, error: new Error(reason) };
-    console.warn(`[LMDB] ${reason}`);
+    lastError = { op: 'relation', key: relId, error };
+    onWriteFailure?.({ op: 'relation', key: relId, error });
   }
 
   return {
@@ -244,7 +217,7 @@ export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFa
       } catch (error) {
         errorCount++;
         lastError = { op: 'destroy', key: entityId, error };
-        console.error(`[LMDB] Failed to delete entity ${entityId}:`, error);
+        onWriteFailure?.({ op: 'destroy', key: entityId, error });
       }
     },
 
@@ -263,20 +236,14 @@ export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFa
       runUnit([...destroys, ...takeSteps()]);
     },
 
-    onPutAttrArray(kind: string, entityId: string, values: unknown[]) {
+    onPutAttr(kind: string, entityId: string, value: unknown) {
       if (closed) return;
-      bufferArrayRewrite(kind, entityId, values);
+      bufferAttr(kind, entityId, value);
     },
 
-    onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]) {
+    onDropAttr(kind: string, entityId: string) {
       if (closed) return;
-      // Always rewrite the entire array after drop
-      if (entireArray !== undefined) {
-        bufferArrayRewrite(kind, entityId, entireArray);
-      } else {
-        // Fallback: delete everything for this (kind, entityId)
-        bufferArrayRewrite(kind, entityId, []);
-      }
+      bufferAttr(kind, entityId, DROPPED);
     },
 
     onAddRelation(relId: string, kind: string, src: string, tgt: string, info: unknown) {
@@ -308,38 +275,39 @@ export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFa
       scheduleFlush();
     },
 
-    onUpdateRelation(relId: string, patch: { src?: string; tgt?: string; info?: unknown }) {
+    onUpdateRelation(relId: string, patch: { source?: string; target?: string; info?: unknown }) {
       if (closed) return;
-      const r = relations.get(relId) || relUpserts.get(relId);
+      // The relation as the last write left it: one buffered is newer than the stored row, and one removed is gone
+      const r = relDeletes.has(relId) ? undefined : relUpserts.get(relId) ?? relations.get(relId);
       if (!r) {
         dropRelation(relId, `onUpdateRelation called on missing relId: ${relId}`);
         return;
       }
       
       const updated = { ...r };
-      if (patch.src) {
+      if (patch.source) {
         // Validate src is a valid entity ID
-        if (patch.src === 'undefined' || patch.src === 'null' || typeof patch.src !== 'string') {
-          dropRelation(relId, `Invalid src in onUpdateRelation: relId=${relId}, src="${patch.src}"`);
+        if (patch.source === 'undefined' || patch.source === 'null' || typeof patch.source !== 'string') {
+          dropRelation(relId, `Invalid source in onUpdateRelation: relId=${relId}, src="${patch.source}"`);
           return;
         }
-        if (!patch.src.includes('-')) {
-          dropRelation(relId, `Invalid src format in onUpdateRelation: relId=${relId}, src="${patch.src}" (missing hyphen)`);
+        if (!patch.source.includes('-')) {
+          dropRelation(relId, `Invalid source format in onUpdateRelation: relId=${relId}, src="${patch.source}" (missing hyphen)`);
           return;
         }
-        updated.src = patch.src;
+        updated.src = patch.source;
       }
-      if (patch.tgt) {
+      if (patch.target) {
         // Validate tgt is a valid entity ID
-        if (patch.tgt === 'undefined' || patch.tgt === 'null' || typeof patch.tgt !== 'string') {
-          dropRelation(relId, `Invalid tgt in onUpdateRelation: relId=${relId}, tgt="${patch.tgt}"`);
+        if (patch.target === 'undefined' || patch.target === 'null' || typeof patch.target !== 'string') {
+          dropRelation(relId, `Invalid target in onUpdateRelation: relId=${relId}, tgt="${patch.target}"`);
           return;
         }
-        if (!patch.tgt.includes('-')) {
-          dropRelation(relId, `Invalid tgt format in onUpdateRelation: relId=${relId}, tgt="${patch.tgt}" (missing hyphen)`);
+        if (!patch.target.includes('-')) {
+          dropRelation(relId, `Invalid target format in onUpdateRelation: relId=${relId}, tgt="${patch.target}" (missing hyphen)`);
           return;
         }
-        updated.tgt = patch.tgt;
+        updated.tgt = patch.target;
       }
       if ('info' in patch) {
         updated.info = patch.info ?? null;
