@@ -141,7 +141,7 @@ map; re-measure there. A field named `__proto__` is set as an own property (`set
 
 ### 7. Lazy queries
 Filter and walk steps pull ids one at a time; `orderBy`, `reverse` and `distinct` collect. `first`, `exists` and
-`limit` stop early; `count` doesn't allocate the set. `removals`' check on a kept builder still applies.
+`limit` stop early; `count` doesn't allocate the set.
 **Done when:** a spec counts storage reads and shows `first()` and `limit(n)` stop early; the `first()` bench case
 no longer scales with the type.
 
@@ -150,6 +150,13 @@ answers whether to go on. Generators measured slower (relation traversal 2.3×, 
 materialisation +2 ms on 40k), so a stream is a loop over a callback. A type walk reaches only the entities in the
 type when it began, so a `where` predicate that creates one doesn't extend its own walk. Against Step 6: 1,000
 `query(type).first()` over 40k 3,815 → 0.25 ms, 100 `linkedWith` 49.4 → 44.7 ms, the rest within noise.
+
+A builder is a recipe: chaining a step runs nothing, and every terminal runs the whole query against the data as it
+is then. The first cut left `where(k, v)` and `withRole` after a type start, `orderBy`, `reverse`, `distinct`, the
+deep walks, `query.ids` and `query.all` resolving when the step was built, and a builder freezing once a terminal had
+built its set, so one builder held across writes answered from two moments; every step is now deferred, nothing
+caches, and `removals`, which patched held snapshots, is gone. The cost is that a predicate runs once per entity per
+terminal (`if (q.exists()) return q.pickAll()` runs it twice).
 
 ### 8. Writes committed when they return (review item 9) — dropped
 With one copy of the data there is nothing to roll back, so the journal-commit rework, the adapter rewrite, the sink
