@@ -31,11 +31,13 @@ What is left is the engine itself: one copy of the data, in LMDB, behind an orde
   | `['e', type, seq]` → id, `['i', id]` → seq | | entities by type in insertion order; existence |
   | `['c', type]` | count | `count()` by type |
   | `['T', seq]`/`['t', type]`, `['AK', seq]`/`['ak', kind]`, `['RK', seq]`/`['rk', kind]` | | catalogs in first-seen order |
-  | `['s', kind, src, seq]`, `['g', kind, tgt, seq]` | `[relId, otherEnd]` | relations by source / target; a hop never decodes details |
+  | `['o', entity, kind, seq]`, `['n', entity, kind, seq]` | `[relId, farEnd]` | an entity's edges out / in, by kind: a hop never decodes details, and a destroy or `linkedWith` reads one range |
   | `['r', relId]` | the relation row | `findRelations`, `outEdges` |
   | `['m', 'seq']`, `['m', 'format']` | | sequence, store format |
 
-  Insertion-order keys are required: the contract pins insertion order. By-entity keys also serve writes: a commit
+  Adjacency is keyed by entity first, as attributes are, so an entity's edges are one range; a read of every
+  relation of one kind (`findRelations({ kind })`) is then a walk of `['r', …]` or a kind index, decided in the
+  design. Insertion-order keys are required: the contract pins insertion order. By-entity keys also serve writes: a commit
   costs about the B+tree pages it dirties, and an entity's fields share one or two.
 - **Values are copies.** Reads decode fresh values; pack code that mutated a returned value would silently stop
   persisting, so a development check freezes returned values in tests.
