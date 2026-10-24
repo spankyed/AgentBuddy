@@ -99,9 +99,8 @@ relations):
 Step 3, measured against the comparator it replaced: 3 chained steps 27.8 → 11.8 ms, `orderBy` a string 14.9 → 11.9 ms.
 
 ### 5. Rewrite `goal-lmdb-only.md`
-Reduce it to Step 10's trigger and design: delete the trace, partition, router and session material; record the
-durability decision as settled by Step 8; keep the key layout, the spike measurements and the lock analysis, with
-the lock narrowing moved into Step 10.
+Done, 2026-10-23: it is Step 10's trigger and design, with the spike's measurements and the lock analysis; the
+trace, partition, router and session material is gone.
 
 ### 6. Attributes by entity (review item 6)
 `store` becomes `id → kind → value`. `getRow`, `destroyEntity`, `hasAttr`, `place` and the journal's undo follow;
