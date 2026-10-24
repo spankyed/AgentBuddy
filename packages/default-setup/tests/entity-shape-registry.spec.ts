@@ -13,10 +13,11 @@ describe('PackShapes', () => {
     expectTypeOf<OwnEntityShapes['Message']>().toEqualTypeOf<MessageEntity>();
   });
 
-  it("includes the SDK's shapes", () => {
+  it("includes the SDK's shapes, and no relation, which is no entity", () => {
     expectTypeOf<PackShapes['Action']>().toEqualTypeOf<ActionEntity>();
     expectTypeOf<PackShapes['Flow']>().toEqualTypeOf<FlowEntity>();
-    expectTypeOf<PackShapes['Relation']>().toEqualTypeOf<SdkEntityShapes['Relation']>();
+    expectTypeOf<PackShapes>().not.toHaveProperty('Relation');
+    expectTypeOf<SdkEntityShapes>().not.toHaveProperty('Relation');
   });
 
   it("reads Node rows as the pack's step node types, not the SDK's NodeBase", () => {

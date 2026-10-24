@@ -1,18 +1,15 @@
 /**
- * The entity types and relation kinds the SDK owns: the EARS engine's own (Relation) and the data
- * model the SDK's compilers, appliers and repositories are written against (flows and their nodes,
- * actions, prompts and documents). A flow run is not one: it is a record in the run history
+ * The entity types and relation kinds the SDK owns: the data model the SDK's compilers, appliers and
+ * repositories are written against (flows and their nodes, actions, prompts and documents). A relation
+ * is not an entity: `findRelations` reads them. A flow run is not one: it is a record in the run history
  * (`services.runHistory`). Every pack has them, and no pack declares them. The
  * generator, the manifest schema and the host all read this module.
  *
  * The shapes here are part of the typed EARS contract (packages/apack-sdk/TYPED-EARS.md).
  */
 import type { BaseEntity, RequiredField, RowRules, ShortCode } from '@apackdev/ears';
-import type { EARS } from './entities.ts';
 
 export const SDK_ENTITIES = {
-  /** Every link between two entities */
-  Relation: 'Relation',
   Flow: 'Flow',
   /** A flow's step or trigger */
   Node: 'Node',
@@ -68,10 +65,6 @@ export interface NodeBase extends BaseEntity {
   description?: string;
   color?: string;
   final?: boolean;
-}
-
-export interface RelationEntity extends BaseEntity {
-  relationDetails: EARS.RelationDetail;
 }
 
 export interface FlowEntity extends BaseEntity {
@@ -180,7 +173,6 @@ export interface CollectionEntity extends BaseEntity {
  * steps reads Node rows as its step node types (and its dependencies') instead of NodeBase.
  */
 export type SdkEntityShapes = {
-  Relation: RelationEntity;
   Flow: FlowEntity;
   Node: NodeBase;
   Action: ActionEntity;
@@ -191,7 +183,7 @@ export type SdkEntityShapes = {
 
 /** The keys of SdkEntityShapes, at runtime */
 export const SDK_SHAPED_ENTITIES = [
-  SDK_ENTITIES.Relation, SDK_ENTITIES.Flow, SDK_ENTITIES.Node, SDK_ENTITIES.Action, SDK_ENTITIES.Prompt,
+  SDK_ENTITIES.Flow, SDK_ENTITIES.Node, SDK_ENTITIES.Action, SDK_ENTITIES.Prompt,
   SDK_ENTITIES.Document, SDK_ENTITIES.Collection,
 ] as const;
 
@@ -207,11 +199,9 @@ type ShortCodePrefix<T> = T extends { shortCode: ShortCode<infer P> } ? P : neve
  * What each SDK entity's created row is held to (`RowRules`): the fields it must hold, which `create` refuses a row
  * without at runtime as its type refuses one at compile time, and the prefix it numbers a short code with. The rules
  * are the shapes' own: this fails to compile naming the field when a list misses or adds one, and when a prefix
- * isn't the one the shape's `ShortCode` names or a shape's prefix is missing. Relation has none a row carries, its
- * details being the engine's to write.
+ * isn't the one the shape's `ShortCode` names or a shape's prefix is missing.
  */
 export const SDK_ROW_RULES = {
-  Relation: { required: [] },
   Flow: { required: ['shortCode', 'label', 'flowType'], shortCode: 'F' },
   Node: { required: ['nodeType', 'label'] },
   Action: { required: ['label', 'input', 'actionFn', 'shortCode'], shortCode: 'ACT' },

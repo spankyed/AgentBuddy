@@ -136,7 +136,7 @@ describe('apack pack generate-entries', () => {
     expect(output).toContain('export type RelKind = (typeof RELATION_KINDS)[number];');
   });
 
-  it('includes AttrKind namespace with Role and RelationDetails', async () => {
+  it('includes AttrKind namespace with Role', async () => {
     writeManifest({
       id: 'test-pack',
       name: 'Test Pack',
@@ -148,7 +148,7 @@ describe('apack pack generate-entries', () => {
 
     const output = readGenerated();
     expect(output).toContain("export const Role = 'role'");
-    expect(output).toContain("export const RelationDetails = 'relationDetails'");
+    expect(output).not.toContain('RelationDetails');
   });
 
   it('merges dependency type manifests into generated output', async () => {

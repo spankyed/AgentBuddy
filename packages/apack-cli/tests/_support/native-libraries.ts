@@ -1,3 +1,4 @@
+import { FIXTURE_ENTITY } from '@apackdev/sdk/testing/pack-fixture';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -80,7 +81,7 @@ export default () => new Promise((resolve, reject) => {
   const worker = new Worker(${JSON.stringify(`if (!globalThis[Symbol.for('apack.compiler.startup')]) throw new Error('Native worker has no input owner');
 ${load}
 require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, { eval: true });
-  worker.once('message', name => resolve([{ entity: 'Relation', name }]));
+  worker.once('message', name => resolve([{ entity: ${JSON.stringify(FIXTURE_ENTITY)}, name }]));
   worker.once('error', reject);
   worker.once('exit', code => { if (code) reject(new Error('Native compiler worker exited with code ' + code)); });
 });`;

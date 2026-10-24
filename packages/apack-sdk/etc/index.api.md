@@ -109,7 +109,6 @@ export type DocumentShortCode = ShortCode<'DOC'>;
 export namespace EARS {
     const // (undocumented)
     Entity: {
-        readonly Relation: "Relation";
         readonly Flow: "Flow";
         readonly Node: "Node";
         readonly Action: "Action";
@@ -142,13 +141,11 @@ export namespace EARS {
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
     const // (undocumented)
     AttrKind: {
         readonly Custom: <T extends string>(k: T) => T & EARS_2.AttrKind;
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
     // (undocumented)
     export type AttrKind = EARS_2.AttrKind;
@@ -252,12 +249,6 @@ export interface PromptEntity extends BaseEntity {
     updatedAt: number;
 }
 
-// @public (undocumented)
-export interface RelationEntity extends BaseEntity {
-    // (undocumented)
-    relationDetails: EARS.RelationDetail;
-}
-
 // @public
 export type RunNodeKind = RunNode['kind'];
 
@@ -268,7 +259,6 @@ export function safeEvents<TEvent extends {
 
 // @public
 export type SdkEntityShapes = {
-    Relation: RelationEntity;
     Flow: FlowEntity;
     Node: NodeBase;
     Action: ActionEntity;

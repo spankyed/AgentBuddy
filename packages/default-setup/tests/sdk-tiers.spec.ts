@@ -54,10 +54,10 @@ describe('Tier 1 — EARS delegates', () => {
 });
 
 describe('Tier 2 — EARS types', () => {
-  it('SDK EARS namespace exports core Entity and helpers', async () => {
+  it('SDK EARS namespace exports its entities and helpers, a relation being none', async () => {
     const { EARS: sdkEARS } = await import('@apackdev/sdk/types');
-    expect(sdkEARS.Entity).toBeDefined();
-    expect(sdkEARS.Entity.Relation).toBe('Relation');
+    expect(sdkEARS.Entity.Flow).toBe('Flow');
+    expect('Relation' in sdkEARS.Entity).toBe(false);
     expect(typeof sdkEARS.AttrKind.Custom).toBe('function');
     expect(sdkEARS.RelKind.CONTAINS).toBe('contains');
   });

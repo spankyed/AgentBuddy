@@ -1273,8 +1273,6 @@ declare namespace EARS {
         type SearchIndex = typeof SearchIndex;
         const IndexedDoc = "IndexedDoc";
         type IndexedDoc = typeof IndexedDoc;
-        const Relation = "Relation";
-        type Relation = typeof Relation;
         const Flow = "Flow";
         type Flow = typeof Flow;
         const Node = "Node";
@@ -1288,7 +1286,7 @@ declare namespace EARS {
         const Collection = "Collection";
         type Collection = typeof Collection;
     }
-    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Relation | Entity.Flow | Entity.Node | Entity.Action | Entity.Prompt | Entity.Document | Entity.Collection;
+    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Flow | Entity.Node | Entity.Action | Entity.Prompt | Entity.Document | Entity.Collection;
     type EntityId<E extends string = string> = _apackdev_ears.EARS.EntityId<E>;
     namespace RelKind {
         const HAS = "has";
@@ -1336,13 +1334,10 @@ declare namespace EARS {
     const isRole: (value: unknown) => value is RoleKind;
     const AttrKindValues: {
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
     namespace AttrKind {
         const Role = "role";
         type Role = typeof Role;
-        const RelationDetails = "relationDetails";
-        type RelationDetails = typeof RelationDetails;
         const Custom: <T extends string>(k: T) => T & AttrKind;
     }
     type AttrKind = _apackdev_ears.EARS.AttrKind;
@@ -6544,9 +6539,9 @@ declare const threadQueries: {
         id: `${string}-${string}` & {
             readonly __entity?: "Thread" | undefined;
         };
-        shortCode: ThreadTypeShortCode;
         topic: string;
         status: string;
+        shortCode: ThreadTypeShortCode;
         timestamp: number;
         relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
     }[];

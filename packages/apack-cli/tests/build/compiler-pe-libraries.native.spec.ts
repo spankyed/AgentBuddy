@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createRequire } from 'node:module';
 import { expect, it, onTestFinished, vi } from 'vitest';
-import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { FIXTURE_DATA, FIXTURE_ENTITY, packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
 import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
@@ -916,7 +916,7 @@ it.runIf(process.platform === 'win32').each(['preload', 'thread', 'preload-and-t
     const checkpoint = (phase: string) => console.info(`[PE ${site}] ${phase}: ${((performance.now() - started) / 1000).toFixed(2)}s`);
     try {
       packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {},
-        ...(site !== 'preload' ? { content: { formats: { rows: { compiler: site === 'preload-and-module' ? 'src/compiler.cjs' : 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+        ...(site !== 'preload' ? { data: FIXTURE_DATA, content: { formats: { rows: { compiler: site === 'preload-and-module' ? 'src/compiler.cjs' : 'src/compiler.ts', entity: FIXTURE_ENTITY, identity: ['name'] } },
           sources: { rows: { path: 'src/value.txt', format: 'rows' } } } } : {}) },
         files: { 'src/value.txt': 'input', 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
       const { library, addon, dllMarker, addonMarker } = await createPeNativeFixture(root, pack);
@@ -954,7 +954,7 @@ require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({phas
       if (site === 'preload-and-module') {
         fs.writeFileSync(path.join(pack, 'src/compiler.cjs'), `module.exports = () => {
   ${load('compiler')}
-  return [{entity:'Relation',name:'NATIVE'}];
+  return [{entity: ${JSON.stringify(FIXTURE_ENTITY)},name:'NATIVE'}];
 };`);
       } else if (site !== 'preload') {
         fs.writeFileSync(path.join(pack, 'src/compiler.ts'), `import { Worker } from 'node:worker_threads';
@@ -962,7 +962,7 @@ export default () => new Promise((resolve, reject) => {
   const worker = new Worker(${JSON.stringify(`if (!globalThis[Symbol.for('apack.compiler.startup')]) throw new Error('Native thread has no input owner');
 ${load('compiler')}
 require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true});
-  worker.once('message', name => resolve([{entity:'Relation',name}]));
+  worker.once('message', name => resolve([{entity: ${JSON.stringify(FIXTURE_ENTITY)},name}]));
   worker.once('error', reject);
   worker.once('exit', code => { if (code) reject(new Error('Native thread exited with ' + code)); });
 });`);

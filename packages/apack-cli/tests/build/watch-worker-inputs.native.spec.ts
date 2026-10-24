@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, it, vi } from 'vitest';
-import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { FIXTURE_DATA, FIXTURE_ENTITY, packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { createPackBuilder, type PackBuilder } from '../../src/build/build-process.ts';
 import { readPackBuild } from '@apackdev/host/packs';
@@ -22,14 +22,14 @@ it('rebuilds for worker inputs and repairs missing external reads without author
   try {
     packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
       id: 'watched-worker', name: 'Watched worker', features: {},
-      content: { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
+      data: FIXTURE_DATA, content: { formats: { rows: { compiler: 'src/compiler.cjs', entity: FIXTURE_ENTITY, identity: ['name'] } },
         sources: { rows: { path: 'src/value.txt', format: 'rows' } } },
     }, files: {
       'src/value.txt': 'rows',
       'src/compiler.cjs': `const {Worker} = require('node:worker_threads'); const {once} = require('node:events');
         module.exports = async () => {
           const worker = new Worker("const {parentPort,workerData}=require('node:worker_threads'); const fs=require('node:fs'), path=require('node:path'); const target=path.resolve(path.dirname(workerData),fs.readFileSync(workerData,'utf8')); parentPort.postMessage(fs.readFileSync(target,'utf8'));", {eval:true,workerData:${JSON.stringify(selected)}});
-          try { const [name] = await once(worker,'message'); return [{entity:'Relation',name}]; }
+          try { const [name] = await once(worker,'message'); return [{entity: ${JSON.stringify(FIXTURE_ENTITY)},name}]; }
           finally { await worker.terminate(); }
         };`,
     } });

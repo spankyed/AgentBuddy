@@ -173,7 +173,6 @@ export type DocumentShortCode = ShortCode<'DOC'>;
 export namespace EARS {
     const // (undocumented)
     Entity: {
-        readonly Relation: "Relation";
         readonly Flow: "Flow";
         readonly Node: "Node";
         readonly Action: "Action";
@@ -206,13 +205,11 @@ export namespace EARS {
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
     const // (undocumented)
     AttrKind: {
         readonly Custom: <T extends string>(k: T) => T & EARS_2.AttrKind;
         readonly Role: "role";
-        readonly RelationDetails: "relationDetails";
     };
     // (undocumented)
     export type AttrKind = EARS_2.AttrKind;
@@ -327,12 +324,6 @@ export interface ReadonlySettingsHandle<T> {
     onChange(listener: (value: T) => void): () => void;
 }
 
-// @public (undocumented)
-export interface RelationEntity extends BaseEntity {
-    // (undocumented)
-    relationDetails: EARS.RelationDetail;
-}
-
 // @internal
 export function _reservedEntries(declared: Record<string, string>, reserved: Record<string, string>): string[];
 
@@ -341,7 +332,6 @@ export type RunNodeKind = RunNode['kind'];
 
 // @public (undocumented)
 export const SDK_ENTITIES: {
-    readonly Relation: "Relation";
     readonly Flow: "Flow";
     readonly Node: "Node";
     readonly Action: "Action";
@@ -366,9 +356,6 @@ export const SDK_ROLES: {
 
 // @public
 export const SDK_ROW_RULES: {
-    readonly Relation: {
-        readonly required: readonly [];
-    };
     readonly Flow: {
         readonly required: readonly ["shortCode", "label", "flowType"];
         readonly shortCode: "F";
@@ -395,7 +382,6 @@ export const SDK_ROW_RULES: {
 
 // @public
 export type SdkEntityShapes = {
-    Relation: RelationEntity;
     Flow: FlowEntity;
     Node: NodeBase;
     Action: ActionEntity;

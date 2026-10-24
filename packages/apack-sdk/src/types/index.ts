@@ -1,6 +1,6 @@
 export { EARS } from './entities.ts';
 export type {
-  SdkEntityShapes, RelationEntity, FlowEntity, NodeBase, ActionEntity, ActionParameter, PromptEntity, TemplateInput,
+  SdkEntityShapes, FlowEntity, NodeBase, ActionEntity, ActionParameter, PromptEntity, TemplateInput,
   DocumentEntity, CollectionEntity, DocumentShortCode, ContentSection, ContentType,
   FieldContent, ListContent, MarkdownContent, TextContent, CodeContent,
 } from './sdk-entities.ts';

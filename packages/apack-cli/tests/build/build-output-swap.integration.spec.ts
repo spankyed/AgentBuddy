@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { FIXTURE_DATA, FIXTURE_ENTITY, packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { build } from '../../src/commands/build';
 import { PACK_LAYOUT, readPackBuild, stagePack, verifyPack } from '@apackdev/host/packs';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
@@ -70,8 +70,8 @@ describe('a build that fails', () => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);
     packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
-      id: 'incomplete-media', name: 'Incomplete media', features: {}, content: {
-        formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', media: 'media' } },
+      id: 'incomplete-media', name: 'Incomplete media', features: {}, data: FIXTURE_DATA, content: {
+        formats: { rows: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY, media: 'media' } },
         sources: { rows: { path: 'content/rows', format: 'rows' } },
       },
     }, files: { 'src/compiler.ts': 'export default () => [];', 'content/rows/media/proof.txt': 'MEDIA' } });
@@ -89,7 +89,7 @@ describe('a build that fails', () => {
   it('refuses publication when an authored input changes during a real build', async () => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);
-    packFixture({ at: root, manifest: { id: 'changing-inputs', name: 'Changing', features: {}, content: { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } } }, files: {
+    packFixture({ at: root, manifest: { id: 'changing-inputs', name: 'Changing', features: {}, data: FIXTURE_DATA, content: { formats: { tags: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } } }, files: {
       'src/compiler.ts': "import { writeFileSync } from 'node:fs'; writeFileSync(new URL('../changed.json', import.meta.url), '{}'); export default function compile() { return []; }",
       'src/data.ts': 'export default [];',
     } });
@@ -105,8 +105,8 @@ describe('a build that fails', () => {
     const external = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-resolution-namespace-'));
     const missing = path.join(external, 'missing');
     try {
-      packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {}, content: {
-        formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } },
+      packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {}, data: FIXTURE_DATA, content: {
+        formats: { tags: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY } },
         sources: { tags: { path: 'src/data.ts', format: 'tags' } },
       } }, files: {
         'src/consumer.ts': `import ${JSON.stringify(path.join(missing, 'index'))};`,
@@ -165,7 +165,7 @@ describe('a build that fails', () => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: { id: 'damaged-codegen', name: 'Test', features: {},
-      content: { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } },
+      data: FIXTURE_DATA, content: { formats: { tags: { compiler: 'src/compiler.ts', entity: FIXTURE_ENTITY } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } },
     }, files: {
       'src/compiler.ts': "import { writeFileSync } from 'node:fs'; writeFileSync(new URL('../compiler-executed', import.meta.url), 'yes'); export default function compile() { return []; }",
       'src/data.ts': 'export default [];',
@@ -224,7 +224,7 @@ describe('a pack whose content compiler modules fail to bundle', () => {
       manifest: {
         id: 'built-in-pack', name: 'Built-in', features: {},
         // Not used by an entry here, so only the bundle for dependents compiles it
-        content: { formats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } } },
+        data: FIXTURE_DATA, content: { formats: { tags: { compiler: 'src/tags.ts', entity: FIXTURE_ENTITY } } },
       },
     });
     const exitCode = process.exitCode;
