@@ -4127,7 +4127,7 @@ type OutgoingThreadsEvents = {
 
 /** Entity shapes this pack declares */
 type OwnEntityShapes = {
-    'Thread': ThreadEntity & {
+    'Thread': ThreadShape & {
         shortCode: ShortCode<'THR'>;
     };
     'Message': MessageEntity;
@@ -5111,22 +5111,8 @@ type ThreadEditFields = Simplify<Pick<ThreadEntity, 'instructions' | 'topic'> & 
     context?: ThreadContext;
 } & ThreadLinkedFields>;
 
-interface ThreadEntity extends BaseEntity {
-    entityType: EARS.Entity.Thread;
-    topic: string;
-    instructions: string;
-    sideTopics?: string[];
-    timestamp: number;
-    lastMessageTimestamp?: number;
-    lastVisitedTimestamp?: number;
-    status: string;
-    tags?: string[];
-    forcedMode?: string;
-    pinned?: boolean;
-    archived?: boolean;
-    chatState?: string;
-    context?: ThreadContext;
-}
+/** A thread as a read gives it back: its declared fields and its short code */
+type ThreadEntity = PackShapes['Thread'];
 
 type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData & {
     parentId?: string;
@@ -5189,6 +5175,27 @@ declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "d
 interface ThreadRollbackParams {
     threadId: string;
     numTurns: number;
+}
+
+/**
+ * The fields a thread declares, which apack.json names as Thread's shape. Its short code is not one of them: the
+ * engine numbers it from the prefix Thread's entry declares, and the generated facade adds it to the row
+ */
+interface ThreadShape extends BaseEntity {
+    entityType: EARS.Entity.Thread;
+    topic: string;
+    instructions: string;
+    sideTopics?: string[];
+    timestamp: number;
+    lastMessageTimestamp?: number;
+    lastVisitedTimestamp?: number;
+    status: string;
+    tags?: string[];
+    forcedMode?: string;
+    pinned?: boolean;
+    archived?: boolean;
+    chatState?: string;
+    context?: ThreadContext;
 }
 
 interface ThreadStartParams {

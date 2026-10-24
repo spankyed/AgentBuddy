@@ -5,11 +5,11 @@ import type { BaseEntity } from '@apackdev/ears';
 import type { SdkEntityShapes, ActionEntity, FlowEntity, NodeBase } from '@apackdev/sdk';
 import type { NodeEntity } from '#generated/types.ts';
 import type { EntityShape, OwnEntityShapes, PackShapes } from '#generated/ears.ts';
-import type { MessageEntity, ThreadEntity } from '#features/threads/be/types.ts';
+import type { MessageEntity, ThreadShape } from '#features/threads/be/types.ts';
 
 describe('PackShapes', () => {
-  it('maps declared entities to their shape types', () => {
-    expectTypeOf<OwnEntityShapes['Thread']>().toEqualTypeOf<ThreadEntity>();
+  it('maps declared entities to their shape types, a numbered one with the short code its entry declares', () => {
+    expectTypeOf<OwnEntityShapes['Thread']>().toEqualTypeOf<ThreadShape & { shortCode: `THR-${number}` }>();
     expectTypeOf<OwnEntityShapes['Message']>().toEqualTypeOf<MessageEntity>();
   });
 

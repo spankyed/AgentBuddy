@@ -1,5 +1,5 @@
 export type * from './export-types.ts';
-import { type BaseEntity, EARS, type ShortCodeOf } from '#generated/ears.ts';
+import { type BaseEntity, EARS, type PackShapes, type ShortCodeOf } from '#generated/ears.ts';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "#features/code/be/services/claude-code/types.ts";
 
@@ -186,7 +186,11 @@ export interface ThreadContext {
   [featureKey: string]: unknown;
 }
 
-export interface ThreadEntity extends BaseEntity {
+/**
+ * The fields a thread declares, which apack.json names as Thread's shape. Its short code is not one of them: the
+ * engine numbers it from the prefix Thread's entry declares, and the generated facade adds it to the row
+ */
+export interface ThreadShape extends BaseEntity {
   entityType: EARS.Entity.Thread;
   topic: string;
   instructions: string;
@@ -270,6 +274,9 @@ export type ThreadExtendedData = ThreadLinkedFields & {
   timestamp?: number;
   lastMessageTimestamp?: number;
 }
+
+/** A thread as a read gives it back: its declared fields and its short code */
+export type ThreadEntity = PackShapes['Thread'];
 
 /** A thread's short code, `THR-<n>`: the engine numbers it with the prefix Thread's apack.json entry declares */
 export type ThreadTypeShortCode = ShortCodeOf<'Thread'>;
