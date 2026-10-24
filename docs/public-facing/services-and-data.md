@@ -433,7 +433,7 @@ From `@apackdev/sdk/ears` (untyped, on the app's engine):
 | Call | Does |
 |---|---|
 | `getRelation(relationId)` | The relation's row (`{ id, kind, source, target, info }`), or `undefined` when no relation has the id |
-| `updateRelation(relationId, { source?, target?, info? })` | Moves a relation to new ends, or replaces its info, keeping its id |
+| `updateRelation(relationId, { source?, target?, info? })` | Moves a relation to new ends, or replaces its info, keeping its id; refuses an id no relation has |
 | `removeRelation(relationId)` | Removes that one relation; refuses an id no relation has |
 
 A relation's id is an `EARS.RelationId`, which every relation read gives back (`findRelations`, `outEdges`,
