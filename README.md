@@ -1,6 +1,6 @@
 # apack
 
-**apack is a programmable desktop workspace for working with AI agents and building shared tools.**
+**apack is a programmable desktop workspace for working with and building shared tools.**
 
 Build tools and workflows around your own work, then share them as **packs**. A pack can contain
 reusable prompts and actions or add an entire feature with its own interface, services and data.
@@ -15,8 +15,7 @@ The included tools cover coding, notes, a document library and web browsing. In 
 can edit and review alongside your agents, use the terminal, and manage Git changes and pull requests.
 You can extend these tools or add your own through packs.
 
-Workspace data is stored locally, with backup and restore support. You choose the model providers
-and agent tools you connect.
+Workspace data is stored locally, with backup and restore support.
 
 ## Project status
 
