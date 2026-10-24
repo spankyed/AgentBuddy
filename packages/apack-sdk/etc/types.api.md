@@ -193,15 +193,13 @@ export namespace EARS {
     };
     // (undocumented)
     export type AttributeType = EARS_2.AttributeType;
-    // (undocumented)
-    export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
     RoleKind: {
         readonly ROOT_FLOW: "root_flow";
         readonly ENTRY_EVENT: "entry_event";
     };
     // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
+    export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
@@ -212,13 +210,13 @@ export namespace EARS {
         readonly Role: "role";
     };
     // (undocumented)
+    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
+    // (undocumented)
     export type AttrKind = EARS_2.AttrKind;
     // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
     // (undocumented)
     export type EntityId<E extends string = string> = EARS_2.EntityId<E>;
-    // (undocumented)
-    export type RelationDetail = EARS_2.RelationDetail;
     // (undocumented)
     export type RelKind = EARS_2.RelKind;
     // (undocumented)

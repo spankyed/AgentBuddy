@@ -23,9 +23,7 @@ export namespace EARS {
 
   export type RelKind = Core.RelKind;
 
-  // ─── Shared engine types ───────────────────────────────────────────────
-  export type RelationDetail = Core.RelationDetail;
-
+  // ─── RoleKind ──────────────────────────────────────────────────────────
   export const RoleKind = SDK_ROLES;
   export type RoleKind = Core.RoleKind;
 
