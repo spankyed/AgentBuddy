@@ -1,7 +1,7 @@
 // The engine operations pack code calls without holding an engine act on the one this process bound, and with none
 // bound they throw naming how to bind one
 import { afterEach, describe, expect, it } from 'vitest';
-import { createEarsEngine, defineEars, type EARS } from '@apackdev/ears';
+import { createEarsEngine, defineEars, type EARS, type UntypedSchema } from '@apackdev/ears';
 import {
   _bindEars, boundEars, findRelations, isEntityType, transact, wouldCreateCycle,
   untypedCreate, untypedQuery, untypedUpsert, untypedWrite,
@@ -13,7 +13,7 @@ afterEach(() => { _bindEars(undefined); });
 
 describe('with no engine bound', () => {
   it('every operation throws, naming how to bind one', () => {
-    const typed = defineEars<{ Note: { title: string } }, 'Note'>(boundEars);
+    const typed = defineEars<UntypedSchema & { shapes: { Note: { title: string } }; names: 'Note' }>(boundEars);
     const uses: Array<[string, () => unknown]> = [
       ['untypedQuery', () => untypedQuery('Note')],
       ['untypedQuery.ids', () => untypedQuery.ids('Note-1' as EARS.EntityId)],
@@ -46,7 +46,7 @@ describe('_bindEars', () => {
     expect(boundEars()).toBe(second);
 
     _bindEars(first);
-    expect(defineEars<{ Note: { title: string } }, 'Note'>(boundEars).query('Note').pickAll().map((row) => row.title)).toEqual(['first']);
+    expect(defineEars<UntypedSchema & { shapes: { Note: { title: string } }; names: 'Note' }>(boundEars).query('Note').pickAll().map((row) => row.title)).toEqual(['first']);
     expect(first.query.ids(id).pickOne()).toMatchObject({ title: 'first' });
   });
 });

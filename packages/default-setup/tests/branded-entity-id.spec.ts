@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
 import type { QueryBuilder } from '@apackdev/ears';
-import { EARS, newId, query, type EntityShape, type PackShapes } from '#generated/ears.ts';
+import { EARS, newId, query, type EntityShape, type PackSchema } from '#generated/ears.ts';
 
 // ─── EntityId<E> phantom brand ─────────────────────────────────────────
 
@@ -85,7 +85,7 @@ describe('Branded EntityId — the row with an id', () => {
 
 describe('Branded EntityId — integration with QueryBuilder', () => {
   it('query(Entity.Action) ids are tagged with Action', () => {
-    type Result = ReturnType<QueryBuilder<'Action', PackShapes>['ids']>;
+    type Result = ReturnType<QueryBuilder<'Action', PackSchema>['ids']>;
     expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'>[]>();
   });
 

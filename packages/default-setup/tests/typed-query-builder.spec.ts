@@ -1,10 +1,10 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
-import type { QueryBuilder } from '@apackdev/ears';
-import { EARS, query, type EntityName, type PackShapes } from '#generated/ears.ts';
+import type { QueryBuilder, UntypedSchema } from '@apackdev/ears';
+import { EARS, query, type EntityName, type PackSchema } from '#generated/ears.ts';
 
 /** A query builder over this pack's names: its entity shapes and names, its relation kinds and its roles */
-type PackQuery<E extends string> = QueryBuilder<E, PackShapes, EntityName, EARS.RelKind, EARS.RoleKind>;
+type PackQuery<E extends string> = QueryBuilder<E, PackSchema>;
 
 // ─── query entry points ────────────────────────────────────────────────────
 
@@ -190,7 +190,7 @@ describe('Typed QueryBuilder — terminal methods', () => {
 
 describe('Typed QueryBuilder — default type parameter', () => {
   it('QueryBuilder without type args is an untyped string builder', () => {
-    expectTypeOf<QueryBuilder>().toEqualTypeOf<QueryBuilder<string, {}>>();
+    expectTypeOf<QueryBuilder>().toEqualTypeOf<QueryBuilder<string, UntypedSchema>>();
   });
 
   it('untyped builder methods still return QueryBuilder<string>', () => {

@@ -11,12 +11,12 @@ import type { ContentWriter } from '../../src/content/writers.ts';
 import { _getMediaPath, applyRecord, type ApplyRecord, type ImportMode } from '../../src/utils/index.ts';
 import type { ContentItem } from '../../src/build/content/items.ts';
 import type { EARS } from '../../src/types/entities.ts';
-import { defineEars } from '@apackdev/ears';
+import { defineEars, type UntypedSchema } from '@apackdev/ears';
 
 type Memo = { id: EARS.EntityId; name: string; body: string; pinned?: boolean; mood?: string; contentHash?: string };
 type Folder = { id: EARS.EntityId; name: string; label?: string; contentKey?: string };
 /** The fixture's entities, typed by their shapes as a pack's facade types its own */
-const typed = defineEars<{ Memo: Memo; Folder: Folder }, 'Memo' | 'Folder'>(ears);
+const typed = defineEars<UntypedSchema & { shapes: { Memo: Memo; Folder: Folder }; names: 'Memo' | 'Folder' }>(ears);
 const memos = (name: string) => typed.query('Memo').where('name', name).pickAll();
 const memo = (name: string) => memos(name)[0];
 const edit = (name: string, fields: Partial<Memo>) => ears().write(memo(name).id).setMany(fields);

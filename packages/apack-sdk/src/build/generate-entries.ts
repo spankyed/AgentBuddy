@@ -1206,7 +1206,7 @@ ${regProps.join('\n')}
 // dependencies'), bound to the app's engine (\`boundEars\`). The call is pure, so bundles that only use the
 // EARS constants above drop it.
 
-import { defineEars, type ShapeOf } from '@apackdev/ears';
+import { defineEars, type EarsSchema, type ShapeOf } from '@apackdev/ears';
 import { boundEars } from '@apackdev/sdk/ears';
 import type { SdkEntityShapes } from '@apackdev/sdk';
 ${ownNodes ? "import type { NodeEntity } from './types.ts';\n" : ''}${shapeImports.join('\n')}
@@ -1238,9 +1238,17 @@ export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
  */
 export type EntityName = ${entityNames.join(' | ')};
 
+/** What the helpers below check against: this pack's shapes, entity names, relation kinds and roles */
+export interface PackSchema extends EarsSchema {
+  shapes: PackShapes;
+  names: EntityName;
+  relKinds: EARS.RelKind;
+  roles: EARS.RoleKind;
+}
+
 export const {
   query, create, upsert, write, transact, newId, getAttr,
-} = /*#__PURE__*/ defineEars<PackShapes, EntityName, EARS.RelKind, EARS.RoleKind>(boundEars);
+} = /*#__PURE__*/ defineEars<PackSchema>(boundEars);
 `;
   }
 

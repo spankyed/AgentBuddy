@@ -24,8 +24,19 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - `ShapeOf` is deliberately non-distributive (see its comment).
 - `PackShapes['Node']` is the pack's step node union: its own and its dependencies' `XNode extends NodeBase` types. It's `NodeBase` when no step defines one.
 
+**One schema parameter.**
+- A builder is typed by an entity type and a schema: `QueryBuilder<E, D>`, `WriteBuilder<E, D>`, and `TypedEars<D>`
+  from `defineEars<D>()`. `D extends EarsSchema` carries the four facts by name — `shapes`, `names`, `relKinds`,
+  `roles` — so a hover or an error reads `QueryBuilder<"Thread", PackSchema>` rather than spelling out four types.
+- A pack's `#generated/ears` declares its own `PackSchema` as an interface (an interface keeps its name in
+  messages, where an alias would be expanded), and the SDK's `SdkSchema` types its own entities. `UntypedSchema`
+  (`shapes: {}`, every name a `string`) is the default, and what the untyped operations use; a one-off schema in a
+  spec is `UntypedSchema & { shapes: …; names: … }`.
+- A field position reads the schema by indexed access (`D['shapes']`), never through a conditional or mapped type
+  (Incidents).
+
 **Field parameters.**
-- They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `orderBy`, `distinct`, `groupBy` and `getAttr`. `where` takes one value type (`WhereValue`): the field's, one element of a list field, which the value index answers, or a predicate.
+- They're typed as `keyof ShapeOf<D['shapes'], E> & string`, and picked rows as `Pick<ShapeOf<D['shapes'], E>, K>`. This covers `where`, `pick`, `pickOne`, `orderBy`, `distinct`, `groupBy` and `getAttr`. `where` takes one value type (`WhereValue`): the field's, one element of a list field, which the value index answers, or a predicate.
 - This form is what gives editors field-name completions and makes a typo's error list the valid fields.
 - `pickOne()` with no fields is the first whole row, `ShapeOf<S, E> | null`, as a write builder's `row()` is its entity's. The no-field overload is declared after the fields one, so `pickOne(['|'])` keeps its completions; `query.ids(id).pickOne()` is the row with an id, typed by a branded id or by `.ofType(type)`, which checks the entity rather than asserting a shape.
 - For a union shape, such as `Node` rows, only the fields every member has are accepted.
@@ -43,15 +54,15 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 
 **Relation kinds.**
 - The generated `EARS.RelKind` is closed: `(typeof RELATION_KINDS)[number]`, the pack's kinds, its dependencies'
-  and the SDK's, with no open `string` member and no `Custom`. `defineEars`' third parameter (`R`) carries it to
+  and the SDK's, with no open `string` member and no `Custom`. The schema's `relKinds` (`PackSchema`, below) carries it to
   `QueryBuilder` and `WriteBuilder`, so `link`, `unlink`, `out`, `in`, `outEdges`, `inEdges`, `linkedTo`,
   `linkedFrom` and `LinkOptions.acyclicIn` take only those kinds, complete them, and list them in a typo's error.
 - A kind that arrives as data is narrowed with the generated `EARS.isRelKind`; the untyped twins and an engine's
-  own operations take any string (`R` defaults to `string`), and the engine refuses an undeclared one at runtime.
+  own operations take any string (`UntypedSchema`'s `relKinds` is `string`), and the engine refuses an undeclared one at runtime.
 
 **Roles.**
 - The same as relation kinds: the generated `EARS.RoleKind` is `(typeof ROLES)[number]`, closed over the pack's
-  roles (`data.roles`), its dependencies' and the SDK's, with no `Custom`. `defineEars`' fourth parameter (`O`)
+  roles (`data.roles`), its dependencies' and the SDK's, with no `Custom`. The schema's `roles`
   carries it to `grant`, `revoke`, `grantExclusive` and `withRole`; `EARS.isRole` narrows a role that arrives as data,
   and the engine refuses an undeclared role at runtime.
 
@@ -92,7 +103,7 @@ The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK ke
 - The one hazard is the SDK's `EARS.Entity` as a type. It's open (any string), so a value annotated with it passes the entity-name check unchecked, reads with the generic shape, and compiles with a typo. Use it only when an open name is intended, as in default-setup's create step (`entityTypeTarget`, any entity type a flow names); otherwise annotate with the generated `EARS.Entity` or `EntityName`, which are closed.
 
 **Defaults.**
-- `QueryBuilder<E = string, S = {}, N = string>` and `WriteBuilder<E = string, S = {}>` keep the untyped operations (`untypedQuery`, `untypedWrite`, … from `@apackdev/sdk/ears`, and an engine's own) unchecked.
+- `QueryBuilder<E = string, D = UntypedSchema>` and `WriteBuilder<E = string, D = UntypedSchema>` keep the untyped operations (`untypedQuery`, `untypedWrite`, … from `@apackdev/sdk/ears`, and an engine's own) unchecked.
 
 **Compatibility.**
 - `@apackdev/ears` and `@apackdev/sdk` support TypeScript 5.7 and later (`packages/typescript-floor`). These types keep their `NoInferType` workaround from when the floor was 5.3.
