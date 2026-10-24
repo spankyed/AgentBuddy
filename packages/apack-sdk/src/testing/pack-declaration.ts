@@ -36,7 +36,11 @@ export function nativePackDeclarationFixture(fixture: PackRegistration, metadata
     ...(fixture.lifecycle && { lifecycle: Object.fromEntries(Object.keys(fixture.lifecycle).map(name =>
       [name, `fixtures/lifecycle.ts#${name}`])) }),
     ...(fixture.ears && { data: {
-      entities: Object.fromEntries(Object.keys(fixture.ears.entities ?? {}).map(name => [name, null])),
+      // Each entity as its registration numbers it: the prefix it registers is the one its declaration carries
+      entities: Object.fromEntries(Object.keys(fixture.ears.entities ?? {}).map((name) => {
+        const shortCode = fixture.ears?.rowRules?.[name]?.shortCode;
+        return [name, shortCode ? { shortCode } : {}];
+      })),
       relations: Object.values(fixture.ears.relKinds ?? {}),
       roles: Object.values(fixture.ears.roles ?? {}),
     } }),

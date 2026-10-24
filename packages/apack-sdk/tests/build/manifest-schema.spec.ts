@@ -112,7 +112,7 @@ describe('parseManifest', () => {
   it("rejects declaring the SDK's entities or relation kinds, by name or value, naming each", () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     const errorsOf = (field: object) => messagesOf(parseManifest({ ...pack, ...field }));
-    expect(errorsOf({ data: { entities: { Flow: null, Memo: null } } })).toEqual([
+    expect(errorsOf({ data: { entities: { Flow: {}, Memo: {} } } })).toEqual([
       'apack.json "data.entities": "Flow" is defined by the SDK and available to every pack: remove it',
     ]);
     expect(errorsOf({ data: { relations: ['contains', 'transitions_to', 'holds', 'pinned'] } })).toEqual([
@@ -120,41 +120,40 @@ describe('parseManifest', () => {
     ]);
     expect(errorsOf({ data: { relations: ['holds'] } })).toEqual([]);
     // A name only an object's prototype has is a pack's to use
-    expect(errorsOf({ data: { entities: { constructor: null, toString: null } } })).toEqual([]);
+    expect(errorsOf({ data: { entities: { constructor: {}, toString: {} } } })).toEqual([]);
     // Settings is not an SDK-reserved entity name
-    expect(errorsOf({ data: { entities: { Memo: null, Note: null, Settings: null }, relations: ['pinned'] }, })).toEqual([]);
+    expect(errorsOf({ data: { entities: { Memo: {}, Note: {}, Settings: {} }, relations: ['pinned'] }, })).toEqual([]);
   });
 
   it("rejects an entity type the engine's own ids are written with: a relation's and a numbering sequence's", () => {
     const errorsOf = (entities: object) => messagesOf(parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', data: { entities } }));
-    expect(errorsOf({ Relation: null, Sequence: null, Memo: null })).toEqual([
+    expect(errorsOf({ Relation: {}, Sequence: {}, Memo: {} })).toEqual([
       'apack.json "data.entities": "Relation" is the engine\'s own, which its ids are written with (Relation-…): name the entity type something else',
       'apack.json "data.entities": "Sequence" is the engine\'s own, which its ids are written with (Sequence-…): name the entity type something else',
     ]);
   });
 
-  it('accepts a short code prefix beside the entity it numbers, and refuses one that breaks the rules', () => {
+  it("takes an entity's shape and short code prefix in its own entry, and refuses an entry that breaks the rules", () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    const errorsOf = (data: object, features?: object) => messagesOf(parseManifest({ ...pack, data, ...(features && { features }) }));
-    expect(errorsOf({ entities: { Memo: null, Tag: null }, shortCodes: { Memo: 'MEM', Tag: 'TAG' } })).toEqual([]);
-    const refused = (data: object, features?: object) => errorsOf(data, features).join('\n');
+    const refused = (data: object) => messagesOf(parseManifest({ ...pack, data })).join('\n');
+    expect(refused({ entities: { Memo: { shape: 'src/types.ts#Memo', shortCode: 'MEM' }, Tag: { shortCode: 'TAG' }, Index: {} } })).toBe('');
     // Three uppercase letters
-    expect(refused({ entities: { Memo: null }, shortCodes: { Memo: 'MEMO' } })).toContain('three uppercase letters');
-    expect(refused({ entities: { Memo: null }, shortCodes: { Memo: 'mem' } })).toContain('three uppercase letters');
-    // Beside an entity of the same block
-    expect(refused({ entities: { Memo: null }, shortCodes: { Note: 'NTE' } })).toContain('declares no entity of');
-    expect(refused({ shortCodes: { Memo: 'MEM' } }, { memos: { description: 'Feature validation fixture.', entities: { Memo: null } } }))
-      .toContain('declares no entity of');
+    expect(refused({ entities: { Memo: { shortCode: 'MEMO' } } })).toContain('three uppercase letters');
+    expect(refused({ entities: { Memo: { shortCode: 'mem' } } })).toContain('three uppercase letters');
+    // An entry is an object of known keys: neither a bare target nor a key it doesn't know
+    expect(refused({ entities: { Memo: 'src/types.ts#Memo' } })).not.toBe('');
+    expect(refused({ entities: { Memo: { shape: 'src/types.ts#Memo', prefix: 'MEM' } } })).not.toBe('');
     // One entity per prefix, and the SDK's are taken
-    expect(refused({ entities: { Memo: null, Tag: null }, shortCodes: { Memo: 'MEM', Tag: 'MEM' } })).toContain('declared for both "Memo" and "Tag"');
-    expect(refused({ entities: { Memo: null }, shortCodes: { Memo: 'DOC' } })).toContain("the SDK's Document prefix");
+    expect(refused({ entities: { Memo: { shortCode: 'MEM' }, Tag: { shortCode: 'MEM' } } })).toContain('declared for both "Memo" and "Tag"');
+    expect(refused({ entities: { Memo: { shortCode: 'DOC' } } })).toContain("the SDK's Document prefix");
   });
+
 
   it('rejects malformed shape targets and names both duplicate owners', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    expect(messagesOf(parseManifest({ ...pack, data: { entities: { Memo: 'src/types.ts#' } } }))[0]).toContain('path#exportName');
-    expect(messagesOf(parseManifest({ ...pack, data: { entities: { Memo: null } },
-      features: { memos: { description: 'Feature validation fixture.', entities: { Memo: null } } } }))[0]).toContain('both "data" and "features.memos"');
+    expect(messagesOf(parseManifest({ ...pack, data: { entities: { Memo: { shape: 'src/types.ts#' } } } }))[0]).toContain('path#exportName');
+    expect(messagesOf(parseManifest({ ...pack, data: { entities: { Memo: {} } },
+      features: { memos: { description: 'Feature validation fixture.', entities: { Memo: {} } } } }))[0]).toContain('both "data" and "features.memos"');
   });
 
   it('keeps type-module validation and generated schema assistance consistent', () => {
@@ -241,7 +240,7 @@ describe('the pack id', () => {
 });
 
 describe('content.formats, content.sources and content.datasets', () => {
-  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', data: { entities: { Memo: null } }, dependencies: { 'base-pack': '*' } };
+  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', data: { entities: { Memo: {} } }, dependencies: { 'base-pack': '*' } };
   const memos = {
     format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'],
     tree: { branch: 'index.md', relKind: 'contains' },
@@ -423,7 +422,7 @@ describe('content.formats, content.sources and content.datasets', () => {
 });
 
 describe('content.writers', () => {
-  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', data: { entities: { Memo: null } } };
+  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', data: { entities: { Memo: {} } } };
 
   it('accepts a writer for an entity type the pack declares', () => {
     expect(messagesOf(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } }))).toEqual([]);

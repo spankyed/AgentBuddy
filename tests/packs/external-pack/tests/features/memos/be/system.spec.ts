@@ -20,7 +20,7 @@ describe('memos system', () => {
     const added = await app.nextEmit('memos', 'MEMO_ADDED');
     expect(added.memo).toMatchObject({ text: 'from a unit test' });
     expect(repository.memoQueries.all().map((memo) => memo.text)).toContain('from a unit test');
-    // The manifest numbers Memo MEM (shortCodes), so create numbered it
+    // The manifest numbers Memo MEM (its entry's shortCode), so create numbered it
     expect(query(EARS.Entity.Memo).pickAll().find((memo) => memo.text === 'from a unit test')?.shortCode).toMatch(/^MEM-\d+$/);
   });
 });

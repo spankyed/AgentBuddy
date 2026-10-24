@@ -39,7 +39,8 @@ describe('the helpers console code sees', () => {
 
 describe('runQueryCode', () => {
   it('returns what the code returns, reading the installed engine and the EARS it is given', async () => {
-    untypedCreate('Flow', { id: 'Flow-1', label: 'Main', flowType: 'workflow' });
+    // The row brings its code, so no numbering sequence joins the entities the stats count
+    untypedCreate('Flow', { id: 'Flow-1', shortCode: 'FLW-1', label: 'Main', flowType: 'workflow' });
     await expect(runQueryCode("return query(EARS.Entity.Flow).pickAll().map((f) => f.label)", scope)).resolves.toEqual(['Main']);
     await expect(runQueryCode('return getRow("Flow-1")?.label', scope)).resolves.toBe('Main');
     await expect(runQueryCode('return getSchemaStats().entities', scope)).resolves.toEqual({ Flow: 1 });

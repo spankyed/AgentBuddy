@@ -326,7 +326,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     // (undocumented)
     features?: Record<string, {
         description: string;
-        entities?: Record<string, string | null>;
+        entities?: Record<string, PackEntityDeclaration>;
         designation?: string;
         settings?: SettingsDefinition;
         surface?: SurfaceDeclaration;
@@ -387,8 +387,7 @@ export interface PackConsumption {
 export interface PackDataDeclarations {
     // (undocumented)
     data?: {
-        entities?: Readonly<Record<string, string | null>>;
-        shortCodes?: Readonly<Record<string, string>>;
+        entities?: Readonly<Record<string, PackEntityDeclaration>>;
         relations?: readonly string[];
         roles?: readonly string[];
     };
@@ -415,6 +414,12 @@ export interface PackEARS {
 
 // @internal
 export function _packEntities(declaration: PackDataDeclarations): _PackEntityDeclaration[];
+
+// @public
+export interface PackEntityDeclaration {
+    readonly shape?: string;
+    readonly shortCode?: string;
+}
 
 // @internal
 export interface _PackEntityDeclaration {

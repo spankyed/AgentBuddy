@@ -22,7 +22,7 @@ export const SDK_ENTITIES = {
 } as const;
 
 /**
- * The short code prefix of each SDK entity that is numbered, as a pack's manifest declares one (`shortCodes`): three
+ * The short code prefix of each SDK entity that is numbered, as a pack's manifest entry declares one (`shortCode`): three
  * uppercase letters, the word's common abbreviation where it has one (`DOC`) and otherwise its first letter and
  * next two consonants (`FLW`, `PRM`). The shapes' `ShortCode` and `SDK_ROW_RULES` both take theirs from here
  */

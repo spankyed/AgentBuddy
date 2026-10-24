@@ -31,7 +31,7 @@ const DEFAULT_MANIFEST = {
 export const FIXTURE_ENTITY = 'Row';
 
 /** The `data` a fixture writing content declares: its one entity type, with no shape */
-export const FIXTURE_DATA = { entities: { [FIXTURE_ENTITY]: null } };
+export const FIXTURE_DATA = { entities: { [FIXTURE_ENTITY]: {} } };
 
 export interface PackFixtureOptions {
   /** Where to write it. A fresh temp directory by default, which the caller owns and removes. */

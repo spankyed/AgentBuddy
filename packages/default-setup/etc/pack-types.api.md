@@ -5202,7 +5202,7 @@ interface ThreadTagOption {
     color?: string;
 }
 
-/** A thread's short code, `THR-<n>`: the prefix apack.json declares for Thread (`shortCodes`) */
+/** A thread's short code, `THR-<n>`: the prefix Thread's apack.json entry declares (`shortCode`) */
 type ThreadTypeShortCode = ShortCode<'THR'>;
 
 type ThreadViewData = Simplify<ThreadCreateData & {
@@ -6228,7 +6228,7 @@ declare const libraryCommands: {
 declare const libraryQueries: {
     readonly getDocuments: (collectionId?: string) => DocumentDTO[];
     readonly findDocument: (id: EARS.EntityId) => DocumentDTO | null;
-    /** The document a short code names, through the engine's one resolver; null when it names none, or another type */
+    /** The document a short code names, or null: a code is unique, and the value index answers the lookup */
     readonly findDocumentByShortCode: (shortCode: DocumentShortCode) => DocumentDTO | null;
     /** Every document and folder by name, for the reference picker and the panel's stats */
     readonly getIndex: () => LibraryIndex;

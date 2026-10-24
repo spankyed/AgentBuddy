@@ -49,7 +49,7 @@ export interface PackEARS {
   roles: Record<string, string>;
   /**
    * What each of the pack's entities' created rows is held to: the fields the engine refuses a created row without,
-   * read off its shape, and the prefix it numbers a short code with, from its manifest's `shortCodes`; none when absent
+   * read off its shape, and the prefix it numbers a short code with, from its manifest entry's `shortCode`; none when absent
    */
   rowRules?: Record<string, RowRules>;
 }

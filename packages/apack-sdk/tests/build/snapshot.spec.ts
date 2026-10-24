@@ -103,12 +103,12 @@ describe('snapshot data reader', () => {
 
   it('checks entity grammar and SDK ownership before decoding original record keys', () => {
     const data = snapshot();
-    data.manifest.data = { entities: JSON.parse('{"__proto__":null}') };
+    data.manifest.data = { entities: JSON.parse('{"__proto__":{}}') };
     data.declarationRevision = _declarationRevision(data.manifest);
     expect(parseSnapshot(data).status).toBe('valid');
-    data.manifest.data.entities = JSON.parse('{"__proto__":"src/types.ts#"}');
+    data.manifest.data.entities = JSON.parse('{"__proto__":{"shape":"src/types.ts#"}}');
     expect(parseSnapshot(data).diagnostics.some(issue => issue.message.includes('path#exportName'))).toBe(true);
-    data.manifest.data.entities = { Flow: null };
+    data.manifest.data.entities = { Flow: {} };
     expect(parseSnapshot(data).diagnostics.some(issue => issue.message.includes('defined by the SDK'))).toBe(true);
     delete data.manifest.data;
     data.manifest.data = { relations: ['contains'] };

@@ -266,7 +266,7 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 ```json
 {
   "data": {
-    "entities": { "Bookmark": null, "Tag": null },
+    "entities": { "Bookmark": {}, "Tag": {} },
     "relations": ["tagged_with"]
   }
 }
@@ -543,8 +543,8 @@ To get typed attributes on entities, declare shapes in the manifest:
     "bookmarks": {
       "description": "Save and organize bookmarks.",
       "entities": {
-        "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes",
-        "ImportIndex": null
+        "Bookmark": { "shape": "src/features/bookmarks/be/types.ts#BookmarkAttributes" },
+        "ImportIndex": {}
       }
     }
   }
@@ -581,15 +581,16 @@ from a typed helper (`newId(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookm
 so builders written with it (`query.ids(id)`, `write(id)`) are typed too;
 unbranded ids (`EARS.EntityId`) and `query.all()` read as undeclared.
 
-**A short code is declared in the manifest and numbered by `create`.** Name the entity's prefix in `shortCodes`,
-beside the entity in the same block, and type the shape's `shortCode` as `ShortCode<prefix>` (from
+**A short code is declared in the manifest and numbered by `create`.** Give the entity's entry a `shortCode`
+prefix, and type the shape's `shortCode` as `ShortCode<prefix>` (from
 `@apackdev/ears`) with the same prefix; the build refuses the two disagreeing. A prefix is three uppercase letters —
 the word's common abbreviation where it has one (`DOC`, `MSG`), otherwise its first letter and next two distinct
 consonants (`THR`, `BKM`) — and unique across every pack, the SDK's `FLW`, `ACT`, `PRM` and `DOC` included.
 
 ```json
-"entities": { "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkEntity" },
-"shortCodes": { "Bookmark": "BKM" }
+"entities": {
+  "Bookmark": { "shape": "src/features/bookmarks/be/types.ts#BookmarkEntity", "shortCode": "BKM" }
+}
 ```
 
 ```typescript

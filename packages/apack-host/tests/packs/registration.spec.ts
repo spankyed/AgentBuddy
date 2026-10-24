@@ -194,7 +194,8 @@ describe('registerPack entities', () => {
     };
     registerNumbered('first-pack', 'Memo', 'MEM');
     expect(() => registerNumbered('second-pack', 'Note', 'MEM')).toThrow('EARS collision: short code prefix MEM — Note of pack "second-pack" vs Memo of pack "first-pack"');
-    expect(() => registerNumbered('second-pack', 'Note', 'DOC')).toThrow('EARS collision: short code prefix DOC — Note of pack "second-pack" vs the SDK\'s Document');
+    // Refused before the registry: a native declaration carries the prefix, and its schema knows the SDK's
+    expect(() => registerNumbered('second-pack', 'Note', 'DOC')).toThrow('"DOC" is the SDK\'s Document prefix');
     expect(getPackRegistration('second-pack')).toBeNull();
   });
 

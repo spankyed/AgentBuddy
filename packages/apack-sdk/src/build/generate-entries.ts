@@ -2013,7 +2013,7 @@ export type { ImportMode } from '@apackdev/sdk/utils';
 
   /**
    * What each of this pack's own entities holds a created row to: the fields the engine refuses a created row without,
-   * read off its shape, and the prefix it numbers a short code with, which its manifest declares (`shortCodes`). A
+   * read off its shape, and the prefix it numbers a short code with, which its manifest entry declares (`shortCode`). A
    * shape types `shortCode` as that same prefix (`ShortCode<prefix>`), checked here both ways, so the type and the
    * numbering never disagree. An entity with neither a shape nor a prefix is held to nothing, and a dependency's
    * register their own.
@@ -2038,7 +2038,7 @@ export type { ImportMode } from '@apackdev/sdk/utils';
       const declared = prefixes.get(entity);
       if (typed !== declared) {
         throw new Error(declared === undefined
-          ? `Entity "${entity}": ${source}#${exportName} types shortCode as ShortCode<'${typed}'>, but the manifest declares no short code for it: add "${typed}" to its block's shortCodes, or type the field otherwise`
+          ? `Entity "${entity}": ${source}#${exportName} types shortCode as ShortCode<'${typed}'>, but the manifest declares no short code for it: give its entry "shortCode": "${typed}", or type the field otherwise`
           : `Entity "${entity}": the manifest numbers it "${declared}", so ${source}#${exportName} types shortCode as ShortCode<'${declared}'>${typed === undefined ? '' : `, not ShortCode<'${typed}'>`}`);
       }
       rules[entity] = { required, ...(declared !== undefined && { shortCode: declared }) };

@@ -100,15 +100,21 @@
         "entities": {
           "type": "object",
           "additionalProperties": {
-            "anyOf": [
-              {
+            "type": "object",
+            "properties": {
+              "shape": {
                 "type": "string",
-                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                "description": "The pack-root-relative TypeScript export of the row's shape (path#exportName). Leave it out for an untyped entity, whose fields read as unknown values."
               },
-              {
-                "type": "null"
+              "shortCode": {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$",
+                "description": "The prefix create numbers each row's short code with, <prefix>-<n>: three uppercase letters, unique across every pack. The shape types its shortCode field ShortCode<prefix>. Leave it out for an entity that isn't numbered."
               }
-            ]
+            },
+            "additionalProperties": false,
+            "description": "One entity type: its shape and its short code prefix, each optional ({} for an untyped, unnumbered entity)."
           },
           "propertyNames": {
             "minLength": 1,
@@ -123,18 +129,7 @@
               ]
             }
           },
-          "description": "Entity wire names mapped to pack-root-relative TypeScript shape exports (path#exportName), or null for untyped entities."
-        },
-        "shortCodes": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "pattern": "^[A-Z]{3}$"
-          },
-          "propertyNames": {
-            "minLength": 1
-          },
-          "description": "Entity types declared in this same block whose rows are numbered, each mapped to its short code prefix: three uppercase letters, unique across every pack. create numbers each row <prefix>-<n>, and the shape types its shortCode field ShortCode<prefix>."
+          "description": "Entity wire names, each mapped to its declaration: { shape?, shortCode? }, or {} for an untyped, unnumbered entity."
         },
         "relations": {
           "type": "array",
@@ -185,15 +180,21 @@
           "entities": {
             "type": "object",
             "additionalProperties": {
-              "anyOf": [
-                {
+              "type": "object",
+              "properties": {
+                "shape": {
                   "type": "string",
-                  "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
+                  "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                  "description": "The pack-root-relative TypeScript export of the row's shape (path#exportName). Leave it out for an untyped entity, whose fields read as unknown values."
                 },
-                {
-                  "type": "null"
+                "shortCode": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{3}$",
+                  "description": "The prefix create numbers each row's short code with, <prefix>-<n>: three uppercase letters, unique across every pack. The shape types its shortCode field ShortCode<prefix>. Leave it out for an entity that isn't numbered."
                 }
-              ]
+              },
+              "additionalProperties": false,
+              "description": "One entity type: its shape and its short code prefix, each optional ({} for an untyped, unnumbered entity)."
             },
             "propertyNames": {
               "minLength": 1,
@@ -208,18 +209,7 @@
                 ]
               }
             },
-            "description": "Entity wire names owned by this feature, mapped to pack-root-relative TypeScript shape exports (path#exportName) or null for untyped entities. Placement does not change wire names."
-          },
-          "shortCodes": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string",
-              "pattern": "^[A-Z]{3}$"
-            },
-            "propertyNames": {
-              "minLength": 1
-            },
-            "description": "Entity types declared in this same block whose rows are numbered, each mapped to its short code prefix: three uppercase letters, unique across every pack. create numbers each row <prefix>-<n>, and the shape types its shortCode field ShortCode<prefix>."
+            "description": "Entity wire names owned by this feature, each mapped to its declaration: { shape?, shortCode? }, or {} for an untyped, unnumbered entity. Placement does not change wire names."
           },
           "designation": {
             "type": "string",

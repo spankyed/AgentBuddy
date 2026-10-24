@@ -18,7 +18,7 @@ it('retains the consumer build when a content compiler changes accepted dependen
   await buildPack(producer);
   const consumer = preparePack(root, 'consumer', {
     'apack.json': JSON.stringify({ id: 'consumer', name: 'Consumer', version: '1.0.0',
-      data: { entities: { Memo: null } }, dependencies: { provider: `file:${producer}` },
+      data: { entities: { Memo: {} } }, dependencies: { provider: `file:${producer}` },
       content: { formats: { memos: { compiler: 'src/compiler.ts', entity: 'Memo', identity: ['name'] } },
         sources: { memos: { path: 'content/data.json', format: 'memos' } } } }),
     'package.json': packageJson('consumer'), 'tsconfig.json': tsconfig, 'content/data.json': '[]',

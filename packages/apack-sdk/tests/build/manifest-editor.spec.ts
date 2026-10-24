@@ -79,7 +79,7 @@ describe('shipped manifest schema in a JSON editor', () => {
 
   it('accepts typed and untyped entity declarations without reading their source modules', async () => {
     const { service, document, parsed } = editor(JSON.stringify({ ...manifest, features: {
-      memos: { description: 'Manage memos.', entities: { Memo: 'src/missing-types.ts#Memo', Index: null } },
+      memos: { description: 'Manage memos.', entities: { Memo: { shape: 'src/missing-types.ts#Memo' }, Index: {} } },
     } }));
     expect(await service.doValidation(document, parsed)).toEqual([]);
   });

@@ -317,7 +317,7 @@ async function buildIntoStaging(args: string[], root: string) {
     // Informational: nothing is rejected, but these entities' fields read as unknown values
     const unshaped = entitiesWithoutShapes(manifest);
     if (unshaped.length > 0) {
-      console.log(`\nNote: ${unshaped.length} ${unshaped.length === 1 ? 'entity has' : 'entities have'} a null shape declaration, so ${unshaped.length === 1 ? 'its' : 'their'} fields read as unknown values: ${unshaped.join(', ')}`);
+      console.log(`\nNote: ${unshaped.length} ${unshaped.length === 1 ? 'entity has' : 'entities have'} no shape declared, so ${unshaped.length === 1 ? 'its' : 'their'} fields read as unknown values: ${unshaped.join(', ')}`);
     }
 
     // ── Step build facets (for dependents' flow validation) ─────────────

@@ -14,7 +14,7 @@ describe('external pack offline inspection', () => {
   it('reports authentic compiled content and cached dependency provenance after producer source removal', async () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-info-external-'));
     const producerManifest = { id: 'info-provider', name: 'Info provider', version: '1.0.0',
-      data: { entities: { InfoMemo: null } }, lifecycle: { onInit: 'src/hooks.ts#onInit' },
+      data: { entities: { InfoMemo: {} } }, lifecycle: { onInit: 'src/hooks.ts#onInit' },
       content: { formats: { memos: { format: 'json', entity: 'InfoMemo', identity: ['name'] } },
         sources: { memos: { path: 'content/memos.json', format: 'memos' } } },
     };

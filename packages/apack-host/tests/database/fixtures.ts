@@ -37,11 +37,11 @@ export function dataDirWithPacks({ external = [] as Array<{ id: string; entities
   const dir = tempDir('host-database-');
   writeInstalledPackFixture(path.join(_appDirOf(dir), 'packs', 'core'), {
     id: 'core', name: 'Core', version: '1.0.0',
-    data: { entities: { Note: null, Trace: null }, relations: ['mentions'], roles: ['pinned'] },
+    data: { entities: { Note: {}, Trace: {} }, relations: ['mentions'], roles: ['pinned'] },
   });
   for (const pack of external) {
     writeInstalledPackFixture(path.join(_appDirOf(dir), 'packs', pack.id), {
-      id: pack.id, name: pack.id, version: '1.0.0', data: { entities: Object.fromEntries(Object.keys(pack.entities).map(name => [name, null])) },
+      id: pack.id, name: pack.id, version: '1.0.0', data: { entities: Object.fromEntries(Object.keys(pack.entities).map(name => [name, {}])) },
     });
   }
   const listed = external.filter((pack) => pack.enabled !== undefined);

@@ -1,11 +1,18 @@
 import { hasOwn } from '../utils/shared.ts';
 import type { RowRules } from '@apackdev/ears';
 
+/** One entity type's declaration: everything the manifest says about it, in its own entry */
+export interface PackEntityDeclaration {
+  /** The pack-root-relative TypeScript export of its row's shape (`path#Export`); none for an untyped entity */
+  readonly shape?: string;
+  /** The prefix `create` numbers its rows' short codes with, `<prefix>-<n>`; none for an entity that isn't numbered */
+  readonly shortCode?: string;
+}
+
 /** Declarative entity ownership/shapes and the pack-level relation wire vocabulary. */
 export interface PackDataDeclarations {
   data?: {
-    entities?: Readonly<Record<string, string | null>>;
-    shortCodes?: Readonly<Record<string, string>>;
+    entities?: Readonly<Record<string, PackEntityDeclaration>>;
     relations?: readonly string[];
     roles?: readonly string[];
   };
@@ -17,7 +24,7 @@ export interface _PackEntityDeclaration {
   name: string;
   owner: string;
   shape: string | null;
-  /** The prefix its short codes are numbered with, when the block declaring it names one (`shortCodes`) */
+  /** The prefix its short codes are numbered with, when its entry names one */
   shortCode?: string;
 }
 
@@ -28,7 +35,7 @@ export interface _PackEntityDeclaration {
  */
 export const _SHORT_CODE_PATTERN = /^[A-Z]{3}$/;
 
-type DeclarationBlock = { entities?: Readonly<Record<string, string | null>>; shortCodes?: Readonly<Record<string, string>> } | null | undefined;
+type DeclarationBlock = { entities?: Readonly<Record<string, PackEntityDeclaration>> } | null | undefined;
 
 /** @internal Read declarations without loading shape modules; refuse ambiguous ownership. */
 export function _packEntities(declaration: PackDataDeclarations): _PackEntityDeclaration[] {
@@ -39,21 +46,17 @@ export function _packEntities(declaration: PackDataDeclarations): _PackEntityDec
   ];
   const prefixOwners = new Map<string, string>();
   for (const [owner, block] of homes) {
-    const entities = block?.entities ?? {};
-    const shortCodes = block?.shortCodes ?? {};
-    // A prefix sits beside the entity it numbers, in the block that declares it
-    for (const [name, prefix] of Object.entries(shortCodes)) {
-      if (!hasOwn(entities, name)) throw new Error(`"${owner}.shortCodes" names "${name}", which "${owner}" declares no entity of`);
-      if (!_SHORT_CODE_PATTERN.test(prefix)) throw new Error(`The short code prefix of "${name}" is "${prefix}": a prefix is three uppercase letters`);
-      const taken = prefixOwners.get(prefix);
-      if (taken) throw new Error(`The short code prefix "${prefix}" is declared for both "${taken}" and "${name}"`);
-      prefixOwners.set(prefix, name);
-    }
-    for (const [name, shape] of Object.entries(entities)) {
+    for (const [name, entry] of Object.entries(block?.entities ?? {})) {
       const previous = result.get(name);
       if (previous) throw new Error(`Entity "${name}" is declared by both "${previous.owner}" and "${owner}"`);
-      const shortCode = hasOwn(shortCodes, name) ? shortCodes[name] : undefined;
-      result.set(name, { name, owner, shape, ...(shortCode !== undefined && { shortCode }) });
+      const { shape, shortCode } = entry ?? {};
+      if (shortCode !== undefined) {
+        if (!_SHORT_CODE_PATTERN.test(shortCode)) throw new Error(`The short code prefix of "${name}" is "${shortCode}": a prefix is three uppercase letters`);
+        const taken = prefixOwners.get(shortCode);
+        if (taken) throw new Error(`The short code prefix "${shortCode}" is declared for both "${taken}" and "${name}"`);
+        prefixOwners.set(shortCode, name);
+      }
+      result.set(name, { name, owner, shape: shape ?? null, ...(shortCode !== undefined && { shortCode }) });
     }
   }
   return [...result.values()];

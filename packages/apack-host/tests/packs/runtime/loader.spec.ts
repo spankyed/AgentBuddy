@@ -317,7 +317,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: null } }, lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
+    const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: {} } }, lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, eventContracts: eventContractsFixture(manifest as PackManifest, { widget: { system: { incoming, outgoing: [] }, ...((manifest as PackManifest).features?.widget?.surface && { surface: { receives: [] } }) } }), types: { entities: {}, relKinds: {}, roles: {} }, entityDestinations: {}, facades: {} }));

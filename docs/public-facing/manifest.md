@@ -53,8 +53,7 @@ order. `init`, `add` and the release version editor share this writer.
 | `features` | `Record<string, PackFeatureEntry>` | no | Feature declarations (system + surface bundles), keyed by feature id |
 | `extensions` | `object` | no | What the pack contributes to the app; see [Extensions](#extensions) |
 | `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |
-| `data.entities` | `Record<string, string \| null>` | no | Entities without a feature owner; see [Entities and relations](#entities-and-relations) |
-| `data.shortCodes` | `Record<string, string>` | no | Short code prefixes of entities in `data.entities`; the same rules as a feature's `shortCodes` |
+| `data.entities` | `Record<string, { shape?, shortCode? }>` | no | Entities without a feature owner, each declared as a feature's are; see [Entities and relations](#entities-and-relations) |
 | `data.relations` | `string[]` | no | Pack-level snake_case relation wire names; see [Entities and relations](#entities-and-relations) |
 | `data.roles` | `string[]` | no | Pack-level snake_case role names; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack IDs mapped to a nonempty npm semver range, `github:owner/repo [range]`, or `file:path` |
@@ -175,8 +174,7 @@ unrepresentable.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `entities` | `Record<string, string \| null>` | no | Entity wire names owned by this feature, mapped to a TypeScript shape export or `null` for untyped entities. Paths remain pack-root-relative. |
-| `shortCodes` | `Record<string, string>` | no | Entities in this feature's `entities` whose rows are numbered, each mapped to its prefix: three uppercase letters (`THR`), unique across every pack. `create` numbers each row `<prefix>-<n>`, and the shape types `shortCode` as `ShortCode<prefix>`; see [Services and data](services-and-data.md) |
+| `entities` | `Record<string, { shape?, shortCode? }>` | no | Entity wire names owned by this feature, each mapped to its declaration. `shape` is the pack-root-relative TypeScript export of its row (`path#Export`), left out for an untyped entity. `shortCode` is the prefix `create` numbers its rows with, `<prefix>-<n>`: three uppercase letters (`THR`), unique across every pack, which the shape types its `shortCode` field as (`ShortCode<prefix>`); see [Services and data](services-and-data.md). `{}` declares an untyped, unnumbered entity. |
 | `designation` | `string` | no | Role played by this feature; it may differ from the feature ID. Duplicate claims are refused locally and across packs. |
 | `settings` | `object` | no | Declarative `schema`, explicit `defaults`, optional custom `form`, title, description and access policy; see [Feature settings](#feature-settings) |
 | `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@apackdev/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its surface receives is the contract's outgoing events; a surface that also takes events from another feature or another pack declares those itself, in its own `Contract` (`surface.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
@@ -207,7 +205,7 @@ A feature declares effective-value validation and explicit defaults as JSON data
   "features": {
     "bookmarks": {
       "description": "Save and organize bookmarks.",
-      "entities": { "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes" },
+      "entities": { "Bookmark": { "shape": "src/features/bookmarks/be/types.ts#BookmarkAttributes" } },
       "settings": {
         "schema": {
           "type": "object",
@@ -667,13 +665,13 @@ Run `apack pack fetch-deps` to pull dependency snapshots for cross-pack type int
     "bookmarks": {
       "description": "Save and organize bookmarks.",
       "entities": {
-        "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes",
-        "Tag": null
+        "Bookmark": { "shape": "src/features/bookmarks/be/types.ts#BookmarkAttributes" },
+        "Tag": {}
       }
     }
   },
   "data": {
-    "entities": { "ImportLog": null },
+    "entities": { "ImportLog": {} },
     "relations": ["tagged_with"]
   }
 }
@@ -744,7 +742,7 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
     "bookmarks": {
       "description": "Save and organize bookmarks.",
       "entities": {
-        "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes"
+        "Bookmark": { "shape": "src/features/bookmarks/be/types.ts#BookmarkAttributes" }
       },
       "settings": {
         "schema": {

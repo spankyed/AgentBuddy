@@ -353,7 +353,7 @@ describe('pack information without activation', () => {
     const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
     const manifest = { id: PACK_ID, name: 'Declared pack', version: '1.0.0',
       data: { relations: ['parent'] },
-      features: { notes: { description: 'Feature declaration fixture.', entities: { Memo: null }, designation: 'notes', system: { entry: 'src/system.ts' },
+      features: { notes: { description: 'Feature declaration fixture.', entities: { Memo: {} }, designation: 'notes', system: { entry: 'src/system.ts' },
         surface: { label: 'Fixture', state: 'src/surface.ts' }, references: referenceDeclarations, services: { notesApi: 'src/api.ts#notesApi' } } },
       extensions: { services: { packApi: 'src/api.ts#packApi' }, artifacts: { memo: { icon: 'File' } } },
       migrations: { pack: { '1.0.0': { description: 'Create notes', up: 'src/migration.ts#up' } } },
@@ -1037,7 +1037,7 @@ describe('a user answering for one of a pack’s content items', () => {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(content, { recursive: true });
     writeInstalledPackFixture(dir, { id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0',
-      data: { entities: { PackPrompt: null } },
+      data: { entities: { PackPrompt: {} } },
       content: { sources: { actions: 'src/actions', 'pack-prompts': { path: 'src/prompts', format: 'pack-prompts', onUserEdit: 'offer' } },
         formats: { 'pack-prompts': { format: 'json', entity: 'PackPrompt', identity: ['label'] } },
         writers: { PackPrompt: 'src/writers.ts#promptWriter' } } });

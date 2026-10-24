@@ -273,7 +273,7 @@ export type ThreadExtendedData = ThreadLinkedFields & {
   lastMessageTimestamp?: number;
 }
 
-/** A thread's short code, `THR-<n>`: the prefix apack.json declares for Thread (`shortCodes`) */
+/** A thread's short code, `THR-<n>`: the prefix Thread's apack.json entry declares (`shortCode`) */
 export type ThreadTypeShortCode = ShortCode<'THR'>;
 
 export type ThreadConnectedData = {

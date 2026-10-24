@@ -35,12 +35,9 @@
     "threads": {
       "description": "Converse with assistants and manage threads, messages and artifacts.",
       "entities": {
-        "Thread": "src/features/threads/be/types.ts#ThreadEntity",
-        "Message": "src/features/threads/be/types.ts#MessageEntity",
-        "Artifact": "src/features/threads/be/types.ts#ArtifactEntity"
-      },
-      "shortCodes": {
-        "Thread": "THR"
+        "Thread": { "shape": "src/features/threads/be/types.ts#ThreadEntity", "shortCode": "THR" },
+        "Message": { "shape": "src/features/threads/be/types.ts#MessageEntity" },
+        "Artifact": { "shape": "src/features/threads/be/types.ts#ArtifactEntity" }
       },
       "designation": "threads",
       "settings": {
@@ -568,7 +565,7 @@
     "code": {
       "description": "Work with project files, terminals and coding agents.",
       "entities": {
-        "Terminal": "src/features/code/be/repository/index.ts#TerminalEntity"
+        "Terminal": { "shape": "src/features/code/be/repository/index.ts#TerminalEntity" }
       },
       "settings": {
         "schema": {
@@ -854,7 +851,7 @@
     "notes": {
       "description": "Write, organize and export notes.",
       "entities": {
-        "Note": "src/features/notes/be/types.ts#NoteEntity"
+        "Note": { "shape": "src/features/notes/be/types.ts#NoteEntity" }
       },
       "settings": {
         "schema": {
@@ -1033,8 +1030,8 @@
     "browser": {
       "description": "Browse web pages and manage tabs and bookmarks.",
       "entities": {
-        "BrowserTab": "src/features/browser/be/types.ts#BrowserTabEntity",
-        "BrowserBookmark": "src/features/browser/be/types.ts#BrowserBookmarkEntity"
+        "BrowserTab": { "shape": "src/features/browser/be/types.ts#BrowserTabEntity" },
+        "BrowserBookmark": { "shape": "src/features/browser/be/types.ts#BrowserBookmarkEntity" }
       },
       "designation": "browser",
       "settings": {
@@ -1084,8 +1081,8 @@
     "library": {
       "description": "Organize documents, collections and indexed content.",
       "entities": {
-        "SearchIndex": null,
-        "IndexedDoc": null
+        "SearchIndex": {},
+        "IndexedDoc": {}
       },
       "settings": {
         "schema": {

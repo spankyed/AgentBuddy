@@ -59,7 +59,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: { Widget: null, Gadget: null }, relations: [] },
+      data: { entities: { Widget: {}, Gadget: {} }, relations: [] },
     });
 
     await generateEntries(['--force'], tmpDir, undefined, compilation);
@@ -92,7 +92,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: { Alpha: null, Beta: null }, relations: [] },
+      data: { entities: { Alpha: {}, Beta: {} }, relations: [] },
     });
 
     await generateEntries(['--force'], tmpDir, undefined, compilation);
@@ -106,7 +106,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: { Item: null }, relations: [] },
+      data: { entities: { Item: {} }, relations: [] },
     });
 
     await generateEntries(['--force'], tmpDir, undefined, compilation);
@@ -156,12 +156,12 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: { MyEntity: null }, relations: [] },
+      data: { entities: { MyEntity: {} }, relations: [] },
       dependencies: { 'dep-pack': '>=0.1.0' },
     });
 
     const depManifest: PackManifest = { id: 'dep-pack', name: 'Dep Pack', version: '0.1.0',
-      data: { entities: { DepWidget: null }, relations: ['dep_rel'] } };
+      data: { entities: { DepWidget: {} }, relations: ['dep_rel'] } };
     const snapshot: PackSnapshot = { declarationRevision: _declarationRevision(depManifest),
       format: PACK_SNAPSHOT_FORMAT,
       types: {
@@ -215,7 +215,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: { A: null, B: null }, relations: ['r'] },
+      data: { entities: { A: {}, B: {} }, relations: ['r'] },
     });
 
     await generateEntries(['--force'], tmpDir, undefined, compilation);
@@ -274,7 +274,7 @@ describe('the inputs stamp', () => {
   });
 
   it('regenerates a file that was deleted, rather than reporting the tree unchanged', async () => {
-    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: {} }, relations: [] }, });
     await generateEntries([], tmpDir, undefined, compilation);
     expect(fs.existsSync(generated('ears.ts'))).toBe(true);
 
@@ -311,7 +311,7 @@ describe('the inputs stamp', () => {
   });
 
   it('still skips when every recorded file is there', async () => {
-    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: {} }, relations: [] }, });
     await generateEntries([], tmpDir, undefined, compilation);
 
     const said: string[] = [];
@@ -337,7 +337,7 @@ describe('the inputs stamp', () => {
   // The case that makes the list recorded rather than fixed: a pack with no surfaces never writes `fe.ts`,
   // and an expectation hard-coded from a fuller pack would call it stale on every run, forever.
   it('does not treat a file this pack never generates as missing', async () => {
-    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: {} }, relations: [] }, });
     await generateEntries([], tmpDir, undefined, compilation);
     expect(fs.existsSync(generated('fe.ts')), 'no surfaces, so no fe.ts').toBe(false);
 

@@ -220,7 +220,7 @@ describe('verifyPack', () => {
 
 describe('compiled content admission', () => {
   function contentBuild() {
-    const root = builtPack({ data: { entities: { Memo: null } }, content: {
+    const root = builtPack({ data: { entities: { Memo: {} } }, content: {
       formats: { records: { format: 'json', entity: 'Memo', identity: ['id'] }, lookup: { format: 'json' } },
       sources: { memos: { path: 'src/memos', format: 'records' }, custom: { applier: 'src/custom.ts' } },
       datasets: { inventory: { path: 'src/inventory', format: 'lookup' } },

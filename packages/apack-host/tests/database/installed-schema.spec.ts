@@ -57,7 +57,7 @@ it('discovers feature-owned typed and untyped entities without authored source o
   writeInstalledPackFixture(packDir, {
     id: 'offline', name: 'Offline', version: '1.0.0',
     data: { relations: ['note_link'] },
-    features: { notes: { description: 'Feature declaration fixture.', entities: { OfflineNote: 'src/types.ts#NoteShape', OfflineIndex: null } } },
+    features: { notes: { description: 'Feature declaration fixture.', entities: { OfflineNote: { shape: 'src/types.ts#NoteShape' }, OfflineIndex: {} } } },
   });
   expect(fs.existsSync(path.join(packDir, 'src'))).toBe(false);
   const schema = readInstalledSchema(schemaContext(dir));
@@ -68,7 +68,7 @@ it('discovers feature-owned typed and untyped entities without authored source o
 
 describe("a pack's short code prefixes, read from its manifest", () => {
   const numbered = (id: string, entity: string, prefix: string) => ({
-    id, name: id, version: '1.0.0', data: { entities: { [entity]: null }, shortCodes: { [entity]: prefix } },
+    id, name: id, version: '1.0.0', data: { entities: { [entity]: { shortCode: prefix } } },
   }) as Parameters<typeof writeInstalledPackFixture>[1];
 
   it("number a pack's entity type outside the app, as the app numbers it, beside the SDK's rules", () => {
@@ -93,7 +93,7 @@ describe("a pack's short code prefixes, read from its manifest", () => {
 // directory of pack directories. Each shape in the wild supplies a different file, which is what the probe order is for.
 describe('--schema-from', () => {
   const pack = (id: string, entity: string) => ({
-    id, name: id, version: '1.0.0', data: { entities: { [entity]: null } },
+    id, name: id, version: '1.0.0', data: { entities: { [entity]: {} } },
   }) as Parameters<typeof writeInstalledPackFixture>[1];
 
   /** A published or installed pack: the snapshot and no manifest, which is what `host-packs/` holds */
