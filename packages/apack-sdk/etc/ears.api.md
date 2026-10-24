@@ -25,6 +25,9 @@ export function boundEars(): Ears;
 export const findRelations: (match?: RelationMatch) => RelationRow[];
 
 // @public (undocumented)
+export const getRelation: (relId: EARS.RelationId) => RelationRow | undefined;
+
+// @public (undocumented)
 export const getRoles: (id: EARS.EntityId) => string[];
 
 // @public (undocumented)
@@ -43,6 +46,9 @@ export const nextLabel: (type: EARS.Entity, base: string) => string;
 export const NO_ENGINE_BOUND: string;
 
 // @public (undocumented)
+export const removeRelation: (relId: EARS.RelationId) => void;
+
+// @public (undocumented)
 export const transact: <T>(fn: () => T) => T;
 
 // @public
@@ -58,7 +64,7 @@ export const untypedUpsert: Upsert;
 export const untypedWrite: Write;
 
 // @public (undocumented)
-export const updateRelation: (relId: EARS.EntityId, patch: {
+export const updateRelation: (relId: EARS.RelationId, patch: {
     source?: EARS.EntityId;
     target?: EARS.EntityId;
     info?: unknown;

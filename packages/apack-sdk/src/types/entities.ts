@@ -17,6 +17,7 @@ export namespace EARS {
 
   export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
   export type EntityId<E extends string = string> = Core.EntityId<E>;
+  export type RelationId = Core.RelationId;
 
   // ─── RelKind ───────────────────────────────────────────────────────────
   export const RelKind = SDK_REL_KINDS;

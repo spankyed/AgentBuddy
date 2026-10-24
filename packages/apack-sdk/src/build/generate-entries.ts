@@ -186,6 +186,7 @@ ${entityValue}${prototypeExport('Entity', registry.entities)}
   export type Entity = ${entityUnion};
 
   export type EntityId<E extends string = string> = import('@apackdev/ears').EARS.EntityId<E>;
+  export type RelationId = import('@apackdev/ears').EARS.RelationId;
 
   export namespace RelKind {
 ${relKindMembers.join('\n')}

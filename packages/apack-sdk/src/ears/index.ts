@@ -74,8 +74,10 @@ export const untypedWrite: Write = onBound('write');
 
 export const transact = onBound('transact');
 export const isEntityType = onBound('isEntityType');
-export const updateRelation = onBound('updateRelation');
+export const getRelation = onBound('getRelation');
 export const findRelations = onBound('findRelations');
+export const updateRelation = onBound('updateRelation');
+export const removeRelation = onBound('removeRelation');
 export const getRow = onBound('getRow');
 export const getRoles = onBound('getRoles');
 export const getSchemaStats = onBound('getSchemaStats');

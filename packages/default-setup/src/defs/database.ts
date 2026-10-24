@@ -9,8 +9,9 @@ export type { BaseEntity, QueryBuilder, RelationMatch, RelationRow, RelationStat
 
 // Read: the pack's typed helpers where there are any, the engine's otherwise
 export { query, getAttr } from '#generated/ears.ts';
-export { getRow, getRoles, findRelations } from '@apackdev/sdk/ears';
+export { getRow, getRoles, getRelation, findRelations } from '@apackdev/sdk/ears';
 export { getSchemaStats } from '@apackdev/sdk/ears';
 
 // Write: only a transaction gets these; a query naming one fails with "<name> is not defined"
 export { create, upsert, write } from '#generated/ears.ts';
+export { removeRelation } from '@apackdev/sdk/ears';

@@ -184,6 +184,8 @@ export namespace EARS {
     export type AttributePayloads = EARS_2.AttributePayloads;
     // (undocumented)
     export type AttributeStore = EARS_2.AttributeStore;
+    // (undocumented)
+    export type AttributeType = EARS_2.AttributeType;
     const // (undocumented)
     RelKind: {
         readonly CONTAINS: "contains";
@@ -192,14 +194,14 @@ export namespace EARS {
         readonly PARENT_OF: "parent_of";
     };
     // (undocumented)
-    export type AttributeType = EARS_2.AttributeType;
+    export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
     RoleKind: {
         readonly ROOT_FLOW: "root_flow";
         readonly ENTRY_EVENT: "entry_event";
     };
     // (undocumented)
-    export type AttributeTypeMap = EARS_2.AttributeTypeMap;
+    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
@@ -210,13 +212,13 @@ export namespace EARS {
         readonly Role: "role";
     };
     // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
-    // (undocumented)
     export type AttrKind = EARS_2.AttrKind;
     // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
     // (undocumented)
     export type EntityId<E extends string = string> = EARS_2.EntityId<E>;
+    // (undocumented)
+    export type RelationId = EARS_2.RelationId;
     // (undocumented)
     export type RelKind = EARS_2.RelKind;
     // (undocumented)
