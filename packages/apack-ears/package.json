@@ -56,5 +56,8 @@
   "publishConfig": {
     "access": "public",
     "provenance": true
+  },
+  "dependencies": {
+    "msgpackr": "^1.11.9"
   }
 }
