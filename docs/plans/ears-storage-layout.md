@@ -60,8 +60,14 @@ Of the production data's 171 MB of values, `Message.blocks` (thread transcripts)
   environment opened with `overlappingSync: false` — so it is visible at once and survives the app crashing. One sync
   makes every commit before it durable, and it runs on a short timer (100–250 ms), on idle and on close. A caller that
   must survive an OS crash or power loss asks: `await durable()` resolves once everything committed so far is on disk,
-  and `transact(fn, { durable: true })` syncs as that unit commits. Saving what the user will be told is saved, backup,
-  export, import and the content apply ask; UI state and a run's step results don't. Postgres
+  and `transact(fn, { durable: true })` syncs as that unit commits.
+  - **A user's action is durable without anyone asking.** The bus already scopes each delivery (it is what `reply`
+    reads). When it finishes handling a message that came from a client — a user's action — and that handling
+    committed anything, it requests a sync, without blocking the handler, so the action is durable within one sync.
+    Work nobody asked for in that moment — flows, a run's step results, background reconciliation — rides group commit.
+    `durable()` stays for what has no delivery to scope it: backup, export, import and the content apply. The safe
+    behaviour is the default rather than something a caller has to remember, which is how a write a user was told is
+    saved gets lost. Postgres
   (`synchronous_commit=off` with group commit, settable per transaction), SQLite (WAL, `synchronous=NORMAL`) and RocksDB
   (WAL without sync by default) make the same trade.
   - **Why the sync is the cost, and native code doesn't change it.** On macOS the LMDB lmdb-js vendors syncs with
@@ -117,6 +123,40 @@ Of the production data's 171 MB of values, `Message.blocks` (thread transcripts)
   - **The offline reader goes.** `LmdbReader` is deleted with hydration: `apack db` opens the same engine on the LMDB
     backend, read-only, so a tool's queries are the app's queries over the same cursors. Its whole-table scans
     (`entitiesOfType`, `relations`) are not fixed in the meantime.
+  - **A unit reads its own writes.** Inside `transact`, every read goes through the unit's write transaction, not a
+    read snapshot, so code sees what it wrote before the unit commits, as the contract says today. Outside a unit,
+    each terminal takes its own snapshot, as above.
+- **Indexes are declared, not implied** (decided 2026-10-24). The in-memory value index covers any kind the first
+  `where` or `withRole` names; on disk that would make every put write index keys and every update read the old value
+  to remove its old entry, which is most of the spike's write amplification. A shape marks the fields it queries by
+  value in `apack.json` — the entity's entry gains `indexes: ["status", "label"]` — and codegen writes them into the
+  row rules beside `required` and `shortCode`; roles are always indexed (`withRole`). A `where(k, v)` on an indexed
+  field reads its `['x', kind, value, seq]` range; on any other field it is a filtered walk of the type: correct,
+  never missing a match, slower. A write pays only for the fields someone chose to index. The SDK's own entities
+  declare theirs in `SDK_ROW_RULES`. Which fields each pack indexes is chosen from the `where` calls its code makes,
+  in Step 10.
+- **Nothing holds data in memory but a call** (decided 2026-10-24). The engine keeps no copy of stored data:
+
+  | What | Shape | Lifetime |
+  |---|---|---|
+  | A read snapshot | one LMDB read transaction: a reader slot, no copied data | one terminal |
+  | A query's working set | the current id while streaming; a set of ids reached, for a walk's dedupe; the ids `orderBy`, `distinct` or a deep walk collects | one terminal |
+  | A result | fresh copies decoded from LMDB | the caller's; the engine keeps no reference |
+  | A unit | one LMDB write transaction, whose dirty pages are LMDB's | the unit |
+  | Group commit | a "committed since the last sync" flag, a timer, the pending `durable()` promises | until the next sync |
+  | The schema | the registered names and row rules | the app's run (configuration, not data) |
+
+  Two rules keep it so. **No cache of data in the engine:** not lmdb-js's `cache: true` (the spike measured no gain),
+  not a cached next number for short codes (numbering reads its sequence key inside the write transaction), not a
+  memoised row; a slow read is fixed by the key layout or the query, measured. **No reference to stored data
+  outlives its call:** results are copies, and the development check freezes them in tests. The operating system's
+  page cache holds recently read pages of the memory-mapped file, outside the heap, and evicts them on its own.
+- **Open: insertion order or id order.** The contract pins insertion order, which costs a sequence key per entity, an
+  `['i', id]` lookup back to it and the sequence inside every index key: two keys a create and a hop an index match.
+  Engine-minted ids are time-sortable (`Type-<base-36 time><random>`), so id order is creation order for them; ids
+  given explicitly (an import's, a compiled flow's or node's, named after it) are not. Id order would drop those keys
+  as a contract change, with code that needs an order saying so through `orderBy`. Settled by measuring first: which
+  callers read a query's order without an `orderBy`, and what the two keys cost a create on format 4.
 
 ## Steps (in order of lift)
 
@@ -250,8 +290,11 @@ through `onWriteFailure`. Its design is kept, with moving thread messages out of
   bindings of our own.
 - Format 4, with a 3 → 4 step in `scripts/ears-convert.ts`. Only the developers' own data is in an older format, and
   it is converted explicitly, on a copy.
-- The read path above: every step a range of the layout, one read snapshot per terminal, no cursor leaving the
-  store, key-only index walks, and `LmdbReader` deleted with `apack db` reading through the engine.
+- The read path above: every step a range of the layout, one read snapshot per terminal and the unit's write
+  transaction inside `transact`, no cursor leaving the store, key-only index walks, and `LmdbReader` deleted with
+  `apack db` reading through the engine.
+- Declared indexes: `indexes` on an entity's manifest entry, in the row rules and `SDK_ROW_RULES`, chosen per pack
+  from the `where` calls its code makes; the sync a client's delivery requests at the bus.
 - A development check that freezes returned values in tests, since a read returns a copy.
 - The host, API, CLI and SDK test runtime cut over; hydration, the sink, the adapter and the journal deleted.
 **Done when:** the contract suite passes unchanged on both backends; boot, heap, the test run's time and the bench
@@ -260,9 +303,17 @@ write survives a child killed with SIGKILL right after it returns; a write behin
 resolves (the sync count observed through the backend), and one without it is not synced per commit; the
 create and update profile is recorded; on the LMDB backend, a spec counting reads shows `first()`, `exists()` and
 `limit(n)` stop early and an indexed `where` reads only its matches; a thousand queries that break early or throw
-leave the environment's reader count where it was (lmdb-js `readerList()`); and the bench's `first()`, `limit`,
-indexed-`where`, traversal and 10k-edge hub cases are recorded on LMDB.
+leave the environment's reader count where it was (lmdb-js `readerList()`); the bench's `first()`, `limit`,
+indexed-`where`, traversal and 10k-edge hub cases are recorded on LMDB; a write a client's message caused is synced
+without a `durable()` call, and a flow's is not synced per commit; a read inside `transact` sees the unit's own
+writes; a `where` on an undeclared field finds every match by walking, and one on a declared field reads its range;
+and query latency at p99 is recorded with a cold page cache on the production-size copy — if a cold read stalls the
+API's main thread, warming at boot or moving large reads off it is decided with that number.
 Narrowing the two locks for multi-process writes follows it.
+
+Alongside it, **an audit of what the systems keep in their contexts**: a system that holds entity lists to answer
+`SEND_STATE` is a second copy of the data in app code. Each one either keeps only what it publishes or reads it
+back when asked.
 
 ## Out of scope
 
