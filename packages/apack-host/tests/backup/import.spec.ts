@@ -36,7 +36,7 @@ async function fixture(settings: unknown = {}) {
   fs.writeFileSync(path.join(backup, 'metadata.json'), JSON.stringify({ databases: ['lmdb'] }));
   const original = openEnvAt(path.join(backup, 'lmdb'));
   original.entities.putSync('Note-candidate', { type: 'Note' });
-  closeEnv(original, () => {});
+  closeEnv(original);
   fs.mkdirSync(path.join(backup, 'media'));
   fs.writeFileSync(path.join(backup, 'media', 'asset.txt'), 'candidate');
   const current = tempDir('settings-backup-current-');
@@ -82,7 +82,7 @@ it('preserves the recovery error and a durable copy when import and reopening bo
   expect(path.dirname(path.dirname(rollback))).toBe(path.dirname(f.store.path));
   const copy = openEnvAt(path.join(rollback, 'lmdb'), { readOnly: true });
   try { expect(copy.entities.get('Note-current')).toEqual({ type: 'Note' }); }
-  finally { closeEnv(copy, () => {}); }
+  finally { closeEnv(copy); }
   reopen.mockRestore();
   f.store.reopen();
 });
@@ -127,7 +127,7 @@ it('retains a readable rollback snapshot when restoration also fails', async () 
   retained.push(path.dirname(rollback));
   const copy = openEnvAt(path.join(rollback, 'lmdb'), { readOnly: true });
   try { expect(copy.entities.get('Note-current')).toEqual({ type: 'Note' }); }
-  finally { closeEnv(copy, () => {}); }
+  finally { closeEnv(copy); }
   reopen.mockRestore();
   store.reopen();
 });

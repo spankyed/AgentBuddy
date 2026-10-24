@@ -35,7 +35,7 @@ export interface BackupStore {
  * backup's copy of it is checked — opened read-only, so one in a format this version can't read is refused, and closed
  */
 const DATABASES = {
-  lmdb: { format: LMDB_FORMAT_VERSION, check: (dir: string) => closeEnv(openEnvAt(dir, { readOnly: true }), () => {}) },
+  lmdb: { format: LMDB_FORMAT_VERSION, check: (dir: string) => closeEnv(openEnvAt(dir, { readOnly: true })) },
   runHistory: { format: RECORD_STORE_FORMAT_VERSION, check: (dir: string) => openRecordStore({ path: dir, indexes: {}, readOnly: true }).close() },
 } as const;
 
@@ -315,7 +315,7 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = [], vali
       counts,
     };
   } finally {
-    closeEnv(env, () => {});
+    closeEnv(env);
   }
 }
 

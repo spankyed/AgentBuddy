@@ -126,7 +126,7 @@ function writeStorageFormat(databaseDir: string, format: number): void {
   try {
     env.root.openDB({ name: 'meta', encoding: 'json' }).putSync('format', format);
   } finally {
-    closeEnv(env, () => {});
+    closeEnv(env);
   }
 }
 

@@ -173,7 +173,7 @@ describe('the app\'s run history', () => {
   it('moves a store it cannot read aside and starts a new one, rather than keeping the app from starting', () => {
     const dir = path.join(fs.mkdtempSync(path.join(root, 'case-')), 'run-history');
     // Files that aren't a run history: an EARS database where the record store should be
-    closeEnv(openEnvAt(dir), () => {});
+    closeEnv(openEnvAt(dir));
     expect(() => openRunHistoryStore(dir, { readOnly: true })).toThrow('are an EARS database, not a record store');
 
     const store = openRunHistoryStore(dir);

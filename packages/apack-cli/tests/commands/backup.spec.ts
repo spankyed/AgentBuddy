@@ -18,7 +18,7 @@ it('creates an importable backup with media and run history, and refuses overwri
     const paths = _appDataPaths(source);
     const primary = openEnvAt(paths.lmdb);
     primary.entities.putSync('Note-a', { type: 'Note' });
-    closeEnv(primary, () => {});
+    closeEnv(primary);
     const history = openRunHistoryStore(paths.runHistory);
     history.put({ id: 'RunNode-a', rootId: 'RunNode-a', kind: 'flow', label: 'Run', status: 'completed', startedAt: 0 });
     history.close();
@@ -30,7 +30,7 @@ it('creates an importable backup with media and run history, and refuses overwri
     expect(fs.readFileSync(path.join(out, 'media/asset.txt'), 'utf8')).toBe('media');
     const copy = openEnvAt(path.join(out, 'lmdb'), { readOnly: true });
     expect(copy.entities.get('Note-a')).toEqual({ type: 'Note' });
-    closeEnv(copy, () => {});
+    closeEnv(copy);
     await db(['backup', 'verify', out, '--json'], io);
     expect(JSON.parse(io.out.mock.lastCall![0])).toMatchObject({ valid: true, path: out });
     const restoreContext = resolveAppEnvironment({ env: 'production', userDataDir: path.join(root, 'restored') });
